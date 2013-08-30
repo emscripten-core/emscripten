@@ -600,31 +600,32 @@ LibraryManager.library = {
   // poll.h
   // ==========================================================================
 
+  __DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
   __pollfd_struct_layout: Runtime.generateStructInfo([
     ['i32', 'fd'],
     ['i16', 'events'],
     ['i16', 'revents']]),
-  poll__deps: ['$FS', '__pollfd_struct_layout'],
+  poll__deps: ['$FS', '__DEFAULT_POLLMASK', '__pollfd_struct_layout'],
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
-    // NOTE: This is pretty much a no-op mimicking glibc.
     var offsets = ___pollfd_struct_layout;
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + ___pollfd_struct_layout.__size__ * i;
       var fd = {{{ makeGetValue('pollfd', 'offsets.fd', 'i32') }}};
       var events = {{{ makeGetValue('pollfd', 'offsets.events', 'i16') }}};
-      var revents = 0;
+      var mask = {{{ cDefine('POLLNVAL') }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        if (events & {{{ cDefine('POLLIN') }}}) revents |= {{{ cDefine('POLLIN') }}};
-        if (events & {{{ cDefine('POLLOUT') }}}) revents |= {{{ cDefine('POLLOUT') }}};
-      } else {
-        if (events & {{{ cDefine('POLLNVAL') }}}) revents |= {{{ cDefine('POLLNVAL') }}};
+        mask = ___DEFAULT_POLLMASK;
+        if (stream.stream_ops.poll) {
+          mask = stream.stream_ops.poll(stream);
+        }
       }
-      if (revents) nonzero++;
-      {{{ makeSetValue('pollfd', 'offsets.revents', 'revents', 'i16') }}}
+      mask &= events | {{{ cDefine('POLLERR') }}} | {{{ cDefine('POLLHUP') }}};
+      if (mask) nonzero++;
+      {{{ makeSetValue('pollfd', 'offsets.revents', 'mask', 'i16') }}}
     }
     return nonzero;
   },
@@ -723,7 +724,7 @@ LibraryManager.library = {
       FS.close(stream);
       return 0;
     } catch (e) {
-      FS.handleFSError(e);;
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -1006,9 +1007,11 @@ LibraryManager.library = {
       return -1;
     }
 
+#if SOCKET_WEBRTC
     if (stream && ('socket' in stream)) {
       return _recv(fildes, buf, nbyte, 0);
     }
+#endif
 
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
@@ -1139,9 +1142,11 @@ LibraryManager.library = {
       return -1;
     }
 
+#if SOCKET_WEBRTC
     if (stream && ('socket' in stream)) {
       return _send(fildes, buf, nbyte, 0);
     }
+#endif
 
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
@@ -6910,7 +6915,6 @@ LibraryManager.library = {
   // ==========================================================================
   // arpa/inet.h
   // ==========================================================================
-
   htonl: function(value) {
     return ((value & 0xff) << 24) + ((value & 0xff00) << 8) +
            ((value & 0xff0000) >>> 8) + ((value & 0xff000000) >>> 24);
@@ -6921,64 +6925,43 @@ LibraryManager.library = {
   ntohl: 'htonl',
   ntohs: 'htons',
 
-  // http://pubs.opengroup.org/onlinepubs/9699919799/functions/inet_ntop.html
-  inet_ntop__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_ntop4', 'inet_ntop6'],
-  inet_ntop: function(af, src, dst, size) {
-    switch (af) {
-      case {{{ cDefine('AF_INET') }}}:
-        return _inet_ntop4(src, dst, size);
-      case {{{ cDefine('AF_INET6') }}}:
-        return _inet_ntop6(src, dst, size);
-      default:
-        ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
-        return 0;
-    }
-  },
-  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_pton4', 'inet_pton6'],
-  inet_pton: function(af, src, dst) {
-    switch (af) {
-      case {{{ cDefine('AF_INET') }}}:
-        return _inet_pton4(src, dst);
-      case {{{ cDefine('AF_INET6') }}}:
-        return _inet_pton6(src, dst);
-      default:
-        ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
-        return -1;
-    }
-  },
+  // old ipv4 only functions
+  inet_addr__deps: ['_inet_pton4_raw'],
   inet_addr: function(ptr) {
-     var b = Pointer_stringify(ptr).split(".");
-     if (b.length !== 4) return -1; // we return -1 for error, and otherwise a uint32. this helps inet_pton differentiate
-     return (Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24)) >>> 0;
+    var addr = __inet_pton4_raw(Pointer_stringify(ptr));
+    if (addr === null) {
+      return -1;
+    }
+    return addr;
   },
-  _inet_aton_raw: function(str) {
-    var b = str.split(".");
-    return (Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24)) >>> 0;
-  },
-  _inet_ntoa_raw: function(addr) {
-    return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
-  },
-  inet_ntoa__deps: ['_inet_ntoa_raw'],
+  inet_ntoa__deps: ['_inet_ntop4_raw'],
   inet_ntoa: function(in_addr) {
     if (!_inet_ntoa.buffer) {
       _inet_ntoa.buffer = _malloc(1024);
     }
-    var addr = getValue(in_addr, 'i32');
-    var str = __inet_ntoa_raw(addr);
+    var addr = {{{ makeGetValue('in_addr', '0', 'i32') }}};
+    var str = __inet_ntop4_raw(addr);
     writeStringToMemory(str.substr(0, 1024), _inet_ntoa.buffer);
     return _inet_ntoa.buffer;
   },
-  inet_aton__deps: ['inet_addr'],
+  inet_aton__deps: ['_inet_pton4_raw'],
   inet_aton: function(cp, inp) {
-    var addr = _inet_addr(cp);
-    setValue(inp, addr, 'i32');
-    if (addr < 0) return 0;
+    var addr = __inet_pton4_raw(Pointer_stringify(cp));
+    if (addr === null) {
+      return 0;
+    }
+    {{{ makeSetValue('inp', '0', 'addr', 'i32') }}}
     return 1;
   },
 
-  inet_ntop4__deps: ['__setErrNo', '$ERRNO_CODES', '_inet_ntoa_raw'],
-  inet_ntop4: function(src, dst, size) {
-    var str = __inet_ntoa_raw(getValue(src, 'i32'));
+  // new ipv4 / ipv6 functions
+  _inet_ntop4_raw: function(addr) {
+    return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
+  },
+  _inet_ntop4__deps: ['__setErrNo', '$ERRNO_CODES', '_inet_ntop4_raw'],
+  _inet_ntop4: function(src, dst, size) {
+    var addr = {{{ makeGetValue('src', '0', 'i32') }}};
+    var str = __inet_ntop4_raw(addr);
     if (str.length+1 > size) {
       ___setErrNo(ERRNO_CODES.ENOSPC);
       return 0;
@@ -6986,20 +6969,8 @@ LibraryManager.library = {
     writeStringToMemory(str, dst);
     return dst;
   },
-
-  inet_ntop6__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_ntop6_raw'],
-  inet_ntop6: function(src, dst, size) {
-    var str = _inet_ntop6_raw(src);
-    if (str.length+1 > size) {
-      ___setErrNo(ERRNO_CODES.ENOSPC);
-      return 0;
-    }
-    writeStringToMemory(str, dst);
-    return dst;
-  },
-  inet_ntop6_raw__deps: ['ntohs'],
-  inet_ntop6_raw: function(src) {
-
+  _inet_ntop6_raw__deps: ['ntohs', '_inet_ntop4_raw'],
+  _inet_ntop6_raw: function(ints) {
     //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
     //  Format for IPv4 compatible and mapped  128-bit IPv6 Addresses
     //  128-bits are split into eight 16-bit words
@@ -7014,7 +6985,6 @@ LibraryManager.library = {
     //  +--------------------------------------+----+---------------------+
     //  |0000..............................0000|FFFF|    IPv4 ADDRESS     | (mapped)
     //  +--------------------------------------+----+---------------------+
-
     var str = "";
     var word = 0;
     var longest = 0;
@@ -7022,27 +6992,37 @@ LibraryManager.library = {
     var zstart = 0;
     var len = 0;
     var i = 0;
+    var parts = [
+      ints[0] & 0xffff,
+      (ints[0] >> 16),
+      ints[1] & 0xffff,
+      (ints[1] >> 16),
+      ints[2] & 0xffff,
+      (ints[2] >> 16),
+      ints[3] & 0xffff,
+      (ints[3] >> 16)
+    ];
 
     // Handle IPv4-compatible, IPv4-mapped, loopback and any/unspecified addresses
 
     var hasipv4 = true;
     var v4part = "";
     // check if the 10 high-order bytes are all zeros (first 5 words)
-    for (i = 0; i < 10; i++) {
-      if ({{{ makeGetValue('src', 'i', 'i8') }}} !== 0) { hasipv4 = false; break; }
+    for (i = 0; i < 5; i++) {
+      if (parts[i] !== 0) { hasipv4 = false; break; }
     }
 
     if (hasipv4) {
       // low-order 32-bits store an IPv4 address (bytes 13 to 16) (last 2 words)
-      v4part = __inet_ntoa_raw({{{ makeGetValue('src', '12', 'i32') }}});
+      v4part = __inet_ntop4_raw(parts[6] | (parts[7] << 16));
       // IPv4-mapped IPv6 address if 16-bit value (bytes 11 and 12) == 0xFFFF (6th word)
-      if ({{{ makeGetValue('src', '10', 'i16') }}} === -1) {
+      if (parts[5] === -1) {
         str = "::ffff:";
         str += v4part;
         return str;
       }
       // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
-      if ({{{ makeGetValue('src', '10', 'i16') }}} === 0) {
+      if (parts[5] === 0) {
         str = "::";
         //special case IPv6 addresses
         if(v4part === "0.0.0.0") v4part = ""; // any/unspecified address
@@ -7056,7 +7036,7 @@ LibraryManager.library = {
 
     // first run to find the longest contiguous zero words
     for (word = 0; word < 8; word++) {
-      if ({{{ makeGetValue('src', 'word*2', 'i16') }}} === 0) {
+      if (parts[word] === 0) {
         if (word - lastzero > 1) {
           len = 0;
         }
@@ -7072,7 +7052,7 @@ LibraryManager.library = {
     for (word = 0; word < 8; word++) {
       if (longest > 1) {
         // compress contiguous zeros - to produce "::"
-        if ({{{ makeGetValue('src', 'word*2', 'i16') }}} === 0 && word >= zstart && word < (zstart + longest) ) {
+        if (parts[word] === 0 && word >= zstart && word < (zstart + longest) ) {
           if (word === zstart) {
             str += ":";
             if (zstart === 0) str += ":"; //leading zeros case
@@ -7081,54 +7061,86 @@ LibraryManager.library = {
         }
       }
       // converts 16-bit words from big-endian to little-endian before converting to hex string
-      str += Number(_ntohs({{{ makeGetValue('src', 'word*2', 'i16') }}} & 0xffff)).toString(16);
+      str += Number(_ntohs(parts[word] & 0xffff)).toString(16);
       str += word < 7 ? ":" : "";
     }
     return str;
   },
+  _inet_ntop6__deps: ['__setErrNo', '$ERRNO_CODES', '_inet_ntop6_raw'],
+  _inet_ntop6: function(src, dst, size) {
+    var addr = [
+      {{{ makeGetValue('src', '0', 'i32') }}}, {{{ makeGetValue('src', '4', 'i32') }}},
+      {{{ makeGetValue('src', '8', 'i32') }}}, {{{ makeGetValue('src', '12', 'i32') }}}
+    ];
+    var str = __inet_ntop6_raw(addr);
+    if (str.length+1 > size) {
+      ___setErrNo(ERRNO_CODES.ENOSPC);
+      return 0;
+    }
+    writeStringToMemory(str, dst);
+    return dst;
+  },
+  inet_ntop__deps: ['__setErrNo', '$ERRNO_CODES', '_inet_ntop4', '_inet_ntop6'],
+  inet_ntop: function(af, src, dst, size) {
+    // http://pubs.opengroup.org/onlinepubs/9699919799/functions/inet_ntop.html
+    switch (af) {
+      case {{{ cDefine('AF_INET') }}}:
+        return __inet_ntop4(src, dst, size);
+      case {{{ cDefine('AF_INET6') }}}:
+        return __inet_ntop6(src, dst, size);
+      default:
+        ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+        return 0;
+    }
+  },
 
-  inet_pton4__deps: ['inet_addr'],
-  inet_pton4: function(src, dst) {
-    var ret = _inet_addr(src);
-    if (ret === -1 || isNaN(ret)) return 0;
-    setValue(dst, ret, 'i32');
+  _inet_pton4_raw: function(str) {
+    var b = str.split('.');
+    for (var i = 0; i < 4; i++) {
+      var tmp = Number(b[i]);
+      if (isNaN(tmp)) return null;
+      b[i] = tmp;
+    }
+    return (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
+  },
+  _inet_pton4__deps: ['_inet_pton4_raw'],
+  _inet_pton4: function(src, dst) {
+    var ret = __inet_pton4_raw(Pointer_stringify(src));
+    if (ret === null) {
+      return 0;
+    }
+    {{{ makeSetValue('dst', '0', 'ret', 'i32') }}}
     return 1;
   },
-
-  inet_pton6__deps: ['inet_pton6_raw'],
-  inet_pton6: function(src, dst) {
-    return _inet_pton6_raw(Pointer_stringify(src), dst);
-  },
-
-  inet_pton6_raw__deps: ['htons'],
-  inet_pton6_raw: function(addr, dst) {
+  _inet_pton6_raw__deps: ['htons'],
+  _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
     /* http://home.deds.nl/~aeron/regex/ */
     var valid6regx = /^((?=.*::)(?!.*::.+::)(::)?([\dA-F]{1,4}:(:|\b)|){5}|([\dA-F]{1,4}:){6})((([\dA-F]{1,4}((?!\3)::|:\b|$))|(?!\2\3)){2}|(((2[0-4]|1\d|[1-9])?\d|25[0-5])\.?\b){4})$/i
-    if (!valid6regx.test(addr)) {
-      return 0;
+    var parts = [];
+    if (!valid6regx.test(str)) {
+      return null;
     }
-    if (addr === "::") {
-      for (i=0; i < 4; i++) {{{ makeSetValue('dst', 'i*4', '0', 'i32') }}};
-      return 1;
+    if (str === "::") {
+      return [0, 0, 0, 0, 0, 0, 0, 0];
     }
     // Z placeholder to keep track of zeros when splitting the string on ":"
-    if (addr.indexOf("::") === 0) {
-      addr = addr.replace("::", "Z:"); // leading zeros case
+    if (str.indexOf("::") === 0) {
+      str = str.replace("::", "Z:"); // leading zeros case
     } else {
-      addr = addr.replace("::", ":Z:");
+      str = str.replace("::", ":Z:");
     }
 
-    if (addr.indexOf(".") > 0) {
-      // parse IPv4 embedded address
-      addr = addr.replace(new RegExp('[.]', 'g'), ":");
-      words = addr.split(":");
+    if (str.indexOf(".") > 0) {
+      // parse IPv4 embedded stress
+      str = str.replace(new RegExp('[.]', 'g'), ":");
+      words = str.split(":");
       words[words.length-4] = parseInt(words[words.length-4]) + parseInt(words[words.length-3])*256;
       words[words.length-3] = parseInt(words[words.length-2]) + parseInt(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
-      words = addr.split(":");
+      words = str.split(":");
     }
 
     offset = 0; z = 0;
@@ -7137,19 +7149,48 @@ LibraryManager.library = {
         if (words[w] === 'Z') {
           // compressed zeros - write appropriate number of zero words
           for (z = 0; z < (8 - words.length+1); z++) {
-            {{{ makeSetValue('dst', '(w+z)*2', '0', 'i16') }}};
+            parts[w+z] = 0;
           }
           offset = z-1;
         } else {
           // parse hex to field to 16-bit value and write it in network byte-order
-          {{{ makeSetValue('dst', '(w+offset)*2', '_htons(parseInt(words[w],16))', 'i16') }}};
+          parts[w+offset] = _htons(parseInt(words[w],16));
         }
       } else {
         // parsed IPv4 words
-        {{{ makeSetValue('dst', '(w+offset)*2', 'words[w]', 'i16') }}};
+        parts[w+offset] = words[w];
       }
     }
+    return [
+      (parts[1] << 16) | parts[0],
+      (parts[3] << 16) | parts[2],
+      (parts[5] << 16) | parts[4],
+      (parts[7] << 16) | parts[6]
+    ];
+  },
+  _inet_pton6__deps: ['_inet_pton6_raw'],
+  _inet_pton6: function(src, dst) {
+    var ints = __inet_pton6_raw(Pointer_stringify(src));
+    if (ints === null) {
+      return 0;
+    }
+    for (var i = 0; i < 4; i++) {
+      {{{ makeSetValue('dst', 'i*4', 'ints[i]', 'i32') }}};
+    }
     return 1;
+  },
+  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', '_inet_pton4', '_inet_pton6'],
+  inet_pton: function(af, src, dst) {
+    // http://pubs.opengroup.org/onlinepubs/9699919799/functions/inet_pton.html
+    switch (af) {
+      case {{{ cDefine('AF_INET') }}}:
+        return __inet_pton4(src, dst);
+      case {{{ cDefine('AF_INET6') }}}:
+        return __inet_pton6(src, dst);
+      default:
+        ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+        return -1;
+    }
   },
 
   // netinet/in.h
@@ -7173,10 +7214,56 @@ LibraryManager.library = {
   // netdb.h
   // ==========================================================================
 
-  // All we can do is alias names to ips. you give this a name, it returns an
-  // "ip" that we later know to use as a name. There is no way to do actual
-  // name resolving clientside in a browser.
-  // we do the aliasing in 172.29.*.*, giving us 65536 possibilities
+  // We can't actually resolve hostnames in the browser, so instead
+  // we're generating fake IP addresses with lookup_name that we can
+  // resolve later on with lookup_addr.
+  // We do the aliasing in 172.29.*.*, giving us 65536 possibilities.
+  $DNS: {
+    address_map: {
+      id: 1,
+      addrs: {},
+      names: {}
+    },
+
+    lookup_name__deps: ['_inet_pton4_raw', '_inet_pton6_raw'],
+    lookup_name: function (name) {
+      // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
+      var res = __inet_pton4_raw(name);
+      if (res) {
+        return name;
+      }
+      res = __inet_pton6_raw(name);
+      if (res) {
+        return name;
+      }
+
+      // See if this name is already mapped.
+      var addr;
+
+      if (DNS.address_map.addrs[name]) {
+        addr = DNS.address_map.addrs[name];
+      } else {
+        var id = DNS.address_map.id++;
+        assert(id < 65535, 'exceeded max address mappings of 65535');
+
+        addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
+
+        DNS.address_map.names[addr] = name;
+        DNS.address_map.addrs[name] = addr;
+      }
+
+      return addr;
+    },
+
+    lookup_addr: function (addr) {
+      if (DNS.address_map.names[addr]) {
+        return DNS.address_map.names[addr];
+      }
+
+      return null;
+    }
+  },
+
   // note: lots of leaking here!
   __hostent_struct_layout: Runtime.generateStructInfo([
     ['i8*', 'h_name'],
@@ -7186,32 +7273,53 @@ LibraryManager.library = {
     ['i8**', 'h_addr_list'],
   ]),
 
-  gethostbyname__deps: ['__hostent_struct_layout'],
+  _addrinfo_layout: Runtime.generateStructInfo([
+    ['i32', 'ai_flags'],
+    ['i32', 'ai_family'],
+    ['i32', 'ai_socktype'],
+    ['i32', 'ai_protocol'],
+    ['i32', 'ai_addrlen'],
+    ['*', 'ai_addr'],
+    ['*', 'ai_canonname'],
+    ['*', 'ai_next']
+  ]),
+
+  gethostbyaddr__deps: ['$DNS', 'gethostbyname', '_inet_ntop4_raw'],
+  gethostbyaddr: function (addr, addrlen, type) {
+    if (type !== {{{ cDefine('AF_INET') }}}) {
+      ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+      return null;
+    }
+    addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
+    var host = __inet_ntop4_raw(addr);
+    var lookup = DNS.lookup_addr(host);
+    if (lookup) {
+      host = lookup;
+    }
+    var hostp = allocate(intArrayFromString(host), 'i8', ALLOC_STACK);
+    return _gethostbyname(hostp);
+  },
+
+  gethostbyname__deps: ['$DNS', '__hostent_struct_layout', '_inet_pton4_raw'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
-      if (!_gethostbyname.id) {
-        _gethostbyname.id = 1;
-        _gethostbyname.table = {};
-      }
-    var id = _gethostbyname.id++;
-    assert(id < 65535);
-    var fakeAddr = 172 | (29 << 8) | ((id & 0xff) << 16) | ((id & 0xff00) << 24);
-    _gethostbyname.table[id] = name;
+
     // generate hostent
     var ret = _malloc(___hostent_struct_layout.__size__);
     var nameBuf = _malloc(name.length+1);
     writeStringToMemory(name, nameBuf);
-    setValue(ret+___hostent_struct_layout.h_name, nameBuf, 'i8*');
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_name', 'nameBuf', 'i8*') }}}
     var aliasesBuf = _malloc(4);
-    setValue(aliasesBuf, 0, 'i8*');
-    setValue(ret+___hostent_struct_layout.h_aliases, aliasesBuf, 'i8**');
-    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine('AF_INET') }}}, 'i32');
-    setValue(ret+___hostent_struct_layout.h_length, 4, 'i32');
+    {{{ makeSetValue('aliasesBuf', '0', '0', 'i8*') }}}
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_aliases', 'aliasesBuf', 'i8**') }}}
+    var afinet = {{{ cDefine("AF_INET") }}};
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_addrtype', 'afinet', 'i32') }}}
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_length', '4', 'i32') }}}
     var addrListBuf = _malloc(12);
-    setValue(addrListBuf, addrListBuf+8, 'i32*');
-    setValue(addrListBuf+4, 0, 'i32*');
-    setValue(addrListBuf+8, fakeAddr, 'i32');
-    setValue(ret+___hostent_struct_layout.h_addr_list, addrListBuf, 'i8**');
+    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}}
+    {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}}
+    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(DNS.lookup_name(name))', 'i32') }}}
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_addr_list', 'addrListBuf', 'i8**') }}}
     return ret;
   },
 
@@ -7220,8 +7328,216 @@ LibraryManager.library = {
     var data = _gethostbyname(name);
     _memcpy(hostData, data, ___hostent_struct_layout.__size__);
     _free(data);
-    setValue(errnum, 0, 'i32');
+    {{{ makeSetValue('errnum', '0', '0', 'i32') }}}
     return 0;
+  },
+
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_addrinfo_layout', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
+  getaddrinfo: function(node, service, hint, out) {
+    var addrs = [];
+    var canon = null;
+    var addr = 0;
+    var port = 0;
+    var flags = 0;
+    var family = {{{ cDefine('AF_UNSPEC') }}};
+    var type = 0;
+    var proto = 0;
+    var ai, last;
+
+    function allocaddrinfo(family, type, proto, canon, addr, port) {
+      var sa, salen, ai;
+      var res;
+
+      salen = family === {{{ cDefine('AF_INET6') }}} ?
+        Sockets.sockaddr_in6_layout.__size__ :
+        Sockets.sockaddr_in_layout.__size__;
+      addr = family === {{{ cDefine('AF_INET6') }}} ?
+        __inet_ntop6_raw(addr) :
+        __inet_ntop4_raw(addr);
+      sa = _malloc(salen);
+      res = __write_sockaddr(sa, family, addr, port);
+      assert(!res.errno);
+
+      ai = _malloc(__addrinfo_layout.__size__);
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_family', 'family', 'i32') }}};
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_socktype', 'type', 'i32') }}};
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_protocol', 'proto', 'i32') }}};
+      if (canon) {
+        {{{ makeSetValue('ai', '__addrinfo_layout.ai_canonname', 'canon', 'i32') }}};
+      }
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_addr', 'sa', '*') }}};
+      if (family === {{{ cDefine('AF_INET6') }}}) {
+        {{{ makeSetValue('ai', '__addrinfo_layout.ai_addrlen', 'Sockets.sockaddr_in6_layout.__size__', 'i32') }}};
+      } else {
+        {{{ makeSetValue('ai', '__addrinfo_layout.ai_addrlen', 'Sockets.sockaddr_in_layout.__size__', 'i32') }}};
+      }
+
+      return ai;
+    }
+
+    if (hint) {
+      flags = {{{ makeGetValue('hint', '__addrinfo_layout.ai_flags', 'i32') }}};
+      family = {{{ makeGetValue('hint', '__addrinfo_layout.ai_family', 'i32') }}};
+      type = {{{ makeGetValue('hint', '__addrinfo_layout.ai_socktype', 'i32') }}};
+      proto = {{{ makeGetValue('hint', '__addrinfo_layout.ai_protocol', 'i32') }}};
+    }
+    if (type && !proto) {
+      proto = type === {{{ cDefine('SOCK_DGRAM') }}} ? {{{ cDefine('IPPROTO_UDP') }}} : {{{ cDefine('IPPROTO_TCP') }}};
+    }
+    if (!type && proto) {
+      type = proto === {{{ cDefine('IPPROTO_UDP') }}} ? {{{ cDefine('SOCK_DGRAM') }}} : {{{ cDefine('SOCK_STREAM') }}};
+    }
+
+    if (!node && !service) {
+      return {{{ cDefine('EAI_NONAME') }}};
+    }
+    if (flags & ~({{{ cDefine('AI_PASSIVE') }}}|{{{ cDefine('AI_CANONNAME') }}}|{{{ cDefine('AI_NUMERICHOST') }}}|
+        {{{ cDefine('AI_NUMERICSERV') }}}|{{{ cDefine('AI_V4MAPPED') }}}|{{{ cDefine('AI_ALL') }}}|{{{ cDefine('AI_ADDRCONFIG') }}})) {
+      return {{{ cDefine('EAI_BADFLAGS') }}};
+    }
+    if (({{{ makeGetValue('hint', '__addrinfo_layout.ai_flags', 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
+      return {{{ cDefine('EAI_BADFLAGS') }}};
+    }
+    if (flags & {{{ cDefine('AI_ADDRCONFIG') }}}) {
+      // TODO
+      return {{{ cDefine('EAI_NONAME') }}};
+    }
+    if (type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
+      return {{{ cDefine('EAI_SOCKTYPE') }}};
+    }
+    if (family !== {{{ cDefine('AF_UNSPEC') }}} && family !== {{{ cDefine('AF_INET') }}} && family !== {{{ cDefine('AF_INET6') }}}) {
+      return {{{ cDefine('EAI_FAMILY') }}};
+    }
+
+    if (service) {
+      service = Pointer_stringify(service);
+      port = parseInt(service, 10);
+
+      if (isNaN(port)) {
+        if (flags & {{{ cDefine('AI_NUMERICSERV') }}}) {
+          return {{{ cDefine('EAI_NONAME') }}};
+        }
+        // TODO support resolving well-known service names from:
+        // http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
+        return {{{ cDefine('EAI_SERVICE') }}};
+      }
+    }
+
+    if (!node) {
+      if (family === {{{ cDefine('AF_UNSPEC') }}}) {
+        family = {{{ cDefine('AF_INET') }}};
+      }
+      if ((flags & {{{ cDefine('AI_PASSIVE') }}}) === 0) {
+        if (family === {{{ cDefine('AF_INET') }}}) {
+          addr = _htonl({{{ cDefine('INADDR_LOOPBACK') }}});
+        } else {
+          addr = [0, 0, 0, 1];
+        }
+      }
+      ai = allocaddrinfo(family, type, proto, null, addr, port);
+      {{{ makeSetValue('out', '0', 'ai', '*') }}};
+      return 0;
+    }
+
+    //
+    // try as a numeric address
+    //
+    node = Pointer_stringify(node);
+    addr = __inet_pton4_raw(node);
+    if (addr !== null) {
+      // incoming node is a valid ipv4 address
+      if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET') }}}) {
+        family = {{{ cDefine('AF_INET') }}};
+      }
+      else if (family === {{{ cDefine('AF_INET6') }}} && (flags & {{{ cDefine('AI_V4MAPPED') }}})) {
+        addr = [0, 0, _htonl(0xffff), addr];
+        family = {{{ cDefine('AF_INET6') }}};
+      } else {
+        return {{{ cDefine('EAI_NONAME') }}};
+      }
+    } else {
+      addr = __inet_pton6_raw(node);
+      if (addr !== null) {
+        // incoming node is a valid ipv6 address
+        if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET6') }}}) {
+          family = {{{ cDefine('AF_INET6') }}};
+        } else {
+          return {{{ cDefine('EAI_NONAME') }}};
+        }
+      }
+    }
+    if (addr != null) {
+      ai = allocaddrinfo(family, type, proto, node, addr, port);
+      {{{ makeSetValue('out', '0', 'ai', '*') }}};
+      return 0;
+    }
+    if (flags & {{{ cDefine('AI_NUMERICHOST') }}}) {
+      return {{{ cDefine('EAI_NONAME') }}};
+    }
+
+    //
+    // try as a hostname
+    //
+    // resolve the hostname to a temporary fake address
+    node = DNS.lookup_name(node);
+    addr = __inet_pton4_raw(node);
+    if (family === {{{ cDefine('AF_UNSPEC') }}}) {
+      family = {{{ cDefine('AF_INET') }}}
+    } else if (family === {{{ cDefine('AF_INET6') }}}) {
+      addr = [0, 0, _htonl(0xffff), addr];
+    }
+    ai = allocaddrinfo(family, type, proto, null, addr, port);
+    {{{ makeSetValue('out', '0', 'ai', '*') }}};
+    return 0;
+  },
+
+  freeaddrinfo__deps: ['$Sockets', '_addrinfo_layout'],
+  freeaddrinfo: function(ai) {
+    var sa = {{{ makeGetValue('ai', '__addrinfo_layout.ai_addr', '*') }}};
+    _free(sa);
+    _free(ai);
+  },
+
+  getnameinfo__deps: ['$Sockets', '$DNS', '__hostent_struct_layout', '_read_sockaddr'],
+  getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
+    var info = __read_sockaddr(sa, salen);
+    if (info.errno) {
+      return {{{ cDefine('EAI_FAMILY') }}};
+    }
+    var port = info.port;
+    var addr = info.addr;
+
+    if (node && nodelen) {
+      var lookup;
+      if ((flags & {{{ cDefine('NI_NUMERICHOST') }}}) || !(lookup = DNS.lookup_addr(addr))) {
+        if (flags & {{{ cDefine('NI_NAMEREQD') }}}) {
+          return {{{ cDefine('EAI_NONAME') }}};
+        }
+      } else {
+        addr = lookup;
+      }
+      if (addr.length >= nodelen) {
+        return {{{ cDefine('EAI_OVERFLOW') }}};
+      }
+      writeStringToMemory(addr, node);
+    }
+
+    if (serv && servlen) {
+      port = '' + port;
+      if (port.length > servlen) {
+        return {{{ cDefine('EAI_OVERFLOW') }}};
+      }
+      writeStringToMemory(port, serv);
+    }
+
+    return 0;
+  },
+
+  gai_strerror: function(val) {
+    if (!_gai_strerror.error) {
+      _gai_strerror.error = allocate(intArrayFromString("unknown error"), 'i8', ALLOC_NORMAL);
+    }
+    return _gai_strerror.error;
   },
 
   // ==========================================================================
@@ -7257,6 +7573,13 @@ LibraryManager.library = {
       ['i32', 'sin_zero'],
       ['i16', 'sin_zero_b'],
     ]),
+    sockaddr_in6_layout: Runtime.generateStructInfo([
+      ['i32', 'sin6_family'],
+      ['i16', 'sin6_port'],
+      ['i32', 'sin6_flowinfo'],
+      ['b16', 'sin6_addr'],
+      ['i32', 'sin6_scope_id']
+    ]),
     msghdr_layout: Runtime.generateStructInfo([
       ['*', 'msg_name'],
       ['i32', 'msg_namelen'],
@@ -7266,6 +7589,10 @@ LibraryManager.library = {
       ['i32', 'msg_controllen'],
       ['i32', 'msg_flags'],
     ]),
+    iovec_layout: Runtime.generateStructInfo([
+      ['i8*', 'iov_base'],
+      ['i32', 'iov_len']
+    ])
   },
 
 #if SOCKET_WEBRTC
@@ -7424,7 +7751,7 @@ LibraryManager.library = {
     // Stub: connection-oriented sockets are not supported yet.
   },
 
-  bind__deps: ['$FS', '$Sockets', '_inet_ntoa_raw', 'ntohs', 'mkport'],
+  bind__deps: ['$FS', '$Sockets', '_inet_ntop4_raw', 'ntohs', 'mkport'],
   bind: function(fd, addr, addrlen) {
     var info = FS.getStream(fd);
     if (!info) return -1;
@@ -7436,7 +7763,7 @@ LibraryManager.library = {
       info.port = _mkport();
     }
     info.addr = Sockets.localAddr; // 10.0.0.254
-    info.host = __inet_ntoa_raw(info.addr);
+    info.host = __inet_ntop4_raw(info.addr);
     info.close = function() {
       Sockets.portmap[info.port] = undefined;
     }
@@ -7445,7 +7772,7 @@ LibraryManager.library = {
     info.bound = true;
   },
 
-  sendmsg__deps: ['$FS', '$Sockets', 'bind', '_inet_ntoa_raw', 'ntohs'],
+  sendmsg__deps: ['$FS', '$Sockets', 'bind', '_inet_ntop4_raw', 'ntohs'],
   sendmsg: function(fd, msg, flags) {
     var info = FS.getStream(fd);
     if (!info) return -1;
@@ -7459,7 +7786,7 @@ LibraryManager.library = {
     var port = _ntohs(getValue(name + Sockets.sockaddr_in_layout.sin_port, 'i16'));
     var addr = getValue(name + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     var connection = Sockets.connections[addr];
-    // var host = __inet_ntoa_raw(addr);
+    // var host = __inet_ntop4_raw(addr);
 
     if (!(connection && connection.connected)) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
@@ -7650,424 +7977,531 @@ LibraryManager.library = {
     }
   },
 #else
-  socket__deps: ['$FS', '$Sockets'],
+  // ==========================================================================
+  // socket.h
+  // ==========================================================================
+  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw'],
+  _read_sockaddr: function (sa, salen) {
+    // family / port offsets are common to both sockaddr_in and sockaddr_in6
+    var family = {{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'i32') }}};
+    var port = _ntohs({{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_port', 'i16') }}});
+    var addr;
+
+    switch (family) {
+      case {{{ cDefine('AF_INET') }}}:
+        if (salen !== Sockets.sockaddr_in_layout.__size__) {
+          return { errno: ERRNO_CODES.EINVAL };
+        }
+        addr = {{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_addr', 'i32') }}};
+        addr = __inet_ntop4_raw(addr);
+        break;
+      case {{{ cDefine('AF_INET6') }}}:
+        if (salen !== Sockets.sockaddr_in6_layout.__size__) {
+          return { errno: ERRNO_CODES.EINVAL };
+        }
+        addr = [
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+0', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+4', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+8', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+12', 'i32') }}}
+        ];
+        addr = __inet_ntop6_raw(addr);
+        break;
+      default:
+        return { errno: ERRNO_CODES.EAFNOSUPPORT };
+    }
+
+    return { family: family, addr: addr, port: port };
+  },
+  _write_sockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
+  _write_sockaddr: function (sa, family, addr, port) {
+    switch (family) {
+      case {{{ cDefine('AF_INET') }}}:
+        addr = __inet_pton4_raw(addr);
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'family', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_addr', 'addr', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_port', '_htons(port)', 'i16') }}};
+        break;
+      case {{{ cDefine('AF_INET6') }}}:
+        addr = __inet_pton6_raw(addr);
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_family', 'family', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+0', 'addr[0]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+4', 'addr[1]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+8', 'addr[2]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+12', 'addr[3]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_port', '_htons(port)', 'i16') }}};
+        break;
+      default:
+        return { errno: ERRNO_CODES.EAFNOSUPPORT };
+    }
+    // kind of lame, but let's match _read_sockaddr's interface
+    return {};
+  },
+
+  socket__deps: ['$FS', '$SOCKFS'],
   socket: function(family, type, protocol) {
-    var stream = type == {{{ cDefine('SOCK_STREAM') }}};
-    if (protocol) {
-      assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if SOCK_STREAM, must be tcp
-    }
-    var stream = FS.createStream({
-      connected: false,
-      stream: stream,
-      socket: true,
-      stream_ops: {}
-    });
-    assert(stream.fd < 64); // select() assumes socket fd values are in 0..63
-    return stream.fd;
+    var sock = SOCKFS.createSocket(family, type, protocol);
+    assert(sock.stream.fd < 64); // select() assumes socket fd values are in 0..63
+    return sock.stream.fd;
   },
 
-  connect__deps: ['$FS', '$Sockets', '_inet_ntoa_raw', 'ntohs', 'gethostbyname'],
-  connect: function(fd, addr, addrlen) {
-    var info = FS.getStream(fd);
-    if (!info) return -1;
-    info.connected = true;
-    info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
-    info.port = _htons(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
-    info.host = __inet_ntoa_raw(info.addr);
-    // Support 'fake' ips from gethostbyname
-    var parts = info.host.split('.');
-    if (parts[0] == '172' && parts[1] == '29') {
-      var low = Number(parts[2]);
-      var high = Number(parts[3]);
-      info.host = _gethostbyname.table[low + 0xff*high];
-      assert(info.host, 'problem translating fake ip ' + parts);
-    }
-    try {
-      console.log('opening ws://' + info.host + ':' + info.port);
-      info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
-      info.socket.binaryType = 'arraybuffer';
-
-      var i32Temp = new Uint32Array(1);
-      var i8Temp = new Uint8Array(i32Temp.buffer);
-
-      info.inQueue = [];
-      info.hasData = function() { return info.inQueue.length > 0 }
-      if (!info.stream) {
-        var partialBuffer = null; // in datagram mode, inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
-      }
-
-      info.socket.onmessage = function(event) {
-        assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
-        var data = new Uint8Array(event.data); // make a typed array view on the array buffer
-#if SOCKET_DEBUG
-        Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
-#endif
-        if (info.stream) {
-          info.inQueue.push(data);
-        } else {
-          // we added headers with message sizes, read those to find discrete messages
-          if (partialBuffer) {
-            // append to the partial buffer
-            var newBuffer = new Uint8Array(partialBuffer.length + data.length);
-            newBuffer.set(partialBuffer);
-            newBuffer.set(data, partialBuffer.length);
-            // forget the partial buffer and work on data
-            data = newBuffer;
-            partialBuffer = null;
-          }
-          var currPos = 0;
-          while (currPos+4 < data.length) {
-            i8Temp.set(data.subarray(currPos, currPos+4));
-            var currLen = i32Temp[0];
-            assert(currLen > 0);
-            if (currPos + 4 + currLen > data.length) {
-              break; // not enough data has arrived
-            }
-            currPos += 4;
-#if SOCKET_DEBUG
-            Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(currPos, currPos+currLen))]);
-#endif
-            info.inQueue.push(data.subarray(currPos, currPos+currLen));
-            currPos += currLen;
-          }
-          // If data remains, buffer it
-          if (currPos < data.length) {
-            partialBuffer = data.subarray(currPos);
-          }
-        }
-      }
-      function send(data) {
-        // TODO: if browser accepts views, can optimize this
-#if SOCKET_DEBUG
-        Module.print('sender actually sending ' + Array.prototype.slice.call(data));
-#endif
-        // ok to use the underlying buffer, we created data and know that the buffer starts at the beginning
-        info.socket.send(data.buffer);
-      }
-      var outQueue = [];
-      var intervalling = false, interval;
-      function trySend() {
-        if (info.socket.readyState != info.socket.OPEN) {
-          if (!intervalling) {
-            intervalling = true;
-            console.log('waiting for socket in order to send');
-            interval = setInterval(trySend, 100);
-          }
-          return;
-        }
-        for (var i = 0; i < outQueue.length; i++) {
-          send(outQueue[i]);
-        }
-        outQueue.length = 0;
-        if (intervalling) {
-          intervalling = false;
-          clearInterval(interval);
-        }
-      }
-      info.sender = function(data) {
-        if (!info.stream) {
-          // add a header with the message size
-          var header = new Uint8Array(4);
-          i32Temp[0] = data.length;
-          header.set(i8Temp);
-          outQueue.push(header);
-        }
-        outQueue.push(new Uint8Array(data));
-        trySend();
-      };
-    } catch(e) {
-      Module.printErr('Error in connect(): ' + e);
-      ___setErrNo(ERRNO_CODES.EACCES);
-      return -1;
-    }
-
-    // always "fail" in non-blocking mode
-    ___setErrNo(ERRNO_CODES.EINPROGRESS);
-    return -1;
-  },
-
-  recv__deps: ['$FS'],
-  recv: function(fd, buf, len, flags) {
-    var info = FS.getStream(fd);
-    if (!info) {
-      ___setErrNo(ERRNO_CODES.EBADF);
-      return -1;
-    }
-#if SOCKET_WEBRTC == 0
-    if (!info.hasData()) {
-      if (info.socket.readyState === WebSocket.CLOSING || info.socket.readyState === WebSocket.CLOSED) {
-        // socket has closed
-        return 0;
-      } else {
-        // else, our socket is in a valid state but truly has nothing available
-        ___setErrNo(ERRNO_CODES.EAGAIN);
-        return -1;
-      }
-    }
-#endif
-    var buffer = info.inQueue.shift();
-#if SOCKET_DEBUG
-    Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
-#endif
-    if (len < buffer.length) {
-      if (info.stream) {
-        // This is tcp (reliable), so if not all was read, keep it
-        info.inQueue.unshift(buffer.subarray(len));
-#if SOCKET_DEBUG
-        Module.print('recv: put back: ' + (len - buffer.length));
-#endif
-      }
-      buffer = buffer.subarray(0, len);
-    }
-    HEAPU8.set(buffer, buf);
-    return buffer.length;
-  },
-
-  send__deps: ['$FS'],
-  send: function(fd, buf, len, flags) {
-    var info = FS.getStream(fd);
-    if (!info) {
-      ___setErrNo(ERRNO_CODES.EBADF);
-      return -1;
-    }
-#if SOCKET_WEBRTC == 0
-    if (info.socket.readyState === WebSocket.CLOSING || info.socket.readyState === WebSocket.CLOSED) {
-      ___setErrNo(ERRNO_CODES.ENOTCONN);
-      return -1;
-    } else if (info.socket.readyState === WebSocket.CONNECTING) {
-      ___setErrNo(ERRNO_CODES.EAGAIN);
-      return -1;
-    }
-#endif
-    info.sender(HEAPU8.subarray(buf, buf+len));
-    return len;
-  },
-
-  sendmsg__deps: ['$FS', '$Sockets', 'connect'],
-  sendmsg: function(fd, msg, flags) {
-    var info = FS.getStream(fd);
-    if (!info) return -1;
-    // if we are not connected, use the address info in the message
-    if (!info.connected) {
-      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
-      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
-      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
-    }
-    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
-    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-#if SOCKET_DEBUG
-    Module.print('sendmsg vecs: ' + num);
-#endif
-    var totalSize = 0;
-    for (var i = 0; i < num; i++) {
-      totalSize += {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
-    }
-    var buffer = new Uint8Array(totalSize);
-    var ret = 0;
-    for (var i = 0; i < num; i++) {
-      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
-#if SOCKET_DEBUG
-      Module.print('sendmsg curr size: ' + currNum);
-#endif
-      if (!currNum) continue;
-      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
-      buffer.set(HEAPU8.subarray(currBuf, currBuf+currNum), ret);
-      ret += currNum;
-    }
-    info.sender(buffer); // send all the iovs as a single message
-    return ret;
-  },
-
-  recvmsg__deps: ['$FS', '$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
-  recvmsg: function(fd, msg, flags) {
-    var info = FS.getStream(fd);
-    if (!info) return -1;
-    // if we are not connected, use the address info in the message
-    if (!info.connected) {
-#if SOCKET_DEBUG
-    Module.print('recvmsg connecting');
-#endif
-      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
-      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
-      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
-    }
-    if (!info.hasData()) {
-      ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
-      return -1;
-    }
-    var buffer = info.inQueue.shift();
-    var bytes = buffer.length;
-#if SOCKET_DEBUG
-    Module.print('recvmsg bytes: ' + bytes);
-#endif
-    // write source
-    var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
-    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_addr', 'info.addr', 'i32') }}};
-    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_port', '_htons(info.port)', 'i16') }}};
-    // write data
-    var ret = bytes;
-    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
-    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-    var bufferPos = 0;
-    for (var i = 0; i < num && bytes > 0; i++) {
-      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
-#if SOCKET_DEBUG
-      Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
-#endif
-      if (!currNum) continue;
-      currNum = Math.min(currNum, bytes); // XXX what should happen when we partially fill a buffer..?
-      bytes -= currNum;
-      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
-#if SOCKET_DEBUG
-      Module.print('recvmsg call recv ' + currNum);
-#endif
-      HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
-      bufferPos += currNum;
-    }
-    if (info.stream) {
-      // This is tcp (reliable), so if not all was read, keep it
-      if (bufferPos < bytes) {
-        info.inQueue.unshift(buffer.subarray(bufferPos));
-#if SOCKET_DEBUG
-        Module.print('recvmsg: put back: ' + (bytes - bufferPos));
-#endif
-      }
-    }
-    return ret;
-  },
-
-  recvfrom__deps: ['$FS', 'connect', 'recv'],
-  recvfrom: function(fd, buf, len, flags, addr, addrlen) {
-    var info = FS.getStream(fd);
-    if (!info) return -1;
-    // if we are not connected, use the address info in the message
-    if (!info.connected) {
-      //var name = {{{ makeGetValue('addr', '0', '*') }}};
-      _connect(fd, addr, addrlen);
-    }
-    return _recv(fd, buf, len, flags);
-  },
-
-  shutdown__deps: ['$FS'],
-  shutdown: function(fd, how) {
-    var stream = FS.getStream(fd);
-    if (!stream) return -1;
-    stream.socket.close();
-    FS.closeStream(stream);
-  },
-
-  ioctl__deps: ['$FS'],
-  ioctl: function(fd, request, varargs) {
-    var info = FS.getStream(fd);
-    if (!info) return -1;
-    var bytes = 0;
-    if (info.hasData()) {
-      bytes = info.inQueue[0].length;
-    }
-    var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
-    {{{ makeSetValue('dest', '0', 'bytes', 'i32') }}};
-    return 0;
-  },
-
-  setsockopt: function(d, level, optname, optval, optlen) {
-    console.log('ignoring setsockopt command');
-    return 0;
-  },
-
-  bind__deps: ['connect'],
-  bind: function(fd, addr, addrlen) {
-    _connect(fd, addr, addrlen);
-    return 0;
-  },
-
-  listen: function(fd, backlog) {
-    return 0;
-  },
-
-  accept__deps: ['$FS', '$Sockets'],
-  accept: function(fd, addr, addrlen) {
-    // TODO: webrtc queued incoming connections, etc.
-    // For now, the model is that bind does a connect, and we "accept" that one connection,
-    // which has host:port the same as ours. We also return the same socket fd.
-    var info = FS.getStream(fd);
-    if (!info) return -1;
-    if (addr) {
-      setValue(addr + Sockets.sockaddr_in_layout.sin_addr, info.addr, 'i32');
-      setValue(addr + Sockets.sockaddr_in_layout.sin_port, info.port, 'i32');
-      setValue(addrlen, Sockets.sockaddr_in_layout.__size__, 'i32');
-    }
-    return fd;
-  },
-
-  select__deps: ['$FS'],
-  select: function(nfds, readfds, writefds, exceptfds, timeout) {
-    // readfds are supported,
-    // writefds checks socket open status
-    // exceptfds not supported
-    // timeout is always 0 - fully async
-    assert(!exceptfds);
-
-    var errorCondition = 0;
-
-    function canRead(info) {
-      return (info.hasData && info.hasData()) ||
-        info.socket.readyState == WebSocket.CLOSING ||  // let recv return 0 once closed
-        info.socket.readyState == WebSocket.CLOSED;
-    }
-
-    function canWrite(info) {
-      return info.socket && (info.socket.readyState == info.socket.OPEN);
-    }
-
-    function checkfds(nfds, fds, can) {
-      if (!fds) return 0;
-
-      var bitsSet = 0;
-      var dstLow  = 0;
-      var dstHigh = 0;
-      var srcLow  = {{{ makeGetValue('fds', 0, 'i32') }}};
-      var srcHigh = {{{ makeGetValue('fds', 4, 'i32') }}};
-      nfds = Math.min(64, nfds); // fd sets have 64 bits
-
-      for (var fd = 0; fd < nfds; fd++) {
-        var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
-        if (int_ & mask) {
-          // index is in the set, check if it is ready for read
-          var info = FS.getStream(fd);
-          if (!info) {
-            ___setErrNo(ERRNO_CODES.EBADF);
-            return -1;
-          }
-          if (can(info)) {
-            // set bit
-            fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
-            bitsSet++;
-          }
-        }
-      }
-
-      {{{ makeSetValue('fds', 0, 'dstLow', 'i32') }}};
-      {{{ makeSetValue('fds', 4, 'dstHigh', 'i32') }}};
-      return bitsSet;
-    }
-
-    var totalHandles = checkfds(nfds, readfds, canRead) + checkfds(nfds, writefds, canWrite);
-    if (errorCondition) {
-      ___setErrNo(ERRNO_CODES.EBADF);
-      return -1;
-    } else {
-      return totalHandles;
-    }
-  },
-#endif
-
-  socketpair__deps: ['__setErrNo', '$ERRNO_CODES'],
+  socketpair__deps: ['$ERRNO_CODES', '__setErrNo'],
   socketpair: function(domain, type, protocol, sv) {
     // int socketpair(int domain, int type, int protocol, int sv[2]);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/socketpair.html
     ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
     return -1;
   },
+
+  shutdown__deps: ['$SOCKFS', '$ERRNO_CODES', '__setErrNo'],
+  shutdown: function(fd, how) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    _close(fd);
+  },
+
+  bind__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
+  bind: function(fd, addrp, addrlen) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    var info = __read_sockaddr(addrp, addrlen);
+    if (info.errno) {
+      ___setErrNo(info.errno);
+      return -1;
+    }
+    var port = info.port;
+    var addr = DNS.lookup_addr(info.addr) || info.addr;
+
+    try {
+      sock.sock_ops.bind(sock, addr, port);
+      return 0;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  connect__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
+  connect: function(fd, addrp, addrlen) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    var info = __read_sockaddr(addrp, addrlen);
+    if (info.errno) {
+      ___setErrNo(info.errno);
+      return -1;
+    }
+    var port = info.port;
+    var addr = DNS.lookup_addr(info.addr) || info.addr;
+
+    try {
+      sock.sock_ops.connect(sock, addr, port);
+      return 0;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  listen__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo'],
+  listen: function(fd, backlog) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    try {
+      sock.sock_ops.listen(sock, backlog);
+      return 0;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  accept__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', 'socket'],
+  accept: function(fd, addrp, addrlen) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    var newfd = _socket(sock.family, sock.type, sock.protocol);
+    var newsock = SOCKFS.getSocket(newfd);
+    assert(newsock);
+    try {
+      sock.sock_ops.accept(sock, newsock, sock.stream.flags);
+      if (addrp) {
+        var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
+        assert(!res.errno);
+      }
+      return newfd;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  getsockname__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
+  getsockname: function (fd, addr, addrlen) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    try {
+      var info = sock.sock_ops.getname(sock);
+      var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(info.addr), info.port);
+      assert(!res.errno);
+      return 0;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  getpeername__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
+  getpeername: function (fd, addr, addrlen) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    try {
+      var info = sock.sock_ops.getname(sock, true);
+      var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(info.addr), info.port);
+      assert(!res.errno);
+      return 0;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  send__deps: ['$SOCKFS', '$ERRNO_CODES', '__setErrNo', 'write'],
+  send: function(fd, buf, len, flags) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    // TODO honor flags
+    return _write(fd, buf, len);
+  },
+
+  recv__deps: ['$SOCKFS', '$ERRNO_CODES', '__setErrNo', 'read'],
+  recv: function(fd, buf, len, flags) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    // TODO honor flags
+    return _read(fd, buf, len);
+  },
+
+  sendto__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
+  sendto: function(fd, message, length, flags, dest_addr, dest_len) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    // read the address and port to send to
+    var info = __read_sockaddr(dest_addr, dest_len);
+    if (info.errno) {
+      ___setErrNo(info.errno);
+      return -1;
+    }
+    var port = info.port;
+    var addr = DNS.lookup_addr(info.addr) || info.addr;
+
+    // send the message
+    try {
+      var slab = {{{ makeGetSlabs('message', 'i8', true) }}};
+      return sock.sock_ops.sendmsg(sock, slab, message, length, addr, port);
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  recvfrom__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
+  recvfrom: function(fd, buf, len, flags, addr, addrlen) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    // read from the socket
+    var msg;
+    try {
+      msg = sock.sock_ops.recvmsg(sock, len);
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+
+    if (!msg) {
+      // socket is closed
+      return 0;
+    }
+
+    // write the source address out
+    if (addr) {
+      var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port);
+      assert(!res.errno);
+    }
+    // write the buffer out
+    HEAPU8.set(msg.buffer, buf);
+
+    return msg.buffer.byteLength;
+  },
+
+  sendmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
+  sendmsg: function(fd, message, flags) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    var iov = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_iov', '*') }}};
+    var num = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+
+    // read the address and port to send to
+    var addr;
+    var port;
+    var name = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_name', '*') }}};
+    var namelen = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}};
+    if (name) {
+      var info = __read_sockaddr(name, namelen);
+      if (info.errno) {
+        ___setErrNo(info.errno);
+        return -1;
+      }
+      port = info.port;
+      addr = DNS.lookup_addr(info.addr) || info.addr;
+    }
+
+    // concatenate scatter-gather arrays into one message buffer
+    var total = 0;
+    for (var i = 0; i < num; i++) {
+      total += {{{ makeGetValue('iov', '(Sockets.iovec_layout.__size__ * i) + Sockets.iovec_layout.iov_len', 'i32') }}};
+    }
+    var view = new Uint8Array(total);
+    var offset = 0;
+    for (var i = 0; i < num; i++) {
+      var iovbase = {{{ makeGetValue('iov', '(Sockets.iovec_layout.__size__ * i) + Sockets.iovec_layout.iov_base', 'i8*') }}};
+      var iovlen = {{{ makeGetValue('iov', '(Sockets.iovec_layout.__size__ * i) + Sockets.iovec_layout.iov_len', 'i32') }}};
+      for (var j = 0; j < iovlen; j++) {  
+        view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
+      }
+    }
+
+    // write the buffer
+    try {
+      return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+
+  recvmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_inet_pton_raw', '_write_sockaddr'],
+  recvmsg: function(fd, message, flags) {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    var iov = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
+    var num = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+
+    // get the total amount of data we can read across all arrays
+    var total = 0;
+    for (var i = 0; i < num; i++) {
+      total += {{{ makeGetValue('iov', '(Sockets.iovec_layout.__size__ * i) + Sockets.iovec_layout.iov_len', 'i32') }}};
+    }
+
+    // try to read total data
+    var msg;
+    try {
+      msg = sock.sock_ops.recvmsg(sock, total);
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+
+    if (!msg) {
+      // socket is closed
+      return 0;
+    }
+
+    // TODO honor flags:
+    // MSG_OOB
+    // Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific.
+    // MSG_PEEK
+    // Peeks at the incoming message.
+    // MSG_WAITALL
+    // Requests that the function block until the full amount of data requested can be returned. The function may return a smaller amount of data if a signal is caught, if the connection is terminated, if MSG_PEEK was specified, or if an error is pending for the socket.
+
+    // write the source address out
+    var name = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_name', '*') }}};
+    if (name) {
+      var res = __write_sockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
+      assert(!res.errno);
+    }
+    // write the buffer out to the scatter-gather arrays
+    var bytesRead = 0;
+    var bytesRemaining = msg.buffer.byteLength;
+
+    for (var i = 0; bytesRemaining > 0 && i < num; i++) {
+      var iovbase = {{{ makeGetValue('iov', '(Sockets.iovec_layout.__size__ * i) + Sockets.iovec_layout.iov_base', 'i8*') }}};
+      var iovlen = {{{ makeGetValue('iov', '(Sockets.iovec_layout.__size__ * i) + Sockets.iovec_layout.iov_len', 'i32') }}};
+      if (!iovlen) {
+        continue;
+      }
+      var length = Math.min(iovlen, bytesRemaining);
+      var buf = msg.buffer.subarray(bytesRead, bytesRead + length);
+      HEAPU8.set(buf, iovbase + bytesRead);
+      bytesRead += length;
+      bytesRemaining -= length;
+    }
+
+    // TODO set msghdr.msg_flags
+    // MSG_EOR
+    // End of record was received (if supported by the protocol).
+    // MSG_OOB
+    // Out-of-band data was received.
+    // MSG_TRUNC
+    // Normal data was truncated.
+    // MSG_CTRUNC
+
+    return bytesRead;
+  },
+
+  setsockopt: function(fd, level, optname, optval, optlen) {
+    console.log('ignoring setsockopt command');
+    return 0;
+  },
+
+  // ==========================================================================
+  // select.h
+  // ==========================================================================
+
+  select__deps: ['$FS', '__DEFAULT_POLLMASK'],
+  select: function(nfds, readfds, writefds, exceptfds, timeout) {
+    // readfds are supported,
+    // writefds checks socket open status
+    // exceptfds not supported
+    // timeout is always 0 - fully async
+    assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits
+    assert(!exceptfds, 'exceptfds not supported');
+
+    var total = 0;
+    
+    var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
+        srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
+    var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
+        srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
+    var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
+        srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+
+    var dstReadLow = 0,
+        dstReadHigh = 0;
+    var dstWriteLow = 0,
+        dstWriteHigh = 0;
+    var dstExceptLow = 0,
+        dstExceptHigh = 0;
+
+    var allLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0) |
+                 (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0) |
+                 (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0);
+    var allHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0) |
+                  (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
+                  (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+
+    function get(fd, low, high, val) {
+      return (fd < 32 ? (low & val) : (high & val));
+    }
+
+    for (var fd = 0; fd < nfds; fd++) {
+      var mask = 1 << (fd % 32);
+      if (!(get(fd, allLow, allHigh, mask))) {
+        continue;  // index isn't in the set
+      }
+
+      var stream = FS.getStream(fd);
+      if (!stream) {
+        ___setErrNo(ERRNO_CODES.EBADF);
+        return -1;
+      }
+
+      var flags = ___DEFAULT_POLLMASK;
+
+      if (stream.stream_ops.poll) {
+        flags = stream.stream_ops.poll(stream);
+      }
+
+      if ((flags & {{{ cDefine('POLLIN') }}}) && get(fd, srcReadLow, srcReadHigh, mask)) {
+        fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
+        total++;
+      }
+      if ((flags & {{{ cDefine('POLLOUT') }}}) && get(fd, srcWriteLow, srcWriteHigh, mask)) {
+        fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
+        total++;
+      }
+      if ((flags & {{{ cDefine('POLLPRI') }}}) && get(fd, srcExceptLow, srcExceptHigh, mask)) {
+        fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
+        total++;
+      }
+    }
+
+    if (readfds) {
+      {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
+      {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
+    }
+    if (writefds) {
+      {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
+      {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
+    }
+    if (exceptfds) {
+      {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
+      {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
+    }
+    
+    return total;
+  },
+
+  // ==========================================================================
+  // sys/ioctl.h
+  // ==========================================================================
+
+  ioctl__deps: ['$FS'],
+  ioctl: function(fd, request, varargs) {
+    var stream = FS.getStream(fd);
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    var arg = {{{ makeGetValue('varargs', '0', 'i32') }}};
+    return FS.ioctl(stream, request, arg);
+  },
+#endif
 
   // pty.h
 

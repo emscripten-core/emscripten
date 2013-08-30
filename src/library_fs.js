@@ -159,6 +159,9 @@ mergeInto(LibraryManager.library, {
     isFIFO: function(mode) {
       return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFIFO') }}};
     },
+    isSocket: function(mode) {
+      return (mode & {{{ cDefine('S_IFSOCK') }}}) === {{{ cDefine('S_IFSOCK') }}};
+    },
 
     //
     // paths
@@ -400,6 +403,9 @@ mergeInto(LibraryManager.library, {
     getStream: function(fd) {
       return FS.streams[fd];
     },
+    // TODO parameterize this function such that a stream
+    // object isn't directly passed in. not possible until
+    // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
@@ -1459,6 +1465,12 @@ mergeInto(LibraryManager.library, {
         throw new FS.errnoError(ERRNO_CODES.ENODEV);
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
+    },
+    ioctl: function(stream, cmd, arg) {
+      if (!stream.stream_ops.ioctl) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOTTY);
+      }
+      return stream.stream_ops.ioctl(stream, cmd, arg);
     }
   }
 });
