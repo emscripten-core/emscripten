@@ -1561,6 +1561,8 @@ var LibrarySDL = {
         // The pushAudio function with a new audio buffer whenever there is new audio data to schedule to be played back on the device.
         SDL.audio.pushAudio=function(ptr,sizeBytes) {
           try {
+            --SDL.audio.numAudioTimersPending;
+
             var sizeSamples = sizeBytes / SDL.audio.bytesPerSample; // How many samples fit in the callback buffer?
             var sizeSamplesPerChannel = sizeSamples / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
             if (sizeSamplesPerChannel != SDL.audio.samples) {
@@ -1609,7 +1611,20 @@ var LibrarySDL = {
             var buffer_duration = sizeSamplesPerChannel / SDL.audio.freq;
             SDL.audio.nextPlayTime = playtime + buffer_duration;
             SDL.audio.nextSoundSource = (SDL.audio.nextSoundSource + 1) % 4;
-            SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1000*(playtime-curtime));
+            var secsUntilNextCall = playtime-curtime;
+            
+            // Queue the next audio frame push to be performed when the previously queued buffer has finished playing.
+            if (SDL.audio.numAudioTimersPending == 0) {
+              var preemptBufferFeedMSecs = buffer_duration/2.0;
+              SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*secsUntilNextCall-preemptBufferFeedMSecs));
+              ++SDL.audio.numAudioTimersPending;
+            }
+
+            // If we are risking starving, immediately queue an extra second buffer.
+            if (secsUntilNextCall <= buffer_duration && SDL.audio.numAudioTimersPending <= 1) {
+              ++SDL.audio.numAudioTimersPending;
+              Browser.safeSetTimeout(SDL.audio.caller, 1.0);
+            }
           } catch(e) {
             console.log('Web Audio API error playing back audio: ' + e.toString());
           }
@@ -1655,12 +1670,14 @@ var LibrarySDL = {
     if (pauseOn) {
       if (SDL.audio.timer !== undefined) {
         clearTimeout(SDL.audio.timer);
+        SDL.audio.numAudioTimersPending = 0;
         SDL.audio.timer = undefined;
       }
-    } else {// if (SDL.audio.timer === undefined) {
+    } else if (!SDL.audio.timer) {
       // Start the audio playback timer callback loop.
+      SDL.audio.numAudioTimersPending = 1;
       SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
-      SDL.audio.startTime = Date.now() / 1000.0;
+      SDL.audio.startTime = Date.now() / 1000.0; // Only used for Mozilla Audio Data API. Not needed for Web Audio API.
     }
     SDL.audio.paused = pauseOn;
   },
