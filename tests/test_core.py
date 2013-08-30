@@ -5964,14 +5964,15 @@ def process(filename):
     src = r'''
 #include <stdio.h>
 #include <dlfcn.h>
+#include <emscripten.h>
 
-int global = 123;
+int EMSCRIPTEN_KEEPALIVE global = 123;
 
-extern "C" __attribute__((noinline)) void foo(int x) {
+extern "C" EMSCRIPTEN_KEEPALIVE void foo(int x) {
 printf("%d\n", x);
 }
 
-extern "C" __attribute__((noinline)) void repeatable() {
+extern "C" EMSCRIPTEN_KEEPALIVE void repeatable() {
 void* self = dlopen(NULL, RTLD_LAZY);
 int* global_ptr = (int*)dlsym(self, "global");
 void (*foo_ptr)(int) = (void (*)(int))dlsym(self, "foo");
@@ -5994,7 +5995,7 @@ return 0;
           raise Exception('Could not find symbol table!')
       table = table[table.find('{'):table.rfind('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') == 3
+      assert table.count(',') <= 4
     self.do_run(src, '123\n123', post_build=(None, post))
 
 

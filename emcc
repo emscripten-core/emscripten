@@ -1105,7 +1105,6 @@ try:
     debug_level = max(debug_level, 2)
 
   if shared.Settings.DLOPEN_SUPPORT:
-    shared.Settings.LINKABLE = 1
     if shared.Settings.ALIASING_FUNCTION_POINTERS:
       logging.warning('disabling ALIASING_FUNCTION_POINTERS for dlopen support')
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
