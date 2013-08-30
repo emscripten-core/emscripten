@@ -12,13 +12,14 @@ def timeout_run(proc, timeout, note='unnamed process', full_output=False):
   out = proc.communicate()
   return '\n'.join(out) if full_output else out[0]
 
-def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
+def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None, full_output=False):
   if type(engine) is not list:
     engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] or 'jsc' in engine[0] else []) + args
   return timeout_run(
     Popen(
       command,
+      stdin=stdin,
       stdout=stdout,
       stderr=stderr,
       cwd=cwd),

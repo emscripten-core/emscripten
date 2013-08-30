@@ -205,23 +205,26 @@ EMSCRIPTEN_FUNCS();
     pre = ''
     post = ''
 
-  # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
-  # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
-  parts = map(lambda part: part, js.split('\n}\n'))
-  funcs = []
-  for i in range(len(parts)):
-    func = parts[i]
-    if i < len(parts)-1: func += '\n}\n' # last part needs no }
-    m = func_sig.search(func)
-    if m:
-      ident = m.group(2)
-    else:
-      if know_generated: continue # ignore whitespace
-      ident = 'anon_%d' % i
-    assert ident
-    funcs.append((ident, func))
-  parts = None
+  def split_funcs(js):
+    # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
+    # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
+    parts = map(lambda part: part, js.split('\n}\n'))
+    funcs = []
+    for i in range(len(parts)):
+      func = parts[i]
+      if i < len(parts)-1: func += '\n}\n' # last part needs no }
+      m = func_sig.search(func)
+      if m:
+        ident = m.group(2)
+      else:
+        if know_generated: continue # ignore whitespace
+        ident = 'anon_%d' % i
+      assert ident
+      funcs.append((ident, func))
+    return funcs
+
   total_size = len(js)
+  funcs = split_funcs(js)
   js = None
 
   if 'last' in passes and len(funcs) > 0:
@@ -235,6 +238,7 @@ EMSCRIPTEN_FUNCS();
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
   chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  funcs = None
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
@@ -324,9 +328,25 @@ EMSCRIPTEN_FUNCS();
   filename += '.jo.js'
   f = open(filename, 'w')
   f.write(pre);
+  pre = None
+
+  # sort functions by size, to make diffing easier and to improve aot times
+  funcses = []
   for out_file in filenames:
-    f.write(open(out_file).read())
-    f.write('\n')
+    funcses.append(split_funcs(open(out_file).read()))
+  funcs = [item for sublist in funcses for item in sublist]
+  funcses = None
+  def sorter(x, y):
+    diff = len(y[1]) - len(x[1])
+    if diff != 0: return diff
+    if x[0] < y[0]: return 1
+    elif x[0] > y[0]: return -1
+    return 0
+  funcs.sort(sorter)
+  for func in funcs:
+    f.write(func[1])
+  funcs = None
+  f.write('\n')
   if jcache:
     for cached in cached_outputs:
       f.write(cached); # TODO: preserve order

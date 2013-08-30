@@ -929,20 +929,14 @@ f.close()
     self.assertContained('libf1\nlibf2\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_stdin(self):
-    open('main.cpp', 'w').write(r'''
-#include <stdio.h>
-int main(int argc, char const *argv[])
-{
-  char str[10] = {0};
-  scanf("%10s", str);
-  printf("%s\n", str);
-  return 0;
-}
-''')
-    Building.emcc('main.cpp', output_filename='a.out.js')
-    open('in.txt', 'w').write('abc')
-    # node's stdin support is broken
-    self.assertContained('abc', Popen(listify(SPIDERMONKEY_ENGINE) + ['a.out.js'], stdin=open('in.txt'), stdout=PIPE, stderr=PIPE).communicate()[0])
+    Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'), output_filename='a.out.js')
+    open('in.txt', 'w').write('abcdef\nghijkl')
+
+    for engine in JS_ENGINES:
+      print >> sys.stderr, engine
+      if engine == NODE_JS: continue # FIXME
+      if engine == V8_ENGINE: continue # no stdin support in v8 shell
+      self.assertContained('abcdef\nghijkl\neof', run_js(os.path.join(self.get_dir(), 'a.out.js'), engine=engine, stdin=open('in.txt')))
 
   def test_ungetc_fscanf(self):
     open('main.cpp', 'w').write(r'''

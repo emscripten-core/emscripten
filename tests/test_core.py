@@ -3734,6 +3734,13 @@ def process(filename):
       Settings.EXPORT_ALL = 1
       self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
 
+  def test_emscripten_get_now(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+
+      if self.run_name == 'o2':
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
+
   def test_inlinejs(self):
       if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
       src = r'''
@@ -4669,6 +4676,10 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'pthread', 'specific.c'), 'r').read()
     expected = open(path_from_root('tests', 'pthread', 'specific.c.txt'), 'r').read()
     self.do_run(src, expected, force_c=True)
+
+  def test_tcgetattr(self):
+    src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True)
 
   def test_time(self):
     # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
@@ -6977,8 +6988,11 @@ def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     \'\'\'
+      var dummy_device = FS.makedev(64, 0);
+      FS.registerDevice(dummy_device, {});
+
       FS.createDataFile('/', 'file', 'abcdef', true, true);
-      FS.createDevice('/', 'device', function() {}, function() {});
+      FS.mkdev('/device', 0666, dummy_device);
     \'\'\'
   )
   open(filename, 'w').write(src)
@@ -8594,7 +8608,7 @@ def process(filename):
     do_test()
 
     # some test coverage for EMCC_DEBUG 1 and 2
-    if self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ:
+    if self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ and '-g' in self.emcc_args:
       shutil.copyfile('src.c.o.js', 'release.js')
       try:
         os.environ['EMCC_DEBUG'] = '1'
@@ -8609,7 +8623,8 @@ def process(filename):
         del os.environ['EMCC_DEBUG']
       for debug in [1,2]:
         def clean(text):
-          return text.replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('{\n}', '{}')
+          text = text.replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('{\n}', '{}')
+          return '\n'.join(sorted(text.split('\n')))
         self.assertIdentical(clean(open('release.js').read()), clean(open('debug%d.js' % debug).read())) # EMCC_DEBUG=1 mode must not generate different code!
         print >> sys.stderr, 'debug check %d passed too' % debug
 
@@ -9681,7 +9696,8 @@ def process(filename):
       # optimizer can deal with both types.
       out_file = re.sub(' *//@.*$', '', out_file, flags=re.MULTILINE)
       def clean(code):
-        return code.replace('{\n}', '{}')
+        code = code.replace('{\n}', '{}')
+        return '\n'.join(sorted(code.split('\n')))
       self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))

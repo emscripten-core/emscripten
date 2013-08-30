@@ -2261,7 +2261,11 @@ LibraryManager.library = {
     // void clearerr(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/clearerr.html
     stream = FS.getStream(stream);
-    if (stream) stream.error = false;
+    if (!stream) {
+      return;
+    }
+    stream.eof = false;
+    stream.error = false;
   },
   fclose__deps: ['close', 'fsync'],
   fclose: function(stream) {
@@ -2322,7 +2326,6 @@ LibraryManager.library = {
     if (streamObj.eof || streamObj.error) return -1;
     var ret = _fread(_fgetc.ret, 1, 1, stream);
     if (ret == 0) {
-      streamObj.eof = true;
       return -1;
     } else if (ret == -1) {
       streamObj.error = true;
@@ -5151,6 +5154,37 @@ LibraryManager.library = {
   // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/pwd.h.html
   getpwuid: function(uid) {
     return 0; // NULL
+  },
+
+  // ==========================================================================
+  // termios.h
+  // ==========================================================================
+  tcgetattr: function(fildes, termios_p) {
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/tcgetattr.html
+    var stream = FS.getStream(fildes);
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    if (!stream.tty) {
+      ___setErrNo(ERRNO_CODES.ENOTTY);
+      return -1;
+    }
+    return 0;
+  },
+
+  tcsetattr: function(fildes, optional_actions, termios_p) {
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/tcsetattr.html
+    var stream = FS.getStream(fildes);
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    if (!stream.tty) {
+      ___setErrNo(ERRNO_CODES.ENOTTY);
+      return -1;
+    }
+    return 0;
   },
 
   // ==========================================================================

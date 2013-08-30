@@ -23,7 +23,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
 
   if (mainPass) {
-    var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js');
+    var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
     if (phase == 'pre') {
       // We will start to print out the data, but must do so carefully - we are
@@ -47,10 +47,11 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       var shellParts = read(shellFile).split('{{BODY}}');
       print(processMacros(preprocess(shellParts[0])));
-      var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
+      var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
       print(pre);
 
+      // Populate implementedFunctions. Note that this is before types, and will be updated later.
       data.unparsedFunctions.forEach(function(func) {
         Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
       });
@@ -80,7 +81,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (phase == 'pre') {
       var libFuncsToInclude;
       if (INCLUDE_FULL_LIBRARY) {
-        assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
+        assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
         libFuncsToInclude = [];
         for (var key in LibraryManager.library) {
           if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
@@ -454,7 +455,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
         var postsetId = ident + '__postset';
         var postset = LibraryManager.library[postsetId];
-        if (postset && !addedLibraryItems[postsetId]) {
+        if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
           addedLibraryItems[postsetId] = true;
           ret.push({
             intertype: 'GlobalVariablePostSet',
@@ -497,6 +498,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             Functions.libraryFunctions[ident.substr(1)] = 2;
           }
         }
+        if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
         if ((!ASM_JS || phase == 'pre') &&
             (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
           contentText += '\nModule["' + ident + '"] = ' + ident + ';';
@@ -1835,7 +1837,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
       print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
     }
-    var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
+    var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 
@@ -1871,6 +1873,12 @@ function JSify(data, functionsOnly, givenFunctions) {
   // Data
 
   if (mainPass) {
+    if (phase == 'pre') {
+      // types have been parsed, so we can figure out function signatures (which can use types)
+      data.unparsedFunctions.forEach(function(func) {
+        Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
+      });
+    }
     substrate.addItems(data.functionStubs, 'FunctionStub');
     assert(data.functions.length == 0);
   } else {

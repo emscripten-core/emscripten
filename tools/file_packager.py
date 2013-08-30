@@ -344,14 +344,7 @@ if has_preloaded:
       },
       send: function() {},
       onload: function() {
-        var data = this.byteArray.subarray(this.start, this.end);
-        var size = this.end - this.start;
-        var ptr = Module['_malloc'](size); // XXX leaked if a preload plugin replaces with new data
-        Module['HEAPU8'].set(data, ptr);
-        var arrayBuffer = Module['HEAPU8'].subarray(ptr, ptr + size);
-        assert(arrayBuffer, 'Loading file ' + name + ' failed');
-        var byteArray = !arrayBuffer.subarray ? new Uint8Array(arrayBuffer) : arrayBuffer;
-
+        var byteArray = this.byteArray.subarray(this.start, this.end);
         if (this.crunched) {
           var ddsHeader = byteArray.subarray(0, 128);
           var that = this;
@@ -367,7 +360,7 @@ if has_preloaded:
       },
       finish: function(byteArray) {
         var that = this;
-        Module['FS_createPreloadedFile'](PATH.dirname(this.name), PATH.basename(this.name), byteArray, true, true, function() {
+        Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
           Module['removeRunDependency']('fp ' + that.name);
         }, function() {
           if (that.audio) {
@@ -375,7 +368,7 @@ if has_preloaded:
           } else {
             Runtime.warn('Preloading file ' + that.name + ' failed');
           }
-        });
+        }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
         this.requests[this.name] = null;
       },
     };
@@ -419,7 +412,12 @@ for file_ in data_files:
 
 if has_preloaded:
   # Get the big archive and split it up
-  use_data = '          DataRequest.prototype.byteArray = byteArray;\n'
+  use_data = '''
+      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though.
+      var ptr = Module['_malloc'](byteArray.length);
+      Module['HEAPU8'].set(byteArray, ptr);
+      DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
+'''
   for file_ in data_files:
     if file_['mode'] == 'preload':
       use_data += '          DataRequest.prototype.requests["%s"].onload();\n' % (file_['dstpath'])

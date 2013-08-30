@@ -1,10 +1,13 @@
+var dummy_device = FS.makedev(64, 0);
+FS.registerDevice(dummy_device, {});
+
 FS.createFolder('/', 'forbidden', false, false);
 FS.createFolder('/forbidden', 'test', true, true);
 FS.createPath('/', 'abc/123', true, true);
 FS.createPath('/', 'abc/456', true, true);
 FS.createPath('/', 'def/789', true, true);
-FS.createDevice('/abc', 'deviceA', function() {}, function() {});
-FS.createDevice('/def', 'deviceB', function() {}, function() {});
+FS.mkdev('/abc/deviceA', 0666, dummy_device);
+FS.mkdev('/def/deviceB', 0666, dummy_device);
 FS.createLink('/abc', 'localLink', '123', true, true);
 FS.createLink('/abc', 'rootLink', '/', true, true);
 FS.createLink('/abc', 'relativeLink', '../def', true, true);

@@ -269,7 +269,7 @@ function switchh() {
     case 1: {
       f(1);
       g();
-      break;
+      return;
     }
     case 2: {
       f(2);

@@ -82,12 +82,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Emscripten'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../glbook/Common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../glbook/Common</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Emscripten'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../glbook/Common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../glbook/Common</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

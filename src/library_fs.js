@@ -510,7 +510,7 @@ mergeInto(LibraryManager.library, {
       return FS.create(path, mode);
     },
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = name ? PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
@@ -530,7 +530,7 @@ mergeInto(LibraryManager.library, {
     },
     createDevice: function(parent, name, input, output) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = input && output ? 0777 : (input ? 0333 : 0555);
+      var mode = FS.getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
       // Create a fake device that a set of stream ops to emulate
@@ -770,7 +770,7 @@ mergeInto(LibraryManager.library, {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
-      var fullname = PATH.resolve(PATH.join(parent, name));
+      var fullname = name ? PATH.resolve(PATH.join(parent, name)) : parent;
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {
@@ -800,6 +800,90 @@ mergeInto(LibraryManager.library, {
       } else {
         processData(url);
       }
+    },
+
+    indexedDB: function() {
+      return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    },
+
+    DB_NAME: function() {
+      return 'EM_FS_' + window.location.pathname;
+    },
+    DB_VERSION: 20,
+    DB_STORE_NAME: 'FILE_DATA',
+
+    // asynchronously saves a list of files to an IndexedDB. The DB will be created if not already existing.
+    saveFilesToDB: function(paths, onload, onerror) {
+      onload = onload || function(){};
+      onerror = onerror || function(){};
+      var indexedDB = FS.indexedDB();
+      try {
+        var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
+      } catch (e) {
+        return onerror(e);
+      }
+      openRequest.onupgradeneeded = function() {
+        console.log('creating db');
+        var db = openRequest.result;
+        db.createObjectStore(FS.DB_STORE_NAME);
+      };
+      openRequest.onsuccess = function() {
+        var db = openRequest.result;
+        var transaction = db.transaction([FS.DB_STORE_NAME], 'readwrite');
+        var files = transaction.objectStore(FS.DB_STORE_NAME);
+        var ok = 0, fail = 0, total = paths.length;
+        function finish() {
+          if (fail == 0) onload(); else onerror();
+        }
+        paths.forEach(function(path) {
+          var putRequest = files.put(FS.analyzePath(path).object.contents, path);
+          putRequest.onsuccess = function() { ok++; if (ok + fail == total) finish() };
+          putRequest.onerror = function() { fail++; if (ok + fail == total) finish() };
+        });
+        transaction.onerror = onerror;
+      };
+      openRequest.onerror = onerror;
+    },
+
+    // asychronously loads a file from IndexedDB.
+    loadFilesFromDB: function(paths, onload, onerror) {
+      onload = onload || function(){};
+      onerror = onerror || function(){};
+      var indexedDB = FS.indexedDB();
+      try {
+        var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
+      } catch (e) {
+        return onerror(e);
+      }
+      openRequest.onupgradeneeded = onerror; // no database to load from
+      openRequest.onsuccess = function() {
+        var db = openRequest.result;
+        try {
+          var transaction = db.transaction([FS.DB_STORE_NAME], 'readonly');
+        } catch(e) {
+          onerror(e);
+          return;
+        }
+        var files = transaction.objectStore(FS.DB_STORE_NAME);
+        var ok = 0, fail = 0, total = paths.length;
+        function finish() {
+          if (fail == 0) onload(); else onerror();
+        }
+        paths.forEach(function(path) {
+          var getRequest = files.get(path);
+          getRequest.onsuccess = function() {
+            if (FS.analyzePath(path).exists) {
+              FS.unlink(path);
+            }
+            FS.createDataFile(PATH.dirname(path), PATH.basename(path), getRequest.result, true, true, true);
+            ok++;
+            if (ok + fail == total) finish();
+          };
+          getRequest.onerror = function() { fail++; if (ok + fail == total) finish() };
+        });
+        transaction.onerror = onerror;
+      };
+      openRequest.onerror = onerror;
     },
 
     //
