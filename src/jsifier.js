@@ -1779,7 +1779,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
-    if (abortExecution) throw 'Aborting compilation due to previous warnings';
+    if (abortExecution) throw 'Aborting compilation due to previous errors';
 
     if (phase == 'pre' || phase == 'funcs') {
       PassManager.serialize();
