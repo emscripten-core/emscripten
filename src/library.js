@@ -8129,23 +8129,20 @@ LibraryManager.library = {
     }
   },
 
-  accept__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', 'socket'],
+  accept__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   accept: function(fd, addrp, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
-    var newfd = _socket(sock.family, sock.type, sock.protocol);
-    var newsock = SOCKFS.getSocket(newfd);
-    assert(newsock);
     try {
-      sock.sock_ops.accept(sock, newsock, sock.stream.flags);
+      var newsock = sock.sock_ops.accept(sock);
       if (addrp) {
         var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
         assert(!res.errno);
       }
-      return newfd;
+      return newsock.stream.fd;
     } catch (e) {
       FS.handleFSError(e);
       return -1;
