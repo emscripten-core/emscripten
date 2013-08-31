@@ -146,6 +146,10 @@ mergeInto(LibraryManager.library, {
           }
         }
 
+#if SOCKET_DEBUG
+        Module.print('websocket adding peer: ' + addr + ':' + port);
+#endif
+
         var peer = {
           addr: addr,
           port: port,
@@ -160,6 +164,9 @@ mergeInto(LibraryManager.library, {
         // us to override the ephemeral port reported to us by remotePort on the
         // remote end.
         if (sock.type === {{{ cDefine('SOCK_DGRAM') }}} && typeof sock.sport !== 'undefined') {
+#if SOCKET_DEBUG
+          Module.print('websocket queuing port message (port ' + sock.sport + ')');
+#endif
           peer.send_queue.push(new Uint8Array([
               255, 255, 255, 255,
               'p'.charCodeAt(0), 'o'.charCodeAt(0), 'r'.charCodeAt(0), 't'.charCodeAt(0),
