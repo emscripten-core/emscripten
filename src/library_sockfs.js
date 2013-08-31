@@ -154,7 +154,7 @@ mergeInto(LibraryManager.library, {
           addr: addr,
           port: port,
           socket: ws,
-          send_queue: []
+          dgram_send_queue: []
         };
 
         SOCKFS.websocket_sock_ops.addPeer(sock, peer);
@@ -167,7 +167,7 @@ mergeInto(LibraryManager.library, {
 #if SOCKET_DEBUG
           Module.print('websocket queuing port message (port ' + sock.sport + ')');
 #endif
-          peer.send_queue.push(new Uint8Array([
+          peer.dgram_send_queue.push(new Uint8Array([
               255, 255, 255, 255,
               'p'.charCodeAt(0), 'o'.charCodeAt(0), 'r'.charCodeAt(0), 't'.charCodeAt(0),
               ((sock.sport & 0xff00) >> 8) , (sock.sport & 0xff)
@@ -189,16 +189,21 @@ mergeInto(LibraryManager.library, {
         var first = true;
 
         var handleOpen = function () {
+#if SOCKET_DEBUG
+          Module.print('websocket handle open');
+#endif
           try {
-            var queued = peer.send_queue.shift();
+            var queued = peer.dgram_send_queue.shift();
             while (queued) {
 #if SOCKET_DEBUG
               Module.print('websocket sending queued data (' + queued.byteLength + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(queued))]);
 #endif
               peer.socket.send(queued);
-              queued = peer.send_queue.shift();
+              queued = peer.dgram_send_queue.shift();
             }
           } catch (e) {
+            // not much we can do here in the way of proper error handling as we've already
+            // lied and said this data was sent. shut it down.
             peer.socket.close();
           }
         };
@@ -206,6 +211,10 @@ mergeInto(LibraryManager.library, {
         var handleMessage = function(data) {
           assert(typeof data !== 'string' && data.byteLength !== undefined);  // must receive an ArrayBuffer
           data = new Uint8Array(data);  // make a typed array view on the array buffer
+
+#if SOCKET_DEBUG
+          Module.print('websocket handle message (' + data.byteLength + ' bytes): ' + [Array.prototype.slice.call(data)]);
+#endif
 
           // if this is the port message, override the peer's port with it
           var wasfirst = first;
@@ -359,7 +368,7 @@ mergeInto(LibraryManager.library, {
         }
 
         // add the socket to our peer list and set our
-        // defination address / port to match
+        // destination address / port to match
         var peer = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
         sock.daddr = peer.addr;
         sock.dport = peer.port;
@@ -390,12 +399,19 @@ mergeInto(LibraryManager.library, {
           console.log('received connection from: ' + ws._socket.remoteAddress + ':' + ws._socket.remotePort);
 #endif
           if (sock.type === {{{ cDefine('SOCK_STREAM') }}}) {
+            var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
+
+            // create a peer on the new socket
+            var peer = SOCKFS.websocket_sock_ops.createPeer(newsock, ws);
+            newsock.daddr = peer.addr;
+            newsock.dport = peer.port;
+
             // push to queue for accept to pick up
-            sock.pending.push(ws);
+            sock.pending.push(newsock);
           } else {
-            // auto-accept, adding the peer to the listen socket so
-            // calling sendto with the listen socket and an address
-            // will resolve to the correct client
+            // create a peer on the listen socket so calling sendto
+            // with the listen socket and an address will resolve
+            // to the correct client
             SOCKFS.websocket_sock_ops.createPeer(sock, ws);
           }
         });
@@ -406,19 +422,13 @@ mergeInto(LibraryManager.library, {
           // don't throw
         });
       },
-      accept: function(listensock, newsock, flags) {
+      accept: function(listensock) {
         if (!listensock.server) {
-          ___setErrNo(ERRNO_CODES.EINVAL);
-          return -1;
+          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
         }
-
-        // create a peer on the server's client socket
-        var peer = SOCKFS.websocket_sock_ops.createPeer(newsock, listensock.pending.shift());
-        newsock.daddr = peer.addr;
-        newsock.dport = peer.port;
-        newsock.stream.flags = flags;
-
-        return 0;
+        var newsock = listensock.pending.shift();
+        newsock.stream.flags = listensock.stream.flags;
+        return newsock;
       },
       getname: function(sock, peer) {
         var addr, port;
@@ -488,7 +498,7 @@ mergeInto(LibraryManager.library, {
 #if SOCKET_DEBUG
             Module.print('websocket queuing (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
 #endif
-            dest.send_queue.push(data);
+            dest.dgram_send_queue.push(data);
             return length;
           }
         }
