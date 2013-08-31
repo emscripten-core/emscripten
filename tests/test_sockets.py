@@ -297,7 +297,7 @@ class sockets(BrowserCore):
     pwd = os.getcwd()
     os.chdir(self.in_dir('enet'))
     Popen([PYTHON, path_from_root('emconfigure'), './configure']).communicate()
-    Popen([PYTHON, path_from_root('emmake'), 'make', 'CFLAGS=-UHAS_GETHOSTBYADDR_R -UHAS_GETHOSTBYNAME_R']).communicate()
+    Popen([PYTHON, path_from_root('emmake'), 'make']).communicate()
     enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
     os.chdir(pwd)
 

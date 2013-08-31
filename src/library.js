@@ -7305,7 +7305,7 @@ LibraryManager.library = {
     name = Pointer_stringify(name);
 
     // generate hostent
-    var ret = _malloc(___hostent_struct_layout.__size__);
+    var ret = _malloc(___hostent_struct_layout.__size__); // XXX possibly leaked, as are others here
     var nameBuf = _malloc(name.length+1);
     writeStringToMemory(name, nameBuf);
     {{{ makeSetValue('ret', '___hostent_struct_layout.h_name', 'nameBuf', 'i8*') }}}
@@ -7324,12 +7324,12 @@ LibraryManager.library = {
   },
 
   gethostbyname_r__deps: ['gethostbyname'],
-  gethostbyname_r: function(name, hostData, buffer, bufferSize, hostEntry, errnum) {
+  gethostbyname_r: function(name, ret, buf, buflen, err) {
     var data = _gethostbyname(name);
-    _memcpy(hostData, data, ___hostent_struct_layout.__size__);
+    _memcpy(ret, data, ___hostent_struct_layout.__size__);
     _free(data);
-    {{{ makeSetValue('errnum', '0', '0', 'i32') }}}
-    return 0;
+    {{{ makeSetValue('err', '0', '0', 'i32') }}};
+    return ret;
   },
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '_addrinfo_layout', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
