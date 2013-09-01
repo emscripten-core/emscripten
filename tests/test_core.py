@@ -6198,6 +6198,40 @@ int 1 9000
 ok
 ''', force_c=True, post_build=self.dlfcn_post_build)
 
+  def test_dlfcn_mallocs(self):
+    if not self.can_dlfcn(): return
+
+    Settings.TOTAL_MEMORY = 64*1024*1024 # will be exhausted without functional malloc/free
+
+    self.prep_dlfcn_lib()
+    lib_src = r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <string.h>
+      #include <stdlib.h>
+
+      void *mallocproxy(int n) { return malloc(n); }
+      void freeproxy(void *p) { free(p); }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_mallocproxy', '_freeproxy']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build(lib_src, dirname, filename)
+    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    self.prep_dlfcn_main()
+    src = open(path_from_root('tests', 'dlmalloc_proxy.c')).read()
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
+    self.do_run(src, '''go
+main.
+main 201
+void 0
+void 1
+int 0 54
+int 1 9000
+ok
+''', force_c=True, post_build=self.dlfcn_post_build)
+
   def test_rand(self):
     return self.skip('rand() is now random') # FIXME
 
