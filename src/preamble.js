@@ -599,7 +599,7 @@ function stringToUTF32(str, outPtr) {
   for(var iCodeUnit = 0; iCodeUnit < str.length; ++iCodeUnit) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
     var codeUnit = str.charCodeAt(iCodeUnit); // possibly a lead surrogate
-    if (codeUnit >= 0xD800) {
+    if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
       var trailSurrogate = str.charCodeAt(++iCodeUnit);
       codeUnit = 0x10000 + ((codeUnit & 0x3FF) << 10) | (trailSurrogate & 0x3FF);
     }
