@@ -894,7 +894,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     #  except:
     #    pass
     env = Building.get_building_env(native)
-    log_to_file = os.getenv('EMSCRIPTEN_VERBOSE') == None or int(os.getenv('EMSCRIPTEN_VERBOSE')) == 0
+    log_to_file = os.getenv('EM_BUILD_VERBOSE') == None or int(os.getenv('EM_BUILD_VERBOSE')) == 0
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
