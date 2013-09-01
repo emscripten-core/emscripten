@@ -663,6 +663,12 @@ if '-M' in sys.argv or '-MM' in sys.argv:
   logging.debug('just dependencies: ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
+if '-E' in sys.argv:
+  # Just run the preprocessor
+  cmd = [CC] + sys.argv[1:]
+  logging.debug('just preprocssor ' + ' '.join(cmd))
+  exit(subprocess.call(cmd))
+
 # Check if a target is specified
 target = None
 for i in range(len(sys.argv)-1):
