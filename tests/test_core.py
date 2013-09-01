@@ -6043,7 +6043,6 @@ return 0;
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
-
   def test_dlfcn_stacks(self):
     if not self.can_dlfcn(): return
 
@@ -6098,6 +6097,106 @@ return 0;
       '''
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
+
+  def test_dlfcn_funcs(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    lib_src = r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <string.h>
+
+      typedef void (*voidfunc)();
+      typedef void (*intfunc)(int);
+
+      void callvoid(voidfunc f) { f(); }
+      void callint(voidfunc f, int x) { f(x); }
+
+      void void_0() { printf("void 0\n"); }
+      void void_1() { printf("void 1\n"); }
+      voidfunc getvoid(int i) {
+        switch(i) {
+          case 0: return void_0;
+          case 1: return void_1;
+          default: return NULL;
+        }
+      }
+
+      void int_0(int x) { printf("int 0 %d\n", x); }
+      void int_1(int x) { printf("int 1 %d\n", x); }
+      intfunc getint(int i) {
+        switch(i) {
+          case 0: return int_0;
+          case 1: return int_1;
+          default: return NULL;
+        }
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_callvoid', '_callint', '_getvoid', '_getint']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build(lib_src, dirname, filename)
+    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      typedef void (*voidfunc)();
+      typedef void (*intfunc)(int);
+
+      typedef void (*voidcaller)(voidfunc);
+      typedef void (*intcaller)(intfunc, int);
+
+      typedef voidfunc (*voidgetter)(int);
+      typedef intfunc (*intgetter)(int);
+
+      void void_main() { printf("main.\n"); }
+      void int_main(int x) { printf("main %d\n", x); }
+
+      int main() {
+        printf("go\n");
+        void *lib_handle;
+        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle != NULL);
+
+        voidcaller callvoid = (voidcaller)dlsym(lib_handle, "callvoid");
+        assert(callvoid != NULL);
+        callvoid(void_main);
+
+        intcaller callint = (intcaller)dlsym(lib_handle, "callint");
+        assert(callint != NULL);
+        callint(int_main, 201);
+
+        voidgetter getvoid = (voidgetter)dlsym(lib_handle, "getvoid");
+        assert(getvoid != NULL);
+        callvoid(getvoid(0));
+        callvoid(getvoid(1));
+
+        intgetter getint = (intgetter)dlsym(lib_handle, "getint");
+        assert(getint != NULL);
+        callint(getint(0), 54);
+        callint(getint(1), 9000);
+
+        assert(getint(1000) == NULL);
+
+        puts("ok");
+        return 0;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
+    self.do_run(src, '''go
+main.
+main 201
+void 0
+void 1
+int 0 54
+int 1 9000
+ok
+''', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_rand(self):
     return self.skip('rand() is now random') # FIXME
