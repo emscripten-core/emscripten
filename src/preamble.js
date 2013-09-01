@@ -569,6 +569,36 @@ function Pointer_stringify(ptr, /* optional */ length) {
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
+// Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+function UTF16ToString(ptr) {
+  var i = 0;
+
+  var str = '';
+  while (1) {
+    var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
+    if (codeUnit == 0)
+      return str;
+    ++i;
+    // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
+    str += String.fromCharCode(codeUnit);
+  }
+}
+Module['UTF16ToString'] = UTF16ToString;
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// null-terminated and encoded in UTF16LE form. The copy will require at most (str.length*2+1)*2 bytes of space in the HEAP.
+function stringToUTF16(str, outPtr) {
+  for(var i = 0; i < str.length; ++i) {
+    // charCodeAt returns a UTF-16 encoded code unit, so it can be directly written to the HEAP.
+    var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
+    {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}}
+  }
+  // Null-terminate the pointer to the HEAP.
+  {{{ makeSetValue('outPtr', 'str.length*2', 0, 'i16') }}}
+}
+Module['stringToUTF16'] = stringToUTF16;
+
 // Given a pointer 'ptr' to a null-terminated UTF32LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 function UTF32ToString(ptr) {
