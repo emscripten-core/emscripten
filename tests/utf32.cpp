@@ -6,7 +6,7 @@
 
 // This code tests that utf32-encoded std::wstrings can be marshalled between C++ and JS.
 int main() {
-	std::wstring wstr = L"abc\u2603\u20AC123"; // U+2603 is snowman, U+20AC is the Euro sign.
+	std::wstring wstr = L"abc\u2603\u20AC\U0002007C123 --- abc\u2603\u20AC\U0002007C123"; // U+2603 is snowman, U+20AC is the Euro sign, U+2007C is a Chinese Han character that looks like three raindrops.
 	const int len = (wstr.length()+1)*4;
 	char *memory = new char[len];
 
