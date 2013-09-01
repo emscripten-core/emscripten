@@ -724,7 +724,15 @@ mergeInto(LibraryManager.library, {
         Module['preMainLoop']();
       }
 
-      Runtime.dynCall('v', func);
+      try {
+        Runtime.dynCall('v', func);
+      } catch (e) {
+        if (e instanceof ExitStatus) {
+          return;
+        } else {
+          throw e;
+        }
+      }
 
       if (Module['postMainLoop']) {
         Module['postMainLoop']();
