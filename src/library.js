@@ -5102,7 +5102,9 @@ LibraryManager.library = {
     } else {
       var lib_record = DLFCN_DATA.loadedLibs[handle];
       if (--lib_record.refcount == 0) {
-        lib_record.module.cleanups.forEach(function(cleanup) { cleanup() });
+        if (lib_record.module.cleanups) {
+          lib_record.module.cleanups.forEach(function(cleanup) { cleanup() });
+        }
         delete DLFCN_DATA.loadedLibNames[lib_record.name];
         delete DLFCN_DATA.loadedLibs[handle];
       }
