@@ -580,19 +580,34 @@ function UTF32ToString(ptr) {
     if (utf32 == 0)
       return str;
     ++i;
-    str += String.fromCharCode(utf32);
+    // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
+    if (utf32 >= 0x10000) {
+      var ch = utf32 - 0x10000;
+      str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
+    } else {
+      str += String.fromCharCode(utf32);
+    }
   }
 }
 Module['UTF32ToString'] = UTF32ToString;
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
-// null-terminated and encoded in UTF32LE form. The copy will require (str.length+1)*4 bytes of space in the HEAP.
+// null-terminated and encoded in UTF32LE form. The copy will require at most (str.length+1)*4 bytes of space in the HEAP,
+// but can use less, since str.length does not return the number of characters in the string, but the number of UTF-16 code units in the string.
 function stringToUTF32(str, outPtr) {
-  for(var i = 0; i < str.length; ++i) {
-    var utf32 = str.charCodeAt(i);
-    {{{ makeSetValue('outPtr', 'i*4', 'utf32', 'i32') }}}
+  var iChar = 0;
+  for(var iCodeUnit = 0; iCodeUnit < str.length; ++iCodeUnit) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
+    var codeUnit = str.charCodeAt(iCodeUnit); // possibly a lead surrogate
+    if (codeUnit >= 0xD800) {
+      var trailSurrogate = str.charCodeAt(++iCodeUnit);
+      codeUnit = 0x10000 + ((codeUnit & 0x3FF) << 10) | (trailSurrogate & 0x3FF);
+    }
+    {{{ makeSetValue('outPtr', 'iChar*4', 'codeUnit', 'i32') }}}
+    ++iChar;
   }
-  {{{ makeSetValue('outPtr', 'str.length*4', 0, 'i32') }}}
+  // Null-terminate the pointer to the HEAP.
+  {{{ makeSetValue('outPtr', 'iChar*4', 0, 'i32') }}}
 }
 Module['stringToUTF32'] = stringToUTF32;
 
