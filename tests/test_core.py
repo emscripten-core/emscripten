@@ -6199,6 +6199,8 @@ ok
 ''', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_mallocs(self):
+    if not Settings.ASM_JS: return self.skip('needs asm')
+
     if not self.can_dlfcn(): return
 
     Settings.TOTAL_MEMORY = 64*1024*1024 # will be exhausted without functional malloc/free
@@ -6222,15 +6224,7 @@ ok
     self.prep_dlfcn_main()
     src = open(path_from_root('tests', 'dlmalloc_proxy.c')).read()
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
-    self.do_run(src, '''go
-main.
-main 201
-void 0
-void 1
-int 0 54
-int 1 9000
-ok
-''', force_c=True, post_build=self.dlfcn_post_build)
+    self.do_run(src, '''*294,153*''', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_rand(self):
     return self.skip('rand() is now random') # FIXME
