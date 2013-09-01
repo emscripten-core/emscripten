@@ -404,18 +404,20 @@ var Runtime = {
       });
     }
 
-    var newLength = table.length;
-    jsModule.cleanups.push(function() {
-      if (table.length === newLength) {
-        table.length = from; // nothing added since, just shrink
-      } else {
-        // something was added above us, clear and leak the span
-        for (var i = 0; i < num; i++) {
-          table[from + i] = null;
+    if (jsModule.cleanups) {
+      var newLength = table.length;
+      jsModule.cleanups.push(function() {
+        if (table.length === newLength) {
+          table.length = from; // nothing added since, just shrink
+        } else {
+          // something was added above us, clear and leak the span
+          for (var i = 0; i < num; i++) {
+            table[from + i] = null;
+          }
         }
-      }
-      while (table.length > 0 && table[table.length-1] === null) table.pop();
-    });
+        while (table.length > 0 && table[table.length-1] === null) table.pop();
+      });
+    }
 
     // patch js module dynCall_* to use functionTable
     sigs.forEach(function(sig) {
