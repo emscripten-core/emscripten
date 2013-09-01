@@ -398,7 +398,7 @@ var Runtime = {
       sigs.forEach(function(sig) { // TODO: new Function etc.
         var full = 'dynCall_' + sig;
         table[from + i][sig] = function() {
-          arguments[i] -= from;
+          arguments[0] -= from;
           return asm[full].apply(null, arguments);
         }
       });
