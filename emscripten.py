@@ -480,6 +480,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
 ''' % (sig, i, args, arg_coercions, jsret))
       from tools import shared
+      shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
 
@@ -685,7 +686,7 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
     settings[name] = json.loads(value)
-  
+
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
