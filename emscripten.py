@@ -685,70 +685,7 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
     settings[name] = json.loads(value)
-
-  # Add header defines to settings
-  defines = {}
-  include_root = path_from_root('system', 'include')
-  headers = args.headers[0].split(',') if len(args.headers) > 0 else []
-  seen_headers = set()
-  while len(headers) > 0:
-    header = headers.pop(0)
-    if not os.path.isabs(header):
-      header = os.path.join(include_root, header)
-    seen_headers.add(header)
-    for line in open(header, 'r'):
-      line = line.replace('\t', ' ')
-      m = re.match('^ *# *define +(?P<name>[-\w_.]+) +\(?(?P<value>[-\w_.|]+)\)?.*', line)
-      if not m:
-        # Catch enum defines of a very limited sort
-        m = re.match('^ +(?P<name>[A-Z_\d]+) += +(?P<value>\d+).*', line)
-      if m:
-        if m.group('name') != m.group('value'):
-          defines[m.group('name')] = m.group('value')
-        #else:
-        #  print 'Warning: %s #defined to itself' % m.group('name') # XXX this can happen if we are set to be equal to an enum (with the same name)
-      m = re.match('^ *# *include *["<](?P<name>[\w_.-/]+)[">].*', line)
-      if m:
-        # Find this file
-        found = False
-        for w in [w for w in os.walk(include_root)]:
-          for f in w[2]:
-            curr = os.path.join(w[0], f)
-            if curr.endswith(m.group('name')) and curr not in seen_headers:
-              headers.append(curr)
-              found = True
-              break
-          if found: break
-        #assert found, 'Could not find header: ' + m.group('name')
-  if len(defines) > 0:
-    def lookup(value):
-      try:
-        while not unicode(value).isnumeric():
-          value = defines[value]
-        return value
-      except:
-        pass
-      try: # 0x300 etc.
-        value = eval(value)
-        return value
-      except:
-        pass
-      try: # CONST1|CONST2
-        parts = map(lookup, value.split('|'))
-        value = reduce(lambda a, b: a|b, map(eval, parts))
-        return value
-      except:
-        pass
-      return None
-    for key, value in defines.items():
-      value = lookup(value)
-      if value is not None:
-        defines[key] = str(value)
-      else:
-        del defines[key]
-    #print >> sys.stderr, 'new defs:', str(defines).replace(',', ',\n  '), '\n\n'
-    settings.setdefault('C_DEFINES', {}).update(defines)
-
+  
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
