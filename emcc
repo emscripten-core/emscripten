@@ -1117,6 +1117,11 @@ try:
     input_files.append(shared.path_from_root('third_party', 'stb_image.c'))
     shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
+  for required_export in ['_malloc', '_free']:
+    # always need malloc and free to be kept alive and exported, for internal use and other modules
+    if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
+      shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')
