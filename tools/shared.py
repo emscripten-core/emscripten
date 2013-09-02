@@ -717,6 +717,10 @@ class Settings2(type):
       return ret
 
     @classmethod
+    def copy(self, values):
+      self.attrs = values
+
+    @classmethod
     def apply_opt_level(self, opt_level, noisy=False):
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
@@ -1443,7 +1447,7 @@ class JS:
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    return '''function%s(%s) {
+    ret = '''function%s(%s) {
   try {
     %sModule["dynCall_%s"](%s);
   } catch(e) {
@@ -1451,6 +1455,17 @@ class JS:
     asm["setThrew"](1, 0);
   }
 }''' % ((' invoke_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
+
+    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
+      # guard against cross-module stack leaks
+      ret = ret.replace('  try {', '''  var preStack = asm.stackSave();
+  try {
+''').replace('  }\n}', '''  } finally {
+    assert(asm.stackSave() == preStack);
+  }
+}''')
+
+    return ret
 
   @staticmethod
   def align(x, by):
