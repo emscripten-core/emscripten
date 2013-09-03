@@ -1,13 +1,13 @@
 # This file is a 'toolchain description file' for CMake.
-# It teaches CMake about the Emscripten compiler, so that CMake can generate Unix Makefiles
+# It teaches CMake about the Emscripten compiler, so that CMake can generate makefiles
 # from CMakeLists.txt that invoke emcc.
 
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters
-# cmake -DEMSCRIPTEN=1 
-#       -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Platform/Emscripten.cmake
+# cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Platform/Emscripten.cmake
 #       -DCMAKE_MODULE_PATH=<EmscriptenRoot>/cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
-#       -G "Unix Makefiles"
+#       -G "Unix Makefiles" (Linux and OSX)
+#       -G "MinGW Makefiles" (Windows)
 #       <path/to/CMakeLists.txt> # Note, pass in here ONLY the path to the file, not the filename 'CMakeLists.txt' itself.
 
 # After that, build the generated Makefile with the command 'make'. On Windows, you may download and use 'mingw32-make' instead.
@@ -27,7 +27,6 @@ if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
 	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
 	if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
 		set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
-		message(STATUS "Guessed ${EMSCRIPTEN_ROOT_PATH}")
 	endif()
 endif()
 

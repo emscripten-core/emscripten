@@ -282,11 +282,9 @@ f.close()
     if os.name == 'nt':
       make_command = 'mingw32-make'
       generator = 'MinGW Makefiles'
-      emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
     else:
       make_command = 'make'
       generator = 'Unix Makefiles'
-      emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten_unix.cmake')
 
     cmake_cases = ['target_js', 'target_html']
     cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
@@ -301,7 +299,7 @@ f.close()
 
           verbose = int(os.getenv('EM_BUILD_VERBOSE')) != 0
           # Run Cmake
-          cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain,
+          cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
                           '-DCMAKE_BUILD_TYPE=' + configuration,
                           '-DCMAKE_MODULE_PATH=' + path_from_root('cmake').replace('\\', '/'),
                           '-G', generator, cmakelistsdir]
