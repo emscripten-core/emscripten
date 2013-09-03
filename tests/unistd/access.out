@@ -2,8 +2,8 @@ F_OK(/readable): 0
 errno: 0
 R_OK(/readable): 0
 errno: 0
-X_OK(/readable): 0
-errno: 0
+X_OK(/readable): -1
+errno: 13
 W_OK(/readable): -1
 errno: 13
 
