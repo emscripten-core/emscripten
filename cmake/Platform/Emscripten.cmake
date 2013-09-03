@@ -11,8 +11,10 @@
 
 # After that, build the generated Makefile with the command 'make'. On Windows, you may download and use 'mingw32-make' instead.
 
-# the name of the target operating system
-set(CMAKE_SYSTEM_NAME Emscripten)
+# The following variable describes the target OS we are building to.
+# Ideally, this could be 'Emscripten', but as Emscripten mimics the Linux platform, setting this to Linux will allow more of existing software to build.
+# Be sure to run Emscripten test_openjpeg if planning to change this.
+set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
@@ -80,18 +82,18 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
-SET(CMAKE_LINK_LIBRARY_SUFFIX "")
-SET(CMAKE_STATIC_LIBRARY_PREFIX "")
-SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
-SET(CMAKE_SHARED_LIBRARY_PREFIX "")
-SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
-IF (NOT CMAKE_EXECUTABLE_SUFFIX)
-	SET(CMAKE_EXECUTABLE_SUFFIX ".js")
-endif()
-SET(CMAKE_DL_LIBS "" )
-
-SET(CMAKE_FIND_LIBRARY_PREFIXES "")
-SET(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
+# We would prefer to specify a standard set of Clang+Emscripten-friendly common convention for suffix files, especially for CMake executable files,
+# but if these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail, since it depends on being able to compile output files with predefined names.
+#SET(CMAKE_LINK_LIBRARY_SUFFIX "")
+#SET(CMAKE_STATIC_LIBRARY_PREFIX "")
+#SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+#SET(CMAKE_SHARED_LIBRARY_PREFIX "")
+#SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
+#IF (NOT CMAKE_EXECUTABLE_SUFFIX)
+#	SET(CMAKE_EXECUTABLE_SUFFIX ".js")
+#endif()
+#SET(CMAKE_FIND_LIBRARY_PREFIXES "")
+#SET(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
 
 SET(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
 SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)

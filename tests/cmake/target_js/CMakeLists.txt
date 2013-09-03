@@ -10,6 +10,8 @@ else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimi
 	SET(linkFlags "-O2")
 endif()
 
+SET(CMAKE_EXECUTABLE_SUFFIX ".js")
+
 if (WIN32)
 	message(FATAL_ERROR "WIN32 should not be defined when cross-compiling!")
 endif()
