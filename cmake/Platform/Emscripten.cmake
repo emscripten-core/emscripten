@@ -4,7 +4,6 @@
 
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters
 # cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Platform/Emscripten.cmake
-#       -DCMAKE_MODULE_PATH=<EmscriptenRoot>/cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
 #       -G "Unix Makefiles" (Linux and OSX)
 #       -G "MinGW Makefiles" (Windows)
@@ -43,7 +42,11 @@ endif()
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
 get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 
-set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}")
+if ("${CMAKE_MODULE_PATH}" STREQUAL "")
+	set(CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake")
+endif()
+
+set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake")
 
 if (CMAKE_HOST_WIN32)
 	set(EMCC_SUFFIX ".bat")

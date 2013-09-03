@@ -301,7 +301,6 @@ f.close()
           # Run Cmake
           cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
                           '-DCMAKE_BUILD_TYPE=' + configuration,
-                          '-DCMAKE_MODULE_PATH=' + path_from_root('cmake').replace('\\', '/'),
                           '-G', generator, cmakelistsdir]
           ret = Popen(cmd, stdout=None if verbose else PIPE, stderr=None if verbose else PIPE).communicate()
           if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
