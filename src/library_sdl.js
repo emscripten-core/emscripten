@@ -2191,11 +2191,37 @@ var LibrarySDL = {
 
   // Joysticks
 
-  SDL_NumJoysticks: function() { return 0 },
+  SDL_NumJoysticks: function() { return 0; },
 
-  SDL_JoystickOpen: function(deviceIndex) { return 0 },
+  SDL_JoystickName: function(deviceIndex) { return 0; },
 
-  SDL_JoystickGetButton: function(joystick, button) { return 0 },
+  SDL_JoystickOpen: function(deviceIndex) { return 0; },
+
+  SDL_JoystickOpened: function(deviceIndex) { return 0; },
+
+  SDL_JoystickIndex: function(joystick) { return 0; },
+
+  SDL_JoystickNumAxes: function(joystick) { return 0; },
+
+  SDL_JoystickNumBalls: function(joystick) { return 0; },
+
+  SDL_JoystickNumHats: function(joystick) { return 0; },
+
+  SDL_JoystickNumButtons: function(joystick) { return 0; },
+
+  SDL_JoystickUpdate: function() {},
+
+  SDL_JoystickEventState: function(state) { return 0; },
+
+  SDL_JoystickGetAxis: function(joystick, axis) { return 0; },
+
+  SDL_JoystickGetHat: function(joystick, hat) { return 0; },
+
+  SDL_JoystickGetBall: function(joystick, ball, dxptr, dyptr) { return -1; },
+
+  SDL_JoystickGetButton: function(joystick, button) { return 0; },
+
+  SDL_JoystickClose: function(joystick) {},
 
   // Misc
 
