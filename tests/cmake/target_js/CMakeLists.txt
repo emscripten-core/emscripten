@@ -18,6 +18,10 @@ if (APPLE)
 	message(FATAL_ERROR "APPLE should not be defined when cross-compiling!")
 endif()
 
+if (NOT EMSCRIPTEN)
+	message(FATAL_ERROR "EMSCRIPTEN should be defined when cross-compiling!")
+endif()
+
 if (NOT CMAKE_C_SIZEOF_DATA_PTR)
 	message(FATAL_ERROR "CMAKE_C_SIZEOF_DATA_PTR was not defined!")
 endif()
