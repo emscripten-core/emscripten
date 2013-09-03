@@ -14,11 +14,10 @@ mergeInto(LibraryManager.library, {
                 'Module["FS_createDevice"] = FS.createDevice;',
   $FS: {
     root: null,
-    nodes: [null],
     devices: [null],
     streams: [null],
     nextInode: 1,
-    name_table: null,
+    nameTable: null,
     currentPath: '/',
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
@@ -56,19 +55,19 @@ mergeInto(LibraryManager.library, {
       for (var i = 0; i < name.length; i++) {
         hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
       }
-      return ((parentid + hash) >>> 0) % FS.name_table.length;
+      return ((parentid + hash) >>> 0) % FS.nameTable.length;
     },
     hashAddNode: function(node) {
       var hash = FS.hashName(node.parent.id, node.name);
-      node.name_next = FS.name_table[hash];
-      FS.name_table[hash] = node;
+      node.name_next = FS.nameTable[hash];
+      FS.nameTable[hash] = node;
     },
     hashRemoveNode: function(node) {
       var hash = FS.hashName(node.parent.id, node.name);
-      if (FS.name_table[hash] === node) {
-        FS.name_table[hash] = node.name_next;
+      if (FS.nameTable[hash] === node) {
+        FS.nameTable[hash] = node.name_next;
       } else {
-        var current = FS.name_table[hash];
+        var current = FS.nameTable[hash];
         while (current) {
           if (current.name_next === node) {
             current.name_next = node.name_next;
@@ -84,7 +83,7 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(err);
       }
       var hash = FS.hashName(parent.id, name);
-      for (var node = FS.name_table[hash]; node; node = node.name_next) {
+      for (var node = FS.nameTable[hash]; node; node = node.name_next) {
         if (node.parent.id === parent.id && node.name === name) {
           return node;
         }
@@ -287,18 +286,6 @@ mergeInto(LibraryManager.library, {
     mayLookup: function(dir) {
       return FS.nodePermissions(dir, 'x');
     },
-    mayMknod: function(mode) {
-      switch (mode & {{{ cDefine('S_IFMT') }}}) {
-        case {{{ cDefine('S_IFREG') }}}:
-        case {{{ cDefine('S_IFCHR') }}}:
-        case {{{ cDefine('S_IFBLK') }}}:
-        case {{{ cDefine('S_IFIFO') }}}:
-        case {{{ cDefine('S_IFSOCK') }}}:
-          return 0;
-        default:
-          return ERRNO_CODES.EINVAL;
-      }
-    },
     mayCreate: function(dir, name) {
       try {
         var node = FS.lookupNode(dir, name);
@@ -433,7 +420,7 @@ mergeInto(LibraryManager.library, {
     },
 
     //
-    // compatibility
+    // old v1 compatibility functions
     //
     getMode: function(canRead, canWrite) {
       var mode = 0;
@@ -502,7 +489,7 @@ mergeInto(LibraryManager.library, {
         if (!part) continue;
         var current = PATH.join(parent, part);
         try {
-          FS.mkdir(current, 0777);
+          FS.mkdir(current);
         } catch (e) {
           // ignore EEXIST
         }
@@ -808,6 +795,9 @@ mergeInto(LibraryManager.library, {
       }
     },
 
+    //
+    // persistence
+    //
     indexedDB: function() {
       return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
     },
@@ -896,28 +886,28 @@ mergeInto(LibraryManager.library, {
     // general
     //
     createDefaultDirectories: function() {
-      FS.mkdir('/tmp', 0777);
+      FS.mkdir('/tmp');
     },
     createDefaultDevices: function() {
       // create /dev
-      FS.mkdir('/dev', 0777);
+      FS.mkdir('/dev');
       // setup /dev/null
       FS.registerDevice(FS.makedev(1, 3), {
         read: function() { return 0; },
         write: function() { return 0; }
       });
-      FS.mkdev('/dev/null', 0666, FS.makedev(1, 3));
+      FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
       // stderr needs to print output using Module['printErr']
       // so we register a second tty just for it.
       TTY.register(FS.makedev(5, 0), TTY.default_tty_ops);
       TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
-      FS.mkdev('/dev/tty', 0666, FS.makedev(5, 0));
-      FS.mkdev('/dev/tty1', 0666, FS.makedev(6, 0));
+      FS.mkdev('/dev/tty', FS.makedev(5, 0));
+      FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // we're not going to emulate the actual shm device,
       // just create the tmp dirs that reside in it commonly
-      FS.mkdir('/dev/shm', 0777);
-      FS.mkdir('/dev/shm/tmp', 0777);
+      FS.mkdir('/dev/shm');
+      FS.mkdir('/dev/shm/tmp');
     },
     createStandardStreams: function() {
       // TODO deprecate the old functionality of a single
@@ -958,7 +948,7 @@ mergeInto(LibraryManager.library, {
       assert(stderr.fd === 3, 'invalid handle for stderr (' + stderr.fd + ')');
     },
     staticInit: function() {
-      FS.name_table = new Array(4096);
+      FS.nameTable = new Array(4096);
 
       FS.root = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
       FS.mount(MEMFS, {}, '/');
@@ -1036,16 +1026,22 @@ mergeInto(LibraryManager.library, {
     },
     // helpers to create specific types of nodes
     create: function(path, mode) {
+      mode = mode !== undefined ? mode : 0666;
       mode &= {{{ cDefine('S_IALLUGO') }}};
       mode |= {{{ cDefine('S_IFREG') }}};
       return FS.mknod(path, mode, 0);
     },
     mkdir: function(path, mode) {
+      mode = mode !== undefined ? mode : 0777;
       mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
       mode |= {{{ cDefine('S_IFDIR') }}};
       return FS.mknod(path, mode, 0);
     },
     mkdev: function(path, mode, dev) {
+      if (typeof(dev) === 'undefined') {
+        dev = mode;
+        mode = 0666;
+      }
       mode |= {{{ cDefine('S_IFCHR') }}};
       return FS.mknod(path, mode, dev);
     },
@@ -1471,6 +1467,50 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTTY);
       }
       return stream.stream_ops.ioctl(stream, cmd, arg);
+    },
+
+    //
+    // helpers
+    //
+    readFile: function(path, opts) {
+      opts = opts || {};
+      opts.flags = opts.flags || 'r';
+      opts.encoding = opts.encoding || 'binary';
+      var ret;
+      var stream = FS.open(path, opts.flags);
+      var stat = FS.stat(path);
+      var length = stat.size;
+      var buf = new Uint8Array(length);
+      FS.read(stream, buf, 0, length, 0);
+      if (opts.encoding === 'utf8') {
+        ret = '';
+        var utf8 = new Runtime.UTF8Processor();
+        for (var i = 0; i < length; i++) {
+          ret += utf8.processCChar(buf[i]);
+        }
+      } else if (opts.encoding === 'binary') {
+        ret = buf;
+      } else {
+        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+      }
+      FS.close(stream);
+      return ret;
+    },
+    writeFile: function(path, data, opts) {
+      opts = opts || {};
+      opts.flags = opts.flags || 'w';
+      opts.encoding = opts.encoding || 'utf8';
+      var stream = FS.open(path, opts.flags, opts.mode);
+      if (opts.encoding === 'utf8') {
+        var utf8 = new Runtime.UTF8Processor();
+        var buf = new Uint8Array(utf8.processJSString(data));
+        FS.write(stream, buf, 0, buf.length, 0);
+      } else if (opts.encoding === 'binary') {
+        FS.write(stream, data, 0, data.length, 0);
+      } else {
+        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+      }
+      FS.close(stream);
     }
   }
 });
