@@ -282,53 +282,59 @@ f.close()
     if os.name == 'nt':
       make_command = 'mingw32-make'
       generator = 'MinGW Makefiles'
+      emconfigure = path_from_root('emconfigure.bat')
     else:
       make_command = 'make'
       generator = 'Unix Makefiles'
+      emconfigure = path_from_root('emconfigure')
 
     cmake_cases = ['target_js', 'target_html']
     cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
     for i in range(0, 2):
       for configuration in ['Debug', 'Release']:
+        for invoke_method in ['cmake', 'emconfigure']:
 
-        # Create a temp workspace folder
-        cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
-        tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-        try:
-          os.chdir(tempdirname)
+          # Create a temp workspace folder
+          cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
+          tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+          try:
+            os.chdir(tempdirname)
 
-          verbose = os.getenv('EM_BUILD_VERBOSE') != None and int(os.getenv('EM_BUILD_VERBOSE')) != 0
-          # Run Cmake
-          cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
-                          '-DCMAKE_BUILD_TYPE=' + configuration,
-                          '-G', generator, cmakelistsdir]
-          ret = Popen(cmd, stdout=None if verbose else PIPE, stderr=None if verbose else PIPE).communicate()
-          if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-            print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
-          if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
-            print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
-            print >> sys.stderr, 'Result:\n' + ret[1]
-            raise Exception('cmake call failed!')
-          assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
+            verbose = os.getenv('EM_BUILD_VERBOSE') != None and int(os.getenv('EM_BUILD_VERBOSE')) != 0
+            # Run Cmake
+            if invoke_method == 'cmake':
+              cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
+                              '-DCMAKE_BUILD_TYPE=' + configuration,
+                              '-G', generator, cmakelistsdir]
+            else:
+              cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
+            ret = Popen(cmd, stdout=None if verbose else PIPE, stderr=None if verbose else PIPE).communicate()
+            if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+              print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
+            if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
+              print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
+              print >> sys.stderr, 'Result:\n' + ret[1]
+              raise Exception('cmake call failed!')
+            assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
 
-          # Build
-          cmd = [make_command] + (['VERBOSE=1'] if verbose else [])
-          ret = Popen(cmd, stdout=None if verbose else PIPE).communicate()
-          if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-            print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
-          if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
-            print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
-            print >> sys.stderr, 'Result:\n' + ret[0]
-            raise Exception('make failed!')
-          assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
+            # Build
+            cmd = [make_command] + (['VERBOSE=1'] if verbose else [])
+            ret = Popen(cmd, stdout=None if verbose else PIPE).communicate()
+            if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+              print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
+            if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
+              print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
+              print >> sys.stderr, 'Result:\n' + ret[0]
+              raise Exception('make failed!')
+            assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
 
-          # Run through node, if CMake produced a .js file.
-          if cmake_outputs[i].endswith('.js'):
-            ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
-            assert 'hello, world!' in ret, 'Running cmake-based .js application failed!'
-        finally:
-          os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-          shutil.rmtree(tempdirname)
+            # Run through node, if CMake produced a .js file.
+            if cmake_outputs[i].endswith('.js'):
+              ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+              assert 'hello, world!' in ret, 'Running cmake-based .js application failed!'
+          finally:
+            os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
+            shutil.rmtree(tempdirname)
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
