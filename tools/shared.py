@@ -801,33 +801,12 @@ class Building:
 
   @staticmethod
   def handle_CMake_toolchain(args, env):
-    CMakeToolchain = ('''# the name of the target operating system
-SET(CMAKE_SYSTEM_NAME Linux)
+    # Don't append a toolchain file if the user specified one already.
+    for arg in args:
+      if '-DCMAKE_TOOLCHAIN_FILE' in arg:
+        return args
 
-# which C and C++ compiler to use
-SET(CMAKE_C_COMPILER   %(winfix)s$EMSCRIPTEN_ROOT/emcc)
-SET(CMAKE_CXX_COMPILER %(winfix)s$EMSCRIPTEN_ROOT/em++)
-SET(CMAKE_AR           %(winfix)s$EMSCRIPTEN_ROOT/emar)
-SET(CMAKE_RANLIB       %(winfix)s$EMSCRIPTEN_ROOT/emranlib)
-SET(CMAKE_C_FLAGS      $CFLAGS)
-SET(CMAKE_CXX_FLAGS    $CXXFLAGS)
-
-# here is the target environment located
-SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
-
-# adjust the default behaviour of the FIND_XXX() commands:
-# search headers and libraries in the target environment, search
-# programs in the host environment
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS else 'python ' }) \
-      .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
-      .replace('$CFLAGS', env['CFLAGS']) \
-      .replace('$CXXFLAGS', env['CFLAGS'])
-    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=configuration.TEMP_DIR)[1]
-    open(toolchainFile, 'w').write(CMakeToolchain)
-    args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
+    args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Platform', 'Emscripten.cmake'))
     return args
 
   @staticmethod
