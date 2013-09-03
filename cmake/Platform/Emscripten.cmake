@@ -16,32 +16,104 @@
 set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_VERSION 1)
 
+set(CMAKE_CROSSCOMPILING TRUE)
+
+# Do a no-op access on the CMAKE_TOOLCHAIN_FILE variable so that CMake will not issue a warning on it being unused.
+if (CMAKE_TOOLCHAIN_FILE)
+endif()
+
+# Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-	set(CMAKE_FIND_ROOT_PATH "$ENV{EMSCRIPTEN}")
+	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+	if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
+		set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
+		message(STATUS "Guessed ${EMSCRIPTEN_ROOT_PATH}")
+	endif()
+endif()
+
+# If not found by above search, locate using the EMSCRIPTEN environment variable.
+if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
+	set(EMSCRIPTEN_ROOT_PATH "$ENV{EMSCRIPTEN}")
+endif()
+
+# Abort if not found. 
+if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
+	message(FATAL_ERROR "Could not locate the Emscripten compiler toolchain directory! Either set the EMSCRIPTEN environment variable, or pass -DEMSCRIPTEN_ROOT_PATH=xxx to CMake to explicitly specify the location of the compiler!")
+endif()
+
+# Normalize, convert Windows backslashes to forward slashes or CMake will crash.
+get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
+
+set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}")
+
+if (CMAKE_HOST_WIN32)
+	set(EMCC_SUFFIX ".bat")
 else()
-	set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}")
+	set(EMCC_SUFFIX "")
 endif()
 
 # Specify the compilers to use for C and C++
 if ("${CMAKE_C_COMPILER}" STREQUAL "")
-	set(CMAKE_C_COMPILER "emcc.bat")
-	set(CMAKE_CXX_COMPILER "em++.bat")
-	set(CMAKE_AR "emar.bat")
-	set(CMAKE_RANLIB "emranlib.bat")
+	set(CMAKE_C_COMPILER "${EMSCRIPTEN_ROOT_PATH}/emcc${EMCC_SUFFIX}")
 endif()
+if ("${CMAKE_CXX_COMPILER}" STREQUAL "")
+	set(CMAKE_CXX_COMPILER "${EMSCRIPTEN_ROOT_PATH}/em++${EMCC_SUFFIX}")
+endif()
+
+if ("${CMAKE_AR}" STREQUAL "")
+	set(CMAKE_AR "${EMSCRIPTEN_ROOT_PATH}/emar${EMCC_SUFFIX}")
+endif()
+
+if ("${CMAKE_RANLIB}" STREQUAL "")
+	set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}")
+endif()
+
+# Don't do compiler autodetection, since we are cross-compiling.
+include(CMakeForceCompiler)
+CMAKE_FORCE_C_COMPILER("${CMAKE_C_COMPILER}" Clang)
+CMAKE_FORCE_CXX_COMPILER("${CMAKE_CXX_COMPILER}" Clang)
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
+SET(CMAKE_LINK_LIBRARY_SUFFIX "")
+SET(CMAKE_STATIC_LIBRARY_PREFIX "")
+SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+SET(CMAKE_SHARED_LIBRARY_PREFIX "")
+SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
+IF (NOT CMAKE_EXECUTABLE_SUFFIX)
+	SET(CMAKE_EXECUTABLE_SUFFIX ".js")
+endif()
+SET(CMAKE_DL_LIBS "" )
+
+SET(CMAKE_FIND_LIBRARY_PREFIXES "")
+SET(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
+
+SET(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+SET(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+
+set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
+set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
+
 # Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
-set(CMAKE_CXX_ARCHIVE_CREATE "${CMAKE_CXX_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
-set(CMAKE_C_ARCHIVE_CREATE "${CMAKE_C_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_CREATE "${CMAKE_CXX_COMPILER} ${CMAKE_START_TEMP_FILE} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>${CMAKE_END_TEMP_FILE}")
+set(CMAKE_C_ARCHIVE_CREATE "${CMAKE_C_COMPILER} ${CMAKE_START_TEMP_FILE} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>${CMAKE_END_TEMP_FILE}")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 # There seems to be some kind of bug with CMake, so you might need to define this manually on the command line with "-DEMSCRIPTEN=1".
 set(EMSCRIPTEN 1)
+
+# We are cross-compiling, so unset the common CMake variables that represent the target platform. Leave UNIX define enabled, since Emscripten
+# mimics a Linux environment.
+SET(WIN32)
+SET(APPLE)
+
+set(CMAKE_C_SIZEOF_DATA_PTR 4)
+set(CMAKE_CXX_SIZEOF_DATA_PTR 4)
 
 set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELEASE")
 set(CMAKE_C_FLAGS_MINSIZEREL "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_MINSIZEREL")

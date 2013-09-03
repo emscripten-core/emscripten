@@ -281,9 +281,11 @@ f.close()
 
     if os.name == 'nt':
       make_command = 'mingw32-make'
+      generator = 'MinGW Makefiles'
       emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
     else:
       make_command = 'make'
+      generator = 'Unix Makefiles'
       emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten_unix.cmake')
 
     cmake_cases = ['target_js', 'target_html']
@@ -301,11 +303,11 @@ f.close()
           cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain,
                           '-DCMAKE_BUILD_TYPE=' + configuration,
                           '-DCMAKE_MODULE_PATH=' + path_from_root('cmake').replace('\\', '/'),
-                          '-G' 'Unix Makefiles', cmakelistsdir]
+                          '-G', generator, cmakelistsdir]
           ret = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
-          if ret[1] != None and len(ret[1].strip()) > 0:
+          if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
             print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
-          if 'error' in ret[1].lower():
+          if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
             print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
             print >> sys.stderr, 'Result:\n' + ret[1]
             raise Exception('cmake call failed!')
@@ -314,9 +316,9 @@ f.close()
           # Build
           cmd = [make_command]
           ret = Popen(cmd, stdout=PIPE).communicate()
-          if ret[1] != None and len(ret[1].strip()) > 0:
+          if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
             print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
-          if 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
+          if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
             print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
             print >> sys.stderr, 'Result:\n' + ret[0]
             raise Exception('make failed!')
