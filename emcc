@@ -1117,10 +1117,13 @@ try:
     input_files.append(shared.path_from_root('third_party', 'stb_image.c'))
     shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
-  for required_export in ['_malloc', '_free']:
+  if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
     # always need malloc and free to be kept alive and exported, for internal use and other modules
-    if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
-      shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
+    for required_export in ['_malloc', '_free']:
+      if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
+        shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
+  else:
+    logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
   ## Compile source code to bitcode
 
