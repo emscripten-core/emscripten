@@ -1443,6 +1443,27 @@ class JS:
     return ident.replace('%', '$').replace('@', '_')
 
   @staticmethod
+  def make_extcall(sig, named=True):
+    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    args = 'index' + (',' if args else '') + args
+    # C++ exceptions are numbers, and longjmp is a string 'longjmp'
+    ret = '''function%s(%s) {
+  %sModule["dynCall_%s"](%s);
+}''' % ((' extCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
+
+    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
+      # guard against cross-module stack leaks
+      ret = ret.replace(') {\n', ''') {
+  try {
+    var preStack = asm.stackSave();
+''').replace(';\n}', ''';
+  } finally {
+    assert(asm.stackSave() == preStack);
+  }
+}''')
+    return ret
+
+  @staticmethod
   def make_invoke(sig, named=True):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if args else '') + args

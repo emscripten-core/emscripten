@@ -1405,8 +1405,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
+    var extCall = false;
+
     if (ASM_JS && funcData.setjmpTable) forceByPointer = true; // in asm.js mode, we must do an invoke for each call
-    if (ASM_JS && DLOPEN_SUPPORT) invoke = true; // go through invoke so we can access other modules TODO: optimize
+    if (ASM_JS && DLOPEN_SUPPORT && !invoke) extCall = true; // go out, to be able to access other modules TODO: optimize
 
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
@@ -1467,7 +1469,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     if (ASM_JS) {
-      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || funcData.setjmpTable) {
+      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || extCall || funcData.setjmpTable) {
         args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
       } else {
         args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
@@ -1558,16 +1560,16 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
         Functions.neededTables[sig] = 1;
-        var functionTableCall = !byPointerForced && !funcData.setjmpTable && !invoke;
+        var functionTableCall = !byPointerForced && !funcData.setjmpTable && !invoke && !extCall;
         if (functionTableCall) {
           // normal asm function pointer call
           callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
         } else {
-          // This is a call through an invoke_*, either a forced one, or a setjmp-required one
+          // This is a call through an invoke_* or extCall, either a forced one, or a setjmp-required one
           // note: no need to update argsTypes at this point
           if (byPointerForced) Functions.unimplementedFunctions[callIdent] = sig;
           args.unshift(byPointerForced ? Functions.getIndex(callIdent, sig) : asmCoercion(callIdent, 'i32'));
-          callIdent = 'invoke_' + sig;
+          callIdent = (extCall ? 'extCall' : 'invoke') + '_' + sig;
         }
       } else if (SAFE_DYNCALLS) {
         assert(!ASM_JS, 'cannot emit safe dyncalls in asm');
