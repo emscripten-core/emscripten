@@ -5076,6 +5076,12 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
+#if ASM_JS
+#if DLOPEN_SUPPORT == 0
+    abort('need to build with DLOPEN_SUPPORT=1 to get dlopen support in asm.js');
+#endif
+#endif
+
     if (DLFCN.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
       var handle = DLFCN.loadedLibNames[filename];
