@@ -638,7 +638,7 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
     if settings.get('DLOPEN_SUPPORT'):
       funcs_js.append('''
   asm.maxFunctionIndex = %(max_mask)d;
-  Runtime.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
+  DLFCN.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
   Module.SYMBOL_TABLE = SYMBOL_TABLE;
 ''' % { 'max_mask': max_mask, 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
 

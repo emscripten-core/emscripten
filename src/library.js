@@ -5018,24 +5018,68 @@ LibraryManager.library = {
   //    being compiled. Not sure how to tell LLVM to not do so.
   // ==========================================================================
 
-  // Data for dlfcn.h.
-  $DLFCN_DATA: {
+  $DLFCN: {
+#if DLOPEN_SUPPORT
+    // extra asm.js dlopen support
+    functionTable: [], // will contain objects mapping sigs to js functions that call into the right asm module with the right index
+
+    registerFunctions: function(asm, num, sigs, jsModule) {
+      // use asm module dynCall_* from functionTable
+      if (num % 2 == 1) num++; // keep pointers even
+      var table = DLFCN.functionTable;
+      var from = table.length;
+      assert(from % 2 == 0);
+      for (var i = 0; i < num; i++) {
+        table[from + i] = {};
+        sigs.forEach(function(sig) { // TODO: new Function etc.
+          var full = 'dynCall_' + sig;
+          table[from + i][sig] = function() {
+            arguments[0] -= from;
+            return asm[full].apply(null, arguments);
+          }
+        });
+      }
+
+      if (jsModule.cleanups) {
+        var newLength = table.length;
+        jsModule.cleanups.push(function() {
+          if (table.length === newLength) {
+            table.length = from; // nothing added since, just shrink
+          } else {
+            // something was added above us, clear and leak the span
+            for (var i = 0; i < num; i++) {
+              table[from + i] = null;
+            }
+          }
+          while (table.length > 0 && table[table.length-1] === null) table.pop();
+        });
+      }
+
+      // patch js module dynCall_* to use functionTable
+      sigs.forEach(function(sig) {
+        jsModule['dynCall_' + sig] = function() {
+          return table[arguments[0]][sig].apply(null, arguments);
+        };
+      });
+    },
+#endif
+
     error: null,
     errorMsg: null,
     loadedLibs: {}, // handle -> [refcount, name, lib_object]
     loadedLibNames: {}, // name -> handle
   },
   // void* dlopen(const char* filename, int flag);
-  dlopen__deps: ['$DLFCN_DATA', '$FS', '$ENV'],
+  dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen: function(filename, flag) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
-    if (DLFCN_DATA.loadedLibNames[filename]) {
+    if (DLFCN.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
-      var handle = DLFCN_DATA.loadedLibNames[filename];
-      DLFCN_DATA.loadedLibs[handle].refcount++;
+      var handle = DLFCN.loadedLibNames[filename];
+      DLFCN.loadedLibs[handle].refcount++;
       return handle;
     }
 
@@ -5046,7 +5090,7 @@ LibraryManager.library = {
     } else {
       var target = FS.findObject(filename);
       if (!target || target.isFolder || target.isDevice) {
-        DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
+        DLFCN.errorMsg = 'Could not find dynamic lib: ' + filename;
         return 0;
       } else {
         FS.forceLoadFile(target);
@@ -5056,7 +5100,7 @@ LibraryManager.library = {
       try {
         var lib_module = eval(lib_data)(
 #if ASM_JS
-          Runtime.functionTable.length,
+          DLFCN.functionTable.length,
 #else
           {{{ Functions.getTable('x') }}}.length,
 #endif
@@ -5066,14 +5110,14 @@ LibraryManager.library = {
 #if ASSERTIONS
         Module.printErr('Error in loading dynamic library: ' + e);
 #endif
-        DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
+        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
         return 0;
       }
 
       // Not all browsers support Object.keys().
       var handle = 1;
-      for (var key in DLFCN_DATA.loadedLibs) {
-        if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
+      for (var key in DLFCN.loadedLibs) {
+        if (DLFCN.loadedLibs.hasOwnProperty(key)) handle++;
       }
 
       // We don't care about RTLD_NOW and RTLD_LAZY.
@@ -5087,55 +5131,55 @@ LibraryManager.library = {
 
       var cached_functions = {};
     }
-    DLFCN_DATA.loadedLibs[handle] = {
+    DLFCN.loadedLibs[handle] = {
       refcount: 1,
       name: filename,
       module: lib_module,
       cached_functions: cached_functions
     };
-    DLFCN_DATA.loadedLibNames[filename] = handle;
+    DLFCN.loadedLibNames[filename] = handle;
 
     return handle;
   },
   // int dlclose(void* handle);
-  dlclose__deps: ['$DLFCN_DATA'],
+  dlclose__deps: ['$DLFCN'],
   dlclose: function(handle) {
     // int dlclose(void *handle);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
-    if (!DLFCN_DATA.loadedLibs[handle]) {
-      DLFCN_DATA.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
+    if (!DLFCN.loadedLibs[handle]) {
+      DLFCN.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
       return 1;
     } else {
-      var lib_record = DLFCN_DATA.loadedLibs[handle];
+      var lib_record = DLFCN.loadedLibs[handle];
       if (--lib_record.refcount == 0) {
         if (lib_record.module.cleanups) {
           lib_record.module.cleanups.forEach(function(cleanup) { cleanup() });
         }
-        delete DLFCN_DATA.loadedLibNames[lib_record.name];
-        delete DLFCN_DATA.loadedLibs[handle];
+        delete DLFCN.loadedLibNames[lib_record.name];
+        delete DLFCN.loadedLibs[handle];
       }
       return 0;
     }
   },
   // void* dlsym(void* handle, const char* symbol);
-  dlsym__deps: ['$DLFCN_DATA'],
+  dlsym__deps: ['$DLFCN'],
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = '_' + Pointer_stringify(symbol);
 
-    if (!DLFCN_DATA.loadedLibs[handle]) {
-      DLFCN_DATA.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
+    if (!DLFCN.loadedLibs[handle]) {
+      DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     } else {
-      var lib = DLFCN_DATA.loadedLibs[handle];
+      var lib = DLFCN.loadedLibs[handle];
       // self-dlopen means that lib.module is not a superset of
       // cached_functions, so check the latter first
       if (lib.cached_functions.hasOwnProperty(symbol)) {
         return lib.cached_functions[symbol];
       } else {
         if (!lib.module.hasOwnProperty(symbol)) {
-          DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+          DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
                                  '" in dynamic lib: ' + lib.name);
           return 0;
         } else {
@@ -5155,18 +5199,18 @@ LibraryManager.library = {
     }
   },
   // char* dlerror(void);
-  dlerror__deps: ['$DLFCN_DATA'],
+  dlerror__deps: ['$DLFCN'],
   dlerror: function() {
     // char *dlerror(void);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
-    if (DLFCN_DATA.errorMsg === null) {
+    if (DLFCN.errorMsg === null) {
       return 0;
     } else {
-      if (DLFCN_DATA.error) _free(DLFCN_DATA.error);
-      var msgArr = intArrayFromString(DLFCN_DATA.errorMsg);
-      DLFCN_DATA.error = allocate(msgArr, 'i8', ALLOC_NORMAL);
-      DLFCN_DATA.errorMsg = null;
-      return DLFCN_DATA.error;
+      if (DLFCN.error) _free(DLFCN.error);
+      var msgArr = intArrayFromString(DLFCN.errorMsg);
+      DLFCN.error = allocate(msgArr, 'i8', ALLOC_NORMAL);
+      DLFCN.errorMsg = null;
+      return DLFCN.error;
     }
   },
 

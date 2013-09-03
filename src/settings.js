@@ -354,8 +354,8 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
 
-var DLOPEN_SUPPORT = 0; // Whether to support dlopen(NULL, ...) which enables dynamic access to the
-                        // module's functions and globals. Note that you must use EMSCRIPTEN_KEEPALIVE
+var DLOPEN_SUPPORT = 0; // Full support for dlopen. This is necessary for asm.js and for all code
+                        // modes for dlopen(NULL, ...). Note that you must use EMSCRIPTEN_KEEPALIVE
                         // to ensure that functions and globals can be accessed through dlsym,
                         // otherwise LLVM may optimize them out.
 
