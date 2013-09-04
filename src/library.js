@@ -4273,10 +4273,6 @@ LibraryManager.library = {
   __cxa_guard_release: function() {},
   __cxa_guard_abort: function() {},
 
-  _ZTVN10__cxxabiv119__pointer_type_infoE: [0], // is a pointer
-  _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
-  _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
-
   // Exceptions
   __cxa_allocate_exception: function(size) {
     return _malloc(size);
