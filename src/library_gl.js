@@ -3398,6 +3398,7 @@ var LibraryGL = {
       // does not work for glBegin/End, where we generate renderer components dynamically and then
       // disable them ourselves, but it does help with glDrawElements/Arrays.
       if (!this.modifiedClientAttributes) {
+        GL.immediate.vertexCounter = (GL.immediate.stride * count) / 4; // XXX assuming float
         return;
       }
       this.modifiedClientAttributes = false;
