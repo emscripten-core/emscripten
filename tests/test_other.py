@@ -292,6 +292,10 @@ f.close()
       emconfigure = path_from_root('emconfigure')
 
     for generator in generators:
+      if generator == 'NMake Makefiles' and not Building.which('nmake'):
+        print >> sys.stderr, 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
+        continue
+
       make = make_commands[generator]
       cmake_cases = ['target_js', 'target_html']
       cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
