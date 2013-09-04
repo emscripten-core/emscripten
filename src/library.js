@@ -4870,8 +4870,9 @@ LibraryManager.library = {
     // for negative zero (once copysign supports that).
     return _copysign(1.0, x) < 0;
   },
-  __signbitf: '__signbit',
   __signbitd: '__signbit',
+  __signbitf: '__signbit',
+  __signbitl: '__signbit',
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
   },
@@ -5045,6 +5046,7 @@ LibraryManager.library = {
   },
   __fpclassifyd: '__fpclassify', // Needed by tests/python/python.le32.bc
   __fpclassifyf: '__fpclassify',
+  __fpclassifyl: '__fpclassify',
 
   // ==========================================================================
   // sys/utsname.h
