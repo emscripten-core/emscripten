@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
     //    bind to it
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     //    send it to gl
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_READ);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_READ); // GL_STATIC_READ is not in WebGL!
     
     //    unbind from it
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
     
-    // TEST 1
+    // TEST 1 - clientside data
     
     glVertexPointer(2, GL_FLOAT, sizeof(Vertex), vertices);
     glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(Vertex), &vertices[0].color);
@@ -166,9 +166,8 @@ int main(int argc, char *argv[])
     
 
     
-    // TEST 2
+    // TEST 2 - bind to array buffer, gl*Pointer calls are offsets into the buffer, which was previously uploaded to
     
-//    bind to it again
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
     glVertexPointer(2, GL_FLOAT, sizeof(Vertex), 0);
@@ -187,7 +186,7 @@ int main(int argc, char *argv[])
     
 #if !EMSCRIPTEN
     // Wait for 3 seconds to give us a chance to see the image
-    SDL_Delay(6000);
+    SDL_Delay(3000);
 #endif
     
     SDL_Quit();

@@ -657,6 +657,20 @@ var LibraryGL = {
 
   glBufferData__sig: 'viiii',
   glBufferData: function(target, size, data, usage) {
+    switch (usage) { // fix usages, WebGL only has *_DRAW
+      case 0x88E1: // GL_STREAM_READ
+      case 0x88E2: // GL_STREAM_COPY
+        usage = 0x88E0; // GL_STREAM_DRAW
+        break;
+      case 0x88E5: // GL_STATIC_READ
+      case 0x88E6: // GL_STATIC_COPY
+        usage = 0x88E4; // GL_STATIC_DRAW
+        break;
+      case 0x88E9: // GL_DYNAMIC_READ
+      case 0x88EA: // GL_DYNAMIC_COPY
+        usage = 0x88E8; // GL_DYNAMIC_DRAW
+        break;
+    }
     Module.ctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
   },
 
