@@ -7723,14 +7723,13 @@ LibraryManager.library = {
                0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
                0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a], /* 0x0100000a is reserved */
     sockaddr_in_layout: Runtime.generateStructInfo([
-      ['i32', 'sin_family'],
+      ['i16', 'sin_family'],
       ['i16', 'sin_port'],
       ['i32', 'sin_addr'],
-      ['i32', 'sin_zero'],
-      ['i16', 'sin_zero_b'],
+      ['b8', 'sin_zero'],
     ]),
     sockaddr_in6_layout: Runtime.generateStructInfo([
-      ['i32', 'sin6_family'],
+      ['i16', 'sin6_family'],
       ['i16', 'sin6_port'],
       ['i32', 'sin6_flowinfo'],
       ['b16', 'sin6_addr'],
@@ -8139,7 +8138,7 @@ LibraryManager.library = {
   _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw'],
   _read_sockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
-    var family = {{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'i32') }}};
+    var family = {{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'i16') }}};
     var port = _ntohs({{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_port', 'i16') }}});
     var addr;
 
@@ -8174,7 +8173,7 @@ LibraryManager.library = {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
         addr = __inet_pton4_raw(addr);
-        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'family', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'family', 'i16') }}};
         {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_addr', 'addr', 'i32') }}};
         {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_port', '_htons(port)', 'i16') }}};
         break;
