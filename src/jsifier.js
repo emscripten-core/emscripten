@@ -338,6 +338,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // External variables in shared libraries should not be declared as
           // they would shadow similarly-named globals in the parent, so do nothing here.
           if (BUILD_AS_SHARED_LIB) return ret;
+          if (SIDE_MODULE) return [];
           // Library items need us to emit something, but everything else requires nothing.
           if (!LibraryManager.library[item.ident.slice(1)]) return ret;
         }
