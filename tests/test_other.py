@@ -300,7 +300,7 @@ f.close()
           try:
             os.chdir(tempdirname)
 
-            verbose = os.getenv('EM_BUILD_VERBOSE') != None and int(os.getenv('EM_BUILD_VERBOSE')) != 0
+            verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
             # Run Cmake
             if invoke_method == 'cmake':
               cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
@@ -308,7 +308,7 @@ f.close()
                               '-G', generator, cmakelistsdir]
             else:
               cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
-            ret = Popen(cmd, stdout=None if verbose else PIPE, stderr=None if verbose else PIPE).communicate()
+            ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE, stderr=None if verbose_level >= 1 else PIPE).communicate()
             if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
               print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
             if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
@@ -318,8 +318,8 @@ f.close()
             assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
 
             # Build
-            cmd = [make_command] + (['VERBOSE=1'] if verbose else [])
-            ret = Popen(cmd, stdout=None if verbose else PIPE).communicate()
+            cmd = [make_command] + (['VERBOSE=1'] if verbose_level >= 3 else [])
+            ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE).communicate()
             if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
               print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
             if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():

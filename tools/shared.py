@@ -877,13 +877,13 @@ class Building:
     #  except:
     #    pass
     env = Building.get_building_env(native)
-    log_to_file = os.getenv('EM_BUILD_VERBOSE') == None or int(os.getenv('EM_BUILD_VERBOSE')) == 0
+    verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if log_to_file else None, 
-                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if log_to_file else None)
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if verbose_level < 2 else None,
+                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if verbose_level < 1 else None)
       except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
@@ -891,13 +891,16 @@ class Building:
     
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
-    
+
+    if verbose_level >= 3:
+      make_args += ['VERBOSE=1']
+
     for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
           try:
-            Building.make(make + make_args, stdout=make_out if log_to_file else None,
-                                            stderr=make_err if log_to_file else None, env=env)
+            Building.make(make + make_args, stdout=make_out if verbose_level < 2 else None,
+                                            stderr=make_err if verbose_level < 1 else None, env=env)
           except subprocess.CalledProcessError, e:
             pass # Ignore exit code != 0
       try:
@@ -909,7 +912,7 @@ class Building:
         break
       except Exception, e:
         if i > 0:
-          if log_to_file:
+          if verbose_level == 0:
             # Due to the ugly hack above our best guess is to output the first run
             with open_make_err(0) as ferr:
               for line in ferr:
