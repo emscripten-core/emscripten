@@ -283,6 +283,20 @@ def check_node_version():
     logging.warning('cannot check node version: %s',  e)
     return False
 
+# Finds the system temp directory without resorting to using the one configured in .emscripten
+def find_temp_directory():
+  if WINDOWS:
+    if os.getenv('TEMP') and os.path.isdir(os.getenv('TEMP')):
+      return os.getenv('TEMP')
+    elif os.getenv('TMP') and os.path.isdir(os.getenv('TMP')):
+      return os.getenv('TMP')
+    elif os.path.isdir('C:\\temp'):
+      return os.getenv('C:\\temp')
+    else:
+      return None # No luck!
+  else:
+    return '/tmp'
+
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
@@ -451,8 +465,13 @@ class Configuration:
     try:
       self.TEMP_DIR = TEMP_DIR
     except NameError:
-      logging.debug('TEMP_DIR not defined in ~/.emscripten, using /tmp')
-      self.TEMP_DIR = '/tmp'
+      self.TEMP_DIR = find_temp_directory()
+      if self.TEMP_DIR == None:
+        logging.critical('TEMP_DIR not defined in ' + os.path.expanduser('~\\.emscripten') + ", and could not detect a suitable directory! Please configure .emscripten to contain a variable TEMP_DIR='/path/to/temp/dir'.")
+      logging.debug('TEMP_DIR not defined in ~/.emscripten, using ' + self.TEMP_DIR)
+
+    if not os.path.isdir(self.TEMP_DIR):
+      logging.critical("The temp directory TEMP_DIR='" + self.TEMP_DIR + "' doesn't seem to exist! Please make sure that the path is correct.")
 
     self.CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
 
@@ -470,12 +489,13 @@ class Configuration:
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 def apply_configuration():
-  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR
+  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR, TEMP_DIR
   configuration = Configuration()
   DEBUG = configuration.DEBUG
   EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
   DEBUG_CACHE = configuration.DEBUG_CACHE
   CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
+  TEMP_DIR = configuration.TEMP_DIR
 apply_configuration()
 
 logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s')
