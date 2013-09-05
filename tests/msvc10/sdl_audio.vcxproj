@@ -80,6 +80,22 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Emscripten'">
+    <ClCompile>
+      <PreprocessorDefinitions>REPORT_RESULT=int dummy</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>--preload-file ../sounds/alarmvictory_1.ogg@/sound.ogg --preload-file ../sounds/alarmcreatemiltaryfoot_1.wav@/sound2.wav --preload-file ../sounds/noise.ogg@/ --embed-file ../sounds/the_entertainer.ogg@/ --preload-file ../runner.py@/bad.ogg %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Emscripten'">
+    <ClCompile>
+      <PreprocessorDefinitions>REPORT_RESULT=int dummy</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>--preload-file ../sounds/alarmvictory_1.ogg@/sound.ogg --preload-file ../sounds/alarmcreatemiltaryfoot_1.wav@/sound2.wav --preload-file ../sounds/noise.ogg@/ --embed-file ../sounds/the_entertainer.ogg@/ --preload-file ../runner.py@/bad.ogg %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\sdl_audio.c" />
   </ItemGroup>

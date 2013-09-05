@@ -83,11 +83,13 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Emscripten'">
     <ClCompile>
       <AdditionalIncludeDirectories>../glbook/Common</AdditionalIncludeDirectories>
+      <DisableWarnings>pointer-sign</DisableWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Emscripten'">
     <ClCompile>
       <AdditionalIncludeDirectories>../glbook/Common</AdditionalIncludeDirectories>
+      <DisableWarnings>pointer-sign</DisableWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

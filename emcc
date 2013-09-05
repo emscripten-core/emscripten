@@ -663,6 +663,12 @@ if '-M' in sys.argv or '-MM' in sys.argv:
   logging.debug('just dependencies: ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
+if '-E' in sys.argv:
+  # Just run the preprocessor
+  cmd = [CC] + sys.argv[1:]
+  logging.debug('just preprocssor ' + ' '.join(cmd))
+  exit(subprocess.call(cmd))
+
 # Check if a target is specified
 target = None
 for i in range(len(sys.argv)-1):
@@ -1070,9 +1076,6 @@ try:
       shared.Settings.CORRECT_OVERFLOWS = 1
     assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-    if shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
-      logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
-
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
 
@@ -1107,12 +1110,23 @@ try:
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
 
-  if shared.Settings.DLOPEN_SUPPORT:
-    shared.Settings.LINKABLE = 1
+  if shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
+    logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
     input_files.append(shared.path_from_root('third_party', 'stb_image.c'))
     shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
+
+  if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
+    # always need malloc and free to be kept alive and exported, for internal use and other modules
+    for required_export in ['_malloc', '_free']:
+      if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
+        shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
+  else:
+    logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
+
+  if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
+    assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
 
   ## Compile source code to bitcode
 

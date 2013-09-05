@@ -38,7 +38,10 @@ int echo_read;
 int echo_wrote;
 
 void finish(int result) {
-  close(server.fd);
+  if (server.fd) {
+    close(server.fd);
+    server.fd = 0;
+  }
 #if EMSCRIPTEN
   REPORT_RESULT();
 #endif
@@ -76,7 +79,12 @@ void main_loop(void *arg) {
     assert(available);
 
     res = do_msg_read(server.fd, &server.msg, echo_read, 0, NULL, NULL);
-    if (res != -1) echo_read += res;
+    if (res == 0) {
+      perror("server closed");
+      finish(EXIT_FAILURE);
+    } else if (res != -1) {
+      echo_read += res;
+    }
 
     // once we've read the entire message, validate it
     if (echo_read >= server.msg.length) {
@@ -89,7 +97,12 @@ void main_loop(void *arg) {
     }
 
     res = do_msg_write(server.fd, &echo_msg, echo_wrote, 0, NULL, 0);
-    if (res != -1) echo_wrote += res;
+    if (res == 0) {
+      perror("server closed");
+      finish(EXIT_FAILURE);
+    } else if (res != -1) {
+      echo_wrote += res;
+    }
 
     // once we're done writing the message, read it back
     if (echo_wrote >= echo_msg.length) {

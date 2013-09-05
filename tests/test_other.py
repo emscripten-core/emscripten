@@ -1884,3 +1884,12 @@ you should see two lines of text in different colors and a blue rectangle
 SDL_Quit called (and ignored)
 done.
 ''' in output, output
+
+  def test_preprocess(self):
+    self.clear()
+
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-E'], stdout=PIPE).communicate()
+    assert not os.path.exists('a.out.js')
+    assert '''tests/hello_world.c"''' in out
+    assert '''printf("hello, world!''' in out
+
