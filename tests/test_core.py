@@ -6226,6 +6226,70 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
     self.do_run(src, '''*294,153*''', force_c=True, post_build=self.dlfcn_post_build)
 
+  def test_dlfcn_longjmp(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    lib_src = r'''
+      #include <setjmp.h>
+
+      void jumpy(jmp_buf buf) {
+        static int i = 0;
+        i++;
+        if (i == 10) longjmp(buf, i);
+        printf("pre %d\n", i);
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_jumpy']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build(lib_src, dirname, filename)
+    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <dlfcn.h>
+      #include <setjmp.h>
+
+      typedef void (*jumpfunc)(jmp_buf);
+
+      int main() {
+        printf("go!\n");
+
+        void *lib_handle;
+        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle != NULL);
+
+        jumpfunc jumpy = (jumpfunc)dlsym(lib_handle, "jumpy");
+        assert(jumpy);
+
+        jmp_buf buf;
+        int jmpval = setjmp(buf);
+        if (jmpval == 0) {
+          while (1) jumpy(buf);
+        } else {
+          printf("out!\n");
+        }
+
+        return 0;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
+    self.do_run(src, '''go!
+pre 1
+pre 2
+pre 3
+pre 4
+pre 5
+pre 6
+pre 7
+pre 8
+pre 9
+out!
+''', post_build=self.dlfcn_post_build, force_c=True)
+
   def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
     if not self.can_dlfcn(): return
 

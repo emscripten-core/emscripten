@@ -1409,7 +1409,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var extCall = false;
 
     if (ASM_JS && funcData.setjmpTable) forceByPointer = true; // in asm.js mode, we must do an invoke for each call
-    if (ASM_JS && DLOPEN_SUPPORT && !invoke) extCall = true; // go out, to be able to access other modules TODO: optimize
+    if (ASM_JS && DLOPEN_SUPPORT && !invoke && !funcData.setjmpTable) extCall = true; // go out, to be able to access other modules TODO: optimize
 
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
