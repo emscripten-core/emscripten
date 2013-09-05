@@ -7392,7 +7392,7 @@ LibraryManager.library = {
     var aliasesBuf = _malloc(4);
     {{{ makeSetValue('aliasesBuf', '0', '0', 'i8*') }}}
     {{{ makeSetValue('ret', '___hostent_struct_layout.h_aliases', 'aliasesBuf', 'i8**') }}}
-    var afinet = {{{ cDefine("AF_INET") }}};
+    var afinet = {{{ cDefine('AF_INET') }}};
     {{{ makeSetValue('ret', '___hostent_struct_layout.h_addrtype', 'afinet', 'i32') }}}
     {{{ makeSetValue('ret', '___hostent_struct_layout.h_length', '4', 'i32') }}}
     var addrListBuf = _malloc(12);
