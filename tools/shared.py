@@ -443,7 +443,6 @@ EMCC = path_from_root('emcc')
 EMXX = path_from_root('em++')
 EMAR = path_from_root('emar')
 EMRANLIB = path_from_root('emranlib')
-EMLIBTOOL = path_from_root('emlibtool')
 EMCONFIG = path_from_root('em-config')
 EMLINK = path_from_root('emlink.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
@@ -806,7 +805,6 @@ class Building:
     env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
-    #env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
