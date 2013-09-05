@@ -482,4 +482,42 @@ typedef struct {
 
 #undef __need_inttypes
 
+#ifndef __USE_FILE_OFFSET64
+# ifndef __blkcnt_t_defined
+typedef long blkcnt_t;
+#  define __blkcnt_t_defined
+# endif
+# ifndef __fsblkcnt_t_defined
+typedef unsigned long fsblkcnt_t;
+#  define __fsblkcnt_t_defined
+# endif
+# ifndef __fsfilcnt_t_defined
+typedef unsigned long fsfilcnt_t;
+#  define __fsfilcnt_t_defined
+# endif
+#else
+# ifndef __blkcnt_t_defined
+typedef int64_t blkcnt_t;
+#  define __blkcnt_t_defined
+# endif
+# ifndef __fsblkcnt_t_defined
+typedef uint64_t fsblkcnt_t;
+#  define __fsblkcnt_t_defined
+# endif
+# ifndef __fsfilcnt_t_defined
+typedef uint64_t fsfilcnt_t;
+#  define __fsfilcnt_t_defined
+# endif
+#endif /* __USE_FILE_OFFSET64 */
+
+#ifdef __USE_LARGEFILE64
+typedef int64_t blkcnt64_t;
+typedef uint64_t fsblkcnt64_t;
+typedef uint64_t fsfilcnt64_t;
+#endif /* __USE_LARGEFILE64 */
+
+typedef struct {
+    int val[2];
+} fsid_t;
+
 #endif	/* _SYS_TYPES_H */
