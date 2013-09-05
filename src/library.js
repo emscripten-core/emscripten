@@ -6065,7 +6065,7 @@ LibraryManager.library = {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
     var now = Date.now();
     {{{ makeSetValue('tp', '___timespec_struct_layout.tv_sec', 'Math.floor(now/1000)', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}; // nanoseconds - not supported
+    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_nsec', '(now % 1000) * 1000 * 1000', 'i32') }}}; // nanoseconds (really milliseconds)
     return 0;
   },
   clock_settime: function(clk_id, tp) {
@@ -6077,7 +6077,7 @@ LibraryManager.library = {
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
     {{{ makeSetValue('res', '___timespec_struct_layout.tv_sec', '1', 'i32') }}}
-    {{{ makeSetValue('res', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    {{{ makeSetValue('res', '___timespec_struct_layout.tv_nsec', '1000 * 1000', 'i32') }}} // resolution is milliseconds
     return 0;
   },
 
