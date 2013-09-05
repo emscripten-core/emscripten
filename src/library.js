@@ -5292,8 +5292,8 @@ LibraryManager.library = {
     ['i32', 'tm_zone']]),
   // Statically allocated time struct.
   __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
-  // Statically allocated timezone strings.
-  __tm_timezones: {},
+  // Statically allocated timezone string. We only use GMT as a timezone.
+  __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   // Statically allocated time strings.
   __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
 
@@ -5321,7 +5321,7 @@ LibraryManager.library = {
     return _gmtime_r(time, ___tm_current);
   },
 
-  gmtime_r__deps: ['__tm_struct_layout', '__tm_timezones'],
+  gmtime_r__deps: ['__tm_struct_layout', '__tm_timezone'],
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     var offsets = ___tm_struct_layout;
@@ -5343,12 +5343,7 @@ LibraryManager.library = {
     start.setUTCMilliseconds(0);
     var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     {{{ makeSetValue('tmPtr', 'offsets.tm_yday', 'yday', 'i32') }}}
-
-    var timezone = "GMT";
-    if (!(timezone in ___tm_timezones)) {
-      ___tm_timezones[timezone] = allocate(intArrayFromString(timezone), 'i8', ALLOC_NORMAL);
-    }
-    {{{ makeSetValue('tmPtr', 'offsets.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_zone', '___tm_timezone', 'i32') }}}
 
     return tmPtr;
   },
@@ -5367,7 +5362,7 @@ LibraryManager.library = {
     return _localtime_r(time, ___tm_current);
   },
 
-  localtime_r__deps: ['__tm_struct_layout', '__tm_timezones', 'tzset'],
+  localtime_r__deps: ['__tm_struct_layout', '__tm_timezone', 'tzset'],
   localtime_r: function(time, tmPtr) {
     _tzset();
     var offsets = ___tm_struct_layout;
@@ -5388,11 +5383,7 @@ LibraryManager.library = {
     var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
     {{{ makeSetValue('tmPtr', 'offsets.tm_isdst', 'dst', 'i32') }}}
 
-    var timezone = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | date.toString().match(/\(([A-Z]+)\)/)[1];
-    if (!(timezone in ___tm_timezones)) {
-      ___tm_timezones[timezone] = allocate(intArrayFromString(timezone), 'i8', ALLOC_NORMAL);
-    }
-    {{{ makeSetValue('tmPtr', 'offsets.tm_zone', '___tm_timezones[timezone]', 'i32') }}}
+    {{{ makeSetValue('tmPtr', 'offsets.tm_zone', '___tm_timezone', 'i32') }}}
 
     return tmPtr;
   },
