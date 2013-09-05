@@ -35,8 +35,13 @@ function preprocess(text) {
         var op = parts[2];
         var value = parts[3];
         if (op) {
-          assert(op === '==')
-          showStack.push(ident in this && this[ident] == value);
+          if (op === '==') {
+            showStack.push(ident in this && this[ident] == value);
+          } else if (op === '!=') {
+            showStack.push(!(ident in this && this[ident] == value));
+          } else {
+            error('unsupported preprecessor op ' + op);
+          }
         } else {
           showStack.push(ident in this && this[ident] > 0);
         }
