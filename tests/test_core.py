@@ -6226,6 +6226,75 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
     self.do_run(src, '''*294,153*''', force_c=True, post_build=self.dlfcn_post_build)
 
+  def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
+    if not self.can_dlfcn(): return
+
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+
+    self.prep_dlfcn_lib()
+    lib_src = r'''
+      extern "C" {
+      int ok() {
+        return 65;
+      }
+      int fail() {
+        throw 123;
+      }
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_ok', '_fail']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.cpp')
+    self.build(lib_src, dirname, filename)
+    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      typedef int (*intfunc)();
+
+      int main() {
+        printf("go!\n");
+
+        void *lib_handle;
+        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle != NULL);
+
+        intfunc okk = (intfunc)dlsym(lib_handle, "ok");
+        intfunc faill = (intfunc)dlsym(lib_handle, "fail");
+        assert(okk && faill);
+
+        try {
+          printf("ok: %d\n", okk());
+        } catch(...) {
+          printf("wha\n");
+        }
+
+        try {
+          printf("fail: %d\n", faill());
+        } catch(int x) {
+          printf("int %d\n", x);
+        }
+
+        try {
+          printf("fail: %d\n", faill());
+        } catch(double x) {
+          printf("caught %f\n", x);
+        }
+
+        return 0;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
+    self.do_run(src, '''go!
+ok: 65
+int 123
+ok
+''', post_build=self.dlfcn_post_build)
+
   def test_rand(self):
     return self.skip('rand() is now random') # FIXME
 

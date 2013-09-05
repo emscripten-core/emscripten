@@ -1125,6 +1125,9 @@ try:
   else:
     logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
+  if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
+    assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')
