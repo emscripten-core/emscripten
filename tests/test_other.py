@@ -290,8 +290,10 @@ f.close()
 
     cmake_cases = ['target_js', 'target_html']
     cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
-    for i in range(0, 2):
+    for i in range(0, 2): # Test both JS and HTML build outputs from CMake.
       for configuration in ['Debug', 'Release']:
+        # CMake can be invoked in two ways, using 'emconfigure cmake', or by directly running 'cmake'.
+        # Test both methods.
         for invoke_method in ['cmake', 'emconfigure']:
 
           # Create a temp workspace folder
@@ -301,13 +303,16 @@ f.close()
             os.chdir(tempdirname)
 
             verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
+            
             # Run Cmake
             if invoke_method == 'cmake':
+              # Test invoking cmake directly.
               cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
-                              '-DCMAKE_BUILD_TYPE=' + configuration,
-                              '-G', generator, cmakelistsdir]
+                              '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
             else:
+              # Test invoking via 'emconfigure cmake'
               cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
+
             ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE, stderr=None if verbose_level >= 1 else PIPE).communicate()
             if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
               print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
