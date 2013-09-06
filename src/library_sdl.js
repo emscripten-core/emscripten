@@ -211,6 +211,17 @@ var LibrarySDL = {
         ['i32', 'w'],
         ['i32', 'h']
       ]),
+      TouchFingerEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'timestamp'],
+        ['i64', 'touchId'],
+        ['i64', 'fingerId'],
+        ['float', 'x'],
+        ['float', 'y'],
+        ['float', 'dx'],
+        ['float', 'dy'],
+        ['float', 'pressure']
+      ]),
       AudioSpec: Runtime.generateStructInfo([
         ['i32', 'freq'],
         ['i16', 'format'],
@@ -382,49 +393,61 @@ var LibrarySDL = {
       SDL.surfaces[surf] = null;
     },
 
-    touchX: 0, touchY: 0,
+    lastTouch: {},
     savedKeydown: null,
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'touchstart':
+        case 'touchstart': case 'touchmove': {
           event.preventDefault();
-          var touch = event.touches[0];
-          touchX = touch.pageX;
-          touchY = touch.pageY;
-          var event = {
-            type: 'mousedown',
-            button: 0,
-            pageX: touchX,
-            pageY: touchY
+          
+          // simulate mouse events
+          var firstTouch = event.touches[0];
+          if ( event.type == 'touchstart' ) {
+            SDL.DOMButtons[0] = 1;
+            SDL.lastTouch.x = firstTouch.pageX;
+            SDL.lastTouch.y = firstTouch.pageY;
           };
-          SDL.DOMButtons[0] = 1;
-          SDL.events.push(event);
-          break;
-        case 'touchmove':
-          event.preventDefault();
-          var touch = event.touches[0];
-          touchX = touch.pageX;
-          touchY = touch.pageY;
-          event = {
-            type: 'mousemove',
+          var mouseEventType;
+          switch(event.type) {
+            case 'touchstart': mouseEventType = 'mousedown'; break;
+            case 'touchmove': mouseEventType = 'mousemove'; break;
+          }
+          var mouseEvent = {
+            type: mouseEventType,
             button: 0,
-            pageX: touchX,
-            pageY: touchY
+            pageX: firstTouch.pageX,
+            pageY: firstTouch.pageY
           };
-          SDL.events.push(event);
+          SDL.events.push(mouseEvent);
+          for (i=0;i<event.touches.length;i++) {
+            var touch = event.touches[i];
+            SDL.events.push({
+              type: event.type,
+              touch: touch
+            });
+          };
           break;
-        case 'touchend':
+        }
+        case 'touchend': {
           event.preventDefault();
-          event = {
+          var mouseEvent = {
             type: 'mouseup',
             button: 0,
-            pageX: touchX,
-            pageY: touchY
+            pageX: SDL.lastTouch.x,
+            pageY: SDL.lastTouch.y
           };
           SDL.DOMButtons[0] = 0;
-          SDL.events.push(event);
+          SDL.events.push(mouseEvent);
+          for (i=0;i<event.changedTouches.length;i++) {
+            var touch = event.changedTouches[i];
+            SDL.events.push({
+              type: 'touchend',
+              touch: touch
+            });
+          };
           break;
+        }
         case 'mousemove':
           if (Browser.pointerLock) {
             // workaround for firefox bug 750111
@@ -565,6 +588,10 @@ var LibrarySDL = {
       event.handled = true;
 
       switch (event.type) {
+        case 'touchstart': case 'touchend': case 'touchmove': {
+          Browser.calculateMouseEvent(event);
+          break;
+        }
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           var code = event.keyCode;
@@ -669,6 +696,29 @@ var LibrarySDL = {
           }
           break;
         }
+        case 'touchstart': case 'touchend': case 'touchmove': {
+          var touch = event.touch;
+          var w = Module['canvas'].width;
+          var h = Module['canvas'].height;
+          var x = Browser.touches[touch.identifier].x / w;
+          var y = Browser.touches[touch.identifier].y / h;
+          var lx = Browser.lastTouches[touch.identifier].x / w;
+          var ly = Browser.lastTouches[touch.identifier].y / h;
+          var dx = x - lx;
+          var dy = y - ly;
+          if ( dx === 0 && dy === 0 && event.type === 'touchmove' ) return; // don't send these if nothing happened
+//           console.log( "sending '"+ event.type + "' ("+lx+","+ly+")-->("+x+","+y+")"+" d("+dx+","+dy+")" );
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.timestamp', '0', 'i32') }}}; // XXX michaeljbishop - Unimplemented for now
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.touchId', '0', 'i64') }}}; // XXX michaeljbishop - Unimplemented for now
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.fingerId', 'touch.identifier', 'i64') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.x', 'x', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.y', 'y', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.dx', 'dx', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.dy', 'dy', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.pressure', 'touch.force', 'float') }}};
+          break;
+        }
         case 'unload': {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           break;
@@ -762,14 +812,17 @@ var LibrarySDL = {
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
-    SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
-    SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
-    SDL.DOMEventToSDLEvent['keypress'] = 0x303 /* SDL_TEXTINPUT */;
-    SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
-    SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
-    SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
-    SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
-    SDL.DOMEventToSDLEvent['resize'] = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
+    SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
+    SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
+    SDL.DOMEventToSDLEvent['keypress']   = 0x303  /* SDL_TEXTINPUT */;
+    SDL.DOMEventToSDLEvent['mousedown']  = 0x401  /* SDL_MOUSEBUTTONDOWN */;
+    SDL.DOMEventToSDLEvent['mouseup']    = 0x402  /* SDL_MOUSEBUTTONUP */;
+    SDL.DOMEventToSDLEvent['mousemove']  = 0x400  /* SDL_MOUSEMOTION */;
+    SDL.DOMEventToSDLEvent['touchstart'] = 0x700  /* SDL_FINGERDOWN */;
+    SDL.DOMEventToSDLEvent['touchend']   = 0x701  /* SDL_FINGERUP */;
+    SDL.DOMEventToSDLEvent['touchmove']  = 0x702  /* SDL_FINGERMOTION */;
+    SDL.DOMEventToSDLEvent['unload']     = 0x100  /* SDL_QUIT */;
+    SDL.DOMEventToSDLEvent['resize']     = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
     return 0; // success
   },
 
@@ -833,7 +886,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
+    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Browser.setCanvasSize(width, height, true);

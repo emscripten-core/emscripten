@@ -280,24 +280,25 @@ typedef struct SDL_JoyButtonEvent
 
 
 /**
- *  \brief Touch finger motion/finger event structure (event.tmotion.*)
+ *  \brief Touch finger motion/finger event structure (event.tfinger.*)
  */
+
+/*================================= IMPORTANT ================================
+   The version of SDL_TouchFingerEvent that comes in these (emscripten)
+   headers is taken from the finalized version of SDL2
+  ============================================================================*/  
+
 typedef struct SDL_TouchFingerEvent
 {
-    Uint32 type;        /**< ::SDL_FINGERMOTION OR 
-			   SDL_FINGERDOWN OR SDL_FINGERUP*/
-    Uint32 windowID;    /**< The window with mouse focus, if any */
-    SDL_TouchID touchId;        /**< The touch device id */
+    Uint32 type;        /**< ::SDL_FINGERMOTION or ::SDL_FINGERDOWN or ::SDL_FINGERUP */
+    Uint32 timestamp;
+    SDL_TouchID touchId; /**< The touch device id */
     SDL_FingerID fingerId;
-    Uint8 state;        /**< The current button state */
-    Uint8 padding1;
-    Uint8 padding2;
-    Uint8 padding3;
-    Uint16 x;
-    Uint16 y;
-    Sint16 dx;
-    Sint16 dy;
-    Uint16 pressure;
+    float x;            /**< Normalized in the range 0...1 */
+    float y;            /**< Normalized in the range 0...1 */
+    float dx;           /**< Normalized in the range 0...1 */
+    float dy;           /**< Normalized in the range 0...1 */
+    float pressure;     /**< Normalized in the range 0...1 */
 } SDL_TouchFingerEvent;
 
 
@@ -433,7 +434,7 @@ typedef union SDL_Event
     SDL_QuitEvent quit;             /**< Quit request event data */
     SDL_UserEvent user;             /**< Custom event data */
     SDL_SysWMEvent syswm;           /**< System dependent window event data */
-    SDL_TouchFingerEvent tfinger;   /**< Touch finger event data */
+    SDL_TouchFingerEvent tfinger;   /**< SDL2 Touch finger event data */
     SDL_TouchButtonEvent tbutton;   /**< Touch button event data */
     SDL_MultiGestureEvent mgesture; /**< Multi Finger Gesture data */
     SDL_DollarGestureEvent dgesture; /**< Multi Finger Gesture data */
