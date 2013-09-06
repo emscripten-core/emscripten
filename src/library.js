@@ -4716,8 +4716,8 @@ LibraryManager.library = {
     } while (Math.abs(q1 - q2) / q2 > MATH_TOLERANCE);
     return (ONE_SQRTPI * Math.exp(- x * x) * q2);
   },
-  erfcf: 'erfcf',
-  erfcl: 'erfcf',
+  erfcf: 'erfc',
+  erfcl: 'erfc',
   erf__deps: ['erfc'],
   erf: function(x) {
     var MATH_TOLERANCE = 1E-12;
@@ -4980,21 +4980,13 @@ LibraryManager.library = {
     {{{ makeSetValue('sine', '0', 'sineVal', 'double') }}};
     {{{ makeSetValue('cosine', '0', 'cosineVal', 'double') }}};
   },
+  sincosl: 'sincos',
 
   sincosf: function(x, sine, cosine) {
     var sineVal = Math.sin(x),
         cosineVal = Math.cos(x);
     {{{ makeSetValue('sine', '0', 'sineVal', 'float') }}};
     {{{ makeSetValue('cosine', '0', 'cosineVal', 'float') }}};
-  },
-
-  sincosl: function(x, sine, cosine) {
-    var sineVal = Math.sin(x),
-        cosineVal = Math.cos(x);
-    // We use double here because that is what our long doubles
-    // are and long double isn't a supported type in makeSetValue.
-    {{{ makeSetValue('sine', '0', 'sineVal', 'double') }}};
-    {{{ makeSetValue('cosine', '0', 'cosineVal', 'double') }}};
   },
 
   __div_t_struct_layout: Runtime.generateStructInfo([
