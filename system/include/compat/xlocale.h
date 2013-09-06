@@ -9,7 +9,7 @@ extern "C" {
 
 long long strtoll_l(const char *start, char **end, int base, locale_t loc);
 unsigned long long strtoull_l(const char *start, char **end, int base, locale_t loc);
-double strtold_l(const char *start, char **end, locale_t loc);
+long double strtold_l(const char *start, char **end, locale_t loc);
 
 #ifdef __cplusplus
 }
