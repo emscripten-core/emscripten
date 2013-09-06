@@ -3743,6 +3743,7 @@ def process(filename):
 
   def test_inlinejs(self):
       if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+      if not self.is_le32(): return self.skip('le32 needed for inline js')
       src = r'''
         #include <stdio.h>
 
@@ -3763,6 +3764,7 @@ def process(filename):
 
   def test_inlinejs2(self):
       if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+      if not self.is_le32(): return self.skip('le32 needed for inline js')
       src = r'''
         #include <stdio.h>
 
@@ -3773,8 +3775,8 @@ def process(filename):
         }
 
         void mult() {
-          asm("var $_$1 = Math.abs(-100); $_$1 *= 2;"); // multiline
-          asm __volatile__("Module.print($_$1); Module.print('\n')");
+          asm("var $_$1 = Math.abs(-100); $_$1 *= 2; Module.print($_$1)"); // multiline
+          asm __volatile__("Module.print('done')");
         }
 
         int main(int argc, char **argv) {
@@ -3784,7 +3786,7 @@ def process(filename):
         }
         '''
 
-      self.do_run(src, '4\n200\n')
+      self.do_run(src, '4\n200\ndone\n')
 
   def test_inlinejs3(self):
       if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
@@ -7614,12 +7616,14 @@ def process(filename):
 
   def test_unistd_access(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
     self.do_run(src, expected)
 
   def test_unistd_curdir(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
     self.do_run(src, expected)
@@ -7650,6 +7654,7 @@ def process(filename):
 
   def test_unistd_truncate(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
     self.do_run(src, expected)
@@ -7679,6 +7684,7 @@ def process(filename):
 
   def test_unistd_links(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
     self.do_run(src, expected)
@@ -7690,6 +7696,8 @@ def process(filename):
 
   def test_unistd_io(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
     src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
     self.do_run(src, expected)
