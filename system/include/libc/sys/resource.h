@@ -16,7 +16,7 @@ extern "C" {
 
 #include <bits/alltypes.h>
 
-typedef unsigned long long rlim_t;
+typedef unsigned long rlim_t;
 
 struct rlimit
 {
