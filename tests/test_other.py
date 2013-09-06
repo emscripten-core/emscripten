@@ -315,10 +315,10 @@ f.close()
 
             ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE, stderr=None if verbose_level >= 1 else PIPE).communicate()
             if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-              print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
+              logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
             if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
-              print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
-              print >> sys.stderr, 'Result:\n' + ret[1]
+              logging.error('Failed command: ' + ' '.join(cmd))
+              logging.error('Result:\n' + ret[1])
               raise Exception('cmake call failed!')
             assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
 
@@ -326,10 +326,10 @@ f.close()
             cmd = [make_command] + (['VERBOSE=1'] if verbose_level >= 3 else [])
             ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE).communicate()
             if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-              print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
+              logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
             if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
-              print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
-              print >> sys.stderr, 'Result:\n' + ret[0]
+              logging.error('Failed command: ' + ' '.join(cmd))
+              logging.error('Result:\n' + ret[0])
               raise Exception('make failed!')
             assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
 
