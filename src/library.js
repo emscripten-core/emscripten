@@ -29,8 +29,8 @@ LibraryManager.library = {
   // ==========================================================================
 
   __dirent_struct_layout: Runtime.generateStructInfo([
-    ['i64', 'd_ino'],
-    ['i64', 'd_off'],
+    ['i32', 'd_ino'],
+    ['i32', 'd_off'],
     ['i16', 'd_reclen'],
     ['i8', 'd_type'],
     ['b256', 'd_name']]),
@@ -82,7 +82,7 @@ LibraryManager.library = {
   seekdir: function(dirp, loc) {
     // void seekdir(DIR *dirp, long int loc);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/seekdir.html
-    _lseek(dirp, loc, 0, {{{ cDefine('SEEK_SET') }}});
+    _lseek(dirp, loc, {{{ cDefine('SEEK_SET') }}});
   },
   rewinddir__deps: ['seekdir'],
   rewinddir: function(dirp) {
@@ -254,27 +254,25 @@ LibraryManager.library = {
   // ==========================================================================
 
   __stat_struct_layout: Runtime.generateStructInfo([
-    ['i64', 'st_dev'],
+    ['i32', 'st_dev'],
     ['i32', '__st_dev_padding'],
     ['i32', '__st_ino_truncated'],
     ['i32', 'st_mode'],
     ['i32', 'st_nlink'],
     ['i32', 'st_uid'],
     ['i32', 'st_gid'],
-    ['i64', 'st_rdev'],
+    ['i32', 'st_rdev'],
     ['i32', '__st_rdev_padding'],
-    ['i32', '__st_rdev_padding2'],
-    ['i64', 'st_size'],
+    ['i32', 'st_size'],
     ['i32', 'st_blksize'],
-    ['i32', '__st_blksize_padding'],
-    ['i64', 'st_blocks'],
+    ['i32', 'st_blocks'],
     ['i32', 'st_atim_secs'],
     ['i32', 'st_atim_nsecs'],
     ['i32', 'st_mtim_secs'],
     ['i32', 'st_mtim_nsecs'],
     ['i32', 'st_ctim_secs'],
     ['i32', 'st_ctim_nsecs'],
-    ['i64', 'st_ino']]),
+    ['i32', 'st_ino']]),
   stat__deps: ['$FS', '__stat_struct_layout'],
   stat: function(path, buf, dontResolveLastLink) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -293,10 +291,8 @@ LibraryManager.library = {
       {{{ makeSetValue('buf', '___stat_struct_layout.st_gid', 'stat.gid', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_rdev', 'stat.rdev', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.__st_rdev_padding', '0', 'i32') }}};
-      {{{ makeSetValue('buf', '___stat_struct_layout.__st_rdev_padding2', '0', 'i32') }}};
       {{{ makeSetValue('buf', '___stat_struct_layout.st_size', 'stat.size', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_blksize', '4096', 'i32') }}}
-      {{{ makeSetValue('buf', '___stat_struct_layout.__st_blksize_padding', '0', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'stat.blocks', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_atim_secs', 'Math.floor(stat.atime.getTime() / 1000)', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_atim_nsecs', '0', 'i32') }}}
@@ -329,7 +325,7 @@ LibraryManager.library = {
     return _stat(stream.path, buf);
   },
   mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  mknod: function(path, mode, dev_lo, dev_hi) {
+  mknod: function(path, mode, dev) {
     // int mknod(const char *path, mode_t mode, dev_t dev);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mknod.html
     path = Pointer_stringify(path);
@@ -347,7 +343,7 @@ LibraryManager.library = {
         return -1;
     }
     try {
-      FS.mknod(path, mode, dev_lo);
+      FS.mknod(path, mode, dev);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -443,12 +439,12 @@ LibraryManager.library = {
   __statvfs_struct_layout: Runtime.generateStructInfo([
     ['i32', 'f_bsize'],
     ['i32', 'f_frsize'],
-    ['i64', 'f_blocks'],
-    ['i64', 'f_bfree'],
-    ['i64', 'f_bavail'],
-    ['i64', 'f_files'],
-    ['i64', 'f_ffree'],
-    ['i64', 'f_favail'],
+    ['i32', 'f_blocks'],
+    ['i32', 'f_bfree'],
+    ['i32', 'f_bavail'],
+    ['i32', 'f_files'],
+    ['i32', 'f_ffree'],
+    ['i32', 'f_favail'],
     ['i32', 'f_fsid'],
     ['i32', '__padding'],
     ['i32', 'f_flag'],
@@ -497,8 +493,7 @@ LibraryManager.library = {
     ['i16', 'l_whence'],
     ['i32', 'l_start'],
     ['i32', 'l_len'],
-    ['i16', 'l_pid'],
-    ['i16', 'l_xxx']]),
+    ['i16', 'l_pid']]),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
@@ -586,7 +581,7 @@ LibraryManager.library = {
     // Should never be reached. Only to silence strict warnings.
     return -1;
   },
-  posix_fadvise: function(fd, offset_lo, offset_hi, len_lo, len_hi, advice) {
+  posix_fadvise: function(fd, offset, len, advice) {
     // int posix_fadvise(int fd, off_t offset, off_t len, int advice);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fadvise.html
     // Advise as much as you wish. We don't care.
@@ -594,7 +589,7 @@ LibraryManager.library = {
   },
   posix_madvise: 'posix_fadvise',
   posix_fallocate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  posix_fallocate: function(fd, offset_lo, offset_hi, len_lo, len_hi) {
+  posix_fallocate: function(fd, offset, len) {
     // int posix_fallocate(int fd, off_t offset, off_t len);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
     var stream = FS.getStream(fd);
@@ -603,7 +598,7 @@ LibraryManager.library = {
       return -1;
     }
     try {
-      FS.allocate(stream, offset_lo, len_lo);
+      FS.allocate(stream, offset, len);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -882,13 +877,13 @@ LibraryManager.library = {
   },
   fdatasync: 'fsync',
   truncate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  truncate: function(path, length_lo, length_hi) {
+  truncate: function(path, length) {
     // int truncate(const char *path, off_t length);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/truncate.html
     // NOTE: The path argument may be a string, to simplify ftruncate().
     if (typeof path !== 'string') path = Pointer_stringify(path);
     try {
-      FS.truncate(path, length_lo);
+      FS.truncate(path, length);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -896,11 +891,11 @@ LibraryManager.library = {
     }
   },
   ftruncate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'truncate'],
-  ftruncate: function(fildes, length_lo, length_hi) {
+  ftruncate: function(fildes, length) {
     // int ftruncate(int fildes, off_t length);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftruncate.html
     try {
-      FS.ftruncate(fildes, length_lo);
+      FS.ftruncate(fildes, length);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -962,7 +957,7 @@ LibraryManager.library = {
     return -1;
   },
   lockf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  lockf: function(fildes, func, size_lo, size_hi) {
+  lockf: function(fildes, func, size) {
     // int lockf(int fildes, int function, off_t size);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lockf.html
     var stream = FS.getStream(fildes);
@@ -976,17 +971,16 @@ LibraryManager.library = {
     }
   },
   lseek__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  lseek: function(fildes, offset_lo, offset_hi, whence) {
+  lseek: function(fildes, offset, whence) {
     // off_t lseek(int fildes, off_t offset, int whence);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lseek.html
     var stream = FS.getStream(fildes);
-    tempRet0 = 0;
     if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
     try {
-      return FS.llseek(stream, offset_lo, whence);
+      return FS.llseek(stream, offset, whence);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -1002,7 +996,7 @@ LibraryManager.library = {
     return -1;
   },
   pread__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  pread: function(fildes, buf, nbyte, offset_lo, offset_hi) {
+  pread: function(fildes, buf, nbyte, offset) {
     // ssize_t pread(int fildes, void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
     var stream = FS.getStream(fildes);
@@ -1017,7 +1011,7 @@ LibraryManager.library = {
       SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
 #endif
 #endif
-      return FS.read(stream, slab, buf, nbyte, offset_lo);
+      return FS.read(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -1137,7 +1131,7 @@ LibraryManager.library = {
     return str.length;
   },
   pwrite__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  pwrite: function(fildes, buf, nbyte, offset_lo, offset_hi) {
+  pwrite: function(fildes, buf, nbyte, offset) {
     // ssize_t pwrite(int fildes, const void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
     var stream = FS.getStream(fildes);
@@ -1152,7 +1146,7 @@ LibraryManager.library = {
       SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
 #endif
 #endif
-      return FS.write(stream, slab, buf, nbyte, offset_lo);
+      return FS.write(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -2555,7 +2549,7 @@ LibraryManager.library = {
   fseek: function(stream, offset, whence) {
     // int fseek(FILE *stream, long offset, int whence);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fseek.html
-    var ret = _lseek(stream, offset, 0, whence);
+    var ret = _lseek(stream, offset, whence);
     if (ret == -1) {
       return -1;
     }
@@ -2563,8 +2557,8 @@ LibraryManager.library = {
     stream.eof = false;
     return 0;
   },
-  fseeko: 'lseek',
-  fseeko64: 'lseek',
+  fseeko: 'fseek',
+  fseeko64: 'fseek',
   fsetpos__deps: ['$FS', 'lseek', '__setErrNo', '$ERRNO_CODES'],
   fsetpos: function(stream, pos) {
     // int fsetpos(FILE *stream, const fpos_t *pos);
@@ -2600,15 +2594,8 @@ LibraryManager.library = {
       return stream.position;
     }
   },
-  ftello__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
-  ftello: function(stream) {
-    // off_t ftello(FILE *stream);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftello.html
-    var result = ftell(stream);
-    tempRet0 = result << 32;
-    return 0;
-  },
-  ftello64: 'ftello',
+  ftello: 'ftell',
+  ftello64: 'ftell',
   fwrite__deps: ['$FS', 'write'],
   fwrite: function(ptr, size, nitems, stream) {
     // size_t fwrite(const void *restrict ptr, size_t size, size_t nitems, FILE *restrict stream);
