@@ -4659,20 +4659,28 @@ LibraryManager.library = {
 
   cos: 'Math.cos',
   cosf: 'Math.cos',
+  cosl: 'Math.cos',
   sin: 'Math.sin',
   sinf: 'Math.sin',
+  sinl: 'Math.sin',
   tan: 'Math.tan',
   tanf: 'Math.tan',
+  tanl: 'Math.tan',
   acos: 'Math.acos',
   acosf: 'Math.acos',
+  acosl: 'Math.acos',
   asin: 'Math.asin',
   asinf: 'Math.asin',
+  asinl: 'Math.asin',
   atan: 'Math.atan',
   atanf: 'Math.atan',
+  atanl: 'Math.atan',
   atan2: 'Math.atan2',
   atan2f: 'Math.atan2',
+  atan2l: 'Math.atan2',
   exp: 'Math.exp',
   expf: 'Math.exp',
+  expl: 'Math.exp',
 
   // The erf and erfc functions are inspired from
   // http://www.digitalmars.com/archives/cplusplus/3634.html
@@ -4709,6 +4717,7 @@ LibraryManager.library = {
     return (ONE_SQRTPI * Math.exp(- x * x) * q2);
   },
   erfcf: 'erfcf',
+  erfcl: 'erfcf',
   erf__deps: ['erfc'],
   erf: function(x) {
     var MATH_TOLERANCE = 1E-12;
@@ -4732,6 +4741,7 @@ LibraryManager.library = {
     return (TWO_SQRTPI * sum);
   },
   erff: 'erf',
+  erfl: 'erf',
   log: 'Math.log',
   logf: 'Math.log',
   logl: 'Math.log',
@@ -4820,6 +4830,7 @@ LibraryManager.library = {
     return __reallyNegative(a) === __reallyNegative(b) ? a : -a;
   },
   copysignf: 'copysign',
+  copysignl: 'copysign',
   __signbit__deps: ['copysign'],
   __signbit: function(x) {
     // We implement using copysign so that we get support
@@ -4832,56 +4843,70 @@ LibraryManager.library = {
      return Math.sqrt(a*a + b*b);
   },
   hypotf: 'hypot',
+  hypotl: 'hypot',
   sinh: function(x) {
     var p = Math.pow(Math.E, x);
     return (p - (1 / p)) / 2;
   },
   sinhf: 'sinh',
+  sinhl: 'sinh',
   cosh: function(x) {
     var p = Math.pow(Math.E, x);
     return (p + (1 / p)) / 2;
   },
   coshf: 'cosh',
+  coshl: 'cosh',
   tanh__deps: ['sinh', 'cosh'],
   tanh: function(x) {
     return _sinh(x) / _cosh(x);
   },
   tanhf: 'tanh',
+  tanhl: 'tanh',
   asinh: function(x) {
     return Math.log(x + Math.sqrt(x * x + 1));
   },
   asinhf: 'asinh',
+  asinhl: 'asinh',
   acosh: function(x) {
     return Math.log(x * 1 + Math.sqrt(x * x - 1));
   },
   acoshf: 'acosh',
+  acoshl: 'acosh',
   atanh: function(x) {
     return Math.log((1 + x) / (1 - x)) / 2;
   },
   atanhf: 'atanh',
+  atanhl: 'atanh',
   exp2: function(x) {
     return Math.pow(2, x);
   },
   exp2f: 'exp2',
+  exp2l: 'exp2',
   expm1: function(x) {
     return Math.exp(x) - 1;
   },
   expm1f: 'expm1',
+  expm1l: 'expm1',
   round: function(x) {
     return (x < 0) ? -Math.round(-x) : Math.round(x);
   },
   roundf: 'round',
+  roundl: 'round',
   lround: 'round',
   lroundf: 'round',
+  lroundl: 'round',
   llround: 'round',
   llroundf: 'round',
+  llroundl: 'round',
   rint: function(x) {
     if (Math.abs(x % 1) !== 0.5) return Math.round(x);
     return x + x % 2 + ((x < 0) ? 1 : -1);
   },
   rintf: 'rint',
+  rintl: 'rint',
   lrint: 'rint',
   lrintf: 'rint',
+  lrintl: 'rint',
 #if USE_TYPED_ARRAYS == 2
   llrint: function(x) {
     x = (x < 0) ? -Math.round(-x) : Math.round(x);
@@ -4891,50 +4916,63 @@ LibraryManager.library = {
   llrint: 'rint',
 #endif
   llrintf: 'llrint',
+  llrintl: 'llrint',
   nearbyint: 'rint',
   nearbyintf: 'rint',
+  nearbyintl: 'rint',
   trunc: function(x) {
     return (x < 0) ? Math.ceil(x) : Math.floor(x);
   },
   truncf: 'trunc',
+  truncl: 'trunc',
   fdim: function(x, y) {
     return (x > y) ? x - y : 0;
   },
   fdimf: 'fdim',
+  fdiml: 'fdim',
   fmax: function(x, y) {
     return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
   },
   fmaxf: 'fmax',
+  fmaxl: 'fmax',
   fmin: function(x, y) {
     return isNaN(x) ? y : isNaN(y) ? x : Math.min(x, y);
   },
   fminf: 'fmin',
+  fminl: 'fmin',
   fma: function(x, y, z) {
     return x * y + z;
   },
   fmaf: 'fma',
+  fmal: 'fma',
   fmod: function(x, y) {
     return x % y;
   },
   fmodf: 'fmod',
+  fmodl: 'fmod',
   remainder: 'fmod',
   remainderf: 'fmod',
+  remainderl: 'fmod',
   log10: function(x) {
     return Math.log(x) / Math.LN10;
   },
   log10f: 'log10',
+  log10l: 'log10',
   log1p: function(x) {
     return Math.log(1 + x);
   },
   log1pf: 'log1p',
+  log1pl: 'log1p',
   log2: function(x) {
     return Math.log(x) / Math.LN2;
   },
   log2f: 'log2',
+  log2l: 'log2',
   nan: function(x) {
     return NaN;
   },
   nanf: 'nan',
+  nanl: 'nan',
 
   sincos: function(x, sine, cosine) {
     var sineVal = Math.sin(x),
@@ -4948,6 +4986,15 @@ LibraryManager.library = {
         cosineVal = Math.cos(x);
     {{{ makeSetValue('sine', '0', 'sineVal', 'float') }}};
     {{{ makeSetValue('cosine', '0', 'cosineVal', 'float') }}};
+  },
+
+  sincosl: function(x, sine, cosine) {
+    var sineVal = Math.sin(x),
+        cosineVal = Math.cos(x);
+    // We use double here because that is what our long doubles
+    // are and long double isn't a supported type in makeSetValue.
+    {{{ makeSetValue('sine', '0', 'sineVal', 'double') }}};
+    {{{ makeSetValue('cosine', '0', 'cosineVal', 'double') }}};
   },
 
   __div_t_struct_layout: Runtime.generateStructInfo([
