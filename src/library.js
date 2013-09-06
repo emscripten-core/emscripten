@@ -323,10 +323,16 @@ LibraryManager.library = {
     path = Pointer_stringify(path);
     // we don't want this in the JS API as the JS API
     // uses mknod to create all nodes.
-    var err = FS.mayMknod(mode);
-    if (err) {
-      ___setErrNo(err);
-      return -1;
+    switch (mode & {{{ cDefine('S_IFMT') }}}) {
+      case {{{ cDefine('S_IFREG') }}}:
+      case {{{ cDefine('S_IFCHR') }}}:
+      case {{{ cDefine('S_IFBLK') }}}:
+      case {{{ cDefine('S_IFIFO') }}}:
+      case {{{ cDefine('S_IFSOCK') }}}:
+        break;
+      default:
+        ___setErrNo(ERRNO_CODES.EINVAL);
+        return -1;
     }
     try {
       FS.mknod(path, mode, dev);

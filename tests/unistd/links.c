@@ -1,8 +1,15 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <emscripten.h>
 
 int main() {
+  EM_ASM(
+    FS.symlink('../test/../there!', '/link');
+    FS.writeFile('/file', 'test');
+    FS.mkdir('/folder');
+  );
+
   char* files[] = {"/link", "/file", "/folder"};
   char buffer[256] = {0};
 

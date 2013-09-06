@@ -4,8 +4,15 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <emscripten.h>
 
 int main() {
+  EM_ASM(
+    FS.writeFile('/towrite', 'abcdef');
+    FS.writeFile('/toread', 'abcdef');
+    FS.chmod('/toread', 0444);
+  );
+
   struct stat s;
   int f = open("/towrite", O_WRONLY);
   int f2 = open("/toread", O_RDONLY);

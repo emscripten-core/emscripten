@@ -2,8 +2,19 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <emscripten.h>
 
 int main() {
+  EM_ASM(
+    var dummy_device = FS.makedev(64, 0);
+    FS.registerDevice(dummy_device, {});
+    FS.mkdev('/device', dummy_device);
+
+    FS.mkdir('/folder');
+    FS.symlink('/folder', '/link');
+    FS.writeFile('/file', '', { mode: 0777 });
+  );
+
   char buffer[256];
   printf("getwd: %s\n", getwd(buffer));
   printf("errno: %d\n", errno);
