@@ -45,8 +45,8 @@ pid_t wait4 (pid_t, int *, int, struct rusage *);
 #define WSTOPSIG(s) WEXITSTATUS(s)
 #define WCOREDUMP(s) ((s) & 0x80)
 #define WIFEXITED(s) (!WTERMSIG(s))
-#define WIFSTOPPED(s) (((s) & 0xff) == 0x7f)
-#define WIFSIGNALED(s) (((signed char) (((s) & 0x7f) + 1) >> 1) > 0)
+#define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
+#define WIFSIGNALED(s) (((s)&0xffff)-1 < 0xffu)
 #define WIFCONTINUED(s) ((s) == 0xffff)
 
 #ifdef __cplusplus

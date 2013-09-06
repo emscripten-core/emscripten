@@ -23,6 +23,7 @@ typedef unsigned long msglen_t;
 #define __msg_cbytes msg_cbytes
 
 #define MSG_NOERROR 010000
+#define MSG_EXCEPT  020000
 
 #define MSG_STAT 11
 #define MSG_INFO 12
