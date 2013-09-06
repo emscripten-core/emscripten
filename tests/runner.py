@@ -254,7 +254,7 @@ process(sys.argv[1])
       os.chdir(cwd)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
+    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS == 1:
       err = self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)

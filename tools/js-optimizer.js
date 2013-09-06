@@ -1588,7 +1588,7 @@ function normalizeAsm(func) {
       var name = v[0];
       var value = v[1];
       if (!(name in data.vars)) {
-        assert(value[0] === 'num' || (value[0] === 'unary-prefix' && value[2][0] === 'num')); // must be valid coercion no-op
+        if (!(value[0] === 'num' || (value[0] === 'unary-prefix' && value[2][0] === 'num'))) break outer; // must be valid coercion no-op
         data.vars[name] = detectAsmCoercion(value);
         v.length = 1; // make an un-assigning var
       } else {

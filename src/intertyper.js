@@ -712,11 +712,13 @@ function intertyper(data, sidePass, baseLineNums) {
       if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
       item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2) || ';'; // use ; for empty inline assembly
       var i = 0;
-      splitTokenList(tokensLeft[3].item.tokens).map(function(element) {
-        var ident = toNiceIdent(element[1].text);
-        var type = element[0].text;
-        item.ident = item.ident.replace(new RegExp('\\$' + i++, 'g'), ident);
-      });
+      if (tokensLeft[3].item) { // not present in x86 inline asm
+        splitTokenList(tokensLeft[3].item.tokens).map(function(element) {
+          var ident = toNiceIdent(element[1].text);
+          var type = element[0].text;
+          item.ident = item.ident.replace(new RegExp('\\$' + i++, 'g'), ident);
+        });
+      }
       return { forward: null, ret: [item], item: item };
     } 
     if (item.ident.substr(-2) == '()') {

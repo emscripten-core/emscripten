@@ -3742,7 +3742,7 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
 
   def test_inlinejs(self):
-      if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
+      if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
       src = r'''
         #include <stdio.h>
 
@@ -3762,7 +3762,7 @@ def process(filename):
       self.do_run(src, 'Inline JS is very cool\n3.64\n')
 
   def test_inlinejs2(self):
-      if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
+      if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
       src = r'''
         #include <stdio.h>
 
@@ -7613,11 +7613,13 @@ def process(filename):
       Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_unistd_access(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
     self.do_run(src, expected)
 
   def test_unistd_curdir(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
     self.do_run(src, expected)
@@ -7647,6 +7649,7 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_truncate(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
     self.do_run(src, expected)
@@ -7675,6 +7678,7 @@ def process(filename):
     self.do_run(src, 'success', force_c=True)
 
   def test_unistd_links(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
     self.do_run(src, expected)
@@ -7685,6 +7689,7 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_io(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
     self.do_run(src, expected)
