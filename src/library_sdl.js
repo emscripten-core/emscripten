@@ -1271,6 +1271,11 @@ var LibrarySDL = {
     return 1;
   },
 
+  SDL_SetPalette__deps: ['SDL_SetColors'],
+  SDL_SetPalette: function(surf, flags, colors, firstColor, nColors) {
+    return _SDL_SetColors(surf, colors, firstColor, nColors);
+  },
+
   SDL_MapRGB: function(fmt, r, g, b) {
     // Canvas screens are always RGBA. We assume the machine is little-endian.
     return r&0xff|(g&0xff)<<8|(b&0xff)<<16|0xff000000;
@@ -2276,7 +2281,7 @@ var LibrarySDL = {
   SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
   SDL_WM_IconifyWindow: function() { throw 'SDL_WM_IconifyWindow TODO' },
 
-  Mix_SetPostMix: function() { throw 'Mix_SetPostMix: TODO' },
+  Mix_SetPostMix: function() { Runtime.warnOnce('Mix_SetPostMix: TODO') },
   Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
   Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
