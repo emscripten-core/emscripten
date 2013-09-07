@@ -688,24 +688,13 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/chdir.html
     // NOTE: The path argument may be a string, to simplify fchdir().
     if (typeof path !== 'string') path = Pointer_stringify(path);
-    var lookup;
     try {
-      lookup = FS.lookupPath(path, { follow: true });
+      FS.chdir(path);
+      return 0;
     } catch (e) {
       FS.handleFSError(e);
       return -1;
     }
-    if (!FS.isDir(lookup.node.mode)) {
-      ___setErrNo(ERRNO_CODES.ENOTDIR);
-      return -1;
-    }
-    var err = FS.nodePermissions(lookup.node, 'x');
-    if (err) {
-      ___setErrNo(err);
-      return -1;
-    }
-    FS.currentPath = lookup.path;
-    return 0;
   },
   chown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   chown: function(path, owner, group, dontResolveLastLink) {
@@ -909,12 +898,14 @@ LibraryManager.library = {
     if (size == 0) {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
-    } else if (size < FS.currentPath.length + 1) {
+    }
+    var cwd = FS.cwd();
+    if (size < cwd.length + 1) {
       ___setErrNo(ERRNO_CODES.ERANGE);
       return 0;
     } else {
-      for (var i = 0; i < FS.currentPath.length; i++) {
-        {{{ makeSetValue('buf', 'i', 'FS.currentPath.charCodeAt(i)', 'i8') }}}
+      for (var i = 0; i < cwd.length; i++) {
+        {{{ makeSetValue('buf', 'i', 'cwd.charCodeAt(i)', 'i8') }}}
       }
       {{{ makeSetValue('buf', 'i', '0', 'i8') }}}
       return buf;
@@ -4249,7 +4240,7 @@ LibraryManager.library = {
   llvm_va_end: function() {},
 
   llvm_va_copy: function(ppdest, ppsrc) {
-  	// copy the list start
+    // copy the list start
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
     
     // copy the list's current offset (will be advanced with each call to va_arg)

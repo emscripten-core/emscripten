@@ -14,6 +14,7 @@ mergeInto(LibraryManager.library, {
                 'Module["FS_createDevice"] = FS.createDevice;',
   $FS: {
     root: null,
+    mounts: [],
     devices: [null],
     streams: [null],
     nextInode: 1,
@@ -50,11 +51,8 @@ mergeInto(LibraryManager.library, {
     //
     // paths
     //
-    cwd: function() {
-      return FS.currentPath;
-    },
     lookupPath: function(path, opts) {
-      path = PATH.resolve(FS.currentPath, path);
+      path = PATH.resolve(FS.cwd(), path);
       opts = opts || { recurse_count: 0 };
 
       if (opts.recurse_count > 8) {  // max recursive lookup of 8
@@ -309,7 +307,7 @@ mergeInto(LibraryManager.library, {
         if (!FS.isDir(node.mode)) {
           return ERRNO_CODES.ENOTDIR;
         }
-        if (FS.isRoot(node) || FS.getPath(node) === FS.currentPath) {
+        if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
           return ERRNO_CODES.EBUSY;
         }
       } else {
@@ -422,17 +420,45 @@ mergeInto(LibraryManager.library, {
     //
     // core
     //
+    syncfs: function(populate, callback) {
+      if (typeof(populate) === 'function') {
+        callback = populate;
+        populate = false;
+      }
+
+      var completed = 0;
+      var total = FS.mounts.length;
+      var done = function(err) {
+        if (err) {
+          return callback(err);
+        }
+        if (++completed >= total) {
+          callback(null);
+        }
+      };
+
+      // sync all mounts
+      for (var i = 0; i < FS.mounts.length; i++) {
+        var mount = FS.mounts[i];
+        if (!mount.type.syncfs) {
+          done(null);
+          continue;
+        }
+        mount.type.syncfs(mount, populate, done);
+      }
+    },
     mount: function(type, opts, mountpoint) {
+      var lookup;
+      if (mountpoint) {
+        lookup = FS.lookupPath(mountpoint, { follow: false });
+        mountpoint = lookup.path;  // use the absolute path
+      }
       var mount = {
         type: type,
         opts: opts,
         mountpoint: mountpoint,
         root: null
       };
-      var lookup;
-      if (mountpoint) {
-        lookup = FS.lookupPath(mountpoint, { follow: false });
-      }
       // create a root node for the fs
       var root = type.mount(mount);
       root.mount = mount;
@@ -446,6 +472,8 @@ mergeInto(LibraryManager.library, {
           FS.root = mount.root;
         }
       }
+      // add to our cached list of mounts
+      FS.mounts.push(mount);
       return root;
     },
     lookup: function(parent, name) {
@@ -759,7 +787,6 @@ mergeInto(LibraryManager.library, {
           follow: !(flags & {{{ cDefine('O_NOFOLLOW') }}})
         });
         node = lookup.node;
-        path = lookup.path;
       } catch (e) {
         // ignore
       }
@@ -791,10 +818,11 @@ mergeInto(LibraryManager.library, {
       if ((flags & {{{ cDefine('O_TRUNC')}}})) {
         FS.truncate(node, 0);
       }
+
       // register the stream with the filesystem
       var stream = FS.createStream({
-        path: path,
         node: node,
+        path: FS.getPath(node),  // we want the absolute path to the node
         flags: flags,
         seekable: true,
         position: 0,
@@ -959,8 +987,21 @@ mergeInto(LibraryManager.library, {
 
     //
     // module-level FS code
-    // TODO move to pre/postamble
     //
+    cwd: function() {
+      return FS.currentPath;
+    },
+    chdir: function(path) {
+      var lookup = FS.lookupPath(path, { follow: true });
+      if (!FS.isDir(lookup.node.mode)) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+      }
+      var err = FS.nodePermissions(lookup.node, 'x');
+      if (err) {
+        throw new FS.ErrnoError(err);
+      }
+      FS.currentPath = lookup.path;
+    },
     createDefaultDirectories: function() {
       FS.mkdir('/tmp');
     },
