@@ -3032,6 +3032,9 @@ function outline(ast) {
     }
     var ignore = [];
     traverse(func, function(node) {
+      if (node[0] === 'while' && node[2][0] !== 'block') {
+        node[2] = ['block', [node[2]]]; // so we have a list of statements and can flatten  while(1) switch
+      }
       var stats = getStatements(node);
       if (stats) {
         for (var i = 0; i < stats.length; i++) {
