@@ -396,30 +396,33 @@ var LibrarySDL = {
     lastTouch: {},
     savedKeydown: null,
 
+    simulateMouseFromTouchEvents: false,
+
     receiveEvent: function(event) {
       switch(event.type) {
         case 'touchstart': case 'touchmove': {
           event.preventDefault();
           
-          // simulate mouse events
-          var firstTouch = event.touches[0];
-          if ( event.type == 'touchstart' ) {
-            SDL.DOMButtons[0] = 1;
-            SDL.lastTouch.x = firstTouch.pageX;
-            SDL.lastTouch.y = firstTouch.pageY;
-          };
-          var mouseEventType;
-          switch(event.type) {
-            case 'touchstart': mouseEventType = 'mousedown'; break;
-            case 'touchmove': mouseEventType = 'mousemove'; break;
+          if (SDL.simulateMouseFromTouchEvents) {
+            var firstTouch = event.touches[0];
+            if ( event.type == 'touchstart' ) {
+              SDL.DOMButtons[0] = 1;
+              SDL.lastTouch.x = firstTouch.pageX;
+              SDL.lastTouch.y = firstTouch.pageY;
+            };
+            var mouseEventType;
+            switch(event.type) {
+              case 'touchstart': mouseEventType = 'mousedown'; break;
+              case 'touchmove': mouseEventType = 'mousemove'; break;
+            }
+            var mouseEvent = {
+              type: mouseEventType,
+              button: 0,
+              pageX: firstTouch.pageX,
+              pageY: firstTouch.pageY
+            };
+            SDL.events.push(mouseEvent);
           }
-          var mouseEvent = {
-            type: mouseEventType,
-            button: 0,
-            pageX: firstTouch.pageX,
-            pageY: firstTouch.pageY
-          };
-          SDL.events.push(mouseEvent);
           for (i=0;i<event.touches.length;i++) {
             var touch = event.touches[i];
             SDL.events.push({
@@ -431,14 +434,16 @@ var LibrarySDL = {
         }
         case 'touchend': {
           event.preventDefault();
-          var mouseEvent = {
-            type: 'mouseup',
-            button: 0,
-            pageX: SDL.lastTouch.x,
-            pageY: SDL.lastTouch.y
-          };
-          SDL.DOMButtons[0] = 0;
-          SDL.events.push(mouseEvent);
+          if (SDL.simulateMouseFromTouchEvents) {
+            var mouseEvent = {
+              type: 'mouseup',
+              button: 0,
+              pageX: SDL.lastTouch.x,
+              pageY: SDL.lastTouch.y
+            };
+            SDL.DOMButtons[0] = 0;
+            SDL.events.push(mouseEvent);
+          }
           for (i=0;i<event.changedTouches.length;i++) {
             var touch = event.changedTouches[i];
             SDL.events.push({
