@@ -3711,8 +3711,10 @@ function outline(ast) {
             }
           }
         }
-        ret.push(func);
-        printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+        if (ret) {
+          ret.push(func);
+          printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+        }
       }
       denormalizeAsm(func, asmData);
     });
