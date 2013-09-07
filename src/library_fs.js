@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$VFS', '$PATH', '$TTY', '$MEMFS', 'stdin', 'stdout', 'stderr', 'fflush'],
+  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$VFS', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', 'stdin', 'stdout', 'stderr', 'fflush'],
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
                 '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
@@ -818,6 +818,8 @@ mergeInto(LibraryManager.library, {
       if ((flags & {{{ cDefine('O_TRUNC')}}})) {
         FS.truncate(node, 0);
       }
+      // we've already handled these, don't pass down to the underlying vfs
+      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}});
 
       // register the stream with the filesystem
       var stream = FS.createStream({
