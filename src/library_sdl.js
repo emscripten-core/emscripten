@@ -883,6 +883,14 @@ var LibrarySDL = {
     surfData.locked++;
     if (surfData.locked > 1) return 0;
 
+    // Mark in C/C++-accessible SDL structure
+    // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
+    // So we have fields all of the same size, and 5 of them before us.
+    // TODO: Use macros like in library.js
+    {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
+
+    if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
+
     surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
     if (surf == SDL.screen) {
       var data = surfData.image.data;
@@ -924,12 +932,6 @@ var LibrarySDL = {
 #endif
       }
     }
-
-    // Mark in C/C++-accessible SDL structure
-    // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
-    // So we have fields all of the same size, and 5 of them before us.
-    // TODO: Use macros like in library.js
-    {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
 
     return 0;
   },
