@@ -443,6 +443,7 @@ var LibraryManager = {
   },
 
   isStubFunction: function(ident) {
+    if (SIDE_MODULE == 1) return false; // cannot eliminate these, as may be implement in the main module and imported by us
     var libCall = LibraryManager.library[ident.substr(1)];
     return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
                                          && !(ident in Functions.implementedFunctions);

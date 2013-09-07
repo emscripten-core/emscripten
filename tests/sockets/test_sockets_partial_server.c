@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,8 +19,14 @@ int serverfd = 0;
 int clientfd = 0;
 
 void cleanup() {
-  if (serverfd) close(serverfd);
-  if (clientfd) close(clientfd);
+  if (serverfd) {
+    close(serverfd);
+    serverfd = 0;
+  }
+  if (clientfd) {
+    close(clientfd);
+    clientfd = 0;
+  }
 }
 
 void do_send(int sockfd) {
@@ -86,7 +93,7 @@ int main() {
   int res;
 
   atexit(cleanup);
-  //signal(SIGTERM, cleanup);
+  signal(SIGTERM, cleanup);
 
   // create the socket
   serverfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);

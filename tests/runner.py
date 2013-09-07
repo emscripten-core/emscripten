@@ -63,6 +63,10 @@ class RunnerCore(unittest.TestCase):
     self.working_dir = dirname
     os.chdir(dirname)
 
+    # Use emscripten root for node module lookup
+    scriptdir = os.path.dirname(os.path.abspath(__file__))
+    os.environ['NODE_PATH'] = os.path.join(scriptdir, '..', 'node_modules')
+
     if not self.save_dir:
       self.has_prev_ll = False
       for temp_file in os.listdir(TEMP_DIR):
@@ -250,7 +254,7 @@ process(sys.argv[1])
       os.chdir(cwd)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
+    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS == 1:
       err = self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)

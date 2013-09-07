@@ -444,6 +444,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
        forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
       basic_vars += ['cttz_i8', 'ctlz_i8']
 
+    if settings.get('DLOPEN_SUPPORT'):
+      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+        basic_vars.append('F_BASE_%s' % sig)
+        asm_setup += '  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0') + '\n'
+
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     def asm_coerce(value, sig):
@@ -475,8 +480,12 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
 ''' % (sig, i, args, arg_coercions, jsret))
       from tools import shared
+      shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
+      if settings.get('DLOPEN_SUPPORT'):
+        asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
+        basic_funcs.append('extCall_%s' % sig)
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
@@ -606,23 +615,36 @@ function setTempRet%d(value) {
 // EMSCRIPTEN_END_ASM
 (%s, %s, buffer);
 %s;
+''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
+
+    if not settings.get('SIDE_MODULE'):
+      funcs_js.append('''
 Runtime.stackAlloc = function(size) { return asm['stackAlloc'](size) };
 Runtime.stackSave = function() { return asm['stackSave']() };
 Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
-''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
+''')
 
     # Set function table masks
-    def function_table_maskize(js):
-      masks = {}
-      default = None
-      for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
-        masks[sig] = str(table.count(','))
-        default = sig
+    masks = {}
+    max_mask = 0
+    for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+      mask = table.count(',')
+      masks[sig] = str(mask)
+      max_mask = max(mask, max_mask)
+    def function_table_maskize(js, masks):
       def fix(m):
         sig = m.groups(0)[0]
         return masks[sig]
       return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
-    funcs_js = map(function_table_maskize, funcs_js)
+    funcs_js = map(lambda js: function_table_maskize(js, masks), funcs_js)
+
+    if settings.get('DLOPEN_SUPPORT'):
+      funcs_js.append('''
+  asm.maxFunctionIndex = %(max_mask)d;
+  DLFCN.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
+  Module.SYMBOL_TABLE = SYMBOL_TABLE;
+''' % { 'max_mask': max_mask, 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
+
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
     outfile.write(function_tables_defs)
@@ -637,13 +659,18 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
     symbol_table = {}
     for k, v in forwarded_json['Variables']['indexedGlobals'].iteritems():
        if forwarded_json['Variables']['globals'][k]['named']:
-         symbol_table[k] = v + forwarded_json['Runtime']['GLOBAL_BASE']
+         symbol_table[k] = str(v + forwarded_json['Runtime']['GLOBAL_BASE'])
     for raw in last_forwarded_json['Functions']['tables'].itervalues():
       if raw == '': continue
       table = map(string.strip, raw[raw.find('[')+1:raw.find(']')].split(","))
-      symbol_table.update(map(lambda x: (x[1], x[0]),
-        filter(lambda x: x[1] != '0', enumerate(table))))
-    outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table))
+      for i in range(len(table)):
+        value = table[i]
+        if value != '0':
+          if settings.get('SIDE_MODULE'):
+            symbol_table[value] = 'FUNCTION_TABLE_OFFSET+' + str(i)
+          else:
+            symbol_table[value] = str(i)
+    outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table).replace('"', ''))
 
   for funcs_js_item in funcs_js: # do this loop carefully to save memory
     funcs_js_item = indexize(funcs_js_item)
@@ -662,69 +689,6 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
     settings[name] = json.loads(value)
-
-  # Add header defines to settings
-  defines = {}
-  include_root = path_from_root('system', 'include')
-  headers = args.headers[0].split(',') if len(args.headers) > 0 else []
-  seen_headers = set()
-  while len(headers) > 0:
-    header = headers.pop(0)
-    if not os.path.isabs(header):
-      header = os.path.join(include_root, header)
-    seen_headers.add(header)
-    for line in open(header, 'r'):
-      line = line.replace('\t', ' ')
-      m = re.match('^ *# *define +(?P<name>[-\w_.]+) +\(?(?P<value>[-\w_.|]+)\)?.*', line)
-      if not m:
-        # Catch enum defines of a very limited sort
-        m = re.match('^ +(?P<name>[A-Z_\d]+) += +(?P<value>\d+).*', line)
-      if m:
-        if m.group('name') != m.group('value'):
-          defines[m.group('name')] = m.group('value')
-        #else:
-        #  print 'Warning: %s #defined to itself' % m.group('name') # XXX this can happen if we are set to be equal to an enum (with the same name)
-      m = re.match('^ *# *include *["<](?P<name>[\w_.-/]+)[">].*', line)
-      if m:
-        # Find this file
-        found = False
-        for w in [w for w in os.walk(include_root)]:
-          for f in w[2]:
-            curr = os.path.join(w[0], f)
-            if curr.endswith(m.group('name')) and curr not in seen_headers:
-              headers.append(curr)
-              found = True
-              break
-          if found: break
-        #assert found, 'Could not find header: ' + m.group('name')
-  if len(defines) > 0:
-    def lookup(value):
-      try:
-        while not unicode(value).isnumeric():
-          value = defines[value]
-        return value
-      except:
-        pass
-      try: # 0x300 etc.
-        value = eval(value)
-        return value
-      except:
-        pass
-      try: # CONST1|CONST2
-        parts = map(lookup, value.split('|'))
-        value = reduce(lambda a, b: a|b, map(eval, parts))
-        return value
-      except:
-        pass
-      return None
-    for key, value in defines.items():
-      value = lookup(value)
-      if value is not None:
-        defines[key] = str(value)
-      else:
-        del defines[key]
-    #print >> sys.stderr, 'new defs:', str(defines).replace(',', ',\n  '), '\n\n'
-    settings.setdefault('C_DEFINES', {}).update(defines)
 
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []

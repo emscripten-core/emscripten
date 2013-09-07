@@ -10,6 +10,7 @@ def timeout_run(proc, timeout, note='unnamed process', full_output=False):
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
       raise Exception("Timed out: " + note)
   out = proc.communicate()
+  out = map(lambda o: '' if o is None else o, out)
   return '\n'.join(out) if full_output else out[0]
 
 def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None, full_output=False):

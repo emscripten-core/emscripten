@@ -1,16 +1,18 @@
 var dummy_device = FS.makedev(64, 0);
 FS.registerDevice(dummy_device, {});
 
-FS.createFolder('/', 'forbidden', false, false);
-FS.createFolder('/forbidden', 'test', true, true);
-FS.createPath('/', 'abc/123', true, true);
-FS.createPath('/', 'abc/456', true, true);
-FS.createPath('/', 'def/789', true, true);
-FS.mkdev('/abc/deviceA', 0666, dummy_device);
-FS.mkdev('/def/deviceB', 0666, dummy_device);
-FS.createLink('/abc', 'localLink', '123', true, true);
-FS.createLink('/abc', 'rootLink', '/', true, true);
-FS.createLink('/abc', 'relativeLink', '../def', true, true);
+FS.mkdir('/forbidden', 0000);
+FS.mkdir('/forbidden/test');
+FS.mkdir('/abc');
+FS.mkdir('/abc/123');
+FS.mkdir('/abc/456');
+FS.mkdir('/def');
+FS.mkdir('/def/789');
+FS.mkdev('/abc/deviceA', dummy_device);
+FS.mkdev('/def/deviceB', dummy_device);
+FS.symlink('123', '/abc/localLink');
+FS.symlink('/', '/abc/rootLink');
+FS.symlink('../def', '/abc/relativeLink');
 FS.ignorePermissions = false;
 
 function explore(path) {

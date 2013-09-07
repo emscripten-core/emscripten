@@ -101,6 +101,7 @@ struct hostent
 
 struct hostent* gethostbyaddr(const void* addr, socklen_t len, int type);
 struct hostent* gethostbyname(const char* name);
+struct hostent* gethostbyname_r(const char *name, struct hostent *ret, char *buf, int buflen, int *err); // XXX not quite standard, see http://linux.die.net/man/3/gethostbyname_r
 void sethostent(int stayopen);
 void endhostent(void);
 void herror(const char* s);

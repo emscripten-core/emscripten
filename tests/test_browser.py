@@ -1207,6 +1207,12 @@ If manually bisecting:
   def test_gl_stride(self):
     self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1'])
 
+  def test_gl_vertex_buffer_pre(self):
+    self.btest('gl_vertex_buffer_pre.c', reference='gl_vertex_buffer_pre.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1'])
+
+  def test_gl_vertex_buffer(self):
+    self.btest('gl_vertex_buffer.c', reference='gl_vertex_buffer.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1'], reference_slack=1)
+
   def test_matrix_identity(self):
     self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'], args=['-s', 'LEGACY_GL_EMULATION=1'])
 
@@ -1404,3 +1410,8 @@ If manually bisecting:
 
   def test_emscripten_async_wget2(self):
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
+
+  def test_module(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
+    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
+

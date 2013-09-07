@@ -1564,6 +1564,7 @@ function normalizeAsm(func) {
   var data = {
     params: {}, // ident => ASM_* type
     vars: {}, // ident => ASM_* type
+    inlines: [], // list of inline assembly copies
   };
   // process initial params
   var stats = func[3];
@@ -1621,6 +1622,10 @@ function normalizeAsm(func) {
           node[0] = 'name';
           node[1] = 'Math_' + node[2];
         }
+      } else if (type === 'call' && node[1][0] === 'function') {
+        assert(!node[1][1]); // anonymous functions only
+        data.inlines.push(node[1]);
+        node[1] = ['name', 'inlinejs']; // empty out body, leave arguments, so they are eliminated/minified properly
       }
     });
     i++;
@@ -1668,6 +1673,14 @@ function denormalizeAsm(func, data) {
     stats[next] = ['var', varDefs];
   } else {
     stats[next] = emptyNode();
+  }
+  if (data.inlines.length > 0) {
+    var i = 0;
+    traverse(func, function(node, type) {
+      if (type === 'call' && node[1][0] === 'name' && node[1][1] === 'inlinejs') {
+        node[1] = data.inlines[i++]; // swap back in the body
+      }
+    });
   }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
@@ -2019,6 +2032,7 @@ function registerize(ast) {
       var finalAsmData = {
         params: {},
         vars: {},
+        inlines: asmData.inlines,
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
@@ -3452,7 +3466,7 @@ function outline(ast) {
     });
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
-    var newAsmData = { params: { sp: ASM_INT }, vars: {} };
+    var newAsmData = { params: { sp: ASM_INT }, vars: {}, inlines: asmData.inlines };
     for (var v in codeInfo.reads) {
       if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }

@@ -17,9 +17,10 @@ int do_msg_read(int sockfd, msg_t *msg, int offset, int length, struct sockaddr 
       return res;
     }
     assert(res != 0);
-    msg->buffer = malloc(msg->length);
 
     printf("do_msg_read: allocating %d bytes for message\n", msg->length);
+
+    msg->buffer = malloc(msg->length);
   }
 
   // read the actual message
@@ -52,6 +53,7 @@ int do_msg_write(int sockfd, msg_t *msg, int offset, int length, struct sockaddr
       assert(errno == EAGAIN);
       return res;
     }
+    printf("do_msg_write: sending message header for %d bytes\n", msg->length);
     assert(res == sizeof(int));
   }
 

@@ -6,23 +6,25 @@ mergeInto(LibraryManager.library, {
   $TTY: {
     ttys: [],
     init: function () {
-      if (ENVIRONMENT_IS_NODE) {
-        // currently, FS.init does not distinguish if process.stdin is a file or TTY
-        // device, it always assumes it's a TTY device. because of this, we're forcing
-        // process.stdin to UTF8 encoding to at least make stdin reading compatible
-        // with text files until FS.init can be refactored.
-        process['stdin']['setEncoding']('utf8');
-      }
+      // https://github.com/kripken/emscripten/pull/1555
+      // if (ENVIRONMENT_IS_NODE) {
+      //   // currently, FS.init does not distinguish if process.stdin is a file or TTY
+      //   // device, it always assumes it's a TTY device. because of this, we're forcing
+      //   // process.stdin to UTF8 encoding to at least make stdin reading compatible
+      //   // with text files until FS.init can be refactored.
+      //   process['stdin']['setEncoding']('utf8');
+      // }
     },
     shutdown: function() {
-      if (ENVIRONMENT_IS_NODE) {
-        // inolen: any idea as to why node -e 'process.stdin.read()' wouldn't exit immediately (with process.stdin being a tty)?
-        // isaacs: because now it's reading from the stream, you've expressed interest in it, so that read() kicks off a _read() which creates a ReadReq operation
-        // inolen: I thought read() in that case was a synchronous operation that just grabbed some amount of buffered data if it exists?
-        // isaacs: it is. but it also triggers a _read() call, which calls readStart() on the handle
-        // isaacs: do process.stdin.pause() and i'd think it'd probably close the pending call
-        process['stdin']['pause']();
-      }
+      // https://github.com/kripken/emscripten/pull/1555
+      // if (ENVIRONMENT_IS_NODE) {
+      //   // inolen: any idea as to why node -e 'process.stdin.read()' wouldn't exit immediately (with process.stdin being a tty)?
+      //   // isaacs: because now it's reading from the stream, you've expressed interest in it, so that read() kicks off a _read() which creates a ReadReq operation
+      //   // inolen: I thought read() in that case was a synchronous operation that just grabbed some amount of buffered data if it exists?
+      //   // isaacs: it is. but it also triggers a _read() call, which calls readStart() on the handle
+      //   // isaacs: do process.stdin.pause() and i'd think it'd probably close the pending call
+      //   process['stdin']['pause']();
+      // }
     },
     register: function(dev, ops) {
       TTY.ttys[dev] = { input: [], output: [], ops: ops };

@@ -283,6 +283,20 @@ def check_node_version():
     logging.warning('cannot check node version: %s',  e)
     return False
 
+# Finds the system temp directory without resorting to using the one configured in .emscripten
+def find_temp_directory():
+  if WINDOWS:
+    if os.getenv('TEMP') and os.path.isdir(os.getenv('TEMP')):
+      return os.getenv('TEMP')
+    elif os.getenv('TMP') and os.path.isdir(os.getenv('TMP')):
+      return os.getenv('TMP')
+    elif os.path.isdir('C:\\temp'):
+      return os.getenv('C:\\temp')
+    else:
+      return None # No luck!
+  else:
+    return '/tmp'
+
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
@@ -429,7 +443,6 @@ EMCC = path_from_root('emcc')
 EMXX = path_from_root('em++')
 EMAR = path_from_root('emar')
 EMRANLIB = path_from_root('emranlib')
-EMLIBTOOL = path_from_root('emlibtool')
 EMCONFIG = path_from_root('em-config')
 EMLINK = path_from_root('emlink.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
@@ -451,8 +464,13 @@ class Configuration:
     try:
       self.TEMP_DIR = TEMP_DIR
     except NameError:
-      logging.debug('TEMP_DIR not defined in ~/.emscripten, using /tmp')
-      self.TEMP_DIR = '/tmp'
+      self.TEMP_DIR = find_temp_directory()
+      if self.TEMP_DIR == None:
+        logging.critical('TEMP_DIR not defined in ' + os.path.expanduser('~\\.emscripten') + ", and could not detect a suitable directory! Please configure .emscripten to contain a variable TEMP_DIR='/path/to/temp/dir'.")
+      logging.debug('TEMP_DIR not defined in ~/.emscripten, using ' + self.TEMP_DIR)
+
+    if not os.path.isdir(self.TEMP_DIR):
+      logging.critical("The temp directory TEMP_DIR='" + self.TEMP_DIR + "' doesn't seem to exist! Please make sure that the path is correct.")
 
     self.CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
 
@@ -470,12 +488,13 @@ class Configuration:
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 def apply_configuration():
-  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR
+  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR, TEMP_DIR
   configuration = Configuration()
   DEBUG = configuration.DEBUG
   EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
   DEBUG_CACHE = configuration.DEBUG_CACHE
   CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
+  TEMP_DIR = configuration.TEMP_DIR
 apply_configuration()
 
 logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s')
@@ -717,6 +736,10 @@ class Settings2(type):
       return ret
 
     @classmethod
+    def copy(self, values):
+      self.attrs = values
+
+    @classmethod
     def apply_opt_level(self, opt_level, noisy=False):
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
@@ -782,7 +805,6 @@ class Building:
     env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
-    #env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
@@ -843,6 +865,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       raise
     del env['EMMAKEN_JUST_CONFIGURE']
     if process.returncode is not 0:
+      logging.error('Configure step failed with non-zero return code ' + str(process.returncode) + '! Command line: ' + str(args))
       raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
 
   @staticmethod
@@ -893,12 +916,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     #  except:
     #    pass
     env = Building.get_building_env(native)
+    log_to_file = os.getenv('EM_BUILD_VERBOSE') == None or int(os.getenv('EM_BUILD_VERBOSE')) == 0
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
-                                                       stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if log_to_file else None, 
+                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if log_to_file else None)
       except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
@@ -911,8 +935,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
           try:
-            Building.make(make + make_args, stdout=make_out,
-                                            stderr=make_err, env=env)
+            Building.make(make + make_args, stdout=make_out if log_to_file else None,
+                                            stderr=make_err if log_to_file else None, env=env)
           except subprocess.CalledProcessError, e:
             pass # Ignore exit code != 0
       try:
@@ -924,10 +948,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         break
       except Exception, e:
         if i > 0:
-          # Due to the ugly hack above our best guess is to output the first run
-          with open_make_err(0) as ferr:
-            for line in ferr:
-              sys.stderr.write(line)
+          if log_to_file:
+            # Due to the ugly hack above our best guess is to output the first run
+            with open_make_err(0) as ferr:
+              for line in ferr:
+                sys.stderr.write(line)
           raise Exception('could not build library ' + name + ' due to exception ' + str(e))
     if old_dir:
       os.chdir(old_dir)
@@ -1176,8 +1201,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def get_safe_internalize():
     if not Building.can_build_standalone(): return [] # do not internalize anything
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
-    if '_malloc' not in exps: exps.append('_malloc') # needed internally, even if user did not add to EXPORTED_FUNCTIONS
-    if '_free' not in exps: exps.append('_free')
     exports = ','.join(map(lambda exp: exp[1:], exps))
     # internalize carefully, llvm 3.2 will remove even main if not told not to
     return ['-internalize', '-internalize-public-api-list=' + exports]
@@ -1426,7 +1449,7 @@ JCache = cache.JCache(Cache)
 chunkify = cache.chunkify
 
 class JS:
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, ([\dRuntime\.GLOBAL_BASE+]+)\)'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, ([\dRuntime\.GLOBAL_BASEH+]+)\)'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -1438,11 +1461,32 @@ class JS:
     return ident.replace('%', '$').replace('@', '_')
 
   @staticmethod
+  def make_extcall(sig, named=True):
+    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    args = 'index' + (',' if args else '') + args
+    # C++ exceptions are numbers, and longjmp is a string 'longjmp'
+    ret = '''function%s(%s) {
+  %sModule["dynCall_%s"](%s);
+}''' % ((' extCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
+
+    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
+      # guard against cross-module stack leaks
+      ret = ret.replace(') {\n', ''') {
+  try {
+    var preStack = asm.stackSave();
+''').replace(';\n}', ''';
+  } finally {
+    assert(asm.stackSave() == preStack);
+  }
+}''')
+    return ret
+
+  @staticmethod
   def make_invoke(sig, named=True):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    return '''function%s(%s) {
+    ret = '''function%s(%s) {
   try {
     %sModule["dynCall_%s"](%s);
   } catch(e) {
@@ -1450,6 +1494,17 @@ class JS:
     asm["setThrew"](1, 0);
   }
 }''' % ((' invoke_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
+
+    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
+      # guard against cross-module stack leaks
+      ret = ret.replace('  try {', '''  var preStack = asm.stackSave();
+  try {
+''').replace('  }\n}', '''  } finally {
+    assert(asm.stackSave() == preStack);
+  }
+}''')
+
+    return ret
 
   @staticmethod
   def align(x, by):
