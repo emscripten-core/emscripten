@@ -3466,7 +3466,7 @@ function outline(ast) {
     });
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
-    var newAsmData = { params: { sp: ASM_INT }, vars: {} };
+    var newAsmData = { params: { sp: ASM_INT }, vars: {}, inlines: asmData.inlines };
     for (var v in codeInfo.reads) {
       if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }
