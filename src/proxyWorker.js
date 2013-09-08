@@ -9,6 +9,11 @@ function EventListener() {
 };
 
 var window = new EventListener();
+
+window.close = function() {
+  postMessage({ target: 'window', method: 'close' });
+};
+
 var document = new EventListener();
 
 document.createElement = function(what) {
