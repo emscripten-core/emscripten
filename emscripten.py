@@ -287,6 +287,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     exported_implemented_functions = set()
   for func_js, curr_forwarded_data in outputs:
     curr_forwarded_json = json.loads(curr_forwarded_data)
+    forwarded_json['Types']['hasInlineJS'] = forwarded_json['Types']['hasInlineJS'] or curr_forwarded_json['Types']['hasInlineJS']
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
     for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
       forwarded_json['Functions']['blockAddresses'][key] = value
@@ -543,7 +544,7 @@ function asmPrintFloat(x, y) {
 }
 // EMSCRIPTEN_START_ASM
 var asm = (function(global, env, buffer) {
-  'use asm';
+  %s
   var HEAP8 = new global.Int8Array(buffer);
   var HEAP16 = new global.Int16Array(buffer);
   var HEAP32 = new global.Int32Array(buffer);
@@ -552,7 +553,7 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global.Uint32Array(buffer);
   var HEAPF32 = new global.Float32Array(buffer);
   var HEAPF64 = new global.Float64Array(buffer);
-''' % (asm_setup,) + '\n' + asm_global_vars + '''
+''' % (asm_setup, "'use asm';" if not forwarded_json['Types']['hasInlineJS'] else "'almost asm, but inline js';") + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;

@@ -708,7 +708,8 @@ function intertyper(data, sidePass, baseLineNums) {
     item.ident = eatLLVMIdent(tokensLeft);
     if (item.ident == 'asm') {
       if (ASM_JS) {
-        warnOnce('inline JS in asm.js mode can cause the code to no longer fall in the asm.js subset of JavaScript');
+        Types.hasInlineJS = true;
+        warnOnce('inline JavaScript (asm, EM_ASM) will cause the code to no longer fall in the asm.js subset of JavaScript, which can reduce performance');
       }
       assert(TARGET_LE32, 'inline js is only supported in le32');
       // Inline assembly is just JavaScript that we paste into the code
