@@ -471,6 +471,9 @@ Options that are modified or new in %s include:
                            to hide these warnings and acknowledge that the
                            explicit use of absolute paths is intentional.
 
+  --proxy-to-worker        Generates both html and js files. The main
+                           program is in js, and the html proxies to/from it.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -740,6 +743,7 @@ try:
   save_bc = False
   memory_init_file = False
   use_preload_cache = False
+  proxy_to_worker = False
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -903,6 +907,9 @@ try:
       memory_init_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '--proxy-to-worker':
+      proxy_to_worker = True
+      newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name):
@@ -1127,6 +1134,9 @@ try:
 
   if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
     assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
+
+  if proxy_to_worker:
+    shared.Settings.PROXY_TO_WORKER = 1
 
   ## Compile source code to bitcode
 
@@ -1709,7 +1719,11 @@ try:
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     html = open(target, 'w')
-    if not Compression.on:
+    if proxy_to_worker:
+      html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename)))
+      js_target = unsuffixed(target) + '.js'
+      shutil.copyfile(final, js_target)
+    elif not Compression.on:
       if debug_level >= 4:
         match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
             re.DOTALL)
@@ -1783,13 +1797,12 @@ try:
     html.close()
   else:
     if split_js_file:
-        from tools.split import split_javascript_file
-        split_javascript_file(final, unsuffixed(target), split_js_file)
+      from tools.split import split_javascript_file
+      split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if debug_level >= 4: generate_source_map(target)
-
-        # copy final JS to output
-        shutil.move(final, target)
+      if debug_level >= 4: generate_source_map(target)
+      # copy final JS to output
+      shutil.move(final, target)
 
   if DEBUG: logging.debug('total time: %.2f seconds' % (time.time() - start_time))
 

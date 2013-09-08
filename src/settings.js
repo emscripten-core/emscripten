@@ -343,6 +343,9 @@ var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 
                               //       linked libraries can break things.
 var BUILD_AS_WORKER = 0; // If set to 1, this is a worker library, a special kind of library
                          // that is run in a worker. See emscripten.h
+var PROXY_TO_WORKER = 0; // If set to 1, we build the project into a js file that will run
+                         // in a worker, and generate an html file that proxies input and
+                         // output to/from it.
 var LINKABLE = 0; // If set to 1, this file can be linked with others, either as a shared
                   // library or as the main file that calls a shared library. To enable that,
                   // we will not internalize all symbols and cull the unused ones, in other

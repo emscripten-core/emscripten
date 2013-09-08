@@ -627,6 +627,9 @@ If manually bisecting:
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
+  def test_sdl_canvas_proxy(self):
+    self.btest('sdl_canvas.c', '1', args=['--proxy-to-worker'])
+
   def test_sdl_key(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.postRun = function() {
