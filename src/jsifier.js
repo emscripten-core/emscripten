@@ -324,11 +324,13 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(typeof constant === 'object');//, [typeof constant, JSON.stringify(constant), item.external]);
 
         // This is a flattened object. We need to find its idents, so they can be assigned to later
+        var structTypes = null;
         constant.forEach(function(value, i) {
           if (needsPostSet(value)) { // ident, or expression containing an ident
+            if (!structTypes) structTypes = generateStructTypes(item.type);
             ret.push({
               intertype: 'GlobalVariablePostSet',
-              JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+              JS: makeSetValue(makeGlobalUse(item.ident), i, value, structTypes[i], false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
             });
             constant[i] = '0';
           }
