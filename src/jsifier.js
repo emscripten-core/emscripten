@@ -1843,6 +1843,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
       print('}');
     }
+    if (PROXY_TO_WORKER) {
+      print(read('proxyWorker.js'));
+    }
     if (RUNTIME_TYPE_INFO) {
       Types.cleanForRuntime();
       print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
