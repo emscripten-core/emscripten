@@ -546,21 +546,24 @@ def get_llvm_target():
   return os.environ.get('EMCC_LLVM_TARGET') or 'le32-unknown-nacl' # 'i386-pc-linux-gnu'
 LLVM_TARGET = get_llvm_target()
 
+# COMPILER_OPTS: options passed to clang when generating bitcode for us
 try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
 except:
   COMPILER_OPTS = []
-# Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
-COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__i386', '-Ui386',
-                                 '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
-                                 '-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-U__STRICT_ANSI__',
-                                 '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno',
+COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-DEMSCRIPTEN', '-D__EMSCRIPTEN__',
+                                 '-fno-math-errno',
                                  #'-fno-threadsafe-statics', # disabled due to issue 1289
                                  '-target', LLVM_TARGET]
 
 if LLVM_TARGET == 'le32-unknown-nacl':
   COMPILER_OPTS = filter(lambda opt: opt != '-m32', COMPILER_OPTS) # le32 target is 32-bit anyhow, no need for -m32
   COMPILER_OPTS += ['-U__native_client__', '-U__pnacl__', '-U__ELF__'] # The nacl target is originally used for Google Native Client. Emscripten is not NaCl, so remove the platform #define, when using their triple.
+
+# Remove various platform specific defines, and set little endian
+COMPILER_STANDARDIZATION_OPTS = ['-U__i386__', '-U__i386', '-Ui386', '-U__STRICT_ANSI__', '-D__IEEE_LITTLE_ENDIAN',
+                                 '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
+                                 '-U__APPLE__', '-U__linux__']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
@@ -578,9 +581,8 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
-  ] + [
-    '-U__APPLE__', '-U__linux__', '-U__MMX__', '-U__SSE__', '-U__SSE2__'
   ]
+  EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
   if LLVM_TARGET != 'le32-unknown-nacl':
     EMSDK_CXX_OPTS = ['-nostdinc++'] # le32 target does not need -nostdinc++
   else:
@@ -589,6 +591,7 @@ if USE_EMSDK:
 else:
   EMSDK_OPTS = []
   EMSDK_CXX_OPTS = []
+  COMPILER_OPTS += COMPILER_STANDARDIZATION_OPTS
 
 #print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
 #print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)
