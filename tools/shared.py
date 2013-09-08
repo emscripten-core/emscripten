@@ -579,7 +579,7 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ] + [
-    '-U__APPLE__', '-U__linux__'
+    '-U__APPLE__', '-U__linux__', '-U__MMX__', '-U__SSE__', '-U__SSE2__'
   ]
   if LLVM_TARGET != 'le32-unknown-nacl':
     EMSDK_CXX_OPTS = ['-nostdinc++'] # le32 target does not need -nostdinc++
