@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(hello_world_gles.html)
+project(hello_world_gles)
 
 file(GLOB sourceFiles ../../hello_world_gles.c)
 
@@ -10,5 +10,7 @@ else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimi
 	SET(linkFlags "-O2")
 endif()
 
-add_executable(hello_world_gles.html ${sourceFiles})
-set_target_properties(hello_world_gles.html PROPERTIES LINK_FLAGS "${linkFlags}")
+SET(CMAKE_EXECUTABLE_SUFFIX ".html")
+
+add_executable(hello_world_gles ${sourceFiles})
+set_target_properties(hello_world_gles PROPERTIES LINK_FLAGS "${linkFlags}")
