@@ -19,9 +19,6 @@ int main(int argc, char **argv) {
 
   printf("done.\n");
 
-  int result = 1;
-  REPORT_RESULT();
-
   return 0;
 }
 

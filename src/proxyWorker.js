@@ -25,8 +25,9 @@ document.createElement = function(what) {
           canvas.data = {
             width: canvas.width,
             height: canvas.height,
-            buffer: new Uint8Array(canvas.width*canvas.height*4)
+            data: new Uint8Array(canvas.width*canvas.height*4)
           };
+          postMessage({ target: 'canvas', op: 'resize', width: canvas.width, height: canvas.height });
         }
       };
       canvas.getContext = function(type) {
@@ -38,13 +39,14 @@ document.createElement = function(what) {
             return {
               width: canvas.data.width,
               height: canvas.data.height,
-              data: new Uint8Array(canvas.data.buffer) // TODO: can we avoid this copy?
+              data: new Uint8Array(canvas.data.data) // TODO: can we avoid this copy?
             };
           },
           putImageData: function(image, x, y) {
             canvas.ensureData();
             assert(x == 0 && y == 0 && image.width == canvas.width && image.height == canvas.height);
-            canvas.data.buffer.set(image.data); // TODO: can we avoid this copy?
+            canvas.data.data.set(image.data); // TODO: can we avoid this copy?
+            postMessage({ target: 'canvas', op: 'render', image: canvas.data });
           }
         };
       };

@@ -1,6 +1,8 @@
 
 // proxy to/from worker
 
+Module.ctx = Module.canvas.getContext('2d');
+
 var worker = new Worker('{{{ filename }}}.js');
 
 worker.onmessage = function(event) {
@@ -8,6 +10,23 @@ worker.onmessage = function(event) {
   switch (data.target) {
     case 'window': {
       window[data.method]();
+      break;
+    }
+    case 'canvas': {
+      switch (data.op) {
+        case 'resize': {
+          Module.canvas.width = data.width;
+          Module.canvas.height = data.height;
+          Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
+          break;
+        }
+        case 'render': {
+          Module.canvasData.data.set(data.image.data);
+          Module.ctx.putImageData(Module.canvasData, 0, 0);
+          break;
+        }
+        default: throw 'eh?';
+      }
       break;
     }
     default: throw 'what?';
