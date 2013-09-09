@@ -275,10 +275,7 @@ f.close()
     # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
   def test_cmake(self):
-    # On Windows, we want to build cmake-generated Makefiles with mingw32-make instead of e.g. cygwin make, since mingw32-make
-    # understands Windows paths, and cygwin make additionally produces a cryptic 'not valid bitcode file' errors on files that
-    # *are* valid bitcode files.
-
+    # Test all supported generators.
     if WINDOWS:
       generators = ['MinGW Makefiles', 'NMake Makefiles']
     else:
