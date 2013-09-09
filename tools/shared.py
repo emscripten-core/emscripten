@@ -822,33 +822,12 @@ class Building:
 
   @staticmethod
   def handle_CMake_toolchain(args, env):
-    CMakeToolchain = ('''# the name of the target operating system
-SET(CMAKE_SYSTEM_NAME Linux)
+    # Don't append a toolchain file if the user specified one already.
+    for arg in args:
+      if '-DCMAKE_TOOLCHAIN_FILE' in arg:
+        return args
 
-# which C and C++ compiler to use
-SET(CMAKE_C_COMPILER   %(winfix)s$EMSCRIPTEN_ROOT/emcc)
-SET(CMAKE_CXX_COMPILER %(winfix)s$EMSCRIPTEN_ROOT/em++)
-SET(CMAKE_AR           %(winfix)s$EMSCRIPTEN_ROOT/emar)
-SET(CMAKE_RANLIB       %(winfix)s$EMSCRIPTEN_ROOT/emranlib)
-SET(CMAKE_C_FLAGS      $CFLAGS)
-SET(CMAKE_CXX_FLAGS    $CXXFLAGS)
-
-# here is the target environment located
-SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
-
-# adjust the default behaviour of the FIND_XXX() commands:
-# search headers and libraries in the target environment, search
-# programs in the host environment
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS else 'python ' }) \
-      .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
-      .replace('$CFLAGS', env['CFLAGS']) \
-      .replace('$CXXFLAGS', env['CFLAGS'])
-    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=configuration.TEMP_DIR)[1]
-    open(toolchainFile, 'w').write(CMakeToolchain)
-    args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
+    args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Platform', 'Emscripten.cmake'))
     return args
 
   @staticmethod
@@ -919,13 +898,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     #  except:
     #    pass
     env = Building.get_building_env(native)
-    log_to_file = os.getenv('EM_BUILD_VERBOSE') == None or int(os.getenv('EM_BUILD_VERBOSE')) == 0
+    verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if log_to_file else None, 
-                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if log_to_file else None)
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if verbose_level < 2 else None,
+                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if verbose_level < 1 else None)
       except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
@@ -933,13 +912,16 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
-    
+
+    if verbose_level >= 3:
+      make_args += ['VERBOSE=1']
+
     for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
           try:
-            Building.make(make + make_args, stdout=make_out if log_to_file else None,
-                                            stderr=make_err if log_to_file else None, env=env)
+            Building.make(make + make_args, stdout=make_out if verbose_level < 2 else None,
+                                            stderr=make_err if verbose_level < 1 else None, env=env)
           except subprocess.CalledProcessError, e:
             pass # Ignore exit code != 0
       try:
@@ -951,7 +933,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         break
       except Exception, e:
         if i > 0:
-          if log_to_file:
+          if verbose_level == 0:
             # Due to the ugly hack above our best guess is to output the first run
             with open_make_err(0) as ferr:
               for line in ferr:
