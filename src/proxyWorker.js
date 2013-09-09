@@ -8,7 +8,9 @@ function EventListener() {
   };
 };
 
-var window = new EventListener();
+var window = this;
+var windowExtra = new EventListener();
+for (var x in windowExtra) window[x] = windowExtra[x];
 
 window.close = function() {
   postMessage({ target: 'window', method: 'close' });
@@ -57,4 +59,13 @@ document.createElement = function(what) {
 };
 
 Module.canvas = document.createElement('canvas');
+
+Module.setStatus = function(){};
+
+Module.print = function(x) {
+  postMessage({ target: 'stdout', content: x });
+};
+Module.printErr = function(x) {
+  postMessage({ target: 'stderr', content: x });
+};
 

@@ -645,7 +645,9 @@ window.close = function() {
 </body>''' % open('reftest.js').read())
       open('test.html', 'w').write(html)
 
-    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker'], manual_reference=True, post_build=post)
+    open('data.txt', 'w').write('datum')
+
+    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=post)
 
   def test_sdl_key(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''

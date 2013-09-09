@@ -1,9 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
+#include <assert.h>
 #include <emscripten.h>
 
 int main(int argc, char **argv) {
+  FILE *f = fopen("data.txt", "rb");
+  assert(f);
+  assert(fgetc(f) == 'd');
+  assert(fgetc(f) == 'a');
+  assert(fgetc(f) == 't');
+  assert(fgetc(f) == 'u');
+  assert(fgetc(f) == 'm');
+  fclose(f);
+
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 

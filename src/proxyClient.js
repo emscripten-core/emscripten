@@ -8,6 +8,14 @@ var worker = new Worker('{{{ filename }}}.js');
 worker.onmessage = function(event) {
   var data = event.data;
   switch (data.target) {
+    case 'stdout': {
+      Module.print(data.content);
+      break;
+    }
+    case 'stderr': {
+      Module.printErr(data.content);
+      break;
+    }
     case 'window': {
       window[data.method]();
       break;
