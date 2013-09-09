@@ -58,6 +58,12 @@ document.createElement = function(what) {
   }
 };
 
+var console = {
+  log: function(x) {
+    Module.printErr(x);
+  }
+};
+
 Module.canvas = document.createElement('canvas');
 
 Module.setStatus = function(){};
