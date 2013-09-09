@@ -54,6 +54,7 @@ function cloneEvent(event) {
 ['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
   document.addEventListener(event, function(event) {
     worker.postMessage({ target: 'document', event: cloneEvent(event) });
+    event.preventDefault();
   });
 });
 
@@ -66,6 +67,7 @@ function cloneEvent(event) {
 ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
   Module.canvas.addEventListener(event, function(event) {
     worker.postMessage({ target: 'canvas', event: cloneEvent(event) });
+    event.preventDefault();
   }, true);
 });
 
