@@ -57,7 +57,7 @@ var LibrarySDL = {
     DOMButtons: [0, 0, 0],
 
     DOMEventToSDLEvent: {},
-    
+
     TOUCH_MOUSEID: -1, // This corresponds to the SDL_TOUCH_MOUSEID in SDL_touch.h
     TOUCH_DEFAULT_ID: 0, // Our default deviceID for touch events (we get nothing from the browser)
     
@@ -189,11 +189,10 @@ var LibrarySDL = {
       ]),
       MouseMotionEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
+        ['i32', 'timestamp'],
         ['i32', 'windowID'],
-        ['i8', 'state'],
-        ['i8', 'padding1'],
-        ['i8', 'padding2'],
-        ['i8', 'padding3'],
+        ['i32', 'which'],
+        ['i32', 'state'],
         ['i32', 'x'],
         ['i32', 'y'],
         ['i32', 'xrel'],
@@ -201,7 +200,9 @@ var LibrarySDL = {
       ]),
       MouseButtonEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
+        ['i32', 'timestamp'],
         ['i32', 'windowID'],
+        ['i32', 'which'],
         ['i8', 'button'],
         ['i8', 'state'],
         ['i8', 'padding1'],
@@ -400,8 +401,6 @@ var LibrarySDL = {
     downFingers: {},
     savedKeydown: null,
 
-    simulateMouseFromTouchEvents: false,
-
     receiveEvent: function(event) {
       switch(event.type) {
         case 'touchstart': case 'touchmove': {
@@ -424,26 +423,25 @@ var LibrarySDL = {
             touches = event.touches;
           }
           
-          if (SDL.simulateMouseFromTouchEvents) {
-            var firstTouch = touches[0];
-            if ( event.type == 'touchstart' ) {
-              SDL.DOMButtons[0] = 1;
-              SDL.lastTouch.x = firstTouch.pageX;
-              SDL.lastTouch.y = firstTouch.pageY;
-            };
-            var mouseEventType;
-            switch(event.type) {
-              case 'touchstart': mouseEventType = 'mousedown'; break;
-              case 'touchmove': mouseEventType = 'mousemove'; break;
-            }
-            var mouseEvent = {
-              type: mouseEventType,
-              button: 0,
-              pageX: firstTouch.pageX,
-              pageY: firstTouch.pageY
-            };
-            SDL.events.push(mouseEvent);
+          var firstTouch = touches[0];
+          if ( event.type == 'touchstart' ) {
+            SDL.DOMButtons[0] = 1;
+            SDL.lastTouch.x = firstTouch.pageX;
+            SDL.lastTouch.y = firstTouch.pageY;
+          };
+          var mouseEventType;
+          switch(event.type) {
+            case 'touchstart': mouseEventType = 'mousedown'; break;
+            case 'touchmove': mouseEventType = 'mousemove'; break;
           }
+          var mouseEvent = {
+            type: mouseEventType,
+            button: 0,
+            pageX: firstTouch.pageX,
+            pageY: firstTouch.pageY
+          };
+          SDL.events.push(mouseEvent);
+
           for (i=0;i<touches.length;i++) {
             var touch = touches[i];
             SDL.events.push({
@@ -466,17 +464,16 @@ var LibrarySDL = {
               delete SDL.downFingers[touch.identifier];
             }
           }
+
+          var mouseEvent = {
+            type: 'mouseup',
+            button: 0,
+            pageX: SDL.lastTouch.x,
+            pageY: SDL.lastTouch.y
+          };
+          SDL.DOMButtons[0] = 0;
+          SDL.events.push(mouseEvent);
           
-          if (SDL.simulateMouseFromTouchEvents) {
-            var mouseEvent = {
-              type: 'mouseup',
-              button: 0,
-              pageX: SDL.lastTouch.x,
-              pageY: SDL.lastTouch.y
-            };
-            SDL.DOMButtons[0] = 0;
-            SDL.events.push(mouseEvent);
-          }
           for (i=0;i<event.changedTouches.length;i++) {
             var touch = event.changedTouches[i];
             SDL.events.push({
@@ -749,13 +746,21 @@ var LibrarySDL = {
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.timestamp', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.windowID', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.which', '0', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.padding1', '0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.padding2', '0', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'Browser.mouseX', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'Browser.mouseY', 'i32') }}};
           } else {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.timestamp', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.windowID', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.which', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'Browser.mouseX', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'Browser.mouseY', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.mouseMovementX', 'i32') }}};
