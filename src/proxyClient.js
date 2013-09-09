@@ -26,6 +26,7 @@ worker.onmessage = function(event) {
           Module.canvas.width = data.width;
           Module.canvas.height = data.height;
           Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
+          postMessage({ target: 'canvas', boundingClientRect: Module.canvas.getBoundingClientRect() });
           break;
         }
         case 'render': {

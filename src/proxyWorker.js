@@ -62,6 +62,17 @@ document.createElement = function(what) {
           }
         };
       };
+      canvas.boundingClientRect = {};
+      canvas.getBoundingClientRect = function() {
+        return {
+          width: canvas.boundingClientRect.width,
+          height: canvas.boundingClientRect.height,
+          top: canvas.boundingClientRect.top,
+          left: canvas.boundingClientRect.left,
+          bottom: canvas.boundingClientRect.bottom,
+          right: canvas.boundingClientRect.right
+        };
+      };
       return canvas;
     }
     default: throw 'document.createElement ' + what;
@@ -119,7 +130,11 @@ onmessage = function(message) {
       break;
     }
     case 'canvas': {
-      Module.canvas.fireEvent(message.data.event);
+      if (message.data.event) {
+        Module.canvas.fireEvent(message.data.event);
+      } else if (message.data.boundingClientRect) {
+        Module.canvas.boundingClientRect = message.data.boundingClientRect;
+      } else throw 'ey?';
       break;
     }
     default: throw 'wha? ' + message.data.target;
