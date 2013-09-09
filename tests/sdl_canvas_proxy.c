@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
+#include <emscripten.h>
 
 int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_VIDEO);
@@ -17,8 +18,7 @@ int main(int argc, char **argv) {
 
   SDL_Quit();
 
-  printf("done.\n");
-
+  EM_ASM(window.close());
   return 0;
 }
 

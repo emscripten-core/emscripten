@@ -628,7 +628,24 @@ If manually bisecting:
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_canvas_proxy(self):
-    self.btest('sdl_canvas_proxy.c', '1', args=['--proxy-to-worker'])
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function assert(x, y) { if (!x) throw 'assertion failed ' + y }
+
+%s
+
+var windowClose = window.close;
+window.close = function() {
+  doReftest();
+  setTimeout(windowClose, 1000);
+};
+</script>
+</body>''' % open('reftest.js').read())
+      open('test.html', 'w').write(html)
+
+    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker'], manual_reference=True, post_build=post)
 
   def test_sdl_key(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
