@@ -41,3 +41,31 @@ worker.onmessage = function(event) {
   }
 };
 
+function cloneEvent(event) {
+  var ret = {};
+  for (var x in event) {
+    if (x == x.toUpperCase()) continue;
+    var prop = event[x];
+    if (typeof prop === 'number' || typeof prop === 'string') ret[x] = prop;
+  }
+  return ret;
+};
+
+['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
+  document.addEventListener(event, function(event) {
+    worker.postMessage({ target: 'document', event: cloneEvent(event) });
+  });
+});
+
+['unload'].forEach(function(event) {
+  window.addEventListener(event, function(event) {
+    worker.postMessage({ target: 'window', event: cloneEvent(event) });
+  });
+});
+
+['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
+  Module.canvas.addEventListener(event, function(event) {
+    worker.postMessage({ target: 'canvas', event: cloneEvent(event) });
+  }, true);
+});
+

@@ -6,6 +6,16 @@ function EventListener() {
     if (!this.listeners[event]) this.listeners[event] = [];
     this.listeners[event].push(func);
   };
+
+  this.fireEvent = function(event) {
+    event.preventDefault = function(){};
+
+    if (event.type in this.listeners) {
+      this.listeners[event.type].forEach(function(listener) {
+        listener(event);
+      });
+    }
+  };
 };
 
 var window = this;
@@ -73,5 +83,46 @@ Module.print = function(x) {
 };
 Module.printErr = function(x) {
   postMessage({ target: 'stderr', content: x });
+};
+
+// buffer messages until the program starts to run
+
+var messageBuffer = null;
+
+function messageResender() {
+  if (calledMain) {
+    assert(messageBuffer && messageBuffer.length > 0);
+    messageBuffer.forEach(function(message) {
+      onmessage(message);
+    });
+    messageBuffer = null;
+  } else {
+    setTimeout(messageResender, 100);
+  }
+}
+
+onmessage = function(message) {
+  if (!calledMain) {
+    if (!messageBuffer) {
+      messageBuffer = [];
+      setTimeout(messageResender, 100);
+    }
+    messageBuffer.push(message);
+  }
+  switch (message.data.target) {
+    case 'document': {
+      document.fireEvent(message.data.event);
+      break;
+    }
+    case 'window': {
+      window.fireEvent(message.data.event);
+      break;
+    }
+    case 'canvas': {
+      Module.canvas.fireEvent(message.data.event);
+      break;
+    }
+    default: throw 'wha? ' + message.data.target;
+  }
 };
 

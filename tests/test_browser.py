@@ -680,6 +680,52 @@ window.close = function() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
     self.run_browser('page.html', '', '/report_result?223092870')
 
+  def test_sdl_key_proxy(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      var Module = {};
+      Module.postRun = function() {
+        function doOne() {
+          Module._one();
+          setTimeout(doOne, 1000/60);
+        }
+        setTimeout(doOne, 1000/60);
+      }
+    ''')
+
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function keydown(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keydown", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  document.dispatchEvent(event);
+}
+
+function keyup(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keyup", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  document.dispatchEvent(event);
+}
+
+keydown(1250);keydown(38);keyup(38);keyup(1250); // alt, up
+keydown(1248);keydown(1249);keydown(40);keyup(40);keyup(1249);keyup(1248); // ctrl, shift, down
+keydown(37);keyup(37); // left
+keydown(39);keyup(39); // right
+keydown(65);keyup(65); // a
+keydown(66);keyup(66); // b
+keydown(100);keyup(100); // trigger the end
+
+</script>
+</body>''')
+      open('test.html', 'w').write(html)
+
+    self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']'''], manual_reference=True, post_build=post)
+
   def test_sdl_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.postRun = function() {

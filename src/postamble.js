@@ -10,8 +10,8 @@ ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
 var initialStackTop;
-
 var preloadStartTime = null;
+var calledMain = false;
 
 Module['callMain'] = Module.callMain = function callMain(args) {
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
@@ -70,6 +70,8 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     } else {
       throw e;
     }
+  } finally {
+    calledMain = true;
   }
 }
 
