@@ -394,6 +394,7 @@ var LibrarySDL = {
     },
 
     lastTouch: {},
+    downFingers: {},
     savedKeydown: null,
 
     simulateMouseFromTouchEvents: false,
@@ -402,9 +403,26 @@ var LibrarySDL = {
       switch(event.type) {
         case 'touchstart': case 'touchmove': {
           event.preventDefault();
+
+          var touches = [];
+          
+          // First clear out any duplicate touchstart events
+          // XXX - michaeljbishop -  This is a bug workaround for Firefox OS. They
+          // sometimes send two touchstart events before a touchend/move for the same id.
+          if (event.type === 'touchstart') {
+            for(var i = 0; i < event.touches.length; i++) {
+              var touch = event.touches[i];
+              if (SDL.downFingers[touch.identifier] != true) {
+                SDL.downFingers[touch.identifier] = true;
+                touches.push(touch);
+              }
+            }
+          } else {
+            touches = event.touches;
+          }
           
           if (SDL.simulateMouseFromTouchEvents) {
-            var firstTouch = event.touches[0];
+            var firstTouch = touches[0];
             if ( event.type == 'touchstart' ) {
               SDL.DOMButtons[0] = 1;
               SDL.lastTouch.x = firstTouch.pageX;
@@ -423,8 +441,8 @@ var LibrarySDL = {
             };
             SDL.events.push(mouseEvent);
           }
-          for (i=0;i<event.touches.length;i++) {
-            var touch = event.touches[i];
+          for (i=0;i<touches.length;i++) {
+            var touch = touches[i];
             SDL.events.push({
               type: event.type,
               touch: touch
@@ -434,6 +452,19 @@ var LibrarySDL = {
         }
         case 'touchend': {
           event.preventDefault();
+          
+          // Remove the entry in the SDL.downFingers hash
+          // because the finger is no longer down.
+          // XXX - michaeljbishop -  This is a bug workaround for Firefox OS. They
+          // sometimes send two touchstart events before a touchend/move for the same id.
+          for(var i = 0; i < event.changedTouches.length; i++) {
+            var touch = event.changedTouches[i];
+            if (SDL.downFingers[touch.identifier] === true) {
+              delete SDL.downFingers[touch.identifier];
+            }
+          }
+
+          
           if (SDL.simulateMouseFromTouchEvents) {
             var mouseEvent = {
               type: 'mouseup',
@@ -587,7 +618,7 @@ var LibrarySDL = {
       }
       return;
     },
-
+    
     handleEvent: function(event) {
       if (event.handled) return;
       event.handled = true;
