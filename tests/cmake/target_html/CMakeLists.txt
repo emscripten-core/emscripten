@@ -14,3 +14,8 @@ SET(CMAKE_EXECUTABLE_SUFFIX ".html")
 
 add_executable(hello_world_gles ${sourceFiles})
 set_target_properties(hello_world_gles PROPERTIES LINK_FLAGS "${linkFlags}")
+
+# Validating asm.js requires SpiderMonkey JS VM - detect its presence via the SPIDERMONKEY environment variable.
+if (DEFINED ENV{SPIDERMONKEY} AND CMAKE_BUILD_TYPE STREQUAL Release)
+	em_validate_asmjs_after_build(hello_world_gles)
+endif()
