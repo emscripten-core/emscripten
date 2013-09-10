@@ -1154,7 +1154,7 @@ try:
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if input_file.endswith(CXX_SUFFIXES):
         args += shared.EMSDK_CXX_OPTS
-      logging.debug("running:" + call + ' ' + ' '.join(args))
+      logging.debug("running: " + call + ' ' + ' '.join(args))
       execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
         logging.error('compiler frontend failed to generate LLVM bitcode, halting')
