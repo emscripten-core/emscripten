@@ -43,6 +43,12 @@ NUM_CHUNKS_PER_CORE = 1.25
 MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
+STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
+if STDERR_FILE:
+  STDERR_FILE = os.path.abspath(STDERR_FILE)
+  print >> sys.stderr, 'logging stderr in js compiler phase into %s' % STDERR_FILE
+  STDERR_FILE = open(STDERR_FILE, 'w')
+
 def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
   try:
     funcs_file = temp_files.get('.func_%d.ll' % i).name
@@ -57,6 +63,7 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
       engine=compiler_engine,
       args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
       stdout=subprocess.PIPE,
+      stderr=STDERR_FILE,
       cwd=path_from_root('src'))
   except KeyboardInterrupt:
     # Python 2.7 seems to lock up when a child process throws KeyboardInterrupt
@@ -179,7 +186,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
   if not out:
     open(pre_file, 'w').write(pre_input)
-    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE,
+    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                        cwd=path_from_root('src'))
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     if jcache:
@@ -377,7 +384,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
-  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE,
+  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                      cwd=path_from_root('src'))
   post, last_forwarded_data = out.split('//FORWARDED_DATA:') # if this fails, perhaps the process failed prior to printing forwarded data?
   last_forwarded_json = json.loads(last_forwarded_data)
