@@ -1431,6 +1431,7 @@ Succeeded!
       self.do_run(src, 'BUG?\nDisplay: Vu=465.100000  Vv=465.200000  Wu=160.300000  Wv=111.400000')
 
   def test_math(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
       src = '''
         #include <stdio.h>
         #include <stdlib.h>
