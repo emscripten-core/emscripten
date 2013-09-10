@@ -820,14 +820,52 @@ class Building:
     env['EMSCRIPTEN'] = path_from_root()
     return env
 
+  # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
+  @staticmethod
+  def which(program):
+    import os
+    def is_exe(fpath):
+      return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+      if is_exe(program):
+        return program
+    else:
+      for path in os.environ["PATH"].split(os.pathsep):
+        path = path.strip('"')
+        exe_file = os.path.join(path, program)
+        if is_exe(exe_file):
+          return exe_file
+
+        if WINDOWS and not '.' in fname:
+          if is_exe(exe_file + '.exe'):
+            return exe_file + '.exe'
+          if is_exe(exe_file + '.cmd'):
+            return exe_file + '.cmd'
+          if is_exe(exe_file + '.bat'):
+            return exe_file + '.bat'
+
+    return None
+
   @staticmethod
   def handle_CMake_toolchain(args, env):
-    # Don't append a toolchain file if the user specified one already.
-    for arg in args:
-      if '-DCMAKE_TOOLCHAIN_FILE' in arg:
-        return args
 
-    args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Platform', 'Emscripten.cmake'))
+    def has_substr(array, substr):
+      for arg in array:
+        if substr in arg:
+          return True
+      return False
+
+    # Append the Emscripten toolchain file if the user didn't specify one.
+    if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
+      args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Platform', 'Emscripten.cmake'))
+
+    # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
+    # pulling in a native Visual Studio, or Unix Makefiles.
+    if WINDOWS and not '-G' in args and Building.which('mingw32-make'):
+      args += ['-G', 'MinGW Makefiles']
+ 
     return args
 
   @staticmethod
@@ -858,6 +896,13 @@ class Building:
       logging.error('Executable to run not specified.')
       sys.exit(1)
     #args += ['VERBOSE=1']
+
+    # On Windows prefer building with mingw32-make instead of make, if it exists.
+    if WINDOWS and args[0] == 'make':
+      mingw32_make = Building.which('mingw32-make')
+      if mingw32_make:
+        args[0] = mingw32_make
+
     try:
       process = Popen(args, stdout=stdout, stderr=stderr, env=env)
       process.communicate()
