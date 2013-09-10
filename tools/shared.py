@@ -863,7 +863,7 @@ class Building:
 
     # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
     # pulling in a native Visual Studio, or Unix Makefiles.
-    if not '-G' in args and Building.which('mingw32-make'):
+    if WINDOWS and not '-G' in args and Building.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
  
     return args
