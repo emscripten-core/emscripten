@@ -823,30 +823,30 @@ class Building:
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
   @staticmethod
   def which(program):
-      import os
-      def is_exe(fpath):
-          return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    import os
+    def is_exe(fpath):
+      return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-      fpath, fname = os.path.split(program)
-      if fpath:
-          if is_exe(program):
-              return program
-      else:
-          for path in os.environ["PATH"].split(os.pathsep):
-              path = path.strip('"')
-              exe_file = os.path.join(path, program)
-              if is_exe(exe_file):
-                  return exe_file
+    fpath, fname = os.path.split(program)
+    if fpath:
+      if is_exe(program):
+        return program
+    else:
+      for path in os.environ["PATH"].split(os.pathsep):
+        path = path.strip('"')
+        exe_file = os.path.join(path, program)
+        if is_exe(exe_file):
+          return exe_file
 
-              if WINDOWS and not '.' in fname:
-                if is_exe(exe_file + '.exe'):
-                  return exe_file + '.exe'
-                if is_exe(exe_file + '.cmd'):
-                  return exe_file + '.cmd'
-                if is_exe(exe_file + '.bat'):
-                  return exe_file + '.bat'
+        if WINDOWS and not '.' in fname:
+          if is_exe(exe_file + '.exe'):
+            return exe_file + '.exe'
+          if is_exe(exe_file + '.cmd'):
+            return exe_file + '.cmd'
+          if is_exe(exe_file + '.bat'):
+            return exe_file + '.bat'
 
-      return None
+    return None
 
   @staticmethod
   def handle_CMake_toolchain(args, env):
