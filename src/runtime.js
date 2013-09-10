@@ -214,7 +214,11 @@ var Runtime = {
           // and it adds no size
           // XXX this happens in java-nbody for example... assert(index === type.fields.length, 'zero-length in the middle!');
           size = 0;
-          alignSize = type.alignSize || QUANTUM_SIZE;
+          if (Types.types[field]) {
+            alignSize = Runtime.getAlignSize(null, Types.types[field].alignSize);
+          } else {
+            alignSize = type.alignSize || QUANTUM_SIZE;
+          }
         } else {
           size = Types.types[field].flatSize;
           alignSize = Runtime.getAlignSize(null, Types.types[field].alignSize);
