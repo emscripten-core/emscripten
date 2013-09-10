@@ -2,6 +2,9 @@
   Simple DirectMedia Layer
   Copyright (C) 1997-2011 Sam Lantinga <slouken@libsdl.org>
 
+  Portions of these headers taken from SDL2 (where noted)
+  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
   arising from the use of this software.
