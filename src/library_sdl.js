@@ -471,7 +471,6 @@ var LibrarySDL = {
             // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
             // since we add a mouseup in that case
             if (!SDL.DOMButtons[event.button]) {
-              event.preventDefault();
               return;
             }
 
