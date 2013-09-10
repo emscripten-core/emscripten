@@ -468,7 +468,6 @@ mergeInto(LibraryManager.library, {
           var coords = {x: adjustedX, y: adjustedY};
           
           if (event.type === 'touchstart') {
-//             console.log("touchstart("+touch.pageX+","+touch.pageY+") or ("+adjustedX+","+adjustedY+")");
             Browser.lastTouches[touch.identifier] = coords;
             Browser.touches[touch.identifier] = coords;
           } else if (event.type === 'touchend' || event.type === 'touchmove') {

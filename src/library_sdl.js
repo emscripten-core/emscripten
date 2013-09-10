@@ -466,7 +466,6 @@ var LibrarySDL = {
               delete SDL.downFingers[touch.identifier];
             }
           }
-
           
           if (SDL.simulateMouseFromTouchEvents) {
             var mouseEvent = {
@@ -777,7 +776,6 @@ var LibrarySDL = {
           if ( touch['deviceID'] === undefined )
             touch.deviceID = SDL.TOUCH_DEFAULT_ID;
           if ( dx === 0 && dy === 0 && event.type === 'touchmove' ) return; // don't send these if nothing happened
-//           console.log( "sending '"+ event.type + "' ("+lx+","+ly+")-->("+x+","+y+")"+" d("+dx+","+dy+")" );
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.timestamp', '0', 'i32') }}}; // XXX michaeljbishop - Unimplemented for now
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.touchId', 'touch.deviceID', 'i64') }}};
