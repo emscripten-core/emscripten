@@ -57,7 +57,10 @@ var LibrarySDL = {
     DOMButtons: [0, 0, 0],
 
     DOMEventToSDLEvent: {},
-
+    
+    TOUCH_MOUSEID: -1, // This corresponds to the SDL_TOUCH_MOUSEID in SDL_touch.h
+    TOUCH_DEFAULT_ID: 0, // Our default deviceID for touch events (we get nothing from the browser)
+    
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       46: 127, // SDLK_DEL == '\177'
       38:  1106, // up arrow
@@ -485,6 +488,17 @@ var LibrarySDL = {
           break;
         }
         case 'mousemove':
+          if (SDL.DOMButtons[0] === 1) {
+            SDL.events.push({
+              type: 'touchmove',
+              touch: {
+                identifier: 0,
+                deviceID: SDL.TOUCH_MOUSEID,
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
+          }
           if (Browser.pointerLock) {
             // workaround for firefox bug 750111
             if ('mozMovementX' in event) {
@@ -518,6 +532,15 @@ var LibrarySDL = {
             };
           } else if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
+            SDL.events.push({
+              type: 'touchstart',
+              touch: {
+                identifier: 0,
+                deviceID: SDL.TOUCH_MOUSEID,
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
           } else if (event.type == 'mouseup') {
             // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
             // since we add a mouseup in that case
@@ -526,6 +549,15 @@ var LibrarySDL = {
               return;
             }
 
+            SDL.events.push({
+              type: 'touchend',
+              touch: {
+                identifier: 0,
+                deviceID: SDL.TOUCH_MOUSEID,
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
             SDL.DOMButtons[event.button] = 0;
           }
 
@@ -742,11 +774,13 @@ var LibrarySDL = {
           var ly = Browser.lastTouches[touch.identifier].y / h;
           var dx = x - lx;
           var dy = y - ly;
+          if ( touch['deviceID'] === undefined )
+            touch.deviceID = SDL.TOUCH_DEFAULT_ID;
           if ( dx === 0 && dy === 0 && event.type === 'touchmove' ) return; // don't send these if nothing happened
 //           console.log( "sending '"+ event.type + "' ("+lx+","+ly+")-->("+x+","+y+")"+" d("+dx+","+dy+")" );
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.timestamp', '0', 'i32') }}}; // XXX michaeljbishop - Unimplemented for now
-          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.touchId', '0', 'i64') }}}; // XXX michaeljbishop - Unimplemented for now
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.touchId', 'touch.deviceID', 'i64') }}};
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.fingerId', 'touch.identifier', 'i64') }}};
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.x', 'x', 'float') }}};
           {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.y', 'y', 'float') }}};
