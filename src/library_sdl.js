@@ -442,6 +442,14 @@ var LibrarySDL = {
           }
           // fall through
         case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
+          // If we preventDefault on keydown events, the subsequent keypress events
+          // won't fire. However, it's fine (and in some cases necessary) to
+          // preventDefault for keys that don't generate a character. Otherwise,
+          // preventDefault is the right thing to do in general.
+          if (event.type !== 'keydown' || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
+            event.preventDefault();
+          }
+
           if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
             var button = (event.type == 'DOMMouseScroll' ? event.detail : -event.wheelDelta) > 0 ? 4 : 3;
             var event2 = {
@@ -497,13 +505,6 @@ var LibrarySDL = {
             SDL.savedKeydown = null;
           } else if (event.type === 'keydown') {
             SDL.savedKeydown = event;
-          }
-
-          // If we preventDefault on keydown events, the subsequent keypress events
-          // won't fire. However, it's fine (and in some cases necessary) to
-          // preventDefault for keys that don't generate a character.
-          if (event.type !== 'keydown' || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
-            event.preventDefault();
           }
 
           // Don't push keypress events unless SDL_StartTextInput has been called.
