@@ -8641,29 +8641,44 @@ def process(filename):
       Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                                   'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
-    def test():
-      self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
-                   [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
-                    open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
-                    open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
-                   libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                                               configure_args=['--disable-demos','--disable-dependency-tracking']),
-                   includes=[path_from_root('tests', 'bullet', 'src')])
-    test()
+    configure_commands = [['sh', './configure'], ['cmake', '.']]
+    configure_args = [['--disable-demos','--disable-dependency-tracking'], ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']]
+    for c in range(0,2):
+      configure = configure_commands[c]
+      # Windows cannot run configure sh scripts.
+      if WINDOWS and configure[0] == 'sh':
+        continue
 
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      # Test forced alignment
-      print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
-      old = open('src.cpp.o.js').read()
-      Settings.FORCE_ALIGNED_MEMORY = 1
+      # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
+      if configure[0] == 'sh':
+        generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                          os.path.join('src', '.libs', 'libBulletCollision.a'),
+                          os.path.join('src', '.libs', 'libLinearMath.a')]
+      else:
+        generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
+                          os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
+                          os.path.join('src', 'LinearMath', 'libLinearMath.a')]
+
+      def test():
+        self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
+                     [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
+                      open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
+                      open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
+                     libraries=self.get_library('bullet', generated_libs, configure=configure, configure_args=configure_args[c]),
+                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
-      new = open('src.cpp.o.js').read()
-      print len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt')
-      assert len(old) > len(new)
-      assert old.count('tempBigInt') > new.count('tempBigInt')
+
+      assert 'asm2g' in test_modes
+      if self.run_name == 'asm2g':
+        # Test forced alignment
+        print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
+        old = open('src.cpp.o.js').read()
+        Settings.FORCE_ALIGNED_MEMORY = 1
+        test()
+        new = open('src.cpp.o.js').read()
+        print len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt')
+        assert len(old) > len(new)
+        assert old.count('tempBigInt') > new.count('tempBigInt')
 
   def test_poppler(self):
     if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
