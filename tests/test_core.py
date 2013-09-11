@@ -7555,6 +7555,7 @@ def process(filename):
 
   def test_utf32(self):
     if self.emcc_args is None: return self.skip('need libc for wcslen()')
+    if not self.is_le32(): return self.skip('this test uses inline js, which requires le32')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
