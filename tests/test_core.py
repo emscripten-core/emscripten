@@ -8664,7 +8664,7 @@ def process(filename):
                      [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                       open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
                       open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
-                     libraries=self.get_library('bullet', generated_libs, configure=configure, configure_args=configure_args[c]),
+                     libraries=self.get_library('bullet', generated_libs, configure=configure, configure_args=configure_args[c], cache_name_extra=configure[0]),
                      includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
