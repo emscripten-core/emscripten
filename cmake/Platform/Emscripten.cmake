@@ -143,19 +143,15 @@ endfunction()
 # A global counter to guarantee unique names for js library files.
 set(link_js_counter 1)
 
-# This function links a (list of ) .js library file(s) to the given CMake project.
-# Example: em_link_js_library(my_executable "lib1.js" "lib2.js")
-#    will result in emcc passing --js-library lib1.js --js-library lib2.js to the emscripten linker, as well as
-#    tracking the modification timestamp between the linked .js files and the main project, so that editing the .js file
-#    will cause the target project to be relinked.
-function(em_link_js_library target)
+# Internal function: Do not call from user CMakeLists.txt files. Use one of em_link_js_library()/em_link_pre_js()/em_link_post_js() instead.
+function(em_add_tracked_link_flag target flagname)
 	get_target_property(props ${target} LINK_FLAGS)
 	# User can input list of JS files either as a single list, or as variable arguments to this function, so iterate over varargs, and treat each
 	# item in varargs as a list itself, to support both syntax forms.
 	foreach(jsFileList ${ARGN})
 		foreach(jsfile ${jsFileList})
 			# Add link command to the given JS file.
-			set(props "${props} --js-library \"${jsfile}\"")
+			set(props "${props} ${flagname} \"${jsfile}\"")
 			
 			# If the user edits the JS file, we want to relink the emscripten application, but unfortunately it is not possible to make a link step
 			# depend directly on a source file. Instead, we must make a dummy no-op build target on that source file, and make the project depend on
@@ -165,7 +161,7 @@ function(em_link_js_library target)
 			get_filename_component(jsname "${jsfile}" NAME)
 			string(REGEX REPLACE "[/:\\\\.\ ]" "_" dummy_js_target ${jsname})
 			set(dummy_lib_name ${target}_${link_js_counter}_${dummy_js_target})
-			set(dummy_c_name "${CMAKE_BINARY_DIR}/${dummy_js_target}_library.c")
+			set(dummy_c_name "${CMAKE_BINARY_DIR}/${dummy_js_target}_tracker.c")
 
 			# Create a new static library target that with a single dummy .c file.
 			add_library(${dummy_lib_name} STATIC ${dummy_c_name})
@@ -180,42 +176,23 @@ function(em_link_js_library target)
 	set_target_properties(${target} PROPERTIES LINK_FLAGS "${props}")
 endfunction()
 
+# This function links a (list of ) .js library file(s) to the given CMake project.
+# Example: em_link_js_library(my_executable "lib1.js" "lib2.js")
+#    will result in emcc passing --js-library lib1.js --js-library lib2.js to the emscripten linker, as well as
+#    tracking the modification timestamp between the linked .js files and the main project, so that editing the .js file
+#    will cause the target project to be relinked.
+function(em_link_js_library target)
+	em_add_tracked_link_flag(${target} "--js-library" ${ARGN})
+endfunction()
+
 # This function is identical to em_link_js_library(), except the .js files will be added with '--pre-js file.js' command line flag,
 # which is generally used to add some preamble .js code to a generated output file.
 function(em_link_pre_js target)
-	get_target_property(props ${target} LINK_FLAGS)
-	foreach(jsFileList ${ARGN})
-		foreach(jsfile ${jsFileList})
-			set(props "${props} --pre-js \"${jsfile}\"")
-			get_filename_component(jsname "${jsfile}" NAME)
-			string(REGEX REPLACE "[/:\\\\.\ ]" "_" dummy_js_target ${jsname})
-			set(dummy_lib_name ${target}_${link_js_counter}_${dummy_js_target})
-			set(dummy_c_name "${CMAKE_BINARY_DIR}/${dummy_js_target}_prejs.c")
-			add_library(${dummy_lib_name} STATIC ${dummy_c_name})
-			add_custom_command(OUTPUT ${dummy_c_name} COMMAND ${CMAKE_COMMAND} -E touch ${dummy_c_name} DEPENDS ${jsfile})
-			target_link_libraries(${target} ${dummy_lib_name})
-			math(EXPR link_js_counter "${link_js_counter} + 1")
-		endforeach()
-	endforeach()
-	set_target_properties(${target} PROPERTIES LINK_FLAGS "${props}")
+	em_add_tracked_link_flag(${target} "--pre-js" ${ARGN})
 endfunction()
 
 # This function is identical to em_link_js_library(), except the .js files will be added with '--post-js file.js' command line flag,
 # which is generally used to add some postamble .js code to a generated output file.
 function(em_link_post_js target)
-	get_target_property(props ${target} LINK_FLAGS)
-	foreach(jsFileList ${ARGN})
-		foreach(jsfile ${jsFileList})
-			set(props "${props} --post-js \"${jsfile}\"")
-			get_filename_component(jsname "${jsfile}" NAME)
-			string(REGEX REPLACE "[/:\\\\.\ ]" "_" dummy_js_target ${jsname})
-			set(dummy_lib_name ${target}_${link_js_counter}_${dummy_js_target})
-			set(dummy_c_name "${CMAKE_BINARY_DIR}/${dummy_js_target}_postjs.c")
-			add_library(${dummy_lib_name} STATIC ${dummy_c_name})
-			add_custom_command(OUTPUT ${dummy_c_name} COMMAND ${CMAKE_COMMAND} -E touch ${dummy_c_name} DEPENDS ${jsfile})
-			target_link_libraries(${target} ${dummy_lib_name})
-			math(EXPR link_js_counter "${link_js_counter} + 1")
-		endforeach()
-	endforeach()
-	set_target_properties(${target} PROPERTIES LINK_FLAGS "${props}")
+	em_add_tracked_link_flag(${target} "--post-js" ${ARGN})
 endfunction()
