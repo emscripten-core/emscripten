@@ -755,7 +755,7 @@ var LibrarySDL = {
       document.addEventListener("keydown", SDL.receiveEvent);
       document.addEventListener("keyup", SDL.receiveEvent);
       document.addEventListener("keypress", SDL.receiveEvent);
-      document.addEventListener("blur", SDL.receiveEvent);
+      window.addEventListener("blur", SDL.receiveEvent);
       document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
     window.addEventListener("unload", SDL.receiveEvent);
