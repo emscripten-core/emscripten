@@ -1833,7 +1833,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (CORRUPTION_CHECK) {
-      assert(!ASM_JS); // cannot monkeypatch asm!
+      assert(!ASM_JS, 'corruption checker is not compatible with asm.js');
       print(processMacros(read('corruptionCheck.js')));
     }
     if (HEADLESS) {
