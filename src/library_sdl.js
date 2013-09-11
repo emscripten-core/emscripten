@@ -463,7 +463,10 @@ var LibrarySDL = {
               type: 'mouseup',
               button: button,
               pageX: event.pageX,
-              pageY: event.pageY
+              pageY: event.pageY,
+              preventDefault: (function(ev) {
+                return function() { return ev.preventDefault.apply(ev, arguments); };
+              }(event))
             };
           } else if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
