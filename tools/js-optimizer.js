@@ -1728,6 +1728,15 @@ function getStackBumpSize(ast) {
 function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
+    if (!asm) {
+      var hasFunction = false;
+      traverse(fun, function(node, type) {
+        if (type === 'function') hasFunction = true;
+      });
+      if (hasFunction) {
+        return; // inline assembly, and not asm (where we protect it in normalize/denormalize), so abort registerize pass
+      }
+    }
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
     var params = {}; // note: params are special, they can never share a register between them (see later)
     if (fun[2] && fun[2].length) {
@@ -1746,7 +1755,6 @@ function registerize(ast) {
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
     var hasSwitch = false; // we cannot optimize variables if there is a switch, unless in asm mode
-    var hasFunction = false;
     traverse(fun, function(node, type) {
       if (type === 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
@@ -1758,13 +1766,8 @@ function registerize(ast) {
         }
       } else if (type === 'switch') {
         hasSwitch = true;
-      } else if (type === 'function') {
-        hasFunction = true;
       }
     });
-    if (!asm && hasFunction) {
-      return; // inline assembly, and not asm (where we protect it in normalize/denormalize), so abort registerize pass
-    }
     vacuum(fun);
     if (extraInfo && extraInfo.globals) {
       assert(asm);
