@@ -546,21 +546,24 @@ def get_llvm_target():
   return os.environ.get('EMCC_LLVM_TARGET') or 'le32-unknown-nacl' # 'i386-pc-linux-gnu'
 LLVM_TARGET = get_llvm_target()
 
+# COMPILER_OPTS: options passed to clang when generating bitcode for us
 try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
 except:
   COMPILER_OPTS = []
-# Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
-COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__i386', '-Ui386',
-                                 '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
-                                 '-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-U__STRICT_ANSI__',
-                                 '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno',
+COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-DEMSCRIPTEN', '-D__EMSCRIPTEN__',
+                                 '-fno-math-errno',
                                  #'-fno-threadsafe-statics', # disabled due to issue 1289
                                  '-target', LLVM_TARGET]
 
 if LLVM_TARGET == 'le32-unknown-nacl':
   COMPILER_OPTS = filter(lambda opt: opt != '-m32', COMPILER_OPTS) # le32 target is 32-bit anyhow, no need for -m32
   COMPILER_OPTS += ['-U__native_client__', '-U__pnacl__', '-U__ELF__'] # The nacl target is originally used for Google Native Client. Emscripten is not NaCl, so remove the platform #define, when using their triple.
+
+# Remove various platform specific defines, and set little endian
+COMPILER_STANDARDIZATION_OPTS = ['-U__i386__', '-U__i386', '-Ui386', '-U__STRICT_ANSI__', '-D__IEEE_LITTLE_ENDIAN',
+                                 '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
+                                 '-U__APPLE__', '-U__linux__']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
@@ -578,9 +581,8 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
-  ] + [
-    '-U__APPLE__', '-U__linux__'
   ]
+  EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
   if LLVM_TARGET != 'le32-unknown-nacl':
     EMSDK_CXX_OPTS = ['-nostdinc++'] # le32 target does not need -nostdinc++
   else:
@@ -589,6 +591,7 @@ if USE_EMSDK:
 else:
   EMSDK_OPTS = []
   EMSDK_CXX_OPTS = []
+  COMPILER_OPTS += COMPILER_STANDARDIZATION_OPTS
 
 #print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
 #print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)
@@ -817,35 +820,52 @@ class Building:
     env['EMSCRIPTEN'] = path_from_root()
     return env
 
+  # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
+  @staticmethod
+  def which(program):
+    import os
+    def is_exe(fpath):
+      return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+      if is_exe(program):
+        return program
+    else:
+      for path in os.environ["PATH"].split(os.pathsep):
+        path = path.strip('"')
+        exe_file = os.path.join(path, program)
+        if is_exe(exe_file):
+          return exe_file
+
+        if WINDOWS and not '.' in fname:
+          if is_exe(exe_file + '.exe'):
+            return exe_file + '.exe'
+          if is_exe(exe_file + '.cmd'):
+            return exe_file + '.cmd'
+          if is_exe(exe_file + '.bat'):
+            return exe_file + '.bat'
+
+    return None
+
   @staticmethod
   def handle_CMake_toolchain(args, env):
-    CMakeToolchain = ('''# the name of the target operating system
-SET(CMAKE_SYSTEM_NAME Linux)
 
-# which C and C++ compiler to use
-SET(CMAKE_C_COMPILER   %(winfix)s$EMSCRIPTEN_ROOT/emcc)
-SET(CMAKE_CXX_COMPILER %(winfix)s$EMSCRIPTEN_ROOT/em++)
-SET(CMAKE_AR           %(winfix)s$EMSCRIPTEN_ROOT/emar)
-SET(CMAKE_RANLIB       %(winfix)s$EMSCRIPTEN_ROOT/emranlib)
-SET(CMAKE_C_FLAGS      $CFLAGS)
-SET(CMAKE_CXX_FLAGS    $CXXFLAGS)
+    def has_substr(array, substr):
+      for arg in array:
+        if substr in arg:
+          return True
+      return False
 
-# here is the target environment located
-SET(CMAKE_FIND_ROOT_PATH  $EMSCRIPTEN_ROOT/system/include )
+    # Append the Emscripten toolchain file if the user didn't specify one.
+    if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
+      args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Platform', 'Emscripten.cmake'))
 
-# adjust the default behaviour of the FIND_XXX() commands:
-# search headers and libraries in the target environment, search
-# programs in the host environment
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS else 'python ' }) \
-      .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
-      .replace('$CFLAGS', env['CFLAGS']) \
-      .replace('$CXXFLAGS', env['CFLAGS'])
-    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=configuration.TEMP_DIR)[1]
-    open(toolchainFile, 'w').write(CMakeToolchain)
-    args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
+    # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
+    # pulling in a native Visual Studio, or Unix Makefiles.
+    if WINDOWS and not '-G' in args and Building.which('mingw32-make'):
+      args += ['-G', 'MinGW Makefiles']
+ 
     return args
 
   @staticmethod
@@ -876,6 +896,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       logging.error('Executable to run not specified.')
       sys.exit(1)
     #args += ['VERBOSE=1']
+
+    # On Windows prefer building with mingw32-make instead of make, if it exists.
+    if WINDOWS and args[0] == 'make':
+      mingw32_make = Building.which('mingw32-make')
+      if mingw32_make:
+        args[0] = mingw32_make
+
     try:
       process = Popen(args, stdout=stdout, stderr=stderr, env=env)
       process.communicate()
@@ -916,13 +943,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     #  except:
     #    pass
     env = Building.get_building_env(native)
-    log_to_file = os.getenv('EM_BUILD_VERBOSE') == None or int(os.getenv('EM_BUILD_VERBOSE')) == 0
+    verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if log_to_file else None, 
-                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if log_to_file else None)
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if verbose_level < 2 else None,
+                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if verbose_level < 1 else None)
       except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
@@ -930,13 +957,16 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
-    
+
+    if verbose_level >= 3:
+      make_args += ['VERBOSE=1']
+
     for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
           try:
-            Building.make(make + make_args, stdout=make_out if log_to_file else None,
-                                            stderr=make_err if log_to_file else None, env=env)
+            Building.make(make + make_args, stdout=make_out if verbose_level < 2 else None,
+                                            stderr=make_err if verbose_level < 1 else None, env=env)
           except subprocess.CalledProcessError, e:
             pass # Ignore exit code != 0
       try:
@@ -948,7 +978,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         break
       except Exception, e:
         if i > 0:
-          if log_to_file:
+          if verbose_level == 0:
             # Due to the ugly hack above our best guess is to output the first run
             with open_make_err(0) as ferr:
               for line in ferr:

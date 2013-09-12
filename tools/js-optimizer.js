@@ -1728,6 +1728,15 @@ function getStackBumpSize(ast) {
 function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
+    if (!asm) {
+      var hasFunction = false;
+      traverse(fun, function(node, type) {
+        if (type === 'function') hasFunction = true;
+      });
+      if (hasFunction) {
+        return; // inline assembly, and not asm (where we protect it in normalize/denormalize), so abort registerize pass
+      }
+    }
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
     var params = {}; // note: params are special, they can never share a register between them (see later)
     if (fun[2] && fun[2].length) {
@@ -3032,6 +3041,9 @@ function outline(ast) {
     }
     var ignore = [];
     traverse(func, function(node) {
+      if (node[0] === 'while' && node[2][0] !== 'block') {
+        node[2] = ['block', [node[2]]]; // so we have a list of statements and can flatten  while(1) switch
+      }
       var stats = getStatements(node);
       if (stats) {
         for (var i = 0; i < stats.length; i++) {
@@ -3708,8 +3720,10 @@ function outline(ast) {
             }
           }
         }
-        ret.push(func);
-        printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+        if (ret) {
+          ret.push(func);
+          printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+        }
       }
       denormalizeAsm(func, asmData);
     });

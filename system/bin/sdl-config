@@ -1,0 +1,13 @@
+#!/usr/bin/env python2
+
+import sys
+
+print >> sys.stderr, 'emscripten sdl-config called with', sys.argv
+
+args = sys.argv[1:]
+
+if args[0] == '--cflags':
+  print ''
+elif '--version' in args:
+  print '1.3.0'
+

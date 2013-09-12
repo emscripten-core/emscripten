@@ -442,6 +442,14 @@ var LibrarySDL = {
           }
           // fall through
         case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
+          // If we preventDefault on keydown events, the subsequent keypress events
+          // won't fire. However, it's fine (and in some cases necessary) to
+          // preventDefault for keys that don't generate a character. Otherwise,
+          // preventDefault is the right thing to do in general.
+          if (event.type !== 'keydown' || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
+            event.preventDefault();
+          }
+
           if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
             var button = (event.type == 'DOMMouseScroll' ? event.detail : -event.wheelDelta) > 0 ? 4 : 3;
             var event2 = {
@@ -463,7 +471,6 @@ var LibrarySDL = {
             // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
             // since we add a mouseup in that case
             if (!SDL.DOMButtons[event.button]) {
-              event.preventDefault();
               return;
             }
 
@@ -497,13 +504,6 @@ var LibrarySDL = {
             SDL.savedKeydown = null;
           } else if (event.type === 'keydown') {
             SDL.savedKeydown = event;
-          }
-
-          // If we preventDefault on keydown events, the subsequent keypress events
-          // won't fire. However, it's fine (and in some cases necessary) to
-          // preventDefault for keys that don't generate a character.
-          if (event.type !== 'keydown' || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
-            event.preventDefault();
           }
 
           // Don't push keypress events unless SDL_StartTextInput has been called.
@@ -755,7 +755,7 @@ var LibrarySDL = {
       document.addEventListener("keydown", SDL.receiveEvent);
       document.addEventListener("keyup", SDL.receiveEvent);
       document.addEventListener("keypress", SDL.receiveEvent);
-      document.addEventListener("blur", SDL.receiveEvent);
+      window.addEventListener("blur", SDL.receiveEvent);
       document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
     window.addEventListener("unload", SDL.receiveEvent);
@@ -883,6 +883,14 @@ var LibrarySDL = {
     surfData.locked++;
     if (surfData.locked > 1) return 0;
 
+    // Mark in C/C++-accessible SDL structure
+    // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
+    // So we have fields all of the same size, and 5 of them before us.
+    // TODO: Use macros like in library.js
+    {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
+
+    if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
+
     surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
     if (surf == SDL.screen) {
       var data = surfData.image.data;
@@ -924,12 +932,6 @@ var LibrarySDL = {
 #endif
       }
     }
-
-    // Mark in C/C++-accessible SDL structure
-    // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
-    // So we have fields all of the same size, and 5 of them before us.
-    // TODO: Use macros like in library.js
-    {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
 
     return 0;
   },
@@ -1269,6 +1271,11 @@ var LibrarySDL = {
     }
 
     return 1;
+  },
+
+  SDL_SetPalette__deps: ['SDL_SetColors'],
+  SDL_SetPalette: function(surf, flags, colors, firstColor, nColors) {
+    return _SDL_SetColors(surf, colors, firstColor, nColors);
   },
 
   SDL_MapRGB: function(fmt, r, g, b) {
@@ -2276,7 +2283,7 @@ var LibrarySDL = {
   SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
   SDL_WM_IconifyWindow: function() { throw 'SDL_WM_IconifyWindow TODO' },
 
-  Mix_SetPostMix: function() { throw 'Mix_SetPostMix: TODO' },
+  Mix_SetPostMix: function() { Runtime.warnOnce('Mix_SetPostMix: TODO') },
   Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
   Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },

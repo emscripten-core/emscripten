@@ -3756,11 +3756,18 @@ def process(filename):
         int main() {
           asm("Module.print('Inline JS is very cool')");
           printf("%.2f\n", get());
+
+          // Test that passing multiple input and output variables works.
+          int src1 = 1, src2 = 2, src3 = 3;
+          int dst1 = 0, dst2 = 0, dst3 = 0;
+          // TODO asm("Module.print(%3); Module.print(%4); Module.print(%5); %0 = %3; %1 = %4; %2 = %5;" : "=r"(dst1),"=r"(dst2),"=r"(dst3): "r"(src1),"r"(src2),"r"(src3));
+          // TODO printf("%d\n%d\n%d\n", dst1, dst2, dst3);
+
           return 0;
         }
         '''
 
-      self.do_run(src, 'Inline JS is very cool\n3.64\n')
+      self.do_run(src, 'Inline JS is very cool\n3.64\n') # TODO 1\n2\n3\n1\n2\n3\n')
 
   def test_inlinejs2(self):
       if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
@@ -5431,6 +5438,34 @@ The current type of b is: 9
       }
     '''
     self.do_run(src, 'memmove can be very useful....!')
+
+  def test_flexarray_struct(self):
+    src = r'''
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+typedef struct
+{
+  uint16_t length;
+  struct 
+  {
+    int32_t int32;
+  } value[];
+} Tuple;
+
+int main() {
+  Tuple T[10];
+  Tuple *t = &T[0];
+
+  t->length = 4;
+  t->value->int32 = 100;
+
+  printf("(%d, %d)\n", t->length, t->value->int32);
+  return 0;
+}
+'''
+    self.do_run(src, '(4, 100)')
 
   def test_bsearch(self):
     if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
@@ -7525,6 +7560,12 @@ def process(filename):
     '''
     self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋ 😇\nμ†ℱ ╋ℯ╳╋ 😇,206,188,226,128\n');
 
+  def test_utf32(self):
+    if self.emcc_args is None: return self.skip('need libc for wcslen()')
+    if not self.is_le32(): return self.skip('this test uses inline js, which requires le32')
+    self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
+    self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
+
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 
@@ -8607,29 +8648,44 @@ def process(filename):
       Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                                   'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
-    def test():
-      self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
-                   [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
-                    open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
-                    open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
-                   libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                                               configure_args=['--disable-demos','--disable-dependency-tracking']),
-                   includes=[path_from_root('tests', 'bullet', 'src')])
-    test()
+    configure_commands = [['sh', './configure'], ['cmake', '.']]
+    configure_args = [['--disable-demos','--disable-dependency-tracking'], ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']]
+    for c in range(0,2):
+      configure = configure_commands[c]
+      # Windows cannot run configure sh scripts.
+      if WINDOWS and configure[0] == 'sh':
+        continue
 
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      # Test forced alignment
-      print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
-      old = open('src.cpp.o.js').read()
-      Settings.FORCE_ALIGNED_MEMORY = 1
+      # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
+      if configure[0] == 'sh':
+        generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                          os.path.join('src', '.libs', 'libBulletCollision.a'),
+                          os.path.join('src', '.libs', 'libLinearMath.a')]
+      else:
+        generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
+                          os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
+                          os.path.join('src', 'LinearMath', 'libLinearMath.a')]
+
+      def test():
+        self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
+                     [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
+                      open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
+                      open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
+                     libraries=self.get_library('bullet', generated_libs, configure=configure, configure_args=configure_args[c], cache_name_extra=configure[0]),
+                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
-      new = open('src.cpp.o.js').read()
-      print len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt')
-      assert len(old) > len(new)
-      assert old.count('tempBigInt') > new.count('tempBigInt')
+
+      assert 'asm2g' in test_modes
+      if self.run_name == 'asm2g' and configure[0] == 'sh':
+        # Test forced alignment
+        print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
+        old = open('src.cpp.o.js').read()
+        Settings.FORCE_ALIGNED_MEMORY = 1
+        test()
+        new = open('src.cpp.o.js').read()
+        print len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt')
+        assert len(old) > len(new)
+        assert old.count('tempBigInt') > new.count('tempBigInt')
 
   def test_poppler(self):
     if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')

@@ -708,13 +708,15 @@ function intertyper(data, sidePass, baseLineNums) {
     item.ident = eatLLVMIdent(tokensLeft);
     if (item.ident == 'asm') {
       if (ASM_JS) {
-        warnOnce('inline JS in asm.js mode can cause the code to no longer fall in the asm.js subset of JavaScript');
+        Types.hasInlineJS = true;
+        warnOnce('inline JavaScript (asm, EM_ASM) will cause the code to no longer fall in the asm.js subset of JavaScript, which can reduce performance - consider using emscripten_run_script');
       }
       assert(TARGET_LE32, 'inline js is only supported in le32');
       // Inline assembly is just JavaScript that we paste into the code
       item.intertype = 'value';
       if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
       item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2) || ';'; // use ; for empty inline assembly
+      assert((item.tokens[5].text.match(/=/g) || []).length <= 1, 'we only support at most 1 exported variable from inline js: ' + item.ident);
       var i = 0;
       var params = [], args = [];
       splitTokenList(tokensLeft[3].item.tokens).map(function(element) {
