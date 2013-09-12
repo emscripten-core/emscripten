@@ -807,6 +807,13 @@ mergeInto(LibraryManager.library, {
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
       }
+      if (Module['logReadFiles'] && !(flags & {{{ cDefine('O_WRONLY')}}})) {
+        if (!FS.readFiles) FS.readFiles = {};
+        if (!(path in FS.readFiles)) {
+          FS.readFiles[path] = 1;
+          Module['printErr']('read file: ' + path);
+        }
+      }
       return stream;
     },
     close: function(stream) {
