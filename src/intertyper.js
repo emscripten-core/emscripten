@@ -716,6 +716,7 @@ function intertyper(data, sidePass, baseLineNums) {
       item.intertype = 'value';
       if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
       item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2) || ';'; // use ; for empty inline assembly
+      assert((item.tokens[5].text.match(/=/g) || []).length <= 1, 'we only support at most 1 exported variable from inline js: ' + item.ident);
       var i = 0;
       var params = [], args = [];
       splitTokenList(tokensLeft[3].item.tokens).map(function(element) {
