@@ -239,6 +239,16 @@ struct linger {
   int l_linger;
 };
 
+#ifdef SO_PEERCRED
+/* struct for SO_PEERCRED */
+struct ucred
+{
+  pid_t pid;
+  uid_t uid;
+  gid_t gid;
+};
+#endif
+
 #ifdef __cplusplus
 }
 #endif
