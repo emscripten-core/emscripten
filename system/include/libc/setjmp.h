@@ -1,20 +1,42 @@
-/*
-	setjmp.h
-	stubs for future use.
-*/
+#ifndef	_SETJMP_H
+#define	_SETJMP_H
 
-#ifndef _SETJMP_H_
-#define _SETJMP_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "_ansi.h"
-#include <machine/setjmp.h>
+#include <features.h>
 
-_BEGIN_STD_C
+#include <bits/setjmp.h>
 
-void	_EXFUN(longjmp,(jmp_buf __jmpb, int __retval));
-int	_EXFUN(setjmp,(jmp_buf __jmpb));
+typedef struct __jmp_buf_tag {
+	__jmp_buf __jb;
+	unsigned long __fl;
+	unsigned long __ss[128/sizeof(long)];
+} jmp_buf[1];
 
-_END_STD_C
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+ || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+typedef jmp_buf sigjmp_buf;
+int sigsetjmp (sigjmp_buf, int);
+_Noreturn void siglongjmp (sigjmp_buf, int);
+#endif
 
-#endif /* _SETJMP_H_ */
+#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+int _setjmp (jmp_buf);
+_Noreturn void _longjmp (jmp_buf, int);
+#endif
 
+int setjmp (jmp_buf);
+_Noreturn void longjmp (jmp_buf, int);
+
+#define setjmp setjmp
+#define longjmp longjmp
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

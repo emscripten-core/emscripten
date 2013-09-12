@@ -1,290 +1,227 @@
-/*
- * Copyright (c) 2004, 2005 by
- * Ralf Corsepius, Ulm/Germany. All rights reserved.
- *
- * Permission to use, copy, modify, and distribute this software
- * is freely granted, provided that this notice is preserved.
- */
-
-/**
- *  @file  inttypes.h
- */
-
 #ifndef _INTTYPES_H
 #define _INTTYPES_H
-
-#include <stdint.h>
-#define __need_wchar_t
-#include <stddef.h>
-
-#define __STRINGIFY(a) #a
-
-/* 8-bit types */
-#define __PRI8(x) __STRINGIFY(x)
-#define __SCN8(x) __STRINGIFY(hh##x)
-
-
-#define PRId8		__PRI8(d)
-#define PRIi8		__PRI8(i)
-#define PRIo8		__PRI8(o)
-#define PRIu8		__PRI8(u)
-#define PRIx8		__PRI8(x)
-#define PRIX8		__PRI8(X)
-
-#define SCNd8		__SCN8(d)
-#define SCNi8		__SCN8(i)
-#define SCNo8		__SCN8(o)
-#define SCNu8		__SCN8(u)
-#define SCNx8		__SCN8(x)
-
-
-#define PRIdLEAST8	__PRI8(d)
-#define PRIiLEAST8	__PRI8(i)
-#define PRIoLEAST8	__PRI8(o)
-#define PRIuLEAST8	__PRI8(u)
-#define PRIxLEAST8	__PRI8(x)
-#define PRIXLEAST8	__PRI8(X)
-
-#define SCNdLEAST8	__SCN8(d)
-#define SCNiLEAST8	__SCN8(i)
-#define SCNoLEAST8	__SCN8(o)
-#define SCNuLEAST8	__SCN8(u)
-#define SCNxLEAST8	__SCN8(x)
-
-
-#define PRIdFAST8	__PRI8(d)
-#define PRIiFAST8	__PRI8(i)
-#define PRIoFAST8	__PRI8(o)
-#define PRIuFAST8	__PRI8(u)
-#define PRIxFAST8	__PRI8(x)
-#define PRIXFAST8	__PRI8(X)
-
-#define SCNdFAST8	__SCN8(d)
-#define SCNiFAST8	__SCN8(i)
-#define SCNoFAST8	__SCN8(o)
-#define SCNuFAST8	__SCN8(u)
-#define SCNxFAST8	__SCN8(x)
-
-/* 16-bit types */
-#define __PRI16(x) __STRINGIFY(x)
-#define __SCN16(x) __STRINGIFY(h##x)
-
-
-#define PRId16		__PRI16(d)
-#define PRIi16		__PRI16(i)
-#define PRIo16		__PRI16(o)
-#define PRIu16		__PRI16(u)
-#define PRIx16		__PRI16(x)
-#define PRIX16		__PRI16(X)
-
-#define SCNd16		__SCN16(d)
-#define SCNi16		__SCN16(i)
-#define SCNo16		__SCN16(o)
-#define SCNu16		__SCN16(u)
-#define SCNx16		__SCN16(x)
-
-
-#define PRIdLEAST16	__PRI16(d)
-#define PRIiLEAST16	__PRI16(i)
-#define PRIoLEAST16	__PRI16(o)
-#define PRIuLEAST16	__PRI16(u)
-#define PRIxLEAST16	__PRI16(x)
-#define PRIXLEAST16	__PRI16(X)
-
-#define SCNdLEAST16	__SCN16(d)
-#define SCNiLEAST16	__SCN16(i)
-#define SCNoLEAST16	__SCN16(o)
-#define SCNuLEAST16	__SCN16(u)
-#define SCNxLEAST16	__SCN16(x)
-
-
-#define PRIdFAST16	__PRI16(d)
-#define PRIiFAST16	__PRI16(i)
-#define PRIoFAST16	__PRI16(o)
-#define PRIuFAST16	__PRI16(u)
-#define PRIxFAST16	__PRI16(x)
-#define PRIXFAST16	__PRI16(X)
-
-#define SCNdFAST16	__SCN16(d)
-#define SCNiFAST16	__SCN16(i)
-#define SCNoFAST16	__SCN16(o)
-#define SCNuFAST16	__SCN16(u)
-#define SCNxFAST16	__SCN16(x)
-
-/* 32-bit types */
-#if __have_long32
-#define __PRI32(x) __STRINGIFY(l##x)
-#define __SCN32(x) __STRINGIFY(l##x)
-#else
-#define __PRI32(x) __STRINGIFY(x)
-#define __SCN32(x) __STRINGIFY(x)
-#endif
-
-#define PRId32		__PRI32(d)
-#define PRIi32		__PRI32(i)
-#define PRIo32		__PRI32(o)
-#define PRIu32		__PRI32(u)
-#define PRIx32		__PRI32(x)
-#define PRIX32		__PRI32(X)
-
-#define SCNd32		__SCN32(d)
-#define SCNi32		__SCN32(i)
-#define SCNo32		__SCN32(o)
-#define SCNu32		__SCN32(u)
-#define SCNx32		__SCN32(x)
-
-
-#define PRIdLEAST32	__PRI32(d)
-#define PRIiLEAST32	__PRI32(i)
-#define PRIoLEAST32	__PRI32(o)
-#define PRIuLEAST32	__PRI32(u)
-#define PRIxLEAST32	__PRI32(x)
-#define PRIXLEAST32	__PRI32(X)
-
-#define SCNdLEAST32	__SCN32(d)
-#define SCNiLEAST32	__SCN32(i)
-#define SCNoLEAST32	__SCN32(o)
-#define SCNuLEAST32	__SCN32(u)
-#define SCNxLEAST32	__SCN32(x)
-
-
-#define PRIdFAST32	__PRI32(d)
-#define PRIiFAST32	__PRI32(i)
-#define PRIoFAST32	__PRI32(o)
-#define PRIuFAST32	__PRI32(u)
-#define PRIxFAST32	__PRI32(x)
-#define PRIXFAST32	__PRI32(X)
-
-#define SCNdFAST32	__SCN32(d)
-#define SCNiFAST32	__SCN32(i)
-#define SCNoFAST32	__SCN32(o)
-#define SCNuFAST32	__SCN32(u)
-#define SCNxFAST32	__SCN32(x)
-
-
-/* 64-bit types */
-#if __have_long64
-#define __PRI64(x) __STRINGIFY(l##x)
-#define __SCN64(x) __STRINGIFY(l##x)
-#elif __have_longlong64
-#define __PRI64(x) __STRINGIFY(ll##x)
-#define __SCN64(x) __STRINGIFY(ll##x)
-#else
-#define __PRI64(x) __STRINGIFY(x)
-#define __SCN64(x) __STRINGIFY(x)
-#endif
-
-#define PRId64		__PRI64(d)
-#define PRIi64		__PRI64(i)
-#define PRIo64		__PRI64(o)
-#define PRIu64		__PRI64(u)
-#define PRIx64		__PRI64(x)
-#define PRIX64		__PRI64(X)
-
-#define SCNd64		__SCN64(d)
-#define SCNi64		__SCN64(i)
-#define SCNo64		__SCN64(o)
-#define SCNu64		__SCN64(u)
-#define SCNx64		__SCN64(x)
-
-#if __int64_t_defined
-#define PRIdLEAST64	__PRI64(d)
-#define PRIiLEAST64	__PRI64(i)
-#define PRIoLEAST64	__PRI64(o)
-#define PRIuLEAST64	__PRI64(u)
-#define PRIxLEAST64	__PRI64(x)
-#define PRIXLEAST64	__PRI64(X)
-
-#define SCNdLEAST64	__SCN64(d)
-#define SCNiLEAST64	__SCN64(i)
-#define SCNoLEAST64	__SCN64(o)
-#define SCNuLEAST64	__SCN64(u)
-#define SCNxLEAST64	__SCN64(x)
-
-
-#define PRIdFAST64	__PRI64(d)
-#define PRIiFAST64	__PRI64(i)
-#define PRIoFAST64	__PRI64(o)
-#define PRIuFAST64	__PRI64(u)
-#define PRIxFAST64	__PRI64(x)
-#define PRIXFAST64	__PRI64(X)
-
-#define SCNdFAST64	__SCN64(d)
-#define SCNiFAST64	__SCN64(i)
-#define SCNoFAST64	__SCN64(o)
-#define SCNuFAST64	__SCN64(u)
-#define SCNxFAST64	__SCN64(x)
-#endif
-
-/* max-bit types */
-#if __have_long64
-#define __PRIMAX(x) __STRINGIFY(l##x)
-#define __SCNMAX(x) __STRINGIFY(l##x)
-#elif __have_longlong64
-#define __PRIMAX(x) __STRINGIFY(ll##x)
-#define __SCNMAX(x) __STRINGIFY(ll##x)
-#else
-#define __PRIMAX(x) __STRINGIFY(x)
-#define __SCNMAX(x) __STRINGIFY(x)
-#endif
-
-#define PRIdMAX		__PRIMAX(d)
-#define PRIiMAX		__PRIMAX(i)
-#define PRIoMAX		__PRIMAX(o)
-#define PRIuMAX		__PRIMAX(u)
-#define PRIxMAX		__PRIMAX(x)
-#define PRIXMAX		__PRIMAX(X)
-
-#define SCNdMAX		__SCNMAX(d)
-#define SCNiMAX		__SCNMAX(i)
-#define SCNoMAX		__SCNMAX(o)
-#define SCNuMAX		__SCNMAX(u)
-#define SCNxMAX		__SCNMAX(x)
-
-/* ptr types */
-#if __have_long64
-#define __PRIPTR(x) __STRINGIFY(l##x)
-#define __SCNPTR(x) __STRINGIFY(l##x)
-#elif __have_longlong64
-#define __PRIPTR(x) __STRINGIFY(ll##x)
-#define __SCNPTR(x) __STRINGIFY(ll##x)
-#else
-#define __PRIPTR(x) __STRINGIFY(x)
-#define __SCNPTR(x) __STRINGIFY(x)
-#endif
-
-#define PRIdPTR		__PRIPTR(d)
-#define PRIiPTR		__PRIPTR(i)
-#define PRIoPTR		__PRIPTR(o)
-#define PRIuPTR		__PRIPTR(u)
-#define PRIxPTR		__PRIPTR(x)
-#define PRIXPTR		__PRIPTR(X)
-
-#define SCNdPTR		__SCNPTR(d)
-#define SCNiPTR		__SCNPTR(i)
-#define SCNoPTR		__SCNPTR(o)
-#define SCNuPTR		__SCNPTR(u)
-#define SCNxPTR		__SCNPTR(x)
-
-
-typedef struct {
-  intmax_t	quot;
-  intmax_t	rem;
-} imaxdiv_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern intmax_t  imaxabs(intmax_t j);
-extern imaxdiv_t imaxdiv(intmax_t numer, intmax_t denomer);
-extern intmax_t  strtoimax(const char *__restrict, char **__restrict, int);
-extern uintmax_t strtoumax(const char *__restrict, char **__restrict, int);
-extern intmax_t  wcstoimax(const wchar_t *__restrict, wchar_t **__restrict, int);
-extern uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
+#include <features.h>
+#include <stdint.h>
+
+#define __NEED_wchar_t
+#include <bits/alltypes.h>
+
+typedef struct { intmax_t quot, rem; } imaxdiv_t;
+
+intmax_t imaxabs(intmax_t);
+imaxdiv_t imaxdiv(intmax_t, intmax_t);
+
+intmax_t strtoimax(const char *__restrict, char **__restrict, int);
+uintmax_t strtoumax(const char *__restrict, char **__restrict, int);
+
+intmax_t wcstoimax(const wchar_t *__restrict, wchar_t **__restrict, int);
+uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
+
+#if UINTPTR_MAX == UINT64_MAX
+#define __PRI64  "l"
+#else
+#define __PRI64  "ll"
+#endif
+
+#define PRId8  "d"
+#define PRId16 "d"
+#define PRId32 "d"
+#define PRId64 __PRI64 "d"
+
+#define PRIdLEAST8  "d"
+#define PRIdLEAST16 "d"
+#define PRIdLEAST32 "d"
+#define PRIdLEAST64 __PRI64 "d"
+
+#define PRIdFAST8  "d"
+#define PRIdFAST16 "d"
+#define PRIdFAST32 "d"
+#define PRIdFAST64 __PRI64 "d"
+
+#define PRIi8  "i"
+#define PRIi16 "i"
+#define PRIi32 "i"
+#define PRIi64 __PRI64 "i"
+
+#define PRIiLEAST8  "i"
+#define PRIiLEAST16 "i"
+#define PRIiLEAST32 "i"
+#define PRIiLEAST64 __PRI64 "i"
+
+#define PRIiFAST8  "i"
+#define PRIiFAST16 "i"
+#define PRIiFAST32 "i"
+#define PRIiFAST64 __PRI64 "i"
+
+#define PRIo8  "o"
+#define PRIo16 "o"
+#define PRIo32 "o"
+#define PRIo64 __PRI64 "o"
+
+#define PRIoLEAST8  "o"
+#define PRIoLEAST16 "o"
+#define PRIoLEAST32 "o"
+#define PRIoLEAST64 __PRI64 "o"
+
+#define PRIoFAST8  "o"
+#define PRIoFAST16 "o"
+#define PRIoFAST32 "o"
+#define PRIoFAST64 __PRI64 "o"
+
+#define PRIu8  "u"
+#define PRIu16 "u"
+#define PRIu32 "u"
+#define PRIu64 __PRI64 "u"
+
+#define PRIuLEAST8  "u"
+#define PRIuLEAST16 "u"
+#define PRIuLEAST32 "u"
+#define PRIuLEAST64 __PRI64 "u"
+
+#define PRIuFAST8  "u"
+#define PRIuFAST16 "u"
+#define PRIuFAST32 "u"
+#define PRIuFAST64 __PRI64 "u"
+
+#define PRIx8  "x"
+#define PRIx16 "x"
+#define PRIx32 "x"
+#define PRIx64 __PRI64 "x"
+
+#define PRIxLEAST8  "x"
+#define PRIxLEAST16 "x"
+#define PRIxLEAST32 "x"
+#define PRIxLEAST64 __PRI64 "x"
+
+#define PRIxFAST8  "x"
+#define PRIxFAST16 "x"
+#define PRIxFAST32 "x"
+#define PRIxFAST64 __PRI64 "x"
+
+#define PRIX8  "X"
+#define PRIX16 "X"
+#define PRIX32 "X"
+#define PRIX64 __PRI64 "X"
+
+#define PRIXLEAST8  "X"
+#define PRIXLEAST16 "X"
+#define PRIXLEAST32 "X"
+#define PRIXLEAST64 __PRI64 "X"
+
+#define PRIXFAST8  "X"
+#define PRIXFAST16 "X"
+#define PRIXFAST32 "X"
+#define PRIXFAST64 __PRI64 "X"
+
+#define PRIdMAX __PRI64 "d"
+#define PRIiMAX __PRI64 "i"
+#define PRIoMAX __PRI64 "o"
+#define PRIuMAX __PRI64 "u"
+#define PRIxMAX __PRI64 "x"
+#define PRIXMAX __PRI64 "X"
+
+#define PRIdPTR "ld"
+#define PRIiPTR "li"
+#define PRIoPTR "lo"
+#define PRIuPTR "lu"
+#define PRIxPTR "lx"
+#define PRIXPTR "lX"
+
+#define SCNd8   "hhd"
+#define SCNd16  "hd"
+#define SCNd32  "d"
+#define SCNd64  __PRI64 "d"
+
+#define SCNdLEAST8  "hhd"
+#define SCNdLEAST16 "hd"
+#define SCNdLEAST32 "d"
+#define SCNdLEAST64 __PRI64 "d"
+
+#define SCNdFAST8  "hhd"
+#define SCNdFAST16 "d"
+#define SCNdFAST32 "d"
+#define SCNdFAST64 __PRI64 "d"
+
+#define SCNi8   "hhi"
+#define SCNi16  "hi"
+#define SCNi32  "i"
+#define SCNi64  __PRI64 "i"
+
+#define SCNiLEAST8  "hhi"
+#define SCNiLEAST16 "hi"
+#define SCNiLEAST32 "i"
+#define SCNiLEAST64 __PRI64 "i"
+
+#define SCNiFAST8  "hhi"
+#define SCNiFAST16 "i"
+#define SCNiFAST32 "i"
+#define SCNiFAST64 __PRI64 "i"
+
+#define SCNu8   "hhu"
+#define SCNu16  "hu"
+#define SCNu32  "u"
+#define SCNu64  __PRI64 "u"
+
+#define SCNuLEAST8  "hhu"
+#define SCNuLEAST16 "hu"
+#define SCNuLEAST32 "u"
+#define SCNuLEAST64 __PRI64 "u"
+
+#define SCNuFAST8 "hhu"
+#define SCNuFAST16 "u"
+#define SCNuFAST32 "u"
+#define SCNuFAST64 __PRI64 "u"
+
+#define SCNo8   "hho"
+#define SCNo16  "ho"
+#define SCNo32  "o"
+#define SCNo64  __PRI64 "o"
+
+#define SCNoLEAST8  "hho"
+#define SCNoLEAST16 "ho"
+#define SCNoLEAST32 "o"
+#define SCNoLEAST64 __PRI64 "o"
+
+#define SCNoFAST8  "hho"
+#define SCNoFAST16 "o"
+#define SCNoFAST32 "o"
+#define SCNoFAST64 __PRI64 "o"
+
+#define SCNx8   "hhx"
+#define SCNx16  "hx"
+#define SCNx32  "x"
+#define SCNx64  __PRI64 "x"
+
+#define SCNxLEAST8  "hhx"
+#define SCNxLEAST16 "hx"
+#define SCNxLEAST32 "x"
+#define SCNxLEAST64 __PRI64 "x"
+
+#define SCNxFAST8  "hhx"
+#define SCNxFAST16 "x"
+#define SCNxFAST32 "x"
+#define SCNxFAST64 __PRI64 "x"
+
+#define SCNdMAX __PRI64 "d"
+#define SCNiMAX __PRI64 "i"
+#define SCNoMAX __PRI64 "o"
+#define SCNuMAX __PRI64 "u"
+#define SCNxMAX __PRI64 "x"
+
+#define SCNdPTR "ld"
+#define SCNiPTR "li"
+#define SCNoPTR "lo"
+#define SCNuPTR "lu"
+#define SCNxPTR "lx"
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
+

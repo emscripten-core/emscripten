@@ -1,53 +1,42 @@
-/* Copyright (C) 2002, 2010 by  Red Hat, Incorporated. All rights reserved.
- *
- * Permission to use, copy, modify, and distribute this software
- * is freely granted, provided that this notice is preserved.
- */
-
-#ifndef _WORDEXP_H_
-#define _WORDEXP_H_
-
-#include <sys/types.h>
+#ifndef	_WORDEXP_H
+#define	_WORDEXP_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct _wordexp_t
+#include <features.h>
+
+#define __NEED_size_t
+
+#include <bits/alltypes.h>
+
+#define WRDE_DOOFFS  1
+#define WRDE_APPEND  2
+#define WRDE_NOCMD   4
+#define WRDE_REUSE   8
+#define WRDE_SHOWERR 16
+#define WRDE_UNDEF   32
+
+typedef struct
 {
-  size_t we_wordc;	/* Count of words matched by words. */
-  char **we_wordv;	/* Pointer to list of expanded words. */
-  size_t we_offs;	/* Slots to reserve at the beginning of we_wordv. */
-};
+	size_t we_wordc;
+	char **we_wordv;
+	size_t we_offs;
+} wordexp_t;
 
-typedef struct _wordexp_t wordexp_t;
+#define WRDE_NOSYS   -1
+#define WRDE_NOSPACE 1
+#define WRDE_BADCHAR 2
+#define WRDE_BADVAL  3
+#define WRDE_CMDSUB  4
+#define WRDE_SYNTAX  5
 
-#define	WRDE_DOOFFS	0x0001	/* Use we_offs. */
-#define	WRDE_APPEND	0x0002	/* Append to output from previous call. */
-#define	WRDE_NOCMD	0x0004	/* Don't perform command substitution. */
-#define	WRDE_REUSE	0x0008	/* pwordexp points to a wordexp_t struct returned from
-                                   a previous successful call to wordexp. */
-#define	WRDE_SHOWERR	0x0010	/* Print error messages to stderr. */
-#define	WRDE_UNDEF	0x0020	/* Report attempt to expand undefined shell variable. */
-
-enum {
-  WRDE_SUCCESS,
-  WRDE_NOSPACE,
-  WRDE_BADCHAR,
-  WRDE_BADVAL,
-  WRDE_CMDSUB,
-  WRDE_SYNTAX,
-  WRDE_NOSYS
-};
-
-/* Note: This implementation of wordexp requires a version of bash
-   that supports the --wordexp and --protected arguments to be present
-   on the system.  It does not support the WRDE_UNDEF flag. */
-int wordexp(const char *, wordexp_t *, int);
-void wordfree(wordexp_t *);
+int wordexp (const char *__restrict, wordexp_t *__restrict, int);
+void wordfree (wordexp_t *);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _WORDEXP_H_  */
+#endif
