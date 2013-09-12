@@ -478,7 +478,7 @@ fi
         (['--jcache'], 'hello_malloc.cpp', False, True, False, True, False, True, []),
         ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
         # new, huge file
-        ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('3 chunks',)),
+        ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('4 chunks',)),
         (['--jcache'], 'hello_libcxx.cpp', True, False, True, False, True, False, []),
         (['--jcache'], 'hello_libcxx.cpp', False, True, False, True, False, True, []),
         ([], 'hello_libcxx.cpp', False, False, False, False, False, False, []),
