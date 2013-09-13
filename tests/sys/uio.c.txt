@@ -1,0 +1,7 @@
+written = 5
+readed = 5
+buf1[0] = 1
+buf2[0] = 2
+buf2[1] = 3
+buf3[0] = 4
+buf3[1] = 5
