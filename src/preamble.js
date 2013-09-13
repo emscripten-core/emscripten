@@ -1020,28 +1020,7 @@ __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
 addOnPreRun(function() { addRunDependency('pgo') });
 #endif
 
-function loadMemoryInitializer(filename) {
-  function applyData(data) {
-#if USE_TYPED_ARRAYS == 2
-    HEAPU8.set(data, STATIC_BASE);
-#else
-    allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
-#endif
-  }
-
-  // always do this asynchronously, to keep shell and web as similar as possible
-  addOnPreRun(function() {
-    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-      applyData(Module['readBinary'](filename));
-    } else {
-      Browser.asyncLoad(filename, function(data) {
-        applyData(data);
-      }, function(data) {
-        throw 'could not load memory initializer ' + filename;
-      });
-    }
-  });
-}
+var memoryInitializer = null;
 
 // === Body ===
 

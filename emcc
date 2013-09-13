@@ -1620,7 +1620,7 @@ try:
           temp_memfile = os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile))
           if os.path.abspath(memfile) != os.path.abspath(memfile):
             shutil.copyfile(memfile, temp_memfile)
-        return 'loadMemoryInitializer("%s");' % os.path.basename(memfile)
+        return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
       src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'

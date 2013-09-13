@@ -1,6 +1,27 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+if (memoryInitializer) {
+  function applyData(data) {
+#if USE_TYPED_ARRAYS == 2
+    HEAPU8.set(data, STATIC_BASE);
+#else
+    allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
+#endif
+  }
+  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+    applyData(Module['readBinary'](memoryInitializer));
+  } else {
+    addRunDependency('memory initializer');
+    Browser.asyncLoad(memoryInitializer, function(data) {
+      applyData(data);
+      removeRunDependency('memory initializer');
+    }, function(data) {
+      throw 'could not load memory initializer ' + memoryInitializer;
+    });
+  }
+}
+
 function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
