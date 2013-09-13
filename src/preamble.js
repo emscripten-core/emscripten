@@ -942,8 +942,9 @@ Math.toFloat32 = Math['toFloat32'];
 // the dependencies are met.
 var runDependencies = 0;
 var runDependencyTracking = {};
-var calledRun = false;
 var runDependencyWatcher = null;
+var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
+
 function addRunDependency(id) {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
@@ -990,9 +991,8 @@ function removeRunDependency(id) {
     if (runDependencyWatcher !== null) {
       clearInterval(runDependencyWatcher);
       runDependencyWatcher = null;
-    } 
-    // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-    if (!calledRun && shouldRunNow) run();
+    }
+    dependenciesFulfilled();
   }
 }
 Module['removeRunDependency'] = removeRunDependency;
