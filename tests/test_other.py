@@ -1755,7 +1755,7 @@ $
 other=ay file...
 seeked= file.
 ''', output[0])
-    self.assertIdentical('texte\n', output[1])
+    self.assertContained('texte\n', output[1])
 
   def test_emconfig(self):
     output = Popen([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
