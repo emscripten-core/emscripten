@@ -104,25 +104,26 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     Module['arguments'] = arguments;
   }
 
-  if (ENVIRONMENT_IS_WEB) {
+  if (typeof console !== 'undefined') {
     Module['print'] = function(x) {
       console.log(x);
     };
-
     Module['printErr'] = function(x) {
       console.log(x);
     };
-
-    this['{{{ EXPORT_NAME }}}'] = Module;
-  } else if (ENVIRONMENT_IS_WORKER) {
-    // We can do very little here...
+  } else {
+    // Probably a worker, and without console.log. We can do very little here...
     var TRY_USE_DUMP = false;
     Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
       dump(x);
     }) : (function(x) {
       // self.postMessage(x); // enable this if you want stdout to be sent as messages
     }));
+  }
 
+  if (ENVIRONMENT_IS_WEB) {
+    this['{{{ EXPORT_NAME }}}'] = Module;
+  } else {
     Module['load'] = importScripts;
   }
 }
