@@ -418,7 +418,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
       }
 
-      function addFromLibrary(ident) {
+      function addFromLibrary(ident, original) {
         if (ident in addedLibraryItems) return '';
         addedLibraryItems[ident] = true;
 
@@ -450,7 +450,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
         } else if (typeof snippet === 'object') {
           snippet = stringifyWithFunctions(snippet);
-        } else if (typeof snippet === 'function') {
+        } else if (typeof snippet === 'function' || (typeof snippet === 'undefined' && original)) {
+          if (!snippet) snippet = 'function() { throw "TODO: ' + ident + '" }'; // this is an external function (and not a dep), stub it
           isFunction = true;
           snippet = processLibraryFunction(snippet, ident);
           if (ASM_JS) Functions.libraryFunctions[ident] = 1;
@@ -528,7 +529,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             cancel = true; // emit nothing, not even  var X = undefined;
           }
         }
-        item.JS = cancel ? ';' : addFromLibrary(shortident);
+        item.JS = cancel ? ';' : addFromLibrary(shortident, true);
       }
       return ret;
     }
