@@ -556,6 +556,8 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       use_js = 0
+    elif arg == '-E':
+      use_js = 0
 
   if src:
     if 'fopen' in src and '"w"' in src:
