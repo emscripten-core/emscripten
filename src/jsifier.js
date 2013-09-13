@@ -1148,6 +1148,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (VERBOSE && useIfs && item.switchLabels.length >= 6) {
       warn('not optimizing llvm switch into js switch because range of values is ' + range + ', density is ' + range/item.switchLabels.length);
     }
+    if (!useIfs && isIllegalType(item.type)) {
+      useIfs = true;
+      if (VERBOSE) warn('not optimizing llvm switch because illegal type ' + item.type);
+    }
 
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
