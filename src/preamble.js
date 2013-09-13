@@ -992,7 +992,10 @@ function removeRunDependency(id) {
       clearInterval(runDependencyWatcher);
       runDependencyWatcher = null;
     }
-    dependenciesFulfilled();
+    if (dependenciesFulfilled) {
+      dependenciesFulfilled();
+      dependenciesFulfilled = null;
+    }
   }
 }
 Module['removeRunDependency'] = removeRunDependency;
