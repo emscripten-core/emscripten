@@ -669,7 +669,7 @@ if '-M' in sys.argv or '-MM' in sys.argv:
 if '-E' in sys.argv:
   # Just run the preprocessor
   cmd = [CC] + sys.argv[1:]
-  logging.debug('just preprocssor ' + ' '.join(cmd))
+  logging.debug('just preprocessor ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
 # Check if a target is specified
