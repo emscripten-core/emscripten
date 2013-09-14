@@ -6584,10 +6584,6 @@ LibraryManager.library = {
     return me.ret;
   },
 
-  _Z7catopenPKci: function() { throw 'catopen not implemented' },
-  _Z7catgetsP8_nl_catdiiPKc: function() { throw 'catgets not implemented' },
-  _Z8catcloseP8_nl_catd: function() { throw 'catclose not implemented' },
-
   // ==========================================================================
   // errno.h
   // ==========================================================================
