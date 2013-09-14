@@ -70,6 +70,8 @@ var MAX_SETJMPS = 20; // size of setjmp table allocated in each function invocat
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
 var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
+var RELOOPER_BUFFER_SIZE = 20*1024*1024; // The internal relooper buffer size. Increase if you see assertions
+                                         // on OutputBuffer.
 
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 0 means no typed arrays are used. This mode disallows LLVM optimizations
