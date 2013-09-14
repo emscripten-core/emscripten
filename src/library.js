@@ -1713,8 +1713,8 @@ LibraryManager.library = {
       if (format[formatIndex] === '%' && format.indexOf('[', formatIndex+1) > 0) {
         var match = /\%([0-9]*)\[(\^)?(\]?[^\]]*)\]/.exec(format.substring(formatIndex));
         if (match) {
-          var maxNumCharacters = parseInt(match[1]) || Number.MAX_VALUE;
-          var negateScanList = (match[2]==='^');
+          var maxNumCharacters = parseInt(match[1]) || Infinity;
+          var negateScanList = (match[2] === '^');
           var scanList = match[3];
 
           // expand "middle" dashs into character sets
@@ -1722,8 +1722,8 @@ LibraryManager.library = {
           while ((middleDashMatch = /([^\-])\-([^\-])/.exec(scanList))) {
             var rangeStartCharCode = middleDashMatch[1].charCodeAt(0);
             var rangeEndCharCode = middleDashMatch[2].charCodeAt(0);
-            for (var expanded = ''; rangeStartCharCode<=rangeEndCharCode; expanded += String.fromCharCode(rangeStartCharCode++));
-            scanList = scanList.replace(middleDashMatch[1]+'-'+middleDashMatch[2], expanded);
+            for (var expanded = ''; rangeStartCharCode <= rangeEndCharCode; expanded += String.fromCharCode(rangeStartCharCode++));
+            scanList = scanList.replace(middleDashMatch[1] + '-' + middleDashMatch[2], expanded);
           }
 
           var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
