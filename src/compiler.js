@@ -213,6 +213,7 @@ load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
 if (RELOOP) {
+  RelooperModule = { TOTAL_MEMORY: ceilPowerOfTwo(2*RELOOPER_BUFFER_SIZE) };
   load(RELOOPER);
   assert(typeof Relooper != 'undefined');
 }
