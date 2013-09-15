@@ -1,6 +1,12 @@
+         T __cosdf
          T __intscan
          W __iswctype_l
+         T __lgamma_r
+         T __lgammaf_r
+         T __lgammal_r
          T __memrchr
+         D __signgam
+         T __sindf
          T __strchrnul
          T __strxfrm_l
          W __towlower_l
@@ -45,6 +51,12 @@
          T iswupper_l
          T iswxdigit
          T iswxdigit_l
+         T lgamma
+         W lgamma_r
+         T lgammaf
+         W lgammaf_r
+         T lgammal
+         W lgammal_r
          T mblen
          T mbrlen
          T mbrtowc
@@ -61,6 +73,7 @@
          T regerror
          T regexec
          T regfree
+         W signgam
          T strcasecmp_l
          T strcasestr
          W strchrnul
@@ -74,6 +87,9 @@
          T strxfrm
          W strxfrm_l
          T swprintf
+         T tgamma
+         T tgammaf
+         T tgammal
          T towctrans
          T towctrans_l
          T towlower
