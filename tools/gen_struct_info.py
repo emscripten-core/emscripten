@@ -226,7 +226,7 @@ else:
     
     walker.structs = resolve_delayed(walker.structs)
     with open(path, 'r') as stream:
-      defines = re.findall(r'(?:^|\n)#define\s+([A-Z|_]+)\s.*', stream.read())
+      defines = re.findall(r'(?:^|\n)\s*#define\s+([A-Z|_|0-9]+)\s.*', stream.read())
     
     return {
       'file': path,

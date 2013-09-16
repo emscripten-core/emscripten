@@ -1,4 +1,7 @@
 [
+    // ===========================================
+    // libc
+    // ===========================================
     {
         "file": "libc/dirent.h", 
         "defines": [],
@@ -818,5 +821,193 @@
             "MAP_PRIVATE"
         ],
         "structs": {}
+    },
+    
+    // ===========================================
+    // SDL
+    // ===========================================
+    {
+        "file": "SDL/SDL_rect.h",
+        "defines": [],
+        "structs": {
+            "SDL_Rect": [
+                "x", 
+                "y", 
+                "w", 
+                "h"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_keyboard.h",
+        "defines": [],
+        "structs": {
+            "SDL_Keysym": [
+                "scancode", 
+                "sym", 
+                "mod", 
+                "unicode"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_pixels.h",
+        "defines": [],
+        "structs": {
+            "SDL_Palette": [
+                "ncolors", 
+                "colors", 
+                "version", 
+                "refcount"
+            ], 
+            "SDL_PixelFormat": [
+                "format", 
+                "palette", 
+                "BitsPerPixel", 
+                "BytesPerPixel", 
+                "padding", 
+                "Rmask", 
+                "Gmask", 
+                "Bmask", 
+                "Amask", 
+                "Rloss", 
+                "Gloss", 
+                "Bloss", 
+                "Aloss", 
+                "Rshift", 
+                "Gshift", 
+                "Bshift", 
+                "Ashift", 
+                "refcount", 
+                "next"
+            ],
+            "SDL_Color": [
+                "r", 
+                "g", 
+                "b", 
+                "unused"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_events.h",
+        "defines": [],
+        "structs": {
+            "SDL_KeyboardEvent": [
+                "type", 
+                "windowID", 
+                "state", 
+                "repeat", 
+                "padding2", 
+                "padding3", 
+                "keysym"
+            ],
+            "SDL_TextInputEvent": [
+                "type", 
+                "windowID", 
+                "text"
+            ],
+            "SDL_MouseMotionEvent": [
+                "type", 
+                "windowID", 
+                "state", 
+                "padding1", 
+                "padding2", 
+                "padding3", 
+                "x", 
+                "y", 
+                "xrel", 
+                "yrel"
+            ],
+            "SDL_MouseButtonEvent": [
+                "type", 
+                "windowID", 
+                "button", 
+                "state", 
+                "padding1", 
+                "padding2", 
+                "x", 
+                "y"
+            ],
+            "SDL_ResizeEvent": [
+                "type", 
+                "w", 
+                "h"
+            ]
+        }
+    },
+    {
+        "file": "SDL_audio.h", 
+        "defines": [
+            "SDL_AUDIO_MASK_BITSIZE", 
+            "SDL_AUDIO_MASK_DATATYPE", 
+            "SDL_AUDIO_MASK_ENDIAN", 
+            "SDL_AUDIO_MASK_SIGNED", 
+            "AUDIO_U8", 
+            "AUDIO_S8", 
+            "AUDIO_U16LSB", 
+            "AUDIO_S16LSB", 
+            "AUDIO_U16MSB", 
+            "AUDIO_S16MSB", 
+            "AUDIO_U16", 
+            "AUDIO_S16", 
+            "AUDIO_S32LSB", 
+            "AUDIO_S32MSB", 
+            "AUDIO_S32", 
+            "AUDIO_F32LSB", 
+            "AUDIO_F32MSB", 
+            "AUDIO_F32", 
+            "AUDIO_U16SYS", 
+            "AUDIO_S16SYS", 
+            "AUDIO_S32SYS", 
+            "AUDIO_F32SYS", 
+            "SDL_AUDIO_ALLOW_FREQUENCY_CHANGE", 
+            "SDL_AUDIO_ALLOW_FORMAT_CHANGE", 
+            "SDL_AUDIO_ALLOW_CHANNELS_CHANGE", 
+            "SDL_AUDIO_ALLOW_ANY_CHANGE", 
+            "SDL_MIX_MAXVOLUME"
+        ], 
+        "structs": {
+            "SDL_AudioCVT": [
+                "needed", 
+                "src_format", 
+                "dst_format", 
+                "rate_incr", 
+                "buf", 
+                "len", 
+                "len_cvt", 
+                "len_mult", 
+                "len_ratio", 
+                "filters", 
+                "filter_index"
+            ], 
+            "SDL_AudioSpec": [
+                "freq", 
+                "format", 
+                "channels", 
+                "silence", 
+                "samples", 
+                "padding", 
+                "size", 
+                "callback", 
+                "userdata"
+            ]
+        }
+    },
+    {
+        "file": "SDL_version.h",
+        "defines": [
+            "SDL_MAJOR_VERSION", 
+            "SDL_MINOR_VERSION", 
+            "SDL_PATCHLEVEL", 
+            "SDL_COMPILEDVERSION"
+        ], 
+        "structs": {
+            "SDL_version": [
+                "major", 
+                "minor", 
+                "patch"
+            ]
+        }
     }
 ]

@@ -1452,7 +1452,7 @@ class Building:
     Cache.ensure()
     
     import gen_struct_info
-    gen_struct_info.main(['-o', info_path, path_from_root('src/struct_info.json')])
+    gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
   
   @staticmethod
   def preprocess(infile, outfile):
