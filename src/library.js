@@ -1705,7 +1705,7 @@ LibraryManager.library = {
         if (nextC > 0) {
           var maxx = 1;
           if (nextC > formatIndex+1) {
-            var sub = format.substring(formatIndex+1, nextC)
+            var sub = format.substring(formatIndex+1, nextC);
             maxx = parseInt(sub);
             if (maxx != sub) maxx = 0;
           }
@@ -1723,6 +1723,53 @@ LibraryManager.library = {
         }
       }
 
+      // handle %[...]
+      if (format[formatIndex] === '%' && format.indexOf('[', formatIndex+1) > 0) {
+        var match = /\%([0-9]*)\[(\^)?(\]?[^\]]*)\]/.exec(format.substring(formatIndex));
+        if (match) {
+          var maxNumCharacters = parseInt(match[1]) || Infinity;
+          var negateScanList = (match[2] === '^');
+          var scanList = match[3];
+
+          // expand "middle" dashs into character sets
+          var middleDashMatch;
+          while ((middleDashMatch = /([^\-])\-([^\-])/.exec(scanList))) {
+            var rangeStartCharCode = middleDashMatch[1].charCodeAt(0);
+            var rangeEndCharCode = middleDashMatch[2].charCodeAt(0);
+            for (var expanded = ''; rangeStartCharCode <= rangeEndCharCode; expanded += String.fromCharCode(rangeStartCharCode++));
+            scanList = scanList.replace(middleDashMatch[1] + '-' + middleDashMatch[2], expanded);
+          }
+
+          var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+          argIndex += Runtime.getAlignSize('void*', null, true);
+          fields++;
+
+          for (var i = 0; i < maxNumCharacters; i++) {
+            next = get();
+            if (negateScanList) {
+              if (scanList.indexOf(String.fromCharCode(next)) < 0) {
+                {{{ makeSetValue('argPtr++', 0, 'next', 'i8') }}};
+              } else {
+                unget();
+                break;
+              }
+            } else {
+              if (scanList.indexOf(String.fromCharCode(next)) >= 0) {
+                {{{ makeSetValue('argPtr++', 0, 'next', 'i8') }}};
+              } else {
+                unget();
+                break;
+              }
+            }
+          }
+
+          // write out null-terminating character
+          {{{ makeSetValue('argPtr++', 0, '0', 'i8') }}};
+          formatIndex += match[0].length;
+          
+          continue;
+        }
+      }      
       // remove whitespace
       while (1) {
         next = get();

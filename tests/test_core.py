@@ -6908,6 +6908,29 @@ at function.:blag
           printf("%i\n", a);
         }
 
+        char buf1[100], buf2[100], buf3[100], buf4[100];
+
+        int numItems = sscanf("level=4:ref=3", "%255[^:=]=%255[^:]:%255[^=]=%255c", buf1, buf2, buf3, buf4);
+        printf("%d, %s, %s, %s, %s\n", numItems, buf1, buf2, buf3, buf4);
+
+        numItems = sscanf("def|456", "%[a-z]|%[0-9]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("3-4,-ab", "%[-0-9],%[ab-z-]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("Hello,World", "%[A-Za-z],%[^0-9]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("Hello4711", "%[^0-9],%[^0-9]", buf1, buf2);
+        printf("%d, %s\n", numItems, buf1);
+
+        numItems = sscanf("JavaScript", "%4[A-Za-z]", buf1);
+        printf("%d, %s\n", numItems, buf1);
+    
+        numItems = sscanf("[]", "%1[[]%1[]]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
         return 0;
       }
       '''
@@ -6915,7 +6938,14 @@ at function.:blag
                      '1\n1499\n' +
                      '5\n87,0.481565,0.059481,0,1\n' +
                      '3\n-123,4294966531,-34\n' +
-                     '1\n')
+                     '1\n' +
+                     '4, level, 4, ref, 3\n' +
+                     '2, def, 456\n' +
+                     '2, 3-4, -ab\n' +
+                     '2, Hello, World\n' +
+                     '1, Hello\n' +
+                     '1, Java\n' +
+                     '2, [, ]')
 
   def test_sscanf_2(self):
     # doubles
