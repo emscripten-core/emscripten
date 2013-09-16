@@ -1279,6 +1279,10 @@ try:
         os.path.join('libc', 'gen', 'vwarnx.c'),
         os.path.join('libc', 'stdlib', 'strtod.c'),
       ]
+      musl_files = [
+      ]
+      for directory, sources in musl_files:
+        libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
       return build_libc('libc.bc', libc_files)
 
     def apply_libc(need):
@@ -1316,6 +1320,46 @@ try:
           'wctrans.c',
           'wcwidth.c',
          ]],
+         ['locale', [
+          'isalnum_l.c',
+          'isalpha_l.c',
+          'isblank_l.c',
+          'iscntrl_l.c',
+          'isdigit_l.c',
+          'isgraph_l.c',
+          'islower_l.c',
+          'isprint_l.c',
+          'ispunct_l.c',
+          'isspace_l.c',
+          'isupper_l.c',
+          'iswalnum_l.c',
+          'iswalpha_l.c',
+          'iswblank_l.c',
+          'iswcntrl_l.c',
+          'iswctype_l.c',
+          'iswdigit_l.c',
+          'iswgraph_l.c',
+          'iswlower_l.c',
+          'iswprint_l.c',
+          'iswpunct_l.c',
+          'iswspace_l.c',
+          'iswupper_l.c',
+          'iswxdigit_l.c',
+          'isxdigit_l.c',
+          'strfmon.c',
+          'strxfrm.c',
+          'tolower_l.c',
+          'toupper_l.c',
+          'towctrans_l.c',
+          'towlower_l.c',
+          'towupper_l.c',
+          'wcscoll.c',
+          'wcscoll_l.c',
+          'wcsxfrm.c',
+          'wcsxfrm_l.c',
+          'wctrans_l.c',
+          'wctype_l.c',
+         ]],
          ['multibyte', [
           'btowc.c',
           'mblen.c',
@@ -1342,7 +1386,7 @@ try:
            'wcpcpy.c',
            'wcpncpy.c',
            'wcscasecmp.c',
-           # 'wcscasecmp_l.c', # XXX: alltypes.h issue
+           'wcscasecmp_l.c',
            'wcscat.c',
            'wcschr.c',
            'wcscmp.c',
@@ -1351,7 +1395,7 @@ try:
            'wcsdup.c',
            'wcslen.c',
            'wcsncasecmp.c',
-           # 'wcsncasecmp_l.c', # XXX: alltypes.h issue
+           'wcsncasecmp_l.c',
            'wcsncat.c',
            'wcsncmp.c',
            'wcsncpy.c',

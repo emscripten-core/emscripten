@@ -4072,13 +4072,11 @@ LibraryManager.library = {
   isdigit: function(chr) {
     return chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}};
   },
-  isdigit_l: 'isdigit', // no locale support yet
   isxdigit: function(chr) {
     return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
            (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('f') }}}) ||
            (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('F') }}});
   },
-  isxdigit_l: 'isxdigit', // no locale support yet
   isalnum: function(chr) {
     return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
            (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
@@ -8843,7 +8841,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'swprintf', 'pthread_join', 'pthread_detach', 'strcoll_l', 'strxfrm_l', 'wcscoll_l', 'toupper_l', 'tolower_l', 'iswspace_l', 'iswprint_l', 'iswcntrl_l', 'iswupper_l', 'iswlower_l', 'iswalpha_l', 'iswdigit_l', 'iswpunct_l', 'iswxdigit_l', 'iswblank_l', 'wcsxfrm_l', 'towupper_l', 'towlower_l', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'swprintf', 'pthread_join', 'pthread_detach', 'strcoll_l', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function() { throw 'TODO: ' + aborter };
 });
 
