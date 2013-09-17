@@ -396,128 +396,125 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
 
   // functionStub
-  substrate.addActor('FunctionStub', {
-    processItem: function(item) {
-      // note the signature
-      if (item.returnType && item.params) {
-        functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
-      }
-
-      function addFromLibrary(ident) {
-        if (ident in addedLibraryItems) return '';
-        addedLibraryItems[ident] = true;
-
-        // dependencies can be JS functions, which we just run
-        if (typeof ident == 'function') return ident();
-
-        // Don't replace implemented functions with library ones (which can happen when we add dependencies).
-        // Note: We don't return the dependencies here. Be careful not to end up where this matters
-        if (('_' + ident) in Functions.implementedFunctions) return '';
-
-        var snippet = LibraryManager.library[ident];
-        var redirectedIdent = null;
-        var deps = LibraryManager.library[ident + '__deps'] || [];
-        var isFunction = false;
-
-        if (typeof snippet === 'string') {
-          var target = LibraryManager.library[snippet];
-          if (target) {
-            // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
-            // This avoid having duplicate functions with identical content.
-            redirectedIdent = snippet;
-            deps.push(snippet);
-            snippet = '_' + snippet;
-          }
-          // In asm, we need to know about library functions. If there is a target, though, then no
-          // need to consider this a library function - we will call directly to it anyhow
-          if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\.\w+/.exec(snippet))) {
-            Functions.libraryFunctions[ident] = 1;
-          }
-        } else if (typeof snippet === 'object') {
-          snippet = stringifyWithFunctions(snippet);
-        } else if (typeof snippet === 'function') {
-          isFunction = true;
-          snippet = processLibraryFunction(snippet, ident);
-          if (ASM_JS) Functions.libraryFunctions[ident] = 1;
-        }
-
-        var postsetId = ident + '__postset';
-        var postset = LibraryManager.library[postsetId];
-        if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
-          addedLibraryItems[postsetId] = true;
-          ret.push({
-            intertype: 'GlobalVariablePostSet',
-            JS: postset
-          });
-        }
-
-        if (redirectedIdent) {
-          deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
-        }
-        if (ASM_JS) {
-          // In asm, dependencies implemented in C might be needed by JS library functions.
-          // We don't know yet if they are implemented in C or not. To be safe, export such
-          // special cases.
-          [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
-            deps.forEach(function(dep) {
-              if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
-                EXPORTED_FUNCTIONS[dep] = 1;
-              }
-            });
-          });
-        }
-        // $ident's are special, we do not prefix them with a '_'.
-        if (ident[0] === '$') {
-          ident = ident.substr(1);
-        } else {
-          ident = '_' + ident;
-        }
-        if (VERBOSE) printErr('adding ' + ident + ' and deps ' + deps);
-        var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-        var contentText = isFunction ? snippet : ('var ' + ident + '=' + snippet + ';');
-        if (ASM_JS) {
-          var sig = LibraryManager.library[ident.substr(1) + '__sig'];
-          if (isFunction && sig && LibraryManager.library[ident.substr(1) + '__asm']) {
-            // asm library function, add it as generated code alongside the generated code
-            Functions.implementedFunctions[ident] = sig;
-            asmLibraryFunctions.push(contentText);
-            contentText = ' ';
-            EXPORTED_FUNCTIONS[ident] = 1;
-            Functions.libraryFunctions[ident.substr(1)] = 2;
-          }
-        }
-        if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
-        if ((!ASM_JS || phase == 'pre') &&
-            (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
-          contentText += '\nModule["' + ident + '"] = ' + ident + ';';
-        }
-        return depsText + contentText;
-      }
-
-      var ret = [item];
-      if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return null;
-      var shortident = item.ident.substr(1);
-      if (BUILD_AS_SHARED_LIB) {
-        // Shared libraries reuse the runtime of their parents.
-        item.JS = '';
-      } else {
-        // If this is not linkable, anything not in the library is definitely missing
-        var cancel = false;
-        if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
-          if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
-          if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) printErr('warning: unresolved symbol: ' + shortident);
-          if (ASM_JS || item.ident in DEAD_FUNCTIONS) {
-            // emit a stub that will fail during runtime. this allows asm validation to succeed.
-            LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
-          } else {
-            cancel = true; // emit nothing, not even  var X = undefined;
-          }
-        }
-        item.JS = cancel ? ';' : addFromLibrary(shortident);
-      }
-      return ret;
+  function functionStubHandler(item) {
+    // note the signature
+    if (item.returnType && item.params) {
+      functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
-  });
+
+    function addFromLibrary(ident) {
+      if (ident in addedLibraryItems) return '';
+      addedLibraryItems[ident] = true;
+
+      // dependencies can be JS functions, which we just run
+      if (typeof ident == 'function') return ident();
+
+      // Don't replace implemented functions with library ones (which can happen when we add dependencies).
+      // Note: We don't return the dependencies here. Be careful not to end up where this matters
+      if (('_' + ident) in Functions.implementedFunctions) return '';
+
+      var snippet = LibraryManager.library[ident];
+      var redirectedIdent = null;
+      var deps = LibraryManager.library[ident + '__deps'] || [];
+      var isFunction = false;
+
+      if (typeof snippet === 'string') {
+        var target = LibraryManager.library[snippet];
+        if (target) {
+          // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
+          // This avoid having duplicate functions with identical content.
+          redirectedIdent = snippet;
+          deps.push(snippet);
+          snippet = '_' + snippet;
+        }
+        // In asm, we need to know about library functions. If there is a target, though, then no
+        // need to consider this a library function - we will call directly to it anyhow
+        if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\.\w+/.exec(snippet))) {
+          Functions.libraryFunctions[ident] = 1;
+        }
+      } else if (typeof snippet === 'object') {
+        snippet = stringifyWithFunctions(snippet);
+      } else if (typeof snippet === 'function') {
+        isFunction = true;
+        snippet = processLibraryFunction(snippet, ident);
+        if (ASM_JS) Functions.libraryFunctions[ident] = 1;
+      }
+
+      var postsetId = ident + '__postset';
+      var postset = LibraryManager.library[postsetId];
+      if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
+        addedLibraryItems[postsetId] = true;
+        itemsDict.GlobalVariablePostSet.push({
+          intertype: 'GlobalVariablePostSet',
+          JS: postset
+        });
+      }
+
+      if (redirectedIdent) {
+        deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
+      }
+      if (ASM_JS) {
+        // In asm, dependencies implemented in C might be needed by JS library functions.
+        // We don't know yet if they are implemented in C or not. To be safe, export such
+        // special cases.
+        [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
+          deps.forEach(function(dep) {
+            if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
+              EXPORTED_FUNCTIONS[dep] = 1;
+            }
+          });
+        });
+      }
+      // $ident's are special, we do not prefix them with a '_'.
+      if (ident[0] === '$') {
+        ident = ident.substr(1);
+      } else {
+        ident = '_' + ident;
+      }
+      if (VERBOSE) printErr('adding ' + ident + ' and deps ' + deps);
+      var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+      var contentText = isFunction ? snippet : ('var ' + ident + '=' + snippet + ';');
+      if (ASM_JS) {
+        var sig = LibraryManager.library[ident.substr(1) + '__sig'];
+        if (isFunction && sig && LibraryManager.library[ident.substr(1) + '__asm']) {
+          // asm library function, add it as generated code alongside the generated code
+          Functions.implementedFunctions[ident] = sig;
+          asmLibraryFunctions.push(contentText);
+          contentText = ' ';
+          EXPORTED_FUNCTIONS[ident] = 1;
+          Functions.libraryFunctions[ident.substr(1)] = 2;
+        }
+      }
+      if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
+      if ((!ASM_JS || phase == 'pre') &&
+          (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
+        contentText += '\nModule["' + ident + '"] = ' + ident + ';';
+      }
+      return depsText + contentText;
+    }
+
+    itemsDict.functionStub.push(item);
+    if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return;
+    var shortident = item.ident.substr(1);
+    if (BUILD_AS_SHARED_LIB) {
+      // Shared libraries reuse the runtime of their parents.
+      item.JS = '';
+    } else {
+      // If this is not linkable, anything not in the library is definitely missing
+      var cancel = false;
+      if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
+        if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
+        if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) printErr('warning: unresolved symbol: ' + shortident);
+        if (ASM_JS || item.ident in DEAD_FUNCTIONS) {
+          // emit a stub that will fail during runtime. this allows asm validation to succeed.
+          LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
+        } else {
+          cancel = true; // emit nothing, not even  var X = undefined;
+        }
+      }
+      item.JS = cancel ? ';' : addFromLibrary(shortident);
+    }
+  }
 
   // function splitter
   substrate.addActor('FunctionSplitter', {
@@ -1881,7 +1878,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
       });
     }
-    substrate.addItems(data.functionStubs, 'FunctionStub');
+    data.functionStubs.forEach(functionStubHandler);
     assert(data.functions.length == 0);
   } else {
     if (phase == 'pre') {
