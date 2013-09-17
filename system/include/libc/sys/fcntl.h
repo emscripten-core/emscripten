@@ -1,4 +1,2 @@
-#ifndef _SYS_FCNTL_H_
-#define _SYS_FCNTL_H_
-#include <sys/_default_fcntl.h>
-#endif
+#warning redirecting incorrect #include <sys/fcntl.h> to <fcntl.h>
+#include <fcntl.h>

@@ -1,8 +1,16 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <emscripten.h>
 
 int main() {
+  EM_ASM(
+    FS.writeFile('/forbidden', ''); FS.chmod('/forbidden', 0000);
+    FS.writeFile('/readable',  ''); FS.chmod('/readable',  0444);
+    FS.writeFile('/writeable', ''); FS.chmod('/writeable', 0222);
+    FS.writeFile('/allaccess', ''); FS.chmod('/allaccess', 0777);
+  );
+
   char* files[] = {"/readable", "/writeable",
                    "/allaccess", "/forbidden", "/nonexistent"};
   for (int i = 0; i < sizeof files / sizeof files[0]; i++) {

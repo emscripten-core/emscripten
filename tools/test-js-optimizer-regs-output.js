@@ -175,19 +175,19 @@ function fcntl_open() {
  return null;
 }
 function ex() {
- var r1, r2;
- r1 = STACKTOP;
+ var __stackBase__ = STACKTOP;
  STACKTOP += 4;
- r2 = r1;
- r1 = _puts(STRING_TABLE._str17 | 0);
- r1 = r2 | 0;
- r2 = 0;
+ var $e1 = __stackBase__;
+ var $puts = _puts(STRING_TABLE._str17 | 0);
+ var $x41 = $e1 | 0;
+ var $i_04 = 0;
  while (1) {
-  r1 = _printf(STRING_TABLE.__str15 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = r2, tempInt));
+  var $i_04;
+  var $call1 = _printf(STRING_TABLE.__str15 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $i_04, tempInt));
   ((function() {
    try {
     __THREW__ = false;
-    return __Z5magici(r2);
+    return __Z5magici($i_04);
    } catch (e) {
     if (typeof e != "number") throw e;
     if (ABORT) throw e;

@@ -698,6 +698,25 @@ mergeInto(LibraryManager.library, {
     }, millis);
   },
 
+  emscripten_async_load_script: function(url, onload, onerror) {
+    Module['noExitRuntime'] = true;
+
+    onload = Runtime.getFuncWrapper(onload, 'v');
+
+    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
+    var script = document.createElement('script');
+    script.onload = function() {
+      if (runDependencies > 0) {
+        dependenciesFulfilled = onload;
+      } else {
+        onload();
+      }
+    };
+    script.onerror = onerror;
+    script.src = Pointer_stringify(url);
+    document.body.appendChild(script);
+  },
+
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     Module['noExitRuntime'] = true;
 
@@ -734,7 +753,15 @@ mergeInto(LibraryManager.library, {
         Module['preMainLoop']();
       }
 
-      Runtime.dynCall('v', func);
+      try {
+        Runtime.dynCall('v', func);
+      } catch (e) {
+        if (e instanceof ExitStatus) {
+          return;
+        } else {
+          throw e;
+        }
+      }
 
       if (Module['postMainLoop']) {
         Module['postMainLoop']();

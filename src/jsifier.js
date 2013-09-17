@@ -324,11 +324,13 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(typeof constant === 'object');//, [typeof constant, JSON.stringify(constant), item.external]);
 
         // This is a flattened object. We need to find its idents, so they can be assigned to later
+        var structTypes = null;
         constant.forEach(function(value, i) {
           if (needsPostSet(value)) { // ident, or expression containing an ident
+            if (!structTypes) structTypes = generateStructTypes(item.type);
             ret.push({
               intertype: 'GlobalVariablePostSet',
-              JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+              JS: makeSetValue(makeGlobalUse(item.ident), i, value, structTypes[i], false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
             });
             constant[i] = '0';
           }
@@ -1143,8 +1145,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var range = maxx - minn;
     var useIfs = (item.switchLabels.length+1) < 6 || range > 10*1024 || (range/item.switchLabels.length) > 1024; // heuristics
-    if (VERBOSE && useIfs && item.switchLabels.length > 2) {
-      warn('not optimizing llvm switch into js switch because ' + [range, range/item.switchLabels.length]);
+    if (VERBOSE && useIfs && item.switchLabels.length >= 6) {
+      warn('not optimizing llvm switch into js switch because range of values is ' + range + ', density is ' + range/item.switchLabels.length);
+    }
+    if (!useIfs && isIllegalType(item.type)) {
+      useIfs = true;
+      if (VERBOSE) warn('not optimizing llvm switch because illegal type ' + item.type);
     }
 
     var phiSets = calcPhiSets(item);
@@ -1831,7 +1837,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (CORRUPTION_CHECK) {
-      assert(!ASM_JS); // cannot monkeypatch asm!
+      assert(!ASM_JS, 'corruption checker is not compatible with asm.js');
       print(processMacros(read('corruptionCheck.js')));
     }
     if (HEADLESS) {
@@ -1840,6 +1846,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       print('\n');
       print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
       print('}');
+    }
+    if (PROXY_TO_WORKER) {
+      print(read('proxyWorker.js'));
     }
     if (RUNTIME_TYPE_INFO) {
       Types.cleanForRuntime();

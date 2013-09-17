@@ -1,9 +1,9 @@
 
-  var RBUFFER_SIZE = 20*1024*1024;
+  var RBUFFER_SIZE = RELOOPER_BUFFER_SIZE;
   var rbuffer = _malloc(RBUFFER_SIZE);
   _rl_set_output_buffer(rbuffer, RBUFFER_SIZE);
 
-  var TBUFFER_SIZE = 10*1024*1024;
+  var TBUFFER_SIZE = RELOOPER_BUFFER_SIZE/2;
   var tbuffer = _malloc(TBUFFER_SIZE);
 
   var VBUFFER_SIZE = 256;
@@ -15,10 +15,10 @@
   },
   RelooperGlue['addBlock'] = function(text, branchVar) {
     assert(this.r);
-    assert(text.length+1 < TBUFFER_SIZE);
+    assert(text.length+1 < TBUFFER_SIZE, 'buffer too small, increase RELOOPER_BUFFER_SIZE');
     writeStringToMemory(text, tbuffer);
     if (branchVar) {
-      assert(branchVar.length+1 < VBUFFER_SIZE);
+      assert(branchVar.length+1 < VBUFFER_SIZE, 'buffer too small, increase RELOOPER_BUFFER_SIZE');
       writeStringToMemory(branchVar, vbuffer);
     }
     var b = _rl_new_block(tbuffer, branchVar ? vbuffer : 0);
@@ -28,14 +28,14 @@
   RelooperGlue['addBranch'] = function(from, to, condition, code) {
     assert(this.r);
     if (condition) {
-      assert(condition.length+1 < TBUFFER_SIZE/2);
+      assert(condition.length+1 < TBUFFER_SIZE/2, 'buffer too small, increase RELOOPER_BUFFER_SIZE');
       writeStringToMemory(condition, tbuffer);
       condition = tbuffer;
     } else {
       condition = 0; // allow undefined, null, etc. as inputs
     }
     if (code) {
-      assert(code.length+1 < TBUFFER_SIZE/2);
+      assert(code.length+1 < TBUFFER_SIZE/2, 'buffer too small, increase RELOOPER_BUFFER_SIZE');
       writeStringToMemory(code, tbuffer + TBUFFER_SIZE/2);
       code = tbuffer + TBUFFER_SIZE/2;
     } else {

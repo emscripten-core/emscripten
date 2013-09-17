@@ -45,7 +45,25 @@ extern "C" {
 extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);
 extern char *emscripten_run_script_string(const char *script); // uses a single buffer - shared between calls!
+
+/*
+ * Asynchronously run a script, after a specified amount of
+ * time.
+ */
 extern void emscripten_async_run_script(const char *script, int millis);
+
+/*
+ * Asynchronously loads a script from a URL.
+ *
+ * This integrates with the run dependencies system, so your
+ * script can call addRunDependency multiple times, prepare
+ * various asynchronous tasks, and call removeRunDependency
+ * on them; when all are complete (or there were no run
+ * dependencies to begin with), onload is called. An example use
+ * for this is to load an asset module, that is, the output of the
+ * file packager.
+ */
+extern void emscripten_async_load_script(const char *script, void (*onload)(), void (*onerror)());
 
 /*
  * Set a C function as the main event loop. The JS environment

@@ -3,8 +3,58 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <emscripten.h>
 
 int main() {
+  EM_ASM(
+    var major = 80;
+
+    var device = FS.makedev(major++, 0);
+    FS.registerDevice(device, {
+      open: function(stream) {
+        stream.payload = [65, 66, 67, 68];
+      },
+      read: function(stream, buffer, offset, length, pos) {
+        var bytesRead = 0;
+        for (var i = 0; i < length; i++) {
+          if (stream.payload.length) {
+            bytesRead++;
+            buffer[offset+i] = stream.payload.shift();
+          } else {
+            break;
+          }
+        }
+        return bytesRead;
+      },
+      write: function(stream, buffer, offset, length, pos) {
+        for (var i = 0; i < length; i++) {
+          Module.print('TO DEVICE: ' + buffer[offset+i]);
+        }
+        return i;
+      }
+    });
+    FS.mkdev('/device', device);
+
+    var broken_device = FS.makedev(major++, 0);
+    FS.registerDevice(broken_device, {
+      read: function(stream, buffer, offset, length, pos) {
+        throw new FS.ErrnoError(ERRNO_CODES.EIO);
+      },
+      write: function(stream, buffer, offset, length, pos) {
+        throw new FS.ErrnoError(ERRNO_CODES.EIO);
+      }
+    });
+    FS.mkdev('/broken-device', broken_device);
+
+    // NB: These are meant to test FS.createDevice specifically,
+    //     and as such do not use registerDevice/mkdev
+    FS.createDevice('/', 'createDevice-read-only', function() {});
+    FS.createDevice('/', 'createDevice-write-only', null, function() {});
+
+    FS.mkdir('/folder', 0777);
+    FS.writeFile('/file', '1234567890');
+  );
+
   char readBuffer[256] = {0};
   char writeBuffer[] = "writeme";
 

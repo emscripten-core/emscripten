@@ -190,7 +190,7 @@ function ex() {
  while (1) {
   var $i_04;
   var $call1 = _printf(STRING_TABLE.__str15 | 0, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = $i_04, tempInt));
-  ((function() {
+  ((function() { // prevents registerize, looks like inline asm
    try {
     __THREW__ = false;
     return __Z5magici($i_04);

@@ -1,23 +1,15 @@
-/*
- * libgen.h - defined by XPG4
- */
-
-#ifndef _LIBGEN_H_
-#define _LIBGEN_H_
-
-#include "_ansi.h"
-#include <sys/reent.h>
+#ifndef _LIBGEN_H
+#define _LIBGEN_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-char      *_EXFUN(basename,     (char *));
-char      *_EXFUN(dirname,     (char *));
+char *dirname(char *);
+char *basename(char *);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _LIBGEN_H_ */
-
+#endif

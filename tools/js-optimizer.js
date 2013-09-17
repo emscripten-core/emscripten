@@ -1564,6 +1564,7 @@ function normalizeAsm(func) {
   var data = {
     params: {}, // ident => ASM_* type
     vars: {}, // ident => ASM_* type
+    inlines: [], // list of inline assembly copies
   };
   // process initial params
   var stats = func[3];
@@ -1621,6 +1622,10 @@ function normalizeAsm(func) {
           node[0] = 'name';
           node[1] = 'Math_' + node[2];
         }
+      } else if (type === 'call' && node[1][0] === 'function') {
+        assert(!node[1][1]); // anonymous functions only
+        data.inlines.push(node[1]);
+        node[1] = ['name', 'inlinejs']; // empty out body, leave arguments, so they are eliminated/minified properly
       }
     });
     i++;
@@ -1669,6 +1674,14 @@ function denormalizeAsm(func, data) {
   } else {
     stats[next] = emptyNode();
   }
+  if (data.inlines.length > 0) {
+    var i = 0;
+    traverse(func, function(node, type) {
+      if (type === 'call' && node[1][0] === 'name' && node[1][1] === 'inlinejs') {
+        node[1] = data.inlines[i++]; // swap back in the body
+      }
+    });
+  }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
 
@@ -1715,6 +1728,15 @@ function getStackBumpSize(ast) {
 function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
+    if (!asm) {
+      var hasFunction = false;
+      traverse(fun, function(node, type) {
+        if (type === 'function') hasFunction = true;
+      });
+      if (hasFunction) {
+        return; // inline assembly, and not asm (where we protect it in normalize/denormalize), so abort registerize pass
+      }
+    }
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
     var params = {}; // note: params are special, they can never share a register between them (see later)
     if (fun[2] && fun[2].length) {
@@ -2019,6 +2041,7 @@ function registerize(ast) {
       var finalAsmData = {
         params: {},
         vars: {},
+        inlines: asmData.inlines,
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
@@ -3018,6 +3041,9 @@ function outline(ast) {
     }
     var ignore = [];
     traverse(func, function(node) {
+      if (node[0] === 'while' && node[2][0] !== 'block') {
+        node[2] = ['block', [node[2]]]; // so we have a list of statements and can flatten  while(1) switch
+      }
       var stats = getStatements(node);
       if (stats) {
         for (var i = 0; i < stats.length; i++) {
@@ -3452,7 +3478,7 @@ function outline(ast) {
     });
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
-    var newAsmData = { params: { sp: ASM_INT }, vars: {} };
+    var newAsmData = { params: { sp: ASM_INT }, vars: {}, inlines: asmData.inlines };
     for (var v in codeInfo.reads) {
       if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }
@@ -3694,8 +3720,10 @@ function outline(ast) {
             }
           }
         }
-        ret.push(func);
-        printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+        if (ret) {
+          ret.push(func);
+          printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+        }
       }
       denormalizeAsm(func, asmData);
     });
