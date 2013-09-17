@@ -367,22 +367,19 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
 
   // alias
-  substrate.addActor('Alias', {
-    processItem: function(item) {
-      item.intertype = 'GlobalVariableStub';
-      var ret = [item];
-      item.JS = 'var ' + item.ident + ';';
-      // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
-      Variables.globals[item.ident].targetIdent = item.value.ident;
-      var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
-      if ((MAIN_MODULE || SIDE_MODULE) && isFunctionType(item.type)) {
-        var target = item.value.ident;
-        if (!Functions.aliases[target]) Functions.aliases[target] = [];
-        Functions.aliases[target].push(item.ident);
-      }
-      return ret;
+  function aliasHandler(item) {
+    item.intertype = 'GlobalVariableStub';
+    itemsDict.GlobalVariableStub.push(item);
+    item.JS = 'var ' + item.ident + ';';
+    // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
+    Variables.globals[item.ident].targetIdent = item.value.ident;
+    var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
+    if ((MAIN_MODULE || SIDE_MODULE) && isFunctionType(item.type)) {
+      var target = item.value.ident;
+      if (!Functions.aliases[target]) Functions.aliases[target] = [];
+      Functions.aliases[target].push(item.ident);
     }
-  });
+  }
 
   function processLibraryFunction(snippet, ident) {
     snippet = snippet.toString();
@@ -1903,7 +1900,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     sortGlobals(data.globalVariables).forEach(globalVariableHandler);
-    substrate.addItems(data.aliass, 'Alias');
+    data.aliass.forEach(aliasHandler);
     substrate.addItems(data.functions, 'FunctionSplitter');
   }
 
