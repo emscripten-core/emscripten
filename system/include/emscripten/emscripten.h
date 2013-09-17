@@ -35,7 +35,7 @@ extern "C" {
  * all visible functions will be added to EXPORTED_FUNCTIONS.
  *
  */
-#define EM_EXPORT __attribute__((visibility ("default")))
+#define EM_EXPORT __attribute__((visibility ("default"))) __attribute__((used))
 
 /*
  * Forces LLVM to not dead-code-eliminate a function. Note that
