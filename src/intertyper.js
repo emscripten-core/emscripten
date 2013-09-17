@@ -565,7 +565,28 @@ function intertyper(lines, sidePass, baseLineNums) {
         } else {
           ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
         }
+      } else if (ident == '@llvm.used') {
+        var chunk = item.tokens[3].item.tokens;
+        var funcs = [];
+        var part = [];
+        
+        for (var i = 0; i < chunk.length; i++) {
+          if (chunk[i].text == ',') {
+            var call = parseLLVMFunctionCall(part);
+            EXPORTED_FUNCTIONS[call.ident] = 0;
+            part = [];
+          } else {
+            part.push(chunk[i]);
+          }
+        }
+        if (part.length > 0) {
+          var call = parseLLVMFunctionCall(part);
+          EXPORTED_FUNCTIONS[call.ident] = 0;
+        }
+        
+        ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
       }
+      
       return ret;
     }
   }
