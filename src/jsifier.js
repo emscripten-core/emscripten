@@ -138,21 +138,6 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // Actors
 
-  // type
-  // FIXME: This is no longer used, we do not actually need to JSify on types. TODO: Remove this and related code
-  substrate.addActor('Type', {
-    processItem: function(item) {
-      var type = Types.types[item.name_];
-      var niceName = toNiceIdent(item.name_);
-      // We might export all of Types.types, cleaner that way, but do not want slowdowns in accessing flatteners
-      item.JS = 'var ' + niceName + '___SIZE = ' + Types.types[item.name_].flatSize + '; // ' + item.name_ + '\n';
-      if (type.needsFlattening && !type.flatFactor) {
-        item.JS += 'var ' + niceName + '___FLATTENER = ' + JSON.stringify(Types.types[item.name_].flatIndexes) + ';';
-      }
-      return [item];
-    }
-  });
-
   function makeEmptyStruct(type) {
     var ret = [];
     var typeData = Types.types[type];
