@@ -177,7 +177,10 @@ mergeInto(LibraryManager.library, {
     stream_ops: {
       read: function(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
+        if (position >= contents.length)
+          return 0;
         var size = Math.min(contents.length - position, length);
+        assert(size >= 0);
 #if USE_TYPED_ARRAYS == 2
         if (size > 8 && contents.subarray) { // non-trivial, and typed array
           buffer.set(contents.subarray(position, position + size), offset);
