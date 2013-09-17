@@ -204,6 +204,12 @@ if (phase == 'pre') {
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
+// Load struct and define information.
+var temp = JSON.parse(read(STRUCT_INFO));
+C_STRUCTS = temp.structs;
+// NOTE: This overwrites C_DEFINES from settings.js, should this be fixed or will C_DEFINES in settings.js be deprecated?
+C_DEFINES = temp.defines;
+
 // Load compiler code
 
 load('framework.js');
