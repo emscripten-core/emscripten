@@ -29,6 +29,15 @@ extern "C" {
 #define EM_ASM(...) asm(#__VA_ARGS__)
 
 /*
+ * EM_EXPORT marks a function as visible. If the compiler is called with
+ *     -fvisibility=hidden 
+ * all other functions will be hidden. Now if you set AUTO_EXPORT=1,
+ * all visible functions will be added to EXPORTED_FUNCTIONS.
+ *
+ */
+#define EM_EXPORT __attribute__((visibility ("default")))
+
+/*
  * Forces LLVM to not dead-code-eliminate a function. Note that
  * you still need to use EXPORTED_FUNCTIONS so it stays alive
  * in JS, e.g.

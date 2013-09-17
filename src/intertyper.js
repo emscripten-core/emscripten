@@ -570,11 +570,20 @@ function intertyper(data, sidePass, baseLineNums) {
   // function header
   var funcHeader = substrate.addActor('FuncHeader', {
     processItem: function(item) {
+      var hidden = false;
       item.tokens = item.tokens.filter(function(token) {
+        if(token.text == 'hidden') {
+          // TODO: Is there a better way to check for this?
+          hidden = true;
+        }
         return !(token.text in LLVM.LINKAGES || token.text in LLVM.PARAM_ATTR || token.text in LLVM.FUNC_ATTR || token.text in LLVM.CALLING_CONVENTIONS);
       });
       var params = parseParamTokens(item.tokens[2].item.tokens);
       if (sidePass) dprint('unparsedFunctions', 'Processing function: ' + item.tokens[1].text);
+      
+      if(AUTO_EXPORT && !hidden) {
+        EXPORTED_FUNCTIONS[toNiceIdent(item.tokens[1].text)] = 0;
+      }
       return [{
         intertype: 'function',
         ident: toNiceIdent(item.tokens[1].text),
