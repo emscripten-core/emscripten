@@ -1367,7 +1367,10 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES.EIO);
         }
         var contents = stream.node.contents;
+        if (position >= contents.length)
+          return 0;
         var size = Math.min(contents.length - position, length);
+        assert(size >= 0);
         if (contents.slice) { // normal array
           for (var i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];
