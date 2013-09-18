@@ -119,6 +119,14 @@ If manually bisecting:
   Even better, add a breakpoint, e.g. on the printf, then reload, then step through and see the print (best to run with EM_SAVE_DIR=1 for the reload).
 '''
 
+  def test_emscripten_log(self):
+    src = os.path.join(self.get_dir(), 'src.cpp')
+    open(src, 'w').write(self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
+    shutil.copyfile(path_from_root('tests', 'emscripten_log', 'emscripten-source-map.min.js'), os.path.join(self.get_dir(), 'emscripten-source-map.min.js'))
+
+    Popen([PYTHON, EMCC, src, path_from_root('system', 'lib', 'libcxxabi', 'src', 'cxa_demangle.cpp'), '-I'+path_from_root('system', 'lib', 'libcxxabi', 'include'), '--shell-file', path_from_root('tests', 'emscripten_log', 'shell-emscripten-log.html'), '-g', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', None, '/report_result?1')
+  
   def build_native_lzma(self):
     lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
     if os.path.isfile(lzma_native) and os.access(lzma_native, os.X_OK): return
