@@ -1831,6 +1831,17 @@ LibraryManager.library = {
         } else {
           next = get();
           var first = true;
+          
+          // Strip the optional 0x prefix for %x.
+          if ((type == 'x' || type == 'X') && (next == {{{ charCode('0') }}})) {
+            var peek = get();
+            if (peek == {{{ charCode('x') }}} || peek == {{{ charCode('X') }}}) {
+              next = get();
+            } else {
+              unget();
+            }
+          }
+          
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
                 (type == 's' ||
