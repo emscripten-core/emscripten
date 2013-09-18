@@ -58,6 +58,9 @@ var LibrarySDL = {
 
     DOMEventToSDLEvent: {},
 
+    TOUCH_MOUSEID: -1, // This corresponds to the SDL_TOUCH_MOUSEID in SDL_touch.h
+    TOUCH_DEFAULT_ID: 0, // Our default deviceID for touch events (we get nothing from the browser)
+    
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       46: 127, // SDLK_DEL == '\177'
       38:  1106, // up arrow
@@ -186,11 +189,10 @@ var LibrarySDL = {
       ]),
       MouseMotionEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
+        ['i32', 'timestamp'],
         ['i32', 'windowID'],
-        ['i8', 'state'],
-        ['i8', 'padding1'],
-        ['i8', 'padding2'],
-        ['i8', 'padding3'],
+        ['i32', 'which'],
+        ['i32', 'state'],
         ['i32', 'x'],
         ['i32', 'y'],
         ['i32', 'xrel'],
@@ -198,7 +200,9 @@ var LibrarySDL = {
       ]),
       MouseButtonEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
+        ['i32', 'timestamp'],
         ['i32', 'windowID'],
+        ['i32', 'which'],
         ['i8', 'button'],
         ['i8', 'state'],
         ['i8', 'padding1'],
@@ -210,6 +214,17 @@ var LibrarySDL = {
         ['i32', 'type'],
         ['i32', 'w'],
         ['i32', 'h']
+      ]),
+      TouchFingerEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'timestamp'],
+        ['i64', 'touchId'],
+        ['i64', 'fingerId'],
+        ['float', 'x'],
+        ['float', 'y'],
+        ['float', 'dx'],
+        ['float', 'dy'],
+        ['float', 'pressure']
       ]),
       AudioSpec: Runtime.generateStructInfo([
         ['i32', 'freq'],
@@ -382,50 +397,104 @@ var LibrarySDL = {
       SDL.surfaces[surf] = null;
     },
 
-    touchX: 0, touchY: 0,
+    lastTouch: {},
+    downFingers: {},
     savedKeydown: null,
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'touchstart':
+        case 'touchstart': case 'touchmove': {
           event.preventDefault();
-          var touch = event.touches[0];
-          touchX = touch.pageX;
-          touchY = touch.pageY;
-          var event = {
-            type: 'mousedown',
-            button: 0,
-            pageX: touchX,
-            pageY: touchY
+
+          var touches = [];
+          
+          // First clear out any duplicate touchstart events
+          // XXX - michaeljbishop -  This is a bug workaround for Firefox OS. They
+          // sometimes send two touchstart events before a touchend/move for the same id.
+          if (event.type === 'touchstart') {
+            for(var i = 0; i < event.touches.length; i++) {
+              var touch = event.touches[i];
+              if (SDL.downFingers[touch.identifier] != true) {
+                SDL.downFingers[touch.identifier] = true;
+                touches.push(touch);
+              }
+            }
+          } else {
+            touches = event.touches;
+          }
+          
+          var firstTouch = touches[0];
+          if ( event.type == 'touchstart' ) {
+            SDL.DOMButtons[0] = 1;
+            SDL.lastTouch.x = firstTouch.pageX;
+            SDL.lastTouch.y = firstTouch.pageY;
           };
-          SDL.DOMButtons[0] = 1;
-          SDL.events.push(event);
-          break;
-        case 'touchmove':
-          event.preventDefault();
-          var touch = event.touches[0];
-          touchX = touch.pageX;
-          touchY = touch.pageY;
-          event = {
-            type: 'mousemove',
+          var mouseEventType;
+          switch(event.type) {
+            case 'touchstart': mouseEventType = 'mousedown'; break;
+            case 'touchmove': mouseEventType = 'mousemove'; break;
+          }
+          var mouseEvent = {
+            type: mouseEventType,
             button: 0,
-            pageX: touchX,
-            pageY: touchY
+            pageX: firstTouch.pageX,
+            pageY: firstTouch.pageY
           };
-          SDL.events.push(event);
+          SDL.events.push(mouseEvent);
+
+          for (i=0;i<touches.length;i++) {
+            var touch = touches[i];
+            SDL.events.push({
+              type: event.type,
+              touch: touch
+            });
+          };
           break;
-        case 'touchend':
+        }
+        case 'touchend': {
           event.preventDefault();
-          event = {
+          
+          // Remove the entry in the SDL.downFingers hash
+          // because the finger is no longer down.
+          // XXX - michaeljbishop -  This is a bug workaround for Firefox OS. They
+          // sometimes send two touchstart events before a touchend/move for the same id.
+          for(var i = 0; i < event.changedTouches.length; i++) {
+            var touch = event.changedTouches[i];
+            if (SDL.downFingers[touch.identifier] === true) {
+              delete SDL.downFingers[touch.identifier];
+            }
+          }
+
+          var mouseEvent = {
             type: 'mouseup',
             button: 0,
-            pageX: touchX,
-            pageY: touchY
+            pageX: SDL.lastTouch.x,
+            pageY: SDL.lastTouch.y
           };
           SDL.DOMButtons[0] = 0;
-          SDL.events.push(event);
+          SDL.events.push(mouseEvent);
+          
+          for (i=0;i<event.changedTouches.length;i++) {
+            var touch = event.changedTouches[i];
+            SDL.events.push({
+              type: 'touchend',
+              touch: touch
+            });
+          };
           break;
+        }
         case 'mousemove':
+          if (SDL.DOMButtons[0] === 1) {
+            SDL.events.push({
+              type: 'touchmove',
+              touch: {
+                identifier: 0,
+                deviceID: SDL.TOUCH_MOUSEID,
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
+          }
           if (Browser.pointerLock) {
             // workaround for firefox bug 750111
             if ('mozMovementX' in event) {
@@ -467,6 +536,15 @@ var LibrarySDL = {
             };
           } else if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
+            SDL.events.push({
+              type: 'touchstart',
+              touch: {
+                identifier: 0,
+                deviceID: SDL.TOUCH_MOUSEID,
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
           } else if (event.type == 'mouseup') {
             // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
             // since we add a mouseup in that case
@@ -474,6 +552,15 @@ var LibrarySDL = {
               return;
             }
 
+            SDL.events.push({
+              type: 'touchend',
+              touch: {
+                identifier: 0,
+                deviceID: SDL.TOUCH_MOUSEID,
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
             SDL.DOMButtons[event.button] = 0;
           }
 
@@ -559,12 +646,16 @@ var LibrarySDL = {
       }
       return;
     },
-
+    
     handleEvent: function(event) {
       if (event.handled) return;
       event.handled = true;
 
       switch (event.type) {
+        case 'touchstart': case 'touchend': case 'touchmove': {
+          Browser.calculateMouseEvent(event);
+          break;
+        }
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           var code = event.keyCode;
@@ -655,18 +746,50 @@ var LibrarySDL = {
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.timestamp', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.windowID', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.which', '0', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.padding1', '0', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.padding2', '0', 'i8') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'Browser.mouseX', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'Browser.mouseY', 'i32') }}};
           } else {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i8') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.timestamp', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.windowID', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.which', '0', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'Browser.mouseX', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'Browser.mouseY', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.mouseMovementX', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'Browser.mouseMovementY', 'i32') }}};
           }
+          break;
+        }
+        case 'touchstart': case 'touchend': case 'touchmove': {
+          var touch = event.touch;
+          var w = Module['canvas'].width;
+          var h = Module['canvas'].height;
+          var x = Browser.touches[touch.identifier].x / w;
+          var y = Browser.touches[touch.identifier].y / h;
+          var lx = Browser.lastTouches[touch.identifier].x / w;
+          var ly = Browser.lastTouches[touch.identifier].y / h;
+          var dx = x - lx;
+          var dy = y - ly;
+          if ( touch['deviceID'] === undefined )
+            touch.deviceID = SDL.TOUCH_DEFAULT_ID;
+          if ( dx === 0 && dy === 0 && event.type === 'touchmove' ) return; // don't send these if nothing happened
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.timestamp', '0', 'i32') }}}; // XXX michaeljbishop - Unimplemented for now
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.touchId', 'touch.deviceID', 'i64') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.fingerId', 'touch.identifier', 'i64') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.x', 'x', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.y', 'y', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.dx', 'dx', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.dy', 'dy', 'float') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.TouchFingerEvent.pressure', 'touch.force', 'float') }}};
           break;
         }
         case 'unload': {
@@ -762,14 +885,17 @@ var LibrarySDL = {
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
-    SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
-    SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
-    SDL.DOMEventToSDLEvent['keypress'] = 0x303 /* SDL_TEXTINPUT */;
-    SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
-    SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
-    SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
-    SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
-    SDL.DOMEventToSDLEvent['resize'] = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
+    SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
+    SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
+    SDL.DOMEventToSDLEvent['keypress']   = 0x303  /* SDL_TEXTINPUT */;
+    SDL.DOMEventToSDLEvent['mousedown']  = 0x401  /* SDL_MOUSEBUTTONDOWN */;
+    SDL.DOMEventToSDLEvent['mouseup']    = 0x402  /* SDL_MOUSEBUTTONUP */;
+    SDL.DOMEventToSDLEvent['mousemove']  = 0x400  /* SDL_MOUSEMOTION */;
+    SDL.DOMEventToSDLEvent['touchstart'] = 0x700  /* SDL_FINGERDOWN */;
+    SDL.DOMEventToSDLEvent['touchend']   = 0x701  /* SDL_FINGERUP */;
+    SDL.DOMEventToSDLEvent['touchmove']  = 0x702  /* SDL_FINGERMOTION */;
+    SDL.DOMEventToSDLEvent['unload']     = 0x100  /* SDL_QUIT */;
+    SDL.DOMEventToSDLEvent['resize']     = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
     return 0; // success
   },
 
@@ -833,7 +959,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
+    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Browser.setCanvasSize(width, height, true);
@@ -1230,20 +1356,28 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_PeepEvents: function(events, numEvents, action, from, to) {
+  SDL_PeepEvents: function(events, requestedEventCount, action, from, to) {
     switch(action) {
       case 2: { // SDL_GETEVENT
-        assert(numEvents == 1);
-        var got = 0;
-        while (SDL.events.length > 0 && numEvents > 0) {
-          var type = SDL.DOMEventToSDLEvent[SDL.events[0].type];
-          if (type < from || type > to) break;
-          SDL.makeCEvent(SDL.events.shift(), events);
-          got++;
-          numEvents--;
-          // events += sizeof(..)
+        // We only handle 1 event right now
+        assert(requestedEventCount == 1);
+
+        var index = 0;
+        var retrievedEventCount = 0;
+        // this should look through the entire queue until it has filled up the events
+        // array
+        while ( index < SDL.events.length && retrievedEventCount < requestedEventCount ) {
+          var event = SDL.events[index];
+          var type = SDL.DOMEventToSDLEvent[event.type];
+          if ( from <= type && type <= to) {
+            SDL.makeCEvent(event, events);
+            SDL.events.splice(index,1);
+            retrievedEventCount++;
+          } else {
+            index++;
+          }
         }
-        return got;
+        return retrievedEventCount;
       }
       default: throw 'SDL_PeepEvents does not yet support that action: ' + action;
     }
