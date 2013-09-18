@@ -7201,6 +7201,18 @@ date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
     '''
     self.do_run(src, '10 1.1 1.1 1.1');
 
+  def test_sscanf_hex(self):
+    src = r'''
+      #include "stdio.h"
+
+      int main(){
+        unsigned int a, b;
+        sscanf("0x12AB 12AB", "%x %x", &a, &b);
+        printf("%d %d\n", a, b);
+      }
+    '''
+    self.do_run(src, '4779 4779')
+
   def test_langinfo(self):
     src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
     expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
