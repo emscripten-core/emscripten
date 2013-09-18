@@ -28,6 +28,9 @@ mergeInto(LibraryManager.library, {
     
     ErrnoError: (function() {
       function ErrnoError(errno) {
+        if (Error.captureStackTrace) {
+          Error.captureStackTrace(this, this.constructor.name);
+        }
         this.errno = errno;
         for (var key in ERRNO_CODES) {
           if (ERRNO_CODES[key] === errno) {
@@ -36,6 +39,9 @@ mergeInto(LibraryManager.library, {
           }
         }
         this.message = ERRNO_MESSAGES[errno];
+        this.toString = function() {
+          return this.constructor.name + ": " + this.message;
+        };
       };
       ErrnoError.prototype = new Error();
       ErrnoError.prototype.constructor = ErrnoError;
