@@ -295,7 +295,7 @@ f.close()
 
       make = make_commands[generator]
       cmake_cases = ['target_js', 'target_html']
-      cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
+      cmake_outputs = ['test_cmake.js', 'hello_world_gles.html']
       for i in range(0, 2):
         for configuration in ['Debug', 'Release']:
           # CMake can be invoked in two ways, using 'emconfigure cmake', or by directly running 'cmake'.
@@ -342,7 +342,7 @@ f.close()
               # Run through node, if CMake produced a .js file.
               if cmake_outputs[i].endswith('.js'):
                 ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
-                assert 'hello, world!' in ret, 'Running cmake-based .js application failed!'
+                self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
             finally:
               os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
               shutil.rmtree(tempdirname)
