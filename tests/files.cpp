@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int main()
 {
@@ -61,7 +62,14 @@ int main()
 
   char data2[10];
   FILE *inf = fopen("go.out", "rb");
-  int num = fread(data2, 1, 10, inf);
+
+  // make sure pread returns 0 if we read starting at the end (or past the end) of the file
+  int num = pread(fileno(inf), data2, 10, 5);
+  assert(num == 0);
+  num = pread(fileno(inf), data2, 10, sizeof(data)*8);
+  assert(num == 0);
+
+  num = fread(data2, 1, 10, inf);
   fclose(inf);
   printf("%d : %d,%d,%d,%d,%d\n", num, data2[0], data2[1], data2[2], data2[3], data2[4]);
 
