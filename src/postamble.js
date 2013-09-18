@@ -35,9 +35,10 @@ var preloadStartTime = null;
 var calledMain = false;
 var calledRun = false;
 
-dependenciesFulfilled = function() {
+dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
   if (!calledRun && shouldRunNow) run();
+  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 }
 
 Module['callMain'] = Module.callMain = function callMain(args) {

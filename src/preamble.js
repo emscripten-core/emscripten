@@ -993,8 +993,9 @@ function removeRunDependency(id) {
       runDependencyWatcher = null;
     }
     if (dependenciesFulfilled) {
-      dependenciesFulfilled();
+      var callback = dependenciesFulfilled;
       dependenciesFulfilled = null;
+      callback(); // can add another dependenciesFulfilled
     }
   }
 }

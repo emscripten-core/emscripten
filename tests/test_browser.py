@@ -1477,7 +1477,9 @@ keydown(100);keyup(100); // trigger the end
         }, 2000);
       };
     ''')
-    self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
+
+    for mem in [0, 1]:
+      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
