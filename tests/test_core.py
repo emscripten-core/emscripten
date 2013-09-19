@@ -5046,7 +5046,7 @@ The current type of b is: 9
     src = r'''
       int main () {
         *(volatile char *)0 = 0;
-        return 0;
+        return *(volatile char *)0;
       }
       '''
     self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')

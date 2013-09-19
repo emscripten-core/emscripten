@@ -1331,11 +1331,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     switch (impl) {
       case VAR_NATIVIZED: {
         if (isNumber(item.ident)) {
-          item.assignTo = null;
           // Direct read from a memory address; this may be an intentional segfault, if not, it is a bug in the source
           if (ASM_JS) {
-            return 'abort(' + item.ident + ')';
+            return asmCoercion('abort(' + item.ident + ')', 'i32');
           } else {
+            item.assignTo = null;
             return 'throw "fault on read from ' + item.ident + '";';
           }
         }
