@@ -2844,7 +2844,7 @@ LibraryManager.library = {
   vprintf: 'printf',
   vsprintf: 'sprintf',
   vasprintf: 'asprintf',
-  vdprintf: 'vdprintf',
+  vdprintf: 'dprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
