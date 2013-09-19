@@ -371,5 +371,11 @@ def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=Fal
   return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info))
 
 if __name__ == '__main__':
-  run(sys.argv[1], sys.argv[2:])
+  last = sys.argv[-1]
+  if '{' in last:
+    extra_info = json.loads(last)
+    sys.argv = sys.argv[:-1]
+  else:
+    extra_info = None
+  run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
 
