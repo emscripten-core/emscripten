@@ -2166,6 +2166,12 @@ LibraryManager.library = {
               }
             }
 
+            // Move sign to prefix so we zero-pad after the sign
+            if (argText.charAt(0) == '-') {
+              prefix = '-' + prefix;
+              argText = argText.substr(1);
+            }
+
             // Add padding.
             while (prefix.length + argText.length < width) {
               if (flagLeftAlign) {
