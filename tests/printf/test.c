@@ -10,6 +10,7 @@ int main() {
   printf("Decimals: %d %ld %lld %d\n", 1977, 650000L, 12LL, 4);
   printf("Preceding with blanks: %10d %10d\n", 1977, -1977);
   printf("Preceding with zeros: %010d %010d\n", 1977, -1977);
+  printf("Force sign: %+d %+d %+6d %+6d\n", 1977, -1977, 1977, -1977);
   printf("Some different radixes: %d %x %o %#x %#o\n", 100, 100, 100, 100, 100);
   printf("floats: %4.2f %+.0e %E %08.2f\n", 3.1416, 3.1416, 3.1416, 3.1416);
   printf("negative floats: %4.2f %+.0e %E %08.2f\n", -3.1416, -3.1416, -3.1416, -3.1416);
