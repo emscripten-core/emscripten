@@ -3471,29 +3471,31 @@ LibraryManager.library = {
   // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
   // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  __ARC4: {
+  $_ARC4__postset: '_ARC4.init();',
+  $_ARC4: {
     _inst: null,
     width: 256,     // each RC4 output is 0 <= x < 256
     chunks: 6,      // at least six RC4 outputs for each double
     digits: 52,     // there are 52 significant digits in a double
     
-    get: function(key) {
-      if (this._inst === null) {
-        this.startdenom = Math.pow(this.width, this.chunks);
-        this.significance = Math.pow(2, this.digits);
-        this.overflow = this.significance * 2;
-        this.mask = this.width - 1;
-      }
-      if (this._inst === null || key) {
-        if (!key) {
-          // Seed the PRNG.
-          key = [];
-          this.mixkey(Math.random(), key);
-        }
-        this._inst = new this._cls(key, this.width);
+    init: function () {
+      _ARC4.startdenom = Math.pow(_ARC4.width, _ARC4.chunks);
+      _ARC4.significance = Math.pow(2, _ARC4.digits);
+      _ARC4.overflow = _ARC4.significance * 2;
+      _ARC4.mask = _ARC4.width - 1;
+      
+      _ARC4.set_seed();
+    },
+    
+    set_seed: function(seed) {
+      if (typeof seed == 'undefined') {
+        // Used Math.random() to get a seed.
+        seed = Math.random();
       }
       
-      return this._inst;
+      var key = [];
+      _ARC4.mixkey(seed, key);
+      _ARC4._inst = new _ARC4._cls(key);
     },
     //
     // mixkey()
@@ -3503,8 +3505,8 @@ LibraryManager.library = {
     mixkey: function(seed, key) {
       var stringseed = seed + '', smear, j = 0;
       while (j < stringseed.length) {
-        key[this.mask & j] =
-          this.mask & ((smear ^= key[this.mask & j] * 19) + stringseed.charCodeAt(j++));
+        key[_ARC4.mask & j] =
+          _ARC4.mask & ((smear ^= key[_ARC4.mask & j] * 19) + stringseed.charCodeAt(j++));
       }
     },
     //
@@ -3518,8 +3520,8 @@ LibraryManager.library = {
     // that is in the range 0 <= x < (width ^ count).
     //
     /** @constructor */
-    _cls: function(key, width) {
-      var t, keylen = key.length, mask = width - 1,
+    _cls: function(key) {
+      var t, keylen = key.length, mask = _ARC4.width - 1, width = _ARC4.width,
           me = this, i = 0, j = me.i = me.j = 0, s = me.S = [];
 
       // The empty key [] is treated as [0].
@@ -3551,33 +3553,31 @@ LibraryManager.library = {
     }
   },
   
-  srand__deps: ['__ARC4'],
+  srand__deps: ['$_ARC4'],
   srand: function(seed) {
     // NOTE: seed is unsigned int.
     
-    var key = [];
-    ___ARC4.mixkey(seed, key);
-    ___ARC4.get(key);
+    _ARC4.set_seed(seed);
   },
   
-  drand48__deps: ['__ARC4'],
+  drand48__deps: ['$_ARC4'],
   drand48: function() {
     // This function returns a random double in [0, 1) that contains
     // randomness in every bit of the mantissa of the IEEE 754 value.
     
-    var arc4 = ___ARC4.get(),
-        n = arc4.g(___ARC4.chunks),                     // Start with a numerator n < 2 ^ 48
-        d = Math.pow(___ARC4.width, ___ARC4.chunks),    //   and denominator d = 2 ^ 48.
-        x = 0;                                          //   and no 'extra last byte'.
-    while (n < ___ARC4.significance) {                  // Fill up all significant digits by
-      n = (n + x) * ___ARC4.width;                      //   shifting numerator and
-      d *= ___ARC4.width;                               //   denominator and generating a
-      x = arc4.g(1);                                    //   new least-significant-byte.
+    var arc4 = _ARC4._inst,
+        n = arc4.g(_ARC4.chunks),                     // Start with a numerator n < 2 ^ 48
+        d = Math.pow(_ARC4.width, _ARC4.chunks),      //   and denominator d = 2 ^ 48.
+        x = 0;                                        //   and no 'extra last byte'.
+    while (n < _ARC4.significance) {                  // Fill up all significant digits by
+      n = (n + x) * _ARC4.width;                      //   shifting numerator and
+      d *= _ARC4.width;                               //   denominator and generating a
+      x = arc4.g(1);                                  //   new least-significant-byte.
     }
-    while (n >= ___ARC4.overflow) {                     // To avoid rounding up, before adding
-      n /= 2;                                           //   last byte, shift everything
-      d /= 2;                                           //   right using integer math until
-      x >>>= 1;                                         //   we have exactly the desired bits.
+    while (n >= _ARC4.overflow) {                     // To avoid rounding up, before adding
+      n /= 2;                                         //   last byte, shift everything
+      d /= 2;                                         //   right using integer math until
+      x >>>= 1;                                       //   we have exactly the desired bits.
     }
     return (n + x) / d;
   },
