@@ -3,8 +3,155 @@
 // LLVM assembly => internal intermediate representation, which is ready
 // to be processed by the later stages.
 
-var tokenizer; // TODO: Clean this up/out
-               //       XXX In particular, this closes over the substrate, which can keep stuff in memory, which is bad
+// Line tokenizer
+var tokenizer = {
+  processItem: function _tokenizer(item, inner) {
+    //assert(item.lineNum != 40000);
+    //if (item.lineNum) print(item.lineNum);
+    var tokens = [];
+    var quotes = 0;
+    var lastToken = null;
+    var CHUNKSIZE = 64; // How much forward to peek forward. Too much means too many string segments copied
+    // Note: '{' is not an encloser, as its use in functions is split over many lines
+    var enclosers = {
+      '[': 0,
+      ']': '[',
+      '(': 0,
+      ')': '(',
+      '<': 0,
+      '>': '<'
+    };
+    var totalEnclosing = 0;
+    var that = this;
+    function makeToken(text) {
+      if (text.length == 0) return;
+      // merge certain tokens
+      if (lastToken && ( (lastToken.text == '%' && text[0] == '"') || /^\**$/.test(text) ) ) {
+        lastToken.text += text;
+        return;
+      }
+
+      var token = {
+        text: text
+      };
+      if (text[0] in enclosers) {
+        token.item = that.processItem({
+          lineText: text.substr(1, text.length-2)
+        }, true);
+        token.type = text[0];
+      }
+      // merge certain tokens
+      if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
+        lastToken.text += ' ' + text;
+      } else if (lastToken && text[0] == '}') { // }, }*, etc.
+        var openBrace = tokens.length-1;
+        while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
+        token = combineTokens(tokens.slice(openBrace+1));
+        tokens.splice(openBrace, tokens.length-openBrace+1);
+        tokens.push(token);
+        token.type = '{';
+        token.text = '{ ' + token.text + ' }';
+        var pointingLevelsToAdd = pointingLevels(text) - pointingLevels(token.text);
+        while (pointingLevelsToAdd > 0) {
+          token.text += '*';
+          pointingLevelsToAdd--;
+        }
+        lastToken = token;
+      } else {
+        tokens.push(token);
+        lastToken = token;
+      }
+    }
+    // Split using meaningful characters
+    var lineText = item.lineText + ' ';
+    var re = /[\[\]\(\)<>, "]/g;
+    var segments = lineText.split(re);
+    segments.pop();
+    var len = segments.length;
+    var i = -1;
+    var curr = '';
+    var segment, letter;
+    for (var s = 0; s < len; s++) {
+      segment = segments[s];
+      i += segment.length + 1;
+      letter = lineText[i];
+      curr += segment;
+      switch (letter) {
+        case ' ':
+          if (totalEnclosing == 0 && quotes == 0) {
+            makeToken(curr);
+            curr = '';
+          } else {
+            curr += ' ';
+          }
+          break;
+        case '"':
+          if (totalEnclosing == 0) {
+            if (quotes == 0) {
+              if (curr == '@' || curr == '%') {
+                curr += '"';
+              } else {
+                makeToken(curr);
+                curr = '"';
+              }
+            } else {
+              makeToken(curr + '"');
+              curr = '';
+            }
+          } else {
+            curr += '"';
+          }
+          quotes = 1-quotes;
+          break;
+        case ',':
+          if (totalEnclosing == 0 && quotes == 0) {
+            makeToken(curr);
+            curr = '';
+            tokens.push({ text: ',' });
+          } else {
+            curr += ',';
+          }
+          break;
+        default:
+          assert(letter in enclosers);
+          if (quotes) {
+            curr += letter;
+            break;
+          }
+          if (letter in ENCLOSER_STARTERS) {
+            if (totalEnclosing == 0) {
+              makeToken(curr);
+              curr = '';
+            }
+            curr += letter;
+            enclosers[letter]++;
+            totalEnclosing++;
+          } else {
+            enclosers[enclosers[letter]]--;
+            totalEnclosing--;
+            if (totalEnclosing == 0) {
+              makeToken(curr + letter);
+              curr = '';
+            } else {
+              curr += letter;
+            }
+          }
+      }
+    }
+    var newItem = {
+      tokens: tokens,
+      indent: lineText.search(/[^ ]/),
+      lineNum: item.lineNum
+    };
+    if (inner) {
+      return newItem;
+    } else {
+      this.forwardItem(newItem, 'Triager');
+    }
+    return null;
+  }
+};
+
 function tokenize(text) {
   return tokenizer.processItem({ lineText: text }, true);
 }
@@ -143,154 +290,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     return ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || !mainPass); });
   }
 
-  // Line tokenizer
-  tokenizer = substrate.addActor('Tokenizer', {
-    processItem: function _tokenizer(item, inner) {
-      //assert(item.lineNum != 40000);
-      //if (item.lineNum) print(item.lineNum);
-      var tokens = [];
-      var quotes = 0;
-      var lastToken = null;
-      var CHUNKSIZE = 64; // How much forward to peek forward. Too much means too many string segments copied
-      // Note: '{' is not an encloser, as its use in functions is split over many lines
-      var enclosers = {
-        '[': 0,
-        ']': '[',
-        '(': 0,
-        ')': '(',
-        '<': 0,
-        '>': '<'
-      };
-      var totalEnclosing = 0;
-      var that = this;
-      function makeToken(text) {
-        if (text.length == 0) return;
-        // merge certain tokens
-        if (lastToken && ( (lastToken.text == '%' && text[0] == '"') || /^\**$/.test(text) ) ) {
-          lastToken.text += text;
-          return;
-        }
-
-        var token = {
-          text: text
-        };
-        if (text[0] in enclosers) {
-          token.item = that.processItem({
-            lineText: text.substr(1, text.length-2)
-          }, true);
-          token.type = text[0];
-        }
-        // merge certain tokens
-        if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
-          lastToken.text += ' ' + text;
-        } else if (lastToken && text[0] == '}') { // }, }*, etc.
-          var openBrace = tokens.length-1;
-          while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
-          token = combineTokens(tokens.slice(openBrace+1));
-          tokens.splice(openBrace, tokens.length-openBrace+1);
-          tokens.push(token);
-          token.type = '{';
-          token.text = '{ ' + token.text + ' }';
-          var pointingLevelsToAdd = pointingLevels(text) - pointingLevels(token.text);
-          while (pointingLevelsToAdd > 0) {
-            token.text += '*';
-            pointingLevelsToAdd--;
-          }
-          lastToken = token;
-        } else {
-          tokens.push(token);
-          lastToken = token;
-        }
-      }
-      // Split using meaningful characters
-      var lineText = item.lineText + ' ';
-      var re = /[\[\]\(\)<>, "]/g;
-      var segments = lineText.split(re);
-      segments.pop();
-      var len = segments.length;
-      var i = -1;
-      var curr = '';
-      var segment, letter;
-      for (var s = 0; s < len; s++) {
-        segment = segments[s];
-        i += segment.length + 1;
-        letter = lineText[i];
-        curr += segment;
-        switch (letter) {
-          case ' ':
-            if (totalEnclosing == 0 && quotes == 0) {
-              makeToken(curr);
-              curr = '';
-            } else {
-              curr += ' ';
-            }
-            break;
-          case '"':
-            if (totalEnclosing == 0) {
-              if (quotes == 0) {
-                if (curr == '@' || curr == '%') {
-                  curr += '"';
-                } else {
-                  makeToken(curr);
-                  curr = '"';
-                }
-              } else {
-                makeToken(curr + '"');
-                curr = '';
-              }
-            } else {
-              curr += '"';
-            }
-            quotes = 1-quotes;
-            break;
-          case ',':
-            if (totalEnclosing == 0 && quotes == 0) {
-              makeToken(curr);
-              curr = '';
-              tokens.push({ text: ',' });
-            } else {
-              curr += ',';
-            }
-            break;
-          default:
-            assert(letter in enclosers);
-            if (quotes) {
-              curr += letter;
-              break;
-            }
-            if (letter in ENCLOSER_STARTERS) {
-              if (totalEnclosing == 0) {
-                makeToken(curr);
-                curr = '';
-              }
-              curr += letter;
-              enclosers[letter]++;
-              totalEnclosing++;
-            } else {
-              enclosers[enclosers[letter]]--;
-              totalEnclosing--;
-              if (totalEnclosing == 0) {
-                makeToken(curr + letter);
-                curr = '';
-              } else {
-                curr += letter;
-              }
-            }
-        }
-      }
-      var newItem = {
-        tokens: tokens,
-        indent: lineText.search(/[^ ]/),
-        lineNum: item.lineNum
-      };
-      if (inner) {
-        return newItem;
-      } else {
-        this.forwardItem(newItem, 'Triager');
-      }
-      return null;
-    }
-  });
+  substrate.addActor('Tokenizer', tokenizer);
 
   substrate.addActor('Triager', {
     processItem: function _triager(item) {
