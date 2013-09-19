@@ -69,8 +69,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
   }
 
-  var substrate = new Substrate('JSifyer');
-
   if (mainPass) {
     // Handle unparsed types TODO: Batch them
     analyzer(intertyper(data.unparsedTypess[0].lines, true), true);
@@ -1582,14 +1580,8 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // Final combiner
 
-  function finalCombiner(items) {
+  function finalCombiner() {
     dprint('unparsedFunctions', 'Starting finalCombiner');
-    items.forEach(function(item) {
-      item.lines = null;
-      var small = { intertype: item.intertype, JS: item.JS, ident: item.ident, dependencies: item.dependencies }; // Release memory
-      itemsDict[small.intertype].push(small);
-    });
-    items = null;
 
     var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, function(x) { return x.ident && x.dependencies });
     itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
@@ -1869,7 +1861,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     data.functions.forEach(functionSplitter);
   }
 
-  finalCombiner(substrate.solve());
+  finalCombiner();
 
   dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
 }
