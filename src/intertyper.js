@@ -22,7 +22,7 @@ var NSW_NUW = set('nsw', 'nuw');
 
 // Intertyper
 
-function intertyper(data, sidePass, baseLineNums) {
+function intertyper(lines, sidePass, baseLineNums) {
   var mainPass = !sidePass;
   baseLineNums = baseLineNums || [[0,0]]; // each pair [#0,#1] means "starting from line #0, the base line num is #1"
 
@@ -32,119 +32,116 @@ function intertyper(data, sidePass, baseLineNums) {
 
   var substrate = new Substrate('Intertyper');
 
+  var unparsedBundles = [];
+
   // Line splitter. We break off some bunches of lines into unparsedBundles, which are
   // parsed in separate passes later. This helps to keep memory usage low - we can start
   // from raw lines and end up with final JS for each function individually that way, instead
   // of intertyping them all, then analyzing them all, etc.
-  substrate.addActor('LineSplitter', {
-    processItem: function _lineSplitter(item) {
-      var lines = item.llvmLines;
-      var ret = [];
-      var inContinual = false;
-      var inFunction = false;
-      var currFunctionLines;
-      var currFunctionLineNum;
-      var unparsedBundles = [];
-      var unparsedTypes, unparsedGlobals;
-      if (mainPass) {
-        unparsedTypes = {
-          intertype: 'unparsedTypes',
-          lines: []
-        };
-        unparsedBundles.push(unparsedTypes);
-        unparsedGlobals = {
-          intertype: 'unparsedGlobals',
-          lines: []
-        };
-        unparsedBundles.push(unparsedGlobals);
+  function lineSplitter() {
+    var ret = [];
+    var inContinual = false;
+    var inFunction = false;
+    var currFunctionLines;
+    var currFunctionLineNum;
+    var unparsedTypes, unparsedGlobals;
+    if (mainPass) {
+      unparsedTypes = {
+        intertype: 'unparsedTypes',
+        lines: []
+      };
+      unparsedBundles.push(unparsedTypes);
+      unparsedGlobals = {
+        intertype: 'unparsedGlobals',
+        lines: []
+      };
+      unparsedBundles.push(unparsedGlobals);
+    }
+    var baseLineNumPosition = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (singlePhase) lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
+
+      while (baseLineNumPosition < baseLineNums.length-1 && i >= baseLineNums[baseLineNumPosition+1][0]) {
+        baseLineNumPosition++;
       }
-      var baseLineNumPosition = 0;
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i];
-        if (singlePhase) lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
 
-        while (baseLineNumPosition < baseLineNums.length-1 && i >= baseLineNums[baseLineNumPosition+1][0]) {
-          baseLineNumPosition++;
+      if (mainPass && (line[0] == '%' || line[0] == '@')) {
+        // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
+        var parts = line.split(' = ');
+        assert(parts.length >= 2);
+        var left = parts[0], right = parts.slice(1).join(' = ');
+        var testType = /^type .*/.exec(right);
+        if (!testType) {
+          var globalIdent = toNiceIdent(left);
+          var testAlias = /^(hidden )?alias .*/.exec(right);
+          Variables.globals[globalIdent] = {
+            name: globalIdent,
+            alias: !!testAlias,
+            impl: VAR_EMULATED
+          };
+          unparsedGlobals.lines.push(line);
+        } else {
+          unparsedTypes.lines.push(line);
         }
-
-        if (mainPass && (line[0] == '%' || line[0] == '@')) {
-          // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
-          var parts = line.split(' = ');
-          assert(parts.length >= 2);
-          var left = parts[0], right = parts.slice(1).join(' = ');
-          var testType = /^type .*/.exec(right);
-          if (!testType) {
-            var globalIdent = toNiceIdent(left);
-            var testAlias = /^(hidden )?alias .*/.exec(right);
-            Variables.globals[globalIdent] = {
-              name: globalIdent,
-              alias: !!testAlias,
-              impl: VAR_EMULATED
-            };
-            unparsedGlobals.lines.push(line);
-          } else {
-            unparsedTypes.lines.push(line);
-          }
-          continue;
-        }
-        if (mainPass && /^define .*/.test(line)) {
-          inFunction = true;
-          currFunctionLines = [];
-          currFunctionLineNum = i + 1;
-        }
-        if (!inFunction || !mainPass) {
-          if (inContinual || /^\ +(to|catch |filter |cleanup).*/.test(line)) {
-            // to after invoke or landingpad second line
-            ret.slice(-1)[0].lineText += line;
-            if (/^\ +\]/.test(line)) { // end of llvm switch
-              inContinual = false;
-            }
-          } else {
-            ret.push({
-              lineText: line,
-              lineNum: i + 1 + baseLineNums[baseLineNumPosition][1] - baseLineNums[baseLineNumPosition][0]
-            });
-            if (/^\ +switch\ .*/.test(line)) {
-              // beginning of llvm switch
-              inContinual = true;
-            }
+        continue;
+      }
+      if (mainPass && /^define .*/.test(line)) {
+        inFunction = true;
+        currFunctionLines = [];
+        currFunctionLineNum = i + 1;
+      }
+      if (!inFunction || !mainPass) {
+        if (inContinual || /^\ +(to|catch |filter |cleanup).*/.test(line)) {
+          // to after invoke or landingpad second line
+          ret.slice(-1)[0].lineText += line;
+          if (/^\ +\]/.test(line)) { // end of llvm switch
+            inContinual = false;
           }
         } else {
-          currFunctionLines.push(line);
-        }
-        if (mainPass && /^}.*/.test(line)) {
-          inFunction = false;
-          if (mainPass) {
-            var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true))[0];
-
-            if (SKIP_STACK_IN_SMALL && /emscripten_autodebug/.exec(func.ident)) {
-              warnOnce('Disabling SKIP_STACK_IN_SMALL because we are apparently processing autodebugger data');
-              SKIP_STACK_IN_SMALL = 0;
-            }
-
-            var ident = toNiceIdent(func.ident);
-            if (!(ident in DEAD_FUNCTIONS)) {
-              unparsedBundles.push({
-                intertype: 'unparsedFunction',
-                // We need this early, to know basic function info - ident, params, varargs
-                ident: ident,
-                params: func.params,
-                returnType: func.returnType,
-                hasVarArgs: func.hasVarArgs,
-                lineNum: currFunctionLineNum,
-                lines: currFunctionLines
-              });
-            }
-            currFunctionLines = [];
+          ret.push({
+            lineText: line,
+            lineNum: i + 1 + baseLineNums[baseLineNumPosition][1] - baseLineNums[baseLineNumPosition][0]
+          });
+          if (/^\ +switch\ .*/.test(line)) {
+            // beginning of llvm switch
+            inContinual = true;
           }
         }
+      } else {
+        currFunctionLines.push(line);
       }
-      // We need lines beginning with ';' inside functions, because older LLVM versions generated labels that way. But when not
-      // parsing functions, we can ignore all such lines and save some time that way.
-      this.forwardItems(ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || !mainPass); }), 'Tokenizer');
-      return unparsedBundles;
+      if (mainPass && /^}.*/.test(line)) {
+        inFunction = false;
+        if (mainPass) {
+          var func = funcHeader.processItem(tokenizer.processItem({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true))[0];
+
+          if (SKIP_STACK_IN_SMALL && /emscripten_autodebug/.exec(func.ident)) {
+            warnOnce('Disabling SKIP_STACK_IN_SMALL because we are apparently processing autodebugger data');
+            SKIP_STACK_IN_SMALL = 0;
+          }
+
+          var ident = toNiceIdent(func.ident);
+          if (!(ident in DEAD_FUNCTIONS)) {
+            unparsedBundles.push({
+              intertype: 'unparsedFunction',
+              // We need this early, to know basic function info - ident, params, varargs
+              ident: ident,
+              params: func.params,
+              returnType: func.returnType,
+              hasVarArgs: func.hasVarArgs,
+              lineNum: currFunctionLineNum,
+              lines: currFunctionLines
+            });
+          }
+          currFunctionLines = [];
+        }
+      }
     }
-  });
+    // We need lines beginning with ';' inside functions, because older LLVM versions generated labels that way. But when not
+    // parsing functions, we can ignore all such lines and save some time that way.
+    return ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || !mainPass); });
+  }
 
   // Line tokenizer
   tokenizer = substrate.addActor('Tokenizer', {
@@ -1066,14 +1063,12 @@ function intertyper(data, sidePass, baseLineNums) {
 
   // Input
 
-  substrate.addItem({
-    llvmLines: data
-  }, 'LineSplitter');
+  substrate.addItems(lineSplitter(), 'Tokenizer');
 
   substrate.onResult = function(result) {
     if (result.tokens) result.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
   };
 
-  return substrate.solve();
+  return substrate.solve().concat(unparsedBundles);
 }
 
