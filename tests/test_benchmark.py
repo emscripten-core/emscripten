@@ -218,11 +218,11 @@ process(sys.argv[1])
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
-          case 1: arg = 33000; break;
-          case 2: arg = 130000; break;
-          case 3: arg = 4000000; break;
-          case 4: arg = 610000; break;
-          case 5: arg = 1010000; break;
+          case 1: arg = 4000000; break;
+          case 2: arg = 10000000; break;
+          case 3: arg = 20000000; break;
+          case 4: arg = 40000000; break;
+          case 5: arg = 200000000; break;
           default: printf("error: %d\\n", arg); return -1;
         }
         
