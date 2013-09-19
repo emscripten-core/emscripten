@@ -22,7 +22,6 @@ var tokenizer = {
       '>': '<'
     };
     var totalEnclosing = 0;
-    var that = this;
     function makeToken(text) {
       if (text.length == 0) return;
       // merge certain tokens
@@ -35,7 +34,7 @@ var tokenizer = {
         text: text
       };
       if (text[0] in enclosers) {
-        token.item = that.processItem({
+        token.item = tokenizer.processItem({
           lineText: text.substr(1, text.length-2)
         }, true);
         token.type = text[0];
@@ -143,11 +142,7 @@ var tokenizer = {
       indent: lineText.search(/[^ ]/),
       lineNum: item.lineNum
     };
-    if (inner) {
-      return newItem;
-    } else {
-      this.forwardItem(newItem, 'Triager');
-    }
+    return newItem;
     return null;
   }
 };
@@ -289,8 +284,6 @@ function intertyper(lines, sidePass, baseLineNums) {
     // parsing functions, we can ignore all such lines and save some time that way.
     return ret.filter(function(item) { return item.lineText && (item.lineText[0] != ';' || !mainPass); });
   }
-
-  substrate.addActor('Tokenizer', tokenizer);
 
   substrate.addActor('Triager', {
     processItem: function _triager(item) {
@@ -1063,7 +1056,7 @@ function intertyper(lines, sidePass, baseLineNums) {
 
   // Input
 
-  substrate.addItems(lineSplitter(), 'Tokenizer');
+  substrate.addItems(lineSplitter().map(tokenizer.processItem).filter(function(item) { return item }), 'Triager');
 
   substrate.onResult = function(result) {
     if (result.tokens) result.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
