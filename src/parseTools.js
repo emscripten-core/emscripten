@@ -1758,7 +1758,7 @@ function checkBitcast(item) {
       } else {
         warnOnce('Casting a function pointer type to a potentially incompatible one (use -s VERBOSE=1 to see more)');
       }
-      warnOnce('See https://github.com/kripken/emscripten/wiki/CodeGuidlinesAndLimitations#function-pointer-issues for more information on dangerous function pointer casts');
+      warnOnce('See https://github.com/kripken/emscripten/wiki/CodeGuidelinesAndLimitations#function-pointer-issues for more information on dangerous function pointer casts');
       if (ASM_JS) warnOnce('Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these');
     }
     if (oldCount != newCount && oldCount && newCount) showWarning();
