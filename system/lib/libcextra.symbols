@@ -24,6 +24,9 @@
          T iconv
          T iconv_close
          T iconv_open
+         T ilogb
+         T ilogbf
+         T ilogbl
          T iswalnum
          T iswalnum_l
          T iswalpha
@@ -50,12 +53,18 @@
          T iswupper_l
          T iswxdigit
          T iswxdigit_l
+         T ldexp
+         T ldexpf
+         T ldexpl
          T lgamma
          W lgamma_r
          T lgammaf
          W lgammaf_r
          T lgammal
          W lgammal_r
+         T logb
+         T logbf
+         T logbl
          T mblen
          T mbrlen
          T mbrtowc
@@ -72,6 +81,8 @@
          T regerror
          T regexec
          T regfree
+         T scalbn
+         T scalbnf
          D signgam
          T strcasecmp_l
          T strcasestr

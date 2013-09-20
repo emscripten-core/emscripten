@@ -4827,15 +4827,6 @@ LibraryManager.library = {
   llvm_log_f64: 'Math_log',
   llvm_exp_f32: 'Math_exp',
   llvm_exp_f64: 'Math_exp',
-  ldexp: function(x, exp_) {
-    return x * Math.pow(2, exp_);
-  },
-  ldexpf: 'ldexp',
-  scalb: 'ldexp',
-  scalbn: 'ldexp',
-  scalbnf: 'ldexp',
-  scalbln: 'ldexp',
-  scalblnf: 'ldexp',
   cbrt: function(x) {
     return Math.pow(x, 1/3);
   },
