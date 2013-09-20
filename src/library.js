@@ -3818,6 +3818,7 @@ LibraryManager.library = {
   },
   // We always assume ASCII locale.
   strcoll: 'strcmp',
+  strcoll_l: 'strcmp',
 
   strcasecmp__asm: true,
   strcasecmp__sig: 'iii',
@@ -8896,7 +8897,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'swprintf', 'pthread_join', 'pthread_detach', 'strcoll_l', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'swprintf', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function() { throw 'TODO: ' + aborter };
 });
 
