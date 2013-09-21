@@ -988,7 +988,7 @@ function intertyper(lines, sidePass, baseLineNums) {
 
   // Input
 
-  var ret = lineSplitter().map(tokenizer).filter(function(item) { return item }).map(triager).filter(function(result) {
+  var ret = lineSplitter().map(tokenizer).map(triager).filter(function(result) {
     if (!result) return false;
     if (result.tokens) result.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
     return true;
