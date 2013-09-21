@@ -1444,6 +1444,7 @@ class Building:
       if emcc_debug: os.environ['EMCC_DEBUG'] = emcc_debug
       if not ok:
         logging.error('bootstrapping relooper failed. You may need to manually create relooper.js by compiling it, see src/relooper/emscripten')
+        try_delete(relooper) # do not leave a phase-1 version if phase 2 broke
         1/0
 
   @staticmethod
