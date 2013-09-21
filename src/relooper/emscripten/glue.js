@@ -13,6 +13,9 @@
   RelooperGlue['init'] = function() {
     this.r = _rl_new_relooper();
   },
+  RelooperGlue['cleanup'] = function() {
+    _rl_delete_relooper(this.r);
+  },
   RelooperGlue['addBlock'] = function(text, branchVar) {
     assert(this.r);
     assert(text.length+1 < TBUFFER_SIZE, 'buffer too small, increase RELOOPER_BUFFER_SIZE');

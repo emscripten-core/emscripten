@@ -811,6 +811,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
         }
         ret += Relooper.render(blockMap[block.entries[0]]);
+        Relooper.cleanup();
       }
       return ret;
     }
