@@ -908,6 +908,17 @@ function writeArrayToMemory(array, buffer) {
 }
 Module['writeArrayToMemory'] = writeArrayToMemory;
 
+function writeAsciiToMemory(str, buffer, dontAddNull) {
+  for (var i = 0; i < str.length; i++) {
+#if ASSERTIONS
+    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
+#endif
+    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}}
+  }
+  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}}
+}
+Module['writeAsciiToMemory'] = writeAsciiToMemory;
+
 {{{ unSign }}}
 {{{ reSign }}}
 
