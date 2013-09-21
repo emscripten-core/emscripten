@@ -516,40 +516,38 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // function splitter
   function functionSplitter(item) {
-    item.labels.forEach(function(label) {
-      label.lines.forEach(function(line) {
-        Framework.currItem = line;
-        line.funcData = item; // TODO: remove all these, access it globally
-        switch (line.intertype) {
-          case 'value': line.JS = valueHandler(line); break;
-          case 'noop': line.JS = noopHandler(line); break;
-          case 'var': line.JS = varHandler(line); break;
-          case 'store': line.JS = storeHandler(line); break;
-          case 'deleted': line.JS = deletedHandler(line); break;
-          case 'branch': line.JS = branchHandler(line); break;
-          case 'switch': line.JS = switchHandler(line); break;
-          case 'return': line.JS = returnHandler(line); break;
-          case 'resume': line.JS = resumeHandler(line); break;
-          case 'invoke': line.JS = invokeHandler(line); break;
-          case 'atomic': line.JS = atomicHandler(line); break;
-          case 'landingpad': line.JS = landingpadHandler(line); break;
-          case 'load': line.JS = loadHandler(line); break;
-          case 'extractvalue': line.JS = extractvalueHandler(line); break;
-          case 'insertvalue': line.JS = insertvalueHandler(line); break;
-          case 'indirectbr': line.JS = indirectbrHandler(line); break;
-          case 'alloca': line.JS = allocaHandler(line); break;
-          case 'va_arg': line.JS = va_argHandler(line); break;
-          case 'mathop': line.JS = mathopHandler(line); break;
-          case 'bitcast': line.JS = bitcastHandler(line); break;
-          case 'getelementptr': line.JS = getelementptrHandler(line); break;
-          case 'call': line.JS = callHandler(line); break;
-          case 'unreachable': line.JS = unreachableHandler(line); break;
-          default: throw 'what is this line? ' + dump(line);
-        }
-        assert(line.JS);
-        if (line.assignTo) makeAssign(line);
-        Framework.currItem = null;
-      });
+    item.lines.forEach(function(line) {
+      Framework.currItem = line;
+      line.funcData = item; // TODO: remove all these, access it globally
+      switch (line.intertype) {
+        case 'value': line.JS = valueHandler(line); break;
+        case 'noop': line.JS = noopHandler(line); break;
+        case 'var': line.JS = varHandler(line); break;
+        case 'store': line.JS = storeHandler(line); break;
+        case 'deleted': line.JS = deletedHandler(line); break;
+        case 'branch': line.JS = branchHandler(line); break;
+        case 'switch': line.JS = switchHandler(line); break;
+        case 'return': line.JS = returnHandler(line); break;
+        case 'resume': line.JS = resumeHandler(line); break;
+        case 'invoke': line.JS = invokeHandler(line); break;
+        case 'atomic': line.JS = atomicHandler(line); break;
+        case 'landingpad': line.JS = landingpadHandler(line); break;
+        case 'load': line.JS = loadHandler(line); break;
+        case 'extractvalue': line.JS = extractvalueHandler(line); break;
+        case 'insertvalue': line.JS = insertvalueHandler(line); break;
+        case 'indirectbr': line.JS = indirectbrHandler(line); break;
+        case 'alloca': line.JS = allocaHandler(line); break;
+        case 'va_arg': line.JS = va_argHandler(line); break;
+        case 'mathop': line.JS = mathopHandler(line); break;
+        case 'bitcast': line.JS = bitcastHandler(line); break;
+        case 'getelementptr': line.JS = getelementptrHandler(line); break;
+        case 'call': line.JS = callHandler(line); break;
+        case 'unreachable': line.JS = unreachableHandler(line); break;
+        default: throw 'what is this line? ' + dump(line);
+      }
+      assert(line.JS);
+      if (line.assignTo) makeAssign(line);
+      Framework.currItem = null;
     });
     functionReconstructor(item);
   }
