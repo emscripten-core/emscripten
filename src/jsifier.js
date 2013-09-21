@@ -60,15 +60,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   }
 
-  // Does simple 'macro' substitution, using Django-like syntax,
-  // {{{ code }}} will be replaced with |eval(code)|.
-  function processMacros(text) {
-    return text.replace(/{{{[^}]+}}}/g, function(str) {
-      str = str.substr(3, str.length-6);
-      return eval(str).toString();
-    });
-  }
-
   if (mainPass) {
     // Handle unparsed types TODO: Batch them
     analyzer(intertyper(data.unparsedTypess[0].lines, true), true);
