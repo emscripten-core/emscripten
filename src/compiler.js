@@ -213,7 +213,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) {
+if (phase == 'funcs' && RELOOP) { // XXX handle !singlePhase
   RelooperModule = { TOTAL_MEMORY: ceilPowerOfTwo(2*RELOOPER_BUFFER_SIZE) };
   load(RELOOPER);
   assert(typeof Relooper != 'undefined');
