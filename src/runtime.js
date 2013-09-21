@@ -159,11 +159,11 @@ var Runtime = {
       case 'float': return 4;
       case 'double': return 8;
       default: {
-        if (type[type.length-1] == '*') {
+        if (type[type.length-1] === '*') {
           return Runtime.QUANTUM_SIZE; // A pointer
-        } else if (type[0] == 'i') {
+        } else if (type[0] === 'i') {
           var bits = parseInt(type.substr(1));
-          assert(bits % 8 == 0);
+          assert(bits % 8 === 0);
           return bits/8;
         }
       }
