@@ -121,6 +121,8 @@ if (typeof print === 'undefined') {
 // *** Environment setup code ***
 
 
+DEBUG_MEMORY = false;
+
 // Basic utilities
 
 load('utility.js');
@@ -206,7 +208,6 @@ if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slo
 
 // Load compiler code
 
-load('framework.js');
 load('modules.js');
 load('parseTools.js');
 load('intertyper.js');

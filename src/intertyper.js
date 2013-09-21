@@ -170,10 +170,6 @@ function intertyper(lines, sidePass, baseLineNums) {
 
   dprint('framework', 'Big picture: Starting intertyper, main pass=' + mainPass);
 
-  // Substrate
-
-  var substrate = new Substrate('Intertyper');
-
   var unparsedBundles = [];
 
   // Line splitter. We break off some bunches of lines into unparsedBundles, which are

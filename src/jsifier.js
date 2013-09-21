@@ -518,6 +518,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   function functionSplitter(item) {
     item.labels.forEach(function(label) {
       label.lines.forEach(function(line) {
+        Framework.currItem = line;
         line.funcData = item; // TODO: remove all these, access it globally
         switch (line.intertype) {
           case 'value': line.JS = valueHandler(line); break;
@@ -547,6 +548,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         assert(line.JS);
         if (line.assignTo) makeAssign(line);
+        Framework.currItem = null;
       });
     });
     functionReconstructor(item);
