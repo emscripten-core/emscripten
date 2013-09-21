@@ -49,7 +49,7 @@ function analyzer(data, sidePass) {
 
   // Functions & labels
   item.functions = [];
-  var currLabelFinished; // Sometimes LLVM puts a branch in the middle of a label. We need to ignore all lines after that.
+  var currLabelFinished = false; // Sometimes LLVM puts a branch in the middle of a label. We need to ignore all lines after that.
   item.items.sort(function(a, b) { return a.lineNum - b.lineNum });
   for (var i = 0; i < item.items.length; i++) {
     var subItem = item.items[i];
