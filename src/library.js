@@ -9190,7 +9190,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose', 'fputwc', '__lockfile', '__unlockfile'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose', 'fputwc', '__lockfile', '__unlockfile'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
 });
 

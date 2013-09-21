@@ -1,3 +1,4 @@
+         T __intscan
          W __iswctype_l
          T __memrchr
          T __strchrnul
@@ -108,8 +109,17 @@
          T wcsrtombs
          T wcsspn
          T wcsstr
+         T wcstod
+         T wcstof
+         T wcstoimax
          T wcstok
+         T wcstol
+         T wcstold
+         T wcstoll
          T wcstombs
+         T wcstoul
+         T wcstoull
+         T wcstoumax
          T wcswcs
          T wcswidth
          T wcsxfrm

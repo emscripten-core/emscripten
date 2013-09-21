@@ -3544,6 +3544,7 @@ ok
 
   def test_strtod(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
+      if not self.is_le32(): return self.skip('le32 needed for accurate math')
 
     src = r'''
       #include <stdio.h>
@@ -3573,6 +3574,7 @@ ok
         printf("%g\n", strtod("123e-50", &endptr));
         printf("%g\n", strtod("123e-250", &endptr));
         printf("%g\n", strtod("123e-450", &endptr));
+        printf("%g\n", strtod("0x6", &endptr));
 
         char str[] = "  12.34e56end";
         printf("%g\n", strtod(str, &endptr));
@@ -3605,6 +3607,7 @@ ok
       1.23e-48
       1.23e-248
       0
+      6
       1.234e+57
       10
       inf
@@ -3689,6 +3692,7 @@ ok
 
   def test_sscanf(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
+    if not self.is_le32(): return self.skip('le32 needed for accurate math')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf')
     src, output = (test_path + s for s in ('.in', '.out'))

@@ -1449,9 +1449,24 @@ try:
         os.path.join('libc', 'gen', 'verrx.c'),
         os.path.join('libc', 'gen', 'vwarn.c'),
         os.path.join('libc', 'gen', 'vwarnx.c'),
-        os.path.join('libc', 'stdlib', 'strtod.c'),
       ]
       musl_files = [
+        ['internal', [
+         'floatscan.c',
+         'shgetc.c',
+        ]],
+        ['math', [
+         'scalbnl.c',
+        ]],
+        ['stdio', [
+         '__overflow.c',
+         '__toread.c',
+         '__uflow.c',
+        ]],
+        ['stdlib', [
+         'atof.c',
+         'strtod.c',
+        ]]
       ]
       for directory, sources in musl_files:
         libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
@@ -1491,6 +1506,9 @@ try:
           'wcswidth.c',
           'wctrans.c',
           'wcwidth.c',
+         ]],
+         ['internal', [
+          'intscan.c',
          ]],
          ['locale', [
           'iconv.c',
@@ -1556,6 +1574,8 @@ try:
            'ecvt.c',
            'fcvt.c',
            'gcvt.c',
+           'wcstod.c',
+           'wcstol.c',
          ]],
          ['string', [
            'memccpy.c',

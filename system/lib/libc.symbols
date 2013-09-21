@@ -39,6 +39,17 @@
          W _ZnajRKSt9nothrow_t
          W _Znwj
          W _ZnwjRKSt9nothrow_t
+         T __floatscan
+         T __overflow
+         T __seek_on_exit
+         T __shgetc
+         T __shlim
+         W __strtod_l
+         W __strtof_l
+         W __strtold_l
+         T __toread
+         W __towrite_used
+         T __uflow
          T _err
          T _errx
          T _verr
@@ -78,11 +89,13 @@
          W pvalloc
          W realloc
          W realloc_in_place
+         T scalbnl
          T strtod
-         T strtod_l
+         W strtod_l
          T strtof
+         W strtof_l
          T strtold
-         T strtold_l
+         W strtold_l
          W valloc
          W verr
          W verrx
