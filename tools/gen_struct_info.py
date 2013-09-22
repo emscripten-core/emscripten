@@ -37,7 +37,7 @@ The JSON input format is as follows:
     'defines': [
       'DEFINE_1',
       'DEFINE_2',
-      ['f', 'FLOAT_DEFINE'],
+      ['li', 'FLOAT_DEFINE'],
       'DEFINE_3',
       ...
     ]
@@ -461,7 +461,7 @@ def main(args):
   QUIET = args.quiet
   
   # Avoid parsing problems due to gcc specifc syntax.
-  cpp_opts = ['-U__GNUC__', '-D_GNU_SOURCE'] + shared.COMPILER_OPTS
+  cpp_opts = ['-D_GNU_SOURCE'] + shared.COMPILER_OPTS
   
   # Add the user options to the list as well.
   for path in args.includes:
