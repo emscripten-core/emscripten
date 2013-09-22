@@ -238,6 +238,9 @@ Options that are modified or new in %s include:
                            (see --llvm-opts), setting this has no
                            effect.
 
+                           Note that LLVM LTO is not perfectly stable yet,
+                           and can can cause code to behave incorrectly.
+
   --closure <on>           0: No closure compiler (default in -O2 and below)
                            1: Run closure compiler. This greatly reduces
                            code size and may in some cases increase
