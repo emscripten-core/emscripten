@@ -1333,7 +1333,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (isNumber(item.ident)) {
           // Direct read from a memory address; this may be an intentional segfault, if not, it is a bug in the source
           if (ASM_JS) {
-            return asmCoercion('abort(' + item.ident + ')', 'i32');
+            return asmCoercion('abort(' + item.ident + ')', item.type);
           } else {
             item.assignTo = null;
             return 'throw "fault on read from ' + item.ident + '";';
