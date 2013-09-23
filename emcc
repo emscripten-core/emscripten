@@ -976,9 +976,13 @@ try:
     if (os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES)):
       arg = os.path.realpath(arg)
 
-    if not arg.startswith('-') and (arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg)): # we already removed -o <target>, so all these should be inputs
-      newargs[i] = ''
-      if os.path.exists(arg):
+    if not arg.startswith('-'):
+      if not os.path.exists(arg):
+        logging.error(arg + ': No such file or directory')
+        exit(1)
+
+      if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+        newargs[i] = ''
         if arg.endswith(SOURCE_SUFFIXES):
           input_files.append(arg)
           has_source_inputs = True
@@ -998,8 +1002,15 @@ try:
             newargs[i] = ''
           else:
             logging.warning(arg + ' is not valid LLVM bitcode')
+      elif arg.endswith(STATICLIB_SUFFIXES):
+          if not shared.Building.is_ar(arg):
+            if shared.Building.is_bitcode(arg):
+              logging.error(arg + ': File has a suffix of a static library ' + str(STATICLIB_SUFFIXES) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(BITCODE_SUFFIXES))
+            else:
+              logging.error(arg + ': Unknown format, not a static library!')
+            exit(1)
       else:
-        logging.error(arg + ': No such file or directory')
+        logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
         exit(1)
     elif arg.startswith('-L'):
       lib_dirs.append(arg[2:])
