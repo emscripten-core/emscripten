@@ -1114,7 +1114,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (!useIfs) {
       ret += 'switch(' + signedIdent + ') {\n';
     }
-    for (var targetLabel in targetLabels) {
+    // process target labels, sorting them so output is consistently ordered
+    keys(targetLabels).sort().forEach(function(targetLabel) {
       if (!first && useIfs) {
         ret += 'else ';
       } else {
@@ -1142,7 +1143,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           labelJS: phiSet
         });
       }
-    }
+    });
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
     if (useIfs) {
       if (item.switchLabels.length > 0) ret += 'else {\n';
