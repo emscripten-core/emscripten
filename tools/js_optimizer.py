@@ -377,5 +377,7 @@ if __name__ == '__main__':
     sys.argv = sys.argv[:-1]
   else:
     extra_info = None
-  run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+  out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+  import shutil
+  shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
 
