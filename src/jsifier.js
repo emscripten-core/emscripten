@@ -675,10 +675,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
         }
         
-        if (PRINT_SPLIT_FILE_MARKER && Debugging.on && Debugging.getAssociatedSourceFile(line.lineNum)) {
+        if (PRINT_SPLIT_FILE_MARKER && Debugging.on && Debugging.getAssociatedSourceFile(label.lines[label.lines.length-1].lineNum)) {
           // Overwrite the associated source file for every line. The last line should contain the source file associated to
           // the return value/address of outer most block (the marked function).
-          associatedSourceFile = Debugging.getAssociatedSourceFile(line.lineNum);
+          associatedSourceFile = Debugging.getAssociatedSourceFile(label.lines[label.lines.length-1].lineNum);
         }
         
         // for special labels we care about (for phi), mark that we visited them
