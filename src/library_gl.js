@@ -302,6 +302,18 @@ var LibraryGL = {
     },
 #endif
 
+#if GL_ASSERTIONS
+    validateGLObjectID: function(objectHandleArray, objectID, callerFunctionName, objectReadableType) {
+      if (objectID != 0) {
+        if (objectHandleArray[objectID] === null) {
+          console.error(callerFunctionName + ' called with an already deleted ' + objectReadableType + ' ID ' + objectID + '!');
+        } else if (!objectHandleArray[objectID]) {
+          console.error(callerFunctionName + ' called with an invalid ' + objectReadableType + ' ID ' + objectID + '!');
+        }
+      }
+    },
+#endif
+
     initExtensions: function() {
       if (GL.initExtensions.done) return;
       GL.initExtensions.done = true;
@@ -588,6 +600,9 @@ var LibraryGL = {
 
   glBindTexture__sig: 'vii',
   glBindTexture: function(target, texture) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.textures, texture, 'glBindTexture', 'texture');
+#endif
     Module.ctx.bindTexture(target, texture ? GL.textures[texture] : null);
   },
 
@@ -710,6 +725,9 @@ var LibraryGL = {
 
   glBindRenderbuffer__sig: 'vii',
   glBindRenderbuffer: function(target, renderbuffer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.renderbuffers, renderbuffer, 'glBindRenderbuffer', 'renderbuffer');
+#endif
     Module.ctx.bindRenderbuffer(target, renderbuffer ? GL.renderbuffers[renderbuffer] : null);
   },
 
@@ -727,6 +745,9 @@ var LibraryGL = {
 
   glGetUniformfv__sig: 'viii',
   glGetUniformfv: function(program, location, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniformfv', 'program');
+#endif
     var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number') {
       {{{ makeSetValue('params', '0', 'data', 'float') }}};
@@ -739,6 +760,9 @@ var LibraryGL = {
 
   glGetUniformiv__sig: 'viii',
   glGetUniformiv: function(program, location, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniformiv', 'program');
+#endif
     var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number' || typeof data == 'boolean') {
       {{{ makeSetValue('params', '0', 'data', 'i32') }}};
@@ -751,6 +775,9 @@ var LibraryGL = {
 
   glGetUniformLocation__sig: 'iii',
   glGetUniformLocation: function(program, name) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniformLocation', 'program');
+#endif
     name = Pointer_stringify(name);
     var ptable = GL.uniformTable[program];
     if (!ptable) ptable = GL.uniformTable[program] = {};
@@ -810,6 +837,9 @@ var LibraryGL = {
 
   glGetActiveUniform__sig: 'viiiiiii',
   glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniform', 'program');
+#endif
     program = GL.programs[program];
     var info = Module.ctx.getActiveUniform(program, index);
 
@@ -1018,6 +1048,9 @@ var LibraryGL = {
 
   glBindBuffer__sig: 'vii',
   glBindBuffer: function(target, buffer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.buffers, buffer, 'glBindBuffer', 'buffer');
+#endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
 
     if (target == Module.ctx.ARRAY_BUFFER) {
@@ -1062,6 +1095,9 @@ var LibraryGL = {
 
   glGetActiveAttrib__sig: 'viiiiiii',
   glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveAttrib', 'program');
+#endif
     program = GL.programs[program];
     var info = Module.ctx.getActiveAttrib(program, index);
 
@@ -1094,6 +1130,9 @@ var LibraryGL = {
 
   glGetAttachedShaders__sig: 'viiii',
   glGetAttachedShaders: function(program, maxCount, count, shaders) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetAttachedShaders', 'program');
+#endif
     var result = Module.ctx.getAttachedShaders(GL.programs[program]);
     var len = result.length;
     if (len > maxCount) {
@@ -1109,12 +1148,18 @@ var LibraryGL = {
 
   glShaderSource__sig: 'viiii',
   glShaderSource: function(shader, count, string, length) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.shaders, shader, 'glShaderSource', 'shader');
+#endif
     var source = GL.getSource(shader, count, string, length);
     Module.ctx.shaderSource(GL.shaders[shader], source);
   },
 
   glGetShaderSource__sig: 'viiii',
   glGetShaderSource: function(shader, bufSize, length, source) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderSource', 'shader');
+#endif
     var result = Module.ctx.getShaderSource(GL.shaders[shader]);
     result = result.slice(0, Math.max(0, bufSize - 1));
     writeStringToMemory(result, source);
@@ -1125,11 +1170,17 @@ var LibraryGL = {
 
   glCompileShader__sig: 'vi',
   glCompileShader: function(shader) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.shaders, shader, 'glCompileShader', 'shader');
+#endif
     Module.ctx.compileShader(GL.shaders[shader]);
   },
 
   glGetShaderInfoLog__sig: 'viiii',
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
+#endif
     var log = Module.ctx.getShaderInfoLog(GL.shaders[shader]);
     // Work around a bug in Chromium which causes getShaderInfoLog to return null
     if (!log) {
@@ -1144,6 +1195,9 @@ var LibraryGL = {
 
   glGetShaderiv__sig: 'viii',
   glGetShaderiv : function(shader, pname, p) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderiv', 'shader');
+#endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       {{{ makeSetValue('p', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[shader]).length + 1', 'i32') }}};
     } else {
@@ -1153,6 +1207,9 @@ var LibraryGL = {
 
   glGetProgramiv__sig: 'viii',
   glGetProgramiv : function(program, pname, p) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetProgramiv', 'program');
+#endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       {{{ makeSetValue('p', '0', 'Module.ctx.getProgramInfoLog(GL.programs[program]).length + 1', 'i32') }}};
     } else {
@@ -1187,12 +1244,20 @@ var LibraryGL = {
 
   glAttachShader__sig: 'vii',
   glAttachShader: function(program, shader) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glAttachShader', 'program');
+    GL.validateGLObjectID(GL.shaders, shader, 'glAttachShader', 'shader');
+#endif
     Module.ctx.attachShader(GL.programs[program],
                             GL.shaders[shader]);
   },
 
   glDetachShader__sig: 'vii',
   glDetachShader: function(program, shader) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glDetachShader', 'program');
+    GL.validateGLObjectID(GL.shaders, shader, 'glDetachShader', 'shader');
+#endif
     Module.ctx.detachShader(GL.programs[program],
                             GL.shaders[shader]);
   },
@@ -1206,12 +1271,18 @@ var LibraryGL = {
 
   glLinkProgram__sig: 'vi',
   glLinkProgram: function(program) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glLinkProgram', 'program');
+#endif
     Module.ctx.linkProgram(GL.programs[program]);
     GL.uniformTable[program] = {}; // uniforms no longer keep the same names after linking
   },
 
   glGetProgramInfoLog__sig: 'viiii',
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
+#endif
     var log = Module.ctx.getProgramInfoLog(GL.programs[program]);
     // Work around a bug in Chromium which causes getProgramInfoLog to return null
     if (!log) {
@@ -1226,11 +1297,17 @@ var LibraryGL = {
 
   glUseProgram__sig: 'vi',
   glUseProgram: function(program) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glUseProgram', 'program');
+#endif
     Module.ctx.useProgram(program ? GL.programs[program] : null);
   },
 
   glValidateProgram__sig: 'vi',
   glValidateProgram: function(program) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glValidateProgram', 'program');
+#endif
     Module.ctx.validateProgram(GL.programs[program]);
   },
 
@@ -1243,12 +1320,18 @@ var LibraryGL = {
 
   glBindAttribLocation__sig: 'viii',
   glBindAttribLocation: function(program, index, name) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glBindAttribLocation', 'program');
+#endif
     name = Pointer_stringify(name);
     Module.ctx.bindAttribLocation(GL.programs[program], index, name);
   },
 
   glBindFramebuffer__sig: 'vii',
   glBindFramebuffer: function(target, framebuffer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.framebuffers, framebuffer, 'glBindFramebuffer', 'framebuffer');
+#endif
     Module.ctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : null);
   },
 
@@ -1276,12 +1359,18 @@ var LibraryGL = {
 
   glFramebufferRenderbuffer__sig: 'viiii',
   glFramebufferRenderbuffer: function(target, attachment, renderbuffertarget, renderbuffer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.renderbuffers, renderbuffer, 'glFramebufferRenderbuffer', 'renderbuffer');
+#endif
     Module.ctx.framebufferRenderbuffer(target, attachment, renderbuffertarget,
                                        GL.renderbuffers[renderbuffer]);
   },
 
   glFramebufferTexture2D__sig: 'viiiii',
   glFramebufferTexture2D: function(target, attachment, textarget, texture, level) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.textures, texture, 'glFramebufferTexture2D', 'texture');
+#endif
     Module.ctx.framebufferTexture2D(target, attachment, textarget,
                                     GL.textures[texture], level);
   },
