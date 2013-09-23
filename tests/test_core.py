@@ -8937,6 +8937,8 @@ def process(filename):
   def test_cases(self):
     if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
+    emcc_args = self.emcc_args
+
     try:
       os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
       Settings.CHECK_OVERFLOWS = 0
@@ -8950,6 +8952,10 @@ def process(filename):
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
           continue
+        if os.path.exists(shortname + '.emcc'):
+          self.emcc_args = emcc_args
+          if not self.emcc_args: continue
+          self.emcc_args += json.loads(open(shortname + '.emcc').read())
         print >> sys.stderr, "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
         if Settings.QUANTUM_SIZE == 1:
@@ -8970,6 +8976,7 @@ def process(filename):
 
     finally:
       del os.environ['EMCC_LEAVE_INPUTS_RAW']
+      self.emcc_args = emcc_args
 
   def test_fuzz(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
