@@ -690,7 +690,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       });
       if (item.assignTo) item.ident = 'return ' + item.ident;
       item.ident = '(function(' + params + ') { ' + item.ident + ' })(' + args + ');';
-      return { forward: null, ret: [item], item: item };
+      return { forward: null, ret: item, item: item };
     } 
     if (item.ident.substr(-2) == '()') {
       // See comment in isStructType()
