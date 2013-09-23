@@ -717,6 +717,13 @@ else:
 def in_temp(name):
   return os.path.join(temp_dir, os.path.basename(name))
 
+# Parses the essential suffix of a filename, discarding Unix-style version numbers in the name. For example for 'libz.so.1.2.8' returns '.so'
+def filename_type_suffix(filename):
+  for i in reversed(filename.split('.')[1:]):
+    if not i.isdigit():
+      return '.' + i
+  return ''
+
 try:
   call = CXX if use_cxx else CC
 
@@ -981,16 +988,17 @@ try:
         logging.error(arg + ': No such file or directory')
         exit(1)
 
-      if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+      arg_suffix = filename_type_suffix(arg)
+      if arg_suffix.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
         newargs[i] = ''
-        if arg.endswith(SOURCE_SUFFIXES):
+        if arg_suffix.endswith(SOURCE_SUFFIXES):
           input_files.append(arg)
           has_source_inputs = True
         else:
           # this should be bitcode, make sure it is valid
-          if arg.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg):
+          if arg_suffix.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg):
             input_files.append(arg)
-          elif arg.endswith(STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES):
+          elif arg_suffix.endswith(STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES):
             # if it's not, and it's a library, just add it to libs to find later
             l = unsuffixed_basename(arg)
             for prefix in LIB_PREFIXES:
@@ -1002,7 +1010,7 @@ try:
             newargs[i] = ''
           else:
             logging.warning(arg + ' is not valid LLVM bitcode')
-      elif arg.endswith(STATICLIB_SUFFIXES):
+      elif arg_suffix.endswith(STATICLIB_SUFFIXES):
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
               logging.error(arg + ': File has a suffix of a static library ' + str(STATICLIB_SUFFIXES) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(BITCODE_SUFFIXES))
@@ -1159,13 +1167,14 @@ try:
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
-    if input_file.endswith(SOURCE_SUFFIXES):
+    file_suffix = filename_type_suffix(input_file)
+    if file_suffix.endswith(SOURCE_SUFFIXES):
       logging.debug('compiling source file: ' + input_file)
       input_file = shared.Building.preprocess(input_file, in_temp(uniquename(input_file)))
       output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
-      if input_file.endswith(CXX_SUFFIXES):
+      if file_suffix.endswith(CXX_SUFFIXES):
         args += shared.EMSDK_CXX_OPTS
       logging.debug("running: " + call + ' ' + ' '.join(args))
       execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
@@ -1173,17 +1182,17 @@ try:
         logging.error('compiler frontend failed to generate LLVM bitcode, halting')
         sys.exit(1)
     else: # bitcode
-      if input_file.endswith(BITCODE_SUFFIXES):
+      if file_suffix.endswith(BITCODE_SUFFIXES):
         logging.debug('copying bitcode file: ' + input_file)
         temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      elif input_file.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
+      elif file_suffix.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
         logging.debug('copying library file: ' + input_file)
         temp_file = in_temp(uniquename(input_file))
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      else: #.ll
+      elif file_suffix.endswith(ASSEMBLY_SUFFIXES):
         if not LEAVE_INPUTS_RAW:
           # Note that by assembling the .ll file, then disassembling it later, we will
           # remove annotations which is a good thing for compilation time
@@ -1191,6 +1200,9 @@ try:
           temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
           shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
+      else:
+        logging.error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
+        sys.exit(1)
 
   if not LEAVE_INPUTS_RAW:
     assert len(temp_files) == len(input_files)
@@ -1198,7 +1210,8 @@ try:
     # Optimize source files
     if llvm_opts > 0:
       for i, input_file in enumerate(input_files):
-        if input_file.endswith(SOURCE_SUFFIXES):
+        file_suffix = filename_type_suffix(input_file)
+        if file_suffix.endswith(SOURCE_SUFFIXES):
           temp_file = temp_files[i]
           logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
           shared.Building.llvm_opt(temp_file, llvm_opts)
