@@ -1520,8 +1520,8 @@ function getFastValue(a, op, b, type) {
         }
         return '(Math.imul(' + a + ',' + b + ')|0)';
       }
-    } else {
-      if (a == '0') {
+    } else { // div
+      if (a == '0' && !(type in Runtime.FLOAT_TYPES)) { // careful on floats, since 0*NaN is not 0
         return '0';
       } else if (b == 1) {
         return a;
