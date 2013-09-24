@@ -217,6 +217,23 @@ var LibraryGL = {
               throw 'Invalid format (' + format + ')';
           }
           break;
+        case 0x1403 /* GL_UNSIGNED_SHORT */:
+          if (format == 0x1902 /* GL_DEPTH_COMPONENT */) {
+            sizePerPixel = 2;
+          } else {
+              throw 'Invalid format (' + format + ')';
+          }
+          break;
+        case 0x1405 /* GL_UNSIGNED_INT */:
+          if (format == 0x1902 /* GL_DEPTH_COMPONENT */) {
+            sizePerPixel = 4;
+          } else {
+              throw 'Invalid format (' + format + ')';
+          }
+          break;
+        case 0x84FA /* UNSIGNED_INT_24_8_WEBGL */:
+          sizePerPixel = 4;
+          break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
         case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
         case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
@@ -244,6 +261,8 @@ var LibraryGL = {
         pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
       } else if (type == 0x1406 /* GL_FLOAT */) {
         pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+      } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
+        pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
       } else {
         pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
       }
@@ -334,6 +353,10 @@ var LibraryGL = {
 
       GL.elementIndexUintExt = Module.ctx.getExtension('OES_element_index_uint');
       GL.standardDerivativesExt = Module.ctx.getExtension('OES_standard_derivatives');
+
+      GL.depthTextureExt = Module.ctx.getExtension("WEBGL_depth_texture") ||
+                           Module.ctx.getExtension("MOZ_WEBGL_depth_texture") ||
+                           Module.ctx.getExtension("WEBKIT_WEBGL_depth_texture");
     }
   },
 
