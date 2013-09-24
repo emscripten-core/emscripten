@@ -1665,10 +1665,10 @@ f.close()
     if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_CORES'] = '2'
+      os.environ['EMCC_CORES'] = '2' # standardize over machines
       for asm, linkable, chunks, js_chunks in [
-          (0, 0, 3, 2), (0, 1, 3, 4),
-          (1, 0, 3, 2), (1, 1, 3, 4)
+          (0, 0, 2, 2), (0, 1, 2, 4),
+          (1, 0, 2, 2), (1, 1, 2, 4)
         ]:
         print asm, linkable, chunks, js_chunks
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
