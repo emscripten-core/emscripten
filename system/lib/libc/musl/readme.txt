@@ -6,3 +6,4 @@ Differences from upstream musl include:
 * various 64 bit types are 32 bit instead including off_t,
   ino_t, dev_t, blkcnt_t, fsblkcnt_t, fsfilcnt_t, rlim_t.
 * We don't define _POSIX_SHARED_MEMORY_OBJECTS.
+* We flag __assert_fail as _Noreturn.
