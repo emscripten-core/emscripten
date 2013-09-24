@@ -1974,6 +1974,7 @@ LibraryManager.library = {
         var flagLeftAlign = false;
         var flagAlternative = false;
         var flagZeroPad = false;
+        var flagPadSign = false;
         flagsLoop: while (1) {
           switch (next) {
             case {{{ charCode('+') }}}:
@@ -1992,6 +1993,9 @@ LibraryManager.library = {
                 flagZeroPad = true;
                 break;
               }
+            case {{{ charCode(' ') }}}:
+              flagPadSign = true;
+              break;
             default:
               break flagsLoop;
           }
@@ -2158,12 +2162,18 @@ LibraryManager.library = {
             }
 
             // Add sign if needed
-            if (flagAlwaysSigned) {
-              if (currArg < 0) {
-                prefix = '-' + prefix;
-              } else {
+            if (currArg >= 0) {
+              if (flagAlwaysSigned) {
                 prefix = '+' + prefix;
+              } else if (flagPadSign) {
+                prefix = ' ' + prefix;
               }
+            }
+
+            // Move sign to prefix so we zero-pad after the sign
+            if (argText.charAt(0) == '-') {
+              prefix = '-' + prefix;
+              argText = argText.substr(1);
             }
 
             // Add padding.
@@ -2248,8 +2258,12 @@ LibraryManager.library = {
               if (next == {{{ charCode('E') }}}) argText = argText.toUpperCase();
 
               // Add sign.
-              if (flagAlwaysSigned && currArg >= 0) {
-                argText = '+' + argText;
+              if (currArg >= 0) {
+                if (flagAlwaysSigned) {
+                  argText = '+' + argText;
+                } else if (flagPadSign) {
+                  argText = ' ' + argText;
+                }
               }
             }
 
