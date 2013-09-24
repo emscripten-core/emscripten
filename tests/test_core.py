@@ -8952,10 +8952,10 @@ def process(filename):
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
           continue
+        self.emcc_args = emcc_args
         if os.path.exists(shortname + '.emcc'):
-          self.emcc_args = emcc_args
           if not self.emcc_args: continue
-          self.emcc_args += json.loads(open(shortname + '.emcc').read())
+          self.emcc_args = self.emcc_args + json.loads(open(shortname + '.emcc').read())
         print >> sys.stderr, "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
         if Settings.QUANTUM_SIZE == 1:
