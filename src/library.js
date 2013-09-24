@@ -2901,6 +2901,13 @@ LibraryManager.library = {
   asprintf: function(s, format, varargs) {
     return _sprintf(-s, format, varargs);
   },
+  dprintf__deps: ['_formatString', 'write'],
+  dprintf: function(fd, format, varargs) {
+    var result = __formatString(format, varargs);
+    var stack = Runtime.stackSave();
+    var ret = _write(fd, allocate(result, 'i8', ALLOC_STACK), result.length);
+    Runtime.stackRestore(stack);
+  },
 
 #if TARGET_X86
   // va_arg is just like our varargs
@@ -2909,6 +2916,7 @@ LibraryManager.library = {
   vprintf: 'printf',
   vsprintf: 'sprintf',
   vasprintf: 'asprintf',
+  vdprintf: 'dprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
@@ -2935,6 +2943,10 @@ LibraryManager.library = {
   vasprintf__deps: ['asprintf'],
   vasprintf: function(s, format, va_arg) {
     return _asprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vdprintf__deps: ['dprintf'],
+  vdprintf: function (fd, format, va_arg) {
+    return _dprintf(fd, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vscanf__deps: ['scanf'],
   vscanf: function(format, va_arg) {
