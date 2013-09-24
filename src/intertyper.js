@@ -167,9 +167,9 @@ function intertyper(lines, sidePass, baseLineNums) {
 
   dprint('framework', 'Big picture: Starting intertyper, main pass=' + mainPass);
 
-  var unparsedBundles = [];
+  var finalResults = [];
 
-  // Line splitter. We break off some bunches of lines into unparsedBundles, which are
+  // Line splitter. We break off some bunches of lines into unparsed bundles, which are
   // parsed in separate passes later. This helps to keep memory usage low - we can start
   // from raw lines and end up with final JS for each function individually that way, instead
   // of intertyping them all, then analyzing them all, etc.
@@ -185,12 +185,12 @@ function intertyper(lines, sidePass, baseLineNums) {
         intertype: 'unparsedTypes',
         lines: []
       };
-      unparsedBundles.push(unparsedTypes);
+      finalResults.push(unparsedTypes);
       unparsedGlobals = {
         intertype: 'unparsedGlobals',
         lines: []
       };
-      unparsedBundles.push(unparsedGlobals);
+      finalResults.push(unparsedGlobals);
     }
     var baseLineNumPosition = 0;
     for (var i = 0; i < lines.length; i++) {
@@ -258,7 +258,7 @@ function intertyper(lines, sidePass, baseLineNums) {
 
           var ident = toNiceIdent(func.ident);
           if (!(ident in DEAD_FUNCTIONS)) {
-            unparsedBundles.push({
+            finalResults.push({
               intertype: 'unparsedFunction',
               // We need this early, to know basic function info - ident, params, varargs
               ident: ident,
@@ -369,8 +369,6 @@ function intertyper(lines, sidePass, baseLineNums) {
       return atomicHandler(item);
     throw 'Invalid token, cannot triage: ' + dump(item);
   }
-
-  var extraResults = [];
 
   // Line parsers to intermediate form
 
@@ -719,7 +717,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     var result = makeCall.call(this, item, 'invoke');
     if (DISABLE_EXCEPTION_CATCHING == 1) {
       result.item.intertype = 'call';
-      extraResults.push({
+      finalResults.push({
         intertype: 'branch',
         label: result.item.toLabel,
         lineNum: (result.forward ? item.parentLineNum : item.lineNum) + 0.5
@@ -988,13 +986,13 @@ function intertyper(lines, sidePass, baseLineNums) {
 
   // Input
 
-  var ret = lineSplitter().map(tokenizer).map(triager).filter(function(result) {
-    if (!result) return false;
-    if (result.tokens) result.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
-    return true;
+  lineSplitter().forEach(function(line) {
+    var t = tokenizer(line);
+    var item = triager(t);
+    if (!item) return;
+    finalResults.push(item);
+    if (item.tokens) item.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
   });
-  if (unparsedBundles.length > 0) ret = ret.concat(unparsedBundles);
-  if (extraResults.length > 0) ret = ret.concat(extraResults);
-  return ret;
+  return finalResults;
 }
 
