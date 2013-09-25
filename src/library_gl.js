@@ -310,6 +310,9 @@ var LibraryGL = {
         Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER,
                                  0,
                                  HEAPU8.subarray(cb.ptr, cb.ptr + size));
+#if GL_ASSERTIONS
+        GL.validateVertexAttribPointerAlignment(cb.type, cb.stride, 0);
+#endif
         Module.ctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
       }
     },
@@ -329,6 +332,36 @@ var LibraryGL = {
         } else if (!objectHandleArray[objectID]) {
           console.error(callerFunctionName + ' called with an invalid ' + objectReadableType + ' ID ' + objectID + '!');
         }
+      }
+    },
+    // Validates that user obeys GL spec #6.4: http://www.khronos.org/registry/webgl/specs/latest/1.0/#6.4
+    validateVertexAttribPointerAlignment: function(dataType, stride, offset) {
+      var sizeBytes = 1;
+      switch(dataType) {
+        case 0x1400 /* GL_BYTE */:
+        case 0x1401 /* GL_UNSIGNED_BYTE */:
+          sizeBytes = 1;
+          break;
+        case 0x1402 /* GL_SHORT */: 
+        case 0x1403 /* GL_UNSIGNED_SHORT */: 
+          sizeBytes = 2; 
+          break;
+        case 0x1404 /* GL_INT */:
+        case 0x1405 /* GL_UNSIGNED_INT */:
+        case 0x1406 /* GL_FLOAT */:
+          sizeBytes = 4;
+          break;
+        case 0x140A /* GL_DOUBLE */:
+          sizeBytes = 8;
+          break;
+        default:
+          console.error('Invalid vertex attribute data type GLenum ' + dataType + ' passed to GL function!');
+      }
+      if (offset % sizeBytes != 0) {
+        console.error('GL spec section 6.4 error: vertex attribute data offset of ' + offset + ' bytes should have been a multiple of the data type size that was used: GLenum ' + dataType + ' has size of ' + sizeBytes + ' bytes!');
+      }
+      if (stride % sizeBytes != 0) {
+        console.error('GL spec section 6.4 error: vertex attribute data stride of ' + stride + ' bytes should have been a multiple of the data type size that was used: GLenum ' + dataType + ' has size of ' + sizeBytes + ' bytes!');
       }
     },
 #endif
@@ -3273,6 +3306,9 @@ var LibraryGL = {
 
           var clientAttributes = GL.immediate.clientAttributes;
 
+#if GL_ASSERTIONS
+          GL.validateVertexAttribPointerAlignment(positionType, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
+#endif
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
                                          GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
@@ -3285,6 +3321,9 @@ var LibraryGL = {
               if (attribLoc === undefined || attribLoc < 0) continue;
 
               if (texUnitID < textureSizes.length && textureSizes[texUnitID]) {
+#if GL_ASSERTIONS
+                GL.validateVertexAttribPointerAlignment(textureTypes[texUnitID], GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
+#endif
                 Module.ctx.vertexAttribPointer(attribLoc, textureSizes[texUnitID], textureTypes[texUnitID], false,
                                                GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
                 Module.ctx.enableVertexAttribArray(attribLoc);
@@ -3301,6 +3340,9 @@ var LibraryGL = {
             }
           }
           if (colorSize) {
+#if GL_ASSERTIONS
+            GL.validateVertexAttribPointerAlignment(colorType, GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
+#endif
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
                                            GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
@@ -3309,6 +3351,9 @@ var LibraryGL = {
             Module.ctx.vertexAttrib4fv(this.colorLocation, GL.immediate.clientColor);
           }
           if (this.hasNormal) {
+#if GL_ASSERTIONS
+            GL.validateVertexAttribPointerAlignment(normalType, GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
+#endif
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
                                            GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
@@ -4287,6 +4332,9 @@ var LibraryGL = {
       return;
     }
     cb.clientside = false;
+#endif
+#if GL_ASSERTIONS
+    GL.validateVertexAttribPointerAlignment(type, stride, ptr);
 #endif
     Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
   },
