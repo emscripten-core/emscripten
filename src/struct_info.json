@@ -224,7 +224,19 @@
                 "tms_cstime"
             ]
         }
-    }, 
+    },
+    {
+        "defines": [],
+        "file": "compat/sys/timeb.h", 
+        "structs": {
+            "timeb": [
+                "time", 
+                "millitm", 
+                "timezone", 
+                "dstflag"
+            ]
+        }
+    },
     {
         "file": "libc/sys/resource.h", 
         "defines": [],
