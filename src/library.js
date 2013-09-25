@@ -5274,12 +5274,12 @@ LibraryManager.library = {
     return time1 - time0;
   },
 
-  // Statically allocated time struct. (TODO: Shouldn't C_STRUCTS.tm.__size__ be used here?)
-  __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
+  // Statically allocated time struct.
+  __tm_current: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
   // Statically allocated timezone string. We only use GMT as a timezone.
   __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   // Statically allocated time strings.
-  __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
+  __tm_formatted: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
 
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {

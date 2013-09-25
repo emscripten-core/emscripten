@@ -902,6 +902,26 @@
         }
     },
     {
+        "file": "SDL/SDL_surface.h",
+        "defines": [],
+        "structs": {
+            "SDL_Surface": [
+                "flags",
+                "format",
+                "w",
+                "h",
+                "pitch",
+                "pixels",
+                "userdata",
+                "locked",
+                "lock_data",
+                "clip_rect",
+                "map",
+                "refcount"
+            ]
+        }
+    },
+    {
         "file": "SDL/SDL_events.h",
         "defines": [],
         "structs": {
@@ -949,7 +969,7 @@
         }
     },
     {
-        "file": "SDL_audio.h", 
+        "file": "SDL/SDL_audio.h", 
         "defines": [
             "SDL_AUDIO_MASK_BITSIZE", 
             "SDL_AUDIO_MASK_DATATYPE", 
@@ -1007,7 +1027,7 @@
         }
     },
     {
-        "file": "SDL_version.h",
+        "file": "SDL/SDL_version.h",
         "defines": [
             "SDL_MAJOR_VERSION", 
             "SDL_MINOR_VERSION", 

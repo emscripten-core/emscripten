@@ -184,35 +184,35 @@ var LibrarySDL = {
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
-      var surf = _malloc(15*Runtime.QUANTUM_SIZE);  // SDL_Surface has 15 fields of quantum size
+      var surf = _malloc({{{ C_STRUCTS.SDL_Surface.__size__ }}});  // SDL_Surface has 15 fields of quantum size
       var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
-      var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
+      var pixelFormat = _malloc({{{ C_STRUCTS.SDL_PixelFormat.__size__ }}});
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
       //surface with SDL_HWPALETTE flag is 8bpp surface (1 byte)
       var is_SDL_HWPALETTE = flags & 0x00200000;  
       var bpp = is_SDL_HWPALETTE ? 1 : 4;
  
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width * bpp', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA or indexed for now,
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.flags, 'flags', 'i32') }}}         // SDL_Surface.flags
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.format, 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.w, 'width', 'i32') }}}         // SDL_Surface.w
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.h, 'height', 'i32') }}}        // SDL_Surface.h
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pitch, 'width * bpp', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA or indexed for now,
                                                                                // since that is what ImageData gives us in browsers
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', 'void*') }}}      // SDL_Surface.pixels
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect, '0', 'i32*') }}}      // SDL_Surface.offset
 
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*14', '0', '1', 'i32') }}}
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}}
 
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.format, '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.palette, '0', '0', 'i32') }}} // TODO
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.BitsPerPixel, '0', 'bpp * 8', 'i8') }}}
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.BytesPerPixel, '0', 'bpp', 'i8') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.palette, '0', 'i32') }}} // TODO
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}}
 
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.Rmask, '0', 'rmask || 0x000000ff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.Gmask, '0', 'gmask || 0x0000ff00', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.Bmask, '0', 'bmask || 0x00ff0000', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + ' + C_STRUCTS.SDL_PixelFormat.Amask, '0', 'amask || 0xff000000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Rmask, 'rmask || 0x000000ff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Gmask, 'gmask || 0x0000ff00', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Bmask, 'bmask || 0x00ff0000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Amask, 'amask || 0xff000000', 'i32') }}}
 
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
@@ -290,7 +290,7 @@ var LibrarySDL = {
     },
 
     freeSurface: function(surf) {
-      var refcountPointer = surf + Runtime.QUANTUM_SIZE * 14;
+      var refcountPointer = surf + {{{ C_STRUCTS.SDL_Surface.refcount }}};
       var refcount = {{{ makeGetValue('refcountPointer', '0', 'i32') }}};
       if (refcount > 1) {
         {{{ makeSetValue('refcountPointer', '0', 'refcount - 1', 'i32') }}};
@@ -810,7 +810,7 @@ var LibrarySDL = {
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
     // TODO: Use macros like in library.js
-    {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
+    {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'surfData.buffer', 'void*') }}};
 
     if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
 
