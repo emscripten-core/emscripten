@@ -37,7 +37,7 @@ The JSON input format is as follows:
     'defines': [
       'DEFINE_1',
       'DEFINE_2',
-      ['li', 'FLOAT_DEFINE'],
+      ['f', 'FLOAT_DEFINE'],
       'DEFINE_3',
       ...
     ]
@@ -92,7 +92,7 @@ except ImportError:
   show('WARN: pycparser isn\'t available. I won\'t be able to parse C files, only .json files.')
   
   def parse_header(path, cpp_opts):
-    # Tell the user how to get pycparser, if he tries to parse a C file.
+    # Tell the user how to get pycparser, if he or she tries to parse a C file.
     sys.stderr.write('ERR: I need pycparser to process C files. \n')
     sys.stderr.write('   Use "pip install pycparser" to install or download it from "https://github.com/eliben/pycparser".\n')
     sys.exit(1)

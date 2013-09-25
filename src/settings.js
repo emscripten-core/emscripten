@@ -438,13 +438,7 @@ var DEBUG_TAGS_SHOWING = [];
   //    metadata
   //    legalizer
 
-// A cached set of defines, generated from the header files. This
-// lets the emscripten libc (library.js) see the right values.
-// The list of defines was moved into struct_info.json in the same directory.
+// The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.
 // That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should see
 // the new values.
-// NOTE: Right now this value is ignored.
-// TODO: See compiler.js (Should this var be deprecated?)
-var C_DEFINES = {};
-
