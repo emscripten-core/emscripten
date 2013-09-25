@@ -8,6 +8,7 @@
          T btowc
          T ecvt
          T fcvt
+         T fwprintf
          T gcvt
          T iswalnum
          T iswalnum_l
@@ -47,12 +48,16 @@
          T strfmon_l
          T strxfrm
          W strxfrm_l
+         T swprintf
          T towctrans
          T towctrans_l
          T towlower
          T towlower_l
          T towupper
          T towupper_l
+         T vfwprintf
+         T vswprintf
+         T vwprintf
          T wcpcpy
          T wcpncpy
          T wcrtomb
@@ -97,3 +102,4 @@
          T wmemcpy
          T wmemmove
          T wmemset
+         T wprintf

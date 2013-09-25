@@ -1366,6 +1366,14 @@ try:
           'wctob.c',
           'wctomb.c',
          ]],
+         ['stdio', [
+          'fwprintf.c',
+          'swprintf.c',
+          'vfwprintf.c',
+          'vswprintf.c',
+          'vwprintf.c',
+          'wprintf.c',
+         ]],
          ['stdlib', [
            'ecvt.c',
            'fcvt.c',
