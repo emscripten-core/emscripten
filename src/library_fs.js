@@ -807,6 +807,13 @@ mergeInto(LibraryManager.library, {
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
       }
+      if (Module['logReadFiles'] && !(flags & {{{ cDefine('O_WRONLY')}}})) {
+        if (!FS.readFiles) FS.readFiles = {};
+        if (!(path in FS.readFiles)) {
+          FS.readFiles[path] = 1;
+          Module['printErr']('read file: ' + path);
+        }
+      }
       return stream;
     },
     close: function(stream) {
@@ -1360,7 +1367,10 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES.EIO);
         }
         var contents = stream.node.contents;
+        if (position >= contents.length)
+          return 0;
         var size = Math.min(contents.length - position, length);
+        assert(size >= 0);
         if (contents.slice) { // normal array
           for (var i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];

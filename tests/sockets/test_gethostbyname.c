@@ -13,12 +13,17 @@
 
 int main() {
   char str[INET_ADDRSTRLEN];
+  struct hostent *host = NULL;
+  struct hostent hostData;
   struct in_addr addr;
   const char *res;
+  char buffer[2048];
   int err;
   
-  // resolve the hostname ot an actual address
-  struct hostent *host = gethostbyname("slashdot.org");
+  // gethostbyname_r calls the same stuff as gethostbyname, so we'll test the
+  // more complicated one.
+  // resolve the hostname to an actual address
+  gethostbyname_r("slashdot.org", &hostData, buffer, sizeof(buffer), &host, &err);
   assert(host->h_addrtype == AF_INET);
   assert(host->h_length == sizeof(uint32_t));
 

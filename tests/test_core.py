@@ -1431,6 +1431,7 @@ Succeeded!
       self.do_run(src, 'BUG?\nDisplay: Vu=465.100000  Vv=465.200000  Wu=160.300000  Wv=111.400000')
 
   def test_math(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
       src = '''
         #include <stdio.h>
         #include <stdlib.h>
@@ -5045,7 +5046,7 @@ The current type of b is: 9
     src = r'''
       int main () {
         *(volatile char *)0 = 0;
-        return 0;
+        return *(volatile char *)0;
       }
       '''
     self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')
@@ -6907,6 +6908,29 @@ at function.:blag
           printf("%i\n", a);
         }
 
+        char buf1[100], buf2[100], buf3[100], buf4[100];
+
+        int numItems = sscanf("level=4:ref=3", "%255[^:=]=%255[^:]:%255[^=]=%255c", buf1, buf2, buf3, buf4);
+        printf("%d, %s, %s, %s, %s\n", numItems, buf1, buf2, buf3, buf4);
+
+        numItems = sscanf("def|456", "%[a-z]|%[0-9]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("3-4,-ab", "%[-0-9],%[ab-z-]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("Hello,World", "%[A-Za-z],%[^0-9]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("Hello4711", "%[^0-9],%[^0-9]", buf1, buf2);
+        printf("%d, %s\n", numItems, buf1);
+
+        numItems = sscanf("JavaScript", "%4[A-Za-z]", buf1);
+        printf("%d, %s\n", numItems, buf1);
+    
+        numItems = sscanf("[]", "%1[[]%1[]]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
         return 0;
       }
       '''
@@ -6914,7 +6938,14 @@ at function.:blag
                      '1\n1499\n' +
                      '5\n87,0.481565,0.059481,0,1\n' +
                      '3\n-123,4294966531,-34\n' +
-                     '1\n')
+                     '1\n' +
+                     '4, level, 4, ref, 3\n' +
+                     '2, def, 456\n' +
+                     '2, 3-4, -ab\n' +
+                     '2, Hello, World\n' +
+                     '1, Hello\n' +
+                     '1, Java\n' +
+                     '2, [, ]')
 
   def test_sscanf_2(self):
     # doubles
@@ -7169,6 +7200,18 @@ date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
       }
     '''
     self.do_run(src, '10 1.1 1.1 1.1');
+
+  def test_sscanf_hex(self):
+    src = r'''
+      #include "stdio.h"
+
+      int main(){
+        unsigned int a, b;
+        sscanf("0x12AB 12AB", "%x %x", &a, &b);
+        printf("%d %d\n", a, b);
+      }
+    '''
+    self.do_run(src, '4779 4779')
 
   def test_langinfo(self):
     src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
@@ -8894,6 +8937,8 @@ def process(filename):
   def test_cases(self):
     if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
+    emcc_args = self.emcc_args
+
     try:
       os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
       Settings.CHECK_OVERFLOWS = 0
@@ -8907,6 +8952,10 @@ def process(filename):
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
           continue
+        self.emcc_args = emcc_args
+        if os.path.exists(shortname + '.emcc'):
+          if not self.emcc_args: continue
+          self.emcc_args = self.emcc_args + json.loads(open(shortname + '.emcc').read())
         print >> sys.stderr, "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
         if Settings.QUANTUM_SIZE == 1:
@@ -8927,6 +8976,7 @@ def process(filename):
 
     finally:
       del os.environ['EMCC_LEAVE_INPUTS_RAW']
+      self.emcc_args = emcc_args
 
   def test_fuzz(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')

@@ -31,6 +31,10 @@ read from file: 10
 data: 1234567890
 errno: 0
 
+pread past end of file: 0
+data: 
+errno: 0
+
 seek: 3
 errno: 0
 

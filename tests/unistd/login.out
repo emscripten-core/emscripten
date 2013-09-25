@@ -3,7 +3,7 @@ errno: 0
 
 gethostname/2 ret: -1
 gethostname/2: em------------------------
-errno: 91
+errno: 36
 
 gethostname/256 ret: 0
 gethostname/256: emscripten

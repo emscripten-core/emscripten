@@ -1230,6 +1230,17 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_api(self):
     self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']'''])
 
+  def test_emscripten_api2(self):
+    open('script1.js', 'w').write('''
+      Module._set(456);
+    ''')
+
+    open('file1.txt', 'w').write('first');
+    open('file2.txt', 'w').write('second');
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w')).communicate()
+
+    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']'''])
+
   def test_emscripten_api_infloop(self):
     self.btest('emscripten_api_browser_infloop.cpp', '7')
 
@@ -1466,7 +1477,9 @@ keydown(100);keyup(100); // trigger the end
         }, 2000);
       };
     ''')
-    self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
+
+    for mem in [0, 1]:
+      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()

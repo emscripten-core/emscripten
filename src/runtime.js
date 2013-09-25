@@ -145,29 +145,30 @@ var Runtime = {
     return l + h;
   },
 
-  //! Returns the size of a type, as C/C++ would have it (in 32-bit, for now), in bytes.
+  //! Returns the size of a type, as C/C++ would have it (in 32-bit), in bytes.
   //! @param type The type, by name.
-  getNativeTypeSize: function(type, quantumSize) {
-    if (Runtime.QUANTUM_SIZE == 1) return 1;
-    var size = {
-      '%i1': 1,
-      '%i8': 1,
-      '%i16': 2,
-      '%i32': 4,
-      '%i64': 8,
-      "%float": 4,
-      "%double": 8
-    }['%'+type]; // add '%' since float and double confuse Closure compiler as keys, and also spidermonkey as a compiler will remove 's from '_i8' etc
-    if (!size) {
-      if (type.charAt(type.length-1) == '*') {
-        size = Runtime.QUANTUM_SIZE; // A pointer
-      } else if (type[0] == 'i') {
-        var bits = parseInt(type.substr(1));
-        assert(bits % 8 == 0);
-        size = bits/8;
+  getNativeTypeSize: function(type) {
+#if QUANTUM_SIZE == 1
+     return 1;
+#else
+    switch (type) {
+      case 'i1': case 'i8': return 1;
+      case 'i16': return 2;
+      case 'i32': return 4;
+      case 'i64': return 8;
+      case 'float': return 4;
+      case 'double': return 8;
+      default: {
+        if (type[type.length-1] === '*') {
+          return Runtime.QUANTUM_SIZE; // A pointer
+        } else if (type[0] === 'i') {
+          var bits = parseInt(type.substr(1));
+          assert(bits % 8 === 0);
+          return bits/8;
+        }
       }
     }
-    return size;
+#endif
   },
 
   //! Returns the size of a structure field, as C/C++ would have it (in 32-bit,

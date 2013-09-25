@@ -295,7 +295,7 @@ f.close()
 
       make = make_commands[generator]
       cmake_cases = ['target_js', 'target_html']
-      cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
+      cmake_outputs = ['test_cmake.js', 'hello_world_gles.html']
       for i in range(0, 2):
         for configuration in ['Debug', 'Release']:
           # CMake can be invoked in two ways, using 'emconfigure cmake', or by directly running 'cmake'.
@@ -342,7 +342,7 @@ f.close()
               # Run through node, if CMake produced a .js file.
               if cmake_outputs[i].endswith('.js'):
                 ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
-                assert 'hello, world!' in ret, 'Running cmake-based .js application failed!'
+                self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
             finally:
               os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
               shutil.rmtree(tempdirname)
@@ -1665,10 +1665,10 @@ f.close()
     if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_CORES'] = '2'
+      os.environ['EMCC_CORES'] = '2' # standardize over machines
       for asm, linkable, chunks, js_chunks in [
-          (0, 0, 3, 2), (0, 1, 3, 4),
-          (1, 0, 3, 2), (1, 1, 3, 4)
+          (0, 0, 2, 2), (0, 1, 2, 4),
+          (1, 0, 2, 2), (1, 1, 2, 4)
         ]:
         print asm, linkable, chunks, js_chunks
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
@@ -1755,7 +1755,7 @@ $
 other=ay file...
 seeked= file.
 ''', output[0])
-    self.assertIdentical('texte\n', output[1])
+    self.assertContained('texte\n', output[1])
 
   def test_emconfig(self):
     output = Popen([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
