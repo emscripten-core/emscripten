@@ -311,7 +311,7 @@ var LibraryGL = {
                                  0,
                                  HEAPU8.subarray(cb.ptr, cb.ptr + size));
 #if GL_ASSERTIONS
-        GL.validateVertexAttribPointerAlignment(cb.type, cb.stride, 0);
+        GL.validateVertexAttribPointer(cb.size, cb.type, cb.stride, 0);
 #endif
         Module.ctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
       }
@@ -335,7 +335,7 @@ var LibraryGL = {
       }
     },
     // Validates that user obeys GL spec #6.4: http://www.khronos.org/registry/webgl/specs/latest/1.0/#6.4
-    validateVertexAttribPointerAlignment: function(dataType, stride, offset) {
+    validateVertexAttribPointer: function(dimension, dataType, stride, offset) {
       var sizeBytes = 1;
       switch(dataType) {
         case 0x1400 /* GL_BYTE */:
@@ -356,6 +356,14 @@ var LibraryGL = {
           break;
         default:
           console.error('Invalid vertex attribute data type GLenum ' + dataType + ' passed to GL function!');
+      }
+      if (dimension == 0x80E1 /* GL_BGRA */) {
+        console.error('WebGL does not support size=GL_BGRA in a call to glVertexAttribPointer! Please use size=4 and type=GL_UNSIGNED_BYTE instead!');
+      } else if (dimension < 1 || dimension > 4) {
+        console.error('Invalid dimension='+dimension+' in call to glVertexAttribPointer, must be 1,2,3 or 4.');
+      }
+      if (stride < 0 || stride > 255) {
+        console.error('Invalid stride='+stride+' in call to glVertexAttribPointer. Note that maximum supported stride in WebGL is 255!');
       }
       if (offset % sizeBytes != 0) {
         console.error('GL spec section 6.4 error: vertex attribute data offset of ' + offset + ' bytes should have been a multiple of the data type size that was used: GLenum ' + dataType + ' has size of ' + sizeBytes + ' bytes!');
@@ -3307,7 +3315,7 @@ var LibraryGL = {
           var clientAttributes = GL.immediate.clientAttributes;
 
 #if GL_ASSERTIONS
-          GL.validateVertexAttribPointerAlignment(positionType, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
+          GL.validateVertexAttribPointer(positionSize, positionType, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
 #endif
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
                                          GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
@@ -3322,7 +3330,7 @@ var LibraryGL = {
 
               if (texUnitID < textureSizes.length && textureSizes[texUnitID]) {
 #if GL_ASSERTIONS
-                GL.validateVertexAttribPointerAlignment(textureTypes[texUnitID], GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
+                GL.validateVertexAttribPointer(textureSizes[texUnitID], textureTypes[texUnitID], GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
 #endif
                 Module.ctx.vertexAttribPointer(attribLoc, textureSizes[texUnitID], textureTypes[texUnitID], false,
                                                GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
@@ -3341,7 +3349,7 @@ var LibraryGL = {
           }
           if (colorSize) {
 #if GL_ASSERTIONS
-            GL.validateVertexAttribPointerAlignment(colorType, GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
+            GL.validateVertexAttribPointer(colorSize, colorType, GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
 #endif
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
                                            GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
@@ -3352,7 +3360,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
 #if GL_ASSERTIONS
-            GL.validateVertexAttribPointerAlignment(normalType, GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
+            GL.validateVertexAttribPointer(normalSize, normalType, GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
 #endif
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
                                            GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
@@ -4334,7 +4342,7 @@ var LibraryGL = {
     cb.clientside = false;
 #endif
 #if GL_ASSERTIONS
-    GL.validateVertexAttribPointerAlignment(type, stride, ptr);
+    GL.validateVertexAttribPointer(size, type, stride, ptr);
 #endif
     Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
   },
