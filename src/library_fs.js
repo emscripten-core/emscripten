@@ -736,6 +736,8 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['didDeleteFile'](old_path);
         if (FS.trackingDelegate['didOpenFile'])
           FS.trackingDelegate['didOpenFile'](new_path, FS.tracking.openFlags.WRITE);
+        if (FS.trackingDelegate['didCloseFile'])
+          FS.trackingDelegate['didCloseFile'](new_path);
       }
     },
     rmdir: function(path) {
@@ -982,10 +984,10 @@ mergeInto(LibraryManager.library, {
       }
       if (FS.trackingDelegate && FS.trackingDelegate['didOpenFile']) {
         var trackingFlags = 0;
-        if (!(flags & {{{ cDefine('O_WRONLY')}}}))
-          trackingFlags != FS.tracking.openFlags.READ;
-        if (!(flags & {{{ cDefine('O_RDONLY')}}}))
-          trackingFlags != FS.tracking.openFlags.WRITE;
+        if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}})
+          trackingFlags |= FS.tracking.openFlags.READ;
+        if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}})
+          trackingFlags |= FS.tracking.openFlags.WRITE;
         FS.trackingDelegate['didOpenFile'](path, trackingFlags);
       }
       return stream;
@@ -999,6 +1001,9 @@ mergeInto(LibraryManager.library, {
         throw e;
       } finally {
         FS.closeStream(stream.fd);
+        if (FS.trackingDelegate && stream.path && FS.trackingDelegate['didCloseFile']) {
+          FS.trackingDelegate['didCloseFile'](stream.path);
+        }
       }
     },
     llseek: function(stream, offset, whence) {
