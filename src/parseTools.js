@@ -1499,7 +1499,9 @@ function getFastValue(a, op, b, type) {
   }
   if (op in MUL_DIV) {
     if (op == '*') {
-      if (a == 0 || b == 0) {
+      // We can't eliminate where a or b are 0 as that would break things for creating
+      // a negative 0.
+      if ((a == 0 || b == 0) && !(type in Runtime.FLOAT_TYPES)) {
         return '0';
       } else if (a == 1) {
         return b;
