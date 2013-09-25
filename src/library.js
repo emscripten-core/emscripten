@@ -6461,11 +6461,15 @@ LibraryManager.library = {
   // locale.h
   // ==========================================================================
 
+  newlocale__deps: ['malloc'],
   newlocale: function(mask, locale, base) {
-    return 0;
+    return _malloc({{{ QUANTUM_SIZE}}});
   },
 
-  freelocale: function(locale) {},
+  freelocale__deps: ['free'],
+  freelocale: function(locale) {
+    _free(locale);
+  },
 
   uselocale: function(locale) {
     return 0;
