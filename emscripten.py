@@ -68,8 +68,6 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
   except KeyboardInterrupt:
     # Python 2.7 seems to lock up when a child process throws KeyboardInterrupt
     raise Exception()
-  finally:
-    tempfiles.try_delete(funcs_file)
   if DEBUG: print >> sys.stderr, '.'
   return out
 
