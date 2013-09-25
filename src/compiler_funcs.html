@@ -5,17 +5,19 @@ Open the web console to see stderr output
 <hr>
 <pre id="output"></pre>
 <script>
-  arguments = ['tmp/emscripten_temp/tmpffWtYF.txt', 'tmp/emscripten_temp/tmpnKzHrf.func_0.ll', 'funcs', 'tmp/emscripten_temp/tmpWD6y0W.json']; // copy from emscripten.py output
+  arguments = ['tmp/emscripten_temp/tmpVpJZAp.txt', 'tmp/emscripten_temp/tmpnaEsKI.func_0.ll', 'funcs', 'tmp/emscripten_temp/tmpYxajFl.json']; // copy from emscripten.py output
 
   var outputElement = document.getElementById('output');
   print = function(x) {
-    outputElement.innerHTML += x;
+    outputElement.innerHTML += 'output hidden, profiling mode';
+    print = function(){};
+    //outputElement.innerHTML += x;
   };
 
   // For generated code
   var Module = {
     print: function(x) {
-      outputElement.innerHTML += x;
+      throw 'what?'
     }
   };
 </script>
