@@ -215,7 +215,12 @@ load('analyzer.js');
 load('jsifier.js');
 if (phase == 'funcs' && RELOOP) { // XXX handle !singlePhase
   RelooperModule = { TOTAL_MEMORY: ceilPowerOfTwo(2*RELOOPER_BUFFER_SIZE) };
-  load(RELOOPER);
+  try {
+    load(RELOOPER);
+  } catch(e) {
+    printErr('cannot find relooper at ' + RELOOPER + ', trying in current dir');
+    load('relooper.js');
+  }
   assert(typeof Relooper != 'undefined');
 }
 globalEval(processMacros(preprocess(read('runtime.js'))));
