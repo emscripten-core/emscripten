@@ -1348,6 +1348,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
   value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
+  if (phase === 'pre' && isNumber(offset)) offset += ' '; // avoid pure numeric strings, seem to be perf issues with overly-aggressive interning or slt in pre processing of heap inits
   if (SAFE_HEAP && !noSafe) {
     var printType = type;
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
