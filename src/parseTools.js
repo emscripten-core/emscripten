@@ -1473,17 +1473,38 @@ var TWO_TWENTY = Math.pow(2, 20);
 // Tries to do as much as possible at compile time.
 // Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
 function getFastValue(a, op, b, type) {
-  a = a.toString();
-  b = b.toString();
+  //return '(' + a + ')' + op + '(' + b + ')';
   a = a == 'true' ? '1' : (a == 'false' ? '0' : a);
   b = b == 'true' ? '1' : (b == 'false' ? '0' : b);
-  if (isNumber(a) && isNumber(b)) {
-    if (op == 'pow') {
-      return Math.pow(a, b).toString();
-    } else {
-      var value = eval(a + op + '(' + b + ')'); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
-      if (op == '/' && type in Runtime.INT_TYPES) value = value|0; // avoid emitting floats
-      return value.toString();
+
+  var aNumber = null, bNumber = null;
+  if (typeof a === 'number') {
+    aNumber = a;
+    a = a.toString();
+  } else if (isNumber(a)) aNumber = parseFloat(a);
+  if (typeof b === 'number') {
+    bNumber = b;
+    b = b.toString();
+  } else if (isNumber(b)) bNumber = parseFloat(b);
+
+  if (aNumber !== null && bNumber !== null) {
+    switch (op) {
+      case '+': return (aNumber + bNumber).toString();
+      case '-': return (aNumber - bNumber).toString();
+      case '*': return (aNumber * bNumber).toString();
+      case '/': {
+        if (type in Runtime.INT_TYPES) {
+          return ((aNumber / bNumber)|0).toString();
+        } else {
+          return (aNumber / bNumber).toString();
+        }
+      }
+      case '%': return (aNumber % bNumber).toString();
+      case '|': return (aNumber | bNumber).toString();
+      case '>>>': return (aNumber >>> bNumber).toString();
+      case '&': return (aNumber & bNumber).toString();
+      case 'pow': return Math.pow(aNumber, bNumber).toString();
+      default: throw 'need to implement getFastValue pn ' + op;
     }
   }
   if (op == 'pow') {
@@ -1492,23 +1513,26 @@ function getFastValue(a, op, b, type) {
     }
     return 'Math.pow(' + a + ', ' + b + ')';
   }
-  if (op in PLUS_MUL && isNumber(a)) { // if one of them is a number, keep it last
+  if (op in PLUS_MUL && aNumber !== null) { // if one of them is a number, keep it last
     var c = b;
     b = a;
     a = c;
+    var cNumber = bNumber;
+    bNumber = aNumber;
+    aNumber = cNumber;
   }
   if (op in MUL_DIV) {
     if (op == '*') {
       // We can't eliminate where a or b are 0 as that would break things for creating
       // a negative 0.
-      if ((a == 0 || b == 0) && !(type in Runtime.FLOAT_TYPES)) {
+      if ((aNumber == 0 || bNumber == 0) && !(type in Runtime.FLOAT_TYPES)) {
         return '0';
-      } else if (a == 1) {
+      } else if (aNumber == 1) {
         return b;
-      } else if (b == 1) {
+      } else if (bNumber == 1) {
         return a;
-      } else if (isNumber(b) && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
-        var shifts = Math.log(parseFloat(b))/Math.LN2;
+      } else if (bNumber !== null && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
+        var shifts = Math.log(bNumber)/Math.LN2;
         if (shifts % 1 == 0) {
           return '(' + a + '<<' + shifts + ')';
         }
@@ -1517,7 +1541,7 @@ function getFastValue(a, op, b, type) {
         // if guaranteed small enough to not overflow into a double, do a normal multiply
         var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
         // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
-        if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
+        if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
           return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
         }
         return '(Math.imul(' + a + ',' + b + ')|0)';
