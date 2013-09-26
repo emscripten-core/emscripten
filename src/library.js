@@ -3818,6 +3818,7 @@ LibraryManager.library = {
   },
   // We always assume ASCII locale.
   strcoll: 'strcmp',
+  strcoll_l: 'strcmp',
 
   strcasecmp__asm: true,
   strcasecmp__sig: 'iii',
@@ -4084,6 +4085,7 @@ LibraryManager.library = {
     }
   },
   _toupper: 'toupper',
+  toupper_l: 'toupper',
 
   tolower__asm: true,
   tolower__sig: 'ii',
@@ -4094,54 +4096,65 @@ LibraryManager.library = {
     return (chr - {{{ charCode('A') }}} + {{{ charCode('a') }}})|0;
   },
   _tolower: 'tolower',
+  tolower_l: 'tolower',
 
   // The following functions are defined as macros in glibc.
   islower: function(chr) {
     return chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}};
   },
+  islower_l: 'islower',
   isupper: function(chr) {
     return chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}};
   },
+  isupper_l: 'isupper',
   isalpha: function(chr) {
     return (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
            (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
+  isalpha_l: 'isalpha',
   isdigit: function(chr) {
     return chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}};
   },
-  isdigit_l: 'isdigit', // no locale support yet
+  isdigit_l: 'isdigit',
   isxdigit: function(chr) {
     return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
            (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('f') }}}) ||
            (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('F') }}});
   },
-  isxdigit_l: 'isxdigit', // no locale support yet
+  isxdigit_l: 'isxdigit',
   isalnum: function(chr) {
     return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
            (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
            (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
+  isalnum_l: 'isalnum',
   ispunct: function(chr) {
     return (chr >= {{{ charCode('!') }}} && chr <= {{{ charCode('/') }}}) ||
            (chr >= {{{ charCode(':') }}} && chr <= {{{ charCode('@') }}}) ||
            (chr >= {{{ charCode('[') }}} && chr <= {{{ charCode('`') }}}) ||
            (chr >= {{{ charCode('{') }}} && chr <= {{{ charCode('~') }}});
   },
+  ispunct_l: 'ispunct',
   isspace: function(chr) {
     return (chr == 32) || (chr >= 9 && chr <= 13);
   },
+  isspace_l: 'isspace',
   isblank: function(chr) {
     return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
   },
+  isblank_l: 'isblank',
   iscntrl: function(chr) {
     return (0 <= chr && chr <= 0x1F) || chr === 0x7F;
   },
+  iscntrl_l: 'iscntrl',
   isprint: function(chr) {
     return 0x1F < chr && chr < 0x7F;
   },
+  isprint_l: 'isprint',
   isgraph: function(chr) {
     return 0x20 < chr && chr < 0x7F;
   },
+  isgraph_l: 'isgraph',
   // Lookup tables for glibc ctype implementation.
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
@@ -8884,7 +8897,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'swprintf', 'pthread_join', 'pthread_detach', 'strcoll_l', 'strxfrm_l', 'wcscoll_l', 'toupper_l', 'tolower_l', 'iswspace_l', 'iswprint_l', 'iswcntrl_l', 'iswupper_l', 'iswlower_l', 'iswalpha_l', 'iswdigit_l', 'iswpunct_l', 'iswxdigit_l', 'iswblank_l', 'wcsxfrm_l', 'towupper_l', 'towlower_l', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function() { throw 'TODO: ' + aborter };
 });
 
