@@ -1464,18 +1464,14 @@ function makeHEAPView(which, start, end) {
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
-var PLUS_MUL = set('+', '*');
-var MUL_DIV = set('*', '/');
-var PLUS_MINUS = set('+', '-');
 var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
 // Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
 function getFastValue(a, op, b, type) {
-  //return '(' + a + ')' + op + '(' + b + ')';
-  a = a == 'true' ? '1' : (a == 'false' ? '0' : a);
-  b = b == 'true' ? '1' : (b == 'false' ? '0' : b);
+  a = a === 'true' ? '1' : (a === 'false' ? '0' : a);
+  b = b === 'true' ? '1' : (b === 'false' ? '0' : b);
 
   var aNumber = null, bNumber = null;
   if (typeof a === 'number') {
@@ -1493,7 +1489,7 @@ function getFastValue(a, op, b, type) {
       case '-': return (aNumber - bNumber).toString();
       case '*': return (aNumber * bNumber).toString();
       case '/': {
-        if (type in Runtime.INT_TYPES) {
+        if (type[0] === 'i') {
           return ((aNumber / bNumber)|0).toString();
         } else {
           return (aNumber / bNumber).toString();
@@ -1507,13 +1503,13 @@ function getFastValue(a, op, b, type) {
       default: throw 'need to implement getFastValue pn ' + op;
     }
   }
-  if (op == 'pow') {
-    if (a == '2' && isIntImplemented(type)) {
+  if (op === 'pow') {
+    if (a === '2' && isIntImplemented(type)) {
       return '(1 << (' + b + '))';
     }
     return 'Math.pow(' + a + ', ' + b + ')';
   }
-  if (op in PLUS_MUL && aNumber !== null) { // if one of them is a number, keep it last
+  if ((op === '+' || op === '*') && aNumber !== null) { // if one of them is a number, keep it last
     var c = b;
     b = a;
     a = c;
@@ -1521,46 +1517,44 @@ function getFastValue(a, op, b, type) {
     bNumber = aNumber;
     aNumber = cNumber;
   }
-  if (op in MUL_DIV) {
-    if (op == '*') {
-      // We can't eliminate where a or b are 0 as that would break things for creating
-      // a negative 0.
-      if ((aNumber == 0 || bNumber == 0) && !(type in Runtime.FLOAT_TYPES)) {
-        return '0';
-      } else if (aNumber == 1) {
-        return b;
-      } else if (bNumber == 1) {
-        return a;
-      } else if (bNumber !== null && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
-        var shifts = Math.log(bNumber)/Math.LN2;
-        if (shifts % 1 == 0) {
-          return '(' + a + '<<' + shifts + ')';
-        }
+  if (op === '*') {
+    // We can't eliminate where a or b are 0 as that would break things for creating
+    // a negative 0.
+    if ((aNumber === 0 || bNumber === 0) && !(type in Runtime.FLOAT_TYPES)) {
+      return '0';
+    } else if (aNumber === 1) {
+      return b;
+    } else if (bNumber === 1) {
+      return a;
+    } else if (bNumber !== null && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
+      var shifts = Math.log(bNumber)/Math.LN2;
+      if (shifts % 1 === 0) {
+        return '(' + a + '<<' + shifts + ')';
       }
-      if (!(type in Runtime.FLOAT_TYPES)) {
-        // if guaranteed small enough to not overflow into a double, do a normal multiply
-        var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
-        // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
-        if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
-          return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
-        }
-        return '(Math.imul(' + a + ',' + b + ')|0)';
-      }
-    } else { // div
-      if (a == '0' && !(type in Runtime.FLOAT_TYPES)) { // careful on floats, since 0*NaN is not 0
-        return '0';
-      } else if (b == 1) {
-        return a;
-      } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
     }
-  } else if (op in PLUS_MINUS) {
-    if (b[0] == '-') {
-      op = op == '+' ? '-' : '+';
+    if (!(type in Runtime.FLOAT_TYPES)) {
+      // if guaranteed small enough to not overflow into a double, do a normal multiply
+      var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
+      // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
+      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
+        return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
+      }
+      return '(Math.imul(' + a + ',' + b + ')|0)';
+    }
+  } else if (op === '/') {
+    if (a === '0' && !(type in Runtime.FLOAT_TYPES)) { // careful on floats, since 0*NaN is not 0
+      return '0';
+    } else if (b === 1) {
+      return a;
+    } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
+  } else if (op === '+' || op === '-') {
+    if (b[0] === '-') {
+      op = op === '+' ? '-' : '+';
       b = b.substr(1);
     }
-    if (a == 0) {
-      return op == '+' ? b : '(-' + b + ')';
-    } else if (b == 0) {
+    if (a === 0) {
+      return op === '+' ? b : '(-' + b + ')';
+    } else if (b === 0) {
       return a;
     }
   }
