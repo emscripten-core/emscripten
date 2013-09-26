@@ -1346,6 +1346,7 @@ try:
           'wcwidth.c',
          ]],
          ['locale', [
+          'iconv.c',
           'iswalnum_l.c',
           'iswalpha_l.c',
           'iswblank_l.c',
