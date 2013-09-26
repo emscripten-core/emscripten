@@ -10,6 +10,9 @@
          T fcvt
          T fwprintf
          T gcvt
+         T iconv
+         T iconv_close
+         T iconv_open
          T iswalnum
          T iswalnum_l
          T iswalpha
