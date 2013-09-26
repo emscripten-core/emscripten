@@ -1788,7 +1788,7 @@ f6: nan
 
           int xx, yy, zz;
           char s[32];
-          int cc = sscanf("abc_10.b1_xyz_543_defg", "abc_%d.%2x_xyz_%3d_%3s", &xx, &yy, &zz, s);
+          int cc = sscanf("abc_10.b1_xyz9_543_defg", "abc_%d.%2x_xyz9_%3d_%3s", &xx, &yy, &zz, s);
           printf("%d:%d,%d,%d,%s\\n", cc, xx, yy, zz, s);
 
           printf("%d\\n", argc);
