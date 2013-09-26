@@ -1583,12 +1583,8 @@ function getFastValues(list, op, type) {
 }
 
 function calcFastOffset(ptr, pos, noNeedFirst) {
-  var offset = noNeedFirst ? '0' : makeGetPos(ptr);
-  return getFastValue(offset, '+', pos, 'i32');
-}
-
-function makeGetPos(ptr) {
-  return ptr;
+  assert(!noNeedFirst);
+  return getFastValue(ptr, '+', pos, 'i32');
 }
 
 var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
@@ -1825,7 +1821,7 @@ function getGetElementPtrIndexes(item) {
   // struct, and possibly further substructures, all embedded
   // can also be to 'blocks': [8 x i32]*, not just structs
   type = removePointing(type);
-  var indexes = [makeGetPos(ident)];
+  var indexes = [ident];
   var offset = item.params[1];
   if (offset != 0) {
     if (isStructType(type)) {
