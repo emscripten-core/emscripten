@@ -1552,9 +1552,9 @@ function getFastValue(a, op, b, type) {
       op = op === '+' ? '-' : '+';
       b = b.substr(1);
     }
-    if (a === 0) {
+    if (aNumber === 0) {
       return op === '+' ? b : '(-' + b + ')';
-    } else if (b === 0) {
+    } else if (bNumber === 0) {
       return a;
     }
   }
