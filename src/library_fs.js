@@ -911,6 +911,9 @@ mergeInto(LibraryManager.library, {
       }
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
+      if (FS.trackingDelegate && stream.path && FS.trackingDelegate['didWriteToFile']) {
+        FS.trackingDelegate['didWriteToFile'](stream.path);
+      }
       return bytesWritten;
     },
     allocate: function(stream, offset, length) {
