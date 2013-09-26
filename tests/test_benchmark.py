@@ -209,6 +209,36 @@ process(sys.argv[1])
       }
     '''
     self.do_benchmark('primes', src, 'lastprime:')
+  
+  def test_srand(self):
+    src = r'''
+      #include<stdio.h>
+      #include<stdlib.h>
+      int main(int argc, char **argv) {
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        switch(arg) {
+          case 0: return 0; break;
+          case 1: arg = 4000000; break;
+          case 2: arg = 10000000; break;
+          case 3: arg = 20000000; break;
+          case 4: arg = 40000000; break;
+          case 5: arg = 200000000; break;
+          default: printf("error: %d\\n", arg); return -1;
+        }
+        
+        srand(20);
+        int lastrand = 0;
+        for (int i = 0; i < arg; i++) {
+          lastrand = rand();
+        }
+        printf("lastrand: %d.\n", lastrand);
+        return 0;
+      }
+    '''
+    print '\nWithout srand():'
+    self.do_benchmark('without_srand', src, 'lastrand:', emcc_args=['-s', 'ENABLE_SRAND=0'])
+    print '\nWith srand():'
+    self.do_benchmark('with_srand', src, 'lastrand:', emcc_args=['-s', 'ENABLE_SRAND=1'])
 
   def test_memops(self):
     src = '''

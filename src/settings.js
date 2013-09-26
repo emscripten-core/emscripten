@@ -426,6 +426,8 @@ var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressi
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
 
+var ENABLE_SRAND = 0;       // Use a custom PRNG based on ARC4. This makes srand() work but might slow down all rand() functions.
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:
