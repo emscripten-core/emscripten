@@ -110,8 +110,11 @@ function isNiceIdent(ident, loose) {
 }
 
 function isJSVar(ident) {
-  return /^\(?[$_]?[\w$_\d ]*\)+$/.test(ident);
-
+  if (ident[0] === '(') {
+    if (ident[ident.length-1] !== ')') return false;
+    ident = ident.substr(1, ident.length-2);
+  }
+  return /^[$_]?[\w$_\d]* *$/.test(ident);
 }
 
 function isLocalVar(ident) {
@@ -1977,13 +1980,12 @@ function makeSignOp(value, type, op, force, ignore) {
   if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
     return value; // these are always assumed to be two 32-bit unsigneds.
   }
-
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
   if (!value) return value;
   var bits, full;
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
-    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign())) + ')';
+    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || correctSpecificSign()) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {
       return eval(full).toString();
@@ -1991,23 +1993,25 @@ function makeSignOp(value, type, op, force, ignore) {
   }
   if ((ignore || !correctSigns()) && !CHECK_SIGNS && !force) return value;
   if (type in Runtime.INT_TYPES) {
+    // this is an integer, but not a number (or we would have already handled it)
     // shortcuts
     if (!CHECK_SIGNS || ignore) {
+      if (value === 'true') {
+        value = '1';
+      } else if (value === 'false') {
+        value = '0';
+      } else if (!isJSVar(value)) value = '(' + value + ')';
       if (bits === 32) {
         if (op === 're') {
-          return '(' + getFastValue(value, '|', '0') + ')';
+          return '(' + value + '|0)';
         } else {
-
-          return '(' + getFastValue(value, '>>>', '0') + ')';
-          // Alternatively, we can consider the lengthier
-          //    return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + ' + VALUE', value, 'tempBigInt');
-          // which does not always turn us into a 32-bit *un*signed value
+          return '(' + value +  '>>>0)';
         }
       } else if (bits < 32) {
         if (op === 're') {
-          return makeInlineCalculation('(VALUE << ' + (32-bits) + ') >> ' + (32-bits), value, 'tempInt');
+          return '((' + value + '<<' + (32-bits) + ')>>' + (32-bits) + ')';
         } else {
-          return '(' + getFastValue(value, '&', Math.pow(2, bits)-1) + ')';
+          return '(' + value + '&' + (Math.pow(2, bits)-1) + ')';
         }
       } else { // bits > 32
         if (op === 're') {
