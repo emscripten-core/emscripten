@@ -275,7 +275,7 @@ function compile(raw) {
     JSify(analyzed);
 
     //dumpInterProf();
-    //printErr('Paths (fast, slow): ' + [fastPaths, slowPaths]);
+    //printErr(phase + ' paths (fast, slow): ' + [fastPaths, slowPaths]);
 
     phase = null;
 

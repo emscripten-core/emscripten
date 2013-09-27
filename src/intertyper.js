@@ -1012,12 +1012,39 @@ function intertyper(lines, sidePass, baseLineNums) {
         };
         noteGlobalVariable(ret);
       }
+    } else if (phase === 'funcs') {
+      // simple gep
+      if (m = /  (%[\w\d\._]+) = getelementptr (?:inbounds )?([%\w\d\._ ,\*-@]+$)/.exec(line.lineText)) {
+        var params = m[2].split(', ').map(function(param) {
+          var parts = param.split(' ');
+          assert(parts.length === 2);
+          Types.needAnalysis[parts[0]] = 0;
+          return {
+            intertype: 'value',
+            type: parts[0],
+            ident: toNiceIdent(parts[1]),
+            byVal: 0
+          }
+        });
+        ret = {
+          intertype: 'getelementptr',
+          lineNum: line.lineNum,
+          assignTo: toNiceIdent(m[1]),
+          ident: params[0].ident,
+          type: '*',
+          params: params
+        };
+      }
+      // else if (line.lineText.indexOf(' = getelementptr ') > 0) printErr('close: ' + line.lineText);
     }
     if (ret) {
       fastPaths++;
       if (COMPILER_ASSERTIONS) {
         //printErr(['\n', JSON.stringify(ret), '\n', JSON.stringify(triager(tokenizer(line)))]);
-        assert(JSON.stringify(ret) === JSON.stringify(triager(tokenizer(line))), 'fast path');
+        var normal = triager(tokenizer(line));
+        delete normal.tokens;
+        delete normal.indent;
+        assert(sortedJsonCompare(normal, ret), 'fast path: ' + dump(normal) + '\n vs \n' + dump(ret));
       }
       finalResults.push(ret);
     }
