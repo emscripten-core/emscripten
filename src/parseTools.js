@@ -121,6 +121,13 @@ function isLocalVar(ident) {
   return ident[0] === '$';
 }
 
+// Simple variables or numbers, or things already quoted, do not need to be quoted
+function needsQuoting(ident) {
+  if (/^[-+]?[$_]?[\w$_\d]*$/.test(ident)) return false; // number or variable
+  if (ident[0] === '(' && ident[ident.length-1] === ')' && ident.indexOf('(', 1) < 0) return false; // already fully quoted
+  return true;
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -2000,7 +2007,7 @@ function makeSignOp(value, type, op, force, ignore) {
         value = '1';
       } else if (value === 'false') {
         value = '0';
-      } else if (!isJSVar(value)) value = '(' + value + ')';
+      } else if (needsQuoting(value)) value = '(' + value + ')';
       if (bits === 32) {
         if (op === 're') {
           return '(' + value + '|0)';
