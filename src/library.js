@@ -8860,8 +8860,37 @@ LibraryManager.library = {
     STACKTOP = sp;
     return str;
   },
-  
-  emscripten_get_callstack_js__deps: ['emscripten_demangle'],
+ 
+  // Returns [parentFuncArguments, functionName, paramListName]
+  _emscripten_traverse_stack: function(args) {
+    if (!args || !args.callee || !args.callee.name) {
+      return [null, '', ''];
+    }
+
+    var funstr = args.callee.toString();
+    var funcname = args.callee.name;
+    var str = '(';
+    var first = true;
+    for(i in args) {
+      var a = args[i];
+      if (!first) {
+        str += ", ";
+      }
+      first = false;
+      if (typeof a === 'number' || typeof a === 'string') {
+        str += a;
+      } else {
+        str += '(' + typeof a + ')';
+      }
+    }
+    str += ')';
+    args = args.callee.caller.arguments;
+    if (first)
+      str = '';
+    return [args, funcname, str];
+  },
+
+  emscripten_get_callstack_js__deps: ['emscripten_demangle', '_emscripten_traverse_stack'],
   emscripten_get_callstack_js: function(flags) {
     var err = new Error();
     if (!err.stack) {
@@ -8883,6 +8912,14 @@ LibraryManager.library = {
       flags |= 16/*EM_LOG_JS_STACK*/;
     }
 
+    var stack_args = null;
+    if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
+      // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
+      var stack_args = __emscripten_traverse_stack(arguments);
+      while (stack_args[1].indexOf('_emscripten_') >= 0)
+        stack_args = __emscripten_traverse_stack(stack_args[0]);
+    }
+    
     // Process all lines:
     lines = callstack.split('\n');
     callstack = '';
@@ -8940,6 +8977,15 @@ LibraryManager.library = {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
         callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
+      }
+      
+      // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
+      if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
+        if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {
+          callstack = callstack.replace(/\s+$/, '');
+          callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
+        }
+        stack_args = __emscripten_traverse_stack(stack_args[0]);
       }
     }
     // Trim extra whitespace at the end of the output.

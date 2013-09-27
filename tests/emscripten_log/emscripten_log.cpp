@@ -56,7 +56,7 @@ void bar(int = 0, char * = 0, double = 0) // Arbitrary function signature to add
 	else
 		MYASSERT(1 == 1);
 
-	int flags = EM_LOG_NO_PATHS | EM_LOG_JS_STACK | EM_LOG_DEMANGLE;
+	int flags = EM_LOG_NO_PATHS | EM_LOG_JS_STACK | EM_LOG_DEMANGLE | EM_LOG_FUNC_PARAMS;
 #ifndef RUN_FROM_JS_SHELL
 	flags |= EM_LOG_C_STACK;
 #endif
