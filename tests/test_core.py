@@ -7742,6 +7742,10 @@ def process(filename):
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
+  def test_fs_nodefs_rw(self):
+    src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True)
+
   def test_unistd_access(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     if not self.is_le32(): return self.skip('le32 needed for inline js')
