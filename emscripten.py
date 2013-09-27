@@ -186,6 +186,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if out and DEBUG: logging.debug('  loading pre from jcache')
   if not out:
     open(pre_file, 'w').write(pre_input)
+    #print >> sys.stderr, 'running', str([settings_file, pre_file, 'pre'] + libraries).replace("'/", "'") # see funcs
     out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                        cwd=path_from_root('src'))
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
@@ -223,6 +224,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     funcs, chunk_size,
     jcache.get_cachename('emscript_files') if jcache else None)
 
+  #sys.exit(1)
   #chunks = [chunks[0]] # pick specific chunks for debugging/profiling
 
   funcs = None
