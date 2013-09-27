@@ -426,6 +426,8 @@ var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressi
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
 
+var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:

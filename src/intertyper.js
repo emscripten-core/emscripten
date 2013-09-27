@@ -3,6 +3,8 @@
 // LLVM assembly => internal intermediate representation, which is ready
 // to be processed by the later stages.
 
+var fastPaths = 0, slowPaths = 0;
+
 // Line tokenizer
 function tokenizer(item, inner) {
   //assert(item.lineNum != 40000);
@@ -373,6 +375,14 @@ function intertyper(lines, sidePass, baseLineNums) {
   // Line parsers to intermediate form
 
   // globals: type or variable
+  function noteGlobalVariable(ret) {
+    if (!NAMED_GLOBALS) {
+      Variables.globals[ret.ident].type = ret.type;
+      Variables.globals[ret.ident].external = ret.external;
+    }
+    Types.needAnalysis[ret.type] = 0;
+  }
+
   function globalHandler(item) {
     function scanConst(value, type) {
       // Gets an array of constant items, separated by ',' tokens
@@ -497,7 +507,6 @@ function intertyper(lines, sidePass, baseLineNums) {
         external = true;
         item.tokens.splice(2, 1);
       }
-      Types.needAnalysis[item.tokens[2].text] = 0;
       var ret = {
         intertype: 'globalVariable',
         ident: toNiceIdent(ident),
@@ -507,11 +516,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         named: named,
         lineNum: item.lineNum
       };
-      if (!NAMED_GLOBALS) {
-        Variables.globals[ret.ident].type = ret.type;
-        Variables.globals[ret.ident].external = external;
-      }
-      Types.needAnalysis[ret.type] = 0;
+      noteGlobalVariable(ret);
       if (ident == '@llvm.global_ctors') {
         ret.ctors = [];
         if (item.tokens[3].item) {
@@ -984,9 +989,47 @@ function intertyper(lines, sidePass, baseLineNums) {
     return ret;
   }
 
+  // Fast paths - quick parses of common patterns, avoid tokenizing entirely
+
+  function tryFastPaths(line) {
+    var m, ret;
+    if (phase === 'pre') {
+      // string constant
+      if (0) { // works, but not worth it   m = /([@\.\w\d_]+) = (private )?(unnamed_addr )?(constant )?(\[\d+ x i8\]) c"([^"]+)".*/.exec(line.lineText)) {
+        if (m[1] === '@llvm.global_ctors') return ret;
+        ret = {
+          intertype: 'globalVariable',
+          ident: toNiceIdent(m[1]),
+          type: m[5],
+          external: false,
+          private_: m[2] !== null,
+          named: m[3] === null,
+          lineNum: line.lineNum,
+          value: {
+            intertype: 'string',
+            text: m[6]
+          }
+        };
+        noteGlobalVariable(ret);
+      }
+    }
+    if (ret) {
+      fastPaths++;
+      if (COMPILER_ASSERTIONS) {
+        //printErr(['\n', JSON.stringify(ret), '\n', JSON.stringify(triager(tokenizer(line)))]);
+        assert(JSON.stringify(ret) === JSON.stringify(triager(tokenizer(line))), 'fast path');
+      }
+      finalResults.push(ret);
+    }
+    return ret;
+  }
+
   // Input
 
   lineSplitter().forEach(function(line) {
+    if (tryFastPaths(line)) return;
+    slowPaths++;
+
     //var time = Date.now();
 
     var t = tokenizer(line);
