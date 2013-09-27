@@ -274,6 +274,8 @@ function compile(raw) {
     intertyped = null;
     JSify(analyzed);
 
+    //dumpInterProf();
+
     phase = null;
 
     if (DEBUG_MEMORY) {

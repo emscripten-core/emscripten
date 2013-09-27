@@ -987,12 +987,25 @@ function intertyper(lines, sidePass, baseLineNums) {
   // Input
 
   lineSplitter().forEach(function(line) {
+    //var time = Date.now();
+
     var t = tokenizer(line);
     var item = triager(t);
+
+    //var type = item ? item.intertype + (item.op ? ':' + item.op : ''): 'none';
+    //interProf[type] = (interProf[type] || 0) + Date.now() - time;
+
     if (!item) return;
     finalResults.push(item);
     if (item.tokens) item.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
   });
   return finalResults;
 }
+
+/*
+var interProf = {};
+function dumpInterProf() {
+  printErr('\nintertyper/' + phase + ' : ' + JSON.stringify(keys(interProf).sort(function(x, y) { return interProf[y] - interProf[x] }).map(function(x) { return x + ':' + interProf[x] }), null, ' ') + '\n');
+}
+*/
 
