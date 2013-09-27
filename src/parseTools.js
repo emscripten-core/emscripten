@@ -2108,7 +2108,7 @@ function processMathop(item) {
     if (item.params[i]) {
       paramTypes[i] = item.params[i].type || type;
       idents[i] = finalizeLLVMParameter(item.params[i]);
-      if (!isNumber(idents[i]) && !isNiceIdent(idents[i])) {
+      if (needsQuoting(idents[i])) {
         idents[i] = '(' + idents[i] + ')'; // we may have nested expressions. So enforce the order of operations we want
       }
     } else {
