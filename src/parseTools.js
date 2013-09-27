@@ -935,12 +935,12 @@ function parseLLVMString(str) {
   var ret = [];
   var i = 0;
   while (i < str.length) {
-    var chr = str[i];
-    if (chr != '\\') {
-      ret.push(chr.charCodeAt(0));
+    var chr = str.charCodeAt(i);
+    if (chr !== 92) { // 92 === '//'.charCodeAt(0)
+      ret.push(chr);
       i++;
     } else {
-      ret.push(eval('0x' + str[i+1]+str[i+2]));
+      ret.push(parseInt(str[i+1]+str[i+2], '16'));
       i += 3;
     }
   }
