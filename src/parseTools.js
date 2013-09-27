@@ -118,7 +118,7 @@ function isJSVar(ident) {
 }
 
 function isLocalVar(ident) {
-  return ident[0] == '$';
+  return ident[0] === '$';
 }
 
 function isStructPointerType(type) {
