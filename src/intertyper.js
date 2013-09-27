@@ -1014,7 +1014,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
     } else if (phase === 'funcs') {
       // simple gep
-      if (m = /  (%[\w\d\._]+) = getelementptr (?:inbounds )?([%\w\d\._ ,\*-@]+$)/.exec(line.lineText)) {
+      if (m = /  (%[\w\d\._]+) = getelementptr (?:inbounds )?([%\w\d\._ ,\*\-@]+$)/.exec(line.lineText)) {
         var params = m[2].split(', ').map(function(param) {
           var parts = param.split(' ');
           assert(parts.length === 2);
