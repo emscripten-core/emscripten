@@ -1035,7 +1035,29 @@ function intertyper(lines, sidePass, baseLineNums) {
           params: params
         };
       }
-      // else if (line.lineText.indexOf(' = getelementptr ') > 0) printErr('close: ' + line.lineText);
+      // simple load
+      else if (m = /  (%[\w\d\._]+) = load ([%\w\d\._\-@\*]+) ([%\w\d\._\-@]+)(, align \d+)?$/.exec(line.lineText)) {
+        var ident = toNiceIdent(m[3]);
+        var type = m[2];
+        assert(type[type.length-1] === '*', type);
+        var valueType = type.substr(0, type.length-1);
+        ret = {
+          intertype: 'load',
+          lineNum: line.lineNum,
+          assignTo: toNiceIdent(m[1]),
+          ident: ident,
+          type: valueType,
+          valueType: valueType,
+          pointerType: type,
+          pointer: {
+            intertype: 'value',
+            ident: ident,
+            type: type,
+          },
+          align: parseAlign(m[4]),
+        };
+      }
+      //else if (line.lineText.indexOf(' = load ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
     }
     if (ret) {
       fastPaths++;

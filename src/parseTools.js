@@ -2547,3 +2547,8 @@ function makePrintChars(s, sep) {
   return ret;
 }
 
+function parseAlign(text) { // parse ", align \d+"
+  if (!text) return QUANTUM_SIZE;
+  return parseInt(text.substr(8));
+}
+
