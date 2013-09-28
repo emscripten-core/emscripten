@@ -1013,7 +1013,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         noteGlobalVariable(ret);
       }
     } else if (phase === 'funcs') {
-      if (m = /^  (%[\w\d\._]+) = (\w+) ([%\w\d\._ ,\*\-@]+)$/.exec(line.lineText)) {
+      if (m = /^  (%[\w\d\._]+) = (getelementptr|load) ([%\w\d\._ ,\*\-@]+)$/.exec(line.lineText)) {
         var assignTo = m[1];
         var intertype = m[2];
         var args = m[3];
@@ -1067,6 +1067,7 @@ function intertyper(lines, sidePass, baseLineNums) {
             }
             break;
           }
+          default: throw 'unexpected fast path type ' + intertype;
         }
         //else if (line.lineText.indexOf(' = load ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
       }
