@@ -1092,8 +1092,8 @@ function intertyper(lines, sidePass, baseLineNums) {
           }
           default: throw 'unexpected fast path type ' + intertype;
         }
-        //else if (line.lineText.indexOf(' = load ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
       }
+      //else if (line.lineText.indexOf(' = icmp ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
     }
     if (ret) {
       if (COMPILER_ASSERTIONS) {
