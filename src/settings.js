@@ -435,6 +435,7 @@ var EXPORT_NAME = 'Module'; // Global variable to export the module as for envir
                             // loading system (e.g. the browser and SM shell).
 
 var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
+var COMPILER_FASTPATHS = 1; // use fast-paths to speed up compilation
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

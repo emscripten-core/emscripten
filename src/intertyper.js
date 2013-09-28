@@ -1110,11 +1110,14 @@ function intertyper(lines, sidePass, baseLineNums) {
   // Input
 
   lineSplitter().forEach(function(line) {
-    var item = tryFastPaths(line);
-    if (item) {
-      finalResults.push(item);
-      fastPaths++;
-      return;
+    var item;
+    if (COMPILER_FASTPATHS) {
+      item = tryFastPaths(line);
+      if (item) {
+        finalResults.push(item);
+        fastPaths++;
+        return;
+      }
     }
     slowPaths++;
 
