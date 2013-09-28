@@ -1014,7 +1014,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         noteGlobalVariable(ret);
       }
     } else if (phase === 'funcs') {
-      if (m = /^  (%[\w\d\._]+) = (getelementptr|load) ([%\w\d\._ ,\*\-@]+)$/.exec(line.lineText)) {
+      if (m = /^  (%[\w\d\._]+) = (getelementptr|load|icmp) ([%\w\d\._ ,\*\-@]+)$/.exec(line.lineText)) {
         var assignTo = m[1];
         var intertype = m[2];
         var args = m[3];
@@ -1068,6 +1068,28 @@ function intertyper(lines, sidePass, baseLineNums) {
             }
             break;
           }
+          case 'icmp': {
+            var parts = args.split(' ');
+            assert(parts.length === 4);
+            ret = {
+              intertype: 'mathop',
+              op: 'icmp',
+              variant: parts[0],
+              lineNum: line.lineNum,
+              assignTo: toNiceIdent(assignTo),
+              params: [{
+                intertype: 'value',
+                ident: toNiceIdent(parts[2].substr(0, parts[2].length-1)),
+                type: parts[1]
+              }, {
+                intertype: 'value',
+                ident: toNiceIdent(parts[3]),
+                type: parts[1]
+              }],
+              type: 'i1',
+            };
+            break;
+          }
           default: throw 'unexpected fast path type ' + intertype;
         }
         //else if (line.lineText.indexOf(' = load ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
@@ -1075,7 +1097,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     }
     if (ret) {
       if (COMPILER_ASSERTIONS) {
-        //printErr(['\n', JSON.stringify(ret), '\n', JSON.stringify(triager(tokenizer(line)))]);
+        //printErr(['\n', dump(ret), '\n', dump(triager(tokenizer(line)))]);
         var normal = triager(tokenizer(line));
         delete normal.tokens;
         delete normal.indent;
