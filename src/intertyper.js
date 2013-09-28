@@ -1013,51 +1013,63 @@ function intertyper(lines, sidePass, baseLineNums) {
         noteGlobalVariable(ret);
       }
     } else if (phase === 'funcs') {
-      // simple gep
-      if (m = /  (%[\w\d\._]+) = getelementptr (?:inbounds )?([%\w\d\._ ,\*\-@]+$)/.exec(line.lineText)) {
-        var params = m[2].split(', ').map(function(param) {
-          var parts = param.split(' ');
-          assert(parts.length === 2);
-          Types.needAnalysis[parts[0]] = 0;
-          return {
-            intertype: 'value',
-            type: parts[0],
-            ident: toNiceIdent(parts[1]),
-            byVal: 0
+      if (m = /^  (%[\w\d\._]+) = (\w+) ([%\w\d\._ ,\*\-@]+)$/.exec(line.lineText)) {
+        var assignTo = m[1];
+        var intertype = m[2];
+        var args = m[3];
+        switch (intertype) {
+          case 'getelementptr': {
+            if (args[0] === 'i' && args.indexOf('inbounds ') === 0) {
+              args = args.substr(9);
+            }
+            var params = args.split(', ').map(function(param) {
+              var parts = param.split(' ');
+              assert(parts.length === 2);
+              Types.needAnalysis[parts[0]] = 0;
+              return {
+                intertype: 'value',
+                type: parts[0],
+                ident: toNiceIdent(parts[1]),
+                byVal: 0
+              }
+            });
+            ret = {
+              intertype: 'getelementptr',
+              lineNum: line.lineNum,
+              assignTo: toNiceIdent(assignTo),
+              ident: params[0].ident,
+              type: '*',
+              params: params
+            };
+            break;
           }
-        });
-        ret = {
-          intertype: 'getelementptr',
-          lineNum: line.lineNum,
-          assignTo: toNiceIdent(m[1]),
-          ident: params[0].ident,
-          type: '*',
-          params: params
-        };
+          case 'load': {
+            if (m = /([%\w\d\._\-@\*]+) ([%\w\d\._\-@]+)(, align \d+)?$/.exec(args)) {
+              var ident = toNiceIdent(m[2]);
+              var type = m[1];
+              assert(type[type.length-1] === '*', type);
+              var valueType = type.substr(0, type.length-1);
+              ret = {
+                intertype: 'load',
+                lineNum: line.lineNum,
+                assignTo: toNiceIdent(assignTo),
+                ident: ident,
+                type: valueType,
+                valueType: valueType,
+                pointerType: type,
+                pointer: {
+                  intertype: 'value',
+                  ident: ident,
+                  type: type,
+                },
+                align: parseAlign(m[3])
+              };
+            }
+            break;
+          }
+        }
+        //else if (line.lineText.indexOf(' = load ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
       }
-      // simple load
-      else if (m = /  (%[\w\d\._]+) = load ([%\w\d\._\-@\*]+) ([%\w\d\._\-@]+)(, align \d+)?$/.exec(line.lineText)) {
-        var ident = toNiceIdent(m[3]);
-        var type = m[2];
-        assert(type[type.length-1] === '*', type);
-        var valueType = type.substr(0, type.length-1);
-        ret = {
-          intertype: 'load',
-          lineNum: line.lineNum,
-          assignTo: toNiceIdent(m[1]),
-          ident: ident,
-          type: valueType,
-          valueType: valueType,
-          pointerType: type,
-          pointer: {
-            intertype: 'value',
-            ident: ident,
-            type: type,
-          },
-          align: parseAlign(m[4]),
-        };
-      }
-      //else if (line.lineText.indexOf(' = load ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
     }
     if (ret) {
       fastPaths++;
