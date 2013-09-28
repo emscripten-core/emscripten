@@ -218,7 +218,7 @@ if (phase == 'funcs' && RELOOP) { // XXX handle !singlePhase
   try {
     load(RELOOPER);
   } catch(e) {
-    printErr('cannot find relooper at ' + RELOOPER + ', trying in current dir');
+    printErr('cannot load relooper at ' + RELOOPER + ' : ' + e + ', trying in current dir');
     load('relooper.js');
   }
   assert(typeof Relooper != 'undefined');
