@@ -1044,7 +1044,7 @@ function intertyper(lines, sidePass, baseLineNums) {
             break;
           }
           case 'load': {
-            if (m = /([%\w\d\._\-@\*]+) ([%\w\d\._\-@]+)(, align \d+)?$/.exec(args)) {
+            if (m = /(^[%\w\d\._\-@\*]+) ([%\w\d\._\-@]+)(, align \d+)?$/.exec(args)) {
               var ident = toNiceIdent(m[2]);
               var type = m[1];
               assert(type[type.length-1] === '*', type);
