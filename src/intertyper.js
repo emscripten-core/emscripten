@@ -1072,7 +1072,6 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
     }
     if (ret) {
-      fastPaths++;
       if (COMPILER_ASSERTIONS) {
         //printErr(['\n', JSON.stringify(ret), '\n', JSON.stringify(triager(tokenizer(line)))]);
         var normal = triager(tokenizer(line));
@@ -1080,7 +1079,6 @@ function intertyper(lines, sidePass, baseLineNums) {
         delete normal.indent;
         assert(sortedJsonCompare(normal, ret), 'fast path: ' + dump(normal) + '\n vs \n' + dump(ret));
       }
-      finalResults.push(ret);
     }
     return ret;
   }
@@ -1088,13 +1086,18 @@ function intertyper(lines, sidePass, baseLineNums) {
   // Input
 
   lineSplitter().forEach(function(line) {
-    if (tryFastPaths(line)) return;
+    var item = tryFastPaths(line);
+    if (item) {
+      finalResults.push(item);
+      fastPaths++;
+      return;
+    }
     slowPaths++;
 
     //var time = Date.now();
 
     var t = tokenizer(line);
-    var item = triager(t);
+    item = triager(t);
 
     //var type = item ? item.intertype + (item.op ? ':' + item.op : ''): 'none';
     //interProf[type] = (interProf[type] || 0) + Date.now() - time;
