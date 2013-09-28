@@ -1099,8 +1099,12 @@ function intertyper(lines, sidePass, baseLineNums) {
     var t = tokenizer(line);
     item = triager(t);
 
-    //var type = item ? item.intertype + (item.op ? ':' + item.op : ''): 'none';
-    //interProf[type] = (interProf[type] || 0) + Date.now() - time;
+    /*
+    var type = item ? item.intertype + (item.op ? ':' + item.op : ''): 'none';
+    if (!interProf[type]) interProf[type] = { ms: 0, n: 0 };
+    interProf[type].ms += Date.now() - time;
+    interProf[type].n++;
+    */
 
     if (!item) return;
     finalResults.push(item);
@@ -1109,10 +1113,12 @@ function intertyper(lines, sidePass, baseLineNums) {
   return finalResults;
 }
 
+// intertyper profiler
+
 /*
 var interProf = {};
 function dumpInterProf() {
-  printErr('\nintertyper/' + phase + ' : ' + JSON.stringify(keys(interProf).sort(function(x, y) { return interProf[y] - interProf[x] }).map(function(x) { return x + ':' + interProf[x] }), null, ' ') + '\n');
+  printErr('\nintertyper/' + phase + ' (ms | n): ' + JSON.stringify(keys(interProf).sort(function(x, y) { return interProf[y].ms - interProf[x].ms }).map(function(x) { return x + ' : ' + interProf[x].ms + ' | ' + interProf[x].n }), null, ' ') + '\n');
 }
 */
 
