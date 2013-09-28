@@ -850,6 +850,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       // TODO: also remove 2nd param?
     } else if (item.op in LLVM.COMPS) {
       item.type = 'i1';
+      if (item.params[1].intertype === 'type') item.params[1].intertype = 'value'; // parsed as type, but comparisons have just values there
     }
     if (USE_TYPED_ARRAYS == 2) {
       // Some specific corrections, since 'i64' is special
