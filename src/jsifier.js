@@ -584,7 +584,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     
     if (DLOPEN_SUPPORT) Functions.getIndex(func.ident);
 
-    func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
+    func.JS += 'function ' + func.ident + '(' + paramIdents.join(',') + '){\n';
 
     if (PGO) {
       func.JS += INDENTATION + 'PGOMonitor.called["' + func.ident + '"] = 1;\n';
@@ -613,17 +613,17 @@ function JSify(data, functionsOnly, givenFunctions) {
               return v.ident + '=' + asmInitializer(type); //, func.variables[v.ident].impl);
             } else {
               return range(Math.ceil(getBits(type)/32)).map(function(i) {
-                return v.ident + '$' + i + '= 0';
+                return v.ident + '$' + i + '=0';
               }).join(',');
             }
-          }).join(', ') + ';\n';
+          }).join(',') + ';\n';
         }
       }
     }
 
     if (true) { // TODO: optimize away when not needed
       if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
-      func.JS += INDENTATION + 'var label = 0;\n';
+      func.JS += INDENTATION + 'var label=0;\n';
     }
 
     if (ASM_JS) {
@@ -632,12 +632,12 @@ function JSify(data, functionsOnly, givenFunctions) {
         hasByVal = hasByVal || param.byVal;
       });
       if (hasByVal) {
-        func.JS += INDENTATION + 'var tempParam = 0;\n';
+        func.JS += INDENTATION + 'var tempParam=0;\n';
       }
     }
 
     if (func.hasVarArgsCall) {
-      func.JS += INDENTATION + 'var tempVarArgs = 0;\n';
+      func.JS += INDENTATION + 'var tempVarArgs=0;\n';
     }
 
     // Prepare the stack, if we need one. If we have other stack allocations, force the stack to be set up.
