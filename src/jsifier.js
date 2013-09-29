@@ -593,7 +593,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (ASM_JS) {
       // spell out argument types
       func.params.forEach(function(param) {
-        func.JS += INDENTATION + param.ident + '=' + asmCoercion(param.ident, param.type) + ';\n';
+        func.JS += INDENTATION + param.ident + '=' + deParen(asmCoercion(param.ident, param.type)) + ';\n';
       });
 
       // spell out local variables

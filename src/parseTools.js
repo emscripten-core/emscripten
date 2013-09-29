@@ -2553,3 +2553,8 @@ function parseAlign(text) { // parse ", align \d+"
   return parseInt(text.substr(8));
 }
 
+function deParen(text) {
+  if (text[0] === '(') return text.substr(1, text.length-2);
+  return text;
+}
+
