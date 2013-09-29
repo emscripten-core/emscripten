@@ -537,6 +537,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         default: throw 'what is this line? ' + dump(line);
       }
       assert(line.JS);
+      //assert(line.JS.indexOf('var ') < 0, [line.JS, line.intertype]);
       if (line.assignTo) makeAssign(line);
       Framework.currItem = null;
     });
@@ -596,6 +597,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += INDENTATION + param.ident + '=' + deParen(asmCoercion(param.ident, param.type)) + ';\n';
       });
 
+      addVariable('label', 'i32', func);
+
       // spell out local variables
       var vars = values(func.variables).filter(function(v) { return v.origin != 'funcparam' });
       if (vars.length > 0) {
@@ -621,8 +624,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
-    if (true) { // TODO: optimize away when not needed
-      if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
+    if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
+    if (!ASM_JS) {
       func.JS += INDENTATION + 'var label=0;\n';
     }
 

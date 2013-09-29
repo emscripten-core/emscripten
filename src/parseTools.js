@@ -2558,3 +2558,18 @@ function deParen(text) {
   return text;
 }
 
+function addVariable(ident, type, funcData) {
+  funcData = funcData || Framework.currItem.funcData;
+  funcData.variables[ident] = {
+    ident: ident,
+    type: type,
+    origin: 'added',
+    lineNum: 0,
+    rawLinesIndex: 0,
+    hasValueTaken: false,
+    pointingLevels: 0,
+    uses: 0,
+    impl: "native"
+  };
+}
+
