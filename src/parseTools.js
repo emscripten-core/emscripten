@@ -1979,7 +1979,7 @@ function makeComparison(a, op, b, type) {
     return asmCoercion(a, type) + op + asmCoercion(b, type);
   } else {
     assert(type == 'i64');
-    return asmCoercion(a + '$0', 'i32') + op + asmCoercion(b + '$0', 'i32') + ' & ' +
+    return asmCoercion(a + '$0', 'i32') + op + asmCoercion(b + '$0', 'i32') + '&' +
            asmCoercion(a + '$1', 'i32') + op + asmCoercion(b + '$1', 'i32');
   }
 }
@@ -2156,7 +2156,7 @@ function processMathop(item) {
       // If this is in legalization mode, steal the assign and assign into two vars
       if (legalizedI64s) {
         assert(item.assignTo);
-        var ret = 'var ' + item.assignTo + '$0 = ' + result[0] + '; var ' + item.assignTo + '$1 = ' + result[1] + ';';
+        var ret = 'var ' + item.assignTo + '$0=' + result[0] + ';var ' + item.assignTo + '$1=' + result[1] + ';';
         item.assignTo = null;
         return ret;
       } else {
@@ -2307,7 +2307,7 @@ function processMathop(item) {
         dprint('Warning: 64 bit OR - precision limit may be hit on llvm line ' + item.lineNum);
         return 'Runtime.or64(' + idents[0] + ', ' + idents[1] + ')';
       }
-      return idents[0] + ' | ' + idents[1];
+      return idents[0] + '|' + idents[1];
     }
     case 'and': {
       if (bits > 32) {
@@ -2315,7 +2315,7 @@ function processMathop(item) {
         dprint('Warning: 64 bit AND - precision limit may be hit on llvm line ' + item.lineNum);
         return 'Runtime.and64(' + idents[0] + ', ' + idents[1] + ')';
       }
-      return idents[0] + ' & ' + idents[1];
+      return idents[0] + '&' + idents[1];
     }
     case 'xor': {
       if (bits > 32) {
@@ -2323,21 +2323,21 @@ function processMathop(item) {
         dprint('Warning: 64 bit XOR - precision limit may be hit on llvm line ' + item.lineNum);
         return 'Runtime.xor64(' + idents[0] + ', ' + idents[1] + ')';
       }
-      return idents[0] + ' ^ ' + idents[1];
+      return idents[0] + '^' + idents[1];
     }
     case 'shl': {
       if (bits > 32) return idents[0] + '*' + getFastValue(2, 'pow', idents[1]);
-      return idents[0] + ' << ' + idents[1];
+      return idents[0] + '<<' + idents[1];
     }
     case 'ashr': {
       if (bits > 32) return integerizeBignum(idents[0] + '/' + getFastValue(2, 'pow', idents[1]));
-      if (bits === 32) return originalIdents[0] + ' >> ' + idents[1]; // No need to reSign in this case
-      return idents[0] + ' >> ' + idents[1];
+      if (bits === 32) return originalIdents[0] + '>>' + idents[1]; // No need to reSign in this case
+      return idents[0] + '>>' + idents[1];
     }
     case 'lshr': {
       if (bits > 32) return integerizeBignum(idents[0] + '/' + getFastValue(2, 'pow', idents[1]));
-      if (bits === 32) return originalIdents[0] + ' >>> ' + idents[1]; // No need to unSign in this case
-      return idents[0] + ' >>> ' + idents[1];
+      if (bits === 32) return originalIdents[0] + '>>>' + idents[1]; // No need to unSign in this case
+      return idents[0] + '>>>' + idents[1];
     }
     // basic float ops
     case 'fadd': return makeFloat(getFastValue(idents[0], '+', idents[1], item.type), item.type);
@@ -2352,10 +2352,10 @@ function processMathop(item) {
     //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
     case 'icmp': {
       switch (variant) {
-        case 'uge': case 'sge': return idents[0] + ' >= ' + idents[1];
-        case 'ule': case 'sle': return idents[0] + ' <= ' + idents[1];
-        case 'ugt': case 'sgt': return idents[0] + ' > ' + idents[1];
-        case 'ult': case 'slt': return idents[0] + ' < ' + idents[1];
+        case 'uge': case 'sge': return idents[0] + '>=' + idents[1];
+        case 'ule': case 'sle': return idents[0] + '<=' + idents[1];
+        case 'ugt': case 'sgt': return idents[0] + '>' + idents[1];
+        case 'ult': case 'slt': return idents[0] + '<' + idents[1];
         // We use loose comparisons, which allows false == 0 to be true, etc. Ditto in fcmp
         case 'ne': case 'eq': {
           // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
@@ -2371,14 +2371,14 @@ function processMathop(item) {
       switch (variant) {
         // TODO 'o' ones should be 'ordered (no NaN) and',
         //      'u' ones should be 'unordered or'.
-        case 'uge': case 'oge': return idents[0] + ' >= ' + idents[1];
-        case 'ule': case 'ole': return idents[0] + ' <= ' + idents[1];
-        case 'ugt': case 'ogt': return idents[0] + ' > ' + idents[1];
-        case 'ult': case 'olt': return idents[0] + ' < ' + idents[1];
-        case 'une': case 'one': return idents[0] + ' != ' + idents[1];
-        case 'ueq': case 'oeq': return idents[0] + ' == ' + idents[1];
-        case 'ord': return '!' + makeIsNaN(idents[0]) + ' & !' + makeIsNaN(idents[1]);
-        case 'uno': return makeIsNaN(idents[0]) + ' | ' + makeIsNaN(idents[1]);
+        case 'uge': case 'oge': return idents[0] + '>=' + idents[1];
+        case 'ule': case 'ole': return idents[0] + '<=' + idents[1];
+        case 'ugt': case 'ogt': return idents[0] + '>' + idents[1];
+        case 'ult': case 'olt': return idents[0] + '<' + idents[1];
+        case 'une': case 'one': return idents[0] + '!=' + idents[1];
+        case 'ueq': case 'oeq': return idents[0] + '==' + idents[1];
+        case 'ord': return '!' + makeIsNaN(idents[0]) + '&!' + makeIsNaN(idents[1]);
+        case 'uno': return makeIsNaN(idents[0]) + '|' + makeIsNaN(idents[1]);
         case 'true': return '1';
         default: throw 'Unknown fcmp variant: ' + variant;
       }
@@ -2394,7 +2394,7 @@ function processMathop(item) {
     }
     case 'fpext': case 'sext': return idents[0];
     case 'fptrunc': return idents[0];
-    case 'select': return idents[0] + ' ? ' + asmEnsureFloat(idents[1], item.type) + ' : ' + asmEnsureFloat(idents[2], item.type);
+    case 'select': return idents[0] + '?' + asmEnsureFloat(idents[1], item.type) + ':' + asmEnsureFloat(idents[2], item.type);
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
       if (QUANTUM_SIZE == 1) {
@@ -2412,7 +2412,7 @@ function processMathop(item) {
       // truncating can change the number, e.g. by truncating to an i1
       // in order to get the first bit
       assert(bitsLeft <= 32, 'Cannot truncate to more than 32 bits, since we use a native & op');
-      return '((' + idents[0] + ') & ' + (Math.pow(2, bitsLeft)-1) + ')';
+      return '((' + idents[0] + ')&' + (Math.pow(2, bitsLeft)-1) + ')';
     }
     case 'bitcast': {
       // Most bitcasts are no-ops for us. However, the exception is int to float and float to int
