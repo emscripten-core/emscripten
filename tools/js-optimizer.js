@@ -1593,6 +1593,7 @@ function normalizeAsm(func) {
         data.vars[name] = detectAsmCoercion(value);
         v.length = 1; // make an un-assigning var
       } else {
+        assert(j === 0, 'cannot break in the middle');
         break outer;
       }
     }
