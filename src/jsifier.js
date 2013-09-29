@@ -724,7 +724,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               ret += makeSetValue('setjmpTable', '0', '0', 'i32') + ';'; // initialize first entry to 0
             }
           }
-          ret += indent + 'while(1) ';
+          ret += indent + 'while(1)';
           if (func.setjmpTable && !ASM_JS) {
             ret += 'try { ';
           }
