@@ -747,6 +747,14 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (func.setjmpTable && !ASM_JS) {
             ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
           }
+          if (ASM_JS && func.returnType !== 'void') {
+            // Add a return
+            if (func.returnType in Runtime.FLOAT_TYPES) {
+              ret += ' return +0;\n';
+            } else {
+              ret += ' return 0;\n';
+            }
+          }
         } else {
           ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0]);
         }
