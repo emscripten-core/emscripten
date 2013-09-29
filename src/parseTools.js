@@ -1136,7 +1136,16 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
   if (!ASM_JS) return value;
   // coerce if missing a '.', or if smaller than 1, so could be 1e-5 which has no .
   if (type in Runtime.FLOAT_TYPES && isNumber(value) && (value.toString().indexOf('.') < 0 || Math.abs(value) < 1)) {
-    return '(+(' + value + '))';
+    if (RUNNING_JS_OPTS) {
+      return '(+' + value + ')'; // JS optimizer will run, we must do +x, and it will be corrected later
+    } else {
+      // ensure a .
+      value = value.toString();
+      if (value.indexOf('.') >= 0) return value;
+      var e = value.indexOf('e');
+      if (e < 0) return value + '.0';
+      return value.substr(0, e) + '.0' + value.substr(e);
+    }
   } else {
     return value;
   }
@@ -1144,7 +1153,11 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 
 function asmInitializer(type, impl) {
   if (type in Runtime.FLOAT_TYPES) {
-    return '+0';
+    if (RUNNING_JS_OPTS) {
+      return '+0';
+    } else {
+      return '.0';
+    }
   } else {
     return '0';
   }

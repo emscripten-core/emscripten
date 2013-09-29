@@ -1161,6 +1161,9 @@ try:
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
 
+  if js_opts:
+    shared.Settings.RUNNING_JS_OPTS = 1
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')
