@@ -1331,9 +1331,10 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
   function indirectbrHandler(item) {
     var phiSets = calcPhiSets(item);
-    var js = 'var ibr = ' + finalizeLLVMParameter(item.value) + ';';
+    var js = makeVarDef('ibr') + '=' + finalizeLLVMParameter(item.value) + ';';
+    if (ASM_JS) addVariable('ibr', 'i32');
     for (var targetLabel in phiSets) {
-      js += 'if (' + makeComparison('ibr', '==', targetLabel, 'i32') + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }';
+      js += 'if(' + makeComparison('ibr', '==', targetLabel, 'i32') + '){' + getPhiSetsForLabel(phiSets, targetLabel) + '}';
     }
     return js + makeBranch('ibr', item.currLabelId, true);
   }
