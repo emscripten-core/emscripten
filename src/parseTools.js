@@ -2560,6 +2560,7 @@ function deParen(text) {
 
 function addVariable(ident, type, funcData) {
   funcData = funcData || Framework.currItem.funcData;
+  assert(type);
   funcData.variables[ident] = {
     ident: ident,
     type: type,
@@ -2569,7 +2570,7 @@ function addVariable(ident, type, funcData) {
     hasValueTaken: false,
     pointingLevels: 0,
     uses: 0,
-    impl: "native"
+    impl: VAR_EMULATED
   };
 }
 

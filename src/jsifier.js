@@ -1016,10 +1016,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     // TODO: eliminate unneeded sets (to undefined etc.)
     var deps = {}; // for each ident we will set, which others it depends on
-    var valueJSes = {};
+    var map = {};
     labelSets.forEach(function(labelSet) {
       deps[labelSet.ident] = {};
-      valueJSes[labelSet.ident] = labelSet.valueJS;
+      map[labelSet.ident] = labelSet;
     });
     labelSets.forEach(function(labelSet) {
       walkInterdata(labelSet.value, function mark(item) {
@@ -1038,13 +1038,15 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       for (var i = 0; i < idents.length; i++) {
         if (keys(deps[idents[i]]).length == 0) {
-          post = 'var ' + idents[i] + '=' + valueJSes[idents[i]] + ';' + post;
+          post = idents[i] + '=' + map[idents[i]].valueJS + ';' + post;
+          if (!ASM_JS) post = 'var ' + post;
+          else addVariable(idents[i], map[idents[i]].value.type);
           remove(idents[i]);
           continue mainLoop;
         }
       }
       // If we got here, we have circular dependencies, and must break at least one.
-      pre += 'var ' + idents[0] + '$phi=' + valueJSes[idents[0]] + ';';
+      pre += 'var ' + idents[0] + '$phi=' + map[idents[0]].valueJS + ';';
       post += 'var ' + idents[0] + '=' + idents[0] + '$phi;';
       remove(idents[0]);
     }
