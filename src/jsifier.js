@@ -665,14 +665,14 @@ function JSify(data, functionsOnly, givenFunctions) {
     function walkBlock(block, indent) {
       if (!block) return '';
       dprint('relooping', 'walking block: ' + block.type + ',' + block.entries + ' : ' + block.labels.length);
-      function getLabelLines(label, indent, relooping) {
+      function getLabelLines(label, relooping) {
         if (!label) return '';
         var ret = '';
         if ((LABEL_DEBUG >= 2) && functionNameFilterTest(func.ident)) {
-          ret += indent + "Module.print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
+          ret += INDENTATION + "Module.print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
         }
         if (EXECUTION_TIMEOUT > 0) {
-          ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
+          ret += INDENTATION + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
         }
         
         if (PRINT_SPLIT_FILE_MARKER && Debugging.on && Debugging.getAssociatedSourceFile(label.lines[label.lines.length-1].lineNum)) {
@@ -699,7 +699,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         })
                                 .join('\n')
                                 .split('\n') // some lines include line breaks
-                                .map(function(line) { return indent + line })
+                                .map(function(line) { return relooping ? line : (INDENTATION + line) })
                                 .join('\n');
       }
       var ret = '';
@@ -730,8 +730,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           ret += 'switch(' + asmCoercion('label', 'i32') + '){\n';
           ret += block.labels.map(function(label) {
-            return indent + INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
-                          + getLabelLines(label, indent + INDENTATION + INDENTATION);
+            return INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
+                          + getLabelLines(label);
           }).join('\n') + '\n';
           if (func.setjmpTable && ASM_JS) {
             // emit a label in which we write to the proper local variable, before jumping to the actual label
@@ -749,7 +749,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
           }
         } else {
-          ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);
+          ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0]);
         }
         ret += '\n';
       } else {
@@ -764,7 +764,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         // add blocks
         for (var i = 0; i < block.labels.length; i++) {
           var label = block.labels[i];
-          var content = getLabelLines(label, '', true);
+          var content = getLabelLines(label, true);
           //printErr(func.ident + ' : ' + label.ident + ' : ' + content + '\n');
           var last = label.lines[label.lines.length-1];
           if (!last.signedIdent) {
