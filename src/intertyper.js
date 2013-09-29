@@ -1014,6 +1014,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         noteGlobalVariable(ret);
       }
     } else if (phase === 'funcs') {
+      // TODO: (void)call, store
       if (m = /^  (%[\w\d\._]+) = (getelementptr|load|icmp) ([%\w\d\._ ,\*\-@]+)$/.exec(line.lineText)) {
         var assignTo = m[1];
         var intertype = m[2];
