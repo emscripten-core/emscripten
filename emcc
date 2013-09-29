@@ -1704,7 +1704,7 @@ try:
     global final, js_optimizer_queue, js_optimizer_extra_info
     if len(js_optimizer_extra_info) == 0:
       js_optimizer_extra_info = None
-    if len(js_optimizer_queue) > 0 and not(len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
+    if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
       if DEBUG != '2':
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
