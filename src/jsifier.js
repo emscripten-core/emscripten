@@ -728,7 +728,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (func.setjmpTable && !ASM_JS) {
             ret += 'try { ';
           }
-          ret += 'switch(' + asmCoercion('label', 'i32') + ') {\n';
+          ret += 'switch(' + asmCoercion('label', 'i32') + '){\n';
           ret += block.labels.map(function(label) {
             return indent + INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                           + getLabelLines(label, indent + INDENTATION + INDENTATION);
