@@ -1214,7 +1214,7 @@ try:
         file_suffix = filename_type_suffix(input_file)
         if file_suffix.endswith(SOURCE_SUFFIXES):
           temp_file = temp_files[i]
-          logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
+          logging.debug('optimizing %s with -O%s' % (input_file, llvm_opts))
           shared.Building.llvm_opt(temp_file, llvm_opts)
 
   # If we were just asked to generate bitcode, stop there
