@@ -904,6 +904,11 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // Function lines
   function valueHandler(item) {
+    if (item.vars) {
+      item.vars.forEach(function(v) {
+        addVariable(v[0], v[1]);
+      });
+    }
     return item.ident;
   }
   function noopHandler(item) {
