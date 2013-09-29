@@ -1228,11 +1228,16 @@ function JSify(data, functionsOnly, givenFunctions) {
     ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
-      ret = 'var ' + item.assignTo + '=' + ret;
-      if (USE_TYPED_ARRAYS == 2 && isIllegalType(item.type)) {
+      var illegal = USE_TYPED_ARRAYS == 2 && isIllegalType(item.type);
+      var assignTo = illegal ? item.assignTo + '$r' : item.assignTo;
+      ret = makeVarDef(assignTo) + '=' + ret;
+      if (ASM_JS) addVariable(assignTo, item.type);
+      if (illegal) {
         var bits = getBits(item.type);
         for (var i = 0; i < bits/32; i++) {
-          ret += 'var ' + item.assignTo + '$' + i + '=' + (i == 0 ? item.assignTo : 'tempRet' + (i-1)) + ';'
+          var v = item.assignTo + '$' + i;
+          ret += makeVarDef(v) + '=' + (i == 0 ? assignTo : 'tempRet' + (i-1)) + ';'
+          if (ASM_JS) addVariable(v, 'i32');
         }
       }
       item.assignTo = null;
