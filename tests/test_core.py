@@ -7752,7 +7752,7 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = ['-D' + fs]
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, expected)
 
   def test_unistd_curdir(self):
@@ -7792,7 +7792,7 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = ['-D' + fs]
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, expected)
 
   def test_unistd_swab(self):
@@ -7817,7 +7817,7 @@ def process(filename):
   def test_unistd_unlink(self):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
-      Building.COMPILER_TEST_OPTS = ['-D' + fs]
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, 'success', force_c=True)
 
   def test_unistd_links(self):
@@ -7826,7 +7826,7 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = ['-D' + fs]
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, expected)
 
   def test_unistd_sleep(self):
@@ -7841,14 +7841,14 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = ['-D' + fs]
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, expected)
 
   def test_unistd_misc(self):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = ['-D' + fs]
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, expected)
 
   def test_uname(self):
