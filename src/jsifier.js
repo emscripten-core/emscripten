@@ -537,7 +537,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         default: throw 'what is this line? ' + dump(line);
       }
       assert(line.JS);
-      //assert(line.JS.indexOf('var ') < 0, [line.JS, line.intertype]);
+      //if (ASM_JS) assert(line.JS.indexOf('var ') < 0, dump(line));
       if (line.assignTo) makeAssign(line);
       Framework.currItem = null;
     });
@@ -600,7 +600,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       addVariable('label', 'i32', func);
 
       // spell out local variables
-      var vars = values(func.variables).filter(function(v) { return v.origin != 'funcparam' });
+      var vars = values(func.variables).filter(function(v) {
+        return v.origin !== 'funcparam' &&
+               (!isIllegalType(getImplementationType(v)) || v.ident.indexOf('$', 1) > 0); // not illegal, or a broken up illegal (we have illegal chunks explicitly anyhow)
+      });
       if (vars.length > 0) {
         var chunkSize = 20;
         var chunks = [];
@@ -611,14 +614,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         for (i = 0; i < chunks.length; i++) {
           func.JS += INDENTATION + 'var ' + chunks[i].map(function(v) {
-            var type = getImplementationType(v);
-            if (!isIllegalType(type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
-              return v.ident + '=' + asmInitializer(type); //, func.variables[v.ident].impl);
-            } else {
-              return range(Math.ceil(getBits(type)/32)).map(function(i) {
-                return v.ident + '$' + i + '=0';
-              }).join(',');
-            }
+            return v.ident + '=' + asmInitializer(getImplementationType(v)); //, func.variables[v.ident].impl);
           }).join(',') + ';\n';
         }
       }
@@ -1265,8 +1261,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   }
   function landingpadHandler(item) {
+    if (ASM_JS) {
+      addVariable(item.assignTo + '$0', 'i32');
+      addVariable(item.assignTo + '$1', 'i32');
+    }
     if (DISABLE_EXCEPTION_CATCHING && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST) && USE_TYPED_ARRAYS == 2) {
-      ret = makeVarDef(item.assignTo) + '$0 = 0; ' + item.assignTo + '$1 = 0;';
+      ret = makeVarDef(item.assignTo) + '$0 = 0; ' + makeVarDef(item.assignTo) + '$1 = 0;';
       item.assignTo = null;
       if (VERBOSE) warnOnce('landingpad, but exceptions are disabled!');
       return ret;
@@ -1274,7 +1274,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var catchTypeArray = item.catchables.map(finalizeLLVMParameter).map(function(element) { return asmCoercion(element, 'i32') }).join(',');
     var ret = asmCoercion('___cxa_find_matching_catch(-1, -1' + (catchTypeArray.length > 0 ? ',' + catchTypeArray : '') +')', 'i32');
     if (USE_TYPED_ARRAYS == 2) {
-      ret = makeVarDef(item.assignTo) + '$0 = ' + ret + '; ' + item.assignTo + '$1 = tempRet0;';
+      ret = makeVarDef(item.assignTo) + '$0 = ' + ret + '; ' + makeVarDef(item.assignTo) + '$1 = tempRet0;';
       item.assignTo = null;
     }
     return ret;

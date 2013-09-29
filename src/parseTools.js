@@ -2156,7 +2156,13 @@ function processMathop(item) {
       // If this is in legalization mode, steal the assign and assign into two vars
       if (legalizedI64s) {
         assert(item.assignTo);
-        var ret = 'var ' + item.assignTo + '$0=' + result[0] + ';var ' + item.assignTo + '$1=' + result[1] + ';';
+        if (ASM_JS) {
+          var ret = item.assignTo + '$0=' + result[0] + ';' + item.assignTo + '$1=' + result[1] + ';';
+          addVariable(item.assignTo + '$0', 'i32');
+          addVariable(item.assignTo + '$1', 'i32');
+        } else {
+          var ret = 'var ' + item.assignTo + '$0=' + result[0] + ';var ' + item.assignTo + '$1=' + result[1] + ';';
+        } 
         item.assignTo = null;
         return ret;
       } else {
@@ -2561,16 +2567,21 @@ function deParen(text) {
 function addVariable(ident, type, funcData) {
   funcData = funcData || Framework.currItem.funcData;
   assert(type);
-  funcData.variables[ident] = {
-    ident: ident,
-    type: type,
-    origin: 'added',
-    lineNum: 0,
-    rawLinesIndex: 0,
-    hasValueTaken: false,
-    pointingLevels: 0,
-    uses: 0,
-    impl: VAR_EMULATED
-  };
+  var old = funcData.variables[ident];
+  if (old) {
+    assert(old.type === type);
+  } else {
+    funcData.variables[ident] = {
+      ident: ident,
+      type: type,
+      origin: 'added',
+      lineNum: 0,
+      rawLinesIndex: 0,
+      hasValueTaken: false,
+      pointingLevels: 0,
+      uses: 0,
+      impl: VAR_EMULATED
+    };
+  }
 }
 
