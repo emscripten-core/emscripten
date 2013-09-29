@@ -1526,7 +1526,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (!ASM_JS || functionTableCall) callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }
 
-    var ret = callIdent + '(' + args.join(', ') + ')';
+    var ret = callIdent + '(' + args.join(',') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
       ret = asmCoercion(ret, returnType);
       if (simpleIdent == 'abort' && funcData.returnType != 'void') {
