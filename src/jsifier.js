@@ -599,7 +599,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       // spell out local variables
       var vars = values(func.variables).filter(function(v) { return v.origin != 'funcparam' });
       if (vars.length > 0) {
-        var chunkSize = 8;
+        var chunkSize = 20;
         var chunks = [];
         var i = 0;
         while (i < vars.length) {
