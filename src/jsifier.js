@@ -1042,8 +1042,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
       // If we got here, we have circular dependencies, and must break at least one.
-      pre += 'var ' + idents[0] + '$phi=' + map[idents[0]].valueJS + ';';
-      post += 'var ' + idents[0] + '=' + idents[0] + '$phi;';
+      pre += makeVarDef(idents[0]) + '$phi=' + map[idents[0]].valueJS + ';';
+      post += makeVarDef(idents[0]) + '=' + idents[0] + '$phi;';
+      addVariable(idents[0] + '$phi', map[idents[0]].value.type);
+      addVariable(idents[0], map[idents[0]].value.type);
       remove(idents[0]);
     }
     return pre + post;
