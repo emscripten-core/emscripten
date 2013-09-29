@@ -1112,7 +1112,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       item.groupedLabels = [];
     }
     if (!useIfs) {
-      ret += 'switch(' + signedIdent + ') {\n';
+      ret += 'switch(' + signedIdent + '){\n';
     }
     // process target labels, sorting them so output is consistently ordered
     keys(targetLabels).sort().forEach(function(targetLabel) {
@@ -1125,17 +1125,17 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (useIfs) {
         value = targetLabels[targetLabel].map(function(value) {
           return makeComparison(signedIdent, '==', makeSignOp(value, item.type, 're'), item.type)
-        }).join(' | ');
-        ret += 'if (' + value + ') {\n';
+        }).join('|');
+        ret += 'if(' + value + '){\n';
       } else {
         value = targetLabels[targetLabel].map(function(value) {
           return 'case ' + makeSignOp(value, item.type, 're') + ':';
-        }).join(' ');
+        }).join('');
         ret += value + '{\n';
       }
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
       ret += INDENTATION + '' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
-      ret += '}\n';
+      ret += '}';
       if (RELOOP) {
         item.groupedLabels.push({
           label: targetLabel,
@@ -1146,15 +1146,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
     if (useIfs) {
-      if (item.switchLabels.length > 0) ret += 'else {\n';
+      if (item.switchLabels.length > 0) ret += 'else{\n';
       ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
       if (item.switchLabels.length > 0) ret += '}\n';
     } else {
-      ret += 'default: {\n';
+      ret += 'default:{\n';
       ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
       ret += '}\n';
 
-      ret += '} break; \n'; // finish switch and break, to move control flow properly (breaks from makeBranch just broke out of the switch)
+      ret += '}break;\n'; // finish switch and break, to move control flow properly (breaks from makeBranch just broke out of the switch)
     }
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
