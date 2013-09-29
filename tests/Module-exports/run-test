@@ -1,0 +1,13 @@
+# This test tests the case where we wish to export a C function called bufferTest and have it called
+# from JavaScript running on node.js. In particular this test checks that the C function is correctly
+# exported when minified by running the Closure compiler, testing a change made to src/shell.js
+# that replaced "module.exports = Module;" with "module['exports'] = Module;". The dot notation version
+# gets minified by Closure which means that Module doesn't get correctly exported to node.js, the
+# latter succeeds (and ironically actually gets minified to "module.exports = Module;" by Closure)
+
+rm -f test.js
+
+emcc -O2 --closure 1 -o test.js test.c --pre-js setup.js -s EXPORTED_FUNCTIONS="['_bufferTest']"
+
+node main.js
+
