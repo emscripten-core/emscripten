@@ -685,6 +685,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         var i = 0;
         return ret + label.lines.map(function(line) {
           var JS = line.JS;
+          if (!relooping) JS = INDENTATION + JS;
           if (relooping && i == label.lines.length-1) {
             if (line.intertype == 'branch' || line.intertype == 'switch') {
               JS = ''; // just branching operations - done in the relooper, so nothing need be done here
@@ -695,12 +696,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           i++;
           // invoke instructions span two lines, and the debug info is located
           // on the second line, hence the +1
-          return JS + (Debugging.on ? Debugging.getComment(line.lineNum + (line.intertype === 'invoke' ? 1 : 0)) : '');
-        })
-                                .join('\n')
-                                .split('\n') // some lines include line breaks
-                                .map(function(line) { return relooping ? line : (INDENTATION + line) })
-                                .join('\n');
+          if (Debugging.on) JS += Debugging.getComment(line.lineNum + (line.intertype === 'invoke' ? 1 : 0));
+          //assert(JS.indexOf('\n') < 0, JS);
+          return JS;
+        }).join('\n');
       }
       var ret = '';
       if (!RELOOP || func.forceEmulated) { // TODO: also if just 1 label?
@@ -1112,7 +1111,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       item.groupedLabels = [];
     }
     if (!useIfs) {
-      ret += 'switch(' + signedIdent + '){\n';
+      ret += 'switch(' + signedIdent + '){';
     }
     // process target labels, sorting them so output is consistently ordered
     keys(targetLabels).sort().forEach(function(targetLabel) {
@@ -1126,15 +1125,15 @@ function JSify(data, functionsOnly, givenFunctions) {
         value = targetLabels[targetLabel].map(function(value) {
           return makeComparison(signedIdent, '==', makeSignOp(value, item.type, 're'), item.type)
         }).join('|');
-        ret += 'if(' + value + '){\n';
+        ret += 'if(' + value + '){';
       } else {
         value = targetLabels[targetLabel].map(function(value) {
           return 'case ' + makeSignOp(value, item.type, 're') + ':';
         }).join('');
-        ret += value + '{\n';
+        ret += value + '{';
       }
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
-      ret += INDENTATION + '' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
+      ret += INDENTATION + '' + phiSet + makeBranch(targetLabel, item.currLabelId || null);
       ret += '}';
       if (RELOOP) {
         item.groupedLabels.push({
@@ -1146,15 +1145,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
     if (useIfs) {
-      if (item.switchLabels.length > 0) ret += 'else{\n';
-      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-      if (item.switchLabels.length > 0) ret += '}\n';
+      if (item.switchLabels.length > 0) ret += 'else{';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '';
+      if (item.switchLabels.length > 0) ret += '}';
     } else {
-      ret += 'default:{\n';
-      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-      ret += '}\n';
+      ret += 'default:{';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '';
+      ret += '}';
 
-      ret += '}break;\n'; // finish switch and break, to move control flow properly (breaks from makeBranch just broke out of the switch)
+      ret += '}break;'; // finish switch and break, to move control flow properly (breaks from makeBranch just broke out of the switch)
     }
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
@@ -1162,10 +1161,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret;
   }
   function returnHandler(item) {
-    var ret = RuntimeGenerator.stackExit(item.funcData.initialStack, item.funcData.otherStackAllocations) + ';\n';
+    var ret = RuntimeGenerator.stackExit(item.funcData.initialStack, item.funcData.otherStackAllocations);
+    if (ret.length > 0) ret += ';';
     if (LABEL_DEBUG && functionNameFilterTest(item.funcData.ident)) {
-      ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
-          +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
+      ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');"
+          +  "INDENT = INDENT.substr(0, INDENT.length-2);";
     }
     ret += 'return';
     var value = item.value ? finalizeLLVMParameter(item.value) : null;
@@ -1311,9 +1311,9 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
   function indirectbrHandler(item) {
     var phiSets = calcPhiSets(item);
-    var js = 'var ibr = ' + finalizeLLVMParameter(item.value) + ';\n';
+    var js = 'var ibr = ' + finalizeLLVMParameter(item.value) + ';';
     for (var targetLabel in phiSets) {
-      js += 'if (' + makeComparison('ibr', '==', targetLabel, 'i32') + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }\n';
+      js += 'if (' + makeComparison('ibr', '==', targetLabel, 'i32') + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }';
     }
     return js + makeBranch('ibr', item.currLabelId, true);
   }
@@ -1537,7 +1537,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (ASM_JS && funcData.setjmpTable) {
       // check if a longjmp was done. If a setjmp happened, check if ours. If ours, go to a special label to handle it.
       // otherwise, just return - the call to us must also have been an invoke, so the setjmp propagates that way
-      ret += '; if (((__THREW__|0) != 0) & ((threwValue|0) != 0)) { setjmpLabel = ' + asmCoercion('_testSetjmp(' + makeGetValue('__THREW__', 0, 'i32') + ', setjmpTable)', 'i32') + '; if ((setjmpLabel|0) > 0) { label = ' + SETJMP_LABEL + '; break } else return ' + (funcData.returnType != 'void' ? asmCoercion('0', funcData.returnType) : '') + ' } __THREW__ = threwValue = 0;\n';
+      ret += '; if (((__THREW__|0) != 0) & ((threwValue|0) != 0)) { setjmpLabel = ' + asmCoercion('_testSetjmp(' + makeGetValue('__THREW__', 0, 'i32') + ', setjmpTable)', 'i32') + '; if ((setjmpLabel|0) > 0) { label = ' + SETJMP_LABEL + '; break } else return ' + (funcData.returnType != 'void' ? asmCoercion('0', funcData.returnType) : '') + ' } __THREW__ = threwValue = 0;';
     }
 
     return ret;
