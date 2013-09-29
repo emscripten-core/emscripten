@@ -347,7 +347,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       js += 'if (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + item.ident + ' }';
     }
     if (item.external && !NAMED_GLOBALS) {
-      js = 'var ' + item.ident + ' = ' + js; // force an explicit naming, even if unnamed globals, for asm forwarding
+      js = 'var ' + item.ident + '=' + js; // force an explicit naming, even if unnamed globals, for asm forwarding
     }
     itemsDict.GlobalVariableStub.push({
       intertype: 'GlobalVariable',
@@ -593,7 +593,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (ASM_JS) {
       // spell out argument types
       func.params.forEach(function(param) {
-        func.JS += INDENTATION + param.ident + ' = ' + asmCoercion(param.ident, param.type) + ';\n';
+        func.JS += INDENTATION + param.ident + '=' + asmCoercion(param.ident, param.type) + ';\n';
       });
 
       // spell out local variables
@@ -610,7 +610,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           func.JS += INDENTATION + 'var ' + chunks[i].map(function(v) {
             var type = getImplementationType(v);
             if (!isIllegalType(type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
-              return v.ident + ' = ' + asmInitializer(type); //, func.variables[v.ident].impl);
+              return v.ident + '=' + asmInitializer(type); //, func.variables[v.ident].impl);
             } else {
               return range(Math.ceil(getBits(type)/32)).map(function(i) {
                 return v.ident + '$' + i + '= 0';
@@ -654,7 +654,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (param.byVal) {
         var type = removePointing(param.type);
         var typeInfo = Types.types[type];
-        func.JS += INDENTATION + (ASM_JS ? '' : 'var ') + 'tempParam = ' + param.ident + '; ' + param.ident + ' = ' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
+        func.JS += INDENTATION + (ASM_JS ? '' : 'var ') + 'tempParam = ' + param.ident + '; ' + param.ident + '=' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
                    makeCopyValues(param.ident, 'tempParam', typeInfo.flatSize, 'null', null, param.byVal) + ';\n';
       }
     });
@@ -1002,7 +1002,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var labelSets = phiSets[label];
     // FIXME: Many of the |var |s here are not needed, but without them we get slowdowns with closure compiler. TODO: remove this workaround.
     if (labelSets.length == 1) {
-      return (ASM_JS ? '' : 'var ') + labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
+      return (ASM_JS ? '' : 'var ') + labelSets[0].ident + '=' + labelSets[0].valueJS + ';';
     }
     // TODO: eliminate unneeded sets (to undefined etc.)
     var deps = {}; // for each ident we will set, which others it depends on
@@ -1028,14 +1028,14 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       for (var i = 0; i < idents.length; i++) {
         if (keys(deps[idents[i]]).length == 0) {
-          post = 'var ' + idents[i] + ' = ' + valueJSes[idents[i]] + ';' + post;
+          post = 'var ' + idents[i] + '=' + valueJSes[idents[i]] + ';' + post;
           remove(idents[i]);
           continue mainLoop;
         }
       }
       // If we got here, we have circular dependencies, and must break at least one.
-      pre += 'var ' + idents[0] + '$phi = ' + valueJSes[idents[0]] + ';';
-      post += 'var ' + idents[0] + ' = ' + idents[0] + '$phi;';
+      pre += 'var ' + idents[0] + '$phi=' + valueJSes[idents[0]] + ';';
+      post += 'var ' + idents[0] + '=' + idents[0] + '$phi;';
       remove(idents[0]);
     }
     return pre + post;
@@ -1217,11 +1217,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
-      ret = 'var ' + item.assignTo + ' = ' + ret;
+      ret = 'var ' + item.assignTo + '=' + ret;
       if (USE_TYPED_ARRAYS == 2 && isIllegalType(item.type)) {
         var bits = getBits(item.type);
         for (var i = 0; i < bits/32; i++) {
-          ret += 'var ' + item.assignTo + '$' + i + ' = ' + (i == 0 ? item.assignTo : 'tempRet' + (i-1)) + ';'
+          ret += 'var ' + item.assignTo + '$' + i + '=' + (i == 0 ? item.assignTo : 'tempRet' + (i-1)) + ';'
         }
       }
       item.assignTo = null;
@@ -1307,7 +1307,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       item.ident = 'tempValue';
       ret += item.ident + ' = [' + makeEmptyStruct(item.type) + '], ';
     }
-    return ret + item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
+    return ret + item.ident + '.f' + item.indexes[0][0].text + '=' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
   }
   function indirectbrHandler(item) {
     var phiSets = calcPhiSets(item);
