@@ -959,7 +959,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var parts = label.split('|');
       var trueLabel = parts[1] || '';
       var oldLabel = parts[2] || '';
-      var labelSetting = oldLabel ? 'label = ' + getLabelId(oldLabel) + ';' +
+      var labelSetting = oldLabel ? 'label=' + getLabelId(oldLabel) + ';' +
                          (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(oldLabel)) + ' */' : '') : ''; // TODO: optimize away the setting
       if (label[1] == 'R') {
         if (label[2] == 'N') { // BRNOL: break, no label setting
@@ -980,7 +980,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     } else {
       if (!labelIsVariable) label = getLabelId(label);
-      return pre + 'label = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + ' break;';
+      return pre + 'label=' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + 'break;';
     }
   }
 
@@ -1062,10 +1062,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       var labelTrue = (item.labelTrueJS = getPhiSetsForLabel(phiSets, item.labelTrue)) + makeBranch(item.labelTrue, item.currLabelId);
       var labelFalse = (item.labelFalseJS = getPhiSetsForLabel(phiSets, item.labelFalse)) + makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
-      var head = 'if (' + condition + ') { ';
-      var head2 = 'if (!(' + condition + ')) { ';
-      var else_ = ' } else { ';
-      var tail = ' }';
+      var head = 'if(' + condition + '){';
+      var head2 = 'if(!(' + condition + ')){';
+      var else_ = '}else{';
+      var tail = '}';
       if (labelTrue == ';') {
         return head2 + labelFalse + tail;
       } else if (labelFalse == ';') {
