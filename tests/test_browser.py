@@ -866,6 +866,9 @@ keydown(100);keyup(100); // trigger the end
   def test_glut_touchevents(self):
     self.btest('glut_touchevents.c', '1')
 
+  def test_glut_wheelevents(self):
+    self.btest('glut_wheelevents.c', '1')
+
   def test_emscripten_get_now(self):
     self.btest('emscripten_get_now.cpp', '1')
 
