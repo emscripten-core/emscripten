@@ -930,7 +930,10 @@ function parseNumerical(value, type) {
   }
   if (isNumber(value)) {
     var ret = parseFloat(value); // will change e.g. 5.000000e+01 to 50
-    if (type in Runtime.FLOAT_TYPES && value[0] == '-' && ret === 0) return '-0'; // fix negative 0, toString makes it 0
+    if (type in Runtime.FLOAT_TYPES) {
+      if (value[0] === '-' && ret === 0) return '-.0'; // fix negative 0, toString makes it 0
+      if (!RUNNING_JS_OPTS) ret = asmEnsureFloat(ret, type);
+    }
     return ret.toString();
   } else {
     return value;
