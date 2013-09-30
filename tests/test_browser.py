@@ -19,6 +19,7 @@ class browser(BrowserCore):
       'test_sdl_audio_mix_channels',
       'test_sdl_audio_mix',
       'test_sdl_audio_quickload',
+      'test_sdl_audio_beeps',
       'test_openal_playback',
       'test_openal_buffers',
       'test_freealut'
@@ -649,6 +650,9 @@ window.close = function() {
 
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=post)
 
+  def test_sdl_canvas_alpha(self):
+    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=1)
+
   def test_sdl_key(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.postRun = function() {
@@ -876,6 +880,11 @@ keydown(100);keyup(100); // trigger the end
     self.btest('file_db.cpp', secret, args=['--preload-file', 'moar.txt']) # even with a file there, we load over it
     shutil.move('test.html', 'third.html')
 
+  def test_fs_idbfs_sync(self):
+    secret = str(time.time())
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-DFIRST', '-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -921,6 +930,13 @@ keydown(100);keyup(100); // trigger the end
     open(os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_quickload.c')).read()))
 
     Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl_audio_beeps(self):
+    open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
+
+    # use closure to check for a possible bug with closure minifying away newer Audio() attributes
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_gl_read(self):

@@ -30,6 +30,8 @@ function analyzer(data, sidePass) {
   var item = { items: data };
   var data = item;
 
+  var newTypes = {};
+
   // Gather
   // Single-liners
   ['globalVariable', 'functionStub', 'unparsedFunction', 'unparsedGlobals', 'unparsedTypes', 'alias'].forEach(function(intertype) {
@@ -42,6 +44,7 @@ function analyzer(data, sidePass) {
   temp.splitOut.forEach(function(type) {
     //dprint('types', 'adding defined type: ' + type.name_);
     Types.types[type.name_] = type;
+    newTypes[type.name_] = 1;
     if (QUANTUM_SIZE === 1) {
       Types.fatTypes[type.name_] = copy(type);
     }
@@ -897,7 +900,7 @@ function analyzer(data, sidePass) {
     });
   }
 
-  function addTypeInternal(type, data) {
+  function addTypeInternal(type) {
     if (type.length == 1) return;
     if (Types.types[type]) return;
     if (['internal', 'hidden', 'inbounds', 'void'].indexOf(type) != -1) return;
@@ -908,8 +911,9 @@ function analyzer(data, sidePass) {
     // to look at the underlying type - it was not defined explicitly
     // anywhere else.
     var nonPointing = removeAllPointing(type);
+    if (Types.types[nonPointing]) return;
     var check = /^\[(\d+)\ x\ (.*)\]$/.exec(nonPointing);
-    if (check && !Types.types[nonPointing]) {
+    if (check) {
       var num = parseInt(check[1]);
       num = Math.max(num, 1); // [0 x something] is used not for allocations and such of course, but
                               // for indexing - for an |array of unknown length|, basically. So we
@@ -917,7 +921,7 @@ function analyzer(data, sidePass) {
                               // check that we never allocate with this (either as a child structure
                               // in the analyzer, or in calcSize in alloca).
       var subType = check[2];
-      addTypeInternal(subType, data); // needed for anonymous structure definitions (see below)
+      addTypeInternal(subType); // needed for anonymous structure definitions (see below)
 
       // Huge structural types are represented very inefficiently, both here and in generated JS. Best to avoid them - for example static char x[10*1024*1024]; is bad, while static char *x = malloc(10*1024*1024) is fine.
       if (num >= 10*1024*1024) warnOnce('warning: very large fixed-size structural type: ' + type + ' - can you reduce it? (compilation may be slow)');
@@ -926,6 +930,7 @@ function analyzer(data, sidePass) {
         fields: range(num).map(function() { return subType }),
         lineNum: '?'
       };
+      newTypes[nonPointing] = 1;
       // Also add a |[0 x type]| type
       var zerod = '[0 x ' + subType + ']';
       if (!Types.types[zerod]) {
@@ -934,6 +939,7 @@ function analyzer(data, sidePass) {
           fields: [subType, subType], // Two, so we get the flatFactor right. We care about the flatFactor, not the size here
           lineNum: '?'
         };
+        newTypes[zerod] = 1;
       }
       return;
     }
@@ -964,6 +970,7 @@ function analyzer(data, sidePass) {
         packed: packed,
         lineNum: '?'
       };
+      newTypes[type] = 1;
       return;
     }
 
@@ -975,13 +982,14 @@ function analyzer(data, sidePass) {
       flatSize: 1,
       lineNum: '?'
     };
+    newTypes[type] = 1;
   }
 
-  function addType(type, data) {
-    addTypeInternal(type, data);
+  function addType(type) {
+    addTypeInternal(type);
     if (QUANTUM_SIZE === 1) {
       Types.flipTypes();
-      addTypeInternal(type, data);
+      addTypeInternal(type);
       Types.flipTypes();
     }
   }
@@ -992,7 +1000,7 @@ function analyzer(data, sidePass) {
                     // which handles type definitions, and later. Doing so before the first side pass will result in
                     // making bad guesses about types which are actually defined
       for (var type in Types.needAnalysis) {
-        if (type) addType(type, data);
+        if (type) addType(type);
       }
       Types.needAnalysis = {};
     }
@@ -1021,17 +1029,18 @@ function analyzer(data, sidePass) {
     var more = true;
     while (more) {
       more = false;
-      for (var typeName in types) {
+      for (var typeName in newTypes) {
         var type = types[typeName];
         if (type.flatIndexes) continue;
         var ready = true;
         type.fields.forEach(function(field) {
           if (isStructType(field)) {
             if (!types[field]) {
-              addType(field, item);
+              addType(field);
               ready = false;
             } else {
               if (!types[field].flatIndexes) {
+                newTypes[field] = 1;
                 ready = false;
               }
             }
@@ -1058,6 +1067,8 @@ function analyzer(data, sidePass) {
       Runtime.QUANTUM_SIZE = trueQuantumSize;
       Types.flipTypes();
     }
+
+    newTypes = null;
   }
   
   // Variable analyzer

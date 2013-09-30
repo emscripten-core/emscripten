@@ -688,24 +688,13 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/chdir.html
     // NOTE: The path argument may be a string, to simplify fchdir().
     if (typeof path !== 'string') path = Pointer_stringify(path);
-    var lookup;
     try {
-      lookup = FS.lookupPath(path, { follow: true });
+      FS.chdir(path);
+      return 0;
     } catch (e) {
       FS.handleFSError(e);
       return -1;
     }
-    if (!FS.isDir(lookup.node.mode)) {
-      ___setErrNo(ERRNO_CODES.ENOTDIR);
-      return -1;
-    }
-    var err = FS.nodePermissions(lookup.node, 'x');
-    if (err) {
-      ___setErrNo(err);
-      return -1;
-    }
-    FS.currentPath = lookup.path;
-    return 0;
   },
   chown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   chown: function(path, owner, group, dontResolveLastLink) {
@@ -909,12 +898,14 @@ LibraryManager.library = {
     if (size == 0) {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
-    } else if (size < FS.currentPath.length + 1) {
+    }
+    var cwd = FS.cwd();
+    if (size < cwd.length + 1) {
       ___setErrNo(ERRNO_CODES.ERANGE);
       return 0;
     } else {
-      for (var i = 0; i < FS.currentPath.length; i++) {
-        {{{ makeSetValue('buf', 'i', 'FS.currentPath.charCodeAt(i)', 'i8') }}}
+      for (var i = 0; i < cwd.length; i++) {
+        {{{ makeSetValue('buf', 'i', 'cwd.charCodeAt(i)', 'i8') }}}
       }
       {{{ makeSetValue('buf', 'i', '0', 'i8') }}}
       return buf;
@@ -1660,12 +1651,6 @@ LibraryManager.library = {
       __scanString.whiteSpace[{{{ charCode('\v') }}}] = 1;
       __scanString.whiteSpace[{{{ charCode('\f') }}}] = 1;
       __scanString.whiteSpace[{{{ charCode('\r') }}}] = 1;
-      __scanString.whiteSpace[' '] = 1;
-      __scanString.whiteSpace['\t'] = 1;
-      __scanString.whiteSpace['\n'] = 1;
-      __scanString.whiteSpace['\v'] = 1;
-      __scanString.whiteSpace['\f'] = 1;
-      __scanString.whiteSpace['\r'] = 1;
     }
     // Supports %x, %4x, %d.%d, %lld, %s, %f, %lf.
     // TODO: Support all format specifiers.
@@ -1903,7 +1888,7 @@ LibraryManager.library = {
             break;
         }
         fields++;
-      } else if (format[formatIndex] in __scanString.whiteSpace) {
+      } else if (format[formatIndex].charCodeAt(0) in __scanString.whiteSpace) {
         next = get();
         while (next in __scanString.whiteSpace) {
           if (next <= 0) break mainLoop;  // End of input.
@@ -1974,6 +1959,7 @@ LibraryManager.library = {
         var flagLeftAlign = false;
         var flagAlternative = false;
         var flagZeroPad = false;
+        var flagPadSign = false;
         flagsLoop: while (1) {
           switch (next) {
             case {{{ charCode('+') }}}:
@@ -1992,6 +1978,9 @@ LibraryManager.library = {
                 flagZeroPad = true;
                 break;
               }
+            case {{{ charCode(' ') }}}:
+              flagPadSign = true;
+              break;
             default:
               break flagsLoop;
           }
@@ -2158,12 +2147,18 @@ LibraryManager.library = {
             }
 
             // Add sign if needed
-            if (flagAlwaysSigned) {
-              if (currArg < 0) {
-                prefix = '-' + prefix;
-              } else {
+            if (currArg >= 0) {
+              if (flagAlwaysSigned) {
                 prefix = '+' + prefix;
+              } else if (flagPadSign) {
+                prefix = ' ' + prefix;
               }
+            }
+
+            // Move sign to prefix so we zero-pad after the sign
+            if (argText.charAt(0) == '-') {
+              prefix = '-' + prefix;
+              argText = argText.substr(1);
             }
 
             // Add padding.
@@ -2248,8 +2243,12 @@ LibraryManager.library = {
               if (next == {{{ charCode('E') }}}) argText = argText.toUpperCase();
 
               // Add sign.
-              if (flagAlwaysSigned && currArg >= 0) {
-                argText = '+' + argText;
+              if (currArg >= 0) {
+                if (flagAlwaysSigned) {
+                  argText = '+' + argText;
+                } else if (flagPadSign) {
+                  argText = ' ' + argText;
+                }
               }
             }
 
@@ -2887,6 +2886,13 @@ LibraryManager.library = {
   asprintf: function(s, format, varargs) {
     return _sprintf(-s, format, varargs);
   },
+  dprintf__deps: ['_formatString', 'write'],
+  dprintf: function(fd, format, varargs) {
+    var result = __formatString(format, varargs);
+    var stack = Runtime.stackSave();
+    var ret = _write(fd, allocate(result, 'i8', ALLOC_STACK), result.length);
+    Runtime.stackRestore(stack);
+  },
 
 #if TARGET_X86
   // va_arg is just like our varargs
@@ -2895,6 +2901,7 @@ LibraryManager.library = {
   vprintf: 'printf',
   vsprintf: 'sprintf',
   vasprintf: 'asprintf',
+  vdprintf: 'dprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
@@ -2921,6 +2928,10 @@ LibraryManager.library = {
   vasprintf__deps: ['asprintf'],
   vasprintf: function(s, format, va_arg) {
     return _asprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vdprintf__deps: ['dprintf'],
+  vdprintf: function (fd, format, va_arg) {
+    return _dprintf(fd, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vscanf__deps: ['scanf'],
   vscanf: function(format, va_arg) {
@@ -3792,6 +3803,7 @@ LibraryManager.library = {
   },
   // We always assume ASCII locale.
   strcoll: 'strcmp',
+  strcoll_l: 'strcmp',
 
   strcasecmp__asm: true,
   strcasecmp__sig: 'iii',
@@ -4058,6 +4070,7 @@ LibraryManager.library = {
     }
   },
   _toupper: 'toupper',
+  toupper_l: 'toupper',
 
   tolower__asm: true,
   tolower__sig: 'ii',
@@ -4068,54 +4081,65 @@ LibraryManager.library = {
     return (chr - {{{ charCode('A') }}} + {{{ charCode('a') }}})|0;
   },
   _tolower: 'tolower',
+  tolower_l: 'tolower',
 
   // The following functions are defined as macros in glibc.
   islower: function(chr) {
     return chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}};
   },
+  islower_l: 'islower',
   isupper: function(chr) {
     return chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}};
   },
+  isupper_l: 'isupper',
   isalpha: function(chr) {
     return (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
            (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
+  isalpha_l: 'isalpha',
   isdigit: function(chr) {
     return chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}};
   },
-  isdigit_l: 'isdigit', // no locale support yet
+  isdigit_l: 'isdigit',
   isxdigit: function(chr) {
     return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
            (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('f') }}}) ||
            (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('F') }}});
   },
-  isxdigit_l: 'isxdigit', // no locale support yet
+  isxdigit_l: 'isxdigit',
   isalnum: function(chr) {
     return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
            (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
            (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
+  isalnum_l: 'isalnum',
   ispunct: function(chr) {
     return (chr >= {{{ charCode('!') }}} && chr <= {{{ charCode('/') }}}) ||
            (chr >= {{{ charCode(':') }}} && chr <= {{{ charCode('@') }}}) ||
            (chr >= {{{ charCode('[') }}} && chr <= {{{ charCode('`') }}}) ||
            (chr >= {{{ charCode('{') }}} && chr <= {{{ charCode('~') }}});
   },
+  ispunct_l: 'ispunct',
   isspace: function(chr) {
     return (chr == 32) || (chr >= 9 && chr <= 13);
   },
+  isspace_l: 'isspace',
   isblank: function(chr) {
     return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
   },
+  isblank_l: 'isblank',
   iscntrl: function(chr) {
     return (0 <= chr && chr <= 0x1F) || chr === 0x7F;
   },
+  iscntrl_l: 'iscntrl',
   isprint: function(chr) {
     return 0x1F < chr && chr < 0x7F;
   },
+  isprint_l: 'isprint',
   isgraph: function(chr) {
     return 0x20 < chr && chr < 0x7F;
   },
+  isgraph_l: 'isgraph',
   // Lookup tables for glibc ctype implementation.
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
@@ -4216,7 +4240,7 @@ LibraryManager.library = {
   llvm_va_end: function() {},
 
   llvm_va_copy: function(ppdest, ppsrc) {
-  	// copy the list start
+    // copy the list start
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
     
     // copy the list's current offset (will be advanced with each call to va_arg)
@@ -6435,11 +6459,15 @@ LibraryManager.library = {
   // locale.h
   // ==========================================================================
 
+  newlocale__deps: ['malloc'],
   newlocale: function(mask, locale, base) {
-    return 0;
+    return _malloc({{{ QUANTUM_SIZE}}});
   },
 
-  freelocale: function(locale) {},
+  freelocale__deps: ['free'],
+  freelocale: function(locale) {
+    _free(locale);
+  },
 
   uselocale: function(locale) {
     return 0;
@@ -8854,7 +8882,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'swprintf', 'pthread_join', 'pthread_detach', 'strcoll_l', 'strxfrm_l', 'wcscoll_l', 'toupper_l', 'tolower_l', 'iswspace_l', 'iswprint_l', 'iswcntrl_l', 'iswupper_l', 'iswlower_l', 'iswalpha_l', 'iswdigit_l', 'iswpunct_l', 'iswxdigit_l', 'iswblank_l', 'wcsxfrm_l', 'towupper_l', 'towlower_l', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function() { throw 'TODO: ' + aborter };
 });
 

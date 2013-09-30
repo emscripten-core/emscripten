@@ -202,6 +202,7 @@ var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets.
 
 var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
 
+var GL_ASSERTIONS = 0; // Adds extra checks for error situations in the GL library. Can impact performance.
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
@@ -424,6 +425,8 @@ var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressi
 
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
+
+var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

@@ -47,6 +47,7 @@ class WindowsPopen:
     try:
       # Call the process with fixed streams.
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
+      self.pid = self.process.pid
     except Exception, e:
       logging.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e)))
       raise e
@@ -83,10 +84,6 @@ class WindowsPopen:
       tempfiles.try_delete(self.response_filename)
     except:
       pass # Mute all exceptions in dtor, particularly if we didn't use a response file, self.response_filename doesn't exist.
-
-# Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
-if os.name == 'nt':
-  Popen = WindowsPopen
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
@@ -250,6 +247,19 @@ except Exception, e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
 
+try:
+  EM_POPEN_WORKAROUND
+except:
+  EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
+
+# Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
+# nb. This is by default disabled since it has the adverse effect of buffering up all logging messages, which makes
+# builds look unresponsive (messages are printed only after the whole build finishes). Whether this workaround is needed 
+# seems to depend on how the host application that invokes emcc has set up its stdout and stderr.
+if EM_POPEN_WORKAROUND and os.name == 'nt':
+  logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
+  Popen = WindowsPopen
+
 # Expectations
 
 EXPECTED_LLVM_VERSION = (3,2)
@@ -304,7 +314,7 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.6.1'
+EMSCRIPTEN_VERSION = '1.6.3'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT

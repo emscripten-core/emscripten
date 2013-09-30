@@ -3,6 +3,8 @@
 // LLVM assembly => internal intermediate representation, which is ready
 // to be processed by the later stages.
 
+var fastPaths = 0, slowPaths = 0;
+
 // Line tokenizer
 function tokenizer(item, inner) {
   //assert(item.lineNum != 40000);
@@ -373,6 +375,14 @@ function intertyper(lines, sidePass, baseLineNums) {
   // Line parsers to intermediate form
 
   // globals: type or variable
+  function noteGlobalVariable(ret) {
+    if (!NAMED_GLOBALS) {
+      Variables.globals[ret.ident].type = ret.type;
+      Variables.globals[ret.ident].external = ret.external;
+    }
+    Types.needAnalysis[ret.type] = 0;
+  }
+
   function globalHandler(item) {
     function scanConst(value, type) {
       // Gets an array of constant items, separated by ',' tokens
@@ -497,7 +507,6 @@ function intertyper(lines, sidePass, baseLineNums) {
         external = true;
         item.tokens.splice(2, 1);
       }
-      Types.needAnalysis[item.tokens[2].text] = 0;
       var ret = {
         intertype: 'globalVariable',
         ident: toNiceIdent(ident),
@@ -507,11 +516,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         named: named,
         lineNum: item.lineNum
       };
-      if (!NAMED_GLOBALS) {
-        Variables.globals[ret.ident].type = ret.type;
-        Variables.globals[ret.ident].external = external;
-      }
-      Types.needAnalysis[ret.type] = 0;
+      noteGlobalVariable(ret);
       if (ident == '@llvm.global_ctors') {
         ret.ctors = [];
         if (item.tokens[3].item) {
@@ -984,15 +989,137 @@ function intertyper(lines, sidePass, baseLineNums) {
     return ret;
   }
 
+  // Fast paths - quick parses of common patterns, avoid tokenizing entirely
+
+  function tryFastPaths(line) {
+    var m, ret;
+    if (phase === 'pre') {
+      // string constant
+      if (0) { // works, but not worth it   m = /([@\.\w\d_]+) = (private )?(unnamed_addr )?(constant )?(\[\d+ x i8\]) c"([^"]+)".*/.exec(line.lineText)) {
+        if (m[1] === '@llvm.global_ctors') return ret;
+        ret = {
+          intertype: 'globalVariable',
+          ident: toNiceIdent(m[1]),
+          type: m[5],
+          external: false,
+          private_: m[2] !== null,
+          named: m[3] === null,
+          lineNum: line.lineNum,
+          value: {
+            intertype: 'string',
+            text: m[6]
+          }
+        };
+        noteGlobalVariable(ret);
+      }
+    } else if (phase === 'funcs') {
+      if (m = /^  (%[\w\d\._]+) = (getelementptr|load) ([%\w\d\._ ,\*\-@]+)$/.exec(line.lineText)) {
+        var assignTo = m[1];
+        var intertype = m[2];
+        var args = m[3];
+        switch (intertype) {
+          case 'getelementptr': {
+            if (args[0] === 'i' && args.indexOf('inbounds ') === 0) {
+              args = args.substr(9);
+            }
+            var params = args.split(', ').map(function(param) {
+              var parts = param.split(' ');
+              assert(parts.length === 2);
+              Types.needAnalysis[parts[0]] = 0;
+              return {
+                intertype: 'value',
+                type: parts[0],
+                ident: toNiceIdent(parts[1]),
+                byVal: 0
+              }
+            });
+            ret = {
+              intertype: 'getelementptr',
+              lineNum: line.lineNum,
+              assignTo: toNiceIdent(assignTo),
+              ident: params[0].ident,
+              type: '*',
+              params: params
+            };
+            break;
+          }
+          case 'load': {
+            if (m = /(^[%\w\d\._\-@\*]+) ([%\w\d\._\-@]+)(, align \d+)?$/.exec(args)) {
+              var ident = toNiceIdent(m[2]);
+              var type = m[1];
+              assert(type[type.length-1] === '*', type);
+              var valueType = type.substr(0, type.length-1);
+              ret = {
+                intertype: 'load',
+                lineNum: line.lineNum,
+                assignTo: toNiceIdent(assignTo),
+                ident: ident,
+                type: valueType,
+                valueType: valueType,
+                pointerType: type,
+                pointer: {
+                  intertype: 'value',
+                  ident: ident,
+                  type: type,
+                },
+                align: parseAlign(m[3])
+              };
+            }
+            break;
+          }
+          default: throw 'unexpected fast path type ' + intertype;
+        }
+        //else if (line.lineText.indexOf(' = load ') > 0) printErr('close: ' + JSON.stringify(line.lineText));
+      }
+    }
+    if (ret) {
+      if (COMPILER_ASSERTIONS) {
+        //printErr(['\n', JSON.stringify(ret), '\n', JSON.stringify(triager(tokenizer(line)))]);
+        var normal = triager(tokenizer(line));
+        delete normal.tokens;
+        delete normal.indent;
+        assert(sortedJsonCompare(normal, ret), 'fast path: ' + dump(normal) + '\n vs \n' + dump(ret));
+      }
+    }
+    return ret;
+  }
+
   // Input
 
   lineSplitter().forEach(function(line) {
+    var item = tryFastPaths(line);
+    if (item) {
+      finalResults.push(item);
+      fastPaths++;
+      return;
+    }
+    slowPaths++;
+
+    //var time = Date.now();
+
     var t = tokenizer(line);
-    var item = triager(t);
+    item = triager(t);
+
+    /*
+    var type = item ? item.intertype + (item.op ? ':' + item.op : ''): 'none';
+    if (!interProf[type]) interProf[type] = { ms: 0, n: 0 };
+    interProf[type].ms += Date.now() - time;
+    interProf[type].n++;
+    */
+
     if (!item) return;
     finalResults.push(item);
     if (item.tokens) item.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
   });
   return finalResults;
 }
+
+// intertyper profiler
+
+/*
+var interProf = {};
+function dumpInterProf() {
+  printErr('\nintertyper/' + phase + ' (ms | n): ' + JSON.stringify(keys(interProf).sort(function(x, y) { return interProf[y].ms - interProf[x].ms }).map(function(x) { return x + ' : ' + interProf[x].ms + ' | ' + interProf[x].n }), null, ' ') + '\n');
+}
+*/
 
