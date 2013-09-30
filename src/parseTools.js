@@ -1144,7 +1144,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
     } else {
       // ensure a .
       value = value.toString();
-      if (value.indexOf('.') >= 0) return value;
+      if (value.indexOf('.') >= 0 || /[IN]/.test(value)) return value; // if already dotted, or Infinity or NaN, nothing to do here
       var e = value.indexOf('e');
       if (e < 0) return value + '.0';
       return value.substr(0, e) + '.0' + value.substr(e);
