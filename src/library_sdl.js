@@ -398,6 +398,13 @@ var LibrarySDL = {
     },
 
     lastTouch: {},
+    // the browser sends out touchstart events with the whole group of touches
+    // even if we received a previous touchstart for a specific touch identifier.
+    // You can test this by pressing one finger to the screen, then another. You'll
+    // receive two touchstart events, the first with a touches count of 1 the second
+    // with a touches count of two.
+    // SDL sends out a new touchstart event for only each newly started touch so to
+    // emulate this, we keep track of previously started touches.
     downFingers: {},
     savedKeydown: null,
 
@@ -408,9 +415,7 @@ var LibrarySDL = {
 
           var touches = [];
           
-          // First clear out any duplicate touchstart events
-          // XXX - michaeljbishop -  This is a bug workaround for Firefox OS. They
-          // sometimes send two touchstart events before a touchend/move for the same id.
+          // Clear out any touchstart events that we've already processed
           if (event.type === 'touchstart') {
             for(var i = 0; i < event.touches.length; i++) {
               var touch = event.touches[i];
@@ -456,8 +461,6 @@ var LibrarySDL = {
           
           // Remove the entry in the SDL.downFingers hash
           // because the finger is no longer down.
-          // XXX - michaeljbishop -  This is a bug workaround for Firefox OS. They
-          // sometimes send two touchstart events before a touchend/move for the same id.
           for(var i = 0; i < event.changedTouches.length; i++) {
             var touch = event.changedTouches[i];
             if (SDL.downFingers[touch.identifier] === true) {
