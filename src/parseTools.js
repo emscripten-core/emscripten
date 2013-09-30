@@ -763,10 +763,10 @@ function splitI64(value, floatConversion) {
   if (floatConversion && ASM_JS) lowInput = asmFloatToInt(lowInput);
   var low = lowInput + '>>>0';
   var high = makeInlineCalculation(
-    asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
+    asmCoercion('Math_abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
       '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
-               asmCoercion('Math.min(' + asmCoercion('Math.floor((VALUE)/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0' +
-               ' : ' + asmFloatToInt(asmCoercion('Math.ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'float') + ')', 'double')) + '>>>0' + 
+               asmCoercion('Math_min(' + asmCoercion('Math_floor((VALUE)/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0' +
+               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'float') + ')', 'double')) + '>>>0' + 
       ')' +
     ' : 0',
     value,
@@ -1532,7 +1532,7 @@ function getFastValue(a, op, b, type) {
     if (a === '2' && isIntImplemented(type)) {
       return '(1 << (' + b + '))';
     }
-    return 'Math.pow(' + a + ', ' + b + ')';
+    return 'Math_pow(' + a + ', ' + b + ')';
   }
   if ((op === '+' || op === '*') && aNumber !== null) { // if one of them is a number, keep it last
     var c = b;
@@ -1564,7 +1564,7 @@ function getFastValue(a, op, b, type) {
       if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
         return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
       }
-      return '(Math.imul(' + a + ',' + b + ')|0)';
+      return '(Math_imul(' + a + ',' + b + ')|0)';
     }
   } else if (op === '/') {
     if (a === '0' && !(type in Runtime.FLOAT_TYPES)) { // careful on floats, since 0*NaN is not 0
@@ -2060,12 +2060,12 @@ function makeRounding(value, bits, signed, floatConversion) {
                                                              // as |0, but &-1 hints to the js optimizer that this is a rounding correction
     // Do Math.floor, which is reasonably fast, if we either don't care, or if we can be sure
     // the value is non-negative
-    if (!correctRoundings() || (!signed && !floatConversion)) return 'Math.floor(' + value + ')';
+    if (!correctRoundings() || (!signed && !floatConversion)) return 'Math_floor(' + value + ')';
     // We are left with >32 bits signed, or a float conversion. Check and correct inline
     // Note that if converting a float, we may have the wrong sign at this point! But, we have
     // been rounded properly regardless, and we will be sign-corrected later when actually used, if
     // necessary.
-    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math_floor(VALUE) : Math_ceil(VALUE)', value, 'tempBigIntR');
   } else {
     // asm.js mode, cleaner refactoring of this function as well. TODO: use in non-asm case, most of this
     if (floatConversion && bits <= 32) {
@@ -2080,9 +2080,9 @@ function makeRounding(value, bits, signed, floatConversion) {
       }
     }
     // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
-    if (!correctRoundings() || !signed) return 'Math.floor(' + value + ')';
+    if (!correctRoundings() || !signed) return 'Math_floor(' + value + ')';
     // We are left with >32 bits
-    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math_floor(VALUE) : Math_ceil(VALUE)', value, 'tempBigIntR');
   }
 }
 
@@ -2093,7 +2093,7 @@ function makeIsNaN(value) {
 
 function makeFloat(value, type) {
   if (TO_FLOAT32 && type == 'float') {
-    return 'Math.toFloat32(' + value + ')';
+    return 'Math_toFloat32(' + value + ')';
   }
   return value;
 }

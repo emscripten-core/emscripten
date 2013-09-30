@@ -418,7 +418,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         // In asm, we need to know about library functions. If there is a target, though, then no
         // need to consider this a library function - we will call directly to it anyhow
-        if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\.\w+/.exec(snippet))) {
+        if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
           Functions.libraryFunctions[ident] = 1;
         }
       } else if (typeof snippet === 'object') {
@@ -1394,7 +1394,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var callIdent = LibraryManager.getRootIdent(simpleIdent);
       if (callIdent) {
         simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
-        if (callIdent.indexOf('.') < 0) {
+        if (callIdent.indexOf('Math_') !== 0) {
           callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
         }
       } else {

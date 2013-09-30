@@ -340,7 +340,7 @@ var Functions = {
         if (table[i]) {
           var libName = LibraryManager.getRootIdent(table[i].substr(1));
           if (libName && typeof libName == 'string') {
-            table[i] = (libName.indexOf('.') < 0 ? '_' : '') + libName;
+            table[i] = (libName.indexOf('Math_') < 0 ? '_' : '') + libName;
           }
         }
         if (ASM_JS) {

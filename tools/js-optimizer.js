@@ -1617,12 +1617,6 @@ function normalizeAsm(func) {
           }
         }
         unVarify(node[1], node);
-      } else if (type === 'dot') {
-        if (node[1][0] === 'name' && node[1][1] === 'Math') {
-          // transform Math.max to Math_max; we forward in the latter version
-          node[0] = 'name';
-          node[1] = 'Math_' + node[2];
-        }
       } else if (type === 'call' && node[1][0] === 'function') {
         assert(!node[1][1]); // anonymous functions only
         data.inlines.push(node[1]);

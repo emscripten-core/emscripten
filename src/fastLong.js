@@ -5,12 +5,12 @@ function ___muldsi3($a, $b) {
   var $1 = 0, $2 = 0, $3 = 0, $6 = 0, $8 = 0, $11 = 0, $12 = 0;
   $1 = $a & 65535;
   $2 = $b & 65535;
-  $3 = Math.imul($2, $1) | 0;
+  $3 = Math_imul($2, $1) | 0;
   $6 = $a >>> 16;
-  $8 = ($3 >>> 16) + (Math.imul($2, $6) | 0) | 0;
+  $8 = ($3 >>> 16) + (Math_imul($2, $6) | 0) | 0;
   $11 = $b >>> 16;
-  $12 = Math.imul($11, $1) | 0;
-  return (tempRet0 = (($8 >>> 16) + (Math.imul($11, $6) | 0) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
+  $12 = Math_imul($11, $1) | 0;
+  return (tempRet0 = (($8 >>> 16) + (Math_imul($11, $6) | 0) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
 }
 function ___divdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -63,8 +63,8 @@ function ___muldi3($a$0, $a$1, $b$0, $b$1) {
   $y_sroa_0_0_extract_trunc = $b$0;
   $1$0 = ___muldsi3($x_sroa_0_0_extract_trunc, $y_sroa_0_0_extract_trunc) | 0;
   $1$1 = tempRet0;
-  $2 = Math.imul($a$1, $y_sroa_0_0_extract_trunc) | 0;
-  return (tempRet0 = ((Math.imul($b$1, $x_sroa_0_0_extract_trunc) | 0) + $2 | 0) + $1$1 | $1$1 & 0, 0 | $1$0 & -1) | 0;
+  $2 = Math_imul($a$1, $y_sroa_0_0_extract_trunc) | 0;
+  return (tempRet0 = ((Math_imul($b$1, $x_sroa_0_0_extract_trunc) | 0) + $2 | 0) + $1$1 | $1$1 & 0, 0 | $1$0 & -1) | 0;
 }
 function ___udivdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
