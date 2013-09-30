@@ -3802,8 +3802,8 @@ LibraryManager.library = {
     p1 = p1|0; p2 = p2|0; num = num|0;
     var i = 0, v1 = 0, v2 = 0;
     while ((i|0) < (num|0)) {
-      var v1 = {{{ makeGetValueAsm('p1', 'i', 'i8', true) }}};
-      var v2 = {{{ makeGetValueAsm('p2', 'i', 'i8', true) }}};
+      v1 = {{{ makeGetValueAsm('p1', 'i', 'i8', true) }}};
+      v2 = {{{ makeGetValueAsm('p2', 'i', 'i8', true) }}};
       if ((v1|0) != (v2|0)) return ((v1|0) > (v2|0) ? 1 : -1)|0;
       i = (i+1)|0;
     }
@@ -4227,9 +4227,9 @@ LibraryManager.library = {
     var ret = 0;
     ret = {{{ makeGetValueAsm('ctlz_i8', 'x >>> 24', 'i8') }}};
     if ((ret|0) < 8) return ret|0;
-    var ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 16)&0xff', 'i8') }}};
+    ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 16)&0xff', 'i8') }}};
     if ((ret|0) < 8) return (ret + 8)|0;
-    var ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 8)&0xff', 'i8') }}};
+    ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 8)&0xff', 'i8') }}};
     if ((ret|0) < 8) return (ret + 16)|0;
     return ({{{ makeGetValueAsm('ctlz_i8', 'x&0xff', 'i8') }}} + 24)|0;
   },
@@ -4263,9 +4263,9 @@ LibraryManager.library = {
     var ret = 0;
     ret = {{{ makeGetValueAsm('cttz_i8', 'x & 0xff', 'i8') }}};
     if ((ret|0) < 8) return ret|0;
-    var ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 8)&0xff', 'i8') }}};
+    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 8)&0xff', 'i8') }}};
     if ((ret|0) < 8) return (ret + 8)|0;
-    var ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 16)&0xff', 'i8') }}};
+    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 16)&0xff', 'i8') }}};
     if ((ret|0) < 8) return (ret + 16)|0;
     return ({{{ makeGetValueAsm('cttz_i8', 'x >>> 24', 'i8') }}} + 24)|0;
   },
