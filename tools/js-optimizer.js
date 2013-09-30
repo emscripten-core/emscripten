@@ -1603,6 +1603,8 @@ function normalizeAsm(func) {
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type === 'var') {
+        assert(0, 'should be no vars to fix! ' + JSON.stringify(node));
+        /*
         for (var j = 0; j < node[1].length; j++) {
           var v = node[1][j];
           var name = v[0];
@@ -1617,6 +1619,7 @@ function normalizeAsm(func) {
           }
         }
         unVarify(node[1], node);
+        */
       } else if (type === 'call' && node[1][0] === 'function') {
         assert(!node[1][1]); // anonymous functions only
         data.inlines.push(node[1]);
