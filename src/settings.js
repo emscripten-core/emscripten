@@ -427,8 +427,6 @@ var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i3
 
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
 
-var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated functions, needed for external JS optimization passes
-
 var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
 
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module

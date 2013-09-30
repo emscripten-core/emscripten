@@ -1849,14 +1849,14 @@ function JSify(data, functionsOnly, givenFunctions) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1])));
     // Print out some useful metadata
-    if (EMIT_GENERATED_FUNCTIONS || PGO) {
+    if (RUNNING_JS_OPTS || PGO) {
       var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
         return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
       }));
       if (PGO) {
         print('PGOMonitor.allGenerated = ' + generatedFunctions + ';\nremoveRunDependency("pgo");\n');
       }
-      if (EMIT_GENERATED_FUNCTIONS) {
+      if (RUNNING_JS_OPTS) {
         print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
       }
     }
