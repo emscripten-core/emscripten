@@ -1207,7 +1207,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // in an assignment
     var disabled = DISABLE_EXCEPTION_CATCHING == 2  && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST); 
     var phiSets = calcPhiSets(item);
-    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled, !!item.assignTo || !item.standalone, true);
+    var call_ = makeFunctionCall(item, item.params, item.funcData, item.type, ASM_JS && !disabled, !!item.assignTo || !item.standalone, true);
 
     var ret;
 
@@ -1375,7 +1375,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret;
   }
 
-  function makeFunctionCall(ident, params, funcData, type, forceByPointer, hasReturn, invoke) {
+  function makeFunctionCall(item, params, funcData, type, forceByPointer, hasReturn, invoke) {
+    var ident = item.ident;
+
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
@@ -1525,6 +1527,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (trueType !== returnType && !isIdenticallyImplemented(trueType, returnType)) {
           if (VERBOSE) warnOnce('Fixing function call based on return type from signature, on ' + [callIdent, returnType, trueType]);
           returnType = trueType;
+          if (trueType === 'void') {
+            item.assignTo = null;
+          }
         }
       }
     }
@@ -1584,7 +1589,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   function getelementptrHandler(item) { return finalizeLLVMFunctionCall(item) }
   function callHandler(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
-    var ret = makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
+    var ret = makeFunctionCall(item, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
     return makeVarArgsCleanup(ret);
   }
 
