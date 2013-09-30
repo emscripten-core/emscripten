@@ -599,6 +599,11 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       addVariable('label', 'i32', func);
 
+      if (func.setjmpTable) {
+        addVariable('setjmpLabel', 'i32', func);
+        addVariable('setjmpTable', 'i32', func);
+      }
+
       // spell out local variables
       var vars = values(func.variables).filter(function(v) {
         return v.origin !== 'funcparam' &&
@@ -717,8 +722,8 @@ function JSify(data, functionsOnly, givenFunctions) {
               ret += 'dummy: 0';
               ret += '};\n';
             } else {
-              ret += 'var setjmpLabel = 0;\n';
-              ret += 'var setjmpTable = ' + RuntimeGenerator.stackAlloc(4 * (MAX_SETJMPS + 1) * 2) + ';\n';
+              ret += makeVarDef('setjmpLabel') + '=0;\n';
+              ret += makeVarDef('setjmpTable') + '=' + RuntimeGenerator.stackAlloc(4 * (MAX_SETJMPS + 1) * 2) + ';\n';
               ret += makeSetValue('setjmpTable', '0', '0', 'i32') + ';'; // initialize first entry to 0
             }
           }
