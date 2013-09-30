@@ -1901,8 +1901,10 @@ function handleOverflow(text, bits) {
   if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow()) + ')';
   if (!correct) return text;
   if (bits == 32) {
+    if (isNumber(text)) return text | 0;
     return '((' + text + ')|0)';
   } else if (bits < 32) {
+    if (isNumber(text)) return text & (Math.pow(2, bits) - 1);
     return '((' + text + ')&' + (Math.pow(2, bits) - 1) + ')';
   } else {
     return text; // We warned about this earlier
