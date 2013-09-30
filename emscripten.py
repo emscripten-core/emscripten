@@ -714,7 +714,14 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
     if not os.path.exists(relooper):
       from tools import shared
       shared.Building.ensure_relooper(relooper)
-
+  
+  settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
+  struct_info = settings.get('STRUCT_INFO')
+  
+  if not os.path.exists(struct_info):
+    from tools import shared
+    shared.Building.ensure_struct_info(struct_info)
+  
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 

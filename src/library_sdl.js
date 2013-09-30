@@ -35,7 +35,7 @@ var LibrarySDL = {
       volume: 1.0
     },
     mixerFrequency: 22050,
-    mixerFormat: 0x8010, // AUDIO_S16LSB
+    mixerFormat: {{{ cDefine('AUDIO_S16LSB') }}}, //0x8010, // AUDIO_S16LSB
     mixerNumChannels: 2,
     mixerChunkSize: 1024,
     channelMinimumNumber: 0,
@@ -151,89 +151,12 @@ var LibrarySDL = {
       305: 224, // ctrl
       308: 226, // alt
     },
-
-    structs: {
-      Rect: Runtime.generateStructInfo([
-        ['i32', 'x'], ['i32', 'y'], ['i32', 'w'], ['i32', 'h'], 
-      ]),
-      PixelFormat: Runtime.generateStructInfo([
-        ['i32', 'format'],
-        ['void*', 'palette'], ['i8', 'BitsPerPixel'], ['i8', 'BytesPerPixel'],
-        ['i8', 'padding1'], ['i8', 'padding2'],
-        ['i32', 'Rmask'], ['i32', 'Gmask'], ['i32', 'Bmask'], ['i32', 'Amask'],
-        ['i8', 'Rloss'], ['i8', 'Gloss'], ['i8', 'Bloss'], ['i8', 'Aloss'],
-        ['i8', 'Rshift'], ['i8', 'Gshift'], ['i8', 'Bshift'], ['i8', 'Ashift']
-      ]),
-      KeyboardEvent: Runtime.generateStructInfo([
-        ['i32', 'type'],
-        ['i32', 'windowID'],
-        ['i8', 'state'],
-        ['i8', 'repeat'],
-        ['i8', 'padding2'],
-        ['i8', 'padding3'],
-        ['i32', 'keysym']
-      ]),
-      keysym: Runtime.generateStructInfo([
-        ['i32', 'scancode'],
-        ['i32', 'sym'],
-        ['i16', 'mod'],
-        ['i32', 'unicode']
-      ]),
-      TextInputEvent: Runtime.generateStructInfo([
-        ['i32', 'type'],
-        ['i32', 'windowID'],
-        ['b256', 'text'],
-      ]),
-      MouseMotionEvent: Runtime.generateStructInfo([
-        ['i32', 'type'],
-        ['i32', 'windowID'],
-        ['i8', 'state'],
-        ['i8', 'padding1'],
-        ['i8', 'padding2'],
-        ['i8', 'padding3'],
-        ['i32', 'x'],
-        ['i32', 'y'],
-        ['i32', 'xrel'],
-        ['i32', 'yrel']
-      ]),
-      MouseButtonEvent: Runtime.generateStructInfo([
-        ['i32', 'type'],
-        ['i32', 'windowID'],
-        ['i8', 'button'],
-        ['i8', 'state'],
-        ['i8', 'padding1'],
-        ['i8', 'padding2'],
-        ['i32', 'x'],
-        ['i32', 'y']
-      ]),
-      ResizeEvent: Runtime.generateStructInfo([
-        ['i32', 'type'],
-        ['i32', 'w'],
-        ['i32', 'h']
-      ]),
-      AudioSpec: Runtime.generateStructInfo([
-        ['i32', 'freq'],
-        ['i16', 'format'],
-        ['i8', 'channels'],
-        ['i8', 'silence'],
-        ['i16', 'samples'],
-        ['i32', 'size'],
-        ['void*', 'callback'],
-        ['void*', 'userdata']
-      ]),
-      version: Runtime.generateStructInfo([
-        ['i8', 'major'],
-        ['i8', 'minor'],
-        ['i8', 'patch']
-      ])
-    },
-
     loadRect: function(rect) {
       return {
-        x: {{{ makeGetValue('rect + SDL.structs.Rect.x', '0', 'i32') }}},
-        y: {{{ makeGetValue('rect + SDL.structs.Rect.y', '0', 'i32') }}},
-        w: {{{ makeGetValue('rect + SDL.structs.Rect.w', '0', 'i32') }}},
-        h: {{{ makeGetValue('rect + SDL.structs.Rect.h', '0', 'i32') }}}
+        x: {{{ makeGetValue('rect + ' + C_STRUCTS.SDL_Rect.x, '0', 'i32') }}},
+        y: {{{ makeGetValue('rect + ' + C_STRUCTS.SDL_Rect.y, '0', 'i32') }}},
+        w: {{{ makeGetValue('rect + ' + C_STRUCTS.SDL_Rect.w, '0', 'i32') }}},
+        h: {{{ makeGetValue('rect + ' + C_STRUCTS.SDL_Rect.h, '0', 'i32') }}}
       };
     },
 
@@ -261,35 +184,35 @@ var LibrarySDL = {
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
-      var surf = _malloc(15*Runtime.QUANTUM_SIZE);  // SDL_Surface has 15 fields of quantum size
+      var surf = _malloc({{{ C_STRUCTS.SDL_Surface.__size__ }}});  // SDL_Surface has 15 fields of quantum size
       var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
-      var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
+      var pixelFormat = _malloc({{{ C_STRUCTS.SDL_PixelFormat.__size__ }}});
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
       //surface with SDL_HWPALETTE flag is 8bpp surface (1 byte)
       var is_SDL_HWPALETTE = flags & 0x00200000;  
       var bpp = is_SDL_HWPALETTE ? 1 : 4;
  
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width * bpp', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA or indexed for now,
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.flags, 'flags', 'i32') }}}         // SDL_Surface.flags
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.format, 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.w, 'width', 'i32') }}}         // SDL_Surface.w
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.h, 'height', 'i32') }}}        // SDL_Surface.h
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pitch, 'width * bpp', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA or indexed for now,
                                                                                // since that is what ImageData gives us in browsers
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', 'void*') }}}      // SDL_Surface.pixels
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect, '0', 'i32*') }}}      // SDL_Surface.offset
 
-      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*14', '0', '1', 'i32') }}}
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}}
 
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.format', '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', 'bpp * 8', 'i8') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', 'bpp', 'i8') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.palette, '0', 'i32') }}} // TODO
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}}
 
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', 'rmask || 0x000000ff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', 'gmask || 0x0000ff00', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', 'bmask || 0x00ff0000', 'i32') }}}
-      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', 'amask || 0xff000000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Rmask, 'rmask || 0x000000ff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Gmask, 'gmask || 0x0000ff00', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Bmask, 'bmask || 0x00ff0000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Amask, 'amask || 0xff000000', 'i32') }}}
 
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
@@ -367,7 +290,7 @@ var LibrarySDL = {
     },
 
     freeSurface: function(surf) {
-      var refcountPointer = surf + Runtime.QUANTUM_SIZE * 14;
+      var refcountPointer = surf + {{{ C_STRUCTS.SDL_Surface.refcount }}};
       var refcount = {{{ makeGetValue('refcountPointer', '0', 'i32') }}};
       if (refcount > 1) {
         {{{ makeSetValue('refcountPointer', '0', 'refcount - 1', 'i32') }}};
@@ -608,7 +531,7 @@ var LibrarySDL = {
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
-        _memcpy(ptr, event, SDL.structs.KeyboardEvent.__size__); // XXX
+        _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}}); // XXX
         return;
       }
 
@@ -631,52 +554,52 @@ var LibrarySDL = {
             scan = SDL.scanCodes[key] || key;
           }
 
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', 'SDL.modState', 'i16') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.state, 'down ? 1 : 0', 'i8') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.repeat, '0', 'i8') }}} // TODO
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.scancode, 'scan', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.sym, 'key', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.mod, 'SDL.modState', 'i16') }}}
           // some non-character keys (e.g. backspace and tab) won't have keypressCharCode set, fill in with the keyCode.
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'event.keypressCharCode || key', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.unicode, 'event.keypressCharCode || key', 'i32') }}}
 
           break;
         }
         case 'keypress': {
-          {{{ makeSetValue('ptr', 'SDL.structs.TextInputEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
           // Not filling in windowID for now
           var cStr = intArrayFromString(String.fromCharCode(event.charCode));
           for (var i = 0; i < cStr.length; ++i) {
-            {{{ makeSetValue('ptr', 'SDL.structs.TextInputEvent.text + i', 'cStr[i]', 'i8') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.text + ' + i', 'cStr[i]', 'i8') }}};
           }
           break;
         }
         case 'mousedown': case 'mouseup': case 'mousemove': {
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'Browser.mouseX', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'Browser.mouseY', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.button, 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.state, 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.x, 'Browser.mouseX', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.y, 'Browser.mouseY', 'i32') }}};
           } else {
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i8') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'Browser.mouseX', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'Browser.mouseY', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.mouseMovementX', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'Browser.mouseMovementY', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.state, 'SDL.buttonState', 'i8') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.x, 'Browser.mouseX', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.y, 'Browser.mouseY', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.xrel, 'Browser.mouseMovementX', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.yrel, 'Browser.mouseMovementY', 'i32') }}};
           }
           break;
         }
         case 'unload': {
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           break;
         }
         case 'resize': {
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.ResizeEvent.w', 'event.w', 'i32') }}};
-          {{{ makeSetValue('ptr', 'SDL.structs.ResizeEvent.h', 'event.h', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_ResizeEvent.w, 'event.w', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_ResizeEvent.h, 'event.h', 'i32') }}};
           break;
         }
         default: throw 'Unhandled SDL event: ' + event.type;
@@ -740,10 +663,10 @@ var LibrarySDL = {
 
   SDL_Linked_Version: function() {
     if (SDL.version === null) {
-      SDL.version = _malloc(SDL.structs.version.__size__);
-      {{{ makeSetValue('SDL.version + SDL.structs.version.major', '0', '1', 'i8') }}}
-      {{{ makeSetValue('SDL.version + SDL.structs.version.minor', '0', '3', 'i8') }}}
-      {{{ makeSetValue('SDL.version + SDL.structs.version.patch', '0', '0', 'i8') }}}
+      SDL.version = _malloc({{{ C_STRUCTS.SDL_version.__size__ }}});
+      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.major, '0', '1', 'i8') }}}
+      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.minor, '0', '3', 'i8') }}}
+      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.patch, '0', '0', 'i8') }}}
     }
     return SDL.version;
   },
@@ -887,7 +810,7 @@ var LibrarySDL = {
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
     // So we have fields all of the same size, and 5 of them before us.
     // TODO: Use macros like in library.js
-    {{{ makeSetValue('surf', '5*Runtime.QUANTUM_SIZE', 'surfData.buffer', 'void*') }}};
+    {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'surfData.buffer', 'void*') }}};
 
     if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
 
@@ -1460,12 +1383,12 @@ var LibrarySDL = {
   SDL_OpenAudio: function(desired, obtained) {
     try {
       SDL.audio = {
-        freq: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.freq', 'i32', 0, 1) }}},
-        format: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.format', 'i16', 0, 1) }}},
-        channels: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.channels', 'i8', 0, 1) }}},
-        samples: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.samples', 'i16', 0, 1) }}}, // Samples in the CB buffer per single sound channel.
-        callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*', 0, 1) }}},
-        userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*', 0, 1) }}},
+        freq: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.freq', 'i32', 0, 1) }}},
+        format: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.format', 'i16', 0, 1) }}},
+        channels: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.channels', 'i8', 0, 1) }}},
+        samples: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.samples', 'i16', 0, 1) }}}, // Samples in the CB buffer per single sound channel.
+        callback: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.callback', 'void*', 0, 1) }}},
+        userdata: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.userdata', 'void*', 0, 1) }}},
         paused: true,
         timer: null
       };
@@ -1646,13 +1569,13 @@ var LibrarySDL = {
 
       if (obtained) {
         // Report back the initialized audio parameters.
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.freq', 'SDL.audio.freq', 'i32') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.format', 'SDL.audio.format', 'i16') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.channels', 'SDL.audio.channels', 'i8') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.silence', 'SDL.audio.silence', 'i8') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.samples', 'SDL.audio.samples', 'i16') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.callback', 'SDL.audio.callback', '*') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.userdata', 'SDL.audio.userdata', '*') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.freq', 'SDL.audio.freq', 'i32') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.format', 'SDL.audio.format', 'i16') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.channels', 'SDL.audio.channels', 'i8') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.silence', 'SDL.audio.silence', 'i8') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.samples', 'SDL.audio.samples', 'i16') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.callback', 'SDL.audio.callback', '*') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.userdata', 'SDL.audio.userdata', '*') }}};
       }
       SDL.allocateChannels(32);
 
@@ -1661,13 +1584,13 @@ var LibrarySDL = {
       SDL.audio = null;
       SDL.allocateChannels(0);
       if (obtained) {
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.freq', 0, 'i32') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.format', 0, 'i16') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.channels', 0, 'i8') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.silence', 0, 'i8') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.samples', 0, 'i16') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.callback', 0, '*') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.userdata', 0, '*') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.freq', 0, 'i32') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.format', 0, 'i16') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.channels', 0, 'i8') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.silence', 0, 'i8') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.samples', 0, 'i16') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.callback', 0, '*') }}};
+        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.userdata', 0, '*') }}};
       }
     }
     if (!SDL.audio) {

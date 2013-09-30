@@ -5,11 +5,12 @@
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
+// NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
 function processMacros(text) {
   return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
     var ret = eval(str);
-    return ret ? ret.toString() : '';
+    return ret !== null ? ret.toString() : '';
   });
 }
 
