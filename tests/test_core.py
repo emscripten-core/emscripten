@@ -7753,7 +7753,7 @@ def process(filename):
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
-      self.do_run(src, expected)
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
@@ -7793,7 +7793,7 @@ def process(filename):
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
-      self.do_run(src, expected)
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
@@ -7818,7 +7818,7 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
-      self.do_run(src, 'success', force_c=True)
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
@@ -7827,7 +7827,7 @@ def process(filename):
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
-      self.do_run(src, expected)
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_sleep(self):
     src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
@@ -7842,14 +7842,14 @@ def process(filename):
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
-      self.do_run(src, expected)
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
-      self.do_run(src, expected)
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_uname(self):
     src = r'''
