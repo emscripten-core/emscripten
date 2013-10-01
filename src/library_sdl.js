@@ -1383,12 +1383,12 @@ var LibrarySDL = {
   SDL_OpenAudio: function(desired, obtained) {
     try {
       SDL.audio = {
-        freq: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.freq', 'i32', 0, 1) }}},
-        format: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.format', 'i16', 0, 1) }}},
-        channels: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.channels', 'i8', 0, 1) }}},
-        samples: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.samples', 'i16', 0, 1) }}}, // Samples in the CB buffer per single sound channel.
-        callback: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.callback', 'void*', 0, 1) }}},
-        userdata: {{{ makeGetValue('desired', 'C_STRUCTS.SDL_AudioSpec.userdata', 'void*', 0, 1) }}},
+        freq: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.freq, 'i32', 0, 1) }}},
+        format: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.format, 'i16', 0, 1) }}},
+        channels: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.channels, 'i8', 0, 1) }}},
+        samples: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.samples, 'i16', 0, 1) }}}, // Samples in the CB buffer per single sound channel.
+        callback: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.callback, 'void*', 0, 1) }}},
+        userdata: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.userdata, 'void*', 0, 1) }}},
         paused: true,
         timer: null
       };
@@ -1569,13 +1569,13 @@ var LibrarySDL = {
 
       if (obtained) {
         // Report back the initialized audio parameters.
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.freq', 'SDL.audio.freq', 'i32') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.format', 'SDL.audio.format', 'i16') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.channels', 'SDL.audio.channels', 'i8') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.silence', 'SDL.audio.silence', 'i8') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.samples', 'SDL.audio.samples', 'i16') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.callback', 'SDL.audio.callback', '*') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.userdata', 'SDL.audio.userdata', '*') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.freq, 'SDL.audio.freq', 'i32') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.format, 'SDL.audio.format', 'i16') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.channels, 'SDL.audio.channels', 'i8') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.silence, 'SDL.audio.silence', 'i8') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.samples, 'SDL.audio.samples', 'i16') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.callback, 'SDL.audio.callback', '*') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.userdata, 'SDL.audio.userdata', '*') }}};
       }
       SDL.allocateChannels(32);
 
@@ -1584,13 +1584,13 @@ var LibrarySDL = {
       SDL.audio = null;
       SDL.allocateChannels(0);
       if (obtained) {
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.freq', 0, 'i32') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.format', 0, 'i16') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.channels', 0, 'i8') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.silence', 0, 'i8') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.samples', 0, 'i16') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.callback', 0, '*') }}};
-        {{{ makeSetValue('obtained', 'C_STRUCTS.SDL_AudioSpec.userdata', 0, '*') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.freq, 0, 'i32') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.format, 0, 'i16') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.channels, 0, 'i8') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.silence, 0, 'i8') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.samples, 0, 'i16') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.callback, 0, '*') }}};
+        {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.userdata, 0, '*') }}};
       }
     }
     if (!SDL.audio) {
