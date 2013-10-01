@@ -7744,7 +7744,7 @@ def process(filename):
 
   def test_fs_nodefs_rw(self):
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_access(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
