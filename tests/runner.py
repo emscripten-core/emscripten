@@ -737,13 +737,15 @@ if __name__ == '__main__':
     print '''
 ==============================================================================
 Running the main part of the test suite. Don't forget to run the other parts!
+A recommended order is:
 
-  other - tests separate from the main suite
   sanity - tests for first run, etc., modifies ~/.emscripten
-  benchmark - run before and after each set of changes before pushing to
-              master, verify no regressions
+  (the main test suite)
+  other - tests separate from the main suite
   browser - runs pages in a web browser
   sockets - runs websocket networking tests
+  benchmark - run before and after each set of changes before pushing to
+              master, verify no regressions
 
 There are also commands to run specific subsets of the test suite:
 
@@ -799,3 +801,4 @@ an individual test with
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
   exit(numFailures)
+
