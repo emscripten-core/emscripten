@@ -821,9 +821,17 @@ function JSify(data, functionsOnly, givenFunctions) {
     // Finalize function
     if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
     // Ensure a return in a function with a type that returns, even if it lacks a return (e.g., if it aborts())
-    if (RELOOP && func.lines.length > 0 && func.returnType != 'void') {
-      var returns = func.labels.filter(function(label) { return label.lines[label.lines.length-1].intertype == 'return' }).length;
-      if (returns == 0) func.JS += INDENTATION + 'return ' + asmCoercion('0', func.returnType);
+    if (RELOOP && ASM_JS && func.lines.length > 0 && func.returnType != 'void') {
+      var lastCurly = func.JS.lastIndexOf('}');
+      var lastReturn = func.JS.lastIndexOf('return ');
+      if ((lastCurly < 0 && lastReturn < 0) || // no control flow, no return
+          (lastCurly >= 0 && lastReturn < lastCurly)) { // control flow, no return past last join
+        if (func.returnType in Runtime.FLOAT_TYPES) {
+          func.JS += ' return +0;\n';
+        } else {
+          func.JS += ' return 0;\n';
+        }
+      }
     }
     func.JS += '}\n';
     

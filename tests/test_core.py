@@ -8609,6 +8609,12 @@ void*:16
       assert ' & 255]()' not in original, 'big function table does not exist'
       assert ' & 255]()' in final, 'big function table exists'
 
+    assert 'asm1' in test_modes
+    if self.run_name == 'asm1':
+      assert not Settings.RELOOP
+      Settings.RELOOP = 1 # check for mixing of relooping with asm1
+      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+
   def test_gcc_unmangler(self):
     Settings.NAMED_GLOBALS = 1 # test coverage for this
 

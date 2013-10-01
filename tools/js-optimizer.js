@@ -768,32 +768,11 @@ function simplifyExpressions(ast) {
     });
   }
 
-  function asmOpts(fun) {
-    // Add final returns when necessary
-    var returnType = null;
-    traverse(fun, function(node, type) {
-      if (type === 'return' && node[1]) {
-        returnType = detectAsmCoercion(node[1]);
-      }
-    });
-    // Add a final return if one is missing.
-    if (returnType !== null) {
-      var stats = getStatements(fun);
-      var last = stats[stats.length-1];
-      if (last[0] != 'return') {
-        var returnValue = ['num', 0];
-        if (returnType === ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
-        stats.push(['return', returnValue]);
-      }
-    }
-  }
-
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
     simplifyBitops(func);
     joinAdditions(func);
     // simplifyZeroComp(func); TODO: investigate performance
-    if (asm) asmOpts(func);
     simplifyNotComps(func);
   });
 }
