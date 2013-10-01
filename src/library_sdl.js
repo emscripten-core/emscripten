@@ -397,7 +397,6 @@ var LibrarySDL = {
       SDL.surfaces[surf] = null;
     },
 
-    lastTouch: {},
     // the browser sends out touchstart events with the whole group of touches
     // even if we received a previous touchstart for a specific touch identifier.
     // You can test this by pressing one finger to the screen, then another. You'll
@@ -431,8 +430,6 @@ var LibrarySDL = {
           var firstTouch = touches[0];
           if ( event.type == 'touchstart' ) {
             SDL.DOMButtons[0] = 1;
-            SDL.lastTouch.x = firstTouch.pageX;
-            SDL.lastTouch.y = firstTouch.pageY;
           };
           var mouseEventType;
           switch(event.type) {
@@ -442,8 +439,8 @@ var LibrarySDL = {
           var mouseEvent = {
             type: mouseEventType,
             button: 0,
-            pageX: firstTouch.pageX,
-            pageY: firstTouch.pageY
+            pageX: firstTouch.clientX,
+            pageY: firstTouch.clientY
           };
           SDL.events.push(mouseEvent);
 
@@ -471,8 +468,8 @@ var LibrarySDL = {
           var mouseEvent = {
             type: 'mouseup',
             button: 0,
-            pageX: SDL.lastTouch.x,
-            pageY: SDL.lastTouch.y
+            pageX: event.changedTouches[0].clientX,
+            pageY: event.changedTouches[0].clientY
           };
           SDL.DOMButtons[0] = 0;
           SDL.events.push(mouseEvent);
