@@ -373,14 +373,6 @@ var Functions = {
           }
         }
       }
-      if (table.length > 20) {
-        // add some newlines in the table, for readability
-        var j = 10;
-        while (j+10 < table.length) {
-          table[j] += '\n';
-          j += 10;
-        }
-      }
       maxTable = Math.max(maxTable, table.length);
     }
     if (ASM_JS) maxTable = ceilPowerOfTwo(maxTable);

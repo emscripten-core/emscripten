@@ -410,6 +410,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
       i = 0
+      j = 0
     pre_tables = last_forwarded_json['Functions']['tables']['pre']
     del last_forwarded_json['Functions']['tables']['pre']
 
@@ -425,12 +426,17 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       body = raw[start+1:end].split(',')
       for j in range(settings['RESERVED_FUNCTION_POINTERS']):
         body[2 + 2*j] = 'jsCall_%s_%s' % (sig, j)
+      Counter.j = 0
       def fix_item(item):
-        newline = '\n' in item
-        return (bad if item.replace('\n', '') == '0' else item) + ('\n' if newline else '')
+        Counter.j += 1
+        newline = Counter.j % 30 == 1
+        if item == '0': return bad if not newline else (bad + '\n')
+        return item if not newline else (item + '\n')
       body = ','.join(map(fix_item, body))
-      return ('function %s(%s) { %s %s(%d); %s }' % (bad, params, coercions, 'abort' if not settings['ASSERTIONS'] else 'nullFunc', i, ret), raw[:start+1] + body + raw[end:])
+      return ('function %s(%s) { %s %s(%d); %s }' % (bad, params, coercions, 'abort' if not settings['ASSERTIONS'] else 'nullFunc', i, ret), ''.join([raw[:start+1], body, raw[end:]]))
+
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
+
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
@@ -470,6 +476,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
+
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       arg_coercions = ' '.join(['a' + str(i) + '=' + asm_coerce('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
