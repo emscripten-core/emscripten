@@ -353,17 +353,18 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     return '%d,%d,%d,%d' % (x&255, (x >> 8)&255, (x >> 16)&255, (x >> 24)&255)
 
   indexing = forwarded_json['Functions']['indexedFunctions']
+  def indexize_mem(js):
+    return re.sub(r"\"?'?{{ FI_([\w\d_$]+) }}'?\"?,0,0,0", lambda m: split_32(indexing.get(m.groups(0)[0]) or 0), js)
   def indexize(js):
-    # In the global initial allocation, we need to split up into Uint8 format
-    ret = re.sub(r"\"?'?{{ FI_([\w\d_$]+) }}'?\"?,0,0,0", lambda m: split_32(indexing.get(m.groups(0)[0]) or 0), js)
-    return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), ret)
+    return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), js)
 
   blockaddrs = forwarded_json['Functions']['blockAddresses']
+  def blockaddrsize_mem(js):
+    return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?,0,0,0', lambda m: split_32(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
   def blockaddrsize(js):
-    ret = re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?,0,0,0', lambda m: split_32(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
-    return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), ret)
+    return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
 
-  pre = blockaddrsize(indexize(pre))
+  pre = blockaddrsize(blockaddrsize_mem(indexize(indexize_mem(pre))))
 
   if settings.get('ASM_JS'):
     # move postsets into the asm module
@@ -692,7 +693,9 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
             symbol_table[value] = str(i)
     outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table).replace('"', ''))
 
-  for funcs_js_item in funcs_js: # do this loop carefully to save memory
+  for i in range(len(funcs_js)): # do this loop carefully to save memory
+    funcs_js_item = funcs_js[i]
+    funcs_js[i] = None
     funcs_js_item = indexize(funcs_js_item)
     funcs_js_item = blockaddrsize(funcs_js_item)
     outfile.write(funcs_js_item)
