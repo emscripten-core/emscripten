@@ -1,6 +1,27 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+if (memoryInitializer) {
+  function applyData(data) {
+#if USE_TYPED_ARRAYS == 2
+    HEAPU8.set(data, STATIC_BASE);
+#else
+    allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
+#endif
+  }
+  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+    applyData(Module['readBinary'](memoryInitializer));
+  } else {
+    addRunDependency('memory initializer');
+    Browser.asyncLoad(memoryInitializer, function(data) {
+      applyData(data);
+      removeRunDependency('memory initializer');
+    }, function(data) {
+      throw 'could not load memory initializer ' + memoryInitializer;
+    });
+  }
+}
+
 function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
@@ -10,8 +31,15 @@ ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
 var initialStackTop;
-
 var preloadStartTime = null;
+var calledMain = false;
+var calledRun = false;
+
+dependenciesFulfilled = function runCaller() {
+  // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
+  if (!calledRun && shouldRunNow) run();
+  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
+}
 
 Module['callMain'] = Module.callMain = function callMain(args) {
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
@@ -70,6 +98,8 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     } else {
       throw e;
     }
+  } finally {
+    calledMain = true;
   }
 }
 
@@ -126,7 +156,15 @@ function exit(status) {
 
   // exit the runtime
   exitRuntime();
- 
+
+  // TODO We should handle this differently based on environment.
+  // In the browser, the best we can do is throw an exception
+  // to halt execution, but in node we could process.exit and
+  // I'd imagine SM shell would have something equivalent.
+  // This would let us set a proper exit status (which
+  // would be great for checking test exit statuses).
+  // https://github.com/kripken/emscripten/issues/1371
+
   // throw an exception to halt the current execution
   throw new ExitStatus(status);
 }

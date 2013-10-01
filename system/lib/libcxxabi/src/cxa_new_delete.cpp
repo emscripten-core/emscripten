@@ -228,7 +228,7 @@ bad_array_new_length::what() const _NOEXCEPT
     return "bad_array_new_length";
 }
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 // We don't build the new.cpp from libcxx, so we need to define this.
 void
 __throw_bad_alloc()

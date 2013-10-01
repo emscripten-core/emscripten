@@ -1372,6 +1372,50 @@ Succeeded!
       '''
       self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\nsmall: 0.0000010000\n')
 
+  def test_zerodiv(self):
+    self.do_run(r'''
+      #include <stdio.h>
+      int main(int argc, const char* argv[])
+      {
+        float f1 = 1.0f;
+        float f2 = 0.0f;
+        float f_zero = 0.0f;
+
+        float f3 = 0.0f / f2;
+        float f4 = f2 / 0.0f;
+        float f5 = f2 / f2;
+        float f6 = f2 / f_zero;
+
+        printf("f3: %f\n", f3);
+        printf("f4: %f\n", f4);
+        printf("f5: %f\n", f5);
+        printf("f6: %f\n", f6);
+
+        return 0;
+      }
+    ''', '''f3: nan
+f4: nan
+f5: nan
+f6: nan
+''')
+
+  def test_zero_multiplication(self):
+    src = '''
+      #include <stdio.h>
+      int main(int argc, char * argv[]) {
+        int one = argc;
+
+        printf("%d ", 0 * one);
+        printf("%d ", 0 * -one);
+        printf("%d ", -one * 0);
+        printf("%g ", 0.0 * one);
+        printf("%g ", 0.0 * -one);
+        printf("%g", -one * 0.0);
+        return 0;
+      }
+    '''
+    self.do_run(src, '0 0 0 0 -0 -0')
+
   def test_isnan(self):
     src = r'''
       #include <stdio.h>
@@ -1431,6 +1475,7 @@ Succeeded!
       self.do_run(src, 'BUG?\nDisplay: Vu=465.100000  Vv=465.200000  Wu=160.300000  Wv=111.400000')
 
   def test_math(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
       src = '''
         #include <stdio.h>
         #include <stdlib.h>
@@ -1743,7 +1788,7 @@ Succeeded!
 
           int xx, yy, zz;
           char s[32];
-          int cc = sscanf("abc_10.b1_xyz_543_defg", "abc_%d.%2x_xyz_%3d_%3s", &xx, &yy, &zz, s);
+          int cc = sscanf("abc_10.b1_xyz9_543_defg", "abc_%d.%2x_xyz9_%3d_%3s", &xx, &yy, &zz, s);
           printf("%d:%d,%d,%d,%s\\n", cc, xx, yy, zz, s);
 
           printf("%d\\n", argc);
@@ -3742,7 +3787,8 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
 
   def test_inlinejs(self):
-      if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
+      if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+      if not self.is_le32(): return self.skip('le32 needed for inline js')
       src = r'''
         #include <stdio.h>
 
@@ -3755,14 +3801,22 @@ def process(filename):
         int main() {
           asm("Module.print('Inline JS is very cool')");
           printf("%.2f\n", get());
+
+          // Test that passing multiple input and output variables works.
+          int src1 = 1, src2 = 2, src3 = 3;
+          int dst1 = 0, dst2 = 0, dst3 = 0;
+          // TODO asm("Module.print(%3); Module.print(%4); Module.print(%5); %0 = %3; %1 = %4; %2 = %5;" : "=r"(dst1),"=r"(dst2),"=r"(dst3): "r"(src1),"r"(src2),"r"(src3));
+          // TODO printf("%d\n%d\n%d\n", dst1, dst2, dst3);
+
           return 0;
         }
         '''
 
-      self.do_run(src, 'Inline JS is very cool\n3.64\n')
+      self.do_run(src, 'Inline JS is very cool\n3.64\n') # TODO 1\n2\n3\n1\n2\n3\n')
 
   def test_inlinejs2(self):
-      if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
+      if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+      if not self.is_le32(): return self.skip('le32 needed for inline js')
       src = r'''
         #include <stdio.h>
 
@@ -3773,8 +3827,8 @@ def process(filename):
         }
 
         void mult() {
-          asm("var $_$1 = Math.abs(-100); $_$1 *= 2;"); // multiline
-          asm __volatile__("Module.print($_$1); Module.print('\n')");
+          asm("var $_$1 = Math.abs(-100); $_$1 *= 2; Module.print($_$1)"); // multiline
+          asm __volatile__("Module.print('done')");
         }
 
         int main(int argc, char **argv) {
@@ -3784,7 +3838,7 @@ def process(filename):
         }
         '''
 
-      self.do_run(src, '4\n200\n')
+      self.do_run(src, '4\n200\ndone\n')
 
   def test_inlinejs3(self):
       if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
@@ -5036,7 +5090,7 @@ The current type of b is: 9
     src = r'''
       int main () {
         *(volatile char *)0 = 0;
-        return 0;
+        return *(volatile char *)0;
       }
       '''
     self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')
@@ -5429,6 +5483,34 @@ The current type of b is: 9
       }
     '''
     self.do_run(src, 'memmove can be very useful....!')
+
+  def test_flexarray_struct(self):
+    src = r'''
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+typedef struct
+{
+  uint16_t length;
+  struct 
+  {
+    int32_t int32;
+  } value[];
+} Tuple;
+
+int main() {
+  Tuple T[10];
+  Tuple *t = &T[0];
+
+  t->length = 4;
+  t->value->int32 = 100;
+
+  printf("(%d, %d)\n", t->length, t->value->int32);
+  return 0;
+}
+'''
+    self.do_run(src, '(4, 100)')
 
   def test_bsearch(self):
     if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
@@ -6870,6 +6952,29 @@ at function.:blag
           printf("%i\n", a);
         }
 
+        char buf1[100], buf2[100], buf3[100], buf4[100];
+
+        int numItems = sscanf("level=4:ref=3", "%255[^:=]=%255[^:]:%255[^=]=%255c", buf1, buf2, buf3, buf4);
+        printf("%d, %s, %s, %s, %s\n", numItems, buf1, buf2, buf3, buf4);
+
+        numItems = sscanf("def|456", "%[a-z]|%[0-9]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("3-4,-ab", "%[-0-9],%[ab-z-]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("Hello,World", "%[A-Za-z],%[^0-9]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
+        numItems = sscanf("Hello4711", "%[^0-9],%[^0-9]", buf1, buf2);
+        printf("%d, %s\n", numItems, buf1);
+
+        numItems = sscanf("JavaScript", "%4[A-Za-z]", buf1);
+        printf("%d, %s\n", numItems, buf1);
+    
+        numItems = sscanf("[]", "%1[[]%1[]]", buf1, buf2);
+        printf("%d, %s, %s\n", numItems, buf1, buf2);
+
         return 0;
       }
       '''
@@ -6877,7 +6982,14 @@ at function.:blag
                      '1\n1499\n' +
                      '5\n87,0.481565,0.059481,0,1\n' +
                      '3\n-123,4294966531,-34\n' +
-                     '1\n')
+                     '1\n' +
+                     '4, level, 4, ref, 3\n' +
+                     '2, def, 456\n' +
+                     '2, 3-4, -ab\n' +
+                     '2, Hello, World\n' +
+                     '1, Hello\n' +
+                     '1, Java\n' +
+                     '2, [, ]')
 
   def test_sscanf_2(self):
     # doubles
@@ -7133,6 +7245,18 @@ date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
     '''
     self.do_run(src, '10 1.1 1.1 1.1');
 
+  def test_sscanf_hex(self):
+    src = r'''
+      #include "stdio.h"
+
+      int main(){
+        unsigned int a, b;
+        sscanf("0x12AB 12AB", "%x %x", &a, &b);
+        printf("%d %d\n", a, b);
+      }
+    '''
+    self.do_run(src, '4779 4779')
+
   def test_langinfo(self):
     src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
     expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
@@ -7355,7 +7479,7 @@ def process(filename):
       FS.registerDevice(dummy_device, {});
 
       FS.createDataFile('/', 'file', 'abcdef', true, true);
-      FS.mkdev('/device', 0666, dummy_device);
+      FS.mkdev('/device', dummy_device);
     \'\'\'
   )
   open(filename, 'w').write(src)
@@ -7523,6 +7647,12 @@ def process(filename):
     '''
     self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋ 😇\nμ†ℱ ╋ℯ╳╋ 😇,206,188,226,128\n');
 
+  def test_utf32(self):
+    if self.emcc_args is None: return self.skip('need libc for wcslen()')
+    if not self.is_le32(): return self.skip('this test uses inline js, which requires le32')
+    self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
+    self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
+
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 
@@ -7612,33 +7742,25 @@ def process(filename):
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
+  def test_fs_nodefs_rw(self):
+    src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+
   def test_unistd_access(self):
-    add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'access.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
-    src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
-    self.do_run(src, expected, post_build=add_pre_run)
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
-    add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
-    self.do_run(src, expected, post_build=add_pre_run)
+    self.do_run(src, expected)
 
   def test_unistd_close(self):
     src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
@@ -7665,18 +7787,13 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_truncate(self):
-    add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
-    src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
-    self.do_run(src, expected, post_build=add_pre_run)
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
@@ -7698,22 +7815,19 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_unlink(self):
-    src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
-    add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'links.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
-    src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
-    self.do_run(src, expected, post_build=add_pre_run)
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_sleep(self):
     src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
@@ -7721,23 +7835,21 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_io(self):
-    add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'io.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
-    src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
-    self.do_run(src, expected, post_build=add_pre_run)
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
-    src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
-    self.do_run(src, expected)
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_uname(self):
     src = r'''
@@ -8639,29 +8751,44 @@ def process(filename):
       Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                                   'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
-    def test():
-      self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
-                   [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
-                    open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
-                    open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
-                   libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                                               configure_args=['--disable-demos','--disable-dependency-tracking']),
-                   includes=[path_from_root('tests', 'bullet', 'src')])
-    test()
+    configure_commands = [['sh', './configure'], ['cmake', '.']]
+    configure_args = [['--disable-demos','--disable-dependency-tracking'], ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']]
+    for c in range(0,2):
+      configure = configure_commands[c]
+      # Windows cannot run configure sh scripts.
+      if WINDOWS and configure[0] == 'sh':
+        continue
 
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      # Test forced alignment
-      print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
-      old = open('src.cpp.o.js').read()
-      Settings.FORCE_ALIGNED_MEMORY = 1
+      # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
+      if configure[0] == 'sh':
+        generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                          os.path.join('src', '.libs', 'libBulletCollision.a'),
+                          os.path.join('src', '.libs', 'libLinearMath.a')]
+      else:
+        generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
+                          os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
+                          os.path.join('src', 'LinearMath', 'libLinearMath.a')]
+
+      def test():
+        self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
+                     [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
+                      open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
+                      open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
+                     libraries=self.get_library('bullet', generated_libs, configure=configure, configure_args=configure_args[c], cache_name_extra=configure[0]),
+                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
-      new = open('src.cpp.o.js').read()
-      print len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt')
-      assert len(old) > len(new)
-      assert old.count('tempBigInt') > new.count('tempBigInt')
+
+      assert 'asm2g' in test_modes
+      if self.run_name == 'asm2g' and configure[0] == 'sh':
+        # Test forced alignment
+        print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
+        old = open('src.cpp.o.js').read()
+        Settings.FORCE_ALIGNED_MEMORY = 1
+        test()
+        new = open('src.cpp.o.js').read()
+        print len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt')
+        assert len(old) > len(new)
+        assert old.count('tempBigInt') > new.count('tempBigInt')
 
   def test_poppler(self):
     if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
@@ -8870,6 +8997,8 @@ def process(filename):
   def test_cases(self):
     if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
+    emcc_args = self.emcc_args
+
     try:
       os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
       Settings.CHECK_OVERFLOWS = 0
@@ -8883,6 +9012,10 @@ def process(filename):
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
           continue
+        self.emcc_args = emcc_args
+        if os.path.exists(shortname + '.emcc'):
+          if not self.emcc_args: continue
+          self.emcc_args = self.emcc_args + json.loads(open(shortname + '.emcc').read())
         print >> sys.stderr, "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
         if Settings.QUANTUM_SIZE == 1:
@@ -8903,6 +9036,7 @@ def process(filename):
 
     finally:
       del os.environ['EMCC_LEAVE_INPUTS_RAW']
+      self.emcc_args = emcc_args
 
   def test_fuzz(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')

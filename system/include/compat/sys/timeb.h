@@ -14,13 +14,9 @@ extern "C" {
 
 #define _SYS_TIMEB_H
 
-#include <_ansi.h>
-#include <machine/types.h>
+#define __NEED_time_t
 
-#ifndef __time_t_defined
-typedef _TIME_T_ time_t;
-#define __time_t_defined
-#endif
+#include <bits/alltypes.h>
 
 struct timeb
 {
@@ -30,7 +26,7 @@ struct timeb
   short dstflag;
 };
 
-extern int ftime _PARAMS ((struct timeb *));
+extern int ftime(struct timeb *);
 
 #ifdef __cplusplus
 }

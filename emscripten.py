@@ -9,7 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing, string
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging
 
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
@@ -39,9 +39,15 @@ def scan(ll, settings):
   if len(blockaddrs) > 0:
     settings['NECESSARY_BLOCKADDRS'] = blockaddrs
 
-NUM_CHUNKS_PER_CORE = 1.25
+NUM_CHUNKS_PER_CORE = 1.0
 MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
+
+STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
+if STDERR_FILE:
+  STDERR_FILE = os.path.abspath(STDERR_FILE)
+  logging.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
+  STDERR_FILE = open(STDERR_FILE, 'w')
 
 def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
   try:
@@ -52,18 +58,19 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
     f.write('\n')
     f.write(meta)
     f.close()
+    #print >> sys.stderr, 'running', str([settings_file, funcs_file, 'funcs', forwarded_file] + libraries).replace("'/", "'") # can use this in src/compiler_funcs.html arguments,
+    #                                                                                                                         # just copy temp dir to under this one
     out = jsrun.run_js(
       compiler,
       engine=compiler_engine,
       args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
       stdout=subprocess.PIPE,
+      stderr=STDERR_FILE,
       cwd=path_from_root('src'))
   except KeyboardInterrupt:
     # Python 2.7 seems to lock up when a child process throws KeyboardInterrupt
     raise Exception()
-  finally:
-    tempfiles.try_delete(funcs_file)
-  if DEBUG: print >> sys.stderr, '.'
+  if DEBUG: logging.debug('.')
   return out
 
 def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
@@ -84,7 +91,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   #   2 aka 'funcs': Process functions. We can parallelize this, working on each function independently.
   #   3 aka 'post' : Process globals, generate postamble and finishing touches.
 
-  if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
+  if DEBUG: logging.debug('emscript: ll=>js')
 
   if jcache: jcache.ensure()
 
@@ -94,7 +101,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   scan(ll, settings)
   total_ll_size = len(ll)
   ll = None # allow collection
-  if DEBUG: print >> sys.stderr, '  emscript: scan took %s seconds' % (time.time() - t)
+  if DEBUG: logging.debug('  emscript: scan took %s seconds' % (time.time() - t))
 
   # Split input into the relevant parts for each phase
   pre = []
@@ -129,19 +136,19 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         pre.append(line) # pre needs it so we know about globals in pre and funcs. So emit globals there
   ll_lines = None
   meta = ''.join(meta)
-  if DEBUG and len(meta) > 1024*1024: print >> sys.stderr, 'emscript warning: large amounts of metadata, will slow things down'
-  if DEBUG: print >> sys.stderr, '  emscript: split took %s seconds' % (time.time() - t)
+  if DEBUG and len(meta) > 1024*1024: logging.debug('emscript warning: large amounts of metadata, will slow things down')
+  if DEBUG: logging.debug('  emscript: split took %s seconds' % (time.time() - t))
 
   if len(funcs) == 0:
-    print >> sys.stderr, 'No functions to process. Make sure you prevented LLVM from eliminating them as dead (use EXPORTED_FUNCTIONS if necessary, see the FAQ)'
+    logging.error('No functions to process. Make sure you prevented LLVM from eliminating them as dead (use EXPORTED_FUNCTIONS if necessary, see the FAQ)')
 
   #if DEBUG:
-  #  print >> sys.stderr, '========= pre ================\n'
-  #  print >> sys.stderr, ''.join(pre)
-  #  print >> sys.stderr, '========== funcs ===============\n'
+  #  logging.debug('========= pre ================\n')
+  #  logging.debug(''.join(pre))
+  #  logging.debug('========== funcs ===============\n')
   #  for func in funcs:
-  #    print >> sys.stderr, '\n// ===\n\n', ''.join(func)
-  #  print >> sys.stderr, '=========================\n'
+  #    logging.debug('\n// ===\n\n', ''.join(func))
+  #  logging.debug('=========================\n')
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
@@ -161,7 +168,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if jcache:
     keys = [pre_input, settings_text, ','.join(libraries)]
     shortkey = jcache.get_shortkey(keys)
-    if DEBUG_CACHE: print >>sys.stderr, 'shortkey', shortkey
+    if DEBUG_CACHE: logging.debug('shortkey', shortkey)
 
     out = jcache.get(shortkey, keys)
 
@@ -174,21 +181,22 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       dfp.write("\n\n========================== libraries\n\n")
       dfp.write("\n".join(libraries))
       dfp.close()
-      print >>sys.stderr, '  cache miss, key data dumped to %s' % dfpath
+      logging.debug('  cache miss, key data dumped to %s' % dfpath)
 
-    if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
+    if out and DEBUG: logging.debug('  loading pre from jcache')
   if not out:
     open(pre_file, 'w').write(pre_input)
-    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE,
+    #print >> sys.stderr, 'running', str([settings_file, pre_file, 'pre'] + libraries).replace("'/", "'") # see funcs
+    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                        cwd=path_from_root('src'))
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     if jcache:
-      if DEBUG: print >> sys.stderr, '  saving pre to jcache'
+      if DEBUG: logging.debug('  saving pre to jcache')
       jcache.set(shortkey, keys, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)
-  if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
+  if DEBUG: logging.debug('  emscript: phase 1 took %s seconds' % (time.time() - t))
 
   indexed_functions = set()
   forwarded_json = json.loads(forwarded_data)
@@ -202,7 +210,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if cores > 1:
     intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
     chunk_size = max(MIN_CHUNK_SIZE, total_ll_size / intended_num_chunks)
-    chunk_size += 3*len(meta) + len(forwarded_data)/3 # keep ratio of lots of function code to meta (expensive to process, and done in each parallel task) and forwarded data (less expensive but potentially significant)
+    chunk_size += 3*len(meta) # keep ratio of lots of function code to meta (expensive to process, and done in each parallel task)
     chunk_size = min(MAX_CHUNK_SIZE, chunk_size)
   else:
     chunk_size = MAX_CHUNK_SIZE # if 1 core, just use the max chunk size
@@ -215,6 +223,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   chunks = cache_module.chunkify(
     funcs, chunk_size,
     jcache.get_cachename('emscript_files') if jcache else None)
+
+  #sys.exit(1)
+  #chunks = [chunks[0]] # pick specific chunks for debugging/profiling
 
   funcs = None
 
@@ -231,7 +242,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       return True
     chunks = filter(load_from_cache, chunks)
     if len(cached_outputs) > 0:
-      if out and DEBUG: print >> sys.stderr, '  loading %d funcchunks from jcache' % len(cached_outputs)
+      if out and DEBUG: logging.debug('  loading %d funcchunks from jcache' % len(cached_outputs))
     else:
       cached_outputs = []
 
@@ -241,10 +252,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if cores == 1 and total_ll_size < MAX_CHUNK_SIZE:
       assert len(chunks) == 1, 'no point in splitting up without multiple cores'
 
-    if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
+    if DEBUG: logging.debug('  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.)))
 
     commands = [
-      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)
+      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine,# + ['--prof'],
+       temp_files, DEBUG)
       for i, chunk in enumerate(chunks)
     ]
 
@@ -266,7 +278,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       keys = [settings_text, forwarded_data, chunk]
       shortkey = jcache.get_shortkey(keys)
       jcache.set(shortkey, keys, outputs[i])
-    if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
+    if out and DEBUG and len(chunks) > 0: logging.debug('  saving %d funcchunks to jcache' % len(chunks))
 
   chunks = None
 
@@ -276,7 +288,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   for output in outputs:
     assert len(output) == 2, 'Did not receive forwarded data in an output - process failed? We only got: ' + output[0][-3000:]
 
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
+  if DEBUG: logging.debug('  emscript: phase 2 took %s seconds' % (time.time() - t))
   if DEBUG: t = time.time()
 
   # merge forwarded data
@@ -287,6 +299,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     exported_implemented_functions = set()
   for func_js, curr_forwarded_data in outputs:
     curr_forwarded_json = json.loads(curr_forwarded_data)
+    forwarded_json['Types']['hasInlineJS'] = forwarded_json['Types']['hasInlineJS'] or curr_forwarded_json['Types']['hasInlineJS']
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
     for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
       forwarded_json['Functions']['blockAddresses'][key] = value
@@ -311,7 +324,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   funcs_js = [output[0] for output in outputs]
 
   outputs = None
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
+  if DEBUG: logging.debug('  emscript: phase 2b took %s seconds' % (time.time() - t))
   if DEBUG: t = time.time()
 
   # calculations on merged forwarded data
@@ -332,7 +345,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     else:
       curr = i
       i += 2
-    #print >> sys.stderr, 'function indexing', indexed, curr, sig
+    #logging.debug('function indexing', indexed, curr, sig)
     forwarded_json['Functions']['indexedFunctions'][indexed] = curr # make sure not to modify this python object later - we use it in indexize
 
   def split_32(x):
@@ -370,13 +383,13 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   forwarded_data = json.dumps(forwarded_json)
   forwarded_file = temp_files.get('.2.json').name
   open(forwarded_file, 'w').write(indexize(forwarded_data))
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2c took %s seconds' % (time.time() - t)
+  if DEBUG: logging.debug('  emscript: phase 2c took %s seconds' % (time.time() - t))
 
   # Phase 3 - post
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
-  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE,
+  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                      cwd=path_from_root('src'))
   post, last_forwarded_data = out.split('//FORWARDED_DATA:') # if this fails, perhaps the process failed prior to printing forwarded data?
   last_forwarded_json = json.loads(last_forwarded_data)
@@ -531,7 +544,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # finalize
 
-    if DEBUG: print >> sys.stderr, 'asm text sizes', map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)
+    if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)]))
 
     funcs_js = ['''
 %s
@@ -543,7 +556,7 @@ function asmPrintFloat(x, y) {
 }
 // EMSCRIPTEN_START_ASM
 var asm = (function(global, env, buffer) {
-  'use asm';
+  %s
   var HEAP8 = new global.Int8Array(buffer);
   var HEAP16 = new global.Int16Array(buffer);
   var HEAP32 = new global.Int32Array(buffer);
@@ -552,7 +565,7 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global.Uint32Array(buffer);
   var HEAPF32 = new global.Float32Array(buffer);
   var HEAPF64 = new global.Float64Array(buffer);
-''' % (asm_setup,) + '\n' + asm_global_vars + '''
+''' % (asm_setup, "'use asm';" if not forwarded_json['Types']['hasInlineJS'] and not settings['SIDE_MODULE'] else "'almost asm';") + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
@@ -679,7 +692,7 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
   funcs_js = None
 
   outfile.write(indexize(post))
-  if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
+  if DEBUG: logging.debug('  emscript: phase 3 took %s seconds' % (time.time() - t))
 
   outfile.close()
 
@@ -701,7 +714,14 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
     if not os.path.exists(relooper):
       from tools import shared
       shared.Building.ensure_relooper(relooper)
-
+  
+  settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
+  struct_info = settings.get('STRUCT_INFO')
+  
+  if not os.path.exists(struct_info):
+    from tools import shared
+    shared.Building.ensure_struct_info(struct_info)
+  
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
@@ -771,11 +791,11 @@ def _main(environ):
   keywords, positional = parser.parse_args()
 
   if not keywords.suppressUsageWarning:
-    print >> sys.stderr, '''
+    logging.warning('''
 ==============================================================
 WARNING: You should normally never use this! Use emcc instead.
 ==============================================================
-  '''
+  ''')
 
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')

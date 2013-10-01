@@ -121,6 +121,8 @@ if (typeof print === 'undefined') {
 // *** Environment setup code ***
 
 
+DEBUG_MEMORY = false;
+
 // Basic utilities
 
 load('utility.js');
@@ -204,16 +206,26 @@ if (phase == 'pre') {
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
+// Load struct and define information.
+var temp = JSON.parse(read(STRUCT_INFO));
+C_STRUCTS = temp.structs;
+C_DEFINES = temp.defines;
+
 // Load compiler code
 
-load('framework.js');
 load('modules.js');
 load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) {
-  load(RELOOPER);
+if (phase == 'funcs' && RELOOP) { // XXX handle !singlePhase
+  RelooperModule = { TOTAL_MEMORY: ceilPowerOfTwo(2*RELOOPER_BUFFER_SIZE) };
+  try {
+    load(RELOOPER);
+  } catch(e) {
+    printErr('cannot load relooper at ' + RELOOPER + ' : ' + e + ', trying in current dir');
+    load('relooper.js');
+  }
   assert(typeof Relooper != 'undefined');
 }
 globalEval(processMacros(preprocess(read('runtime.js'))));
@@ -266,6 +278,9 @@ function compile(raw) {
     var analyzed = analyzer(intertyped);
     intertyped = null;
     JSify(analyzed);
+
+    //dumpInterProf();
+    //printErr(phase + ' paths (fast, slow): ' + [fastPaths, slowPaths]);
 
     phase = null;
 

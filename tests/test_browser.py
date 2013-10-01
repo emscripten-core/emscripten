@@ -19,6 +19,7 @@ class browser(BrowserCore):
       'test_sdl_audio_mix_channels',
       'test_sdl_audio_mix',
       'test_sdl_audio_quickload',
+      'test_sdl_audio_beeps',
       'test_openal_playback',
       'test_openal_buffers',
       'test_freealut'
@@ -627,6 +628,31 @@ If manually bisecting:
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
+  def test_sdl_canvas_proxy(self):
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function assert(x, y) { if (!x) throw 'assertion failed ' + y }
+
+%s
+
+var windowClose = window.close;
+window.close = function() {
+  doReftest();
+  setTimeout(windowClose, 1000);
+};
+</script>
+</body>''' % open('reftest.js').read())
+      open('test.html', 'w').write(html)
+
+    open('data.txt', 'w').write('datum')
+
+    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=post)
+
+  def test_sdl_canvas_alpha(self):
+    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=1)
+
   def test_sdl_key(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.postRun = function() {
@@ -657,6 +683,52 @@ If manually bisecting:
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
     self.run_browser('page.html', '', '/report_result?223092870')
+
+  def test_sdl_key_proxy(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      var Module = {};
+      Module.postRun = function() {
+        function doOne() {
+          Module._one();
+          setTimeout(doOne, 1000/60);
+        }
+        setTimeout(doOne, 1000/60);
+      }
+    ''')
+
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function keydown(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keydown", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  document.dispatchEvent(event);
+}
+
+function keyup(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keyup", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  document.dispatchEvent(event);
+}
+
+keydown(1250);keydown(38);keyup(38);keyup(1250); // alt, up
+keydown(1248);keydown(1249);keydown(40);keyup(40);keyup(1249);keyup(1248); // ctrl, shift, down
+keydown(37);keyup(37); // left
+keydown(39);keyup(39); // right
+keydown(65);keyup(65); // a
+keydown(66);keyup(66); // b
+keydown(100);keyup(100); // trigger the end
+
+</script>
+</body>''')
+      open('test.html', 'w').write(html)
+
+    self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']'''], manual_reference=True, post_build=post)
 
   def test_sdl_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -808,6 +880,11 @@ If manually bisecting:
     self.btest('file_db.cpp', secret, args=['--preload-file', 'moar.txt']) # even with a file there, we load over it
     shutil.move('test.html', 'third.html')
 
+  def test_fs_idbfs_sync(self):
+    secret = str(time.time())
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-DFIRST', '-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -853,6 +930,13 @@ If manually bisecting:
     open(os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_quickload.c')).read()))
 
     Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl_audio_beeps(self):
+    open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
+
+    # use closure to check for a possible bug with closure minifying away newer Audio() attributes
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_gl_read(self):
@@ -1162,6 +1246,17 @@ If manually bisecting:
   def test_emscripten_api(self):
     self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']'''])
 
+  def test_emscripten_api2(self):
+    open('script1.js', 'w').write('''
+      Module._set(456);
+    ''')
+
+    open('file1.txt', 'w').write('first');
+    open('file2.txt', 'w').write('second');
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w')).communicate()
+
+    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']'''])
+
   def test_emscripten_api_infloop(self):
     self.btest('emscripten_api_browser_infloop.cpp', '7')
 
@@ -1398,7 +1493,9 @@ If manually bisecting:
         }, 2000);
       };
     ''')
-    self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
+
+    for mem in [0, 1]:
+      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()

@@ -367,6 +367,17 @@ EMSCRIPTEN_FUNCS();
 
   return filename
 
-def run(filename, passes, js_engine, jcache, source_map=False, extra_info=None):
+def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None):
   return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info))
+
+if __name__ == '__main__':
+  last = sys.argv[-1]
+  if '{' in last:
+    extra_info = json.loads(last)
+    sys.argv = sys.argv[:-1]
+  else:
+    extra_info = None
+  out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+  import shutil
+  shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
 

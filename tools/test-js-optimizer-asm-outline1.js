@@ -307,5 +307,45 @@ function switchh() {
     }
   }
 }
+function switchh2() {
+  while (1) switch (x) {
+    case 0:
+      f(0);
+      g();
+      break;
+    case 1:
+      f(1);
+      g();
+      return;
+    case 2:
+      f(2);
+      g();
+      break;
+    case 21: // gotta keem em unseparated
+    case 22:
+    case 23:
+    case 24:
+    case 25:
+    case 26:
+    case 27:
+    case 28:
+    case 29:
+    case 3: // these too
+      f(3);
+      g();
+      break;
+    case 4:
+      f(4);
+      g();
+    case 5:
+      f(5);
+      g();
+    case 6:
+      f(6);
+      g();
+    default:
+      print(9);
+  }
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30, "allowCostlyOutlines": 1 }

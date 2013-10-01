@@ -1,10 +1,23 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <emscripten.h>
 
 int main() {
-  char* files[] = {"/readable", "/writeable",
-                   "/allaccess", "/forbidden", "/nonexistent"};
+  EM_ASM(
+    FS.mkdir('working');
+#if NODEFS
+    FS.mount(NODEFS, { root: '.' }, 'working');
+#endif
+    FS.chdir('working');
+    FS.writeFile('forbidden', ''); FS.chmod('forbidden', 0000);
+    FS.writeFile('readable',  ''); FS.chmod('readable',  0444);
+    FS.writeFile('writeable', ''); FS.chmod('writeable', 0222);
+    FS.writeFile('allaccess', ''); FS.chmod('allaccess', 0777);
+  );
+
+  char* files[] = {"readable", "writeable",
+                   "allaccess", "forbidden", "nonexistent"};
   for (int i = 0; i < sizeof files / sizeof files[0]; i++) {
     printf("F_OK(%s): %d\n", files[i], access(files[i], F_OK));
     printf("errno: %d\n", errno);

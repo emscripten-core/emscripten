@@ -275,60 +275,77 @@ f.close()
     # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
   def test_cmake(self):
-    # On Windows, we want to build cmake-generated Makefiles with mingw32-make instead of e.g. cygwin make, since mingw32-make
-    # understands Windows paths, and cygwin make additionally produces a cryptic 'not valid bitcode file' errors on files that
-    # *are* valid bitcode files.
+    # Test all supported generators.
+    if WINDOWS:
+      generators = ['MinGW Makefiles', 'NMake Makefiles']
+    else:
+      generators = ['Unix Makefiles']
+
+    make_commands = { 'MinGW Makefiles': ['mingw32-make'], 'NMake Makefiles': ['nmake', '/NOLOGO'], 'Unix Makefiles': ['make'] }
 
     if os.name == 'nt':
-      make_command = 'mingw32-make'
-      emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
+      emconfigure = path_from_root('emconfigure.bat')
     else:
-      make_command = 'make'
-      emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten_unix.cmake')
+      emconfigure = path_from_root('emconfigure')
 
-    cmake_cases = ['target_js', 'target_html']
-    cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
-    for i in range(0, 2):
-      for configuration in ['Debug', 'Release']:
+    for generator in generators:
+      if generator == 'NMake Makefiles' and not Building.which('nmake'):
+        print >> sys.stderr, 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
+        continue
 
-        # Create a temp workspace folder
-        cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
-        tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-        try:
-          os.chdir(tempdirname)
+      make = make_commands[generator]
+      cmake_cases = ['target_js', 'target_html']
+      cmake_outputs = ['test_cmake.js', 'hello_world_gles.html']
+      for i in range(0, 2):
+        for configuration in ['Debug', 'Release']:
+          # CMake can be invoked in two ways, using 'emconfigure cmake', or by directly running 'cmake'.
+          # Test both methods.
+          for invoke_method in ['cmake', 'emconfigure']:
 
-          # Run Cmake
-          cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain,
-                          '-DCMAKE_BUILD_TYPE=' + configuration,
-                          '-DCMAKE_MODULE_PATH=' + path_from_root('cmake').replace('\\', '/'),
-                          '-G' 'Unix Makefiles', cmakelistsdir]
-          ret = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
-          if ret[1] != None and len(ret[1].strip()) > 0:
-            print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
-          if 'error' in ret[1].lower():
-            print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
-            print >> sys.stderr, 'Result:\n' + ret[1]
-            raise Exception('cmake call failed!')
-          assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
+            # Create a temp workspace folder
+            cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
+            tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+            try:
+              os.chdir(tempdirname)
 
-          # Build
-          cmd = [make_command]
-          ret = Popen(cmd, stdout=PIPE).communicate()
-          if ret[1] != None and len(ret[1].strip()) > 0:
-            print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
-          if 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
-            print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
-            print >> sys.stderr, 'Result:\n' + ret[0]
-            raise Exception('make failed!')
-          assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
+              verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
+              
+              # Run Cmake
+              if invoke_method == 'cmake':
+                # Test invoking cmake directly.
+                cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
+                                '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
+              else:
+                # Test invoking via 'emconfigure cmake'
+                cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
 
-          # Run through node, if CMake produced a .js file.
-          if cmake_outputs[i].endswith('.js'):
-            ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
-            assert 'hello, world!' in ret, 'Running cmake-based .js application failed!'
-        finally:
-          os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-          shutil.rmtree(tempdirname)
+              ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE, stderr=None if verbose_level >= 1 else PIPE).communicate()
+              if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+                logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
+              if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
+                logging.error('Failed command: ' + ' '.join(cmd))
+                logging.error('Result:\n' + ret[1])
+                raise Exception('cmake call failed!')
+              assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
+
+              # Build
+              cmd = make + (['VERBOSE=1'] if verbose_level >= 3 else [])
+              ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE).communicate()
+              if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+                logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
+              if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
+                logging.error('Failed command: ' + ' '.join(cmd))
+                logging.error('Result:\n' + ret[0])
+                raise Exception('make failed!')
+              assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
+
+              # Run through node, if CMake produced a .js file.
+              if cmake_outputs[i].endswith('.js'):
+                ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+                self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
+            finally:
+              os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
+              shutil.rmtree(tempdirname)
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
@@ -790,10 +807,10 @@ f.close()
            0: (1500, 5000)
       }),
       (['-O2'], {
-         100: (0, 1500),
-         250: (0, 1500),
-         500: (0, 1500),
-        1000: (0, 1500),
+         100: (0, 1600),
+         250: (0, 1600),
+         500: (0, 1600),
+        1000: (0, 1600),
         2000: (0, 2000),
         5000: (0, 5000),
            0: (0, 5000)
@@ -1648,10 +1665,10 @@ f.close()
     if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_CORES'] = '2'
+      os.environ['EMCC_CORES'] = '2' # standardize over machines
       for asm, linkable, chunks, js_chunks in [
-          (0, 0, 3, 2), (0, 1, 3, 4),
-          (1, 0, 3, 2), (1, 1, 3, 4)
+          (0, 0, 2, 2), (0, 1, 2, 4),
+          (1, 0, 2, 2), (1, 1, 2, 4)
         ]:
         print asm, linkable, chunks, js_chunks
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
@@ -1738,7 +1755,7 @@ $
 other=ay file...
 seeked= file.
 ''', output[0])
-    self.assertIdentical('texte\n', output[1])
+    self.assertContained('texte\n', output[1])
 
   def test_emconfig(self):
     output = Popen([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()

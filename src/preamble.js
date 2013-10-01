@@ -299,11 +299,10 @@ function ccallFunc(func, returnType, argTypes, args) {
   function toC(value, type) {
     if (type == 'string') {
       if (value === null || value === undefined || value === 0) return 0; // null string
-      if (!stack) stack = Runtime.stackSave();
-      var ret = Runtime.stackAlloc(value.length+1);
-      writeStringToMemory(value, ret);
-      return ret;
-    } else if (type == 'array') {
+      value = intArrayFromString(value);
+      type = 'array';
+    }
+    if (type == 'array') {
       if (!stack) stack = Runtime.stackSave();
       var ret = Runtime.stackAlloc(value.length);
       writeArrayToMemory(value, ret);
@@ -569,6 +568,78 @@ function Pointer_stringify(ptr, /* optional */ length) {
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
+// Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+function UTF16ToString(ptr) {
+  var i = 0;
+
+  var str = '';
+  while (1) {
+    var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
+    if (codeUnit == 0)
+      return str;
+    ++i;
+    // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
+    str += String.fromCharCode(codeUnit);
+  }
+}
+Module['UTF16ToString'] = UTF16ToString;
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// null-terminated and encoded in UTF16LE form. The copy will require at most (str.length*2+1)*2 bytes of space in the HEAP.
+function stringToUTF16(str, outPtr) {
+  for(var i = 0; i < str.length; ++i) {
+    // charCodeAt returns a UTF-16 encoded code unit, so it can be directly written to the HEAP.
+    var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
+    {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}}
+  }
+  // Null-terminate the pointer to the HEAP.
+  {{{ makeSetValue('outPtr', 'str.length*2', 0, 'i16') }}}
+}
+Module['stringToUTF16'] = stringToUTF16;
+
+// Given a pointer 'ptr' to a null-terminated UTF32LE-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+function UTF32ToString(ptr) {
+  var i = 0;
+
+  var str = '';
+  while (1) {
+    var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
+    if (utf32 == 0)
+      return str;
+    ++i;
+    // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
+    if (utf32 >= 0x10000) {
+      var ch = utf32 - 0x10000;
+      str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
+    } else {
+      str += String.fromCharCode(utf32);
+    }
+  }
+}
+Module['UTF32ToString'] = UTF32ToString;
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// null-terminated and encoded in UTF32LE form. The copy will require at most (str.length+1)*4 bytes of space in the HEAP,
+// but can use less, since str.length does not return the number of characters in the string, but the number of UTF-16 code units in the string.
+function stringToUTF32(str, outPtr) {
+  var iChar = 0;
+  for(var iCodeUnit = 0; iCodeUnit < str.length; ++iCodeUnit) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
+    var codeUnit = str.charCodeAt(iCodeUnit); // possibly a lead surrogate
+    if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
+      var trailSurrogate = str.charCodeAt(++iCodeUnit);
+      codeUnit = 0x10000 + ((codeUnit & 0x3FF) << 10) | (trailSurrogate & 0x3FF);
+    }
+    {{{ makeSetValue('outPtr', 'iChar*4', 'codeUnit', 'i32') }}}
+    ++iChar;
+  }
+  // Null-terminate the pointer to the HEAP.
+  {{{ makeSetValue('outPtr', 'iChar*4', 0, 'i32') }}}
+}
+Module['stringToUTF32'] = stringToUTF32;
+
 // Memory management
 
 var PAGE_SIZE = 4096;
@@ -595,9 +666,9 @@ var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
 #if ASM_JS == 0
-  abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
+  abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
 #else
-  abort('Cannot enlarge memory arrays in asm.js. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, or (2) set Module.TOTAL_MEMORY before the program runs.');
+  abort('Cannot enlarge memory arrays in asm.js. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', or (2) set Module.TOTAL_MEMORY before the program runs.');
 #endif
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
@@ -645,7 +716,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-assert(!!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
+assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'Cannot fallback to non-typed array case: Code is too specialized');
 
 #if USE_TYPED_ARRAYS == 1
@@ -836,6 +907,17 @@ function writeArrayToMemory(array, buffer) {
 }
 Module['writeArrayToMemory'] = writeArrayToMemory;
 
+function writeAsciiToMemory(str, buffer, dontAddNull) {
+  for (var i = 0; i < str.length; i++) {
+#if ASSERTIONS
+    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
+#endif
+    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}}
+  }
+  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}}
+}
+Module['writeAsciiToMemory'] = writeAsciiToMemory;
+
 {{{ unSign }}}
 {{{ reSign }}}
 
@@ -870,8 +952,9 @@ Math.toFloat32 = Math['toFloat32'];
 // the dependencies are met.
 var runDependencies = 0;
 var runDependencyTracking = {};
-var calledInit = false, calledRun = false;
 var runDependencyWatcher = null;
+var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
+
 function addRunDependency(id) {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
@@ -918,9 +1001,12 @@ function removeRunDependency(id) {
     if (runDependencyWatcher !== null) {
       clearInterval(runDependencyWatcher);
       runDependencyWatcher = null;
-    } 
-    // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-    if (!calledRun && shouldRunNow) run();
+    }
+    if (dependenciesFulfilled) {
+      var callback = dependenciesFulfilled;
+      dependenciesFulfilled = null;
+      callback(); // can add another dependenciesFulfilled
+    }
   }
 }
 Module['removeRunDependency'] = removeRunDependency;
@@ -945,28 +1031,7 @@ __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
 addOnPreRun(function() { addRunDependency('pgo') });
 #endif
 
-function loadMemoryInitializer(filename) {
-  function applyData(data) {
-#if USE_TYPED_ARRAYS == 2
-    HEAPU8.set(data, STATIC_BASE);
-#else
-    allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
-#endif
-  }
-
-  // always do this asynchronously, to keep shell and web as similar as possible
-  addOnPreRun(function() {
-    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-      applyData(Module['readBinary'](filename));
-    } else {
-      Browser.asyncLoad(filename, function(data) {
-        applyData(data);
-      }, function(data) {
-        throw 'could not load memory initializer ' + filename;
-      });
-    }
-  });
-}
+var memoryInitializer = null;
 
 // === Body ===
 

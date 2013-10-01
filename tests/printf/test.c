@@ -8,10 +8,15 @@ int main() {
   printf("\n");
   printf("Characters: %c %c\n", 'a', 65);
   printf("Decimals: %d %ld %lld %d\n", 1977, 650000L, 12LL, 4);
-  printf("Preceding with blanks: %10d\n", 1977);
-  printf("Preceding with zeros: %010d\n", 1977);
+  printf("Preceding with blanks: %10d %10d\n", 1977, -1977);
+  printf("Preceding with zeros: %010d %010d\n", 1977, -1977);
+  printf("Force sign: %+d %+d %+6d %+6d\n", 1977, -1977, 1977, -1977);
+  printf("Force sign or space: % d % d % 6d % 6d\n", 1977, -1977, 1977, -1977);
+  printf("Sign overrides space: % +d % +d % +6d % +6d\n", 1977, -1977, 1977, -1977);
   printf("Some different radixes: %d %x %o %#x %#o\n", 100, 100, 100, 100, 100);
-  printf("floats: %4.2f %+.0e %E\n", 3.1416, 3.1416, 3.1416);
+  printf("floats: %4.2f %+.0e %E %08.2f\n", 3.1416, 3.1416, 3.1416, 3.1416);
+  printf("negative floats: %4.2f %+.0e %E %08.2f\n", -3.1416, -3.1416, -3.1416, -3.1416);
+  printf("Force sign or space: % .2f % .2f % 6.2f % 6.2f\n", 3.1416, -3.1416, 3.1416, -3.1416);
   printf("Width trick: %*d\n", 5, 10);
   printf("%s %%\n", "A string");
   printf("Null string: %7s\n", NULL);

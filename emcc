@@ -238,6 +238,9 @@ Options that are modified or new in %s include:
                            (see --llvm-opts), setting this has no
                            effect.
 
+                           Note that LLVM LTO is not perfectly stable yet,
+                           and can can cause code to behave incorrectly.
+
   --closure <on>           0: No closure compiler (default in -O2 and below)
                            1: Run closure compiler. This greatly reduces
                            code size and may in some cases increase
@@ -471,6 +474,9 @@ Options that are modified or new in %s include:
                            to hide these warnings and acknowledge that the
                            explicit use of absolute paths is intentional.
 
+  --proxy-to-worker        Generates both html and js files. The main
+                           program is in js, and the html proxies to/from it.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -552,6 +558,8 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         pass
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
+      use_js = 0
+    elif arg == '-E':
       use_js = 0
 
   if src:
@@ -666,7 +674,7 @@ if '-M' in sys.argv or '-MM' in sys.argv:
 if '-E' in sys.argv:
   # Just run the preprocessor
   cmd = [CC] + sys.argv[1:]
-  logging.debug('just preprocssor ' + ' '.join(cmd))
+  logging.debug('just preprocessor ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
 # Check if a target is specified
@@ -712,6 +720,13 @@ else:
 def in_temp(name):
   return os.path.join(temp_dir, os.path.basename(name))
 
+# Parses the essential suffix of a filename, discarding Unix-style version numbers in the name. For example for 'libz.so.1.2.8' returns '.so'
+def filename_type_suffix(filename):
+  for i in reversed(filename.split('.')[1:]):
+    if not i.isdigit():
+      return '.' + i
+  return ''
+
 try:
   call = CXX if use_cxx else CC
 
@@ -740,6 +755,7 @@ try:
   save_bc = False
   memory_init_file = False
   use_preload_cache = False
+  proxy_to_worker = False
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -903,6 +919,9 @@ try:
       memory_init_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '--proxy-to-worker':
+      proxy_to_worker = True
+      newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name):
@@ -962,35 +981,45 @@ try:
 
     if i > 0:
       prev = newargs[i-1]
-      if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-I', '-L']: continue # ignore this gcc-style argument
+      if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
 
     if (os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES)):
       arg = os.path.realpath(arg)
 
-    if not arg.startswith('-') and (arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg)): # we already removed -o <target>, so all these should be inputs
-      newargs[i] = ''
-      if os.path.exists(arg):
-        if arg.endswith(SOURCE_SUFFIXES):
+    if not arg.startswith('-'):
+      if not os.path.exists(arg):
+        logging.error(arg + ': No such file or directory')
+        exit(1)
+
+      arg_suffix = filename_type_suffix(arg)
+      if arg_suffix.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+        newargs[i] = ''
+        if arg_suffix.endswith(SOURCE_SUFFIXES):
           input_files.append(arg)
           has_source_inputs = True
+        elif arg_suffix.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
+          input_files.append(arg)
+        elif arg_suffix.endswith(STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES):
+          # if it's not, and it's a library, just add it to libs to find later
+          l = unsuffixed_basename(arg)
+          for prefix in LIB_PREFIXES:
+            if not prefix: continue
+            if l.startswith(prefix):
+              l = l[len(prefix):]
+              break
+          libs.append(l)
+          newargs[i] = ''
         else:
-          # this should be bitcode, make sure it is valid
-          if arg.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg):
-            input_files.append(arg)
-          elif arg.endswith(STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES):
-            # if it's not, and it's a library, just add it to libs to find later
-            l = unsuffixed_basename(arg)
-            for prefix in LIB_PREFIXES:
-              if not prefix: continue
-              if l.startswith(prefix):
-                l = l[len(prefix):]
-                break
-            libs.append(l)
-            newargs[i] = ''
+          logging.warning(arg + ' is not valid LLVM bitcode')
+      elif arg_suffix.endswith(STATICLIB_SUFFIXES):
+        if not shared.Building.is_ar(arg):
+          if shared.Building.is_bitcode(arg):
+            logging.error(arg + ': File has a suffix of a static library ' + str(STATICLIB_SUFFIXES) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(BITCODE_SUFFIXES))
           else:
-            logging.warning(arg + ' is not valid LLVM bitcode')
+            logging.error(arg + ': Unknown format, not a static library!')
+          exit(1)
       else:
-        logging.error(arg + ': No such file or directory')
+        logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
         exit(1)
     elif arg.startswith('-L'):
       lib_dirs.append(arg[2:])
@@ -1128,6 +1157,9 @@ try:
   if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
     assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
 
+  if proxy_to_worker:
+    shared.Settings.PROXY_TO_WORKER = 1
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')
@@ -1136,31 +1168,32 @@ try:
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
-    if input_file.endswith(SOURCE_SUFFIXES):
+    file_suffix = filename_type_suffix(input_file)
+    if file_suffix.endswith(SOURCE_SUFFIXES):
       logging.debug('compiling source file: ' + input_file)
       input_file = shared.Building.preprocess(input_file, in_temp(uniquename(input_file)))
       output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
-      if input_file.endswith(CXX_SUFFIXES):
+      if file_suffix.endswith(CXX_SUFFIXES):
         args += shared.EMSDK_CXX_OPTS
-      logging.debug("running:" + call + ' ' + ' '.join(args))
+      logging.debug("running: " + call + ' ' + ' '.join(args))
       execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
         logging.error('compiler frontend failed to generate LLVM bitcode, halting')
         sys.exit(1)
     else: # bitcode
-      if input_file.endswith(BITCODE_SUFFIXES):
+      if file_suffix.endswith(BITCODE_SUFFIXES):
         logging.debug('copying bitcode file: ' + input_file)
         temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      elif input_file.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
+      elif file_suffix.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
         logging.debug('copying library file: ' + input_file)
         temp_file = in_temp(uniquename(input_file))
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      else: #.ll
+      elif file_suffix.endswith(ASSEMBLY_SUFFIXES):
         if not LEAVE_INPUTS_RAW:
           # Note that by assembling the .ll file, then disassembling it later, we will
           # remove annotations which is a good thing for compilation time
@@ -1168,6 +1201,9 @@ try:
           temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
           shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
+      else:
+        logging.error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
+        sys.exit(1)
 
   if not LEAVE_INPUTS_RAW:
     assert len(temp_files) == len(input_files)
@@ -1175,7 +1211,8 @@ try:
     # Optimize source files
     if llvm_opts > 0:
       for i, input_file in enumerate(input_files):
-        if input_file.endswith(SOURCE_SUFFIXES):
+        file_suffix = filename_type_suffix(input_file)
+        if file_suffix.endswith(SOURCE_SUFFIXES):
           temp_file = temp_files[i]
           logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
           shared.Building.llvm_opt(temp_file, llvm_opts)
@@ -1267,6 +1304,10 @@ try:
         os.path.join('libc', 'gen', 'vwarnx.c'),
         os.path.join('libc', 'stdlib', 'strtod.c'),
       ]
+      musl_files = [
+      ]
+      for directory, sources in musl_files:
+        libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
       return build_libc('libc.bc', libc_files)
 
     def apply_libc(need):
@@ -1304,6 +1345,33 @@ try:
           'wctrans.c',
           'wcwidth.c',
          ]],
+         ['locale', [
+          'iconv.c',
+          'iswalnum_l.c',
+          'iswalpha_l.c',
+          'iswblank_l.c',
+          'iswcntrl_l.c',
+          'iswctype_l.c',
+          'iswdigit_l.c',
+          'iswgraph_l.c',
+          'iswlower_l.c',
+          'iswprint_l.c',
+          'iswpunct_l.c',
+          'iswspace_l.c',
+          'iswupper_l.c',
+          'iswxdigit_l.c',
+          'strfmon.c',
+          'strxfrm.c',
+          'towctrans_l.c',
+          'towlower_l.c',
+          'towupper_l.c',
+          'wcscoll.c',
+          'wcscoll_l.c',
+          'wcsxfrm.c',
+          'wcsxfrm_l.c',
+          'wctrans_l.c',
+          'wctype_l.c',
+         ]],
          ['multibyte', [
           'btowc.c',
           'mblen.c',
@@ -1321,6 +1389,14 @@ try:
           'wctob.c',
           'wctomb.c',
          ]],
+         ['stdio', [
+          'fwprintf.c',
+          'swprintf.c',
+          'vfwprintf.c',
+          'vswprintf.c',
+          'vwprintf.c',
+          'wprintf.c',
+         ]],
          ['stdlib', [
            'ecvt.c',
            'fcvt.c',
@@ -1330,7 +1406,7 @@ try:
            'wcpcpy.c',
            'wcpncpy.c',
            'wcscasecmp.c',
-           # 'wcscasecmp_l.c', # XXX: alltypes.h issue
+           'wcscasecmp_l.c',
            'wcscat.c',
            'wcschr.c',
            'wcscmp.c',
@@ -1339,7 +1415,7 @@ try:
            'wcsdup.c',
            'wcslen.c',
            'wcsncasecmp.c',
-           # 'wcsncasecmp_l.c', # XXX: alltypes.h issue
+           'wcsncasecmp_l.c',
            'wcsncat.c',
            'wcsncmp.c',
            'wcsncpy.c',
@@ -1608,7 +1684,7 @@ try:
           temp_memfile = os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile))
           if os.path.abspath(memfile) != os.path.abspath(memfile):
             shutil.copyfile(memfile, temp_memfile)
-        return 'loadMemoryInitializer("%s");' % os.path.basename(memfile)
+        return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
       src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
@@ -1709,7 +1785,11 @@ try:
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     html = open(target, 'w')
-    if not Compression.on:
+    if proxy_to_worker:
+      html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename)))
+      js_target = unsuffixed(target) + '.js'
+      shutil.copyfile(final, js_target)
+    elif not Compression.on:
       if debug_level >= 4:
         match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
             re.DOTALL)
@@ -1783,13 +1863,12 @@ try:
     html.close()
   else:
     if split_js_file:
-        from tools.split import split_javascript_file
-        split_javascript_file(final, unsuffixed(target), split_js_file)
+      from tools.split import split_javascript_file
+      split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if debug_level >= 4: generate_source_map(target)
-
-        # copy final JS to output
-        shutil.move(final, target)
+      if debug_level >= 4: generate_source_map(target)
+      # copy final JS to output
+      shutil.move(final, target)
 
   if DEBUG: logging.debug('total time: %.2f seconds' % (time.time() - start_time))
 

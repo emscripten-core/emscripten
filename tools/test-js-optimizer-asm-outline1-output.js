@@ -372,6 +372,57 @@ function switchh() {
  }
  STACKTOP = sp;
 }
+function switchh2() {
+ var helper$0 = 0, helper$1 = 0, sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 280 | 0;
+ while (1) {
+  helper$0 = 1;
+  helper$1 = x;
+  if (helper$0) {
+   helper$0 = 0;
+   switch (helper$1 | 0) {
+   case 0:
+    f(0);
+    g();
+    break;
+   default:
+    {
+     helper$0 = 1;
+    }
+   }
+  }
+  HEAP32[sp + 8 >> 2] = helper$0;
+  HEAP32[sp + 16 >> 2] = helper$1;
+  HEAP32[sp + 40 >> 2] = 0;
+  HEAP32[sp + 44 >> 2] = 0;
+  switchh2$2(sp);
+  helper$0 = HEAP32[sp + 8 >> 2] | 0;
+  tempValue = HEAP32[sp + 40 >> 2] | 0;
+  tempInt = HEAP32[sp + 44 >> 2] | 0;
+  tempDouble = +HEAPF32[sp + 44 >> 2];
+  HEAP32[sp + 40 >> 2] = 0;
+  HEAP32[sp + 44 >> 2] = 0;
+  if ((tempValue | 0) == 5) {
+   STACKTOP = sp;
+   return;
+  }
+  HEAP32[sp + 8 >> 2] = helper$0;
+  HEAP32[sp + 16 >> 2] = helper$1;
+  HEAP32[sp + 32 >> 2] = 0;
+  HEAP32[sp + 36 >> 2] = 0;
+  switchh2$1(sp);
+  helper$0 = HEAP32[sp + 8 >> 2] | 0;
+  if (helper$0) {
+   helper$0 = 0;
+   HEAP32[sp + 16 >> 2] = helper$1;
+   HEAP32[sp + 24 >> 2] = 0;
+   HEAP32[sp + 28 >> 2] = 0;
+   switchh2$0(sp);
+  }
+ }
+ STACKTOP = sp;
+}
 function lin$0(sp) {
  sp = sp | 0;
  c(14);
@@ -784,6 +835,88 @@ function switchh$2(sp) {
      g();
      break;
     }
+   default:
+    {
+     helper$0 = 1;
+    }
+   }
+  }
+ } while (0);
+ HEAP32[sp + 8 >> 2] = helper$0;
+}
+function switchh2$0(sp) {
+ sp = sp | 0;
+ var helper$1 = 0;
+ helper$1 = HEAP32[sp + 16 >> 2] | 0;
+ switch (helper$1 | 0) {
+ case 4:
+  f(4);
+  g();
+ case 5:
+  f(5);
+  g();
+ case 6:
+  f(6);
+  g();
+ default:
+  print(9);
+ }
+}
+function switchh2$1(sp) {
+ sp = sp | 0;
+ var helper$0 = 0, helper$1 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ helper$1 = HEAP32[sp + 16 >> 2] | 0;
+ if (helper$0) {
+  helper$0 = 0;
+  switch (helper$1 | 0) {
+  case 21:
+  case 22:
+  case 23:
+  case 24:
+  case 25:
+  case 26:
+  case 27:
+  case 28:
+  case 29:
+  case 3:
+   f(3);
+   g();
+   break;
+  default:
+   {
+    helper$0 = 1;
+   }
+  }
+ }
+ HEAP32[sp + 8 >> 2] = helper$0;
+}
+function switchh2$2(sp) {
+ sp = sp | 0;
+ var helper$0 = 0, helper$1 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ helper$1 = HEAP32[sp + 16 >> 2] | 0;
+ OL : do {
+  if (helper$0) {
+   helper$0 = 0;
+   switch (helper$1 | 0) {
+   case 1:
+    f(1);
+    g();
+    return;
+   default:
+    {
+     helper$0 = 1;
+    }
+   }
+  }
+  if (helper$0) {
+   helper$0 = 0;
+   switch (helper$1 | 0) {
+   case 2:
+    f(2);
+    g();
+    break;
    default:
     {
      helper$0 = 1;

@@ -342,7 +342,6 @@ fi
         assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
         assert BUILDING_MESSAGE.replace('X', 'libc') not in output
         self.assertContained('hello, world!', run_js('a.out.js'))
-        assert not os.path.exists(EMCC_CACHE)
         try_delete('a.out.js')
 
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
@@ -478,7 +477,7 @@ fi
         (['--jcache'], 'hello_malloc.cpp', False, True, False, True, False, True, []),
         ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
         # new, huge file
-        ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('3 chunks',)),
+        ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('4 chunks',)),
         (['--jcache'], 'hello_libcxx.cpp', True, False, True, False, True, False, []),
         (['--jcache'], 'hello_libcxx.cpp', False, True, False, True, False, True, []),
         ([], 'hello_libcxx.cpp', False, False, False, False, False, False, []),

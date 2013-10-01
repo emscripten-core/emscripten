@@ -8,8 +8,6 @@
 
 #include "ministring.h"
 
-// TODO: move all set to unorderedset
-
 template <class T, class U> bool contains(const T& container, const U& contained) {
   return container.find(contained) != container.end();
 }

@@ -5,18 +5,10 @@ mergeInto(LibraryManager.library, {
     CONTENT_OWNING: 1, // contains a subarray into the heap, and we own it, without copying (note: someone else needs to free() it, if that is necessary)
     CONTENT_FLEXIBLE: 2, // has been modified or never set to anything, and is a flexible js array that can grow/shrink
     CONTENT_FIXED: 3, // contains some fixed-size content written into it, in a typed array
-    ensureFlexible: function(node) {
-      if (node.contentMode !== MEMFS.CONTENT_FLEXIBLE) {
-        var contents = node.contents;
-        node.contents = Array.prototype.slice.call(contents);
-        node.contentMode = MEMFS.CONTENT_FLEXIBLE;
-      }
-    },
-
     mount: function(mount) {
-      return MEMFS.create_node(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
+      return MEMFS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
     },
-    create_node: function(parent, name, mode, dev) {
+    createNode: function(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
@@ -74,6 +66,13 @@ mergeInto(LibraryManager.library, {
       }
       return node;
     },
+    ensureFlexible: function(node) {
+      if (node.contentMode !== MEMFS.CONTENT_FLEXIBLE) {
+        var contents = node.contents;
+        node.contents = Array.prototype.slice.call(contents);
+        node.contentMode = MEMFS.CONTENT_FLEXIBLE;
+      }
+    },
     node_ops: {
       getattr: function(node) {
         var attr = {};
@@ -121,7 +120,7 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
       },
       mknod: function(parent, name, mode, dev) {
-        return MEMFS.create_node(parent, name, mode, dev);
+        return MEMFS.createNode(parent, name, mode, dev);
       },
       rename: function(old_node, new_dir, new_name) {
         // if we're overwriting a directory at new_name, make sure it's empty.
@@ -163,7 +162,7 @@ mergeInto(LibraryManager.library, {
         return entries;
       },
       symlink: function(parent, newname, oldpath) {
-        var node = MEMFS.create_node(parent, newname, 0777 | {{{ cDefine('S_IFLNK') }}}, 0);
+        var node = MEMFS.createNode(parent, newname, 0777 | {{{ cDefine('S_IFLNK') }}}, 0);
         node.link = oldpath;
         return node;
       },
@@ -177,7 +176,10 @@ mergeInto(LibraryManager.library, {
     stream_ops: {
       read: function(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
+        if (position >= contents.length)
+          return 0;
         var size = Math.min(contents.length - position, length);
+        assert(size >= 0);
 #if USE_TYPED_ARRAYS == 2
         if (size > 8 && contents.subarray) { // non-trivial, and typed array
           buffer.set(contents.subarray(position, position + size), offset);

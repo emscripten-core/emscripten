@@ -227,6 +227,8 @@ var Types = {
 
   needAnalysis: {}, // Types noticed during parsing, that need analysis
 
+  hasInlineJS: false, // whether the program has inline JS anywhere
+
   // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
   // needed (+,-,*,/,% - we do not need it for bitops), or PRECISE_I64_MATH is 2 (forced)
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)
@@ -420,7 +422,7 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_memfs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }
@@ -467,7 +469,10 @@ var PassManager = {
       }));
     } else if (phase == 'funcs') {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Types: { preciseI64MathUsed: Types.preciseI64MathUsed },
+        Types: {
+          hasInlineJS: Types.hasInlineJS,
+          preciseI64MathUsed: Types.preciseI64MathUsed
+        },
         Functions: {
           blockAddresses: Functions.blockAddresses,
           indexedFunctions: Functions.indexedFunctions,
@@ -501,5 +506,9 @@ var PassManager = {
     }));
     */
   }
+};
+
+var Framework = {
+  currItem: null
 };
 
