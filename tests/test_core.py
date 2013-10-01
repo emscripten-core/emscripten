@@ -7743,6 +7743,8 @@ def process(filename):
       Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_fs_nodefs_rw(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
@@ -7815,6 +7817,8 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_unlink(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
@@ -7838,6 +7842,7 @@ def process(filename):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
+    if self.emcc_args is None: return self.skip('requires emcc')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
@@ -7845,6 +7850,8 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
