@@ -1136,6 +1136,7 @@ try:
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
     assert not memory_init_file, 'memory init file is not supported with module linking'
+    assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
 
