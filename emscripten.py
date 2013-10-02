@@ -430,7 +430,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       Counter.j = 0
       def fix_item(item):
         Counter.j += 1
-        newline = Counter.j % 30 == 1
+        newline = Counter.j % 30 == 29
         if item == '0': return bad if not newline else (bad + '\n')
         return item if not newline else (item + '\n')
       body = ','.join(map(fix_item, body))
