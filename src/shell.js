@@ -68,7 +68,9 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['arguments'] = process['argv'].slice(2);
 
-  module.exports = Module;
+  // Explicitly using associative array form instead of dot notation form prevents the closure compiler 
+  // minifying the exports property, which is important if Module is to remain visible to node.js
+  module['exports'] = Module;
 }
 else if (ENVIRONMENT_IS_SHELL) {
   Module['print'] = print;
