@@ -120,6 +120,11 @@ mergeInto(LibraryManager.library, {
     //
     hashName: function(parentid, name) {
       var hash = 0;
+
+#if CASE_INSENSITIVE_FS
+      name = name.toLowerCase();
+#endif
+
       for (var i = 0; i < name.length; i++) {
         hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
       }
@@ -151,8 +156,15 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(err);
       }
       var hash = FS.hashName(parent.id, name);
+#if CASE_INSENSITIVE_FS
+      name = name.toLowerCase();
+#endif
       for (var node = FS.nameTable[hash]; node; node = node.name_next) {
-        if (node.parent.id === parent.id && node.name === name) {
+        var nodeName = node.name;
+#if CASE_INSENSITIVE_FS
+        nodeName = nodeName.toLowerCase();
+#endif
+        if (node.parent.id === parent.id && nodeName === name) {
           return node;
         }
       }
