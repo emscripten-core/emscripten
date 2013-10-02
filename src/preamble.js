@@ -644,7 +644,7 @@ Module['stringToUTF32'] = stringToUTF32;
 
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
-  return ((x+4095)>>12)<<12;
+  return (x+4095)&-4096;
 }
 
 var HEAP;
