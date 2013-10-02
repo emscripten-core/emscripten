@@ -1196,7 +1196,7 @@ var LibrarySDL = {
     var ret = SDL.makeSurface(diagonal, diagonal, srcData.flags, false, 'rotozoomSurface');
     var dstData = SDL.surfaces[ret];
     dstData.ctx.translate(diagonal / 2, diagonal / 2);
-    dstData.ctx.rotate(angle * Math.PI / 180);
+    dstData.ctx.rotate(-angle * Math.PI / 180);
     dstData.ctx.drawImage(srcData.canvas, -w / 2, -h / 2, w, h);
     return ret;
   },
