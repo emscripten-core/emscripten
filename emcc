@@ -1239,7 +1239,7 @@ try:
 
   extra_files_to_link = []
 
-  if not LEAVE_INPUTS_RAW and not AUTODEBUG and \
+  if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB == 2 and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
 
