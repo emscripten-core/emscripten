@@ -588,7 +588,7 @@ function stackAlloc(size) {
   var ret = 0;
   ret = STACKTOP;
   STACKTOP = (STACKTOP + size)|0;
-''' + ('STACKTOP = ((STACKTOP + 3)>>2)<<2;' if settings['TARGET_X86'] else 'STACKTOP = ((STACKTOP + 7)>>3)<<3;') + '''
+''' + ('STACKTOP = (STACKTOP + 3)&-4;' if settings['TARGET_X86'] else 'STACKTOP = (STACKTOP + 7)&-8;') + '''
   return ret|0;
 }
 function stackSave() {
