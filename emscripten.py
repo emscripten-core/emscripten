@@ -329,8 +329,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # calculations on merged forwarded data
   forwarded_json['Functions']['indexedFunctions'] = {}
-  i = 2 # universal counter
-  if settings['ASM_JS']: i += 2*settings['RESERVED_FUNCTION_POINTERS']
+  i = settings['FUNCTION_POINTER_ALIGNMENT'] # universal counter
+  if settings['ASM_JS']: i += settings['RESERVED_FUNCTION_POINTERS']*settings['FUNCTION_POINTER_ALIGNMENT']
+  base_fp = i
   table_counters = {} # table-specific counters
   alias = settings['ASM_JS'] and settings['ALIASING_FUNCTION_POINTERS']
   sig = None
@@ -339,12 +340,12 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       sig = forwarded_json['Functions']['implementedFunctions'].get(indexed) or forwarded_json['Functions']['unimplementedFunctions'].get(indexed)
       assert sig, indexed
       if sig not in table_counters:
-        table_counters[sig] = 2 + 2*settings['RESERVED_FUNCTION_POINTERS']
+        table_counters[sig] = base_fp
       curr = table_counters[sig]
-      table_counters[sig] += 2
+      table_counters[sig] += settings['FUNCTION_POINTER_ALIGNMENT']
     else:
       curr = i
-      i += 2
+      i += settings['FUNCTION_POINTER_ALIGNMENT']
     #logging.debug('function indexing', indexed, curr, sig)
     forwarded_json['Functions']['indexedFunctions'][indexed] = curr # make sure not to modify this python object later - we use it in indexize
 
@@ -426,7 +427,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
       for j in range(settings['RESERVED_FUNCTION_POINTERS']):
-        body[2 + 2*j] = 'jsCall_%s_%s' % (sig, j)
+        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = 'jsCall_%s_%s' % (sig, j)
       Counter.j = 0
       def fix_item(item):
         Counter.j += 1

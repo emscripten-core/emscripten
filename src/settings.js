@@ -170,6 +170,9 @@ var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to ali
                                     // a different type. This can greatly decrease table sizes
                                     // in asm.js, but can break code that compares function
                                     // pointers across different types.
+var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we will fill the
+                                    // tables with zeros on aligned values. 1 means all values
+                                    // are aligned and all will be used (which is optimal).
 
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 

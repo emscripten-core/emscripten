@@ -347,22 +347,23 @@ var Runtime = {
     for (var i = 0; i < Runtime.functionPointers.length; i++) {
       if (!Runtime.functionPointers[i]) {
         Runtime.functionPointers[i] = func;
-        return 2 + 2*i;
+        return {{{ FUNCTION_POINTER_ALIGNMENT }}}*(1 + i);
       }
     }
     throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
     var table = FUNCTION_TABLE;
     var ret = table.length;
+    assert(ret % {{{ FUNCTION_POINTER_ALIGNMENT }}} === 0);
     table.push(func);
-    table.push(0);
+    for (var i = 0; i < {{{ FUNCTION_POINTER_ALIGNMENT }}}-1; i++) table.push(0);
     return ret;
 #endif
   },
 
   removeFunction: function(index) {
 #if ASM_JS
-    Runtime.functionPointers[(index-2)/2] = null;
+    Runtime.functionPointers[(index-{{{ FUNCTION_POINTER_ALIGNMENT }}})/{{{ FUNCTION_POINTER_ALIGNMENT }}}] = null;
 #else
     var table = FUNCTION_TABLE;
     table[index] = null;

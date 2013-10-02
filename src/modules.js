@@ -234,7 +234,7 @@ var Types = {
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)
 };
 
-var firstTableIndex = (ASM_JS ? 2*RESERVED_FUNCTION_POINTERS : 0) + 2;
+var firstTableIndex = FUNCTION_POINTER_ALIGNMENT * ((ASM_JS ? RESERVED_FUNCTION_POINTERS : 0) + 1);
 
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
@@ -287,7 +287,7 @@ var Functions = {
       ret = this.indexedFunctions[ident];
       if (!ret) {
         ret = this.nextIndex;
-        this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
+        this.nextIndex += FUNCTION_POINTER_ALIGNMENT;
         this.indexedFunctions[ident] = ret;
       }
       ret = ret.toString();
