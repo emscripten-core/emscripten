@@ -959,6 +959,7 @@ var Math_floor = Math.floor;
 var Math_pow = Math.pow;
 var Math_imul = Math.imul;
 var Math_toFloat32 = Math.toFloat32;
+var Math_min = Math.min;
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
