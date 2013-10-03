@@ -73,27 +73,6 @@ function b($this, $__n) {
  h((~~g) ^ -1); // do NOT convert this, as it would lead to ~~~ which is confusing in asm, given the role of ~~
  return;
 }
-function rett() {
- if (f()) {
-  g();
-  return 5;
- }
- // missing final return, need to add it
-}
-function ret2t() {
- if (f()) {
-  g();
-  return;
- }
- // missing final return, but no need
-}
-function retf() {
- if (f()) {
-  g();
-  return +h();
- }
- // missing final return, need it as a float
-}
 function i32_8() {
  if (((HEAP8[$4 & 16777215] | 0) << 24 >> 24) == 0) {
   print(5);

@@ -1582,7 +1582,7 @@ function normalizeAsm(func) {
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type === 'var') {
-        assert(0, 'should be no vars to fix! ' + JSON.stringify(node));
+        assert(0, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
         /*
         for (var j = 0; j < node[1].length; j++) {
           var v = node[1][j];
