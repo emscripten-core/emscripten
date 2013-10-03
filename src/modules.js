@@ -379,13 +379,11 @@ var Functions = {
     for (var t in tables) {
       if (t == 'pre') continue;
       var table = tables[t];
-      if (ASM_JS) {
-        // asm function table mask must be power of two
-        // if nonaliasing, then standardize function table size, to avoid aliasing pointers through the &M mask (in a small table using a big index)
-        var fullSize = ALIASING_FUNCTION_POINTERS ? ceilPowerOfTwo(table.length) : maxTable;
-        for (var i = table.length; i < fullSize; i++) {
-          table[i] = 0;
-        }
+      // asm function table mask must be power of two, and non-asm must be aligned
+      // if nonaliasing, then standardize function table size, to avoid aliasing pointers through the &M mask (in a small table using a big index)
+      var fullSize = ASM_JS ? (ALIASING_FUNCTION_POINTERS ? ceilPowerOfTwo(table.length) : maxTable) : ((table.length+FUNCTION_POINTER_ALIGNMENT-1)&-FUNCTION_POINTER_ALIGNMENT);
+      for (var i = table.length; i < fullSize; i++) {
+        table[i] = 0;
       }
       // finalize table
       var indices = table.toString().replace('"', '');
