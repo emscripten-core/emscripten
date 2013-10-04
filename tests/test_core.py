@@ -1073,7 +1073,6 @@ Succeeded!
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
 
   def test_cube2hash(self):
-
     try:
       old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
       os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = '1' # test splitting out each function to a chunk in emscripten.py (21 functions here)
@@ -1090,6 +1089,17 @@ Succeeded!
         self.do_run('', 'hash value: ' + output, [text], no_build=True)
     finally:
       os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
+
+    assert 'asm1' in test_modes
+    if self.run_name == 'asm1':
+      assert Settings.RELOOP
+      generated = open('src.cpp.o.js').read()
+      main = generated[generated.find('function _main'):]
+      main = main[:main.find('\n}')]
+      num_vars = 0
+      for v in re.findall('var [^;]+;', main):
+        num_vars += v.count(',') + 1
+      assert num_vars == 7, 'simple variable elimination should have been run, but seeing %d' % num_vars
 
   def test_unaligned(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
@@ -8605,12 +8615,6 @@ void*:16
       assert ' & 3]()' not in final, 'small function table does not exist'
       assert ' & 255]()' not in original, 'big function table does not exist'
       assert ' & 255]()' in final, 'big function table exists'
-
-    assert 'asm1' in test_modes
-    if self.run_name == 'asm1':
-      assert not Settings.RELOOP
-      Settings.RELOOP = 1 # check for mixing of relooping with asm1
-      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
   def test_gcc_unmangler(self):
     Settings.NAMED_GLOBALS = 1 # test coverage for this

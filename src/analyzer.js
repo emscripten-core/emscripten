@@ -1236,7 +1236,10 @@ function analyzer(data, sidePass) {
 
       // Decision time
 
+      var num = 0;
+
       for (vname in func.variables) {
+        num++;
         var variable = func.variables[vname];
         var pointedType = pointingLevels(variable.type) > 0 ? removePointing(variable.type) : null;
         if (variable.origin == 'getelementptr') {
@@ -1262,6 +1265,71 @@ function analyzer(data, sidePass) {
           variable.impl = VAR_EMULATED;
         }
         if (dcheck('vars')) dprint('// var ' + vname + ': ' + JSON.stringify(variable));
+      }
+
+      if (!RUNNING_JS_OPTS && ASM_JS) {
+        // Consolidate variables in a simple and quick way: if a variable is only ever used
+        // in a single block, make it use registers from a function-scope pool
+
+        var removed = 0;
+        var pools = [[], [], [], []];
+//printErr('func: ' + dump(func));
+        func.labels.forEach(function(label) {
+          var usesHere = {}; // uses here in this label
+          label.lines.forEach(function(line) {
+            // we can't optimize illegal values or things split out from them
+            if (line.assignTo && line.assignTo.indexOf('$', 1) < 0 && !isIllegalType(line.type) &&
+                func.variables[line.assignTo].impl !== VAR_NATIVIZED) { // we could also optimize the rest, but would need to separate them. worth doing VAR_EMULATED
+              usesHere[line.assignTo] = 0;
+            }
+          });
+          label.lines.forEach(function(line) {
+            walkInterdata(line, function(item) {
+              if (item.intertype === 'value' && item.ident in usesHere) {
+                usesHere[item.ident]++;
+              }
+            });
+          });
+          var optimizables = {}, has = false
+          for (var v in usesHere) {
+            assert(v in func.variables);
+            if (usesHere[v] === func.variables[v].uses) {
+              optimizables[v] = 0;
+              has = true;
+            }
+          }
+//printErr('pre ' + func.ident + ' : ' + JSON.stringify(optimizables));
+          if (has) {
+            var replacements = {};
+            var indexes = [0, 0, 0, 0];
+            for (var v in optimizables) {
+              var type = 0;
+              var info = func.variables[v];
+              if (info.type in Runtime.FLOAT_TYPES) type = 1;
+              if (info.impl === VAR_EMULATED) type |= 2;
+              if (indexes[type] >= pools[type].length) {
+                pools[type].push(v); // new var, no need to replace it
+              } else {
+                replacements[v] = pools[type][indexes[type]];
+                delete func.variables[v];
+              }
+              indexes[type]++;
+            }
+//printErr('post ' + JSON.stringify(replacements));
+            label.lines.forEach(function(line) {
+              if (replacements[line.assignTo]) {
+                line.assignTo = replacements[line.assignTo];
+                removed++;
+              }
+              walkInterdata(line, function(item) {
+                if (item.intertype === 'value' && replacements[item.ident]) {
+                  item.ident = replacements[item.ident];
+                }
+              });
+            });
+          }
+        });
+//printErr('var removals: ' + removed + ' / ' + num + ' (' + Math.round(100*removed/num) + '%)');
       }
     });
   }

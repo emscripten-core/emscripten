@@ -933,7 +933,7 @@ try:
   if default_cxx_std:
     newargs = newargs + [default_cxx_std]
 
-  if js_opts is None: js_opts = opt_level >= 1
+  if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None and opt_level >= 3: llvm_lto = 3
   if opt_level == 0: debug_level = 4
