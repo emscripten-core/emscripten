@@ -1910,3 +1910,51 @@ done.
     assert '''tests/hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
 
+  def test_module_exports_with_closure(self):
+    # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1
+    # This is important as if module.export is not present the Module object will not be visible to node.js
+    # Run with ./runner.py other.test_module_exports_with_closure
+
+    # First make sure test.js isn't present.
+    try_delete(path_from_root('tests/Module-exports', 'test.js'))
+    assert not os.path.exists(path_from_root('tests/Module-exports', 'test.js'))
+
+    # compile with -O2 --closure 0
+    Popen([PYTHON, EMCC, path_from_root('tests/Module-exports', 'test.c'), '-o', path_from_root('tests/Module-exports', 'test.js'), '-O2', '--closure', '0', '--pre-js', path_from_root('tests/Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
+
+    # Check that compilation was successful
+    assert os.path.exists(path_from_root('tests/Module-exports', 'test.js'))
+    test_js_closure_0 = open(path_from_root('tests/Module-exports', 'test.js')).read()
+
+    # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
+    assert "module['exports'] = Module;" in test_js_closure_0
+
+    # Check that main.js (which includes test.js) completes successfully
+    self.assertContained('bufferTest finished', run_js(path_from_root('tests/Module-exports', 'main.js')))
+
+    # Delete test.js again and check it's gone.
+    try_delete(path_from_root('tests/Module-exports', 'test.js'))
+    assert not os.path.exists(path_from_root('tests/Module-exports', 'test.js'))
+
+    # compile with -O2 --closure 1
+    Popen([PYTHON, EMCC, path_from_root('tests/Module-exports', 'test.c'), '-o', path_from_root('tests/Module-exports', 'test.js'), '-O2', '--closure', '1', '--pre-js', path_from_root('tests/Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
+
+    # Check that compilation was successful
+    assert os.path.exists(path_from_root('tests/Module-exports', 'test.js'))
+    test_js_closure_1 = open(path_from_root('tests/Module-exports', 'test.js')).read()
+
+    # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
+    # "module['exports']" got minified to "module.exports" when compiling with --closure 1
+    assert "module.exports" in test_js_closure_1
+
+    # Check that main.js (which includes test.js) completes successfully
+    self.assertContained('bufferTest finished', run_js(path_from_root('tests/Module-exports', 'main.js')))
+
+    # Tidy up files that might have been created by this test.
+    try_delete(path_from_root('tests/Module-exports', 'test.js'))
+    try_delete(path_from_root('tests/Module-exports', 'test.js.map'))
+
+    # ----------------------------- End of test_module_exports_with_closure -----------------------------
+
+
+
