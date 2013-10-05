@@ -1929,8 +1929,10 @@ done.
     # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
     assert "module['exports'] = Module;" in test_js_closure_0
 
-    # Check that main.js (which includes test.js) completes successfully
-    self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js')))
+    # Check that main.js (which requires test.js) completes successfully when run in node.js
+    # in order to check that the exports are indeed functioning correctly.
+    for engine in JS_ENGINES:
+      if engine == NODE_JS: self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js')))
 
     # Delete test.js again and check it's gone.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
@@ -1947,8 +1949,10 @@ done.
     # "module['exports']" got minified to "module.exports" when compiling with --closure 1
     assert "module.exports" in test_js_closure_1
 
-    # Check that main.js (which includes test.js) completes successfully
-    self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js')))
+    # Check that main.js (which requires test.js) completes successfully when run in node.js
+    # in order to check that the exports are indeed functioning correctly.
+    for engine in JS_ENGINES:
+      if engine == NODE_JS: self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js')))
 
     # Tidy up files that might have been created by this test.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
