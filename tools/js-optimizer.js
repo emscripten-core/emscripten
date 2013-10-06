@@ -3840,8 +3840,8 @@ arguments_ = arguments_.filter(function (arg) {
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
-generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
-var extraInfoStart = src.indexOf('// EXTRA_INFO:')
+generatedFunctions = src.lastIndexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
+var extraInfoStart = src.lastIndexOf('// EXTRA_INFO:')
 if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 //printErr(JSON.stringify(extraInfo));
 
