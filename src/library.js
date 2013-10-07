@@ -8613,6 +8613,15 @@ LibraryManager.library = {
     Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
 
+  emscripten_asm_const: function(code) {
+    // code is a constant string on the heap, so we can cache these
+    if (!Runtime.asmConstCache) Runtime.asmConstCache = {};
+    var func = Runtime.asmConstCache[code];
+    if (func) return func();
+    func = Runtime.asmConstCache[code] = eval('(function(){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
+    return func();
+  },
+
   //============================
   // i64 math
   //============================
