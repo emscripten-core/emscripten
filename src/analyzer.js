@@ -872,10 +872,17 @@ function analyzer(data, sidePass) {
                 }
                 if (targetBits <= 32) {
                   // We are generating a normal legal type here
-                  legalValue = {
-                    intertype: 'value',
-                    ident: targetElements[0].ident + (targetBits < 32 ? '&' + (Math.pow(2, targetBits)-1) : ''),
-                    type: 'rawJS'
+                  legalValue = { intertype: 'value', ident: targetElements[0].ident, type: 'i32' };
+                  if (targetBits < 32) {
+                    legalValue = {
+                      intertype: 'mathop',
+                      op: 'and',
+                      type: 'i32',
+                      params: [
+                        legalValue,
+                        { intertype: 'value', ident: (Math.pow(2, targetBits)-1).toString(), type: 'i32' }
+                      ]
+                    }
                   };
                   legalValue.assignTo = item.assignTo;
                   toAdd.push(legalValue);
