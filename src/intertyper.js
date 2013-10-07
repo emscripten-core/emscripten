@@ -766,15 +766,13 @@ function intertyper(lines, sidePass, baseLineNums) {
     return item;
   }
   // 'alloca'
-  var allocaPossibleVars = ['allocatedNum'];
   function allocaHandler(item) {
     item.intertype = 'alloca';
     item.allocatedType = item.tokens[1].text;
     if (item.tokens.length > 3 && Runtime.isNumberType(item.tokens[3].text)) {
-      item.allocatedNum = toNiceIdent(item.tokens[4].text);
-      item.possibleVars = allocaPossibleVars;
+      item.ident = toNiceIdent(item.tokens[4].text);
     } else {
-      item.allocatedNum = 1;
+      item.ident = 1;
     }
     item.type = addPointing(item.tokens[1].text); // type of pointer we will get
     Types.needAnalysis[item.type] = 0;

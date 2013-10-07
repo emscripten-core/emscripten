@@ -2474,13 +2474,6 @@ function walkInterdata(item, pre, post, obj) {
       if (walkInterdata(item.params[i], pre, post,  obj)) return true;
     }
   }
-  if (item.possibleVars) { // other attributes that might contain interesting data; here, variables
-    var box = { intertype: 'value', ident: '' };
-    for (i = 0; i <= item.possibleVars.length; i++) {
-      box.ident = item[item.possibleVars[i]];
-      if (walkInterdata(box, pre, post,  obj)) return true;
-    }
-  }
   return post && post(item, originalObj, obj);
 }
 
@@ -2500,7 +2493,6 @@ function walkAndModifyInterdata(item, pre) {
       if (repl = walkAndModifyInterdata(item.params[i], pre)) item.params[i] = repl;
     }
   }
-  // Ignore possibleVars because we can't replace them anyhow
 }
 
 function parseBlockAddress(segment) {

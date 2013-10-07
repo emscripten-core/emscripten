@@ -1361,7 +1361,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
       return asmCoercion(getFastValue('sp', '+', item.allocatedIndex.toString()), 'i32');
     } else {
-      return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.allocatedNum));
+      return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.ident));
     }
   }
   function va_argHandler(item) {

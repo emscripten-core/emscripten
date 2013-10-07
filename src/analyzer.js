@@ -1117,7 +1117,7 @@ function analyzer(data, sidePass) {
             rawLinesIndex: i
           };
           if (variable.origin === 'alloca') {
-            variable.allocatedNum = item.allocatedNum;
+            variable.allocatedNum = item.ident;
           }
           if (variable.origin === 'call') {
             variable.type = getReturnType(variable.type);
@@ -1608,9 +1608,9 @@ function analyzer(data, sidePass) {
       var lines = func.labels[0].lines;
       for (var i = 0; i < lines.length; i++) {
         var item = lines[i];
-        if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) break;
+        if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.ident)) break;
         item.allocatedSize = func.variables[item.assignTo].impl === VAR_EMULATED ?
-          calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
+          calcAllocatedSize(item.allocatedType)*item.ident: 0;
         if (USE_TYPED_ARRAYS === 2) {
           // We need to keep the stack aligned
           item.allocatedSize = Runtime.forceAlign(item.allocatedSize, Runtime.STACK_ALIGN);
@@ -1619,7 +1619,7 @@ function analyzer(data, sidePass) {
       var index = 0;
       for (var i = 0; i < lines.length; i++) {
         var item = lines[i];
-        if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) break;
+        if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.ident)) break;
         item.allocatedIndex = index;
         index += item.allocatedSize;
         delete item.allocatedSize;
@@ -1647,7 +1647,7 @@ function analyzer(data, sidePass) {
 
         for (var i = 0; i < lines.length; i++) {
           var item = lines[i];
-          if (!finishedInitial && (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum))) {
+          if (!finishedInitial && (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.ident))) {
             finishedInitial = true;
           }
           if (item.intertype == 'alloca' && finishedInitial) {
