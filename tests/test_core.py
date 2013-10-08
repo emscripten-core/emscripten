@@ -1099,7 +1099,7 @@ Succeeded!
       num_vars = 0
       for v in re.findall('var [^;]+;', main):
         num_vars += v.count(',') + 1
-      assert num_vars == 7, 'simple variable elimination should have been run, but seeing %d' % num_vars
+      assert num_vars == 8, 'simple variable elimination should have been run, but seeing %d' % num_vars
 
   def test_unaligned(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')

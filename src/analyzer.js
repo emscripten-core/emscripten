@@ -1274,19 +1274,25 @@ function analyzer(data, sidePass) {
         var removed = 0;
         var pools = [[], [], [], []];
 //printErr('func: ' + dump(func));
+        //var maxDebug = 54; // 53-54
         func.labels.forEach(function(label) {
           var usesHere = {}; // uses here in this label
           label.lines.forEach(function(line) {
             // we can't optimize illegal values or things split out from them
             if (line.assignTo && line.assignTo.indexOf('$', 1) < 0 && !isIllegalType(line.type) &&
-                func.variables[line.assignTo].impl !== VAR_NATIVIZED) { // we could also optimize the rest, but would need to separate them. worth doing VAR_EMULATED
+                func.variables[line.assignTo].impl !== VAR_NATIVIZED && // we could also optimize the rest, but would need to separate them. worth doing VAR_EMULATED
+                func.variables[line.assignTo].origin !== 'phi') { // phis are moved from the top of the block to potentially the end
               usesHere[line.assignTo] = 0;
             }
           });
           label.lines.forEach(function(line) {
             walkInterdata(line, function(item) {
               if (item.intertype === 'value' && item.ident in usesHere) {
-                usesHere[item.ident]++;
+                if (line.intertype !== 'phi') {
+                  usesHere[item.ident]++;
+                } else {
+                  delete usesHere[item.ident]; // phis are moved around, avoid optimizing them
+                }
               }
             });
           });
@@ -1298,32 +1304,42 @@ function analyzer(data, sidePass) {
               has = true;
             }
           }
-//printErr('pre ' + func.ident + ' : ' + JSON.stringify(optimizables));
           if (has) {
             var replacements = {};
-            var indexes = [0, 0, 0, 0];
-            for (var v in optimizables) {
-              var type = 0;
-              var info = func.variables[v];
-              if (info.type in Runtime.FLOAT_TYPES) type = 1;
-              if (info.impl === VAR_EMULATED) type |= 2;
-              if (indexes[type] >= pools[type].length) {
-                pools[type].push(v); // new var, no need to replace it
-              } else {
-                replacements[v] = pools[type][indexes[type]];
-                delete func.variables[v];
+            var types = {}; // filled with the type, the first time we encounter the variable
+            function process(v) {
+              if (!(v in optimizables)) return v;
+              if (!(v in types)) {
+                // first appearance of this optimizable
+                var type = 0;
+                var info = func.variables[v];
+                if (info.type in Runtime.FLOAT_TYPES) type = 1;
+                if (info.impl === VAR_EMULATED) type |= 2;
+                types[v] = type;
+                if (pools[type].length === 0) {
+                  // new var, no need to replace it. it will be added to the pool when it is ready
+                } else {
+                  //if (maxDebug-- <= 0) return v;
+                  replacements[v] = pools[type].pop();
+                  delete func.variables[v];
+                  removed++;
+                }
               }
-              indexes[type]++;
+              var rep = replacements[v] || v;
+              usesHere[v]--;
+              // we add another 'use' for the assignment. So -1 is when they are all used up.
+              assert(usesHere[v] >= -1);
+              if (usesHere[v] === -1) {
+                // push either the replacment ident if we are being replaced, or the original - either way, .ident is correct
+                pools[types[v]].push(rep);
+              }
+              return rep;
             }
-//printErr('post ' + JSON.stringify(replacements));
             label.lines.forEach(function(line) {
-              if (replacements[line.assignTo]) {
-                line.assignTo = replacements[line.assignTo];
-                removed++;
-              }
+              line.assignTo = process(line.assignTo);
               walkInterdata(line, function(item) {
-                if (item.intertype === 'value' && replacements[item.ident]) {
-                  item.ident = replacements[item.ident];
+                if (item.intertype === 'value') {
+                  item.ident = process(item.ident);
                 }
               });
             });
