@@ -410,6 +410,51 @@ var LibraryGL = {
       GL.depthTextureExt = Module.ctx.getExtension("WEBGL_depth_texture") ||
                            Module.ctx.getExtension("MOZ_WEBGL_depth_texture") ||
                            Module.ctx.getExtension("WEBKIT_WEBGL_depth_texture");
+    },
+
+    // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
+    // In GLES2, uniforms are accessed via indices. Therefore we must generate a mapping of indices -> WebGLUniformLocations
+    // to provide the client code the API that uses indices.
+    // This function takes a linked GL program and generates a mapping table for the program.
+    // NOTE: Populating the uniform table is performed eagerly at glLinkProgram time, so glLinkProgram should be considered
+    //       to be a slow/costly function call. Calling glGetUniformLocation is relatively fast, since it is always a read-only
+    //       lookup to the table populated in this function call.
+    populateUniformTable: function(program) {
+#if GL_ASSERTIONS
+      GL.validateGLObjectID(GL.programs, program, 'populateUniformTable', 'program');
+#endif
+      var p = GL.programs[program];
+      GL.uniformTable[program] = {};
+      var ptable = GL.uniformTable[program];
+      // A program's uniformTable maps the string name of an uniform to an integer location of that uniform.
+      // The global GL.uniforms map maps integer locations to WebGLUniformLocations.
+      var numUniforms = Module.ctx.getProgramParameter(p, Module.ctx.ACTIVE_UNIFORMS);
+      for(var i = 0; i < numUniforms; ++i) {
+        var u = Module.ctx.getActiveUniform(p, i);
+
+        var name = u.name;
+        // Strip off any trailing array specifier we might have got, e.g. "[0]".
+        if (name.indexOf(']', name.length-1) !== -1) {
+          var ls = name.lastIndexOf('[');
+          name = name.slice(0, ls);
+        }
+
+        // Optimize memory usage slightly: If we have an array of uniforms, e.g. 'vec3 colors[3];', then 
+        // only store the string 'colors' in ptable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
+        // Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
+        var loc = Module.ctx.getUniformLocation(p, name);
+        var id = GL.getNewId(GL.uniforms);
+        ptable[name] = [u.size, id];
+        GL.uniforms[id] = loc;
+
+        for(var j = 1; j < u.size; ++j) {
+          var n = name + '['+j+']';
+          loc = Module.ctx.getUniformLocation(p, n);
+          id = GL.getNewId(GL.uniforms);
+
+          GL.uniforms[id] = loc;
+        }
+      }
     }
   },
 
@@ -811,6 +856,7 @@ var LibraryGL = {
   glGetUniformfv: function(program, location, params) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformfv', 'program');
+    GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformfv', 'location');
 #endif
     var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number') {
@@ -826,6 +872,7 @@ var LibraryGL = {
   glGetUniformiv: function(program, location, params) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformiv', 'program');
+    GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformiv', 'location');
 #endif
     var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number' || typeof data == 'boolean') {
@@ -843,16 +890,31 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformLocation', 'program');
 #endif
     name = Pointer_stringify(name);
+
+    var arrayOffset = 0;
+    // If user passed an array accessor "[index]", parse the array index off the accessor.
+    if (name.indexOf(']', name.length-1) !== -1) {
+      var ls = name.lastIndexOf('[');
+      var arrayIndex = name.slice(ls+1, -1);
+      if (arrayIndex.length > 0) {
+        arrayOffset = parseInt(arrayIndex);
+        if (arrayOffset < 0) {
+          return -1;
+        }
+      }
+      name = name.slice(0, ls);
+    }
+
     var ptable = GL.uniformTable[program];
-    if (!ptable) ptable = GL.uniformTable[program] = {};
-    var id = ptable[name];
-    if (id) return id;
-    var loc = Module.ctx.getUniformLocation(GL.programs[program], name);
-    if (!loc) return -1;
-    id = GL.getNewId(GL.uniforms);
-    GL.uniforms[id] = loc;
-    ptable[name] = id;
-    return id;
+    if (!ptable) {
+      return -1;
+    }
+    var uniformInfo = ptable[name]; // returns pair [ dimension_of_uniform_array, uniform_location ]
+    if (uniformInfo && arrayOffset < uniformInfo[0]) { // Check if user asked for an out-of-bounds element, i.e. for 'vec4 colors[3];' user could ask for 'colors[10]' which should return -1.
+      return uniformInfo[1]+arrayOffset;
+    } else {
+      return -1;
+    }
   },
 
   glGetVertexAttribfv__sig: 'viii',
@@ -923,54 +985,81 @@ var LibraryGL = {
 
   glUniform1f__sig: 'vif',
   glUniform1f: function(location, v0) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform1f', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform1f(location, v0);
   },
 
   glUniform2f__sig: 'viff',
   glUniform2f: function(location, v0, v1) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform2f', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform2f(location, v0, v1);
   },
 
   glUniform3f__sig: 'vifff',
   glUniform3f: function(location, v0, v1, v2) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform3f', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform3f(location, v0, v1, v2);
   },
 
   glUniform4f__sig: 'viffff',
   glUniform4f: function(location, v0, v1, v2, v3) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform4f', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform4f(location, v0, v1, v2, v3);
   },
 
   glUniform1i__sig: 'vii',
   glUniform1i: function(location, v0) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform1i', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform1i(location, v0);
   },
 
   glUniform2i__sig: 'viii',
   glUniform2i: function(location, v0, v1) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform2i', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform2i(location, v0, v1);
   },
 
   glUniform3i__sig: 'viiii',
   glUniform3i: function(location, v0, v1, v2) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform3i', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform3i(location, v0, v1, v2);
   },
 
   glUniform4i__sig: 'viiiii',
   glUniform4i: function(location, v0, v1, v2, v3) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform4i', 'location');
+#endif
     location = GL.uniforms[location];
     Module.ctx.uniform4i(location, v0, v1, v2, v3);
   },
 
   glUniform1iv__sig: 'viii',
   glUniform1iv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform1iv', 'location');
+#endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
     Module.ctx.uniform1iv(location, value);
@@ -978,6 +1067,9 @@ var LibraryGL = {
 
   glUniform2iv__sig: 'viii',
   glUniform2iv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform2iv', 'location');
+#endif
     location = GL.uniforms[location];
     count *= 2;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
@@ -986,6 +1078,9 @@ var LibraryGL = {
 
   glUniform3iv__sig: 'viii',
   glUniform3iv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform3iv', 'location');
+#endif
     location = GL.uniforms[location];
     count *= 3;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
@@ -994,6 +1089,9 @@ var LibraryGL = {
 
   glUniform4iv__sig: 'viii',
   glUniform4iv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform4iv', 'location');
+#endif
     location = GL.uniforms[location];
     count *= 4;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
@@ -1002,6 +1100,9 @@ var LibraryGL = {
 
   glUniform1fv__sig: 'viii',
   glUniform1fv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform1fv', 'location');
+#endif
     location = GL.uniforms[location];
     var view;
     if (count == 1) {
@@ -1016,6 +1117,9 @@ var LibraryGL = {
 
   glUniform2fv__sig: 'viii',
   glUniform2fv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform2fv', 'location');
+#endif
     location = GL.uniforms[location];
     var view;
     if (count == 1) {
@@ -1031,6 +1135,9 @@ var LibraryGL = {
 
   glUniform3fv__sig: 'viii',
   glUniform3fv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform3fv', 'location');
+#endif
     location = GL.uniforms[location];
     var view;
     if (count == 1) {
@@ -1047,6 +1154,9 @@ var LibraryGL = {
 
   glUniform4fv__sig: 'viii',
   glUniform4fv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform4fv', 'location');
+#endif
     location = GL.uniforms[location];
     var view;
     if (count == 1) {
@@ -1064,6 +1174,9 @@ var LibraryGL = {
 
   glUniformMatrix2fv__sig: 'viiii',
   glUniformMatrix2fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2fv', 'location');
+#endif
     location = GL.uniforms[location];
     var view;
     if (count == 1) {
@@ -1080,6 +1193,9 @@ var LibraryGL = {
 
   glUniformMatrix3fv__sig: 'viiii',
   glUniformMatrix3fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3fv', 'location');
+#endif
     location = GL.uniforms[location];
     var view;
     if (count == 1) {
@@ -1096,6 +1212,9 @@ var LibraryGL = {
 
   glUniformMatrix4fv__sig: 'viiii',
   glUniformMatrix4fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4fv', 'location');
+#endif
     location = GL.uniforms[location];
     var view;
     if (count == 1) {
@@ -1340,6 +1459,7 @@ var LibraryGL = {
 #endif
     Module.ctx.linkProgram(GL.programs[program]);
     GL.uniformTable[program] = {}; // uniforms no longer keep the same names after linking
+    GL.populateUniformTable(program);
   },
 
   glGetProgramInfoLog__sig: 'viiii',
