@@ -416,6 +416,9 @@ var LibraryGL = {
     // In GLES2, uniforms are accessed via indices. Therefore we must generate a mapping of indices -> WebGLUniformLocations
     // to provide the client code the API that uses indices.
     // This function takes a linked GL program and generates a mapping table for the program.
+    // NOTE: Populating the uniform table is performed eagerly at glLinkProgram time, so glLinkProgram should be considered
+    //       to be a slow/costly function call. Calling glGetUniformLocation is relatively fast, since it is always a read-only
+    //       lookup to the table populated in this function call.
     populateUniformTable: function(program) {
 #if GL_ASSERTIONS
       GL.validateGLObjectID(GL.programs, program, 'populateUniformTable', 'program');
