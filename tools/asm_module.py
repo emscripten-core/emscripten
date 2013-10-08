@@ -248,12 +248,14 @@ class AsmModule():
   def merge_tables(self, table, main, side, replacements, f_bases, f_sizes):
     sig = table.split('_')[-1]
     side = side[1:-1].split(',')
+    side = map(lambda s: s.strip(), side)
     side = map(lambda f: replacements[f] if f in replacements else f, side)
     if not main:
       f_bases[sig] = 0
       f_sizes[table] = len(side)
       return '[' + ','.join(side) + ']'
     main = main[1:-1].split(',')
+    main = map(lambda m: m.strip(), main)
     # TODO: handle non-aliasing case too
     assert len(main) % 2 == 0
     f_bases[sig] = len(main)

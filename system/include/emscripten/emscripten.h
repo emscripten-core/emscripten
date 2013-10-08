@@ -23,10 +23,13 @@ extern "C" {
  *
  *    EM_ASM(window.alert('hai'));
  *
+ * This also works with asm.js, as it outlines the code (it
+ * does a function call to reach it).
+ *
  * Note: double-quotes (") are not supported, but you can use
  *       single-quotes (') in js anyhow.
  */
-#define EM_ASM(...) asm(#__VA_ARGS__)
+#define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
 
 /*
  * Forces LLVM to not dead-code-eliminate a function. Note that
@@ -376,6 +379,8 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 #define EMSCRIPTEN_NETWORK_WEBRTC     1
 void emscripten_set_network_backend(int backend);
 
+/* Internal APIs. Be careful with these. */
+
 /*
  * Profiling tools.
  * INIT must be called first, with the maximum identifier that
@@ -412,6 +417,9 @@ extern void EMSCRIPTEN_PROFILE_END(int id);
 void emscripten_jcache_printf(const char *format, ...);
 void emscripten_jcache_printf_(...); /* internal use */
 #endif
+
+/* Helper API for EM_ASM - do not call this yourself */
+void emscripten_asm_const(const char *code);
 
 #ifdef __cplusplus
 }

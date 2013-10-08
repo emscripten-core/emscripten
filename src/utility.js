@@ -334,6 +334,17 @@ function jsonCompare(x, y) {
   return JSON.stringify(x) == JSON.stringify(y);
 }
 
+function sortedJsonCompare(x, y) {
+  if (x === null || typeof x !== 'object') return x === y;
+  for (var i in x) {
+    if (!sortedJsonCompare(x[i], y[i])) return false;
+  }
+  for (var i in y) {
+    if (!sortedJsonCompare(x[i], y[i])) return false;
+  }
+  return true;
+}
+
 function stringifyWithFunctions(obj) {
   if (typeof obj === 'function') return obj.toString();
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);

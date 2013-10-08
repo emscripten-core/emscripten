@@ -1372,6 +1372,50 @@ Succeeded!
       '''
       self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\nsmall: 0.0000010000\n')
 
+  def test_zerodiv(self):
+    self.do_run(r'''
+      #include <stdio.h>
+      int main(int argc, const char* argv[])
+      {
+        float f1 = 1.0f;
+        float f2 = 0.0f;
+        float f_zero = 0.0f;
+
+        float f3 = 0.0f / f2;
+        float f4 = f2 / 0.0f;
+        float f5 = f2 / f2;
+        float f6 = f2 / f_zero;
+
+        printf("f3: %f\n", f3);
+        printf("f4: %f\n", f4);
+        printf("f5: %f\n", f5);
+        printf("f6: %f\n", f6);
+
+        return 0;
+      }
+    ''', '''f3: nan
+f4: nan
+f5: nan
+f6: nan
+''')
+
+  def test_zero_multiplication(self):
+    src = '''
+      #include <stdio.h>
+      int main(int argc, char * argv[]) {
+        int one = argc;
+
+        printf("%d ", 0 * one);
+        printf("%d ", 0 * -one);
+        printf("%d ", -one * 0);
+        printf("%g ", 0.0 * one);
+        printf("%g ", 0.0 * -one);
+        printf("%g", -one * 0.0);
+        return 0;
+      }
+    '''
+    self.do_run(src, '0 0 0 0 -0 -0')
+
   def test_isnan(self):
     src = r'''
       #include <stdio.h>
@@ -1744,7 +1788,7 @@ Succeeded!
 
           int xx, yy, zz;
           char s[32];
-          int cc = sscanf("abc_10.b1_xyz_543_defg", "abc_%d.%2x_xyz_%3d_%3s", &xx, &yy, &zz, s);
+          int cc = sscanf("abc_10.b1_xyz9_543_defg", "abc_%d.%2x_xyz9_%3d_%3s", &xx, &yy, &zz, s);
           printf("%d:%d,%d,%d,%s\\n", cc, xx, yy, zz, s);
 
           printf("%d\\n", argc);
@@ -3797,25 +3841,26 @@ def process(filename):
       self.do_run(src, '4\n200\ndone\n')
 
   def test_inlinejs3(self):
-      if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
-      src = r'''
-        #include <stdio.h>
-        #include <emscripten.h>
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
 
-        int main() {
-          EM_ASM(Module.print('hello dere1'));
-          EM_ASM(
-            Module.print('hello dere2');
-          );
+      int main() {
+        EM_ASM(Module.print('hello dere1'));
+        EM_ASM(
+          Module.print('hello dere2');
+        );
+        for (int i = 0; i < 3; i++) {
           EM_ASM(
             Module.print('hello dere3');
             Module.print('hello dere' + 4);
           );
-          return 0;
         }
-        '''
+        return 0;
+      }
+      '''
 
-      self.do_run(src, 'hello dere1\nhello dere2\nhello dere3\nhello dere4\n')
+    self.do_run(src, 'hello dere1\nhello dere2\nhello dere3\nhello dere4\nhello dere3\nhello dere4\nhello dere3\nhello dere4\n')
 
   def test_memorygrowth(self):
     if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
@@ -7222,6 +7267,7 @@ date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
     if self.emcc_args is not None and '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
+      self.emcc_args += ["-s", "CHECK_HEAP_ALIGN=0"] # disable heap align check here, it mixes poorly with closure
 
     Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
     post = '''
@@ -7698,15 +7744,21 @@ def process(filename):
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
-  def test_unistd_access(self):
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
+  def test_fs_nodefs_rw(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
     if not self.is_le32(): return self.skip('le32 needed for inline js')
-    src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
-    self.do_run(src, expected)
+    src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+
+  def test_unistd_access(self):
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
@@ -7737,11 +7789,12 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_truncate(self):
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     if not self.is_le32(): return self.skip('le32 needed for inline js')
-    src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
-    self.do_run(src, expected)
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
@@ -7763,15 +7816,20 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_unlink(self):
-    src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    if self.emcc_args is None: return self.skip('requires emcc')
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     if not self.is_le32(): return self.skip('le32 needed for inline js')
-    src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
-    self.do_run(src, expected)
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_sleep(self):
     src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
@@ -7779,17 +7837,23 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_io(self):
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
-    src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
-    self.do_run(src, expected)
+    if self.emcc_args is None: return self.skip('requires emcc')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
-    src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
-    expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
-    self.do_run(src, expected)
+    if self.emcc_args is None: return self.skip('requires emcc')
+    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    for fs in ['MEMFS', 'NODEFS']:
+      src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_uname(self):
     src = r'''
@@ -8541,6 +8605,12 @@ void*:16
       assert ' & 3]()' not in final, 'small function table does not exist'
       assert ' & 255]()' not in original, 'big function table does not exist'
       assert ' & 255]()' in final, 'big function table exists'
+
+    assert 'asm1' in test_modes
+    if self.run_name == 'asm1':
+      assert not Settings.RELOOP
+      Settings.RELOOP = 1 # check for mixing of relooping with asm1
+      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
   def test_gcc_unmangler(self):
     Settings.NAMED_GLOBALS = 1 # test coverage for this
@@ -10450,9 +10520,9 @@ o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=0", "-s", "S
 o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "JS_CHUNK_SIZE=1024"])
 
 # asm.js
-asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "CHECK_HEAP_ALIGN=1"])
+asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
-asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])
+asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "CHECK_HEAP_ALIGN=1"])
 asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env={"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"})
 
 # Make custom runs with various options

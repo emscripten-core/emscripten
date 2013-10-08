@@ -175,7 +175,7 @@ Options that are modified or new in %s include:
           if opt_level >= 2 and '-g' in params:
             assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
           assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
-          if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
+          if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
           elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
       # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
@@ -807,10 +807,10 @@ f.close()
            0: (1500, 5000)
       }),
       (['-O2'], {
-         100: (0, 1500),
-         250: (0, 1500),
-         500: (0, 1500),
-        1000: (0, 1500),
+         100: (0, 1600),
+         250: (0, 1600),
+         500: (0, 1600),
+        1000: (0, 1600),
         2000: (0, 2000),
         5000: (0, 5000),
            0: (0, 5000)

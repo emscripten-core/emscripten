@@ -1,0 +1,33 @@
+<html>
+<body>
+<h2>Run the emscripten compiler in a web page, just for laughs</h2>
+Open the web console to see stderr output
+<hr>
+<pre id="output"></pre>
+<script>
+  arguments = ['tmp/emscripten_temp/tmpbTF9CI.txt', 'tmp/emscripten_temp/tmpz8Yvie.pre.ll', 'pre']; // copy from emscripten.py output
+
+  var outputElement = document.getElementById('output');
+  print = function(x) {
+    outputElement.innerHTML += 'output hidden, profiling mode';
+    print = function(){};
+    //outputElement.innerHTML += x;
+  };
+
+  // For generated code
+  var Module = {
+    print: function(x) {
+      throw 'what?'
+    }
+  };
+
+  var startTime = Date.now();
+</script>
+<script src="compiler.js">
+</script>
+<script>
+  outputElement.innerHTML += '<br>total time: ' + (Date.now() - startTime);
+</script>
+</body>
+</html>
+

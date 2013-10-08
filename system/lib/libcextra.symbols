@@ -1,20 +1,44 @@
+         W __iswctype_l
+         T __strxfrm_l
+         W __towlower_l
+         W __towupper_l
+         T __wcscoll_l
+         T __wcsxfrm_l
+         W __wctype_l
          T btowc
          T ecvt
          T fcvt
+         T fwprintf
          T gcvt
+         T iconv
+         T iconv_close
+         T iconv_open
          T iswalnum
+         T iswalnum_l
          T iswalpha
+         T iswalpha_l
          T iswblank
+         T iswblank_l
          T iswcntrl
+         T iswcntrl_l
          T iswctype
+         T iswctype_l
          T iswdigit
+         T iswdigit_l
          T iswgraph
+         T iswgraph_l
          T iswlower
+         T iswlower_l
          T iswprint
+         T iswprint_l
          T iswpunct
+         T iswpunct_l
          T iswspace
+         T iswspace_l
          T iswupper
+         T iswupper_l
          T iswxdigit
+         T iswxdigit_l
          T mblen
          T mbrlen
          T mbrtowc
@@ -23,21 +47,36 @@
          T mbsrtowcs
          T mbstowcs
          T mbtowc
+         T strfmon
+         T strfmon_l
+         T strxfrm
+         W strxfrm_l
+         T swprintf
          T towctrans
+         T towctrans_l
          T towlower
+         T towlower_l
          T towupper
+         T towupper_l
+         T vfwprintf
+         T vswprintf
+         T vwprintf
          T wcpcpy
          T wcpncpy
          T wcrtomb
          T wcscasecmp
+         T wcscasecmp_l
          T wcscat
          T wcschr
          T wcscmp
+         T wcscoll
+         T wcscoll_l
          T wcscpy
          T wcscspn
          T wcsdup
          T wcslen
          T wcsncasecmp
+         T wcsncasecmp_l
          T wcsncat
          T wcsncmp
          T wcsncpy
@@ -52,13 +91,18 @@
          T wcstombs
          T wcswcs
          T wcswidth
+         T wcsxfrm
+         T wcsxfrm_l
          T wctob
          T wctomb
          T wctrans
+         T wctrans_l
          T wctype
+         T wctype_l
          T wcwidth
          T wmemchr
          T wmemcmp
          T wmemcpy
          T wmemmove
          T wmemset
+         T wprintf

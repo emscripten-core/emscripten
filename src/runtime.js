@@ -32,8 +32,8 @@ var RuntimeGenerator = {
 
   stackEnter: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
-    var ret = 'var sp  = ' + (ASM_JS ? '0; sp = ' : '') + 'STACKTOP';
-    if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
+    var ret = 'var sp=' + (ASM_JS ? '0;sp=' : '') + 'STACKTOP';
+    if (initial > 0) ret += ';STACKTOP=(STACKTOP+' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % Runtime.STACK_ALIGN == 0);
       if (ASSERTIONS && Runtime.STACK_ALIGN == 4) {
@@ -42,9 +42,6 @@ var RuntimeGenerator = {
     }
     if (ASSERTIONS) {
       ret += '; (assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
-    }
-    if (false) {
-      ret += '; _memset(' + asmCoercion('sp', 'i32') + ', 0, ' + initial + ')';
     }
     return ret;
   },
@@ -55,7 +52,7 @@ var RuntimeGenerator = {
     if (SAFE_HEAP) {
       ret += 'var i = sp; while ((i|0) < (STACKTOP|0)) { SAFE_HEAP_CLEAR(i|0); i = (i+1)|0 }';
     }
-    return ret += 'STACKTOP = sp';
+    return ret += 'STACKTOP=sp';
   },
 
   // An allocation that cannot normally be free'd (except through sbrk, which once
@@ -112,8 +109,7 @@ var Runtime = {
     if (isNumber(target) && isNumber(quantum)) {
       return Math.ceil(target/quantum)*quantum;
     } else if (isNumber(quantum) && isPowerOfTwo(quantum)) {
-      var logg = log2(quantum);
-      return '((((' +target + ')+' + (quantum-1) + ')>>' + logg + ')<<' + logg + ')';
+      return '(((' +target + ')+' + (quantum-1) + ')&' + -quantum + ')';
     }
     return 'Math.ceil((' + target + ')/' + quantum + ')*' + quantum;
   },
@@ -347,22 +343,23 @@ var Runtime = {
     for (var i = 0; i < Runtime.functionPointers.length; i++) {
       if (!Runtime.functionPointers[i]) {
         Runtime.functionPointers[i] = func;
-        return 2 + 2*i;
+        return {{{ FUNCTION_POINTER_ALIGNMENT }}}*(1 + i);
       }
     }
     throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
     var table = FUNCTION_TABLE;
     var ret = table.length;
+    assert(ret % {{{ FUNCTION_POINTER_ALIGNMENT }}} === 0);
     table.push(func);
-    table.push(0);
+    for (var i = 0; i < {{{ FUNCTION_POINTER_ALIGNMENT }}}-1; i++) table.push(0);
     return ret;
 #endif
   },
 
   removeFunction: function(index) {
 #if ASM_JS
-    Runtime.functionPointers[(index-2)/2] = null;
+    Runtime.functionPointers[(index-{{{ FUNCTION_POINTER_ALIGNMENT }}})/{{{ FUNCTION_POINTER_ALIGNMENT }}}] = null;
 #else
     var table = FUNCTION_TABLE;
     table[index] = null;

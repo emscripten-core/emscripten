@@ -342,7 +342,6 @@ fi
         assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
         assert BUILDING_MESSAGE.replace('X', 'libc') not in output
         self.assertContained('hello, world!', run_js('a.out.js'))
-        assert not os.path.exists(EMCC_CACHE)
         try_delete('a.out.js')
 
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
