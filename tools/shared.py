@@ -1425,11 +1425,11 @@ class Building:
       emcc_leave_inputs_raw = os.environ.get('EMCC_LEAVE_INPUTS_RAW')
       if emcc_leave_inputs_raw: del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
-      def make(opt_level):
+      def make(opt_level, reloop):
         raw = relooper + '.raw.js'
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
           os.path.join('relooper', 'emscripten', 'glue.js'),
-          '--memory-init-file', '0',
+          '--memory-init-file', '0', '-s', 'RELOOP=%d' % reloop,
           '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render", "_rl_set_asm_js_mode"]',
           '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
           '-s', 'RELOOPER="' + relooper + '"',
@@ -1444,10 +1444,10 @@ class Building:
 
       # bootstrap phase 1: generate unrelooped relooper, for which we do not need a relooper (so we cannot recurse infinitely in this function)
       logging.info('  bootstrap phase 1')
-      make(1)
+      make(2, 0)
       # bootstrap phase 2: generate relooped relooper, using the unrelooped relooper (we see relooper.js exists so we cannot recurse infinitely in this function)
       logging.info('  bootstrap phase 2')
-      make(2)
+      make(2, 1)
       logging.info('bootstrapping relooper succeeded')
       logging.info('=======================================')
       ok = True
