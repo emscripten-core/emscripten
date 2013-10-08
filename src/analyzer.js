@@ -802,27 +802,65 @@ function analyzer(data, sidePass) {
                 var whole = shifts >= 0 ? Math.floor(shifts/32) : Math.ceil(shifts/32);
                 var fraction = Math.abs(shifts % 32);
                 if (signed) {
-                  var signedFill = '(' + makeSignOp(sourceElements[sourceElements.length-1].ident, 'i' + sourceElements[sourceElements.length-1].bits, 're', 1, 1) + ' < 0 ? -1 : 0)';
-                  var signedKeepAlive = { intertype: 'value', ident: sourceElements[sourceElements.length-1].ident, type: 'i32' };
+                  var signedFill = {
+                    intertype: 'mathop',
+                    op: 'select',
+                    variant: 's',
+                    type: 'i32',
+                    params: [{
+                      intertype: 'mathop',
+                      op: 'icmp',
+                      variant: 'slt',
+                      type: 'i32',
+                      params: [
+                        { intertype: 'value', ident: sourceElements[sourceElements.length-1].ident, type: 'i' + Math.min(sourceBits, 32) },
+                        { intertype: 'value', ident: '0', type: 'i32' }
+                      ]
+                    },
+                      { intertype: 'value', ident: '-1', type: 'i32' },
+                      { intertype: 'value', ident: '0', type: 'i32' },
+                    ]
+                  };
                 }
                 for (var j = 0; j < targetElements.length; j++) {
-                  var result = {
-                    intertype: 'value',
-                    ident: (j + whole >= 0 && j + whole < sourceElements.length) ? sourceElements[j + whole].ident : (signed ? signedFill : '0'),
-                    params: [(signed && j + whole > sourceElements.length) ? signedKeepAlive : null],
-                    type: 'i32',
-                  };
-                  if (j == 0 && sourceBits < 32) {
-                    // zext sign correction
-                    result.ident = makeSignOp(result.ident, 'i' + sourceBits, isUnsignedOp(value.op) ? 'un' : 're', 1, 1);
+                  var inBounds = j + whole >= 0 && j + whole < sourceElements.length;
+                  var result;
+                  if (inBounds || !signed) {
+                    result = {
+                      intertype: 'value',
+                      ident: inBounds ? sourceElements[j + whole].ident : '0',
+                      type: 'i' + Math.min(sourceBits, 32),
+                    };
+                    if (j == 0 && sourceBits < 32) {
+                      // zext sign correction
+                      var result2 = {
+                        intertype: 'mathop',
+                        op: isUnsignedOp(value.op) ? 'zext' : 'sext',
+                        params: [result, {
+                          intertype: 'type',
+                          ident: 'i32',
+                          type: 'i' + sourceBits
+                        }],
+                        type: 'i32'
+                      };
+                      result = result2;
+                    }
+                  } else {
+                    // out of bounds and signed
+                    result = copy(signedFill);
                   }
                   if (fraction != 0) {
-                    var other = {
-                      intertype: 'value',
-                      ident: (j + sign + whole >= 0 && j + sign + whole < sourceElements.length) ? sourceElements[j + sign + whole].ident : (signed ? signedFill : '0'),
-                      params: [(signed && j + sign + whole > sourceElements.length) ? signedKeepAlive : null],
-                      type: 'i32',
-                    };
+                    var other;
+                    var otherInBounds = j + sign + whole >= 0 && j + sign + whole < sourceElements.length;
+                    if (otherInBounds || !signed) {
+                      other = {
+                        intertype: 'value',
+                        ident: otherInBounds ? sourceElements[j + sign + whole].ident : '0',
+                        type: 'i32',
+                      };
+                    } else {
+                      other = copy(signedFill);
+                    }
                     other = {
                       intertype: 'mathop',
                       op: shiftOp,
