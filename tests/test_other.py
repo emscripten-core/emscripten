@@ -125,8 +125,6 @@ Options that are modified or new in %s include:
         (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
         (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
         (['-o', 'something.js', '-O1', '-g'],             1, None, 0, 0), # no closure since debug
-        (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1, 0),
-        (['-o', 'something.js', '-O1', '--closure', '1', '-s', 'ASM_JS=0'], 1, None, 1, 0),
         (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
         (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
         (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
@@ -169,9 +167,9 @@ Options that are modified or new in %s include:
           # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
           assert '._main = ' not in generated, 'closure compiler should not have been run'
           if keep_debug:
-            assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+            assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated or 'var $original = 0' in generated, 'micro opts should always be on'
+            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or '$i_04' in generated or '$i_05' in generated or 'var $original = 0' in generated, 'micro opts should always be on'
           if opt_level >= 2 and '-g' in params:
             assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
           assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
