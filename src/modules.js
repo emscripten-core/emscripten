@@ -285,11 +285,7 @@ var Functions = {
     } else {
       if (!singlePhase) return 'NO_INDEX'; // Should not index functions in post
       ret = this.indexedFunctions[ident];
-      if (!ret) {
-        ret = this.nextIndex;
-        this.nextIndex += FUNCTION_POINTER_ALIGNMENT;
-        this.indexedFunctions[ident] = ret;
-      }
+      assert(ret);
       ret = ret.toString();
     }
     if (SIDE_MODULE && sig) { // sig can be undefined for the GL library functions
