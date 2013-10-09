@@ -346,7 +346,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     else:
       curr = i
       i += settings['FUNCTION_POINTER_ALIGNMENT']
-    #logging.debug('function indexing', indexed, curr, sig)
+    #logging.debug('function indexing ' + str([indexed, curr, sig]))
     forwarded_json['Functions']['indexedFunctions'][indexed] = curr # make sure not to modify this python object later - we use it in indexize
 
   def split_32(x):
