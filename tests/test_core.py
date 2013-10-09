@@ -8655,6 +8655,10 @@ void*:16
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
     if Settings.ASM_JS and '-O2' not in self.emcc_args: return self.skip('mozilla bug 863867')
 
+    assert 'asm2g' in test_modes
+    if self.run_name == 'asm2g':
+      Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
+
     if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
     post = '''

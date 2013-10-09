@@ -759,7 +759,6 @@ class Settings2(type):
         self.attrs['ASSERTIONS'] = 0
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['RELOOP'] = 1
-      if opt_level >= 2:
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if opt_level >= 3:
         # Aside from these, -O3 also runs closure compiler and llvm lto
