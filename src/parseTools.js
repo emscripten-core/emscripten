@@ -914,13 +914,13 @@ function parseI64Constant(str, legalized) {
 }
 
 function parseNumerical(value, type) {
-  if ((!type || type == 'double' || type == 'float') && (value.substr && value.substr(0,2) == '0x')) {
+  if ((!type || type === 'double' || type === 'float') && /^0x/.test(value)) {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     value = IEEEUnHex(value);
   } else if (USE_TYPED_ARRAYS == 2 && isIllegalType(type)) {
     return value; // do not parseFloat etc., that can lead to loss of precision
-  } else if (value == 'null') {
+  } else if (value === 'null') {
     // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
     value = '0';
   } else if (value === 'true') {
@@ -930,7 +930,7 @@ function parseNumerical(value, type) {
   }
   if (isNumber(value)) {
     var ret = parseFloat(value); // will change e.g. 5.000000e+01 to 50
-    if (type in Runtime.FLOAT_TYPES) {
+    if (type === 'double' || type === 'float') {
       if (value[0] === '-' && ret === 0) return '-.0'; // fix negative 0, toString makes it 0
       if (!RUNNING_JS_OPTS) ret = asmEnsureFloat(ret, type);
     }
