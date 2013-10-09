@@ -609,6 +609,8 @@ var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 
 var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast');
 mergeInto(PARSABLE_LLVM_FUNCTIONS, MATHOPS);
 
+var SIDE_EFFECT_FREE = set('value', 'noop', 'mathop', 'getelementptr', 'bitcast', 'load', 'branch', 'type', 'phi', 'phiparam', 'inttoptr', 'alloca', 'return');
+
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)
 // e.g.

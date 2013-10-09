@@ -1296,7 +1296,7 @@ function analyzer(data, sidePass) {
               }
             });
           });
-          var optimizables = {}, has = false
+          var optimizables = {}, has = false;
           for (var v in usesHere) {
             assert(v in func.variables);
             if (usesHere[v] === func.variables[v].uses) {
@@ -1307,7 +1307,8 @@ function analyzer(data, sidePass) {
           if (has) {
             var replacements = {};
             var types = {}; // filled with the type, the first time we encounter the variable
-            function process(v) {
+            var singletons = {}; // variables with a single assign. we try to move them to create nested expressions
+            function process(v, line, item) {
               if (!(v in optimizables)) return v;
               if (!(v in types)) {
                 // first appearance of this optimizable
@@ -1324,6 +1325,20 @@ function analyzer(data, sidePass) {
                   delete func.variables[v];
                   removed++;
                 }
+                if (usesHere[v] === 1 && line.intertype in PARSABLE_LLVM_FUNCTIONS) {
+//printErr('possible singleton: ' + v + ' : ' + dump(line));
+                  singletons[v] = line;
+                }
+              } else {
+                if (singletons[v]) {
+//printErr('wipe singleton: ' + v);
+                  // move this variable, and wipe out the original
+                  var source = singletons[v];
+                  for (var x in source) item[x] = source[x];
+                  source.intertype = 'noop';
+                  pools[types[v]].push(replacements[v] || v);
+                  return null;
+                }
               }
               var rep = replacements[v] || v;
               usesHere[v]--;
@@ -1336,10 +1351,14 @@ function analyzer(data, sidePass) {
               return rep;
             }
             label.lines.forEach(function(line) {
-              line.assignTo = process(line.assignTo);
+              line.assignTo = process(line.assignTo, line);
               walkInterdata(line, function(item) {
                 if (item.intertype === 'value') {
-                  item.ident = process(item.ident);
+                  var rep = process(item.ident, null, item);
+                  if (rep) item.ident = rep;
+                } else if (!(item.intertype in SIDE_EFFECT_FREE)) {
+printErr('clear singletons because ' + item.intertype);
+                  singletons = {}; // side-effects prevent moving here
                 }
               });
             });
