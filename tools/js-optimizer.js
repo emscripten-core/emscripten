@@ -3788,11 +3788,27 @@ function asmLastOpts(ast) {
           node[1] = simplifyNotCompsDirect(['unary-prefix', '!', conditionToBreak]);
           return node;
         }
-      } else if (type == 'binary' && node[1] == '&' && node[3][0] == 'unary-prefix' && node[3][1] == '-' && node[3][2][0] == 'num' && node[3][2][1] == 1) {
-        // Change &-1 into |0, at this point the hint is no longer needed
-        node[1] = '|';
-        node[3] = node[3][2];
-        node[3][1] = 0;
+      } else if (type == 'binary') {
+        if (node[1] === '&') {
+          if (node[3][0] === 'unary-prefix' && node[3][1] === '-' && node[3][2][0] === 'num' && node[3][2][1] === 1) {
+            // Change &-1 into |0, at this point the hint is no longer needed
+            node[1] = '|';
+            node[3] = node[3][2];
+            node[3][1] = 0;
+          }
+        } else if (node[1] === '-' && node[3][0] === 'unary-prefix') {
+          // avoid X - (-Y) because some minifiers buggily emit X--Y which is invalid as -- can be a unary. Transform to
+         //        X + Y
+          if (node[3][1] === '-') { // integer
+            node[1] = '+';
+            node[3] = node[3][2];
+          } else if (node[3][1] === '+') { // float
+            if (node[3][2][0] === 'unary-prefix' && node[3][2][1] === '-') {
+              node[1] = '+';
+              node[3][2] = node[3][2][2];
+            }
+          }
+        }
       }
     });
   });
