@@ -609,7 +609,7 @@ var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 
 var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast');
 mergeInto(PARSABLE_LLVM_FUNCTIONS, MATHOPS);
 
-var SIDE_EFFECT_FREE = set('value', 'noop', 'mathop', 'getelementptr', 'bitcast', 'load', 'branch', 'type', 'phi', 'phiparam', 'inttoptr', 'alloca', 'return');
+var SIDE_EFFECT_FREE = set('value', 'noop', 'mathop', 'getelementptr', 'bitcast', 'load', 'branch', 'type', 'phi', 'phiparam', 'inttoptr', 'alloca', 'return', 'switch', 'unreachable'); // known causers: store, call, atomic, landingpad
 
 // Parses a function call of form
 //         TYPE functionname MODIFIERS (...)

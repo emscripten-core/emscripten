@@ -1271,7 +1271,7 @@ function analyzer(data, sidePass) {
         // Consolidate variables in a simple and quick way: if a variable is only ever used
         // in a single block, make it use registers from a function-scope pool
 
-        var removed = 0;
+        var removed = 0, moved = 0;
         var pools = [[], [], [], []];
 //printErr('func: ' + dump(func));
         //var maxDebug = 54; // 53-54
@@ -1337,7 +1337,8 @@ function analyzer(data, sidePass) {
                   for (var x in source) item[x] = source[x];
                   source.intertype = 'noop';
                   pools[types[v]].push(replacements[v] || v);
-                  return null;
+                  moved++;
+                  return item;
                 }
               }
               var rep = replacements[v] || v;
@@ -1352,10 +1353,11 @@ function analyzer(data, sidePass) {
             }
             label.lines.forEach(function(line) {
               line.assignTo = process(line.assignTo, line);
-              walkInterdata(line, function(item) {
+              walkAndModifyInterdata(line, function(item) {
                 if (item.intertype === 'value') {
                   var rep = process(item.ident, null, item);
-                  if (rep) item.ident = rep;
+                  if (typeof rep === 'string') item.ident = rep;
+                  else if (typeof rep === 'object') return item;
                 } else if (!(item.intertype in SIDE_EFFECT_FREE)) {
 printErr('clear singletons because ' + item.intertype);
                   singletons = {}; // side-effects prevent moving here
@@ -1364,7 +1366,7 @@ printErr('clear singletons because ' + item.intertype);
             });
           }
         });
-//printErr('var removals: ' + removed + ' / ' + num + ' (' + Math.round(100*removed/num) + '%)');
+//printErr('var removals: ' + removed + ' / ' + num + ' (' + Math.round(100*removed/num) + '%)\t\tmoves: ' + moved + ' / ' + num + ' (' + Math.round(100*moved/num) + '%)');
       }
     });
   }
