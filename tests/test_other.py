@@ -1666,19 +1666,15 @@ f.close()
     try:
       os.environ['EMCC_DEBUG'] = '1'
       os.environ['EMCC_CORES'] = '2' # standardize over machines
-      for asm, linkable, chunks, js_chunks in [
-          (0, 0, 2, 2), (0, 1, 2, 4),
-          (1, 0, 2, 2), (1, 1, 2, 4)
+      for asm, linkable, chunks in [
+          (0, 0, 2), (0, 1, 2),
+          (1, 0, 2), (1, 1, 2)
         ]:
-        print asm, linkable, chunks, js_chunks
+        print asm, linkable, chunks
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
         ok = False
         for c in range(chunks, chunks+2):
           ok = ok or ('phase 2 working on %d chunks' % c in err)
-        assert ok, err
-        ok = False
-        for c in range(js_chunks, js_chunks+2):
-          ok = ok or ('splitting up js optimization into %d chunks' % c in err)
         assert ok, err
     finally:
       del os.environ['EMCC_DEBUG']
