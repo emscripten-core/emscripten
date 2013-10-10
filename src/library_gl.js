@@ -374,6 +374,9 @@ var LibraryGL = {
     },
 #endif
 
+    // In WebGL, extensions must be explicitly enabled to be active, see http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.14.14
+    // In GLES2, all extensions are enabled by default without additional operations. Init all extensions we need to give to GLES2 user
+    // code here, so that GLES2 code can operate without changing behavior.
     initExtensions: function() {
       if (GL.initExtensions.done) return;
       GL.initExtensions.done = true;
@@ -394,6 +397,7 @@ var LibraryGL = {
       GL.generateTempBuffers();
 #endif
 
+      // Detect the presence of a few extensions manually, this GL interop layer itself will need to know if they exist. 
       GL.compressionExt = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc');
@@ -404,12 +408,35 @@ var LibraryGL = {
 
       GL.floatExt = Module.ctx.getExtension('OES_texture_float');
 
-      GL.elementIndexUintExt = Module.ctx.getExtension('OES_element_index_uint');
-      GL.standardDerivativesExt = Module.ctx.getExtension('OES_standard_derivatives');
+      // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
+      // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
+      // As new extensions are ratified at http://www.khronos.org/registry/webgl/extensions/ , feel free to add your new extensions
+      // here, as long as they don't produce a performance impact for users that might not be using those extensions.
+      // E.g. debugging-related extensions should probably be off by default.
+      var automaticallyEnabledExtensions = [ "OES_texture_float", "OES_texture_half_float", "OES_standard_derivatives",
+                                             "OES_vertex_array_object", "WEBGL_compressed_texture_s3tc", "WEBGL_depth_texture",
+                                             "OES_element_index_uint", "EXT_texture_filter_anisotropic", "ANGLE_instanced_arrays",
+                                             "OES_texture_float_linear", "OES_texture_half_float_linear", "WEBGL_compressed_texture_atc",
+                                             "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
+                                             "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources" ];
 
-      GL.depthTextureExt = Module.ctx.getExtension("WEBGL_depth_texture") ||
-                           Module.ctx.getExtension("MOZ_WEBGL_depth_texture") ||
-                           Module.ctx.getExtension("WEBKIT_WEBGL_depth_texture");
+      function shouldEnableAutomatically(extension) {
+        for(var i in automaticallyEnabledExtensions) {
+          var include = automaticallyEnabledExtensions[i];
+          if (ext.indexOf(include) != -1) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      var extensions = Module.ctx.getSupportedExtensions();
+      for(var e in extensions) {
+        var ext = extensions[e].replace('MOZ_', '').replace('WEBKIT_', '');
+        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+          Module.ctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+        }
+      }
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
