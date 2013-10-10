@@ -503,7 +503,13 @@ var LibraryGL = {
       case 0x1F02 /* GL_VERSION */:
         return allocate(intArrayFromString(Module.ctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
       case 0x1F03 /* GL_EXTENSIONS */:
-        return allocate(intArrayFromString(Module.ctx.getSupportedExtensions().join(' ')), 'i8', ALLOC_NORMAL);
+        var exts = Module.ctx.getSupportedExtensions();
+        var gl_exts = [];
+        for (i in exts) {
+          gl_exts.push(exts[i]);
+          gl_exts.push("GL_" + exts[i]);
+        }
+        return allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL); // XXX this leaks! TODO: Cache all results like this in library_gl.js to be clean and nice and avoid leaking.
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
         return allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
       default:
