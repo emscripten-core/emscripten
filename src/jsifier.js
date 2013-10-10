@@ -536,7 +536,6 @@ function JSify(data, functionsOnly, givenFunctions) {
         case 'unreachable': line.JS = unreachableHandler(line); break;
         default: throw 'what is this line? ' + dump(line);
       }
-      assert(line.JS);
       //if (ASM_JS) assert(line.JS.indexOf('var ') < 0, dump(line));
       if (line.assignTo) makeAssign(line);
       Framework.currItem = null;
