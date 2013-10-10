@@ -456,7 +456,7 @@ var LibraryGL = {
       // A program's uniformTable maps the string name of an uniform to an integer location of that uniform.
       // The global GL.uniforms map maps integer locations to WebGLUniformLocations.
       var numUniforms = Module.ctx.getProgramParameter(p, Module.ctx.ACTIVE_UNIFORMS);
-      for(var i = 0; i < numUniforms; ++i) {
+      for (var i = 0; i < numUniforms; ++i) {
         var u = Module.ctx.getActiveUniform(p, i);
 
         var name = u.name;
@@ -474,7 +474,7 @@ var LibraryGL = {
         ptable[name] = [u.size, id];
         GL.uniforms[id] = loc;
 
-        for(var j = 1; j < u.size; ++j) {
+        for (var j = 1; j < u.size; ++j) {
           var n = name + '['+j+']';
           loc = Module.ctx.getUniformLocation(p, n);
           id = GL.getNewId(GL.uniforms);
