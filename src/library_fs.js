@@ -574,6 +574,8 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(err);
         }
       }
+      if (FS.trackingDelegate['willMovePath'])
+        FS.trackingDelegate['willMovePath'](old_path, new_path);
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
       // do the underlying fs rename
@@ -585,14 +587,8 @@ mergeInto(LibraryManager.library, {
         // add the node back to the hash (in case node_ops.rename
         // changed its name)
         FS.hashAddNode(old_node);
-      }
-      if (FS.trackingDelegate) {
-        if (FS.trackingDelegate['didDeleteFile'])
-          FS.trackingDelegate['didDeleteFile'](old_path);
-        if (FS.trackingDelegate['didOpenFile'])
-          FS.trackingDelegate['didOpenFile'](new_path, FS.tracking.openFlags.WRITE);
-        if (FS.trackingDelegate['didCloseFile'])
-          FS.trackingDelegate['didCloseFile'](new_path);
+        if (FS.trackingDelegate['didMovePath'])
+          FS.trackingDelegate['didMovePath'](old_path, new_path);
       }
     },
     rmdir: function(path) {
@@ -610,8 +606,14 @@ mergeInto(LibraryManager.library, {
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
+      if (FS.trackingDelegate['willDeletePath']) {
+        FS.trackingDelegate['willDeletePath'](path);
+      }
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
+      if (FS.trackingDelegate['didDeletePath']) {
+        FS.trackingDelegate['didDeletePath'](path);
+      }
     },
     readdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
@@ -638,10 +640,13 @@ mergeInto(LibraryManager.library, {
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
+      if (FS.trackingDelegate['willDeletePath']) {
+        FS.trackingDelegate['willDeletePath'](path);
+      }
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
-      if (FS.trackingDelegate && FS.trackingDelegate['didDeleteFile']) {
-        FS.trackingDelegate['didDeleteFile'](path);
+      if (FS.trackingDelegate['didDeletePath']) {
+        FS.trackingDelegate['didDeletePath'](path);
       }
     },
     readlink: function(path) {
