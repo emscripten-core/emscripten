@@ -17,7 +17,6 @@ function tokenizer(item, inner) {
   var tokens = [];
   var quotes = 0;
   var lastToken = null;
-  var CHUNKSIZE = 64; // How much forward to peek forward. Too much means too many string segments copied
   // Note: '{' is not an encloser, as its use in functions is split over many lines
   var enclosers = {
     '[': 0,
