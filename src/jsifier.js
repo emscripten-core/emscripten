@@ -1724,10 +1724,23 @@ function JSify(data, functionsOnly, givenFunctions) {
       var legalizedI64sDefault = legalizedI64s;
       legalizedI64s = false;
 
-      var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
+      var i = 0;
+      var globals = data.unparsedGlobalss[0].lines;
+      var globalDatas = [];
+      var GLOBALS_CHUNK_SIZE = Infinity;
+printErr(globals.length);
+      while (i < globals.length) {
+        globalDatas.push(analyzer(intertyper(globals.slice(i, i + GLOBALS_CHUNK_SIZE), true), true));
+        i += GLOBALS_CHUNK_SIZE;
+      }
+      //assert(globalDatas.length === 1);
 
       if (!NAMED_GLOBALS) {
-        sortGlobals(globalsData.globalVariables).forEach(function(g) {
+        var globalVariables = {};
+        for (var i = 0; i < globalDatas.length; i++) {
+          mergeInto(globalVariables, globalDatas[i].globalVariables);
+        }
+        sortGlobals(globalVariables).forEach(function(g) {
           var ident = g.ident;
           if (!isIndexableGlobal(ident)) return;
           assert(Variables.nextIndexedOffset % Runtime.STACK_ALIGN == 0);
@@ -1737,9 +1750,10 @@ function JSify(data, functionsOnly, givenFunctions) {
             Variables.nextIndexedOffset += Runtime.alignMemory(QUANTUM_SIZE);
           }
         });
+        globalVariables = null;
       }
-      JSify(globalsData, true, Functions);
-      globalsData = null;
+      globalDatas.forEach(function(globalData) { JSify(globalData, true, Functions) });
+      globalDatas = null;
       data.unparsedGlobalss = null;
 
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
