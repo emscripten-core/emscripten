@@ -5,6 +5,11 @@
 
 var fastPaths = 0, slowPaths = 0;
 
+var tokenCache = {};
+['=', 'i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
+
+//var tokenCacheMisses = {};
+
 // Line tokenizer
 function tokenizer(item, inner) {
   //assert(item.lineNum != 40000);
@@ -31,6 +36,15 @@ function tokenizer(item, inner) {
       return;
     }
 
+    var cached = tokenCache[text];
+    if (cached) {
+      //assert(cached.text === text);
+      tokens.push(cached);
+      lastToken = cached;
+      return;
+    }
+    //tokenCacheMisses[text] = (misses[text] || 0) + 1;
+
     var token = {
       text: text
     };
@@ -42,6 +56,10 @@ function tokenizer(item, inner) {
     }
     // merge certain tokens
     if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
+      if (lastToken.text in tokenCache) {
+        // create a copy of the cached value
+        lastToken = tokens[tokens.length-1] = { text: lastToken.text };
+      }
       lastToken.text += ' ' + text;
     } else if (lastToken && text[0] == '}') { // }, }*, etc.
       var openBrace = tokens.length-1;
