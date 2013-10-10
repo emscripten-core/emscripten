@@ -2574,6 +2574,11 @@ function deParen(text) {
   return text;
 }
 
+function deParenCarefully(text) {
+  if (text[0] === '(' && text.indexOf('(', 1) < 0 && text[text.length-1] === ')') return text.substr(1, text.length-2);
+  return text;
+}
+
 function addVariable(ident, type, funcData) {
   funcData = funcData || Framework.currItem.funcData;
   assert(type);

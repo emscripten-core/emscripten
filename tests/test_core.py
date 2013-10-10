@@ -8616,6 +8616,13 @@ void*:16
       assert ' & 255]()' not in original, 'big function table does not exist'
       assert ' & 255]()' in final, 'big function table exists'
 
+    assert 'asm1' in test_modes
+    if self.run_name == 'asm1':
+      generated = open('src.cpp.o.js').read()
+      main = generated[generated.find('function runPostSets'):]
+      main = main[:main.find('\n}')]
+      assert main.count('\n') == 7, 'must not emit too many postSets: %d' % main.count('\n')
+
   def test_gcc_unmangler(self):
     Settings.NAMED_GLOBALS = 1 # test coverage for this
 

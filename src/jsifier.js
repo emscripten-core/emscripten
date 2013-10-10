@@ -234,8 +234,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   function globalVariableHandler(item) {
     function needsPostSet(value) {
       if (typeof value !== 'string') return false;
-      return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
-                                               || value.substr(0, 6) === 'GLOBAL';
+      // (' is ok, as it is something we can indexize later into a concrete int: ('{{ FI_ ...
+      return /^([(_][^']|CHECK_OVERFLOW|GLOBAL).*/.test(value);
     }
 
     item.intertype = 'GlobalVariableStub';
@@ -308,6 +308,8 @@ function JSify(data, functionsOnly, givenFunctions) {
             JS: makeSetValue(makeGlobalUse(item.ident), i, value, structTypes[i], false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
           });
           constant[i] = '0';
+        } else {
+          if (typeof value === 'string') constant[i] = deParenCarefully(value);
         }
       });
 
