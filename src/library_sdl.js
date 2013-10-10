@@ -252,7 +252,11 @@ var LibrarySDL = {
       } else {
         canvas = Module['canvas'];
       }
-      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas);
+
+      var webGLContextAttributes = {
+        antialias: ((SDL.glAttributes[13 /*SDL_GL_MULTISAMPLEBUFFERS*/] != 0) && (SDL.glAttributes[14 /*SDL_GL_MULTISAMPLESAMPLES*/] > 1))
+      };
+      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas, webGLContextAttributes);
       SDL.surfaces[surf] = {
         width: width,
         height: height,
