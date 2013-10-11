@@ -188,7 +188,7 @@ function analyzer(data, sidePass) {
     if (USE_TYPED_ARRAYS == 2) {
       function getLegalVars(base, bits, allowLegal) {
         bits = bits || 32; // things like pointers are all i32, but show up as 0 bits from getBits
-        if (allowLegal && bits <= 32) return [{ ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits }];
+        if (allowLegal && bits <= 32) return [{ intertype: 'value', ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits, type: 'i' + bits }];
         if (isNumber(base)) return getLegalLiterals(base, bits);
         if (base[0] == '{') {
           warnOnce('seeing source of illegal data ' + base + ', likely an inline struct - assuming zeroinit');
@@ -198,7 +198,7 @@ function analyzer(data, sidePass) {
         var i = 0;
         if (base == 'zeroinitializer' || base == 'undef') base = 0;
         while (bits > 0) {
-          ret[i] = { ident: base ? base + '$' + i : '0', bits: Math.min(32, bits) };
+          ret[i] = { intertype: 'value', ident: base ? base + '$' + i : '0', bits: Math.min(32, bits), type: 'i' + Math.min(32, bits) };
           bits -= 32;
           i++;
         }
@@ -209,7 +209,7 @@ function analyzer(data, sidePass) {
         var ret = new Array(Math.ceil(bits/32));
         var i = 0;
         while (bits > 0) {
-          ret[i] = { ident: (parsed[i]|0).toString(), bits: Math.min(32, bits) }; // resign all values
+          ret[i] = { intertype: 'value', ident: (parsed[i]|0).toString(), bits: Math.min(32, bits), type: 'i' + Math.min(32, bits) }; // resign all values
           bits -= 32;
           i++;
         }
@@ -225,7 +225,8 @@ function analyzer(data, sidePass) {
             return getLegalLiterals(value.ident, bits);
           } else if (value.intertype == 'structvalue') {
             return getLegalStructuralParts(value).map(function(part) {
-              return { ident: part.ident, bits: part.type.substr(1) };
+              part.bits = part.type.substr(1); // can be some nested IR, like LLVM calls
+              return part;
             });
           } else {
             return getLegalVars(value.ident, bits);
@@ -550,11 +551,7 @@ function analyzer(data, sidePass) {
                       return {
                         intertype: 'phiparam',
                         label: param.label,
-                        value: {
-                         intertype: 'value',
-                         ident: values[k++][j].ident,
-                         type: 'i' + element.bits,
-                        }
+                        value: values[k++][j]
                       };
                     })
                   });
