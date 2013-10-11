@@ -26,7 +26,13 @@ mergeInto(LibraryManager.library, {
     // This is set to false when the runtime is initialized, allowing you
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
-    
+    trackingDelegate: {},
+    tracking: {
+      openFlags: {
+        READ: 1 << 0,
+        WRITE: 1 << 1
+      }
+    },
     ErrnoError: (function() {
       function ErrnoError(errno) {
         this.errno = errno;
@@ -608,6 +614,13 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(err);
         }
       }
+      try {
+        if (FS.trackingDelegate['willMovePath']) {
+          FS.trackingDelegate['willMovePath'](old_path, new_path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+      }
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
       // do the underlying fs rename
@@ -619,6 +632,13 @@ mergeInto(LibraryManager.library, {
         // add the node back to the hash (in case node_ops.rename
         // changed its name)
         FS.hashAddNode(old_node);
+      }
+      try {
+        if (FS.trackingDelegate['didMovePath']) {
+          FS.trackingDelegate['didMovePath'](old_path, new_path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
     },
     rmdir: function(path) {
@@ -636,8 +656,22 @@ mergeInto(LibraryManager.library, {
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
+      try {
+        if (FS.trackingDelegate['willDeletePath']) {
+          FS.trackingDelegate['willDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+      }
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
+      try {
+        if (FS.trackingDelegate['didDeletePath']) {
+          FS.trackingDelegate['didDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didDeletePath']('"+path+"') threw an exception: " + e.message);
+      }
     },
     readdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
@@ -664,8 +698,22 @@ mergeInto(LibraryManager.library, {
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
+      try {
+        if (FS.trackingDelegate['willDeletePath']) {
+          FS.trackingDelegate['willDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+      }
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
+      try {
+        if (FS.trackingDelegate['didDeletePath']) {
+          FS.trackingDelegate['didDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didDeletePath']('"+path+"') threw an exception: " + e.message);
+      }
     },
     readlink: function(path) {
       var lookup = FS.lookupPath(path, { follow: false });
@@ -856,6 +904,18 @@ mergeInto(LibraryManager.library, {
           Module['printErr']('read file: ' + path);
         }
       }
+      try {
+        if (FS.trackingDelegate['didOpenFile']) {
+          var trackingFlags = 0;
+          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}})
+            trackingFlags |= FS.tracking.openFlags.READ;
+          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}})
+            trackingFlags |= FS.tracking.openFlags.WRITE;
+          FS.trackingDelegate['didOpenFile'](path, trackingFlags);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didOpenFile']('"+path+"', flags) threw an exception: " + e.message);
+      }
       return stream;
     },
     close: function(stream) {
@@ -925,6 +985,13 @@ mergeInto(LibraryManager.library, {
       }
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
+      try {
+        if (stream.path && FS.trackingDelegate['didWriteToFile']) {
+          FS.trackingDelegate['didWriteToFile'](stream.path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didWriteToFile']('"+path+"') threw an exception: " + e.message);
+      }
       return bytesWritten;
     },
     allocate: function(stream, offset, length) {
