@@ -49,15 +49,8 @@ if STDERR_FILE:
   logging.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
 
-def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
+def process_funcs((i, funcs_file, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, DEBUG)):
   try:
-    funcs_file = temp_files.get('.func_%d.ll' % i).name
-    f = open(funcs_file, 'w')
-    f.write(funcs)
-    funcs = None
-    f.write('\n')
-    f.write(meta)
-    f.close()
     #print >> sys.stderr, 'running', str([settings_file, funcs_file, 'funcs', forwarded_file] + libraries).replace("'/", "'") # can use this in src/compiler_funcs.html arguments,
     #                                                                                                                         # just copy temp dir to under this one
     out = jsrun.run_js(
@@ -255,11 +248,20 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     if DEBUG: logging.debug('  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.)))
 
-    commands = [
-      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine,# + ['--prof'],
-       temp_files, DEBUG)
-      for i, chunk in enumerate(chunks)
-    ]
+    commands = []
+    for i in range(len(chunks)):
+      funcs_file = temp_files.get('.func_%d.ll' % i).name
+      f = open(funcs_file, 'w')
+      f.write(chunks[i])
+      if not jcache:
+        chunks[i] = None # leave chunks array alive (need its length later)
+      f.write('\n')
+      f.write(meta)
+      f.close()
+      commands.append(
+        (i, funcs_file, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine,# + ['--prof'],
+         DEBUG)
+      )
 
     if len(chunks) > 1:
       pool = multiprocessing.Pool(processes=cores)
