@@ -1906,3 +1906,19 @@ done.
     assert '''tests/hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
 
+  def test_demangle(self):
+    open('src.cpp', 'w').write('''
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        EM_ASM(Module.print(demangle('_main')));
+        EM_ASM(Module.print(demangle('__Z2f2v')));
+        EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
+        EM_ASM(Module.print(demangle('__ZN4Waka1f12a234123412345pointEv')));
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('main\nf2\nabcdabcdabcd\nWaka::f::a23412341234::point\n', run_js('a.out.js'))
+

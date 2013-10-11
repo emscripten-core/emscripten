@@ -640,6 +640,28 @@ function stringToUTF32(str, outPtr) {
 }
 Module['stringToUTF32'] = stringToUTF32;
 
+function demangle(func) {
+  if (typeof func === 'number') func = Pointer_stringify(func);
+  assert(func[0] === '_');
+  if (func[1] !== '_') return func.substr(1); // C function
+  assert(func[2] === 'Z');
+  if (func[3] !== 'N') {
+    // not namespaced
+    var m = /(\d+)([^\d].*)/.exec(func.substr(3));
+    return m[2].substr(0, m[1]);
+  }
+  // namespaced N-E
+  var i = 4, ret = [];
+  while (func[i] !== 'E') {
+    var size = parseInt(func.substr(i));
+    var pre = size.toString().length;
+    ret.push(func.substr(i + pre, size));
+    i += pre + size;
+    assert(pre > 0 && size > 0 && i < func.length);
+  }
+  return ret.join('::');
+}
+
 // Memory management
 
 var PAGE_SIZE = 4096;
