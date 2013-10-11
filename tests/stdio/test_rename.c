@@ -25,6 +25,8 @@ void setup() {
   mkdir("dir/subdir", 0777);
   mkdir("dir-readonly", 0555);
   mkdir("dir-nonempty", 0777);
+  mkdir("dir/subdir3", 0777);
+  mkdir("dir/subdir3/subdir3_1", 0777);
   create_file("dir-nonempty/file", "abcdef", 0777);
 }
 
@@ -38,6 +40,9 @@ void cleanup() {
   rmdir("dir/subdir");
   rmdir("dir/subdir1");
   rmdir("dir/subdir2");
+  rmdir("dir/subdir3/subdir3_1/subdir1 renamed");
+  rmdir("dir/subdir3/subdir3_1");
+  rmdir("dir/subdir3");
   rmdir("dir");
   rmdir("dir-readonly");
   unlink("dir-nonempty/file");
@@ -94,6 +99,11 @@ void test() {
   err = rename("dir/subdir1", "dir/subdir2");
   assert(!err);
   err = access("dir/subdir2", F_OK);
+  assert(!err);
+
+  err = rename("dir/subdir2", "dir/subdir3/subdir3_1/subdir1 renamed");
+  assert(!err);
+  err = access("dir/subdir3/subdir3_1/subdir1 renamed", F_OK);
   assert(!err);
 
   puts("success");
