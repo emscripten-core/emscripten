@@ -140,6 +140,7 @@ mergeInto(LibraryManager.library, {
         delete old_node.parent.contents[old_node.name];
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
+        old_node.parent = new_dir;
       },
       unlink: function(parent, name) {
         delete parent.contents[name];
