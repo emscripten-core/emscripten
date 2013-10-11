@@ -5,12 +5,6 @@ mergeInto(LibraryManager.library, {
     mount: function(mount) {
       return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
     },
-    nextname: function() {
-      if (!SOCKFS.nextname.current) {
-        SOCKFS.nextname.current = 0;
-      }
-      return 'socket[' + (SOCKFS.nextname.current++) + ']';
-    },
     createSocket: function(family, type, protocol) {
       var streaming = type == {{{ cDefine('SOCK_STREAM') }}};
       if (protocol) {
@@ -94,6 +88,12 @@ mergeInto(LibraryManager.library, {
         var sock = stream.node.sock;
         sock.sock_ops.close(sock);
       }
+    },
+    nextname: function() {
+      if (!SOCKFS.nextname.current) {
+        SOCKFS.nextname.current = 0;
+      }
+      return 'socket[' + (SOCKFS.nextname.current++) + ']';
     },
     // backend-specific stream ops
     websocket_sock_ops: {

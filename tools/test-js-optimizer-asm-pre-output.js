@@ -69,26 +69,6 @@ function b($this, $__n) {
  h(~~g ^ -1);
  return;
 }
-function rett() {
- if (f()) {
-  g();
-  return 5;
- }
- return 0;
-}
-function ret2t() {
- if (f()) {
-  g();
-  return;
- }
-}
-function retf() {
- if (f()) {
-  g();
-  return +h();
- }
- return +0;
-}
 function i32_8() {
  if ((HEAP8[$4 & 16777215] | 0) == 0) {
   print(5);

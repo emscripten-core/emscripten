@@ -125,8 +125,6 @@ Options that are modified or new in %s include:
         (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
         (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
         (['-o', 'something.js', '-O1', '-g'],             1, None, 0, 0), # no closure since debug
-        (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1, 0),
-        (['-o', 'something.js', '-O1', '--closure', '1', '-s', 'ASM_JS=0'], 1, None, 1, 0),
         (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
         (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
         (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
@@ -169,13 +167,13 @@ Options that are modified or new in %s include:
           # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
           assert '._main = ' not in generated, 'closure compiler should not have been run'
           if keep_debug:
-            assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+            assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated or 'var $original = 0' in generated, 'micro opts should always be on'
+            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or '$i_04' in generated or '$i_05' in generated or 'var $original = 0' in generated, 'micro opts should always be on'
           if opt_level >= 2 and '-g' in params:
             assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
           assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
-          if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
+          if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
           elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
       # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
@@ -807,10 +805,10 @@ f.close()
            0: (1500, 5000)
       }),
       (['-O2'], {
-         100: (0, 1500),
-         250: (0, 1500),
-         500: (0, 1500),
-        1000: (0, 1500),
+         100: (0, 1600),
+         250: (0, 1600),
+         500: (0, 1600),
+        1000: (0, 1600),
         2000: (0, 2000),
         5000: (0, 5000),
            0: (0, 5000)
@@ -1647,6 +1645,8 @@ f.close()
        ['asm', 'outline']),
       (path_from_root('tools', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline3-output.js')).read(),
        ['asm', 'outline']),
+      (path_from_root('tools', 'test-js-optimizer-asm-minlast.js'), open(path_from_root('tools', 'test-js-optimizer-asm-minlast-output.js')).read(),
+       ['asm', 'minifyWhitespace', 'last']),
     ]:
       print input
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
@@ -1665,20 +1665,16 @@ f.close()
     if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_CORES'] = '2'
-      for asm, linkable, chunks, js_chunks in [
-          (0, 0, 3, 2), (0, 1, 3, 4),
-          (1, 0, 3, 2), (1, 1, 3, 4)
+      os.environ['EMCC_CORES'] = '2' # standardize over machines
+      for asm, linkable, chunks in [
+          (0, 0, 2), (0, 1, 2),
+          (1, 0, 2), (1, 1, 2)
         ]:
-        print asm, linkable, chunks, js_chunks
+        print asm, linkable, chunks
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
         ok = False
         for c in range(chunks, chunks+2):
           ok = ok or ('phase 2 working on %d chunks' % c in err)
-        assert ok, err
-        ok = False
-        for c in range(js_chunks, js_chunks+2):
-          ok = ok or ('splitting up js optimization into %d chunks' % c in err)
         assert ok, err
     finally:
       del os.environ['EMCC_DEBUG']
@@ -1909,4 +1905,20 @@ done.
     assert not os.path.exists('a.out.js')
     assert '''tests/hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
+
+  def test_demangle(self):
+    open('src.cpp', 'w').write('''
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        EM_ASM(Module.print(demangle('_main')));
+        EM_ASM(Module.print(demangle('__Z2f2v')));
+        EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
+        EM_ASM(Module.print(demangle('__ZN4Waka1f12a234123412345pointEv')));
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('main\nf2\nabcdabcdabcd\nWaka::f::a23412341234::point\n', run_js('a.out.js'))
 

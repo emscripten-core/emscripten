@@ -299,11 +299,10 @@ function ccallFunc(func, returnType, argTypes, args) {
   function toC(value, type) {
     if (type == 'string') {
       if (value === null || value === undefined || value === 0) return 0; // null string
-      if (!stack) stack = Runtime.stackSave();
-      var ret = Runtime.stackAlloc(value.length+1);
-      writeStringToMemory(value, ret);
-      return ret;
-    } else if (type == 'array') {
+      value = intArrayFromString(value);
+      type = 'array';
+    }
+    if (type == 'array') {
       if (!stack) stack = Runtime.stackSave();
       var ret = Runtime.stackAlloc(value.length);
       writeArrayToMemory(value, ret);
@@ -641,11 +640,33 @@ function stringToUTF32(str, outPtr) {
 }
 Module['stringToUTF32'] = stringToUTF32;
 
+function demangle(func) {
+  if (typeof func === 'number') func = Pointer_stringify(func);
+  assert(func[0] === '_');
+  if (func[1] !== '_') return func.substr(1); // C function
+  assert(func[2] === 'Z');
+  if (func[3] !== 'N') {
+    // not namespaced
+    var m = /(\d+)([^\d].*)/.exec(func.substr(3));
+    return m[2].substr(0, m[1]);
+  }
+  // namespaced N-E
+  var i = 4, ret = [];
+  while (func[i] !== 'E') {
+    var size = parseInt(func.substr(i));
+    var pre = size.toString().length;
+    ret.push(func.substr(i + pre, size));
+    i += pre + size;
+    assert(pre > 0 && size > 0 && i < func.length);
+  }
+  return ret.join('::');
+}
+
 // Memory management
 
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
-  return ((x+4095)>>12)<<12;
+  return (x+4095)&-4096;
 }
 
 var HEAP;
@@ -717,7 +738,7 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-assert(!!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
+assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'Cannot fallback to non-typed array case: Code is too specialized');
 
 #if USE_TYPED_ARRAYS == 1
@@ -908,6 +929,17 @@ function writeArrayToMemory(array, buffer) {
 }
 Module['writeArrayToMemory'] = writeArrayToMemory;
 
+function writeAsciiToMemory(str, buffer, dontAddNull) {
+  for (var i = 0; i < str.length; i++) {
+#if ASSERTIONS
+    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
+#endif
+    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}}
+  }
+  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}}
+}
+Module['writeAsciiToMemory'] = writeAsciiToMemory;
+
 {{{ unSign }}}
 {{{ reSign }}}
 
@@ -932,6 +964,24 @@ if (!Math['toFloat32']) Math['toFloat32'] = function(x) {
 };
 Math.toFloat32 = Math['toFloat32'];
 #endif
+
+var Math_abs = Math.abs;
+var Math_cos = Math.cos;
+var Math_sin = Math.sin;
+var Math_tan = Math.tan;
+var Math_acos = Math.acos;
+var Math_asin = Math.asin;
+var Math_atan = Math.atan;
+var Math_atan2 = Math.atan2;
+var Math_exp = Math.exp;
+var Math_log = Math.log;
+var Math_sqrt = Math.sqrt;
+var Math_ceil = Math.ceil;
+var Math_floor = Math.floor;
+var Math_pow = Math.pow;
+var Math_imul = Math.imul;
+var Math_toFloat32 = Math.toFloat32;
+var Math_min = Math.min;
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and

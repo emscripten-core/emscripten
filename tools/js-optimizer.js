@@ -768,32 +768,11 @@ function simplifyExpressions(ast) {
     });
   }
 
-  function asmOpts(fun) {
-    // Add final returns when necessary
-    var returnType = null;
-    traverse(fun, function(node, type) {
-      if (type === 'return' && node[1]) {
-        returnType = detectAsmCoercion(node[1]);
-      }
-    });
-    // Add a final return if one is missing.
-    if (returnType !== null) {
-      var stats = getStatements(fun);
-      var last = stats[stats.length-1];
-      if (last[0] != 'return') {
-        var returnValue = ['num', 0];
-        if (returnType === ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
-        stats.push(['return', returnValue]);
-      }
-    }
-  }
-
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
     simplifyBitops(func);
     joinAdditions(func);
     // simplifyZeroComp(func); TODO: investigate performance
-    if (asm) asmOpts(func);
     simplifyNotComps(func);
   });
 }
@@ -1593,6 +1572,7 @@ function normalizeAsm(func) {
         data.vars[name] = detectAsmCoercion(value);
         v.length = 1; // make an un-assigning var
       } else {
+        assert(j === 0, 'cannot break in the middle');
         break outer;
       }
     }
@@ -1602,6 +1582,8 @@ function normalizeAsm(func) {
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type === 'var') {
+        assert(0, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
+        /*
         for (var j = 0; j < node[1].length; j++) {
           var v = node[1][j];
           var name = v[0];
@@ -1616,12 +1598,7 @@ function normalizeAsm(func) {
           }
         }
         unVarify(node[1], node);
-      } else if (type === 'dot') {
-        if (node[1][0] === 'name' && node[1][1] === 'Math') {
-          // transform Math.max to Math_max; we forward in the latter version
-          node[0] = 'name';
-          node[1] = 'Math_' + node[2];
-        }
+        */
       } else if (type === 'call' && node[1][0] === 'function') {
         assert(!node[1][1]); // anonymous functions only
         data.inlines.push(node[1]);
@@ -3811,11 +3788,27 @@ function asmLastOpts(ast) {
           node[1] = simplifyNotCompsDirect(['unary-prefix', '!', conditionToBreak]);
           return node;
         }
-      } else if (type == 'binary' && node[1] == '&' && node[3][0] == 'unary-prefix' && node[3][1] == '-' && node[3][2][0] == 'num' && node[3][2][1] == 1) {
-        // Change &-1 into |0, at this point the hint is no longer needed
-        node[1] = '|';
-        node[3] = node[3][2];
-        node[3][1] = 0;
+      } else if (type == 'binary') {
+        if (node[1] === '&') {
+          if (node[3][0] === 'unary-prefix' && node[3][1] === '-' && node[3][2][0] === 'num' && node[3][2][1] === 1) {
+            // Change &-1 into |0, at this point the hint is no longer needed
+            node[1] = '|';
+            node[3] = node[3][2];
+            node[3][1] = 0;
+          }
+        } else if (node[1] === '-' && node[3][0] === 'unary-prefix') {
+          // avoid X - (-Y) because some minifiers buggily emit X--Y which is invalid as -- can be a unary. Transform to
+         //        X + Y
+          if (node[3][1] === '-') { // integer
+            node[1] = '+';
+            node[3] = node[3][2];
+          } else if (node[3][1] === '+') { // float
+            if (node[3][2][0] === 'unary-prefix' && node[3][2][1] === '-') {
+              node[1] = '+';
+              node[3][2] = node[3][2][2];
+            }
+          }
+        }
       }
     });
   });
@@ -3863,8 +3856,8 @@ arguments_ = arguments_.filter(function (arg) {
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
-generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
-var extraInfoStart = src.indexOf('// EXTRA_INFO:')
+generatedFunctions = src.lastIndexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
+var extraInfoStart = src.lastIndexOf('// EXTRA_INFO:')
 if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 //printErr(JSON.stringify(extraInfo));
 

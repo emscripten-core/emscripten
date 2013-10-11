@@ -27,6 +27,7 @@ class TempFiles:
 
   def clean(self):
     if self.save_debug_files:
+      import sys
       print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,)
       return
     for filename in self.to_clean:

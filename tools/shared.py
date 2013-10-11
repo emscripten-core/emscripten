@@ -47,6 +47,7 @@ class WindowsPopen:
     try:
       # Call the process with fixed streams.
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
+      self.pid = self.process.pid
     except Exception, e:
       logging.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e)))
       raise e
@@ -83,10 +84,6 @@ class WindowsPopen:
       tempfiles.try_delete(self.response_filename)
     except:
       pass # Mute all exceptions in dtor, particularly if we didn't use a response file, self.response_filename doesn't exist.
-
-# Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
-if os.name == 'nt':
-  Popen = WindowsPopen
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
@@ -250,6 +247,19 @@ except Exception, e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
 
+try:
+  EM_POPEN_WORKAROUND
+except:
+  EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
+
+# Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
+# nb. This is by default disabled since it has the adverse effect of buffering up all logging messages, which makes
+# builds look unresponsive (messages are printed only after the whole build finishes). Whether this workaround is needed 
+# seems to depend on how the host application that invokes emcc has set up its stdout and stderr.
+if EM_POPEN_WORKAROUND and os.name == 'nt':
+  logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
+  Popen = WindowsPopen
+
 # Expectations
 
 EXPECTED_LLVM_VERSION = (3,2)
@@ -304,7 +314,7 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.5.9'
+EMSCRIPTEN_VERSION = '1.6.4'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
@@ -354,7 +364,7 @@ def check_sanity(force=False):
         logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
-    for cmd in [CLANG, LINK_CMD[0], LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
+    for cmd in [CLANG, LINK_CMD[0], LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
@@ -748,8 +758,6 @@ class Settings2(type):
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
-        self.attrs['EMIT_GENERATED_FUNCTIONS'] = 1
-      if opt_level >= 2:
         self.attrs['RELOOP'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if opt_level >= 3:
@@ -1413,11 +1421,14 @@ class Building:
       emcc_debug = os.environ.get('EMCC_DEBUG')
       if emcc_debug: del os.environ['EMCC_DEBUG']
 
-      def make(opt_level):
+      emcc_leave_inputs_raw = os.environ.get('EMCC_LEAVE_INPUTS_RAW')
+      if emcc_leave_inputs_raw: del os.environ['EMCC_LEAVE_INPUTS_RAW']
+
+      def make(opt_level, reloop):
         raw = relooper + '.raw.js'
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
           os.path.join('relooper', 'emscripten', 'glue.js'),
-          '--memory-init-file', '0',
+          '--memory-init-file', '0', '-s', 'RELOOP=%d' % reloop,
           '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render", "_rl_set_asm_js_mode"]',
           '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
           '-s', 'RELOOPER="' + relooper + '"',
@@ -1432,20 +1443,30 @@ class Building:
 
       # bootstrap phase 1: generate unrelooped relooper, for which we do not need a relooper (so we cannot recurse infinitely in this function)
       logging.info('  bootstrap phase 1')
-      make(1)
+      make(2, 0)
       # bootstrap phase 2: generate relooped relooper, using the unrelooped relooper (we see relooper.js exists so we cannot recurse infinitely in this function)
       logging.info('  bootstrap phase 2')
-      make(2)
+      make(2, 1)
       logging.info('bootstrapping relooper succeeded')
       logging.info('=======================================')
       ok = True
     finally:
       os.chdir(curr)
       if emcc_debug: os.environ['EMCC_DEBUG'] = emcc_debug
+      if emcc_leave_inputs_raw: os.environ['EMCC_LEAVE_INPUTS_RAW'] = emcc_leave_inputs_raw
       if not ok:
         logging.error('bootstrapping relooper failed. You may need to manually create relooper.js by compiling it, see src/relooper/emscripten')
+        try_delete(relooper) # do not leave a phase-1 version if phase 2 broke
         1/0
-
+  
+  @staticmethod
+  def ensure_struct_info(info_path):
+    if os.path.exists(info_path): return
+    Cache.ensure()
+    
+    import gen_struct_info
+    gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
+  
   @staticmethod
   def preprocess(infile, outfile):
     '''

@@ -7,6 +7,11 @@
 
 int main() {
   EM_ASM(
+    FS.mkdir('/working');
+#if NODEFS
+    FS.mount(NODEFS, { root: '.' }, '/working');
+#endif
+
     var major = 80;
 
     var device = FS.makedev(major++, 0);
@@ -51,14 +56,14 @@ int main() {
     FS.createDevice('/', 'createDevice-read-only', function() {});
     FS.createDevice('/', 'createDevice-write-only', null, function() {});
 
-    FS.mkdir('/folder', 0777);
-    FS.writeFile('/file', '1234567890');
+    FS.mkdir('/working/folder');
+    FS.writeFile('/working/file', '1234567890');
   );
 
   char readBuffer[256] = {0};
   char writeBuffer[] = "writeme";
 
-  int fl = open("/folder", O_RDWR);
+  int fl = open("/working/folder", O_RDWR);
   printf("read from folder: %d\n", read(fl, readBuffer, sizeof readBuffer));
   printf("errno: %d\n", errno);
   errno = 0;
@@ -97,7 +102,7 @@ int main() {
   printf("open write-only device from createDevice for write, errno: %d\n\n", errno);
   errno = 0;
 
-  int f = open("/file", O_RDWR);
+  int f = open("/working/file", O_RDWR);
   printf("read from file: %d\n", read(f, readBuffer, sizeof readBuffer));
   printf("data: %s\n", readBuffer);
   memset(readBuffer, 0, sizeof readBuffer);

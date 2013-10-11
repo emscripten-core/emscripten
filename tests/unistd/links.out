@@ -1,14 +1,14 @@
-readlink(/link)
+readlink(link)
 ret: 17
 errno: 0
 result: ../test/../there!
 
-readlink(/file)
+readlink(file)
 ret: -1
 errno: 22
 result: ../test/../there!
 
-readlink(/folder)
+readlink(folder)
 ret: -1
 errno: 22
 result: ../test/../there!
