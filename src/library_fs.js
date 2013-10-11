@@ -614,8 +614,13 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(err);
         }
       }
-      if (FS.trackingDelegate['willMovePath'])
-        FS.trackingDelegate['willMovePath'](old_path, new_path);
+      try {
+        if (FS.trackingDelegate['willMovePath']) {
+          FS.trackingDelegate['willMovePath'](old_path, new_path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+      }
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
       // do the underlying fs rename
@@ -627,8 +632,13 @@ mergeInto(LibraryManager.library, {
         // add the node back to the hash (in case node_ops.rename
         // changed its name)
         FS.hashAddNode(old_node);
-        if (FS.trackingDelegate['didMovePath'])
+      }
+      try {
+        if (FS.trackingDelegate['didMovePath']) {
           FS.trackingDelegate['didMovePath'](old_path, new_path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
     },
     rmdir: function(path) {
@@ -646,13 +656,21 @@ mergeInto(LibraryManager.library, {
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
+      try {
+        if (FS.trackingDelegate['willDeletePath']) {
+          FS.trackingDelegate['willDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
-      if (FS.trackingDelegate['didDeletePath']) {
-        FS.trackingDelegate['didDeletePath'](path);
+      try {
+        if (FS.trackingDelegate['didDeletePath']) {
+          FS.trackingDelegate['didDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readdir: function(path) {
@@ -680,13 +698,21 @@ mergeInto(LibraryManager.library, {
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
+      try {
+        if (FS.trackingDelegate['willDeletePath']) {
+          FS.trackingDelegate['willDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
-      if (FS.trackingDelegate['didDeletePath']) {
-        FS.trackingDelegate['didDeletePath'](path);
+      try {
+        if (FS.trackingDelegate['didDeletePath']) {
+          FS.trackingDelegate['didDeletePath'](path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readlink: function(path) {
@@ -878,13 +904,17 @@ mergeInto(LibraryManager.library, {
           Module['printErr']('read file: ' + path);
         }
       }
-      if (FS.trackingDelegate && FS.trackingDelegate['didOpenFile']) {
-        var trackingFlags = 0;
-        if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}})
-          trackingFlags |= FS.tracking.openFlags.READ;
-        if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}})
-          trackingFlags |= FS.tracking.openFlags.WRITE;
-        FS.trackingDelegate['didOpenFile'](path, trackingFlags);
+      try {
+        if (FS.trackingDelegate['didOpenFile']) {
+          var trackingFlags = 0;
+          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}})
+            trackingFlags |= FS.tracking.openFlags.READ;
+          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}})
+            trackingFlags |= FS.tracking.openFlags.WRITE;
+          FS.trackingDelegate['didOpenFile'](path, trackingFlags);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didOpenFile']('"+path+"', flags) threw an exception: " + e.message);
       }
       return stream;
     },
@@ -897,9 +927,6 @@ mergeInto(LibraryManager.library, {
         throw e;
       } finally {
         FS.closeStream(stream.fd);
-        if (FS.trackingDelegate && stream.path && FS.trackingDelegate['didCloseFile']) {
-          FS.trackingDelegate['didCloseFile'](stream.path);
-        }
       }
     },
     llseek: function(stream, offset, whence) {
@@ -958,8 +985,12 @@ mergeInto(LibraryManager.library, {
       }
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
-      if (FS.trackingDelegate && stream.path && FS.trackingDelegate['didWriteToFile']) {
-        FS.trackingDelegate['didWriteToFile'](stream.path);
+      try {
+        if (stream.path && FS.trackingDelegate['didWriteToFile']) {
+          FS.trackingDelegate['didWriteToFile'](stream.path);
+        }
+      } catch(e) {
+        console.log("FS.trackingDelegate['didWriteToFile']('"+path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
