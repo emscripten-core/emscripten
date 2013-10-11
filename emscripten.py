@@ -116,7 +116,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     meta = ''
     meta_start = -1
 
-  func_start = 0
+  start = ll.find('\n') if ll[0] == ';' else 0 # ignore first line, which contains ; ModuleID = '/dir name'
+
+  func_start = start
   last = func_start
   while 1:
     last = func_start
