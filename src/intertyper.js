@@ -30,7 +30,7 @@ function tokenizer(item, inner) {
   function makeToken(text) {
     if (text.length == 0) return;
     // merge certain tokens
-    if (lastToken && ( (lastToken.text == '%' && text[0] == '"') || /^\**$/.test(text) ) ) {
+    if (lastToken && /^\**$/.test(text)) {
       lastToken.text += text;
       return;
     }
