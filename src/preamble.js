@@ -641,25 +641,61 @@ function stringToUTF32(str, outPtr) {
 Module['stringToUTF32'] = stringToUTF32;
 
 function demangle(func) {
-  if (typeof func === 'number') func = Pointer_stringify(func);
-  assert(func[0] === '_');
-  if (func[1] !== '_') return func.substr(1); // C function
-  assert(func[2] === 'Z');
-  if (func[3] !== 'N') {
-    // not namespaced
-    var m = /(\d+)([^\d].*)/.exec(func.substr(3));
-    return m ? m[2].substr(0, m[1]) : func;
+  try {
+    if (typeof func === 'number') func = Pointer_stringify(func);
+    assert(func[0] === '_');
+    if (func[1] !== '_') return func.substr(1); // C function
+    assert(func[2] === 'Z');
+    var i, ret;
+    if (func[3] !== 'N') {
+      // not namespaced
+      var m = /(\d+)([^\d].*)/.exec(func.substr(3));
+      if (!m) return func;
+      var size = parseInt(m[1]);
+      i = 3 + size.toString().length + size;
+      ret = m[2].substr(0, size);
+    } else {
+      // namespaced N-E
+      var i = 4, ret = [];
+      while (func[i] !== 'E') {
+        var size = parseInt(func.substr(i));
+        var pre = size.toString().length;
+        ret.push(func.substr(i + pre, size));
+        i += pre + size;
+        assert(pre > 0 && size > 0 && i < func.length);
+      }
+      i++; // skip E
+      ret = ret.join('::');
+    }
+    // params
+    if (i < func.length) {
+      ret += '(';
+      var first = true, suffix = null;
+      paramLoop: while (i < func.length) {
+        if (!suffix && !first) ret += ', ';
+        first = false;
+        switch (func[i]) {
+          case 'c': ret += 'char'; i++; break;
+          case 's': ret += 'short'; i++; break;
+          case 'i': ret += 'int'; i++; break;
+          case 'l': ret += 'long'; i++; break;
+          case 'f': ret += 'float'; i++; break;
+          case 'd': ret += 'double'; i++; break;
+          case 'P': suffix = '*'; i++; continue; break;
+          case 'v': ret += 'void'; i++; break;
+          default: ret += '?' + func[i]; break paramLoop;
+        }
+        if (suffix) {
+          ret += suffix;
+          suffix = null;
+        }
+      }
+      ret += ')';
+    }
+    return ret;
+  } catch(e) {
+    return func + '<demangle-err>';
   }
-  // namespaced N-E
-  var i = 4, ret = [];
-  while (func[i] !== 'E') {
-    var size = parseInt(func.substr(i));
-    var pre = size.toString().length;
-    ret.push(func.substr(i + pre, size));
-    i += pre + size;
-    assert(pre > 0 && size > 0 && i < func.length);
-  }
-  return ret.join('::');
 }
 
 // Memory management

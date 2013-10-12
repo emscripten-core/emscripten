@@ -1915,11 +1915,19 @@ done.
         EM_ASM(Module.print(demangle('_main')));
         EM_ASM(Module.print(demangle('__Z2f2v')));
         EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
+        EM_ASM(Module.print(demangle('__Z4testcsifdPvPiPc')));
+        EM_ASM(Module.print(demangle('__ZN4test5moarrEcslfdPvPiPc')));
         EM_ASM(Module.print(demangle('__ZN4Waka1f12a234123412345pointEv')));
         return 0;
       }
     ''')
 
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
-    self.assertContained('main\nf2\nabcdabcdabcd\nWaka::f::a23412341234::point\n', run_js('a.out.js'))
+    self.assertContained('''main
+f2(void)
+abcdabcdabcd(int)
+test(char, short, int, float, double, void*, int*, char*)
+test::moarr(char, short, long, float, double, void*, int*, char*)
+Waka::f::a23412341234::point(void)
+''', run_js('a.out.js'))
 
