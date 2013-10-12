@@ -1933,5 +1933,7 @@ abcdabcdabcd(int)
 test(char, short, int, float, double, void*, int*, char*)
 test::moarr(char, short, long, float, double, void*, int*, char*)
 Waka::f::a23412341234::point()
+void Foo<int>()
+void Foo<int, double>(int)
 ''', run_js('a.out.js'))
 

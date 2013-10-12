@@ -667,50 +667,46 @@ function demangle(func) {
       i++; // skip E
       ret = ret.join('::');
     }
+    if (i >= func.length) return ret;
     // params, etc.
-    if (i < func.length) {
-      var basicTypes = {
-        'v': 'void',
-        'c': 'char',
-        's': 'short',
-        'i': 'int',
-        'l': 'long',
-        'f': 'float',
-        'd': 'double'
-      };
-      function parse(rawList) { // parses code until an 'E' ending
-        var ret = '', list = [];
-        function flushList() {
-          return '(' + list.join(', ') + ')';
-        }
-        var suffix = ''
-        paramLoop: while (i < func.length) {
-          var c = func[i++];
-          if (c in basicTypes) {
-            list.push(basicTypes[c] + suffix);
-          } else {
-            switch (c) {
-              case 'P': suffix = '*'; continue; break;
-              case 'I': {
-                var iList = parse(true);
-                var iRet = basicTypes[func[i++]] || '?';
-                return iRet + '<' + iList.join(', ') + '>';
-                break;
-              }
-              case 'E': {
-                break paramLoop;
-              }
-              default: ret += '?' + c; break paramLoop;
-            }
-          }
-          suffix = ''
-        }
-        if (list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-        return rawList ? list : ret + flushList();
+    var basicTypes = {
+      'v': 'void',
+      'c': 'char',
+      's': 'short',
+      'i': 'int',
+      'l': 'long',
+      'f': 'float',
+      'd': 'double'
+    };
+    function parse(name, rawList) { // parses code until an 'E' ending
+      var ret = '', list = [];
+      function flushList() {
+        return '(' + list.join(', ') + ')';
       }
-      ret += parse();
+      if (func[i] === 'I') {
+        i++;
+        var iList = parse('', true);
+        var iRet = basicTypes[func[i++]] || '?';
+        ret += iRet + ' ' + name + '<' + iList.join(', ') + '>';
+      } else {
+        ret = name;
+      }
+      paramLoop: while (i < func.length) {
+        var c = func[i++];
+        if (c in basicTypes) {
+          list.push(basicTypes[c]);
+        } else {
+          switch (c) {
+            case 'P': list.push(basicTypes[func[i++]] + '*'); continue; break;
+            case 'E': break paramLoop;
+            default: ret += '?' + c; break paramLoop;
+          }
+        }
+      }
+      if (list.length === 1 && list[0] === 'void') list = []; // avoid (void)
+      return rawList ? list : ret + flushList();
     }
-    return ret;
+    return parse(ret);
   } catch(e) {
     return func + '<demangle-err>' + e;
   }
