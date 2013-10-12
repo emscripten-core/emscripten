@@ -1911,23 +1911,27 @@ done.
       #include <stdio.h>
       #include <emscripten.h>
       int main() {
-        EM_ASM(Module.print(demangle('__Znwj')));
+        EM_ASM(Module.print(demangle('__Znwj'))); // check for no aborts
         EM_ASM(Module.print(demangle('_main')));
         EM_ASM(Module.print(demangle('__Z2f2v')));
         EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
         EM_ASM(Module.print(demangle('__Z4testcsifdPvPiPc')));
         EM_ASM(Module.print(demangle('__ZN4test5moarrEcslfdPvPiPc')));
         EM_ASM(Module.print(demangle('__ZN4Waka1f12a234123412345pointEv')));
+        EM_ASM(Module.print(demangle('__Z3FooIiEvv')));
+        EM_ASM(Module.print(demangle('__Z3FooIidEvi')));
+        EM_ASM(Module.print(demangle('__ZN3Foo3BarILi5EEEvv')));
+
         return 0;
       }
     ''')
 
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1']).communicate()
     self.assertContained('''main
-f2(void)
+f2()
 abcdabcdabcd(int)
 test(char, short, int, float, double, void*, int*, char*)
 test::moarr(char, short, long, float, double, void*, int*, char*)
-Waka::f::a23412341234::point(void)
+Waka::f::a23412341234::point()
 ''', run_js('a.out.js'))
 

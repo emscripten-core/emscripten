@@ -643,9 +643,9 @@ Module['stringToUTF32'] = stringToUTF32;
 function demangle(func) {
   try {
     if (typeof func === 'number') func = Pointer_stringify(func);
-    assert(func[0] === '_');
+    if (func[0] !== '_') return func;
     if (func[1] !== '_') return func.substr(1); // C function
-    assert(func[2] === 'Z');
+    if (func[2] !== 'Z') return func;
     var i, ret;
     if (func[3] !== 'N') {
       // not namespaced
@@ -660,41 +660,59 @@ function demangle(func) {
       while (func[i] !== 'E') {
         var size = parseInt(func.substr(i));
         var pre = size.toString().length;
+        if (!size || !pre) return ret.join('::') + '?';
         ret.push(func.substr(i + pre, size));
         i += pre + size;
-        assert(pre > 0 && size > 0 && i < func.length);
       }
       i++; // skip E
       ret = ret.join('::');
     }
-    // params
+    // params, etc.
     if (i < func.length) {
-      ret += '(';
-      var first = true, suffix = null;
-      paramLoop: while (i < func.length) {
-        if (!suffix && !first) ret += ', ';
-        first = false;
-        switch (func[i]) {
-          case 'c': ret += 'char'; i++; break;
-          case 's': ret += 'short'; i++; break;
-          case 'i': ret += 'int'; i++; break;
-          case 'l': ret += 'long'; i++; break;
-          case 'f': ret += 'float'; i++; break;
-          case 'd': ret += 'double'; i++; break;
-          case 'P': suffix = '*'; i++; continue; break;
-          case 'v': ret += 'void'; i++; break;
-          default: ret += '?' + func[i]; break paramLoop;
+      var basicTypes = {
+        'v': 'void',
+        'c': 'char',
+        's': 'short',
+        'i': 'int',
+        'l': 'long',
+        'f': 'float',
+        'd': 'double'
+      };
+      function parse(rawList) { // parses code until an 'E' ending
+        var ret = '', list = [];
+        function flushList() {
+          return '(' + list.join(', ') + ')';
         }
-        if (suffix) {
-          ret += suffix;
-          suffix = null;
+        var suffix = ''
+        paramLoop: while (i < func.length) {
+          var c = func[i++];
+          if (c in basicTypes) {
+            list.push(basicTypes[c] + suffix);
+          } else {
+            switch (c) {
+              case 'P': suffix = '*'; continue; break;
+              case 'I': {
+                var iList = parse(true);
+                var iRet = basicTypes[func[i++]] || '?';
+                return iRet + '<' + iList.join(', ') + '>';
+                break;
+              }
+              case 'E': {
+                break paramLoop;
+              }
+              default: ret += '?' + c; break paramLoop;
+            }
+          }
+          suffix = ''
         }
+        if (list.length === 1 && list[0] === 'void') list = []; // avoid (void)
+        return rawList ? list : ret + flushList();
       }
-      ret += ')';
+      ret += parse();
     }
     return ret;
   } catch(e) {
-    return func + '<demangle-err>';
+    return func + '<demangle-err>' + e;
   }
 }
 
