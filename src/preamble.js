@@ -646,17 +646,26 @@ function demangle(func) {
     if (func[0] !== '_') return func;
     if (func[1] !== '_') return func.substr(1); // C function
     if (func[2] !== 'Z') return func;
-    var i, ret;
-    if (func[3] !== 'N') {
+    var i = 3, ret, suffix = '';
+    if (func[i] !== 'N') {
       // not namespaced
-      var m = /(\d+)([^\d].*)/.exec(func.substr(3));
+      if (func[i] === 'K') {
+        suffix = ' const';
+        i++;
+      }
+      var m = /(\d+)([^\d].*)/.exec(func.substr(i));
       if (!m) return func;
       var size = parseInt(m[1]);
-      i = 3 + size.toString().length + size;
+      i += size.toString().length + size;
       ret = m[2].substr(0, size);
     } else {
       // namespaced N-E
-      var i = 4, ret = [];
+      i++;
+      if (func[i] === 'K') {
+        suffix = ' const';
+        i++;
+      }
+      var ret = [];
       while (func[i] !== 'E') {
         var size = parseInt(func.substr(i));
         var pre = size.toString().length;
@@ -724,7 +733,7 @@ function demangle(func) {
       if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
       return rawList ? list : ret + flushList();
     }
-    return parse(ret);
+    return parse(ret) + suffix;
   } catch(e) {
     return func + '<demangle-err>' + e;
   }
