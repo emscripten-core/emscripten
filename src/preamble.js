@@ -648,7 +648,7 @@ function demangle(func) {
   if (func[3] !== 'N') {
     // not namespaced
     var m = /(\d+)([^\d].*)/.exec(func.substr(3));
-    return m[2].substr(0, m[1]);
+    return m ? m[2].substr(0, m[1]) : func;
   }
   // namespaced N-E
   var i = 4, ret = [];

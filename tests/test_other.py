@@ -1911,6 +1911,7 @@ done.
       #include <stdio.h>
       #include <emscripten.h>
       int main() {
+        EM_ASM(Module.print(demangle('__Znwj')));
         EM_ASM(Module.print(demangle('_main')));
         EM_ASM(Module.print(demangle('__Z2f2v')));
         EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
