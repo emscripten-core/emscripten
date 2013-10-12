@@ -660,7 +660,7 @@ function demangle(func) {
       while (func[i] !== 'E') {
         var size = parseInt(func.substr(i));
         var pre = size.toString().length;
-        if (!size || !pre) return ret.join('::') + '?';
+        if (!size || !pre) { i--; break; } // counter i++ below us
         ret.push(func.substr(i + pre, size));
         i += pre + size;
       }
@@ -678,7 +678,16 @@ function demangle(func) {
       'f': 'float',
       'd': 'double'
     };
-    function parse(name, rawList) { // parses code until an 'E' ending
+    function debug(x) {
+      //return;
+      if (x) Module.print(x);
+      Module.print(func);
+      var pre = '';
+      for (var a = 0; a < i; a++) pre += ' ';
+      Module.print (pre + '^');
+    }
+    function parse(name, rawList, limit, allowVoid) { // parses code until an 'E' ending
+      limit = limit || Infinity;
       var ret = '', list = [];
       function flushList() {
         return '(' + list.join(', ') + ')';
@@ -686,24 +695,33 @@ function demangle(func) {
       if (func[i] === 'I') {
         i++;
         var iList = parse('', true);
-        var iRet = basicTypes[func[i++]] || '?';
-        ret += iRet + ' ' + name + '<' + iList.join(', ') + '>';
+        //i++;
+        var iRet = parse('', true, 1, true);
+        ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
       } else {
         ret = name;
       }
-      paramLoop: while (i < func.length) {
+      paramLoop: while (i < func.length && limit-- > 0) {
         var c = func[i++];
         if (c in basicTypes) {
           list.push(basicTypes[c]);
         } else {
           switch (c) {
-            case 'P': list.push(basicTypes[func[i++]] + '*'); continue; break;
+            case 'P': list.push(basicTypes[func[i++]] + '*'); break; // pointer
+            case 'L': { // literal
+              i++; // skip basic type
+              var end = func.indexOf('E', i);
+              var size = end - i;
+              list.push(func.substr(i, size));
+              i += size + 2; // size + 'EE'
+              break;
+            }
             case 'E': break paramLoop;
             default: ret += '?' + c; break paramLoop;
           }
         }
       }
-      if (list.length === 1 && list[0] === 'void') list = []; // avoid (void)
+      if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
       return rawList ? list : ret + flushList();
     }
     return parse(ret);

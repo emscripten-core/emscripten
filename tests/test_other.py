@@ -1935,5 +1935,6 @@ test::moarr(char, short, long, float, double, void*, int*, char*)
 Waka::f::a23412341234::point()
 void Foo<int>()
 void Foo<int, double>(int)
+void Foo::Bar<5>()
 ''', run_js('a.out.js'))
 
