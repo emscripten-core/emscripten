@@ -11,9 +11,7 @@ var tokenCache = {};
 //var tokenCacheMisses = {};
 
 // Line tokenizer
-function tokenizer(item, inner) {
-  //assert(item.lineNum != 40000);
-  //if (item.lineNum) print(item.lineNum);
+function tokenize(text, lineNum) {
   var tokens = [];
   var quotes = 0;
   var lastToken = null;
@@ -48,9 +46,7 @@ function tokenizer(item, inner) {
       text: text
     };
     if (text[0] in enclosers) {
-      token.item = tokenizer({
-        lineText: text.substr(1, text.length-2)
-      }, true);
+      token.item = tokenize(text.substr(1, text.length-2));
       token.type = text[0];
     }
     // merge certain tokens
@@ -80,7 +76,7 @@ function tokenizer(item, inner) {
     }
   }
   // Split using meaningful characters
-  var lineText = item.lineText + ' ';
+  var lineText = text + ' ';
   var re = /[\[\]\(\)<>, "]/g;
   var segments = lineText.split(re);
   segments.pop();
@@ -158,13 +154,9 @@ function tokenizer(item, inner) {
   var newItem = {
     tokens: tokens,
     indent: lineText.search(/[^ ]/),
-    lineNum: item.lineNum
+    lineNum: lineNum || 0
   };
   return newItem;
-}
-
-function tokenize(text) {
-  return tokenizer({ lineText: text }, true);
 }
 
 // Handy sets
@@ -268,7 +260,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       if (mainPass && /^}.*/.test(line)) {
         inFunction = false;
         if (mainPass) {
-          var func = funcHeaderHandler(tokenizer({ lineText: currFunctionLines[0], lineNum: currFunctionLineNum }, true));
+          var func = funcHeaderHandler(tokenize(currFunctionLines[0], currFunctionLineNum));
 
           if (SKIP_STACK_IN_SMALL && /emscripten_autodebug/.exec(func.ident)) {
             warnOnce('Disabling SKIP_STACK_IN_SMALL because we are apparently processing autodebugger data');
@@ -1114,7 +1106,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     if (ret) {
       if (COMPILER_ASSERTIONS) {
         //printErr(['\n', dump(ret), '\n', dump(triager(tokenizer(line)))]);
-        var normal = triager(tokenizer(line));
+        var normal = triager(tokenize(line));
         delete normal.tokens;
         delete normal.indent;
         assert(sortedJsonCompare(normal, ret), 'fast path: ' + dump(normal) + '\n vs \n' + dump(ret));
@@ -1139,7 +1131,7 @@ function intertyper(lines, sidePass, baseLineNums) {
 
     //var time = Date.now();
 
-    var t = tokenizer(line);
+    var t = tokenize(line.lineText, line.lineNum);
     item = triager(t);
 
     /*
