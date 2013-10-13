@@ -1922,7 +1922,6 @@ done.
         EM_ASM(Module.print(demangle('__Z3FooIidEvi')));
         EM_ASM(Module.print(demangle('__ZN3Foo3BarILi5EEEvv')));
         EM_ASM(Module.print(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
-
         return 0;
       }
     ''')

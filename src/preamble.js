@@ -666,13 +666,32 @@ function demangle(func) {
       for (var a = 0; a < i; a++) pre += ' ';
       Module.print (pre + '^');
     }
-    function parse(rawList, limit, allowVoid) { // parses code until an 'E' ending
+    var subs = [];
+    function parseNested() {
+      i++;
+      if (func[i] === 'K') {
+        suffix = ' const';
+        i++;
+      }
+      var parts = [];
+      while (func[i] !== 'E') {
+        var size = parseInt(func.substr(i));
+        var pre = size.toString().length;
+        if (!size || !pre) { i--; break; } // counter i++ below us
+        var curr = func.substr(i + pre, size);
+        parts.push(curr);
+        subs.push(curr);
+        i += pre + size;
+      }
+      i++; // skip E
+      return parts;
+    }
+    function parse(rawList, limit, allowVoid) { // main parser
       limit = limit || Infinity;
       var ret = '', list = [];
       function flushList() {
         return '(' + list.join(', ') + ')';
       }
-
       var name, suffix = '';
       if (func[i] !== 'N') {
         // not namespaced
@@ -688,21 +707,7 @@ function demangle(func) {
         }
       } else {
         // namespaced N-E
-        i++;
-        if (func[i] === 'K') {
-          suffix = ' const';
-          i++;
-        }
-        var parts = [];
-        while (func[i] !== 'E') {
-          var size = parseInt(func.substr(i));
-          var pre = size.toString().length;
-          if (!size || !pre) { i--; break; } // counter i++ below us
-          parts.push(func.substr(i + pre, size));
-          i += pre + size;
-        }
-        i++; // skip E
-        name = parts.join('::');
+        name = parseNested().join('::');
       }
 
       if (func[i] === 'I') {
@@ -720,6 +725,13 @@ function demangle(func) {
         } else {
           switch (c) {
             case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
+            case 'S': { // substitution
+              var next = func.indexOf('_', i);
+              var num = func.substring(i, next) || 0;
+              list.push(subs[num] || '?');
+              i = next+1;
+              break;
+            }
             case 'L': { // literal
               i++; // skip basic type
               var end = func.indexOf('E', i);
