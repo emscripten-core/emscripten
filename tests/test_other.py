@@ -1922,6 +1922,7 @@ done.
         EM_ASM(Module.print(demangle('__Z3FooIidEvi')));
         EM_ASM(Module.print(demangle('__ZN3Foo3BarILi5EEEvv')));
         EM_ASM(Module.print(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
+        EM_ASM(Module.print(demangle('__Z9parsewordRPKciRi')));
         return 0;
       }
     ''')
@@ -1937,5 +1938,6 @@ void Foo<int>()
 void Foo<int, double>(int)
 void Foo::Bar<5>()
 __cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_info*, void*, int, bool)
+parseword(char*&, int, int&)
 ''', run_js('a.out.js'))
 

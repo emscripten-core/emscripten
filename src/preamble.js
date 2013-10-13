@@ -729,6 +729,7 @@ function demangle(func) {
         } else {
           switch (c) {
             case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
+            case 'R': list.push(parse(true, 1, true)[0] + '&'); break; // reference
             case 'L': { // literal
               i++; // skip basic type
               var end = func.indexOf('E', i);
