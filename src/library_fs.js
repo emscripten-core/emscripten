@@ -27,22 +27,7 @@ mergeInto(LibraryManager.library, {
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
     
-    ErrnoError: (function() {
-      function ErrnoError(errno) {
-        this.errno = errno;
-        for (var key in ERRNO_CODES) {
-          if (ERRNO_CODES[key] === errno) {
-            this.code = key;
-            break;
-          }
-        }
-        this.message = ERRNO_MESSAGES[errno];
-        this.stack = stackTrace();
-      };
-      ErrnoError.prototype = new Error();
-      ErrnoError.prototype.constructor = ErrnoError;
-      return ErrnoError;
-    }()),
+    ErrnoError: null, // set during init
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
@@ -1091,6 +1076,20 @@ mergeInto(LibraryManager.library, {
     init: function(input, output, error) {
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
       FS.init.initialized = true;
+
+      FS.ErrnoError = function ErrnoError(errno) {
+        this.errno = errno;
+        for (var key in ERRNO_CODES) {
+          if (ERRNO_CODES[key] === errno) {
+            this.code = key;
+            break;
+          }
+        }
+        this.message = ERRNO_MESSAGES[errno];
+        this.stack = stackTrace();
+      };
+      FS.ErrnoError.prototype = new Error();
+      FS.ErrnoError.prototype.constructor = FS.ErrnoError;
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
       Module['stdin'] = input || Module['stdin'];
