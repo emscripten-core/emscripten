@@ -752,7 +752,7 @@ function demangle(func) {
 }
 
 function demangleAll(text) {
-  return text.replace(/__Z[\w\d_]+/, function(x) { var y = demangle(x); return x === y ? x : (x + ' (' + y + ')') });
+  return text.replace(/__Z[\w\d_]+/g, function(x) { var y = demangle(x); return x === y ? x : (x + ' [' + y + ']') });
 }
 
 function stackTrace() {
