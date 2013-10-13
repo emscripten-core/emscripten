@@ -747,6 +747,14 @@ function demangle(func) {
               i += size + 2; // size + 'EE'
               break;
             }
+            case 'A': { // array
+              var size = parseInt(func.substr(i));
+              i += size.toString().length;
+              if (func[i] !== '_') throw '?';
+              i++; // skip _
+              list.push(parse(true, 1, true)[0] + ' [' + size + ']');
+              break;
+            }
             case 'E': break paramLoop;
             default: ret += '?' + c; break paramLoop;
           }
