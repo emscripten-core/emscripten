@@ -37,6 +37,7 @@ mergeInto(LibraryManager.library, {
           }
         }
         this.message = ERRNO_MESSAGES[errno];
+        this.stack = stackTrace();
       };
       ErrnoError.prototype = new Error();
       ErrnoError.prototype.constructor = ErrnoError;
@@ -44,7 +45,7 @@ mergeInto(LibraryManager.library, {
     }()),
 
     handleFSError: function(e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + new Error().stack;
+      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
       return ___setErrNo(e.errno);
     },
 

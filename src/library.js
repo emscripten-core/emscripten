@@ -4301,11 +4301,11 @@ LibraryManager.library = {
 
   __assert_fail: function(condition, filename, line, func) {
     ABORT = true;
-    throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + new Error().stack;
+    throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + stackTrace();
   },
 
   __assert_func: function(filename, line, func, condition) {
-    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + new Error().stack;
+    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + stackTrace();
   },
 
   __cxa_guard_acquire: function(variable) {
@@ -4353,7 +4353,7 @@ LibraryManager.library = {
       ___cxa_throw.initialized = true;
     }
 #if EXCEPTION_DEBUG
-    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + new Error().stack);
+    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + stackTrace());
 #endif
     {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
     {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}}

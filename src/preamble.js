@@ -36,7 +36,7 @@ var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 
 function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
-  //if (dest === A_NUMBER) Module.print ([dest, type, store, ignore, storeValue] + ' ' + new Error().stack); // Something like this may be useful, in debugging
+  //if (dest === A_NUMBER) Module.print ([dest, type, store, ignore, storeValue] + ' ' + stackTrace()); // Something like this may be useful, in debugging
 
   assert(dest > 0, 'segmentation fault');
 
@@ -63,7 +63,7 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
       try {
         if (HEAP[dest].toString() === 'NaN') error = false; // NaN is acceptable, as a double value
       } catch(e){}
-      if (error) throw('Warning: Reading an invalid value at ' + dest + ' :: ' + new Error().stack + '\n');
+      if (error) throw('Warning: Reading an invalid value at ' + dest + ' :: ' + stackTrace() + '\n');
     }
 #endif
     if (type === null) return;
@@ -72,14 +72,14 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
     if (!ignore)
       assert(history, 'Must have a history for a safe heap load! ' + dest + ':' + type); // Warning - bit fields in C structs cause loads+stores for each store, so
                                                                                          //           they will show up here...
-//    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + new Error().stack + '\n');
+//    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + stackTrace() + '\n');
 //    if (history[0].type !== type) {
     if (history !== type && !ignore) {
       Module.print('Load-store consistency assumption failure! ' + dest);
       Module.print('\n');
       Module.print(JSON.stringify(history));
       Module.print('\n');
-      Module.print('LOAD: ' + type + ', ' + new Error().stack);
+      Module.print('LOAD: ' + type + ', ' + stackTrace());
       Module.print('\n');
       SAFE_HEAP_ERRORS++;
       assert(SAFE_HEAP_ERRORS <= ACCEPTABLE_SAFE_HEAP_ERRORS, 'Load-store consistency assumption failure!');
@@ -93,9 +93,9 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
 #endif
 
   if (!ignore && !value && (value === null || value === undefined)) {
-    throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
+    throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + stackTrace() + '\n');
   }
-  //if (!ignore && (value === Infinity || value === -Infinity || isNaN(value))) throw [value, typeof value, new Error().stack];
+  //if (!ignore && (value === Infinity || value === -Infinity || isNaN(value))) throw [value, typeof value, stackTrace()];
 
   SAFE_HEAP_ACCESS(dest, type, true, ignore, value);
   if (dest in HEAP_WATCHED) {
