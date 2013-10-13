@@ -1910,6 +1910,12 @@ done.
     open('src.cpp', 'w').write('''
       #include <stdio.h>
       #include <emscripten.h>
+      void two(char c) {
+        EM_ASM(Module.print(stackTrace()));
+      }
+      void one(int x) {
+        two(x % 17);
+      }
       int main() {
         EM_ASM(Module.print(demangle('__Znwj'))); // check for no aborts
         EM_ASM(Module.print(demangle('_main')));
@@ -1923,11 +1929,13 @@ done.
         EM_ASM(Module.print(demangle('__ZN3Foo3BarILi5EEEvv')));
         EM_ASM(Module.print(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
         EM_ASM(Module.print(demangle('__Z9parsewordRPKciRi')));
+        one(17);
         return 0;
       }
     ''')
 
     Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1']).communicate()
+    output = run_js('a.out.js')
     self.assertContained('''main
 f2()
 abcdabcdabcd(int)
@@ -1939,5 +1947,8 @@ void Foo<int, double>(int)
 void Foo::Bar<5>()
 __cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_info*, void*, int, bool)
 parseword(char*&, int, int&)
-''', run_js('a.out.js'))
+''', output)
+    # test for multiple functions in one stack trace
+    assert 'one(int)' in output
+    assert 'two(char)' in output
 
