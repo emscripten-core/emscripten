@@ -646,40 +646,11 @@ function demangle(func) {
     if (func[0] !== '_') return func;
     if (func[1] !== '_') return func.substr(1); // C function
     if (func[2] !== 'Z') return func;
-    var i = 3, ret, suffix = '';
-    if (func[i] !== 'N') {
-      // not namespaced
-      if (func[i] === 'K') {
-        suffix = ' const';
-        i++;
-      }
-      var m = /(\d+)([^\d].*)/.exec(func.substr(i));
-      if (!m) return func;
-      var size = parseInt(m[1]);
-      i += size.toString().length + size;
-      ret = m[2].substr(0, size);
-    } else {
-      // namespaced N-E
-      i++;
-      if (func[i] === 'K') {
-        suffix = ' const';
-        i++;
-      }
-      var ret = [];
-      while (func[i] !== 'E') {
-        var size = parseInt(func.substr(i));
-        var pre = size.toString().length;
-        if (!size || !pre) { i--; break; } // counter i++ below us
-        ret.push(func.substr(i + pre, size));
-        i += pre + size;
-      }
-      i++; // skip E
-      ret = ret.join('::');
-    }
-    if (i >= func.length) return ret;
+    var i = 3;
     // params, etc.
     var basicTypes = {
       'v': 'void',
+      'b': 'bool',
       'c': 'char',
       's': 'short',
       'i': 'int',
@@ -688,24 +659,56 @@ function demangle(func) {
       'd': 'double'
     };
     function debug(x) {
-      //return;
+      return;
       if (x) Module.print(x);
       Module.print(func);
       var pre = '';
       for (var a = 0; a < i; a++) pre += ' ';
       Module.print (pre + '^');
     }
-    function parse(name, rawList, limit, allowVoid) { // parses code until an 'E' ending
+    function parse(rawList, limit, allowVoid) { // parses code until an 'E' ending
       limit = limit || Infinity;
       var ret = '', list = [];
       function flushList() {
         return '(' + list.join(', ') + ')';
       }
+
+      var name, suffix = '';
+      if (func[i] !== 'N') {
+        // not namespaced
+        if (func[i] === 'K') {
+          suffix = ' const';
+          i++;
+        }
+        var size = parseInt(func.substr(i));
+        if (size) {
+          var pre = size.toString().length;
+          name = func.substr(i + pre, size);
+          i += pre + size;
+        }
+      } else {
+        // namespaced N-E
+        i++;
+        if (func[i] === 'K') {
+          suffix = ' const';
+          i++;
+        }
+        var parts = [];
+        while (func[i] !== 'E') {
+          var size = parseInt(func.substr(i));
+          var pre = size.toString().length;
+          if (!size || !pre) { i--; break; } // counter i++ below us
+          parts.push(func.substr(i + pre, size));
+          i += pre + size;
+        }
+        i++; // skip E
+        name = parts.join('::');
+      }
+
       if (func[i] === 'I') {
         i++;
-        var iList = parse('', true);
-        //i++;
-        var iRet = parse('', true, 1, true);
+        var iList = parse(true);
+        var iRet = parse(true, 1, true);
         ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
       } else {
         ret = name;
@@ -731,9 +734,9 @@ function demangle(func) {
         }
       }
       if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-      return rawList ? list : ret + flushList();
+      return rawList ? list : ret + flushList() + suffix;
     }
-    return parse(ret) + suffix;
+    return parse();
   } catch(e) {
     return func + '<demangle-err>' + e;
   }
