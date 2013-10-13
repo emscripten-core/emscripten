@@ -719,7 +719,7 @@ function demangle(func) {
           list.push(basicTypes[c]);
         } else {
           switch (c) {
-            case 'P': list.push(basicTypes[func[i++]] + '*'); break; // pointer
+            case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
             case 'L': { // literal
               i++; // skip basic type
               var end = func.indexOf('E', i);
