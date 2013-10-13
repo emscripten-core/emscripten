@@ -1929,6 +1929,7 @@ done.
         EM_ASM(Module.print(demangle('__ZN3Foo3BarILi5EEEvv')));
         EM_ASM(Module.print(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
         EM_ASM(Module.print(demangle('__Z9parsewordRPKciRi')));
+        EM_ASM(Module.print(demangle('__Z5multiwahtjmxyz')));
         one(17);
         return 0;
       }
@@ -1947,6 +1948,7 @@ void Foo<int, double>(int)
 void Foo::Bar<5>()
 __cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_info*, void*, int, bool)
 parseword(char*&, int, int&)
+multi(wchar_t, signed char, unsigned char, unsigned short, unsigned int, unsigned long, long long, unsigned long long, ...)
 ''', output)
     # test for multiple functions in one stack trace
     assert 'one(int)' in output

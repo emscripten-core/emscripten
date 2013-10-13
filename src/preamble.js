@@ -656,7 +656,16 @@ function demangle(func) {
       'i': 'int',
       'l': 'long',
       'f': 'float',
-      'd': 'double'
+      'd': 'double',
+      'w': 'wchar_t',
+      'a': 'signed char',
+      'h': 'unsigned char',
+      't': 'unsigned short',
+      'j': 'unsigned int',
+      'm': 'unsigned long',
+      'x': 'long long',
+      'y': 'unsigned long long',
+      'z': '...'
     };
     function dump(x) {
       //return;
