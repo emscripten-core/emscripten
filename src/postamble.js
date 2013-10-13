@@ -180,7 +180,7 @@ function abort(text) {
   ABORT = true;
   EXITSTATUS = 1;
 
-  throw 'abort() at ' + (new Error().stack);
+  throw 'abort() at ' + stackTrace();
 }
 Module['abort'] = Module.abort = abort;
 

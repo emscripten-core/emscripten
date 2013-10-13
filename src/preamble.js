@@ -644,7 +644,7 @@ function demangle(func) {
   try {
     if (typeof func === 'number') func = Pointer_stringify(func);
     if (func[0] !== '_') return func;
-    if (func[1] !== '_') return func.substr(1); // C function
+    if (func[1] !== '_') return func; // C function
     if (func[2] !== 'Z') return func;
     var i = 3;
     // params, etc.
@@ -747,8 +747,16 @@ function demangle(func) {
     }
     return parse();
   } catch(e) {
-    return func + '<demangle-err>' + e;
+    return func;
   }
+}
+
+function demangleAll(text) {
+  return text.replace(/__Z[\w\d_]+/, function(x) { var y = demangle(x); return x === y ? x : (x + ' (' + y + ')') });
+}
+
+function stackTrace() {
+  return demangleAll(new Error().stack);
 }
 
 // Memory management

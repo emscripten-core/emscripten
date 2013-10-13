@@ -4296,7 +4296,7 @@ LibraryManager.library = {
   },
 
   llvm_trap: function() {
-    throw 'trap! ' + new Error().stack;
+    abort('trap!');
   },
 
   __assert_fail: function(condition, filename, line, func) {
