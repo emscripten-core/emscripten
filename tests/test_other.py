@@ -1936,5 +1936,6 @@ Waka::f::a23412341234::point()
 void Foo<int>()
 void Foo<int, double>(int)
 void Foo::Bar<5>()
+__cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_info*, void*, int, bool)
 ''', run_js('a.out.js'))
 

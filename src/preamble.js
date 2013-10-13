@@ -658,8 +658,8 @@ function demangle(func) {
       'f': 'float',
       'd': 'double'
     };
-    function debug(x) {
-      return;
+    function dump(x) {
+      //return;
       if (x) Module.print(x);
       Module.print(func);
       var pre = '';
@@ -669,12 +669,17 @@ function demangle(func) {
     var subs = [];
     function parseNested() {
       i++;
-      if (func[i] === 'K') {
-        suffix = ' const';
-        i++;
-      }
+      if (func[i] === 'K') i++;
       var parts = [];
       while (func[i] !== 'E') {
+        if (func[i] === 'S') { // substitution
+          i++;
+          var next = func.indexOf('_', i);
+          var num = func.substring(i, next) || 0;
+          parts.push(subs[num] || '?');
+          i = next+1;
+          continue;
+        }
         var size = parseInt(func.substr(i));
         var pre = size.toString().length;
         if (!size || !pre) { i--; break; } // counter i++ below us
@@ -692,13 +697,10 @@ function demangle(func) {
       function flushList() {
         return '(' + list.join(', ') + ')';
       }
-      var name, suffix = '';
+      var name;
       if (func[i] !== 'N') {
         // not namespaced
-        if (func[i] === 'K') {
-          suffix = ' const';
-          i++;
-        }
+        if (func[i] === 'K') i++;
         var size = parseInt(func.substr(i));
         if (size) {
           var pre = size.toString().length;
@@ -708,8 +710,9 @@ function demangle(func) {
       } else {
         // namespaced N-E
         name = parseNested().join('::');
+        limit--;
+        if (limit === 0) return rawList ? [name] : name;
       }
-
       if (func[i] === 'I') {
         i++;
         var iList = parse(true);
@@ -719,19 +722,13 @@ function demangle(func) {
         ret = name;
       }
       paramLoop: while (i < func.length && limit-- > 0) {
+        //dump('paramLoop');
         var c = func[i++];
         if (c in basicTypes) {
           list.push(basicTypes[c]);
         } else {
           switch (c) {
             case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
-            case 'S': { // substitution
-              var next = func.indexOf('_', i);
-              var num = func.substring(i, next) || 0;
-              list.push(subs[num] || '?');
-              i = next+1;
-              break;
-            }
             case 'L': { // literal
               i++; // skip basic type
               var end = func.indexOf('E', i);
@@ -746,7 +743,7 @@ function demangle(func) {
         }
       }
       if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-      return rawList ? list : ret + flushList() + suffix;
+      return rawList ? list : ret + flushList();
     }
     return parse();
   } catch(e) {
