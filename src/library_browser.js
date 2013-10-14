@@ -247,7 +247,7 @@ mergeInto(LibraryManager.library, {
           }
 
 #if GL_TESTING
-          contextAttributes.preserveDrawingBuffer = true
+          contextAttributes.preserveDrawingBuffer = true;
 #endif
 
           ctx = canvas.getContext('experimental-webgl', contextAttributes);

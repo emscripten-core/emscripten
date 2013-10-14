@@ -2268,7 +2268,7 @@ var LibrarySDL = {
 
   SDL_GL_SetAttribute: function(attr, value) {
     if (!(attr in SDL.glAttributes)) {
-      throw "Unknown SDL GL attribute. Please check if your SDL version is supported.";
+      abort('Unknown SDL GL attribute (' + attr + '). Please check if your SDL version is supported.');
     }
 
     SDL.glAttributes[attr] = value;
@@ -2276,7 +2276,7 @@ var LibrarySDL = {
 
   SDL_GL_GetAttribute: function(attr, value) {
     if (!(attr in SDL.glAttributes)) {
-      throw "Unknown SDL GL attribute. Please check if your SDL version is supported.";
+      abort('Unknown SDL GL attribute (' + attr + '). Please check if your SDL version is supported.');
     }
 
     if (value) {{{ makeSetValue('value', '0', 'SDL.glAttributes[attr]', 'i32') }}};
