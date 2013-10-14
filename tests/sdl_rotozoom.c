@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     sprite[2] = zoomSurface(sprite[0], 0.5, 0.5, SMOOTHING_ON);
     sprite[3] = zoomSurface(sprite[1], 0.5, 0.5, SMOOTHING_ON);
     sprite[4] = rotozoomSurface(sprite[0], -20, 0.3, SMOOTHING_ON);
-    sprite[5] = rotozoomSurface(sprite[1], 45, 0.5, SMOOTHING_ON);
+    sprite[5] = rotozoomSurface(sprite[1], 20, 1, SMOOTHING_ON);
     sprite[6] = zoomSurface(sprite[0], -0.5, 0.5, SMOOTHING_ON);
     sprite[7] = zoomSurface(sprite[0], -0.5, -0.5, SMOOTHING_ON);
     sprite[8] = rotozoomSurface(sprite[1], 0, 0.5, SMOOTHING_ON);
