@@ -3736,7 +3736,12 @@ var LibraryGL = {
     }
   },
 
-  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GL.immediate = GLImmediate; GL.immediate.matrix.lib = ' + read('gl-matrix.js') + ';\n' }],
+  $GLImmediateSetup__deps: ['$GLImmediate', function() {
+    return 'GL.immediate = GLImmediate;\n'+
+           'GL.immediate.matrix.lib = ' + read('gl-matrix.js') + ';\n'+
+           'GL.immediate.matrix.m = GL.immediate.matrix.lib.mat4.identity();\n'+
+           'GL.immediate.matrix.p = GL.immediate.matrix.lib.mat4.identity();\n'
+  }],
   $GLImmediateSetup: {},
 
   glBegin__deps: ['$GLImmediateSetup'],
