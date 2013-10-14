@@ -388,6 +388,7 @@ f.close()
   def test_unaligned_memory(self):
     open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
       #include <stdio.h>
+      #include <stdarg.h>
 
       typedef unsigned char   Bit8u;
       typedef unsigned short  Bit16u;
@@ -395,6 +396,9 @@ f.close()
 
       int main()
       {
+        va_list argp;
+        va_arg(argp, char *); // check for compilation error, #1705
+
         Bit8u data[4] = {0x01,0x23,0x45,0x67};
 
         printf("data: %x\n", *(Bit32u*)data);
