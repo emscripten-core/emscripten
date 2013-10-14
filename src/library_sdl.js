@@ -10,7 +10,8 @@
 //                   or otherwise).
 
 var LibrarySDL = {
-  $SDL__deps: ['$FS', '$PATH', '$Browser'],
+  // lock and unlock are necessary for internal stuff
+  $SDL__deps: ['$FS', '$PATH', '$Browser', 'SDL_LockSurface', 'SDL_UnlockSurface'],
   $SDL: {
     defaults: {
       width: 320,
@@ -250,6 +251,20 @@ var LibrarySDL = {
       };
 
       return surf;
+    },
+
+    ensure2DCanvas: function(surfData) {
+      // in GL mode, we do not save 2D canvas&context for each surface, we discard them. If they are used, we
+      // recreate them here.
+      if (surfData.ctx) return;
+      surfData.canvas = document.createElement('canvas');
+      surfData.canvas.width = surfData.width;
+      surfData.canvas.height = surfData.height;
+      surfData.ctx = Browser.createContext(surfData.canvas, false, false);
+      // lock without copy, then unlock, so C++ data goes into the canvas
+      assert(surfData.locked === 0);
+      _SDL_LockSurface(surfData.surf, true);
+      _SDL_UnlockSurface(surfData.surf);
     },
 
     // Copy data from the C++-accessible storage to the canvas backing 
@@ -800,7 +815,7 @@ var LibrarySDL = {
   },
 
   // Copy data from the canvas backing to a C++-accessible storage
-  SDL_LockSurface: function(surf) {
+  SDL_LockSurface: function(surf, noCopy) {
     var surfData = SDL.surfaces[surf];
 
     surfData.locked++;
@@ -823,7 +838,7 @@ var LibrarySDL = {
       }
     }
 
-    if (SDL.defaults.copyOnLock) {
+    if (SDL.defaults.copyOnLock && !noCopy) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
         // If this is neaded then
@@ -861,8 +876,6 @@ var LibrarySDL = {
 
   // Copy data from the C++-accessible storage to the canvas backing
   SDL_UnlockSurface: function(surf) {
-    assert(!SDL.GL); // in GL mode we do not keep around 2D canvases and contexts
-
     var surfData = SDL.surfaces[surf];
 
     surfData.locked--;
@@ -1032,6 +1045,8 @@ var LibrarySDL = {
     var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
     var newData = SDL.surfaces[ret];
     //newData.ctx.putImageData(oldData.ctx.getImageData(0, 0, oldData.width, oldData.height), 0, 0);
+    SDL.ensure2DCanvas(oldData);
+    SDL.ensure2DCanvas(newData);
     newData.ctx.drawImage(oldData.canvas, 0, 0);
     return ret;
   },
@@ -1043,6 +1058,8 @@ var LibrarySDL = {
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
     var srcData = SDL.surfaces[src];
     var dstData = SDL.surfaces[dst];
+    SDL.ensure2DCanvas(srcData);
+    SDL.ensure2DCanvas(dstData);
     var sr, dr;
     if (srcrect) {
       sr = SDL.loadRect(srcrect);
@@ -1069,8 +1086,9 @@ var LibrarySDL = {
 
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
+    SDL.ensure2DCanvas(surfData);
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    
+
     if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
       //in SDL_HWPALETTE color is index (0..255)
       //so we should translate 1 byte value to
@@ -1094,6 +1112,7 @@ var LibrarySDL = {
 
   zoomSurface: function(src, x, y, smooth) {
     var srcData = SDL.surfaces[src];
+    SDL.ensure2DCanvas(srcData);
     var w = srcData.width * x;
     var h = srcData.height * y;
     var ret = SDL.makeSurface(Math.abs(w), Math.abs(h), srcData.flags, false, 'zoomSurface');
@@ -1116,6 +1135,7 @@ var LibrarySDL = {
       return _zoomSurface(src, zoom, zoom, smooth);
     }
     var srcData = SDL.surfaces[src];
+    SDL.ensure2DCanvas(srcData);
     var w = srcData.width * zoom;
     var h = srcData.height * zoom;
     var diagonal = Math.ceil(Math.sqrt(Math.pow(w, 2) + Math.pow(h, 2)));
@@ -1362,6 +1382,7 @@ var LibrarySDL = {
       surfData.locked--; // The surface is not actually locked in this hack
       if (SDL.GL) {
         // After getting the pixel data, we can free the canvas and context if we do not need to do 2D canvas blitting
+        // (if it is needed later, it will be recreated)
         surfData.canvas = surfData.ctx = null;
       }
       return surf;
@@ -2081,6 +2102,7 @@ var LibrarySDL = {
     var fontString = h + 'px ' + fontData.name;
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
+    SDL.ensure2DCanvas(surfData);
     surfData.ctx.save();
     surfData.ctx.fillStyle = color;
     surfData.ctx.font = fontString;
@@ -2128,6 +2150,7 @@ var LibrarySDL = {
       x2 = x2 << 16 >> 16;
       y2 = y2 << 16 >> 16;
       var surfData = SDL.surfaces[surf];
+      SDL.ensure2DCanvas(surfData);
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
       // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
       var x = x1 < x2 ? x1 : x2;
@@ -2145,6 +2168,7 @@ var LibrarySDL = {
       x2 = x2 << 16 >> 16;
       y2 = y2 << 16 >> 16;
       var surfData = SDL.surfaces[surf];
+      SDL.ensure2DCanvas(surfData);
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
       surfData.ctx.save();
       surfData.ctx.strokeStyle = cssColor;
@@ -2161,6 +2185,7 @@ var LibrarySDL = {
       rx = rx << 16 >> 16;
       ry = ry << 16 >> 16;
       var surfData = SDL.surfaces[surf];
+      SDL.ensure2DCanvas(surfData);
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
 
       surfData.ctx.save();
