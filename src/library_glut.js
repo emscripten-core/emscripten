@@ -189,12 +189,12 @@ var LibraryGLUT = {
       }
     },
 
-    onMouseButtonDown: function(event){
+    onMouseButtonDown: function(event) {
       Browser.calculateMouseEvent(event);
 
       GLUT.buttons |= (1 << event['button']);
 
-      if(event.target == Module["canvas"] && GLUT.mouseFunc){
+      if (event.target == Module["canvas"] && GLUT.mouseFunc) {
         try {
           event.target.setCapture();
         } catch (e) {}
@@ -204,21 +204,40 @@ var LibraryGLUT = {
       }
     },
 
-    onMouseButtonUp: function(event){
+    onMouseButtonUp: function(event) {
       Browser.calculateMouseEvent(event);
 
       GLUT.buttons &= ~(1 << event['button']);
 
-      if(GLUT.mouseFunc) {
+      if (GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 1/*GLUT_UP*/, Browser.mouseX, Browser.mouseY]);
       }
     },
 
+    onMouseWheel: function(event) {
+      Browser.calculateMouseEvent(event);
+
+      // cross-browser wheel delta
+      var e = window.event || event; // old IE support
+      var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+
+      var button = 3; // wheel up
+      if (delta < 0) {
+        button = 4; // wheel down
+      }
+      
+      if (GLUT.mouseFunc) {
+        event.preventDefault();
+        GLUT.saveModifiers(event);
+        Runtime.dynCall('viiii', GLUT.mouseFunc, [button, 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY]);
+      }
+    },
+    
     // TODO add fullscreen API ala:
     // http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugin/
-    onFullScreenEventChange: function(event){
+    onFullScreenEventChange: function(event) {
       var width;
       var height;
       if (document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
@@ -279,6 +298,10 @@ var LibraryGLUT = {
       window.addEventListener("mousemove", GLUT.onMousemove, true);
       window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
       window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      // IE9, Chrome, Safari, Opera
+      window.addEventListener("mousewheel", GLUT.onMouseWheel, true);
+      // Firefox
+      window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
     }
     
     Browser.resizeListeners.push(function(width, height) {
@@ -298,6 +321,10 @@ var LibraryGLUT = {
         window.removeEventListener("mousemove", GLUT.onMousemove, true);
         window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
         window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+        // IE9, Chrome, Safari, Opera
+        window.removeEventListener("mousewheel", GLUT.onMouseWheel, true);
+        // Firefox
+        window.removeEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
       }
       Module["canvas"].width = Module["canvas"].height = 1;
     } });
