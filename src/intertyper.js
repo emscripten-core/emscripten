@@ -28,34 +28,46 @@ function tokenize(text, lineNum) {
   function makeToken(text) {
     if (text.length == 0) return;
     // merge certain tokens
+    var token;
     if (lastToken && /^\**$/.test(text)) {
-      lastToken.text += text;
-      return;
-    }
-
-    var cached = tokenCache[text];
-    if (cached) {
-      //assert(cached.text === text);
-      tokens.push(cached);
-      lastToken = cached;
-      return;
-    }
-    //tokenCacheMisses[text] = (misses[text] || 0) + 1;
-
-    var token = {
-      text: text
-    };
-    if (text[0] in enclosers) {
-      token.item = tokenize(text.substr(1, text.length-2));
-      token.type = text[0];
-    }
-    // merge certain tokens
-    if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
-      if (lastToken.text in tokenCache) {
-        // create a copy of the cached value
-        lastToken = tokens[tokens.length-1] = { text: lastToken.text };
+      if (!(lastToken.text[0] in enclosers)) {
+        text = lastToken.text + text;
+        token = tokenCache[text];
+        if (!token) {
+          token = { text: text };
+          tokenCache[text] = token;
+        } else assert(token.text === text);
+        tokens[tokens.length-1] = lastToken = token;
+      } else {
+        lastToken.text += text;
       }
-      lastToken.text += ' ' + text;
+      return;
+    }
+
+    var enclosed = text[0] in enclosers;
+    if (!enclosed) {
+      token = tokenCache[text];
+      if (!token) {
+        token = { text: text };
+        tokenCache[text] = token;
+      } else assert(token.text === text);
+    } else {
+      token = { text: text, item: tokenize(text.substr(1, text.length-2)), type: text[0] };
+    }
+
+    // merge certain tokens
+    if (lastToken && text[0] === '(' && isType(lastToken.text) && isFunctionDef(token)) {
+      if (!(lastToken.text[0] in enclosers)) {
+        text = lastToken.text + ' ' + text;
+        token = tokenCache[text];
+        if (!token) {
+          token = { text: text };
+          tokenCache[text] = token;
+        } else assert(token.text === text);
+        tokens[tokens.length-1] = lastToken = token;
+      } else {
+        lastToken.text += ' ' + text;
+      }
     } else if (lastToken && text[0] == '}') { // }, }*, etc.
       var openBrace = tokens.length-1;
       while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
