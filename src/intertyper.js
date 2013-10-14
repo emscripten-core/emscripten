@@ -531,7 +531,9 @@ function intertyper(lines, sidePass, baseLineNums) {
         if (item.tokens[3].item) {
           var subTokens = item.tokens[3].item.tokens;
           splitTokenList(subTokens).forEach(function(segment) {
-            var ctor = toNiceIdent(segment[1].tokens.slice(-1)[0].text);
+            var parsed = parseLLVMSegment(segment);
+            assert(parsed.intertype === 'structvalue');
+            var ctor = toNiceIdent(parsed.params[1].ident);
             ret.ctors.push(ctor);
             if (ASM_JS) { // must export the global constructors from asm.js module, so mark as implemented and exported
               Functions.implementedFunctions[ctor] = 'v';
