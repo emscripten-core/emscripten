@@ -354,7 +354,10 @@ var LibraryGLFW = {
       throw "Invalid glfwOpenWindow mode.";
     }
 
-    Module.ctx = Browser.createContext(Module['canvas'], true, true);
+    var contextAttributes = {
+      antialias: (GLFW.params[0x00020013] > 1) //GLFW_FSAA_SAMPLES
+    }
+    Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
     return 1; //GL_TRUE
   },
 
