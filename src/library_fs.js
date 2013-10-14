@@ -1064,19 +1064,8 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 'stderr.fd', 'void*') }}};
       assert(stderr.fd === 3, 'invalid handle for stderr (' + stderr.fd + ')');
     },
-    staticInit: function() {
-      FS.nameTable = new Array(4096);
-
-      FS.root = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
-      FS.mount(MEMFS, {}, '/');
-
-      FS.createDefaultDirectories();
-      FS.createDefaultDevices();
-    },
-    init: function(input, output, error) {
-      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
-      FS.init.initialized = true;
-
+    ensureErrnoError: function() {
+      if (FS.ErrnoError) return;
       FS.ErrnoError = function ErrnoError(errno) {
         this.errno = errno;
         for (var key in ERRNO_CODES) {
@@ -1090,6 +1079,23 @@ mergeInto(LibraryManager.library, {
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
+    },
+    staticInit: function() {
+      FS.ensureErrnoError();
+
+      FS.nameTable = new Array(4096);
+
+      FS.root = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
+      FS.mount(MEMFS, {}, '/');
+
+      FS.createDefaultDirectories();
+      FS.createDefaultDevices();
+    },
+    init: function(input, output, error) {
+      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+      FS.init.initialized = true;
+
+      FS.ensureErrnoError();
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
       Module['stdin'] = input || Module['stdin'];
