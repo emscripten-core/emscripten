@@ -127,7 +127,11 @@ Most normal gcc/g++ options will work, for example:
   --version                Display compiler version information
 
 Options that are modified or new in %s include:
-  -O0                      No optimizations (default)
+
+  -O0                      No optimizations (default). This is the recommended
+                           setting for starting to port a project, as it
+                           includes various assertions.
+
   -O1                      Simple optimizations, including asm.js, LLVM -O1
                            optimizations, relooping, and no runtime assertions
                            or C++ exception catching (to re-enable
@@ -136,11 +140,20 @@ Options that are modified or new in %s include:
 
                               -s ALIASING_FUNCTION_POINTERS=1
 
-                           (For details on the affects of different
+                           This is the recommended setting when you want a
+                           reasonably optimized build that is generated as
+                           quickly as possible (it is much faster than -O2).
+
+                           (Note: for details on the affects of different
                            opt levels, see apply_opt_level() in
                            tools/shared.py and also src/settings.js.)
+
   -O2                      As -O1, plus various js-level optimizations and
-                           LLVM -O3 optimizations
+                           LLVM -O3 optimizations. This is the recommended
+                           setting for a release build: slower compilation
+                           time in return for the smallest and fastest
+                           output.
+
   -O3                      As -O2, plus dangerous optimizations that may
                            break the generated code! This adds
 
