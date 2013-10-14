@@ -4470,6 +4470,7 @@ var LibraryGL = {
     return 1 /* GL_TRUE */;
   },
 
+  gluOrtho2D__deps: ['glOrtho'],
   gluOrtho2D: function(left, right, bottom, top) {
     _glOrtho(left, right, bottom, top, -1, 1);
   },

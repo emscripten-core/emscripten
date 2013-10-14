@@ -407,6 +407,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       var snippet = LibraryManager.library[ident];
       var redirectedIdent = null;
       var deps = LibraryManager.library[ident + '__deps'] || [];
+      deps.forEach(function(dep) {
+        if (!(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #ifdefs in src/library*.js)');
+      });
       var isFunction = false;
 
       if (typeof snippet === 'string') {
