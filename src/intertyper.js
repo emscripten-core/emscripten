@@ -8,7 +8,7 @@ var fastPaths = 0, slowPaths = 0;
 var tokenCache = {};
 ['=', 'i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
 
-//var tokenCacheMisses = {};
+var tokenCacheMisses = 0, tokenCacheHits = 0;
 
 // Line tokenizer
 function tokenize(text, lineNum) {
@@ -36,7 +36,7 @@ function tokenize(text, lineNum) {
         if (!token) {
           token = { text: text };
           tokenCache[text] = token;
-        } else assert(token.text === text);
+        } else tokenCacheHits++;
         tokens[tokens.length-1] = lastToken = token;
       } else {
         lastToken.text += text;
@@ -50,7 +50,7 @@ function tokenize(text, lineNum) {
       if (!token) {
         token = { text: text };
         tokenCache[text] = token;
-      } else assert(token.text === text);
+      } else tokenCacheHits++;
     } else {
       token = { text: text, item: tokenize(text.substr(1, text.length-2)), type: text[0] };
     }
@@ -63,7 +63,7 @@ function tokenize(text, lineNum) {
         if (!token) {
           token = { text: text };
           tokenCache[text] = token;
-        } else assert(token.text === text);
+        } else tokenCacheHits++;
         tokens[tokens.length-1] = lastToken = token;
       } else {
         lastToken.text += ' ' + text;
