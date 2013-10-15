@@ -77,71 +77,60 @@ function tokenize(text, lineNum, indent) {
   segments.pop();
   var len = segments.length;
   var i = -1;
-  var curr = '';
+  var start = 0;
   var segment, letter;
   for (var s = 0; s < len; s++) {
     segment = segments[s];
     i += segment.length + 1;
     letter = lineText[i];
-    curr += segment;
     switch (letter) {
       case ' ':
         if (totalEnclosing == 0 && quotes == 0) {
-          makeToken(curr);
-          curr = '';
+          makeToken(lineText.substring(start, i));
+          start = i+1;
         } else {
-          curr += ' ';
         }
         break;
       case '"':
         if (totalEnclosing == 0) {
           if (quotes == 0) {
-            if (curr == '@' || curr == '%') {
-              curr += '"';
+            if (start === i-1 && (lineText[start] == '@' || lineText[start] == '%')) {
             } else {
-              makeToken(curr);
-              curr = '"';
+              makeToken(lineText.substring(start, i));
+              start = i;
             }
           } else {
-            makeToken(curr + '"');
-            curr = '';
+            makeToken(lineText.substring(start, i+1));
+            start = i+1;
           }
-        } else {
-          curr += '"';
         }
         quotes = 1-quotes;
         break;
       case ',':
         if (totalEnclosing == 0 && quotes == 0) {
-          makeToken(curr);
-          curr = '';
-          tokens.push({ text: ',' });
-        } else {
-          curr += ',';
+          makeToken(lineText.substring(start, i));
+          start = i+1;
+          tokens.push({ text: ',' }); // XXX
         }
         break;
       default:
         assert(letter in enclosers);
         if (quotes) {
-          curr += letter;
           break;
         }
         if (letter in ENCLOSER_STARTERS) {
           if (totalEnclosing == 0) {
-            makeToken(curr);
-            curr = '';
+            makeToken(lineText.substring(start, i));
+            start = i;
           }
-          curr += letter;
           enclosers[letter]++;
           totalEnclosing++;
         } else {
           enclosers[enclosers[letter]]--;
           totalEnclosing--;
           if (totalEnclosing == 0) {
-            makeToken(curr + letter);
-            curr = '';
-          } else {
-            curr += letter;
+            makeToken(lineText.substring(start, i+1));
+            start = i+1;
           }
         }
     }
