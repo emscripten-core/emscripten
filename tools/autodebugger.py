@@ -282,7 +282,9 @@ for i in range(len(lines)):
       lines_added += 1
 
 f = open(ofilename, 'w')
-f.write('\n'.join(lines) + '\n' + POSTAMBLE + '\n')
+ll = '\n'.join(lines)
+meta_start = ll.find('\n!')
+f.write(ll[:meta_start] + '\n' + POSTAMBLE + '\n' + ll[meta_start:])
 f.close()
 
 print 'Success.'
