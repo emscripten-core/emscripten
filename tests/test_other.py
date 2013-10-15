@@ -1931,8 +1931,8 @@ done.
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    for engine in JS_ENGINES:
-      if engine == NODE_JS: self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js')))
+    if NODE_JS in JS_ENGINES:
+      self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js'), engine=NODE_JS))
 
     # Delete test.js again and check it's gone.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
@@ -1951,8 +1951,8 @@ done.
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    for engine in JS_ENGINES:
-      if engine == NODE_JS: self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js')))
+    if NODE_JS in JS_ENGINES:
+      self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js'), engine=NODE_JS))
 
     # Tidy up files that might have been created by this test.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
