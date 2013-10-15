@@ -318,4 +318,5 @@ if (ll_file) {
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });
 //printErr(dump(M.slice(M.length-10)));
+//printErr('hits: ' + hits);
 

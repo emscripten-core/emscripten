@@ -6,12 +6,12 @@
 var fastPaths = 0, slowPaths = 0;
 
 var tokenCache = {};
-['=', 'i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
+['i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
 
 //var tokenCacheMisses = {};
 
 // Line tokenizer
-function tokenize(text, lineNum) {
+function tokenize(text, lineNum, indent) {
   var tokens = [];
   var quotes = 0;
   var lastToken = null;
@@ -148,7 +148,7 @@ function tokenize(text, lineNum) {
   }
   var newItem = {
     tokens: tokens,
-    indent: lineText.search(/[^ ]/),
+    indent: indent || lineText.search(/[^ ]/),
     lineNum: lineNum || 0
   };
   return newItem;
@@ -286,10 +286,6 @@ function intertyper(lines, sidePass, baseLineNums) {
 
   function triager(item) {
     assert(!item.intertype);
-    if (item.indent == 2 && (eq = findTokenText(item, '=')) >= 0) {
-      item.assignTo = toNiceIdent(combineTokens(item.tokens.slice(0, eq)).text);
-      item.tokens = item.tokens.slice(eq+1);
-    }
     var token0Text = item.tokens[0].text;
     var token1Text = item.tokens[1] ? item.tokens[1].text : null;
     var tokensLength = item.tokens.length;
@@ -340,7 +336,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         return labelHandler(item);
       if (tokensLength >= 4 && token0Text == 'declare')
         return externalHandler(item);
-      if (tokensLength >= 3 && token1Text == '=')
+      if (item.assignTo)
         return globalHandler(item);
       if (tokensLength >= 4 && token0Text == 'define' &&
          item.tokens.slice(-1)[0].text == '{')
@@ -453,15 +449,15 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
     }
 
-    cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 2);
-    if (item.tokens[2].text == 'alias') {
-      cleanOutTokens(LLVM.LINKAGES, item.tokens, 3);
-      cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 3);
+    cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 0);
+    if (item.tokens[0].text == 'alias') {
+      cleanOutTokens(LLVM.LINKAGES, item.tokens, 1);
+      cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 1);
       var last = getTokenIndexByText(item.tokens, ';');
       var ret = {
         intertype: 'alias',
-        ident: toNiceIdent(item.tokens[0].text),
-        value: parseLLVMSegment(item.tokens.slice(3, last)),
+        ident: item.assignTo,
+        value: parseLLVMSegment(item.tokens.slice(1, last)),
         lineNum: item.lineNum
       };
       ret.type = ret.value.type;
@@ -471,18 +467,18 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
       return ret;
     }
-    if (item.tokens[2].text == 'type') {
+    if (item.tokens[0].text == 'type') {
       var fields = [];
       var packed = false;
-      if (Runtime.isNumberType(item.tokens[3].text)) {
+      if (Runtime.isNumberType(item.tokens[1].text)) {
         // Clang sometimes has |= i32| instead of |= { i32 }|
-        fields = [item.tokens[3].text];
-      } else if (item.tokens[3].text != 'opaque') {
-        if (item.tokens[3].type == '<') {
+        fields = [item.tokens[1].text];
+      } else if (item.tokens[1].text != 'opaque') {
+        if (item.tokens[1].type == '<') {
           packed = true;
-          item.tokens[3] = item.tokens[3].item.tokens[0];
+          item.tokens[1] = item.tokens[1].item.tokens[0];
         }
-        var subTokens = item.tokens[3].tokens;
+        var subTokens = item.tokens[1].tokens;
         if (subTokens) {
           subTokens.push({text:','});
           while (subTokens[0]) {
@@ -495,36 +491,36 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
       return {
         intertype: 'type',
-        name_: item.tokens[0].text,
+        name_: item.assignTo,
         fields: fields,
         packed: packed,
         lineNum: item.lineNum
       };
     } else {
       // variable
-      var ident = item.tokens[0].text;
+      var ident = item.assignTo;
       var private_ = findTokenText(item, 'private') >= 0 || findTokenText(item, 'internal') >= 0;
       var named = findTokenText(item, 'unnamed_addr') < 0;
-      cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [2, 3]);
+      cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [0, 1]);
       var external = false;
-      if (item.tokens[2].text === 'external') {
+      if (item.tokens[0].text === 'external') {
         external = true;
-        item.tokens.splice(2, 1);
+        item.tokens.splice(0, 1);
       }
       var ret = {
         intertype: 'globalVariable',
-        ident: toNiceIdent(ident),
-        type: item.tokens[2].text,
+        ident: ident,
+        type: item.tokens[0].text,
         external: external,
         private_: private_,
         named: named,
         lineNum: item.lineNum
       };
       noteGlobalVariable(ret);
-      if (ident == '@llvm.global_ctors') {
+      if (ident == '_llvm_global_ctors') {
         ret.ctors = [];
-        if (item.tokens[3].item) {
-          var subTokens = item.tokens[3].item.tokens;
+        if (item.tokens[1].item) {
+          var subTokens = item.tokens[1].item.tokens;
           splitTokenList(subTokens).forEach(function(segment) {
             var parsed = parseLLVMSegment(segment);
             assert(parsed.intertype === 'structvalue');
@@ -537,14 +533,14 @@ function intertyper(lines, sidePass, baseLineNums) {
           });
         }
       } else if (!external) {
-        if (item.tokens[3] && item.tokens[3].text != ';') {
-          if (item.tokens[3].text == 'c') {
-            item.tokens.splice(3, 1);
+        if (item.tokens[1] && item.tokens[1].text != ';') {
+          if (item.tokens[1].text == 'c') {
+            item.tokens.splice(1, 1);
           }
-          if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
-            ret.value = parseLLVMFunctionCall(item.tokens.slice(2));
+          if (item.tokens[1].text in PARSABLE_LLVM_FUNCTIONS) {
+            ret.value = parseLLVMFunctionCall(item.tokens);
           } else {
-            ret.value = scanConst(item.tokens[3], ret.type);
+            ret.value = scanConst(item.tokens[1], ret.type);
           }
         } else {
           ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
@@ -1128,7 +1124,27 @@ function intertyper(lines, sidePass, baseLineNums) {
 
     //var time = Date.now();
 
-    var t = tokenize(line.lineText, line.lineNum);
+    // parse out the assignment
+    var indent = 0, assignTo = null;
+    if (phase === 'pre') {
+      var m = /^([%@\w\d\._\-]+|%"[^"]+") = (.*)/.exec(line.lineText);
+      if (m) {
+        assignTo = m[1];
+        line.lineText = m[2];
+      }
+    } else if (phase === 'funcs') {
+      var m = /^  ([%@\w\d\._\-]+|%"[^"]+") = (.*)/.exec(line.lineText);
+      if (m) {
+        indent = 2;
+        assignTo = m[1];
+        line.lineText = m[2];
+      }
+    }
+
+    var t = tokenize(line.lineText, line.lineNum, indent);
+    if (assignTo) {
+      t.assignTo = t.tokens[0].text !== 'type' ? toNiceIdent(assignTo) : assignTo;
+    }
     item = triager(t);
 
     /*
@@ -1145,7 +1161,7 @@ function intertyper(lines, sidePass, baseLineNums) {
   return finalResults;
 }
 
-// intertyper profiler
+// intertyper profiling
 
 /*
 var interProf = {};
@@ -1153,4 +1169,5 @@ function dumpInterProf() {
   printErr('\nintertyper/' + phase + ' (ms | n): ' + JSON.stringify(keys(interProf).sort(function(x, y) { return interProf[y].ms - interProf[x].ms }).map(function(x) { return x + ' : ' + interProf[x].ms + ' | ' + interProf[x].n }), null, ' ') + '\n');
 }
 */
+//var hits = 0;
 
