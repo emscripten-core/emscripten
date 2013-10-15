@@ -1127,13 +1127,13 @@ function intertyper(lines, sidePass, baseLineNums) {
     // parse out the assignment
     var indent = 0, assignTo = null;
     if (phase === 'pre') {
-      var m = /^([%@\w\d\._\-]+|%"[^"]+") = (.*)/.exec(line.lineText);
+      var m = /^([%@\w\d\._\-]+|[%@]"[^"]+") = (.*)/.exec(line.lineText);
       if (m) {
         assignTo = m[1];
         line.lineText = m[2];
       }
     } else if (phase === 'funcs') {
-      var m = /^  ([%@\w\d\._\-]+|%"[^"]+") = (.*)/.exec(line.lineText);
+      var m = /^  ([%@\w\d\._\-]+|[%@]"[^"]+") = (.*)/.exec(line.lineText);
       if (m) {
         indent = 2;
         assignTo = m[1];
