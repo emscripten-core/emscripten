@@ -774,7 +774,8 @@ function demangleAll(text) {
 }
 
 function stackTrace() {
-  return demangleAll(new Error().stack);
+  var stack = new Error().stack;
+  return stack ? demangleAll(stack) : '(no stack trace available)'; // Stack trace is not available at least on IE10 and Safari 6.
 }
 
 // Memory management
