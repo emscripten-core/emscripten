@@ -31,8 +31,8 @@ Most normal gcc/g++ options will work, for example:
   --version                Display compiler version information
 
 Options that are modified or new in %s include:
-  -O0                      No optimizations (default)
-''' % (shortcompiler, shortcompiler), output[0].replace('\r', ''), output[1].replace('\r', ''))
+
+  -O0                      No optimizations (default)''' % (shortcompiler, shortcompiler), output[0].replace('\r', ''), output[1].replace('\r', ''))
 
       # emcc src.cpp ==> writes a.out.js
       self.clear()
