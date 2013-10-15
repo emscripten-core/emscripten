@@ -63,12 +63,7 @@ function tokenize(text, lineNum) {
       tokens.splice(openBrace, tokens.length-openBrace+1);
       tokens.push(token);
       token.type = '{';
-      token.text = '{ ' + token.text + ' }';
-      var pointingLevelsToAdd = pointingLevels(text) - pointingLevels(token.text);
-      while (pointingLevelsToAdd > 0) {
-        token.text += '*';
-        pointingLevelsToAdd--;
-      }
+      token.text = '{ ' + token.text + ' ' + text;
       lastToken = token;
     } else {
       tokens.push(token);
