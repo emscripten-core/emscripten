@@ -7826,6 +7826,7 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_unlink(self):
+    self.clear()
     if self.emcc_args is None: return self.skip('requires emcc')
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
@@ -7834,6 +7835,7 @@ def process(filename):
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
+    self.clear()
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
@@ -7847,6 +7849,7 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_io(self):
+    self.clear()
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
     if self.emcc_args is None: return self.skip('requires emcc')
