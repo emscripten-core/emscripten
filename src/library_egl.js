@@ -170,7 +170,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3031: // EGL_SAMPLES
-      {{{ makeSetValue('value', '0', '2' /* x2 Multisampling */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '4' /* 2x2 Multisampling */, 'i32') }}};
       return 1;
     case 0x3032: // EGL_SAMPLE_BUFFERS
       {{{ makeSetValue('value', '0', '1' /* Multisampling enabled */, 'i32') }}};
