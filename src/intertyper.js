@@ -6,7 +6,7 @@
 var fastPaths = 0, slowPaths = 0;
 
 var tokenCache = {};
-['i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
+[',', 'i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
 
 //var tokenCacheMisses = {};
 
@@ -110,7 +110,7 @@ function tokenize(text, lineNum, indent) {
         if (totalEnclosing == 0 && quotes == 0) {
           makeToken(lineText.substring(start, i));
           start = i+1;
-          tokens.push({ text: ',' }); // XXX
+          tokens.push(tokenCache[',']);
         }
         break;
       default:
