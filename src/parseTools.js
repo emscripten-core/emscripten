@@ -376,7 +376,6 @@ var SPLIT_TOKEN_LIST_SPLITTERS = set(',', 'to'); // 'to' can separate parameters
 function splitTokenList(tokens) {
   if (tokens.length == 0) return [];
   if (!tokens.slice) tokens = tokens.tokens;
-  if (tokens.slice(-1)[0].text != ',') tokens.push({text:','});
   var ret = [];
   var seg = [];
   for (var i = 0; i < tokens.length; i++) {
@@ -386,24 +385,22 @@ function splitTokenList(tokens) {
       seg = [];
     } else if (token.text == ';') {
       ret.push(seg);
-      break;
+      return ret;
     } else {
       seg.push(token);
     }
   }
+  if (seg.length) ret.push(seg);
   return ret;
 }
 
 function parseParamTokens(params) {
   if (params.length === 0) return [];
   var ret = [];
-  if (params[params.length-1].text != ',') {
-    params.push({ text: ',' });
-  }
   var anonymousIndex = 0;
   while (params.length > 0) {
     var i = 0;
-    while (params[i].text != ',') i++;
+    while (i < params.length && params[i].text != ',') i++;
     var segment = params.slice(0, i);
     params = params.slice(i+1);
     segment = cleanSegment(segment);
