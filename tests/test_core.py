@@ -8095,11 +8095,7 @@ int main(int argc, char **argv) {
 
   def test_iostream(self):
     if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
-
-    if self.emcc_args is None:
-      if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
-      self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
-      Settings.SAFE_HEAP = 0 # Some spurious warnings from libc++ internals
+    if self.emcc_args is None: return self.skip('needs ta2 and emcc')
 
     src = '''
       #include <iostream>
