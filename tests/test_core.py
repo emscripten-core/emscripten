@@ -7762,6 +7762,7 @@ def process(filename):
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_access(self):
+    self.clear()
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
@@ -7800,6 +7801,7 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_unistd_truncate(self):
+    self.clear()
     if not self.is_le32(): return self.skip('le32 needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
