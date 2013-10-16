@@ -30,6 +30,7 @@ function tokenize(text, lineNum, indent) {
     if (text.length == 0) return;
     // merge certain tokens
     if (lastToken && /^\**$/.test(text)) {
+      //assert(!(lastToken.text in tokenCache));
       lastToken.text += text;
       return;
     }
