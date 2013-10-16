@@ -6,7 +6,7 @@
 var fastPaths = 0, slowPaths = 0;
 
 var tokenCache = {};
-[',', 'i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
+[',', '{', '}', 'i32', 'label', ';', '4', '0', '1', '2', '255', 'align', 'i8*', 'i8', 'i16', 'getelementptr', 'inbounds', 'unnamed_addr', 'x', 'load', 'preds', 'br', 'i32*', 'i1', 'store', '<label>', 'constant', 'c', 'private', 'null', 'internal', 'to', 'bitcast', 'define', 'nounwind', 'nocapture', '%this', 'call', '...'].forEach(function(text) { tokenCache[text] = { text: text } });
 
 //var tokenCacheMisses = {};
 
@@ -15,14 +15,15 @@ function tokenize(text, lineNum, indent) {
   var tokens = [];
   var quotes = 0;
   var lastToken = null;
-  // Note: '{' is not an encloser, as its use in functions is split over many lines
   var enclosers = {
     '[': 0,
     ']': '[',
     '(': 0,
     ')': '(',
     '<': 0,
-    '>': '<'
+    '>': '<',
+    '{': 0,
+    '}': '{',
   };
   var totalEnclosing = 0;
   function makeToken(text) {
@@ -46,7 +47,11 @@ function tokenize(text, lineNum, indent) {
       text: text
     };
     if (text[0] in enclosers) {
-      token.item = tokenize(text.substr(1, text.length-2));
+      if (text[0] !== '{') {
+        token.item = tokenize(text.substr(1, text.length-2));
+      } else {
+        token.tokens = tokenize(text.substr(1, text.length-2)).tokens;
+      }
       token.type = text[0];
     }
     // merge certain tokens
@@ -56,15 +61,6 @@ function tokenize(text, lineNum, indent) {
         lastToken = tokens[tokens.length-1] = { text: lastToken.text };
       }
       lastToken.text += ' ' + text;
-    } else if (lastToken && text[0] == '}') { // }, }*, etc.
-      var openBrace = tokens.length-1;
-      while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
-      token = combineTokens(tokens.slice(openBrace+1));
-      tokens.splice(openBrace, tokens.length-openBrace+1);
-      tokens.push(token);
-      token.type = '{';
-      token.text = '{ ' + token.text + ' ' + text;
-      lastToken = token;
     } else {
       tokens.push(token);
       lastToken = token;
@@ -72,23 +68,27 @@ function tokenize(text, lineNum, indent) {
   }
   // Split using meaningful characters
   var lineText = text + ' ';
-  var re = /[\[\]\(\)<>, "]/g;
+  var re = /[\[\]\(\)<>{}, "]/g;
   var segments = lineText.split(re);
   segments.pop();
   var len = segments.length;
   var i = -1;
   var start = 0;
-  var segment, letter;
+  var segment, letter, last;
+  indent = indent || lineText.search(/[^ ]/);
+  if (lineText[0] === '}') {
+    tokens.push(tokenCache['}']); // end of function and landingpads have an unmatched {
+  }
   for (var s = 0; s < len; s++) {
     segment = segments[s];
     i += segment.length + 1;
+    last = letter;
     letter = lineText[i];
     switch (letter) {
       case ' ':
         if (totalEnclosing == 0 && quotes == 0) {
           makeToken(lineText.substring(start, i));
           start = i+1;
-        } else {
         }
         break;
       case '"':
@@ -135,9 +135,12 @@ function tokenize(text, lineNum, indent) {
         }
     }
   }
+  if (last === '{') {
+    tokens.push(tokenCache['{']); // beginning of function and landingpads have an unmatched {
+  }
   var newItem = {
     tokens: tokens,
-    indent: indent || lineText.search(/[^ ]/),
+    indent: indent,
     lineNum: lineNum || 0
   };
   return newItem;
@@ -145,11 +148,12 @@ function tokenize(text, lineNum, indent) {
 
 // Handy sets
 
-var ENCLOSER_STARTERS = set('[', '(', '<');
+var ENCLOSER_STARTERS = set('[', '(', '<', '{');
 var ENCLOSER_ENDERS = {
   '[': ']',
   '(': ')',
-  '<': '>'
+  '<': '>',
+  '{': '}'
 };
 var ZEROINIT_UNDEF = set('zeroinitializer', 'undef');
 var NSW_NUW = set('nsw', 'nuw');
