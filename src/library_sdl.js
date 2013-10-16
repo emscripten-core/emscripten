@@ -43,6 +43,29 @@ var LibrarySDL = {
     GL: false, // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do not create 2D canvases&contexts for blitting
                // Note that images loaded before SDL_SetVideoMode will not get this optimization
 
+    // all possible GL attributes, with their default value
+    glAttributes: {
+      0: 3,    /* SDL_GL_RED_SIZE */
+      1: 3,    /* SDL_GL_GREEN_SIZE */
+      2: 2,    /* SDL_GL_BLUE_SIZE */
+      3: 0,    /* SDL_GL_ALPHA_SIZE */
+      4: 0,    /* SDL_GL_BUFFER_SIZE */
+      5: 1,    /* SDL_GL_DOUBLEBUFFER */
+      6: 16,   /* SDL_GL_DEPTH_SIZE */
+      7: 0,    /* SDL_GL_STENCIL_SIZE */
+      8: 0,    /* SDL_GL_ACCUM_RED_SIZE */
+      9: 0,    /* SDL_GL_ACCUM_GREEN_SIZE */
+      10: 0,   /* SDL_GL_ACCUM_BLUE_SIZE */
+      11: 0,   /* SDL_GL_ACCUM_ALPHA_SIZE */
+      12: 0,   /* SDL_GL_STEREO */
+      13: 0,   /* SDL_GL_MULTISAMPLEBUFFERS */
+      14: 0,   /* SDL_GL_MULTISAMPLESAMPLES */
+      15: 1,   /* SDL_GL_ACCELERATED_VISUAL */
+      16: 0,   /* SDL_GL_RETAINED_BACKING */
+      17: 0,   /* SDL_GL_CONTEXT_MAJOR_VERSION */
+      18: 0    /* SDL_GL_CONTEXT_MINOR_VERSION */
+    },
+
     keyboardState: null,
     keyboardMap: {},
 
@@ -229,7 +252,11 @@ var LibrarySDL = {
       } else {
         canvas = Module['canvas'];
       }
-      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas);
+
+      var webGLContextAttributes = {
+        antialias: ((SDL.glAttributes[13 /*SDL_GL_MULTISAMPLEBUFFERS*/] != 0) && (SDL.glAttributes[14 /*SDL_GL_MULTISAMPLESAMPLES*/] > 1))
+      };
+      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas, webGLContextAttributes);
       SDL.surfaces[surf] = {
         width: width,
         height: height,
@@ -2240,7 +2267,21 @@ var LibrarySDL = {
   // GL
 
   SDL_GL_SetAttribute: function(attr, value) {
-    console.log('TODO: SDL_GL_SetAttribute');
+    if (!(attr in SDL.glAttributes)) {
+      abort('Unknown SDL GL attribute (' + attr + '). Please check if your SDL version is supported.');
+    }
+
+    SDL.glAttributes[attr] = value;
+  },
+
+  SDL_GL_GetAttribute: function(attr, value) {
+    if (!(attr in SDL.glAttributes)) {
+      abort('Unknown SDL GL attribute (' + attr + '). Please check if your SDL version is supported.');
+    }
+
+    if (value) {{{ makeSetValue('value', '0', 'SDL.glAttributes[attr]', 'i32') }}};
+
+    return 0;
   },
 
   SDL_GL_GetProcAddress__deps: ['emscripten_GetProcAddress'],

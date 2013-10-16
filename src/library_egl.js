@@ -170,10 +170,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3031: // EGL_SAMPLES
-      {{{ makeSetValue('value', '0', '0' /* No multisampling. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '4' /* 2x2 Multisampling */, 'i32') }}};
       return 1;
     case 0x3032: // EGL_SAMPLE_BUFFERS
-      {{{ makeSetValue('value', '0', '0' /* No multisampling. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '1' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
       {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
@@ -250,7 +250,7 @@ var LibraryEGL = {
     return 1; /* Magic ID for Emscripten 'default surface' */
   },
 
-  eglCreateContext__deps: ['glutCreateWindow', '$GL'],
+  eglCreateContext__deps: ['glutInitDisplayMode', 'glutCreateWindow', '$GL'],
   
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
   eglCreateContext: function(display, config, hmm, contextAttribs) {
@@ -259,6 +259,7 @@ var LibraryEGL = {
       return 0;
     }
 
+    _glutInitDisplayMode(0x92 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE */);
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);

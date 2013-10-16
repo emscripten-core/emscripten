@@ -225,7 +225,7 @@ mergeInto(LibraryManager.library, {
       }
     },
 
-    createContext: function(canvas, useWebGL, setInModule) {
+    createContext: function(canvas, useWebGL, setInModule, webGLContextAttributes) {
 #if !USE_TYPED_ARRAYS
       if (useWebGL) {
         Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
@@ -235,12 +235,22 @@ mergeInto(LibraryManager.library, {
       var ctx;
       try {
         if (useWebGL) {
-          ctx = canvas.getContext('experimental-webgl', {
-#if GL_TESTING
-            preserveDrawingBuffer: true,
-#endif
+          var contextAttributes = {
+            antialias: false,
             alpha: false
-          });
+          };
+
+          if (webGLContextAttributes) {
+            for (var attribute in webGLContextAttributes) {
+              contextAttributes[attribute] = webGLContextAttributes[attribute];
+            }
+          }
+
+#if GL_TESTING
+          contextAttributes.preserveDrawingBuffer = true;
+#endif
+
+          ctx = canvas.getContext('experimental-webgl', contextAttributes);
         } else {
           ctx = canvas.getContext('2d');
         }

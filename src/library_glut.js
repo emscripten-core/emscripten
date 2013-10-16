@@ -16,6 +16,7 @@ var LibraryGLUT = {
     modifiers: 0,
     initWindowWidth: 256,
     initWindowHeight: 256,
+    initDisplayMode: 0x0000 /*GLUT_RGBA*/ | 0x0002 /*GLUT_DOUBLE*/ | 0x0010 /*GLUT_DEPTH*/,
     // Set when going fullscreen
     windowX: 0,
     windowY: 0,
@@ -425,7 +426,10 @@ var LibraryGLUT = {
 
   glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow: function(name) {
-    Module.ctx = Browser.createContext(Module['canvas'], true, true);
+    var contextAttributes = {
+      antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0)
+    };
+    Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
     return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
   },
 
@@ -464,7 +468,10 @@ var LibraryGLUT = {
     GLUT.requestFullScreen();
   },
 
-  glutInitDisplayMode: function(mode) {},
+  glutInitDisplayMode: function(mode) {
+    GLUT.initDisplayMode = mode;
+  },
+
   glutSwapBuffers: function() {},
 
   glutPostRedisplay: function() {
