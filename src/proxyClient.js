@@ -30,7 +30,15 @@ worker.onmessage = function(event) {
           break;
         }
         case 'render': {
-          Module.canvasData.data.set(data.image.data);
+          var src = data.image.data;
+          var dst = Module.canvasData.data;
+          if (dst.set) {
+            dst.set(src);
+          } else {
+            for (var i = 0; i < src.length; i++) {
+              dst[i] = src[i];
+            }
+          }
           Module.ctx.putImageData(Module.canvasData, 0, 0);
           break;
         }
