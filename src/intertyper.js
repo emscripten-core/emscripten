@@ -26,42 +26,57 @@ function tokenize(text, lineNum, indent) {
     '}': '{',
   };
   var totalEnclosing = 0;
+  function updateLastToken(text) {
+    var cached = tokenCache[text];
+    if (cached) {
+      lastToken = tokens[tokens.length-1] = cached;
+    } else {
+      if (lastToken.text in tokenCache) {
+        // create a copy of the cached value, we are about to modify it
+        if (lastToken.type) {
+//printErr('cache, REtokenize: ' + text);
+          lastToken = tokens[tokens.length-1] = { text: lastToken.text, type: lastToken.type };
+          if (lastToken.text[0] !== '{') {
+            lastToken.item = tokenize(lastToken.text.substr(1, lastToken.text.length-2));
+          } else {
+            lastToken.tokens = tokenize(lastToken.text.substr(1, lastToken.text.length-2)).tokens;
+          }
+        } else {
+          lastToken = tokens[tokens.length-1] = { text: lastToken.text };
+        }
+      }
+      lastToken.text = text;
+      tokenCache[text] = lastToken;
+    }
+  }
   function makeToken(text) {
     if (text.length == 0) return;
     // merge certain tokens
     if (lastToken && /^\**$/.test(text)) {
-      //assert(!(lastToken.text in tokenCache));
-      lastToken.text += text;
+      updateLastToken(lastToken.text + text);
       return;
     }
 
-    var cached = tokenCache[text];
-    if (cached) {
-      //assert(cached.text === text);
-      tokens.push(cached);
-      lastToken = cached;
-      return;
-    }
-    //tokenCacheMisses[text] = (misses[text] || 0) + 1;
+    var token = tokenCache[text], cached = true;
+    if (!token) {
+      token = { text: text };
+      cached = false;
+    }// else assert(token.text === text);//, [text, dump(token)]);
 
-    var token = {
-      text: text
-    };
-    if (text[0] in enclosers) {
+    if (!cached && text[0] in enclosers) {
+//printErr('nocache, tokenize: ' + text);
       if (text[0] !== '{') {
         token.item = tokenize(text.substr(1, text.length-2));
       } else {
         token.tokens = tokenize(text.substr(1, text.length-2)).tokens;
       }
       token.type = text[0];
+      tokenCache[text] = token; // always cache recursive ones, to save all the processing
+      //assert(token.text === text);
     }
     // merge certain tokens
     if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
-      if (lastToken.text in tokenCache) {
-        // create a copy of the cached value
-        lastToken = tokens[tokens.length-1] = { text: lastToken.text };
-      }
-      lastToken.text += ' ' + text;
+      updateLastToken(lastToken.text + ' ' + text);
     } else {
       tokens.push(token);
       lastToken = token;
@@ -115,7 +130,7 @@ function tokenize(text, lineNum, indent) {
         }
         break;
       default:
-        assert(letter in enclosers);
+        //assert(letter in enclosers);
         if (quotes) {
           break;
         }
@@ -443,6 +458,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
     }
 
+    item.tokens = item.tokens.slice(0);
     cleanOutTokens(LLVM.VISIBILITIES, item.tokens, 0);
     if (item.tokens[0].text == 'alias') {
       cleanOutTokens(LLVM.LINKAGES, item.tokens, 1);
@@ -474,6 +490,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         }
         var subTokens = item.tokens[1].tokens;
         if (subTokens) {
+          subTokens = subTokens.slice(0);
           subTokens.push({text:','});
           while (subTokens[0]) {
             var stop = 1;
@@ -495,6 +512,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       var ident = item.assignTo;
       var private_ = findTokenText(item, 'private') >= 0 || findTokenText(item, 'internal') >= 0;
       var named = findTokenText(item, 'unnamed_addr') < 0;
+      item.tokens = item.tokens.slice(0);
       cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [0, 1]);
       var external = false;
       if (item.tokens[0].text === 'external') {
@@ -577,6 +595,7 @@ function intertyper(lines, sidePass, baseLineNums) {
   // 'load'
   function loadHandler(item) {
     item.intertype = 'load';
+    item.tokens = item.tokens.slice(0);
     cleanOutTokens(LLVM.ACCESS_OPTIONS, item.tokens, [0, 1]);
     item.pointerType = item.tokens[1].text;
     item.valueType = item.type = removePointing(item.pointerType);
@@ -646,6 +665,7 @@ function intertyper(lines, sidePass, baseLineNums) {
   // 'call', 'invoke'
   function makeCall(item, type) {
     item.intertype = type;
+    item.tokens = item.tokens.slice(0);
     if (['tail'].indexOf(item.tokens[0].text) != -1) {
       item.tokens.splice(0, 1);
     }
@@ -729,6 +749,7 @@ function intertyper(lines, sidePass, baseLineNums) {
   }
   function atomicHandler(item) {
     item.intertype = 'atomic';
+    item.tokens = item.tokens.slice(0);
     if (item.tokens[0].text == 'atomicrmw') {
       if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
       item.op = item.tokens[1].text;
@@ -807,6 +828,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     item.intertype = 'mathop';
     item.op = item.tokens[0].text;
     item.variant = null;
+    item.tokens = item.tokens.slice(0);
     while (item.tokens[1].text in NSW_NUW) item.tokens.splice(1, 1);
     if (['icmp', 'fcmp'].indexOf(item.op) != -1) {
       item.variant = item.tokens[1].text;
@@ -859,6 +881,7 @@ function intertyper(lines, sidePass, baseLineNums) {
   }
   // 'store'
   function storeHandler(item) {
+    item.tokens = item.tokens.slice(0);
     cleanOutTokens(LLVM.ACCESS_OPTIONS, item.tokens, [0, 1]);
     var segments = splitTokenList(item.tokens.slice(1));
     var ret = {
@@ -952,6 +975,7 @@ function intertyper(lines, sidePass, baseLineNums) {
   }
   // external function stub
   function externalHandler(item) {
+    item.tokens = item.tokens.slice(0);
     while (item.tokens[1].text in LLVM.LINKAGES || item.tokens[1].text in LLVM.PARAM_ATTR || item.tokens[1].text in LLVM.VISIBILITIES || item.tokens[1].text in LLVM.CALLING_CONVENTIONS) {
       item.tokens.splice(1, 1);
     }
@@ -1163,5 +1187,5 @@ function dumpInterProf() {
   printErr('\nintertyper/' + phase + ' (ms | n): ' + JSON.stringify(keys(interProf).sort(function(x, y) { return interProf[y].ms - interProf[x].ms }).map(function(x) { return x + ' : ' + interProf[x].ms + ' | ' + interProf[x].n }), null, ' ') + '\n');
 }
 */
-//var hits = 0;
+var hits = 0, misses = 0;
 
