@@ -320,12 +320,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
 
       // ensure alignment
-      constant = constant.concat(zeros(Runtime.alignMemory(constant.length) - constant.length));
-
-      // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
-      if (item.ident.substr(0, 5) == '__ZTV') {
-        constant = constant.concat(zeros(Runtime.alignMemory(QUANTUM_SIZE)));
-      }
+      var extra = Runtime.alignMemory(constant.length) - constant.length;
+      if (item.ident.substr(0, 5) == '__ZTV') extra += Runtime.alignMemory(QUANTUM_SIZE);
+      while (extra-- > 0) constant.push(0);
     }
 
     // NOTE: This is the only place that could potentially create static
