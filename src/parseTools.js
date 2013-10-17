@@ -2316,6 +2316,13 @@ function processMathop(item) {
     }
   }
 
+  if (type[0] === '<' && type[type.length-1] !== '*') {
+    // vector/SIMD operation
+    switch (op) {
+      default: throw 'vector op todo: ' + dump(item);
+    }
+  }
+
   switch (op) {
     // basic integer ops
     case 'add': return handleOverflow(getFastValue(idents[0], '+', idents[1], item.type), bits);
