@@ -11,7 +11,7 @@ var tokenCache = {};
 //var tokenCacheMisses = {};
 
 // Line tokenizer
-function tokenize(text, lineNum, indent) {
+function tokenize(text) {
   var tokens = [];
   var quotes = 0;
   var lastToken = null;
@@ -49,7 +49,7 @@ function tokenize(text, lineNum, indent) {
       text: text
     };
     if (text[0] in enclosers) {
-      token.tokens = tokenize(text.substr(1, text.length-2)).tokens;
+      token.tokens = tokenize(text.substr(1, text.length-2));
       token.type = text[0];
     }
     // merge function definitions together
@@ -73,7 +73,6 @@ function tokenize(text, lineNum, indent) {
   var i = -1;
   var start = 0;
   var segment, letter, last;
-  indent = indent || lineText.search(/[^ ]/);
   if (lineText[0] === '}') {
     tokens.push(tokenCache['}']); // end of function and landingpads have an unmatched {
   }
@@ -136,12 +135,7 @@ function tokenize(text, lineNum, indent) {
   if (last === '{') {
     tokens.push(tokenCache['{']); // beginning of function and landingpads have an unmatched {
   }
-  var newItem = {
-    tokens: tokens,
-    indent: indent,
-    lineNum: lineNum || 0
-  };
-  return newItem;
+  return tokens;
 }
 
 // Handy sets
@@ -246,7 +240,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       if (mainPass && /^}.*/.test(line)) {
         inFunction = false;
         if (mainPass) {
-          var func = funcHeaderHandler(tokenize(currFunctionLines[0], currFunctionLineNum));
+          var func = funcHeaderHandler({ tokens: tokenize(currFunctionLines[0], currFunctionLineNum) });
 
           if (SKIP_STACK_IN_SMALL && /emscripten_autodebug/.exec(func.ident)) {
             warnOnce('Disabling SKIP_STACK_IN_SMALL because we are apparently processing autodebugger data');
@@ -1132,7 +1126,13 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
     }
 
-    var t = tokenize(line.lineText, line.lineNum, indent);
+    var tokens = tokenize(line.lineText);
+    var t = {
+      tokens: tokens,
+      indent: indent || line.lineText.search(/[^ ]/),
+      lineNum: line.lineNum
+    };
+
     if (assignTo) {
       t.assignTo = t.tokens[0].text !== 'type' ? toNiceIdent(assignTo) : assignTo;
     }

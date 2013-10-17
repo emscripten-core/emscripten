@@ -280,7 +280,7 @@ function isFunctionType(type, out) {
     i--;
   }
   assert(argText);
-  return isFunctionDef({ text: argText, tokens: tokenize(argText.substr(1, argText.length-2)).tokens }, out);
+  return isFunctionDef({ text: argText, tokens: tokenize(argText.substr(1, argText.length-2)) }, out);
 }
 
 function getReturnType(type) {

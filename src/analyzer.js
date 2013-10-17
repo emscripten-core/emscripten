@@ -1007,7 +1007,7 @@ function analyzer(data, sidePass) {
       internal = internal.substr(2, internal.length-4);
       Types.types[type] = {
         name_: type,
-        fields: splitTokenList(tokenize(internal).tokens).map(function(segment) {
+        fields: splitTokenList(tokenize(internal)).map(function(segment) {
           return segment[0].text;
         }),
         packed: packed,
