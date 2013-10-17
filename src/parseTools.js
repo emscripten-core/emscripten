@@ -585,6 +585,16 @@ function parseLLVMSegment(segment) {
     return parseBlockAddress(segment);
   } else {
     type = segment[0].text;
+    if (type[type.length-1] === '>' && segment[1].text[0] === '<') {
+      // vector literal
+      return {
+        intertype: 'vector',
+        idents: splitTokenList(segment[1].tokens).map(function(pair) {
+          return pair[1].text;
+        }),
+        type: type
+      };
+    }
     Types.needAnalysis[type] = 0;
     return {
       intertype: 'value',
@@ -1981,6 +1991,8 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     return param.ident; // we don't really want the type here
   } else if (param.intertype == 'mathop') {
     return processMathop(param);
+  } else if (param.intertype === 'vector') {
+    return 'float32x4(' + param.idents.join(',') + ')';
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
