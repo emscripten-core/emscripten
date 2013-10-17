@@ -522,6 +522,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         case 'load': line.JS = loadHandler(line); break;
         case 'extractvalue': line.JS = extractvalueHandler(line); break;
         case 'insertvalue': line.JS = insertvalueHandler(line); break;
+        case 'insertelement': line.JS = insertelementHandler(line); break;
+        case 'shufflevector': line.JS = shufflevectorHandler(line); break;
         case 'indirectbr': line.JS = indirectbrHandler(line); break;
         case 'alloca': line.JS = allocaHandler(line); break;
         case 'va_arg': line.JS = va_argHandler(line); break;
@@ -1341,6 +1343,12 @@ function JSify(data, functionsOnly, givenFunctions) {
       ret += item.ident + ' = [' + makeEmptyStruct(item.type) + '], ';
     }
     return ret + item.ident + '.f' + item.indexes[0][0].text + '=' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
+  }
+  function insertelementHandler(item) {
+    return 'TODO';
+  }
+  function shufflevectorHandler(item) {
+    return 'TODO';
   }
   function indirectbrHandler(item) {
     var phiSets = calcPhiSets(item);

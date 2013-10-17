@@ -312,6 +312,10 @@ function intertyper(lines, sidePass, baseLineNums) {
         return va_argHandler(item);
       if (tokensLength >= 3 && token0Text == 'landingpad')
         return landingpadHandler(item);
+      if (token0Text === 'insertelement')
+        return insertElementHandler(item);
+      if (token0Text === 'shufflevector')
+        return shuffleVectorHandler(item);
       if (token0Text == 'fence')
         return null;
     } else if (item.indent === 0) {
@@ -750,6 +754,28 @@ function intertyper(lines, sidePass, baseLineNums) {
       } while (catchIdx != item.tokens.length);
     }
     Types.needAnalysis[item.type] = 0;
+    return item;
+  }
+  function insertElementHandler(item) {
+    var last = getTokenIndexByText(item.tokens, ';');
+    item.intertype = 'insertelement';
+    item.type = item.tokens[1].text; // Of the origin aggregate, as well as the result
+    Types.needAnalysis[item.type] = 0;
+    item.ident = toNiceIdent(item.tokens[2].text);
+    var segments = splitTokenList(item.tokens.slice(4, last));
+    item.value = parseLLVMSegment(segments[0]);
+    item.index = parseLLVMSegment(segments[1]);
+    return item;
+  }
+  function shuffleVectorHandler(item) {
+    var last = getTokenIndexByText(item.tokens, ';');
+    item.intertype = 'shufflevector';
+    item.type = item.tokens[1].text; // Of the origin aggregate, as well as the result
+    Types.needAnalysis[item.type] = 0;
+    item.ident = toNiceIdent(item.tokens[2].text);
+    var segments = splitTokenList(item.tokens.slice(4, last));
+    item.value = parseLLVMSegment(segments[0]);
+    item.mask = parseLLVMSegment(segments[1]);
     return item;
   }
   // 'alloca'
