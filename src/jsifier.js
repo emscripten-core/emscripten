@@ -272,20 +272,14 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (isBSS(item)) {
-      var length = calcAllocatedSize(item.type);
-      length = Runtime.alignMemory(length);
-
       // If using indexed globals, go ahead and early out (no need to explicitly
       // initialize).
-      if (!NAMED_GLOBALS) {
-        return;
-      }
+      if (!NAMED_GLOBALS) return;
+
       // If using named globals, we can at least shorten the call to allocate by
       // passing an integer representing the size of memory to alloc instead of
       // an array of 0s of size length.
-      else {
-        constant = length;
-      }
+      constant = Runtime.alignMemory(calcAllocatedSize(item.type));
     } else {
       if (item.external) {
         if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
