@@ -28,8 +28,9 @@ function tokenize(text, lineNum, indent) {
   var totalEnclosing = 0;
   function makeToken(text) {
     if (text.length == 0) return;
-    // merge certain tokens
-    if (lastToken && /^\**$/.test(text)) {
+    // merge *..* into last token
+    if (lastToken && text[0] === '*') {
+      //assert(/^\**$/.test(text));
       //assert(!(lastToken.text in tokenCache));
       lastToken.text += text;
       return;
@@ -55,7 +56,7 @@ function tokenize(text, lineNum, indent) {
       }
       token.type = text[0];
     }
-    // merge certain tokens
+    // merge function definitions together
     if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
       if (lastToken.text in tokenCache) {
         // create a copy of the cached value
