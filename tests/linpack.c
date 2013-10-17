@@ -25,7 +25,9 @@
 #endif
 
 #define UNROLL
+#ifndef SP
 #define DP
+#endif
 
 #ifdef SP
 #define REAL float
