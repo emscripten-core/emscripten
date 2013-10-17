@@ -240,6 +240,10 @@ Options that are modified or new in %s include:
                            2: -O2 LLVM optimizations
                            3: -O3 LLVM optimizations (default in -O2+)
 
+                           You can also specify arbitrary LLVM options, e.g.
+
+                             --llvm-opts "['-O3', '-somethingelse']"
+
   --llvm-lto <level>       0: No LLVM LTO (default)
                            1: LLVM LTO is performed
                            2: We combine all the bitcode and run LLVM opt -O3
