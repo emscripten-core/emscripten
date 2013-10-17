@@ -1773,6 +1773,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
         if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
         // otherwise, fall through to float
       }
+      case '<4 x float>':
       case 'float': return ['HEAPF32'];
       default: {
         throw 'what, exactly, can we do for unknown types in TA2?! ' + [new Error().stack, ptr, type, allowMultiple, unsigned];
