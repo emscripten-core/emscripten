@@ -2008,3 +2008,8 @@ a(int [32], char [5]*)
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
     try_delete(path_from_root('tests', 'Module-exports', 'test.js.map'))
 
+  def test_simd(self):
+    self.clear()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-DSP', '--llvm-opts', '''['-O3', '-vectorize', '-vectorize-loops', '-bb-vectorize-vector-bits=128', '-force-vector-width=4']''']).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
