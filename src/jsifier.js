@@ -1303,6 +1303,14 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
   function loadHandler(item) {
     var value = finalizeLLVMParameter(item.pointer);
+    if (item.valueType[item.valueType.length-1] === '>') {
+      // vector load
+      var base = getVectorBaseType(item.type);
+      return base + '32x4(' + makeGetValue(value,  0, base, 0, item.unsigned, 0, item.align) + ',' +
+                              makeGetValue(value,  4, base, 0, item.unsigned, 0, item.align) + ',' +
+                              makeGetValue(value,  8, base, 0, item.unsigned, 0, item.align) + ',' +
+                              makeGetValue(value, 12, base, 0, item.unsigned, 0, item.align) + ')';
+    }
     var impl = item.ident ? getVarImpl(item.funcData, item.ident) : VAR_EMULATED;
     switch (impl) {
       case VAR_NATIVIZED: {

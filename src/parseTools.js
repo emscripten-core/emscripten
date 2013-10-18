@@ -324,6 +324,10 @@ function countNormalArgs(type, out, legalized) {
   return ret;
 }
 
+function getVectorBaseType(type) {
+  return type.substring(type.indexOf(' x ') + 3, type.length-1);
+}
+
 function addIdent(token) {
   token.ident = token.text;
   return token;
