@@ -1362,12 +1362,26 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
   function insertelementHandler(item) {
     var base = getVectorBaseType(item.type);
-    var ident = item.ident;
-    if (ident == 0) ident = base + '32x4.zero()';
+    var ident = ensureVector(item.ident, base);
     return ident + '.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + finalizeLLVMParameter(item.value) + ')';
   }
   function shufflevectorHandler(item) {
-    return 'TODO';
+    var base = getVectorBaseType(item.type);
+    var first = ensureVector(item.ident, base);
+    var second = ensureVector(finalizeLLVMParameter(item.value), base);
+    var mask;
+    if (item.mask.intertype === 'value') {
+      assert(item.mask.ident === 'zeroinitializer');
+      mask = [0, 0, 0, 0];
+    } else {
+      assert(item.mask.intertype === 'vector');
+      mask = item.mask.idents;
+    }
+    for (var i = 0; i < 4; i++) assert(mask[0] == 0 || mask == 1);
+    i = 0;
+    return base + '32x4(' + mask.map(function(m) {
+      return (m == 1 ? second : first) + '.' + simdLane[i++];
+    }).join(',') + ')';
   }
   function indirectbrHandler(item) {
     var phiSets = calcPhiSets(item);

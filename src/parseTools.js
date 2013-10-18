@@ -2626,4 +2626,9 @@ function addVariable(ident, type, funcData) {
 }
 
 var SIMDLane = ['X', 'Y', 'Z', 'W'];
+var simdLane = ['x', 'y', 'z', 'w'];
+
+function ensureVector(ident, base) {
+  return ident == 0 ? base + '32x4.zero()' : ident;
+}
 
