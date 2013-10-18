@@ -1361,7 +1361,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + item.ident + '.f' + item.indexes[0][0].text + '=' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
   }
   function insertelementHandler(item) {
-    return 'TODO';
+    var base = getVectorBaseType(item.type);
+    var ident = item.ident;
+    if (ident == 0) ident = base + '32x4.zero()';
+    return ident + '.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + finalizeLLVMParameter(item.value) + ')';
   }
   function shufflevectorHandler(item) {
     return 'TODO';

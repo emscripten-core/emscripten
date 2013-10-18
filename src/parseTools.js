@@ -2625,3 +2625,5 @@ function addVariable(ident, type, funcData) {
   }
 }
 
+var SIMDLane = ['X', 'Y', 'Z', 'W'];
+
