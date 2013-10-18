@@ -2363,6 +2363,18 @@ function processMathop(item) {
       case 'sub' : case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
       case 'mul' : case 'fmul': return 'SIMD.mul(' + idents[0] + ',' + idents[1] + ')';
       case 'udiv': case 'fdiv': return 'SIMD.div(' + idents[0] + ',' + idents[1] + ')';
+      case 'bitcast': {
+        var inType = item.params[0].type;
+        var outType = item.type;
+        if (inType === '<4 x float>') {
+          assert(outType === '<4 x i32>');
+          return 'SIMD.float32x4BitsToUint32x4(' + idents[0] + ')';
+        } else {
+          assert(inType === '<4 x i32>');
+          assert(outType === '<4 x float>');
+          return 'SIMD.uint32x4BitsToFloat32x4(' + idents[0] + ')';
+        }
+      }
       default: throw 'vector op todo: ' + dump(item);
     }
   }
