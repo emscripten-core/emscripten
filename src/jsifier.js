@@ -936,6 +936,14 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (item.pointer.intertype == 'value') {
       impl = getVarImpl(item.funcData, item.ident);
     }
+    if (item.valueType[item.valueType.length-1] === '>') {
+      // vector store TODO: move to makeSetValue?
+      var base = getVectorBaseType(item.valueType);
+      return '(' + makeSetValue(item.ident,  0, value + '.x', base, 0, 0, item.align) + ',' +
+                   makeSetValue(item.ident,  4, value + '.y', base, 0, 0, item.align) + ',' +
+                   makeSetValue(item.ident,  8, value + '.z', base, 0, 0, item.align) + ',' +
+                   makeSetValue(item.ident, 12, value + '.w', base, 0, 0, item.align) + ')';
+    }
     switch (impl) {
       case VAR_NATIVIZED:
         if (isNumber(item.ident)) {
@@ -1305,7 +1313,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var value = finalizeLLVMParameter(item.pointer);
     if (item.valueType[item.valueType.length-1] === '>') {
       // vector load
-      var base = getVectorBaseType(item.type);
+      var base = getVectorBaseType(item.valueType);
       return base + '32x4(' + makeGetValue(value,  0, base, 0, item.unsigned, 0, item.align) + ',' +
                               makeGetValue(value,  4, base, 0, item.unsigned, 0, item.align) + ',' +
                               makeGetValue(value,  8, base, 0, item.unsigned, 0, item.align) + ',' +
