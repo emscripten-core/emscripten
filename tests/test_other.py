@@ -2013,3 +2013,39 @@ a(int [32], char [5]*)
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-DSP', '--llvm-opts', '''['-O3', '-vectorize', '-vectorize-loops', '-bb-vectorize-vector-bits=128', '-force-vector-width=4']''']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
+  def test_simd2(self):
+    self.clear()
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+
+#include <emscripten/vector.h>
+
+int main(int argc, char **argv) {
+  {
+    float *x = (float*)argv;
+    float32x4 *a = (float32x4*)x;
+    float32x4 *b = (float32x4*)(x+4);
+    float32x4 c, d;
+    c = *a;
+    d = *b;
+    c = c*d;
+    d = d/c;
+    printf("floats! %.2f, %.2f, %.2f, %.2f   %.2f, %.2f, %.2f, %.2f\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+  }
+  {
+    unsigned int *x = (unsigned int*)argv;
+    uint32x4 *a = (uint32x4*)x;
+    uint32x4 *b = (uint32x4*)(x+4);
+    uint32x4 c, d;
+    c = *a;
+    d = *b;
+    c = c*d;
+    d = d/c;
+    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+  }
+  return 0;
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2']).communicate()
+    self.assertContained('ints', run_js('a.out.js'))
+
