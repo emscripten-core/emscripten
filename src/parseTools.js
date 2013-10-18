@@ -2331,6 +2331,10 @@ function processMathop(item) {
   if (type[0] === '<' && type[type.length-1] !== '*') {
     // vector/SIMD operation
     switch (op) {
+      case 'fadd': return 'SIMD.add(' + idents[0] + ',' + idents[1] + ')';
+      case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
+      case 'fmul': return 'SIMD.mul(' + idents[0] + ',' + idents[1] + ')';
+      case 'fdiv': return 'SIMD.div(' + idents[0] + ',' + idents[1] + ')';
       default: throw 'vector op todo: ' + dump(item);
     }
   }
