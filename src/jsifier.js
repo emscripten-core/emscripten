@@ -1363,7 +1363,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   function insertelementHandler(item) {
     var base = getVectorBaseType(item.type);
     var ident = ensureVector(item.ident, base);
-    return ident + '.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + finalizeLLVMParameter(item.value) + ')';
+    //return ident + '.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + finalizeLLVMParameter(item.value) + ')';
+    return 'SIMD.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + ident + ',' + finalizeLLVMParameter(item.value) + ')';
   }
   function shufflevectorHandler(item) {
     var base = getVectorBaseType(item.type);
