@@ -2022,7 +2022,7 @@ a(int [32], char [5]*)
 
 int main(int argc, char **argv) {
   float data[8];
-  for (int i = 0; i < 32; i++) data[i] = (10+i+argc)*(5+i+argc*argc);
+  for (int i = 0; i < 32; i++) data[i] = (1+i+argc)*(2+i+argc*argc);
   {
     float32x4 *a = (float32x4*)&data[0];
     float32x4 *b = (float32x4*)&data[4];
@@ -2038,24 +2038,22 @@ int main(int argc, char **argv) {
   {
     uint32x4 *a = (uint32x4*)&data[0];
     uint32x4 *b = (uint32x4*)&data[4];
-    uint32x4 c, d;
+    uint32x4 c, d, e, f;
     c = *a;
     d = *b;
     printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
-    c = c+d;
-    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
-    d = c*d;
-    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+    e = c+d;
+    f = c-d;
+    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
   }
   return 0;
 }
     ''')
     Popen([PYTHON, EMCC, 'src.cpp', '-O2']).communicate()
-    self.assertContained('''floats! 66, 84, 104, 126   150, 176, 204, 234
-floats! 216, 260, 308, 360   150, 176, 204, 234
-floats! 216, 260, 308, 360   32400, 45760, 62832, 84240
-uints! 1115947008, 1118306304, 1120927744, 1123811328   1125515264, 1127219200, 1129054208, 1131020288
-uints! -2053505024, -2049441792, -2044985344, -2040135680   1125515264, 1127219200, 1129054208, 1131020288
-uints! -2053505024, -2049441792, -2044985344, -2040135680   0, 0, 0, 0
+    self.assertContained('''floats! 6, 12, 20, 30   42, 56, 72, 90
+floats! 48, 68, 92, 120   42, 56, 72, 90
+floats! 48, 68, 92, 120   2016, 3808, 6624, 10800
+uints! 1086324736, 1094713344, 1101004800, 1106247680   1109917696, 1113587712, 1116733440, 1119092736
+uints! -2098724864, -2086666240, -2077229056, -2069626880   -23592960, -18874368, -15728640, -12845056
 ''', run_js('a.out.js'))
 

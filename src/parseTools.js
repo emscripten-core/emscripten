@@ -2359,10 +2359,14 @@ function processMathop(item) {
     // vector/SIMD operation
     Types.usesSIMD = true;
     switch (op) {
-      case 'add' : case 'fadd': return 'SIMD.add(' + idents[0] + ',' + idents[1] + ')';
-      case 'sub' : case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
-      case 'mul' : case 'fmul': return 'SIMD.mul(' + idents[0] + ',' + idents[1] + ')';
-      case 'udiv': case 'fdiv': return 'SIMD.div(' + idents[0] + ',' + idents[1] + ')';
+      case 'fadd': return 'SIMD.add(' + idents[0] + ',' + idents[1] + ')';
+      case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
+      case 'fmul': return 'SIMD.mul(' + idents[0] + ',' + idents[1] + ')';
+      case 'fdiv': return 'SIMD.div(' + idents[0] + ',' + idents[1] + ')';
+      case 'add' : return 'SIMD.addu32(' + idents[0] + ',' + idents[1] + ')';
+      case 'sub' : return 'SIMD.subu32(' + idents[0] + ',' + idents[1] + ')';
+      case 'mul' : return 'SIMD.mulu32(' + idents[0] + ',' + idents[1] + ')';
+      case 'udiv': return 'SIMD.divu32(' + idents[0] + ',' + idents[1] + ')';
       case 'bitcast': {
         var inType = item.params[0].type;
         var outType = item.type;
