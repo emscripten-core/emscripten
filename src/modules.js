@@ -229,6 +229,8 @@ var Types = {
 
   hasInlineJS: false, // whether the program has inline JS anywhere
 
+  usesSIMD: false,
+
   // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
   // needed (+,-,*,/,% - we do not need it for bitops), or PRECISE_I64_MATH is 2 (forced)
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)
@@ -457,6 +459,7 @@ var PassManager = {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Types: {
           hasInlineJS: Types.hasInlineJS,
+          usesSIMD: Types.usesSIMD,
           preciseI64MathUsed: Types.preciseI64MathUsed
         },
         Functions: {

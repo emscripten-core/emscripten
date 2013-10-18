@@ -325,8 +325,11 @@ function countNormalArgs(type, out, legalized) {
 }
 
 function getVectorBaseType(type) {
+  Types.usesSIMD = true;
   switch (type) {
+    case '<2 x float>':
     case '<4 x float>': return 'float';
+    case '<2 x i32>':
     case '<4 x i32>': return 'uint';
     default: throw 'unknown vector type ' + type;
   }
@@ -2339,6 +2342,7 @@ function processMathop(item) {
 
   if (type[0] === '<' && type[type.length-1] !== '*') {
     // vector/SIMD operation
+    Types.usesSIMD = true;
     switch (op) {
       case 'add' : case 'fadd': return 'SIMD.add(' + idents[0] + ',' + idents[1] + ')';
       case 'sub' : case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
@@ -2634,6 +2638,7 @@ var SIMDLane = ['X', 'Y', 'Z', 'W'];
 var simdLane = ['x', 'y', 'z', 'w'];
 
 function ensureVector(ident, base) {
+  Types.usesSIMD = true;
   return ident == 0 ? base + '32x4.zero()' : ident;
 }
 

@@ -303,6 +303,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   for func_js, curr_forwarded_data in outputs:
     curr_forwarded_json = json.loads(curr_forwarded_data)
     forwarded_json['Types']['hasInlineJS'] = forwarded_json['Types']['hasInlineJS'] or curr_forwarded_json['Types']['hasInlineJS']
+    forwarded_json['Types']['usesSIMD'] = forwarded_json['Types']['usesSIMD'] or curr_forwarded_json['Types']['usesSIMD']
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
     for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
       forwarded_json['Functions']['blockAddresses'][key] = value
