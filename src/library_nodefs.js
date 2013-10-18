@@ -19,6 +19,12 @@ mergeInto(LibraryManager.library, {
       var stat;
       try {
         stat = fs.lstatSync(path);
+        var isWin = !!process.platform.match(/^win/);
+        if (isWin) {
+          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so 
+          // propagate write bits to execute bits.
+          stat.mode = stat.mode | ((stat.mode & 146) >> 1);
+        }
       } catch (e) {
         if (!e.code) throw e;
         throw new FS.ErrnoError(ERRNO_CODES[e.code]);
@@ -34,6 +40,41 @@ mergeInto(LibraryManager.library, {
       parts.push(node.mount.opts.root);
       parts.reverse();
       return PATH.join.apply(null, parts);
+    },
+    // This maps the integer permission modes from http://linux.die.net/man/3/open
+    // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
+    flagsToPermissionStringMap: {
+      0/*O_RDONLY*/: 'r',
+      1/*O_WRONLY*/: 'r+',
+      2/*O_RDWR*/: 'r+',
+      64/*O_CREAT*/: 'r',
+      65/*O_WRONLY|O_CREAT*/: 'r+',
+      66/*O_RDWR|O_CREAT*/: 'r+',
+      129/*O_WRONLY|O_EXCL*/: 'rx+',
+      193/*O_WRONLY|O_CREAT|O_EXCL*/: 'rx+',
+      514/*O_RDWR|O_TRUNC*/: 'w+',
+      577/*O_WRONLY|O_CREAT|O_TRUNC*/: 'w',
+      578/*O_CREAT|O_RDWR|O_TRUNC*/: 'w+',
+      705/*O_WRONLY|O_CREAT|O_EXCL|O_TRUNC*/: 'wx',
+      706/*O_RDWR|O_CREAT|O_EXCL|O_TRUNC*/: 'wx+',
+      1024/*O_APPEND*/: 'a',
+      1025/*O_WRONLY|O_APPEND*/: 'a',
+      1026/*O_RDWR|O_APPEND*/: 'a+',
+      1089/*O_WRONLY|O_CREAT|O_APPEND*/: 'a',
+      1090/*O_RDWR|O_CREAT|O_APPEND*/: 'a+',
+      1153/*O_WRONLY|O_EXCL|O_APPEND*/: 'ax',
+      1154/*O_RDWR|O_EXCL|O_APPEND*/: 'ax+',
+      1217/*O_WRONLY|O_CREAT|O_EXCL|O_APPEND*/: 'ax',
+      1218/*O_RDWR|O_CREAT|O_EXCL|O_APPEND*/: 'ax+',
+      4096/*O_RDONLY|O_DSYNC*/: 'rs',
+      4098/*O_RDWR|O_DSYNC*/: 'rs+'
+    },
+    flagsToPermissionString: function(flags) {
+      if (flags in NODEFS.flagsToPermissionStringMap) {
+        return NODEFS.flagsToPermissionStringMap[flags];
+      } else {
+        return flags;
+      }
     },
     node_ops: {
       getattr: function(node) {
@@ -163,7 +204,7 @@ mergeInto(LibraryManager.library, {
         var path = NODEFS.realPath(stream.node);
         try {
           if (FS.isFile(stream.node.mode)) {
-            stream.nfd = fs.openSync(path, stream.flags);
+            stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags));
           }
         } catch (e) {
           if (!e.code) throw e;
@@ -172,7 +213,7 @@ mergeInto(LibraryManager.library, {
       },
       close: function (stream) {
         try {
-          if (FS.isFile(stream.node.mode)) {
+          if (FS.isFile(stream.node.mode) && stream.nfd) {
             fs.closeSync(stream.nfd);
           }
         } catch (e) {
