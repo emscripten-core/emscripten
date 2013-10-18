@@ -2021,31 +2021,41 @@ a(int [32], char [5]*)
 #include <emscripten/vector.h>
 
 int main(int argc, char **argv) {
+  float data[8];
+  for (int i = 0; i < 32; i++) data[i] = (10+i+argc)*(5+i+argc*argc);
   {
-    float *x = (float*)argv;
-    float32x4 *a = (float32x4*)x;
-    float32x4 *b = (float32x4*)(x+4);
+    float32x4 *a = (float32x4*)&data[0];
+    float32x4 *b = (float32x4*)&data[4];
     float32x4 c, d;
     c = *a;
     d = *b;
-    c = c*d;
-    d = d/c;
-    printf("floats! %.2f, %.2f, %.2f, %.2f   %.2f, %.2f, %.2f, %.2f\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+    printf("floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    c = c+d;
+    printf("floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    d = c*d;
+    printf("floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
   }
   {
-    unsigned int *x = (unsigned int*)argv;
-    uint32x4 *a = (uint32x4*)x;
-    uint32x4 *b = (uint32x4*)(x+4);
+    uint32x4 *a = (uint32x4*)&data[0];
+    uint32x4 *b = (uint32x4*)&data[4];
     uint32x4 c, d;
     c = *a;
     d = *b;
-    c = c*d;
-    d = d/c;
+    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+    c = c+d;
+    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+    d = c*d;
     printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
   }
   return 0;
 }
     ''')
     Popen([PYTHON, EMCC, 'src.cpp', '-O2']).communicate()
-    self.assertContained('ints', run_js('a.out.js'))
+    self.assertContained('''floats! 66, 84, 104, 126   150, 176, 204, 234
+floats! 216, 260, 308, 360   150, 176, 204, 234
+floats! 216, 260, 308, 360   32400, 45760, 62832, 84240
+uints! 1115947008, 1118306304, 1120927744, 1123811328   1125515264, 1127219200, 1129054208, 1131020288
+uints! -2053505024, -2049441792, -2044985344, -2040135680   1125515264, 1127219200, 1129054208, 1131020288
+uints! -2053505024, -2049441792, -2044985344, -2040135680   0, 0, 0, 0
+''', run_js('a.out.js'))
 
