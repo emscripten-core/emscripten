@@ -314,6 +314,8 @@ function intertyper(lines, sidePass, baseLineNums) {
         return landingpadHandler(item);
       if (token0Text === 'insertelement')
         return insertElementHandler(item);
+      if (token0Text === 'extractelement')
+        return extractElementHandler(item);
       if (token0Text === 'shufflevector')
         return shuffleVectorHandler(item);
       if (token0Text == 'fence')
@@ -759,12 +761,19 @@ function intertyper(lines, sidePass, baseLineNums) {
   function insertElementHandler(item) {
     var last = getTokenIndexByText(item.tokens, ';');
     item.intertype = 'insertelement';
-    item.type = item.tokens[1].text; // Of the origin aggregate, as well as the result
-    Types.needAnalysis[item.type] = 0;
+    item.type = item.tokens[1].text;
     item.ident = toNiceIdent(item.tokens[2].text);
     var segments = splitTokenList(item.tokens.slice(4, last));
     item.value = parseLLVMSegment(segments[0]);
     item.index = parseLLVMSegment(segments[1]);
+    return item;
+  }
+  function extractElementHandler(item) {
+    var last = getTokenIndexByText(item.tokens, ';');
+    item.intertype = 'extracttelement';
+    item.type = item.tokens[1].text;
+    item.ident = toNiceIdent(item.tokens[2].text);
+    item.value = parseLLVMSegment(item.tokens.slice(4));
     return item;
   }
   function shuffleVectorHandler(item) {

@@ -523,6 +523,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         case 'extractvalue': line.JS = extractvalueHandler(line); break;
         case 'insertvalue': line.JS = insertvalueHandler(line); break;
         case 'insertelement': line.JS = insertelementHandler(line); break;
+        case 'extracttelement': line.JS = extractelementHandler(line); break;
         case 'shufflevector': line.JS = shufflevectorHandler(line); break;
         case 'indirectbr': line.JS = indirectbrHandler(line); break;
         case 'alloca': line.JS = allocaHandler(line); break;
@@ -1365,6 +1366,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ident = ensureVector(item.ident, base);
     //return ident + '.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + finalizeLLVMParameter(item.value) + ')';
     return 'SIMD.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + ident + ',' + finalizeLLVMParameter(item.value) + ')';
+  }
+  function extractelementHandler(item) {
+    var base = getVectorBaseType(item.type);
+    var ident = ensureVector(item.ident, base);
+    var index = finalizeLLVMParameter(item.value);
+    assert(isNumber(index));
+    return ident + '.' + simdLane[index];
   }
   function shufflevectorHandler(item) {
     var base = getVectorBaseType(item.type);
