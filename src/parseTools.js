@@ -325,7 +325,11 @@ function countNormalArgs(type, out, legalized) {
 }
 
 function getVectorBaseType(type) {
-  return type.substring(type.indexOf(' x ') + 3, type.length-1);
+  switch (type) {
+    case '<4 x float>': return 'float';
+    case '<4 x i32>': return 'uint';
+    default: throw 'unknown vector type ' + type;
+  }
 }
 
 function addIdent(token) {
@@ -1782,6 +1786,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     switch(type) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
+      case '<4 x i32>': case 'uint':
       case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
       case 'double': {
         if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
@@ -2335,10 +2340,10 @@ function processMathop(item) {
   if (type[0] === '<' && type[type.length-1] !== '*') {
     // vector/SIMD operation
     switch (op) {
-      case 'fadd': return 'SIMD.add(' + idents[0] + ',' + idents[1] + ')';
-      case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
-      case 'fmul': return 'SIMD.mul(' + idents[0] + ',' + idents[1] + ')';
-      case 'fdiv': return 'SIMD.div(' + idents[0] + ',' + idents[1] + ')';
+      case 'add' : case 'fadd': return 'SIMD.add(' + idents[0] + ',' + idents[1] + ')';
+      case 'sub' : case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
+      case 'mul' : case 'fmul': return 'SIMD.mul(' + idents[0] + ',' + idents[1] + ')';
+      case 'udiv': case 'fdiv': return 'SIMD.div(' + idents[0] + ',' + idents[1] + ')';
       default: throw 'vector op todo: ' + dump(item);
     }
   }
