@@ -993,7 +993,20 @@ function analyzer(data, sidePass) {
       var packed = type[0] == '<';
       var internal = type;
       if (packed) {
-        if (type[1] !== '{') return; // vector type, <4 x float> etc.
+        if (type[1] !== '{') {
+          // vector type, <4 x float> etc.
+          var size = getVectorSize(type);
+          Types.types[type] = {
+            name_: type,
+            fields: zeros(size).map(function() {
+              return getVectorNativeType(type);
+            }),
+            packed: false,
+            flatSize: 4*size,
+            lineNum: '?'
+          };
+          return;
+        }
         if (internal[internal.length-1] != '>') {
           warnOnce('ignoring type ' + internal);
           return; // function pointer or such

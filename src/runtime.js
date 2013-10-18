@@ -225,7 +225,8 @@ var Runtime = {
         size = field.substr(1)|0;
         alignSize = 1;
       } else {
-        throw 'Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]);
+        assert(field[0] === '<', field); // assumed to be a vector type, if none of the above
+        size = alignSize = Types.types[field].flatSize; // fully aligned
       }
       if (type.packed) alignSize = 1;
       type.alignSize = Math.max(type.alignSize, alignSize);

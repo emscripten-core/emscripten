@@ -324,6 +324,10 @@ function countNormalArgs(type, out, legalized) {
   return ret;
 }
 
+function getVectorSize(type) {
+  return parseInt(type.substring(1, type.indexOf(' ')));
+}
+
 function getVectorBaseType(type) {
   Types.usesSIMD = true;
   switch (type) {
@@ -331,6 +335,17 @@ function getVectorBaseType(type) {
     case '<4 x float>': return 'float';
     case '<2 x i32>':
     case '<4 x i32>': return 'uint';
+    default: throw 'unknown vector type ' + type;
+  }
+}
+
+function getVectorNativeType(type) {
+  Types.usesSIMD = true;
+  switch (type) {
+    case '<2 x float>':
+    case '<4 x float>': return 'float';
+    case '<2 x i32>':
+    case '<4 x i32>': return 'i32';
     default: throw 'unknown vector type ' + type;
   }
 }
