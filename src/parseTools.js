@@ -1033,9 +1033,11 @@ function generateStructTypes(type) {
   var ret = new Array(size);
   var index = 0;
   function add(typeData) {
+    var array = typeData.name_[0] === '['; // arrays just have 2 elements in their fields, see calculateStructAlignment
+    var num = array ? parseInt(typeData.name_.substr(1)) : typeData.fields.length;
     var start = index;
-    for (var i = 0; i < typeData.fields.length; i++) {
-      var type = typeData.fields[i];
+    for (var i = 0; i < num; i++) {
+      var type = array ? typeData.fields[0] : typeData.fields[i];
       if (!SAFE_HEAP && isPointerType(type)) type = '*'; // do not include unneeded type names without safe heap
       if (Runtime.isNumberType(type) || isPointerType(type)) {
         if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
@@ -1058,7 +1060,10 @@ function generateStructTypes(type) {
         }
         add(Types.types[type]);
       }
-      var more = (i+1 < typeData.fields.length ? typeData.flatIndexes[i+1] : typeData.flatSize) - (index - start);
+      var more = array ? (i+1)*typeData.flatSize/num : (
+        (i+1 < typeData.fields.length ? typeData.flatIndexes[i+1] : typeData.flatSize)
+      );
+      more -= index - start;
       for (var j = 0; j < more; j++) {
         ret[index++] = 0;
       }

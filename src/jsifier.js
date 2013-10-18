@@ -153,7 +153,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       // Add current value(s)
       var currValue = values[i];
-      if (USE_TYPED_ARRAYS == 2 && typeData.fields[i] == 'i64') {
+      if (USE_TYPED_ARRAYS == 2 && (typeData.fields[i] == 'i64' || (typeData.flatFactor && typeData.fields[0] == 'i64'))) {
         // 'flatten' out the 64-bit value into two 32-bit halves
         var parts = parseI64Constant(currValue, true);
         ret[index++] = parts[0];

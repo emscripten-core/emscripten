@@ -966,11 +966,10 @@ function analyzer(data, sidePass) {
       var subType = check[2];
       addTypeInternal(subType); // needed for anonymous structure definitions (see below)
 
-      // Huge structural types are represented very inefficiently, both here and in generated JS. Best to avoid them - for example static char x[10*1024*1024]; is bad, while static char *x = malloc(10*1024*1024) is fine.
-      if (num >= 10*1024*1024) warnOnce('warning: very large fixed-size structural type: ' + type + ' - can you reduce it? (compilation may be slow)');
+      var fields = [subType, subType]; // Two, so we get the flatFactor right. We care about the flatFactor, not the size here. see calculateStructAlignment
       Types.types[nonPointing] = {
         name_: nonPointing,
-        fields: range(num).map(function() { return subType }),
+        fields: fields,
         lineNum: '?'
       };
       newTypes[nonPointing] = 1;
@@ -979,7 +978,7 @@ function analyzer(data, sidePass) {
       if (!Types.types[zerod]) {
         Types.types[zerod] = {
           name_: zerod,
-          fields: [subType, subType], // Two, so we get the flatFactor right. We care about the flatFactor, not the size here
+          fields: fields,
           lineNum: '?'
         };
         newTypes[zerod] = 1;
