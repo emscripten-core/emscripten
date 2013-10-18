@@ -482,6 +482,8 @@ mergeInto(LibraryManager.library, {
     mouseY: 0,
     mouseMovementX: 0,
     mouseMovementY: 0,
+    touches: {},
+    lastTouches: {},
 
     calculateMouseEvent: function(event) { // event should be mousemove, mousedown or mouseup
       if (Browser.pointerLock) {
@@ -510,8 +512,9 @@ mergeInto(LibraryManager.library, {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
         var rect = Module["canvas"].getBoundingClientRect();
-        var x, y;
-        
+        var cw = Module["canvas"].width;
+        var ch = Module["canvas"].height;
+
         // Neither .scrollX or .pageXOffset are defined in a spec, but
         // we prefer .scrollX because it is currently in a spec draft.
         // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
@@ -522,26 +525,37 @@ mergeInto(LibraryManager.library, {
         // and we have no viable fallback.
         assert((typeof scrollX !== 'undefined') && (typeof scrollY !== 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
 #endif
-        if (event.type == 'touchstart' ||
-            event.type == 'touchend' ||
-            event.type == 'touchmove') {
-          var t = event.touches.item(0);
-          if (t) {
-            x = t.pageX - (scrollX + rect.left);
-            y = t.pageY - (scrollY + rect.top);
-          } else {
-            return;
+
+        if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
+          var touch = event.touch;
+          if (touch === undefined) {
+            return; // the "touch" property is only defined in SDL
+
           }
-        } else {
-          x = event.pageX - (scrollX + rect.left);
-          y = event.pageY - (scrollY + rect.top);
+          var adjustedX = touch.pageX - (scrollX + rect.left);
+          var adjustedY = touch.pageY - (scrollY + rect.top);
+
+          adjustedX = adjustedX * (cw / rect.width);
+          adjustedY = adjustedY * (ch / rect.height);
+
+          var coords = {x: adjustedX, y: adjustedY};
+          
+          if (event.type === 'touchstart') {
+            Browser.lastTouches[touch.identifier] = coords;
+            Browser.touches[touch.identifier] = coords;
+          } else if (event.type === 'touchend' || event.type === 'touchmove') {
+            Browser.lastTouches[touch.identifier] = Browser.touches[touch.identifier];
+            Browser.touches[touch.identifier] = { x: adjustedX, y: adjustedY };
+          } 
+          return;
         }
+
+        var x = event.pageX - (scrollX + rect.left);
+        var y = event.pageY - (scrollY + rect.top);
 
         // the canvas might be CSS-scaled compared to its backbuffer;
         // SDL-using content will want mouse coordinates in terms
         // of backbuffer units.
-        var cw = Module["canvas"].width;
-        var ch = Module["canvas"].height;
         x = x * (cw / rect.width);
         y = y * (ch / rect.height);
 
