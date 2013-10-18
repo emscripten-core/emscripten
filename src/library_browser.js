@@ -434,6 +434,8 @@ mergeInto(LibraryManager.library, {
     mouseY: 0,
     mouseMovementX: 0,
     mouseMovementY: 0,
+    touches: {},
+    lastTouches: {},
 
     calculateMouseEvent: function(event) { // event should be mousemove, mousedown or mouseup
       if (Browser.pointerLock) {
@@ -462,27 +464,38 @@ mergeInto(LibraryManager.library, {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
         var rect = Module["canvas"].getBoundingClientRect();
-        var x, y;
-        if (event.type == 'touchstart' ||
-            event.type == 'touchend' ||
-            event.type == 'touchmove') {
-          var t = event.touches.item(0);
-          if (t) {
-            x = t.pageX - (window.scrollX + rect.left);
-            y = t.pageY - (window.scrollY + rect.top);
-          } else {
-            return;
+        var cw = Module["canvas"].width;
+        var ch = Module["canvas"].height;
+
+        if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
+          var touch = event.touch;
+          if (touch === undefined) {
+            return; // the "touch" property is only defined in SDL
           }
-        } else {
-          x = event.pageX - (window.scrollX + rect.left);
-          y = event.pageY - (window.scrollY + rect.top);
+          var adjustedX = touch.pageX - (window.scrollX + rect.left);
+          var adjustedY = touch.pageY - (window.scrollY + rect.top);
+
+          adjustedX = adjustedX * (cw / rect.width);
+          adjustedY = adjustedY * (ch / rect.height);
+
+          var coords = {x: adjustedX, y: adjustedY};
+          
+          if (event.type === 'touchstart') {
+            Browser.lastTouches[touch.identifier] = coords;
+            Browser.touches[touch.identifier] = coords;
+          } else if (event.type === 'touchend' || event.type === 'touchmove') {
+            Browser.lastTouches[touch.identifier] = Browser.touches[touch.identifier];
+            Browser.touches[touch.identifier] = { x: adjustedX, y: adjustedY };
+          } 
+          return;
         }
+
+        var x = event.pageX - (window.scrollX + rect.left);
+        var y = event.pageY - (window.scrollY + rect.top);
 
         // the canvas might be CSS-scaled compared to its backbuffer;
         // SDL-using content will want mouse coordinates in terms
         // of backbuffer units.
-        var cw = Module["canvas"].width;
-        var ch = Module["canvas"].height;
         x = x * (cw / rect.width);
         y = y * (ch / rect.height);
 

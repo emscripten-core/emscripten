@@ -81,6 +81,8 @@ var LibrarySDL = {
 
     DOMEventToSDLEvent: {},
 
+    TOUCH_DEFAULT_ID: 0, // Our default deviceID for touch events (we get nothing from the browser)
+    
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       46: 127, // SDLK_DEL == '\177'
       38:  1106, // up arrow
@@ -332,50 +334,104 @@ var LibrarySDL = {
       SDL.surfaces[surf] = null;
     },
 
-    touchX: 0, touchY: 0,
+    // the browser sends out touchstart events with the whole group of touches
+    // even if we received a previous touchstart for a specific touch identifier.
+    // You can test this by pressing one finger to the screen, then another. You'll
+    // receive two touchstart events, the first with a touches count of 1 the second
+    // with a touches count of two.
+    // SDL sends out a new touchstart event for only each newly started touch so to
+    // emulate this, we keep track of previously started touches.
+    downFingers: {},
     savedKeydown: null,
 
     receiveEvent: function(event) {
       switch(event.type) {
-        case 'touchstart':
+        case 'touchstart': case 'touchmove': {
           event.preventDefault();
-          var touch = event.touches[0];
-          touchX = touch.pageX;
-          touchY = touch.pageY;
-          var event = {
-            type: 'mousedown',
-            button: 0,
-            pageX: touchX,
-            pageY: touchY
+
+          var touches = [];
+          
+          // Clear out any touchstart events that we've already processed
+          if (event.type === 'touchstart') {
+            for(var i = 0; i < event.touches.length; i++) {
+              var touch = event.touches[i];
+              if (SDL.downFingers[touch.identifier] != true) {
+                SDL.downFingers[touch.identifier] = true;
+                touches.push(touch);
+              }
+            }
+          } else {
+            touches = event.touches;
+          }
+          
+          var firstTouch = touches[0];
+          if ( event.type == 'touchstart' ) {
+            SDL.DOMButtons[0] = 1;
           };
-          SDL.DOMButtons[0] = 1;
-          SDL.events.push(event);
-          break;
-        case 'touchmove':
-          event.preventDefault();
-          var touch = event.touches[0];
-          touchX = touch.pageX;
-          touchY = touch.pageY;
-          event = {
-            type: 'mousemove',
+          var mouseEventType;
+          switch(event.type) {
+            case 'touchstart': mouseEventType = 'mousedown'; break;
+            case 'touchmove': mouseEventType = 'mousemove'; break;
+          }
+          var mouseEvent = {
+            type: mouseEventType,
             button: 0,
-            pageX: touchX,
-            pageY: touchY
+            pageX: firstTouch.clientX,
+            pageY: firstTouch.clientY
           };
-          SDL.events.push(event);
+          SDL.events.push(mouseEvent);
+
+          for (i=0;i<touches.length;i++) {
+            var touch = touches[i];
+            SDL.events.push({
+              type: event.type,
+              touch: touch
+            });
+          };
           break;
-        case 'touchend':
+        }
+        case 'touchend': {
           event.preventDefault();
-          event = {
+          
+          // Remove the entry in the SDL.downFingers hash
+          // because the finger is no longer down.
+          for(var i = 0; i < event.changedTouches.length; i++) {
+            var touch = event.changedTouches[i];
+            if (SDL.downFingers[touch.identifier] === true) {
+              delete SDL.downFingers[touch.identifier];
+            }
+          }
+
+          var mouseEvent = {
             type: 'mouseup',
             button: 0,
-            pageX: touchX,
-            pageY: touchY
+            pageX: event.changedTouches[0].clientX,
+            pageY: event.changedTouches[0].clientY
           };
           SDL.DOMButtons[0] = 0;
-          SDL.events.push(event);
+          SDL.events.push(mouseEvent);
+          
+          for (i = 0; i < event.changedTouches.length; i++) {
+            var touch = event.changedTouches[i];
+            SDL.events.push({
+              type: 'touchend',
+              touch: touch
+            });
+          };
           break;
+        }
         case 'mousemove':
+          if (SDL.DOMButtons[0] === 1) {
+            SDL.events.push({
+              type: 'touchmove',
+              touch: {
+                identifier: 0,
+                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
+          }
           if (Browser.pointerLock) {
             // workaround for firefox bug 750111
             if ('mozMovementX' in event) {
@@ -417,6 +473,15 @@ var LibrarySDL = {
             };
           } else if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
+            SDL.events.push({
+              type: 'touchstart',
+              touch: {
+                identifier: 0,
+                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
           } else if (event.type == 'mouseup') {
             // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
             // since we add a mouseup in that case
@@ -424,6 +489,15 @@ var LibrarySDL = {
               return;
             }
 
+            SDL.events.push({
+              type: 'touchend',
+              touch: {
+                identifier: 0,
+                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                pageX: event.pageX,
+                pageY: event.pageY
+              }
+            });
             SDL.DOMButtons[event.button] = 0;
           }
 
@@ -515,6 +589,10 @@ var LibrarySDL = {
       event.handled = true;
 
       switch (event.type) {
+        case 'touchstart': case 'touchend': case 'touchmove': {
+          Browser.calculateMouseEvent(event);
+          break;
+        }
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           var code = event.keyCode;
@@ -605,18 +683,48 @@ var LibrarySDL = {
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.timestamp, '0', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.windowID, '0', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.which, '0', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.button, 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.state, 'down ? 1 : 0', 'i8') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.x, 'Browser.mouseX', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.y, 'Browser.mouseY', 'i32') }}};
           } else {
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.state, 'SDL.buttonState', 'i8') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.timestamp, '0', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.windowID, '0', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.which, '0', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.state, 'SDL.buttonState', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.x, 'Browser.mouseX', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.y, 'Browser.mouseY', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.xrel, 'Browser.mouseMovementX', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.yrel, 'Browser.mouseMovementY', 'i32') }}};
           }
+          break;
+        }
+        case 'touchstart': case 'touchend': case 'touchmove': {
+          var touch = event.touch;
+          var w = Module['canvas'].width;
+          var h = Module['canvas'].height;
+          var x = Browser.touches[touch.identifier].x / w;
+          var y = Browser.touches[touch.identifier].y / h;
+          var lx = Browser.lastTouches[touch.identifier].x / w;
+          var ly = Browser.lastTouches[touch.identifier].y / h;
+          var dx = x - lx;
+          var dy = y - ly;
+          if (touch['deviceID'] === undefined)
+            touch.deviceID = SDL.TOUCH_DEFAULT_ID;
+          if (dx === 0 && dy === 0 && event.type === 'touchmove') return; // don't send these if nothing happened
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.timestamp, '0', 'i32') }}}; // XXX michaeljbishop - Unimplemented for now
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.touchId, 'touch.deviceID', 'i64') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.fingerId, 'touch.identifier', 'i64') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.x, 'x', 'float') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.y, 'y', 'float') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.dx, 'dx', 'float') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.dy, 'dy', 'float') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.pressure, 'touch.force', 'float') }}};
           break;
         }
         case 'unload': {
@@ -712,14 +820,17 @@ var LibrarySDL = {
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
-    SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
-    SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
-    SDL.DOMEventToSDLEvent['keypress'] = 0x303 /* SDL_TEXTINPUT */;
-    SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
-    SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
-    SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
-    SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
-    SDL.DOMEventToSDLEvent['resize'] = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
+    SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
+    SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
+    SDL.DOMEventToSDLEvent['keypress']   = 0x303  /* SDL_TEXTINPUT */;
+    SDL.DOMEventToSDLEvent['mousedown']  = 0x401  /* SDL_MOUSEBUTTONDOWN */;
+    SDL.DOMEventToSDLEvent['mouseup']    = 0x402  /* SDL_MOUSEBUTTONUP */;
+    SDL.DOMEventToSDLEvent['mousemove']  = 0x400  /* SDL_MOUSEMOTION */;
+    SDL.DOMEventToSDLEvent['touchstart'] = 0x700  /* SDL_FINGERDOWN */;
+    SDL.DOMEventToSDLEvent['touchend']   = 0x701  /* SDL_FINGERUP */;
+    SDL.DOMEventToSDLEvent['touchmove']  = 0x702  /* SDL_FINGERMOTION */;
+    SDL.DOMEventToSDLEvent['unload']     = 0x100  /* SDL_QUIT */;
+    SDL.DOMEventToSDLEvent['resize']     = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
     return 0; // success
   },
 
@@ -783,7 +894,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
+    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Browser.setCanvasSize(width, height, true);
@@ -1183,20 +1294,28 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_PeepEvents: function(events, numEvents, action, from, to) {
+  SDL_PeepEvents: function(events, requestedEventCount, action, from, to) {
     switch(action) {
       case 2: { // SDL_GETEVENT
-        assert(numEvents == 1);
-        var got = 0;
-        while (SDL.events.length > 0 && numEvents > 0) {
-          var type = SDL.DOMEventToSDLEvent[SDL.events[0].type];
-          if (type < from || type > to) break;
-          SDL.makeCEvent(SDL.events.shift(), events);
-          got++;
-          numEvents--;
-          // events += sizeof(..)
+        // We only handle 1 event right now
+        assert(requestedEventCount == 1);
+
+        var index = 0;
+        var retrievedEventCount = 0;
+        // this should look through the entire queue until it has filled up the events
+        // array
+        while ( index < SDL.events.length && retrievedEventCount < requestedEventCount ) {
+          var event = SDL.events[index];
+          var type = SDL.DOMEventToSDLEvent[event.type];
+          if ( from <= type && type <= to) {
+            SDL.makeCEvent(event, events);
+            SDL.events.splice(index, 1);
+            retrievedEventCount++;
+          } else {
+            index++;
+          }
         }
-        return got;
+        return retrievedEventCount;
       }
       default: throw 'SDL_PeepEvents does not yet support that action: ' + action;
     }
@@ -1409,16 +1528,16 @@ var LibrarySDL = {
 
   SDL_OpenAudio: function(desired, obtained) {
     try {
-      SDL.audio = {
+    SDL.audio = {
         freq: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.freq, 'i32', 0, 1) }}},
         format: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.format, 'i16', 0, 1) }}},
         channels: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.channels, 'i8', 0, 1) }}},
         samples: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.samples, 'i16', 0, 1) }}}, // Samples in the CB buffer per single sound channel.
         callback: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.callback, 'void*', 0, 1) }}},
         userdata: {{{ makeGetValue('desired', C_STRUCTS.SDL_AudioSpec.userdata, 'void*', 0, 1) }}},
-        paused: true,
-        timer: null
-      };
+      paused: true,
+      timer: null
+    };
       // The .silence field tells the constant sample value that corresponds to the safe un-skewed silence value for the wave data.
       if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
         SDL.audio.silence = 128; // Audio ranges in [0, 255], so silence is half-way in between.
@@ -1426,7 +1545,7 @@ var LibrarySDL = {
         SDL.audio.silence = 0; // Signed data in range [-32768, 32767], silence is 0.
       } else {
         throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
-      }
+    }
       // Round the desired audio frequency up to the next 'common' frequency value.
       // Web Audio API spec states 'An implementation must support sample-rates in at least the range 22050 to 96000.'
       if (SDL.audio.freq <= 0) {
@@ -1456,40 +1575,40 @@ var LibrarySDL = {
       } else if ((SDL.audio.samples & (SDL.audio.samples-1)) != 0) {
         throw 'Audio callback buffer size ' + SDL.audio.samples + ' must be a power-of-two!';
       }
-      
-      var totalSamples = SDL.audio.samples*SDL.audio.channels;
+
+    var totalSamples = SDL.audio.samples*SDL.audio.channels;
       SDL.audio.bytesPerSample = (SDL.audio.format == 0x0008 /*AUDIO_U8*/ || SDL.audio.format == 0x8008 /*AUDIO_S8*/) ? 1 : 2;
       SDL.audio.bufferSize = totalSamples*SDL.audio.bytesPerSample;
-      SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
+    SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
       
       // Create a callback function that will be routinely called to ask more audio data from the user application.
-      SDL.audio.caller = function() {
+    SDL.audio.caller = function() {
         if (!SDL.audio) {
           return;
         }
-        Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
-        SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
-      };
+      Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
+      SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
+    };
       
       SDL.audio.audioOutput = new Audio();
       // As a workaround use Mozilla Audio Data API on Firefox until it ships with Web Audio and sound quality issues are fixed.
       if (typeof(SDL.audio.audioOutput['mozSetup'])==='function') {
         SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
-        SDL.audio.mozBuffer = new Float32Array(totalSamples);
+      SDL.audio.mozBuffer = new Float32Array(totalSamples);
         SDL.audio.nextPlayTime = 0;
-        SDL.audio.pushAudio = function(ptr, size) {
-          var mozBuffer = SDL.audio.mozBuffer;
+      SDL.audio.pushAudio = function(ptr, size) {
+        var mozBuffer = SDL.audio.mozBuffer;
           // The input audio data for SDL audio is either 8-bit or 16-bit interleaved across channels, output for Mozilla Audio Data API
           // needs to be Float32 interleaved, so perform a sample conversion.
           if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
-            for (var i = 0; i < totalSamples; i++) {
+        for (var i = 0; i < totalSamples; i++) {
               mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000;
-            }
+        }
           } else if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
             for (var i = 0; i < totalSamples; i++) {
               var v = ({{{ makeGetValue('ptr', 'i', 'i8', 0, 0) }}});
               mozBuffer[i] = ((v >= 0) ? v-128 : v+128) /128;
-            }
+      }
           }
           // Submit the audio data to audio device.
           SDL.audio.audioOutput['mozWriteAudio'](mozBuffer);
@@ -1588,7 +1707,7 @@ var LibrarySDL = {
               ++SDL.audio.numAudioTimersPending;
               Browser.safeSetTimeout(SDL.audio.caller, 1.0);
             }
-          } catch(e) {
+    } catch(e) {
             console.log('Web Audio API error playing back audio: ' + e.toString());
           }
         }
@@ -1618,7 +1737,7 @@ var LibrarySDL = {
         {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.samples, 0, 'i16') }}};
         {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.callback, 0, '*') }}};
         {{{ makeSetValue('obtained', C_STRUCTS.SDL_AudioSpec.userdata, 0, '*') }}};
-      }
+    }
     }
     if (!SDL.audio) {
       return -1;

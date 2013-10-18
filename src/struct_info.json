@@ -941,11 +941,10 @@
             ],
             "SDL_MouseMotionEvent": [
                 "type", 
+                "timestamp", 
                 "windowID", 
+                "which", 
                 "state", 
-                "padding1", 
-                "padding2", 
-                "padding3", 
                 "x", 
                 "y", 
                 "xrel", 
@@ -953,7 +952,9 @@
             ],
             "SDL_MouseButtonEvent": [
                 "type", 
+                "timestamp", 
                 "windowID", 
+                "which", 
                 "button", 
                 "state", 
                 "padding1", 
@@ -961,12 +962,28 @@
                 "x", 
                 "y"
             ],
+            "SDL_TouchFingerEvent": [
+                "type", 
+                "timestamp", 
+                "touchId", 
+                "fingerId", 
+                "x", 
+                "y", 
+                "dx", 
+                "dy", 
+                "pressure"
+            ],
             "SDL_ResizeEvent": [
                 "type", 
                 "w", 
                 "h"
             ]
         }
+    },
+    {
+        "file": "SDL/SDL_touch.h",
+        "defines": ["SDL_TOUCH_MOUSEID"],
+        "structs": {}
     },
     {
         "file": "SDL/SDL_audio.h", 
