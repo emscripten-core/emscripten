@@ -1473,6 +1473,8 @@ f.close()
       assert os.path.exists('a.out.js')
 
   def test_toobig(self):
+    # very large [N x i8], we should not oom in the compiler
+    self.clear()
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
       #include <stdio.h>
 
@@ -1496,8 +1498,8 @@ f.close()
       }
     ''')
     output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()[1]
-    assert 'Emscripten failed' in output, output
-    assert 'warning: very large fixed-size structural type' in output, output
+    print output
+    assert os.path.exists('a.out.js')
 
   def test_prepost(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
