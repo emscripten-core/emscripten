@@ -153,6 +153,7 @@ var NSW_NUW = set('nsw', 'nuw');
 // Intertyper
 
 function intertyper(lines, sidePass, baseLineNums) {
+  //B.start('intertyper');
   var mainPass = !sidePass;
   baseLineNums = baseLineNums || [[0,0]]; // each pair [#0,#1] means "starting from line #0, the base line num is #1"
 
@@ -1184,6 +1185,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     finalResults.push(item);
     if (item.tokens) item.tokens = null; // We do not need tokens, past the intertyper. Clean them up as soon as possible here.
   });
+  //B.stop('intertyper');
   return finalResults;
 }
 

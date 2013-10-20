@@ -285,6 +285,7 @@ function compile(raw) {
 
     //dumpInterProf();
     //printErr(phase + ' paths (fast, slow): ' + [fastPaths, slowPaths]);
+    B.print(phase);
 
     phase = null;
 
@@ -307,6 +308,8 @@ function compile(raw) {
     runPhase('post');
   }
 }
+
+B = new Benchmarker();
 
 if (ll_file) {
   if (ll_file.indexOf(String.fromCharCode(10)) == -1) {

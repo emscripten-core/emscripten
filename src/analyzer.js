@@ -25,6 +25,7 @@ var SHADOW_FLIP = { i64: 'double', double: 'i64' }; //, i32: 'float', float: 'i3
 // Analyzer
 
 function analyzer(data, sidePass) {
+  //B.start('analyzer');
   var mainPass = !sidePass;
 
   var item = { items: data };
@@ -1761,6 +1762,7 @@ function analyzer(data, sidePass) {
   stackAnalyzer();
   relooper();
 
+  //B.stop('analyzer');
   return item;
 }
 

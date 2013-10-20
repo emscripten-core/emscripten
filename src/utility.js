@@ -395,8 +395,10 @@ function Benchmarker() {
   };
   this.print = function(text) {
     var ids = keys(totals);
-    ids.sort(function(a, b) { return totals[b] - totals[a] });
-    printErr(text + ' times: \n' + ids.map(function(id) { return id + ' : ' + totals[id] + ' ms' }).join('\n'));
+    if (ids.length > 0) {
+      ids.sort(function(a, b) { return totals[b] - totals[a] });
+      printErr(text + ' times: \n' + ids.map(function(id) { return id + ' : ' + totals[id] + ' ms' }).join('\n'));
+    }
   };
 };
 

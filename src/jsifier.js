@@ -20,6 +20,7 @@ var functionStubSigs = {};
 
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
+  //B.start('jsifier');
   var mainPass = !functionsOnly;
 
   var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
@@ -67,7 +68,9 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
+    //B.start('jsifier-libload');
     LibraryManager.load();
+    //B.stop('jsifier-libload');
 
     if (phase == 'pre') {
       var libFuncsToInclude;
@@ -504,6 +507,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   // function splitter
   function functionSplitter(item) {
     item.lines.forEach(function(line) {
+      //B.start('jsifier-handle-' + line.intertype);
       Framework.currItem = line;
       line.funcData = item; // TODO: remove all these, access it globally
       switch (line.intertype) {
@@ -538,8 +542,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       //if (ASM_JS) assert(line.JS.indexOf('var ') < 0, dump(line));
       if (line.assignTo) makeAssign(line);
       Framework.currItem = null;
+      //B.stop('jsifier-handle-' + line.intertype);
     });
+    //B.start('jsifier-frec');
     functionReconstructor(item);
+    //B.stop('jsifier-frec');
   }
 
   // function for filtering functions for label debugging
@@ -763,6 +770,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         ret += '\n';
       } else {
         // Reloop multiple blocks using the compiled relooper
+        //B.start('jsifier-reloop');
 
         //Relooper.setDebug(1);
         Relooper.init();
@@ -812,6 +820,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         ret += Relooper.render(blockMap[block.entries[0]]);
         Relooper.cleanup();
+        //B.stop('jsifier-reloop');
       }
       return ret;
     }
@@ -1910,8 +1919,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     PassManager.serialize();
-
-    return null;
   }
 
   // Data
@@ -1941,13 +1948,18 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
+    //B.start('jsifier-handle-gv');
     sortGlobals(data.globalVariables).forEach(globalVariableHandler);
+    //B.stop('jsifier-handle-gv');
     data.aliass.forEach(aliasHandler);
     data.functions.forEach(functionSplitter);
   }
 
+  //B.start('jsifier-fc');
   finalCombiner();
+  //B.stop('jsifier-fc');
 
   dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
+  //B.stop('jsifier');
 }
 
