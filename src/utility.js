@@ -375,22 +375,28 @@ function ceilPowerOfTwo(x) {
 }
 
 function Benchmarker() {
-  var starts = {}, times = {}, counts = {};
+  var totals = {};
+  var ids = [], lastTime = 0;
   this.start = function(id) {
-    //printErr(['+', id, starts[id]]);
-    starts[id] = (starts[id] || []).concat([Date.now()]);
+    var now = Date.now();
+    if (ids.length > 0) {
+      totals[ids[ids.length-1]] += now - lastTime;
+    }
+    lastTime = now;
+    ids.push(id);
+    totals[id] = totals[id] || 0;
   };
   this.stop = function(id) {
-    //printErr(['-', id, starts[id]]);
-    assert(starts[id], new Error().stack);
-    times[id] = (times[id] || 0) + Date.now() - starts[id].pop();
-    counts[id] = (counts[id] || 0) + 1;
-    this.print();
+    var now = Date.now();
+    assert(id === ids[ids.length-1]);
+    totals[id] += now - lastTime;
+    lastTime = now;
+    ids.pop();
   };
-  this.print = function() {
-    var ids = keys(times);
-    ids.sort(function(a, b) { return times[b] - times[a] });
-    printErr('times: \n' + ids.map(function(id) { return id + ' : ' + counts[id] + ' times, ' + times[id] + ' ms' }).join('\n'));
+  this.print = function(text) {
+    var ids = keys(totals);
+    ids.sort(function(a, b) { return totals[b] - totals[a] });
+    printErr(text + ' times: \n' + ids.map(function(id) { return id + ' : ' + totals[id] + ' ms' }).join('\n'));
   };
 };
 
