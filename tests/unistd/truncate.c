@@ -76,5 +76,11 @@ int main() {
   memset(&s, 0, sizeof s);
   errno = 0;
 
+  // Restore full permissions on all created files so that python test runner rmtree
+  // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
+  // will fail if any of the files are read-only.
+  EM_ASM(
+    FS.chmod('toread', 0777);
+  );
   return 0;
 }
