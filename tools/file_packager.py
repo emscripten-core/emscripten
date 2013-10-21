@@ -591,8 +591,7 @@ if has_preloaded:
   ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
   code += r'''
-    if (!Module.preloadResults)
-      Module.preloadResults = {};
+    if (!Module.preloadResults) Module.preloadResults = {};
   '''
 
   if use_preload_cache:
