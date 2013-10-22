@@ -627,8 +627,8 @@ if has_preloaded:
     '''
 
 ret += '''
-  if (typeof Module == 'undefined') Module = {};
-  if (!Module['preRun']) Module['preRun'] = [];
+  var Module;
+  if (!Module) Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
   function runWithFS() {
 '''
 ret += code
@@ -637,6 +637,7 @@ ret += '''
   if (Module['calledRun']) {
     runWithFS();
   } else {
+    if (!Module['preRun']) Module['preRun'] = [];
     Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
   }
 '''
