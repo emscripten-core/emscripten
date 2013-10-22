@@ -11,12 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
-
-  --pre-run Will generate wrapper code that does preloading in Module.preRun. This is necessary if you add this
-            code before the main file has been loading, which includes necessary components like addRunDependency.
-            (This is how emcc --preload-file etc. work, i.e., it is the normal mode of operation. However, for
-            data loaded later, say using emscripten_async_load_script, you do not need --pre-run.)
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
 
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
@@ -48,7 +43,7 @@ from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache]
 See the source for more details.'''
   sys.exit(0)
 
@@ -71,7 +66,6 @@ in_preload = False
 in_embed = False
 has_preloaded = False
 in_compress = 0
-pre_run = False
 crunch = 0
 plugins = []
 jsoutput = None
@@ -93,11 +87,6 @@ for arg in sys.argv[1:]:
     in_compress = 1
     in_preload = False
     in_embed = False
-  elif arg == '--pre-run':
-    pre_run = True
-    in_preload = False
-    in_embed = False
-    in_compress = 0
   elif arg == '--no-force':
     force = False
   elif arg == '--use-preload-cache':
@@ -637,16 +626,20 @@ if has_preloaded:
       fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
     '''
 
-if pre_run:
-  ret += '''
+ret += '''
   if (typeof Module == 'undefined') Module = {};
   if (!Module['preRun']) Module['preRun'] = [];
-  Module["preRun"].push(function() {
+  function runWithFS() {
 '''
 ret += code
-
-if pre_run:
-  ret += '  });\n'
+ret += '''
+  }
+  if (Module['calledRun']) {
+    runWithFS();
+  } else {
+    Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
+  }
+'''
 
 if crunch:
   ret += '''

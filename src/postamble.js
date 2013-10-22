@@ -33,12 +33,11 @@ ExitStatus.prototype.constructor = ExitStatus;
 var initialStackTop;
 var preloadStartTime = null;
 var calledMain = false;
-var calledRun = false;
 
 dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-  if (!calledRun && shouldRunNow) run();
-  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
+  if (!Module['calledRun'] && shouldRunNow) run();
+  if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 }
 
 Module['callMain'] = Module.callMain = function callMain(args) {
@@ -128,7 +127,7 @@ function run(args) {
 
     preMain();
 
-    calledRun = true;
+    Module['calledRun'] = true;
     if (Module['_main'] && shouldRunNow) {
       Module['callMain'](args);
     }
