@@ -529,7 +529,7 @@ if has_preloaded:
       };
     '''
 
-  code += r'''
+  ret += r'''
     function fetchRemotePackage(packageName, callback, errback) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', packageName, true);
@@ -569,6 +569,12 @@ if has_preloaded:
       xhr.send(null);
     };
 
+    function handleError(error) {
+      console.error('package error:', error);
+    };
+  '''
+
+  code += r'''
     function processPackageData(arrayBuffer) {
       Module.finishedDataFileDownloads++;
       assert(arrayBuffer, 'Loading data file failed.');
@@ -577,10 +583,6 @@ if has_preloaded:
       %s
     };
     Module['addRunDependency']('datafile_%s');
-
-    function handleError(error) {
-      console.error('package error:', error);
-    };
   ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
   code += r'''
