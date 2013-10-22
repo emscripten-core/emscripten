@@ -2,8 +2,10 @@ mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$FS', '$PATH'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); }',
   $NODEFS: {
+    isWindows: false,
     mount: function (mount) {
       assert(ENVIRONMENT_IS_NODE);
+      NODEFS.isWindows = !!process.platform.match(/^win/); // Do this (possibly costly?) check ahead of time to not have to do it at runtime below.
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
     createNode: function (parent, name, mode, dev) {
@@ -19,8 +21,7 @@ mergeInto(LibraryManager.library, {
       var stat;
       try {
         stat = fs.lstatSync(path);
-        var isWin = !!process.platform.match(/^win/);
-        if (isWin) {
+        if (NODEFS.isWindows) {
           // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so 
           // propagate write bits to execute bits.
           stat.mode = stat.mode | ((stat.mode & 146) >> 1);
@@ -85,6 +86,14 @@ mergeInto(LibraryManager.library, {
         } catch (e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+        }
+        // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake them with default blksize of 4096.
+        // See http://support.microsoft.com/kb/140365
+        if (NODEFS.isWindows && !stat.blksize) {
+          stat.blksize = 4096;
+        }
+        if (NODEFS.isWindows && !stat.blocks) {
+          stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
         }
         return {
           dev: stat.dev,
