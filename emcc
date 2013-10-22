@@ -1654,7 +1654,7 @@ try:
   # Embed and preload files
   if len(preload_files) + len(embed_files) > 0:
     logging.debug('setting up files')
-    file_args = []
+    file_args = ['--pre-run']
     if len(preload_files) > 0:
       file_args.append('--preload')
       file_args += preload_files
@@ -1665,11 +1665,8 @@ try:
       file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
     if use_preload_cache:
       file_args.append('--use-preload-cache')
-    code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + code)
-    final += '.files.js'
-    open(final, 'w').write(src)
-    if DEBUG: save_intermediate('files')
+    file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
+    pre_js = file_code + pre_js
 
   # Apply pre and postjs files
   if pre_js or post_js:
