@@ -425,6 +425,7 @@ if has_preloaded:
     ''' % use_data
 
   package_uuid = uuid.uuid4();
+  remote_package_name = os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
   code += r'''
     if (!Module.expectedDataFileDownloads) {
       Module.expectedDataFileDownloads = 0;
@@ -436,7 +437,7 @@ if has_preloaded:
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = '%s';
     var PACKAGE_UUID = '%s';
-  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), package_uuid)
+  ''' % (data_target, remote_package_name, package_uuid)
 
   if use_preload_cache:
     code += r'''
@@ -625,9 +626,28 @@ if has_preloaded:
       if (Module['setStatus']) Module['setStatus']('Downloading...');
     '''
   else:
+    # Not using preload cache, so we might as well start the xhr ASAP, potentially before JS parsing of the main codebase if it's after us.
+    # Only tricky bit is the fetch is async, but also when runWithFS is called is async, so we handle both orderings.
+    ret += r'''
+      var fetched = null, fetchedCallback = null;
+      fetchRemotePackage('%s', function(data) {
+        if (fetchedCallback) {
+          fetchedCallback(data);
+          fetchedCallback = null;
+        } else {
+          fetched = data;
+        }
+      }, handleError);
+    ''' % os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
+
     code += r'''
       Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
-      fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
+      if (fetched) {
+        processPackageData(fetched);
+        fetched = null;
+      } else {
+        fetchedCallback = processPackageData;
+      }
     '''
 
 ret += '''
