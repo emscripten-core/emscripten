@@ -1,11 +1,13 @@
 mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$FS', '$PATH'],
-  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); }',
+  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
+    staticInit: function() {
+      NODEFS.isWindows = !!process.platform.match(/^win/);
+    },
     mount: function (mount) {
       assert(ENVIRONMENT_IS_NODE);
-      NODEFS.isWindows = !!process.platform.match(/^win/); // Do this (possibly costly?) check ahead of time to not have to do it at runtime below.
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
     createNode: function (parent, name, mode, dev) {
