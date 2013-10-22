@@ -132,6 +132,8 @@ if (not force) and len(data_files) == 0:
   has_preloaded = False
 
 ret = '''
+var Module;
+if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
 (function() {
 '''
 
@@ -627,8 +629,6 @@ if has_preloaded:
     '''
 
 ret += '''
-  var Module;
-  if (!Module) Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
   function runWithFS() {
 '''
 ret += code
