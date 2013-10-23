@@ -471,8 +471,8 @@ function intertyper(lines, sidePass, baseLineNums) {
           item.tokens[1] = item.tokens[1].tokens[0];
         }
         var subTokens = item.tokens[1].tokens;
-        if (subTokens) {
-          subTokens.push({text:','});
+        if (subTokens && subTokens.length > 0) {
+          subTokens.push({text:','}); // XXX we should avoid altering tokens like that
           while (subTokens[0]) {
             var stop = 1;
             while ([','].indexOf(subTokens[stop].text) == -1) stop ++;
