@@ -932,6 +932,16 @@
         "file": "SDL/SDL_events.h",
         "defines": [],
         "structs": {
+            "SDL_WindowEvent": [
+                "type", 
+                "windowID", 
+                "event",
+                "padding1", 
+                "padding2", 
+                "padding3", 
+                "data1", 
+                "data2" 
+            ],
             "SDL_KeyboardEvent": [
                 "type", 
                 "windowID", 
