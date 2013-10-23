@@ -359,7 +359,7 @@ if has_preloaded:
           if (that.audio) {
             Module['removeRunDependency']('fp ' + that.name); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
           } else {
-            Runtime.warn('Preloading file ' + that.name + ' failed');
+            Module.printErr('Preloading file ' + that.name + ' failed');
           }
         }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
         this.requests[this.name] = null;
