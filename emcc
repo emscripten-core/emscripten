@@ -397,7 +397,8 @@ Options that are modified or new in %s include:
   --shell-file <path>      The path name to a skeleton HTML file used
                            when generating HTML output. The shell file
                            used needs to have this token inside it:
-                           {{{ SCRIPT_CODE }}}
+                           {{{ SCRIPT }}}
+                           (see src/shell.html for an example)
                            Note that this argument is ignored if a
                            target other than HTML is specified using
                            the -o option.
@@ -501,7 +502,8 @@ The target file, if specified (-o <target>), defines what will
 be generated:
 
   <name>.js                JavaScript
-  <name>.html              HTML with embedded JavaScript
+  <name>.html              HTML + side JavaScript file (<name>.js)
+                             (JS on the side improves page load time)
   <name>.bc                LLVM bitcode (default)
   <name>.o                 LLVM bitcode (same as .bc)
 
@@ -1818,22 +1820,21 @@ try:
   if final_suffix == 'html':
     logging.debug('generating HTML')
     shell = open(shell_path).read()
+    assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
     html = open(target, 'w')
+    js_target = unsuffixed(target) + '.js'
+    base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
-      html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename)))
-      js_target = unsuffixed(target) + '.js'
-      shutil.copyfile(final, js_target)
+      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename) + '</script>'))
+      shutil.move(final, js_target)
     elif not Compression.on:
       if debug_level >= 4:
-        match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
-            re.DOTALL)
-        if match is None:
-          raise RuntimeError('''Could not find script insertion point - make sure you have   <script type='text/javascript'>{{{ SCRIPT_CODE }}}</script>   in your HTML file (with no newlines)''')
-        generate_source_map(target, match.group().count('\n'))
-      html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
+        generate_source_map(target)
+      shutil.move(final, js_target)
+      script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
+      html.write(shell.replace('{{{ SCRIPT }}}', script_tag))
     else:
       # Compress the main code
-      js_target = unsuffixed(target) + '.js'
       shutil.move(final, js_target)
       Compression.compress(js_target)
 
@@ -1881,8 +1882,8 @@ try:
           });
         };
         compiledCodeXHR.send(null);
-''' % Compression.compressed_name(js_target)
-      html.write(shell.replace('{{{ SCRIPT_CODE }}}', decoding))
+''' % Compression.compressed_name(base_js_target)
+      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + decoding + '</script>'))
 
       # Add decompressor with web worker glue code
       decompressor = open('decompress.js', 'w')
