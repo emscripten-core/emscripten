@@ -5,7 +5,6 @@
          T __lgammaf_r
          T __lgammal_r
          T __memrchr
-         D __signgam
          T __sindf
          T __strchrnul
          T __strxfrm_l
@@ -73,7 +72,7 @@
          T regerror
          T regexec
          T regfree
-         W signgam
+         D signgam
          T strcasecmp_l
          T strcasestr
          W strchrnul

@@ -837,6 +837,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
+  def test_math_lgamma(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      if not self.is_le32(): return self.skip('le32 needed for accurate math')
+
+      test_path = path_from_root('tests', 'math', 'lgamma')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
+
   def test_frexp(self):
       test_path = path_from_root('tests', 'core', 'test_frexp')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -1288,6 +1297,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
+
 
   def test_white_list_exception(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
