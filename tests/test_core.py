@@ -1591,6 +1591,11 @@ f6: nan
       expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
+  def test_math_lgamma(self):
+      src = open(path_from_root('tests', 'math', 'lgamma.c'), 'r').read()
+      expected = open(path_from_root('tests', 'math', 'lgamma.out'), 'r').read()
+      self.do_run(src, expected)
+
   def test_frexp(self):
       src = '''
         #include <stdio.h>
@@ -2743,6 +2748,25 @@ back
       }
     '''
     self.do_run(src, 'Exception caught successfully!')
+
+
+  def test_weak_variable_alias(self):
+    src = '''
+      #include <stdio.h>
+
+      extern int abc;
+      extern __typeof(abc) def __attribute__((weak, alias("abc")));
+
+      int main(int argc, char ** argv) {
+        abc = argc + 23;
+        if (abc == def) {
+          printf("Success");
+        } else {
+          printf("Failure: %d != %d", abc, def);
+        }
+        return 0;
+      }'''
+    self.do_run(src, 'Success')
 
   def test_white_list_exception(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
