@@ -942,6 +942,11 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
+  def test_sdl_canvas_size(self):
+    self.btest('sdl_canvas_size.c', reference='screenshot-gray-purple.png', reference_slack=1,
+      args=['-O2', '--minify', '0', '--shell-file', path_from_root('tests', 'sdl_canvas_size.html'), '--preload-file', os.path.join(self.get_dir(), 'screenshot.png') + '@/', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with gray at the top.')
+
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
     open(os.path.join(self.get_dir(), 'sdl_gl_read.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_gl_read.c')).read()))

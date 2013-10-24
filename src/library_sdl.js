@@ -786,6 +786,14 @@ var LibrarySDL = {
     ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
+
+    // (0,0) means 'use fullscreen' in native; in Emscripten, use the current canvas size.
+    if (width == 0 && height == 0) {
+      var canvas = Module['canvas'];
+      width = canvas.width;
+      height = canvas.height;
+    }
+
     Browser.setCanvasSize(width, height, true);
     // Free the old surface first.
     if (SDL.screen) {
