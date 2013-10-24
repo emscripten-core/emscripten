@@ -542,7 +542,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   exit(0)  
 
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
-  print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) 2.0'
+  print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) %s' % shared.EMSCRIPTEN_VERSION
   exit(subprocess.call([shared.CLANG, '-v']))
 
 def is_minus_s_for_emcc(newargs,i):
