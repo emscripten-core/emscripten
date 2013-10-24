@@ -9044,6 +9044,9 @@ def process(filename):
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
           continue
+        if '_le32' in shortname and not self.is_le32():
+          print self.skip('case "%s" not relevant for non-le32 target' % shortname)
+          continue
         self.emcc_args = emcc_args
         if os.path.exists(shortname + '.emcc'):
           if not self.emcc_args: continue

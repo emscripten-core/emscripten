@@ -672,12 +672,14 @@ function intertyper(lines, sidePass, baseLineNums) {
       assert((item.tokens[5].text.match(/=/g) || []).length <= 1, 'we only support at most 1 exported variable from inline js: ' + item.ident);
       var i = 0;
       var params = [], args = [];
-      splitTokenList(tokensLeft[3].tokens).map(function(element) {
-        var ident = toNiceIdent(element[1].text);
-        var type = element[0].text;
-        params.push('$' + (i++));
-        args.push(ident);
-      });
+      if (tokensLeft[3].tokens) {
+        splitTokenList(tokensLeft[3].tokens).map(function(element) {
+          var ident = toNiceIdent(element[1].text);
+          var type = element[0].text;
+          params.push('$' + (i++));
+          args.push(ident);
+        });
+      }
       if (item.assignTo) item.ident = 'return ' + item.ident;
       item.ident = '(function(' + params + ') { ' + item.ident + ' })(' + args + ');';
       return { forward: null, ret: item, item: item };
