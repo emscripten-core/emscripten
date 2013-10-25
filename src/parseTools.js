@@ -1194,11 +1194,9 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 
 function asmInitializer(type, impl) {
   if (type in Runtime.FLOAT_TYPES) {
-    if (RUNNING_JS_OPTS) {
-      return '+0';
-    } else {
-      return '.0';
-    }
+    var ret = RUNNING_JS_OPTS ? '+0' : '.0';
+    if (FROUND && type === 'float') ret = 'Math_fround(' + ret + ')';
+    return ret;
   } else {
     return '0';
   }
@@ -1219,7 +1217,11 @@ function asmCoercion(value, type, signedness) {
           value = '(' + value + ')|0';
         }
       }
-      return '(+(' + value + '))';
+      if (FROUND && type === 'float') {
+        return 'Math_fround(' + value + ')';
+      } else {
+        return '(+(' + value + '))';
+      }
     }
   } else {
     return '((' + value + ')|0)';
