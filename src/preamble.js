@@ -1074,11 +1074,9 @@ Math['imul'] = function(a, b) {
 #endif
 Math.imul = Math['imul'];
 
-#if TO_FLOAT32
-if (!Math['toFloat32']) Math['toFloat32'] = function(x) {
-  return x;
-};
-Math.toFloat32 = Math['toFloat32'];
+#if FROUND
+if (!Math['fround']) Math['fround'] = function(x) { return x };
+Math.fround = Math['fround'];
 #endif
 
 var Math_abs = Math.abs;
@@ -1096,7 +1094,7 @@ var Math_ceil = Math.ceil;
 var Math_floor = Math.floor;
 var Math_pow = Math.pow;
 var Math_imul = Math.imul;
-var Math_toFloat32 = Math.toFloat32;
+var Math_fround = Math.fround;
 var Math_min = Math.min;
 
 // A counter of dependencies for calling run(). If we need to

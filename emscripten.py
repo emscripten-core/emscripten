@@ -451,7 +451,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
 
-    if settings['TO_FLOAT32']: maths += ['Math.toFloat32']
+    if settings['FROUND']: maths += ['Math.fround']
 
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')

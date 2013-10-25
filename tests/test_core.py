@@ -8307,6 +8307,7 @@ extern "C" {
 
       if Settings.ASM_JS:
         # test float support in asm
+        Settings.FROUND = 1
         i, j = results[-1]
         src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', 'float')
         self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'))

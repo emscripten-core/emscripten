@@ -2139,8 +2139,8 @@ function makeIsNaN(value) {
 }
 
 function makeFloat(value, type) {
-  if (TO_FLOAT32 && type == 'float') {
-    return 'Math_toFloat32(' + value + ')';
+  if (FROUND && type == 'float') {
+    return 'Math_fround(' + value + ')';
   }
   return value;
 }
