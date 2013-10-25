@@ -1,0 +1,373 @@
+This document describes changes between tagged Emscripten SDK versions.
+
+Note that in the compiler, version numbering is used as the mechanism to invalidate internal compiler caches,
+so version numbers do not necessarily reflect the amount of changes between versions.
+
+To browse or download snapshots of old tagged versions, visit https://github.com/kripken/emscripten/releases .
+
+Not all changes are documented here. In particular, new features, user-oriented fixes, options, command-line parameters, usage changes, deprecations, significant internal modifications and optimizations etc. generally deserve a mention. To examine the full set of changes between versions, visit the link to full changeset diff at the end of each section.
+
+v1.7.1: 10/24/2013
+------------------
+ - Remove old call to Runtime.warn in file packager code
+ - Fix bug with parsing of empty types.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.0...1.7.1
+
+v1.7.0: 10/23/2013
+------------------
+ - Adds mouse wheel events support in GLUT library.
+ - Adds support for a new link parameter -s CASE_INSENSITIVE_VFS=1 to enable Emscripten virtual filesystem to search files ignoring case.
+ - *Numerous* optimizations in both compilation and runtime stages.
+ - Remove unnecessary whitespace, compact postSets function, and other optimizations in compilation output to save on generated file size.
+ - Fixes float parsing from negative zero.
+ - Removes the -s EMIT_GENERATED_FUNCTIONS link parameter as unneeded.
+ - Fixes an issue where updating subranges of GL uniform arrays was not possible.
+ - asm.js heap size (-s TOTAL_MEMORY=x) no longer needs to be a power of 2. As a relaxed rule, choosing any multiple of 16MB is now possible.
+ - O1 optimization no longer runs the 'simplifyExpressions' optimization pass. This is to improve build iteration times when using -O1. Use -O2 to run that pass.
+ - EM_ASM() can now be used even when compiling to asm.js.
+ - All currently specified non-debugging-related WebGL 1 extensions are now enabled by default on startup, no need to ctx.getExtension() manually to enable them.
+ - Improve readability of uncaught JavaScript exceptions that are thrown all the way up to the web console by printing out the stack trace of where the throw occurred.
+ - Fix an issue when renaming a directory to a subdirectory.
+ - Several compiler stability fixes.
+ - Adds a JavaScript implementation of cxa_demangle function for demangling call stack traces at runtime for easier debugging.
+ - GL context MSAA antialising is now DISABLED by default, to make the GL behavior consistent with desktop usage.
+ - Added support to SDL, GLUT and GLFW libraries to specify MSAA on/off at startup.
+ - Implemented glColor4ubv in GL emulation mode.
+ - Fix an issue with LLVM keyword __attribute__ ((__constructor__)) (#1155).
+ - Fix an issue with va_args and -s UNALIGNED_MEMORY=1 (#1705).
+ - Add initial support code for LLVM SIMD constructs and a JavaScript SIMD polyfill implementation from https://github.com/johnmccutchan/ecmascript_simd/ .
+ - Fixed support for node.js native filesystem API NODEFS on Windows.
+ - Optimize application startup times of Emscripten-compiled programs by enabling the virtual filesystem XHR and asm.js compilation to proceed in parallel when opening a page.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.4...1.7.0
+
+v1.6.4: 9/30/2013
+------------------
+ - Implements a new preprocessor tool for preparsing C struct definitions (#1554), useful for Emscripten support library implementors.
+ - Fix parsing issue with sscanf (#1668).
+ - Improved the responsiveness of compiler print output on Windows.
+ - Improved compilation times at link stage.
+ - Added support for new "NODEFS" filesystem that directly accesses files on the native filesystem. Only usable with node.js when compiling to JS.
+ - Added support for new IDBFS filesystem for accessing files in IndexedDB storage (#1601.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.3...1.6.4
+
+v1.6.3: 9/26/2013
+------------------
+ - Emscripten CMake toolchain now generates archive files with .a suffix when project target type is static library, instead of generatic .bc files (#1648).
+ - Adds iconv library from the musl project to implement wide functions in C library (#1670).
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.2...1.6.3
+
+v1.6.2: 9/25/2013
+------------------
+ - Added support for dprintf() function (#1250).
+ - Fixes several compiler stability issues (#1637, #1166, #1661, #1651 and more).
+ - Enables support for WEBGL_depth_texture.
+ - Adds support for new link flag -s GL_ASSERTIONS=1 which can be used to add extra validation layer to the Emscripten GL library to catch code issues.
+ - Adds support to Web Audio API in SDL audio backend so that SDL audio now works in Chrome and new Opera as well.
+ - Fixes an alpha blending issue with SDL_SetAlpha.
+ - Implemented locale-related code in C library.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.1...1.6.2
+
+v1.6.1: 9/22/2013
+------------------
+ - Several optimizations to compiler link stage.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.0...1.6.1
+
+v1.6.0: 9/21/2013
+------------------
+ - Enable support for %[] pattern in scanf.
+ - Added dependency tracking support to linked .js files in CMake toolchain.
+ - The hex prefix 0x is now properly handled in sscanf (#1632).
+ - Simplify internal compiler operations by removing the internal framework.js. 
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.9...1.6.0
+
+v1.5.9: 9/15/2013
+------------------
+ - Add support for SDL_Delay in web workers.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.8...1.5.9
+
+v1.5.8: 9/14/2013
+------------------
+ - Add support for the GCC -E compiler flag.
+ - Update Emscripten libc headers to musl-0.9.13.
+ - Added new utility function emscripten_async_load_script() to asynchronously load a new .js script URL.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.7...1.5.8
+
+v1.5.7: 8/30/2013
+------------------
+ - The script tag in default shell.html is now marked 'async', which enables loading the JS script code asynchronously in Firefox without making the main thread unresponsive.
+ - Implemented new utility function emscripten_get_canvas_size() which returns the current Module <canvas> element size in pixels.
+ - Optimize code size in compiled side modules.
+ - Optimize startup memory usage by avoiding unnecessary copying of VFS data at startup.
+ - Add support for SDL_WM_ToggleFullScreen().
+ - Add support for emscripten_get_now() when running in SpiderMonkey shell.
+ - Added new environment variable EM_BUILD_VERBOSE=0,1,2,3 to set an extra compiler output verbosity level for debugging.
+ - Added better support for dlopen() to simulate dynamic library loading in JavaScript.
+ - Improved support for BSD sockets and networking.
+ - Added new SOCKFS filesystem, which reads files via a network connection.
+ - Avoid issues with long command line limitations in CMake toolchain by using response files.
+ - Fix issues with client-side vertex data rendering in GL emulation mode.
+ - Improved precision of clock_gettime().
+ - Improve function outlining support.
+ - Added support for using NMake generator with CMake toolchain.
+ - Improved support for flexible arrays in structs (#1602).
+ - Added ability to marshal UTF16 and UTF32 strings between C++ <-> JS code.
+ - Added a new commandline tool validate_asms.py to help automating asm.js validation testing.
+ - Improved stability with inline asm() syntax.
+ - Updated libc headers to new version.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.6...1.5.7
+
+v1.5.6: 8/17/2013
+------------------
+ - Improved BSD sockets support.
+ - Added touch events support to GLUT library.
+ - Added new --js-opts=0/1 command line option to control whether JS optimizer is run or not.
+ - Improved OpenAL support.
+ - Added new command line tool tools/find_bigvars.py which can be used on a output file to detect large functions and needs for outlining.
+ - Merged link flags -s FORCE_GL_EMULATION and -s DISABLE_GL_EMULATION to a single opt-in flag -s LEGACY_GL_EMULATION=0/1 to control whether GL emulation is active.
+ - Improved SDL input support.
+ - Several stability-related compiler fixes.
+ - Fixed source mapping generation support on Windows.
+ - Added back the EMSCRIPTEN_KEEPALIVE attribute qualifier to help prevent inlining and to retain symbols in output without dead code elimination occurring.
+ - Fix issues when marshalling UTF8 strings between C<->JS.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.5...1.5.6
+
+v1.5.5: 8/9/2013
+------------------
+ - Update libcxx to revision 187959, 2013-08-08.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.4...1.5.5
+
+v1.5.4: 8/9/2013
+------------------
+ - Fixed multiple issues with C stdlib support.
+ - Fix audio buffer queueing issues with OpenAL.
+ - Improved BSD sockets support.
+ - Added a new compile+link time command line option -Wno-warn-absolute-paths to hide the emscripten compiler warning when absolute paths are passed into the compiler.
+ - Added new link flag -s STB_IMAGE=0/1 and integrate it to SDL image loading to enable synchronous image loading support with SDL.
+ - Several improvements on function outlining support.
+ - Fix issues with GLES2 interop support.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.3...1.5.4
+
+v1.5.3: 6/28/2013
+------------------
+ - Added new optimization level --llvm-lto 3 to run even more aggressive LTO optimizations.
+ - Improve optimizations for libc and other libraries.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.2...1.5.3
+
+v1.5.2: 6/27/2013
+------------------
+ - Added support for generating source maps along the built application when -g is specified. This lets the browser show original .cpp sources when debugging.
+ - GLUT and SDL improvements.
+ - Added new link option -g<level> where level=0-4, which allows controlling various levels of debuggability added to the output.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.1...1.5.2
+
+v1.5.1: 6/22/2013
+------------------
+ - File packager now skips all directories and files starting with '.', and hidden files on Windows.
+ - Fix issues with strnlen, memmove, LDBL_ constants, va_args, float.h, and others.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.0...1.5.1
+
+v1.5.0: 6/17/2013
+------------------
+ - Several compiler optimizations.
+ - Improve SDL key events support.
+ - Increase debug logging when specifying emcc -v.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.9...1.5.0
+
+v1.4.9: 6/8/2013
+------------------
+ - Several compiler optimizations.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.8...1.4.9
+
+v1.4.8: 6/6/2013
+------------------
+ - Add support for webrtc-based sockets.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.7...1.4.8
+
+v1.4.7: 6/2/2013
+------------------
+ - Remove more unneeded break and continue statements in relooper.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.6...1.4.7
+
+v1.4.6: 6/2/2013
+------------------
+ - Improve relooper code.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.5...1.4.6
+
+v1.4.5: 6/1/2013
+------------------
+ - Improve relooper code.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.4...1.4.5
+
+v1.4.4: 6/1/2013
+------------------
+ - Add support for symlinks in source files.
+ - Fix various issues with SDL.
+ - Added -s FORCE_ALIGNED_MEMORY=0/1 link time flag to control whether all loads and stores are assumed to be aligned.
+ - Fix file packager to work with closure.
+ - Major improvements to embind support, and optimizations.
+ - Improve GL emulation.
+ - Optimize VFS usage.
+ - Allow emscripten to compile .m and .mm files.
+ - Added new syntax --preload-file src@dst to file packager command line to allow placing source files to custom destinations in the FS.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.3...1.4.4
+
+v1.4.3: 5/8/2013
+------------------
+ - Fix issue with strcat.
+ - Major embind improvements.
+ - Switch to le32-unknown-nacl LLVM target triple as default build option instead of the old i386-pc-linux-gnu target triple.
+ - Improve compiler logging behavior.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.2...1.4.3
+
+v1.4.2: 5/3/2013
+------------------
+ - Fix issues with le32-unknown-nacl LLVM target triple.
+ - Add some GLEW support.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.1...1.4.2
+
+v1.4.1: 4/28/2013
+------------------
+ - Implement support for le32-unknown-nacl LLVM target triple.
+ - Added new cmdline option -s ERROR_ON_UNDEFINED_SYMBOLS=0/1 to give compile-time error on undefined symbols at link time. Default off.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.8...1.4.1
+
+v1.3.8: 4/29/2013
+------------------
+ - Improved 64-bit integer ops codegen.
+ - Added Indexed DB support to vfs.
+ - Improve warning message on dangerous function pointer casts when compiling in asm.js mode.
+ - Added --use-preload-cache command line option to emcc, to be used with the file packager.
+ - Fixes to libcextra.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.7...1.3.8
+
+v1.3.7: 4/24/2013
+------------------
+ - Merge IMVU implementation of embind to emscripten trunk. Embind allows high-level C++ <-> JS types interop.
+ - Enable asm.js compilation in -O1 and higher by default. Fix issues when compiling to asm.js.
+ - Improve libc support with Emscripten with the musl libc headers.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.6...1.3.7
+
+v1.3.6: 4/2/2013
+------------------
+ - Fix hang issue with strtof.
+ - Update libcxx to upstream r178253 from March 29, 2013.
+ - Fix issues with GL emulation.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.5...1.3.6
+
+v1.3.5: 3/25/2013
+------------------
+ - Get exceptions working as they did before.
+ - Remove symbol removing hack.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.4...1.3.5
+
+v1.3.4: 3/24/2013
+------------------
+ - Update to new libcxx and libcxxabi versions from upstream.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.3...1.3.4
+
+v1.3.3: 3/23/2013
+------------------
+ - Remove unneeded check from relooper.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.2...1.3.3
+
+v1.3.2: 3/22/2013
+------------------
+ - Fix issues with fgets. 
+ - Add support for non-fullscreen pointer lock.
+ - Improve OpenAL support.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.1...1.3.2
+
+v1.3.1: 3/19/2013
+------------------
+ - Improve SDL audio and mixer support.
+ - Add GLES2 emulation features when -s FULL_ES2=1 is specified.
+ - Add support for OpenAL.
+ - Add new -s OPENAL_DEBUG=0/1 link command line option.
+ - Fixed an issue with mouse coordinate being offset with canvas.
+ - Removed -s UTF_STRING_SUPPORT=0 parameter, this is now always on.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.0...1.3.1
+
+v1.3.0: 3/11/2013
+------------------
+ - Improve GLES2 emulation with -s FULL_ES2=1.
+ - Deprecated -s USE_TYPED_ARRAYS=1 and -s QUANTUM_SIZE=1.
+ - Implement a minifier infrastructure when compiling for asm.js.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.9...1.3.0
+
+v1.2.9: 3/7/2013
+------------------
+ - Improved canvas behavior when transitioning between fullscreen.
+ - Added support for getopt().
+ - Fixed several libc issues.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.8...1.2.9
+
+v1.2.8: 3/6/2013
+------------------
+ - Remove unnecessary recursion in relooper RemoveUnneededFlows.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.7...1.2.8
+
+v1.2.7: 3/6/2013
+------------------
+ - Added SDL_Mixer support.
+ - Implemented stubs for several Unix and threading-related functions.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.6...1.2.7
+
+v1.2.6: 3/5/2013
+------------------
+ - Relooper updates.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.5...1.2.6
+
+v1.2.5: 3/5/2013
+------------------
+ - Greatly improve GL emulation support.
+ - Handle %c in sscanf.
+ - Improve compilation times by optimizing parallel execution in the linker.
+ - Improve several compiler stability issues detected from fuzzing tests.
+ - Implemented emscripten_jcache_printf.
+ - Allow running emscripten.py outside emcc itself.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.4...1.2.5
+
+v1.2.4: 2/2/2013
+------------------
+ - Work on adding support for asm.js compilation.
+ - Improve EGL support.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.3...1.2.4
+
+v1.2.3: 1/9/2013
+------------------
+ - Work on adding support for asm.js compilation.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.2...1.2.3
+
+v1.2.2: 1/8/2013
+------------------
+ - Work on adding support for asm.js compilation.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.1...1.2.2
+
+v1.2.1: 1/8/2013
+------------------
+ - Improvements to GLUT, SDL and BSD sockets headers.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.0...1.2.1
+
+v1.2.0: 1/1/2013
+------------------
+ - Work on adding support for asm.js compilation.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.1.0...1.2.0
+
+v1.1.0: 12/12/2012
+------------------
+ - Fix several issues with Windows support.
+ - Added a standalone toolchain for CMake.
+ - Added emscripten_run_script_string().
+ - Optimize compilation times via threading.
+ - Update to requiring Clang 3.2. Older versions may no longer work.
+ - Several improvements to emscripten library support headers.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.0.1a...1.1.0
+
+v1.0.1a: 11/11/2012
+------------------
+ - Add relooper code to repository.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.0.1...1.0.1a
+
+v1.0.1: 11/11/2012
+------------------
+ - First commit that introduced versioning to the Emscripten compiler.
