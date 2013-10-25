@@ -756,14 +756,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (func.setjmpTable && !ASM_JS) {
             ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
           }
-          if (ASM_JS && func.returnType !== 'void') {
-            // Add a return
-            if (func.returnType in Runtime.FLOAT_TYPES) {
-              ret += ' return +0;\n';
-            } else {
-              ret += ' return 0;\n';
-            }
-          }
+          if (ASM_JS && func.returnType !== 'void') ret += '  return ' + asmInitializer(func.returnType) + ';\n'; // Add a return
         } else {
           ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0]);
         }
@@ -833,11 +826,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var lastReturn = func.JS.lastIndexOf('return ');
       if ((lastCurly < 0 && lastReturn < 0) || // no control flow, no return
           (lastCurly >= 0 && lastReturn < lastCurly)) { // control flow, no return past last join
-        if (func.returnType in Runtime.FLOAT_TYPES) {
-          func.JS += ' return +0;\n';
-        } else {
-          func.JS += ' return 0;\n';
-        }
+        func.JS += '  return ' + asmInitializer(func.returnType) + ';\n';
       }
     }
     func.JS += '}\n';
