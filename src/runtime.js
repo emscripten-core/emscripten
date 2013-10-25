@@ -224,9 +224,16 @@ var Runtime = {
         // bN, large number field, like a [N x i8]
         size = field.substr(1)|0;
         alignSize = 1;
-      } else {
-        assert(field[0] === '<', field); // assumed to be a vector type, if none of the above
+      } else if (field[0] === '<') {
+        // vector type
         size = alignSize = Types.types[field].flatSize; // fully aligned
+      } else if (field[0] === 'i') {
+        // illegal integer field, that could not be legalized because it is an internal structure field
+        // it is ok to have such fields, if we just use them as markers of field size and nothing more complex
+        size = alignSize = parseInt(field.substr(1))/8;
+        assert(size % 1 === 0, 'cannot handle non-byte-size field ' + field);
+      } else {
+        assert(false, 'invalid type for calculateStructAlignment');
       }
       if (type.packed) alignSize = 1;
       type.alignSize = Math.max(type.alignSize, alignSize);
