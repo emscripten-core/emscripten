@@ -2491,8 +2491,15 @@ function processMathop(item) {
       }
       // otherwise, fall through
     }
-    case 'fpext': case 'sext': return idents[0];
-    case 'fptrunc': return idents[0];
+    case 'sext': return idents[0];
+    case 'fpext': {
+      if (FROUND) return '+(' + idents[0] + ')';
+      return idents[0];
+    }
+    case 'fptrunc': {
+      if (FROUND) return 'Math_fround(' + idents[0] + ')';
+      return idents[0];
+    }
     case 'select': return idents[0] + '?' + asmEnsureFloat(idents[1], item.type) + ':' + asmEnsureFloat(idents[2], item.type);
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
