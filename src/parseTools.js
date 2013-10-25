@@ -1198,9 +1198,8 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 
 function asmInitializer(type, impl) {
   if (type in Runtime.FLOAT_TYPES) {
-    var ret = RUNNING_JS_OPTS ? '+0' : '.0';
-    if (FROUND && type === 'float') ret = 'Math_fround(' + ret + ')';
-    return ret;
+    if (FROUND && type === 'float') return 'Math_fround(0)';
+    return RUNNING_JS_OPTS ? '+0' : '.0';
   } else {
     return '0';
   }
