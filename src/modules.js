@@ -253,13 +253,32 @@ var Functions = {
 
   aliases: {}, // in shared modules (MAIN_MODULE or SHARED_MODULE), a list of aliases for functions that have them
 
+  getSignatureLetter: function(type) {
+    switch(type) {
+      case 'float': return 'f';
+      case 'double': return 'd';
+      case 'void': return 'v';
+      default: return 'i';
+    }
+  },
+
+  getSignatureType: function(letter) {
+    switch(letter) {
+      case 'v': return 'void';
+      case 'i': return 'i32';
+      case 'f': return 'float';
+      case 'd': return 'double';
+      default: throw 'what is this sig? ' + sig;
+    }
+  },
+
   getSignature: function(returnType, argTypes, hasVarArgs) {
-    var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
+    var sig = Functions.getSignatureLetter(returnType);
     for (var i = 0; i < argTypes.length; i++) {
       var type = argTypes[i];
       if (!type) break; // varargs
       if (type in Runtime.FLOAT_TYPES) {
-        sig += 'f';
+        sig += Functions.getSignatureLetter(type);
       } else {
         var chunks = getNumIntChunks(type);
         for (var j = 0; j < chunks; j++) sig += 'i';
@@ -267,15 +286,6 @@ var Functions = {
     }
     if (hasVarArgs) sig += 'i';
     return sig;
-  },
-
-  getSignatureReturnType: function(sig) {
-    switch(sig[0]) {
-      case 'v': return 'void';
-      case 'i': return 'i32';
-      case 'f': return 'double';
-      default: throw 'what is this sig? ' + sig;
-    }
   },
 
   // Mark a function as needing indexing. Python will coordinate them all
@@ -353,14 +363,17 @@ var Functions = {
                 if (t[0] == 'i') {
                   retPre = 'return ';
                   retPost = '|0';
-                } else {
+                } else if (t[0] === 'd') {
                   retPre = 'return +';
+                } else {
+                  retPre = 'return Math_fround(';
+                  retPost = ')';
                 }
               }
               for (var j = 1; j < t.length; j++) {
                 args += (j > 1 ? ',' : '') + 'a' + j;
-                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32') + ';';
-                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32');
+                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, Functions.getSignatureType(t[j])) + ';';
+                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, Functions.getSignatureType(t[j]));
               }
               call += ')';
               if (short == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');

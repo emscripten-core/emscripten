@@ -1579,7 +1579,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       returnType = getReturnType(type);
       if (callIdent in Functions.implementedFunctions) {
         // LLVM sometimes bitcasts for no reason. We must call using the exact same type as the actual function is generated as
-        var trueType = Functions.getSignatureReturnType(Functions.implementedFunctions[callIdent]);
+        var trueType = Functions.getSignatureType(Functions.implementedFunctions[callIdent][0]);
         if (trueType !== returnType && !isIdenticallyImplemented(trueType, returnType)) {
           if (VERBOSE) warnOnce('Fixing function call based on return type from signature, on ' + [callIdent, returnType, trueType]);
           returnType = trueType;

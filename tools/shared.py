@@ -1511,6 +1511,28 @@ class JS:
     return ident.replace('%', '$').replace('@', '_')
 
   @staticmethod
+  def make_initializer(sig, settings=None):
+    settings = settings or Settings
+    if sig == 'i':
+      return '0'
+    elif sig == 'f' and settings.get('FROUND'):
+      return 'Math_fround(0)'
+    else:
+      return '+0'
+
+  @staticmethod
+  def make_coercion(value, sig, settings=None):
+    settings = settings or Settings
+    if sig == 'i':
+      return value + '|0'
+    elif sig == 'f' and settings.get('FROUND'):
+      return 'Math_fround(' + value + ')'
+    elif sig == 'd' or sig == 'f':
+      return '+' + value
+    else:
+      return value
+
+  @staticmethod
   def make_extcall(sig, named=True):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if args else '') + args
