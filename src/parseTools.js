@@ -479,10 +479,13 @@ function parseParamTokens(params) {
         segment[0].text += segment[1].text;
         segment.splice(1, 1); // TODO: merge tokens nicely
       }
+      var num = isNumber(segment[1].text);
+      var ident = parseNumerical(segment[1].text, segment[0].text);
+      if (!num) ident = toNiceIdent(ident);
       ret.push({
         intertype: 'value',
         type: segment[0].text,
-        ident: toNiceIdent(parseNumerical(segment[1].text, segment[0].text))
+        ident: ident
       });
       Types.needAnalysis[removeAllPointing(ret[ret.length-1].type)] = 0;
     }
@@ -569,7 +572,7 @@ function finalizeParam(param) {
     if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
       return parseI64Constant(param.ident);
     }
-    var ret = toNiceIdent(param.ident);
+    var ret = param.ident;
     if (ret in Variables.globals) {
       ret = makeGlobalUse(ret);
     }
@@ -1177,6 +1180,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
   if (!ASM_JS) return value;
   // coerce if missing a '.', or if smaller than 1, so could be 1e-5 which has no .
   if (type in Runtime.FLOAT_TYPES && isNumber(value) && (value.toString().indexOf('.') < 0 || Math.abs(value) < 1)) {
+    if (FROUND && type === 'float') return 'Math_fround(' + value + ')';
     if (RUNNING_JS_OPTS) {
       return '(+' + value + ')'; // JS optimizer will run, we must do +x, and it will be corrected later
     } else {
