@@ -2445,7 +2445,7 @@ function processMathop(item) {
     case 'fdiv': return makeFloat(getFastValue(idents[0], '/', idents[1], item.type), item.type);
     case 'fmul': return makeFloat(getFastValue(idents[0], '*', idents[1], item.type), item.type);
     case 'frem': return makeFloat(getFastValue(idents[0], '%', idents[1], item.type), item.type);
-    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double', op[0]);
+    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], item.type, op[0]);
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 
     // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
