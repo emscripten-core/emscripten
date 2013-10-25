@@ -8305,6 +8305,12 @@ extern "C" {
         src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
         self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'), no_build=i>1)
 
+      if Settings.ASM_JS:
+        # test float support in asm
+        i, j = results[-1]
+        src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', 'float')
+        self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'))
+
   def test_whets(self):
     if not Settings.ASM_JS: return self.skip('mainly a test for asm validation here')
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
