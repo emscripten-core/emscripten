@@ -15,8 +15,9 @@ define i32 @main() {
   %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str, i32 0, i32 0), i32 10)
   %3 = bitcast %struct.pair* %p to i8*
   call void @llvm.memset.p0i8.i32(i8* %3, i8 120, i32 10, i32 1, i1 false)
-  %4 = getelementptr inbounds %struct.pair* %p, i32 0, i32 0
-  %5 = getelementptr inbounds [5 x i8]* %4, i32 0, i32 2
+  %4 = getelementptr inbounds [2 x i40]* %pp, i32 0, i32 0
+  %b4 = bitcast i40* %4 to [5 x i8]*
+  %5 = getelementptr inbounds [5 x i8]* %b4, i32 0, i32 2
   store i8 97, i8* %5, align 1
   %6 = getelementptr inbounds %struct.pair* %p, i32 0, i32 0
   %7 = getelementptr inbounds [5 x i8]* %6, i32 0, i32 4
@@ -24,8 +25,9 @@ define i32 @main() {
   %8 = getelementptr inbounds %struct.pair* %p, i32 0, i32 1
   %9 = getelementptr inbounds [5 x i8]* %8, i32 0, i32 3
   store i8 98, i8* %9, align 1
-  %10 = getelementptr inbounds %struct.pair* %p, i32 0, i32 1
-  %11 = getelementptr inbounds [5 x i8]* %10, i32 0, i32 4
+  %10 = getelementptr inbounds [2 x i40]* %pp, i32 0, i32 1
+  %b10 = bitcast i40* %10 to [5 x i8]*
+  %11 = getelementptr inbounds [5 x i8]* %b10, i32 0, i32 4
   store i8 0, i8* %11, align 1
   %12 = getelementptr inbounds %struct.pair* %p, i32 0, i32 0
   %13 = getelementptr inbounds [5 x i8]* %12, i32 0, i32 0
