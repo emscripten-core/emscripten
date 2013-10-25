@@ -2139,8 +2139,8 @@ function makeRounding(value, bits, signed, floatConversion) {
   }
 }
 
-function makeIsNaN(value) {
-  if (ASM_JS) return makeInlineCalculation('((VALUE) != (VALUE))', value, 'tempDouble');
+function makeIsNaN(value, type) {
+  if (ASM_JS) return makeInlineCalculation('((VALUE) != (VALUE))', value, type === 'float' ? 'tempFloat' : 'tempDouble');
   return 'isNaN(' + value + ')';
 }
 
@@ -2477,8 +2477,8 @@ function processMathop(item) {
         case 'ult': case 'olt': return idents[0] + '<' + idents[1];
         case 'une': case 'one': return idents[0] + '!=' + idents[1];
         case 'ueq': case 'oeq': return idents[0] + '==' + idents[1];
-        case 'ord': return '!' + makeIsNaN(idents[0]) + '&!' + makeIsNaN(idents[1]);
-        case 'uno': return makeIsNaN(idents[0]) + '|' + makeIsNaN(idents[1]);
+        case 'ord': return '!' + makeIsNaN(idents[0], paramTypes[0]) + '&!' + makeIsNaN(idents[1], paramTypes[0]);
+        case 'uno': return makeIsNaN(idents[0], paramTypes[0]) + '|' + makeIsNaN(idents[1], paramTypes[0]);
         case 'true': return '1';
         default: throw 'Unknown fcmp variant: ' + variant;
       }
