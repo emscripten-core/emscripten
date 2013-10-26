@@ -479,7 +479,7 @@ function parseParamTokens(params) {
         segment[0].text += segment[1].text;
         segment.splice(1, 1); // TODO: merge tokens nicely
       }
-      var num = isNumber(segment[1].text);
+      var num = isNumber(segment[1].text) || (segment[1].text[0] === '0'); // handle 0x... as well
       var ident = parseNumerical(segment[1].text, segment[0].text);
       if (!num) ident = toNiceIdent(ident);
       ret.push({

@@ -222,6 +222,7 @@ function mergeInto(obj, other) {
 }
 
 function isNumber(x) {
+  // XXX this does not handle 0xabc123 etc
   return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/));
 }
 
