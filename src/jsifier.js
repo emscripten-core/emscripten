@@ -1501,8 +1501,9 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     if (ASM_JS) {
-      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || extCall || funcData.setjmpTable) {
-        args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+      var ffiCall = shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || extCall || funcData.setjmpTable;
+      if (ffiCall) {
+        args = args.map(function(arg, i) { return asmCoercion(arg, ensureValidFFIType(argsTypes[i])) });
       } else {
         args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
       }
@@ -1615,7 +1616,12 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     var ret = callIdent + '(' + args.join(',') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
-      ret = asmCoercion(ret, returnType);
+      if (ffiCall) {
+        ret = asmCoercion(ret, ensureValidFFIType(returnType));
+        if (FROUND && returnType === 'float') ret = asmCoercion(ret, 'float'); // receive double, then float it
+      } else {
+        ret = asmCoercion(ret, returnType);
+      }
       if (simpleIdent == 'abort' && funcData.returnType != 'void') {
         ret += '; return ' + asmCoercion('0', funcData.returnType); // special case: abort() can happen without return, breaking the return type of asm functions. ensure a return
       }

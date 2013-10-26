@@ -2691,3 +2691,7 @@ function ensureVector(ident, base) {
   return ident == 0 ? base + '32x4.zero()' : ident;
 }
 
+function ensureValidFFIType(type) {
+  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
+}
+
