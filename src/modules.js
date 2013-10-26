@@ -372,8 +372,9 @@ var Functions = {
               }
               for (var j = 1; j < t.length; j++) {
                 args += (j > 1 ? ',' : '') + 'a' + j;
-                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, Functions.getSignatureType(t[j])) + ';';
-                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, Functions.getSignatureType(t[j]));
+                var type = Functions.getSignatureType(t[j]);
+                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, type) + ';';
+                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, type === 'float' ? 'double' : type); // ffi arguments must be doubles if they are floats
               }
               call += ')';
               if (short == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
