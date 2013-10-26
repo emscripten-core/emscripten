@@ -94,7 +94,7 @@ LibraryManager.library = {
     }
     var entries;
     try {
-      entries = FS.readdir(stream.path);
+      entries = FS.readdir(stream.node);
     } catch (e) {
       return FS.handleFSError(e);
     }
@@ -250,9 +250,16 @@ LibraryManager.library = {
     // int stat(const char *path, struct stat *buf);
     // NOTE: dontResolveLastLink is a shortcut for lstat(). It should never be
     //       used in client code.
-    path = typeof path !== 'string' ? Pointer_stringify(path) : path;
+    // NOTE: path can be an object (node), number (pointer), or path (string)
+    if (typeof path === 'number') path = Pointer_stringify(path);
     try {
-      var stat = dontResolveLastLink ? FS.lstat(path) : FS.stat(path);
+      var node;
+      if (typeof path === 'object') {
+        node = path;
+      } else {
+        node = FS.lookupPath(path, { follow: !dontResolveLastLink }).node;
+      }
+      var stat = FS.stat(node);
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.__st_dev_padding, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
@@ -293,7 +300,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
-    return _stat(stream.path, buf);
+    return _stat(stream.node, buf);
   },
   mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   mknod: function(path, mode, dev) {
@@ -489,7 +496,7 @@ LibraryManager.library = {
         }
         var newStream;
         try {
-          newStream = FS.open(stream.path, stream.flags, 0, arg);
+          newStream = FS.open(stream.node, stream.flags, 0, arg);
         } catch (e) {
           FS.handleFSError(e);
           return -1;
@@ -632,7 +639,8 @@ LibraryManager.library = {
     // NOTE: The path argument may be a string, to simplify fchdir().
     if (typeof path !== 'string') path = Pointer_stringify(path);
     try {
-      FS.chdir(path);
+      var lookup = FS.lookupPath(path, { follow: true });
+      FS.chdir(lookup.node);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -699,7 +707,7 @@ LibraryManager.library = {
     } else {
       _close(fildes2);
       try {
-        var stream2 = FS.open(stream.path, stream.flags, 0, fildes2, fildes2);
+        var stream2 = FS.open(stream.node, stream.flags, 0, fildes2, fildes2);
         return stream2.fd;
       } catch (e) {
         FS.handleFSError(e);
@@ -725,7 +733,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchdir.html
     var stream = FS.getStream(fildes);
     if (stream) {
-      return _chdir(stream.path);
+      return _chdir(stream.node);
     } else {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
