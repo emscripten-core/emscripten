@@ -42,6 +42,8 @@ var LibraryGL = {
 
     uniformTable: {}, // name => uniform ID. the uID must be identical until relinking, cannot create a new uID each call to glGetUniformLocation
 
+    stringCache: {},
+
     packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
 
@@ -497,11 +499,13 @@ var LibraryGL = {
 
   glGetString__sig: 'ii',
   glGetString: function(name_) {
+    if (GL.stringCache[name_]) return GL.stringCache[name_];
+    var ret; 
     switch(name_) {
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
       case 0x1F02 /* GL_VERSION */:
-        return allocate(intArrayFromString(Module.ctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
+        ret = allocate(intArrayFromString(Module.ctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = Module.ctx.getSupportedExtensions();
         var gl_exts = [];
@@ -509,12 +513,14 @@ var LibraryGL = {
           gl_exts.push(exts[i]);
           gl_exts.push("GL_" + exts[i]);
         }
-        return allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL); // XXX this leaks! TODO: Cache all results like this in library_gl.js to be clean and nice and avoid leaking.
+        ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
-        return allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
+        ret = allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
       default:
         throw 'Failure: Invalid glGetString value: ' + name_;
     }
+    GL.stringCache[name_] = ret;
+    return ret;
   },
 
   glGetIntegerv__sig: 'vii',

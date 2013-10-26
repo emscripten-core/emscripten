@@ -10,6 +10,8 @@ var LibraryEGL = {
   $EGL: {
     // This variable tracks the success status of the most recently invoked EGL function call.
     eglErrorCode: 0x3000 /* EGL_SUCCESS */,
+
+    stringCache: {},
     
     setErrorCode: function(code) {
       EGL.eglErrorCode = code;
@@ -416,15 +418,19 @@ var LibraryEGL = {
     }
     //\todo An EGL_NOT_INITIALIZED error is generated if EGL is not initialized for dpy. 
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    if (EGL.stringCache[name]) return EGL.stringCache[name];
+    var ret;
     switch(name) {
-      case 0x3053 /* EGL_VENDOR */: return allocate(intArrayFromString("Emscripten"), 'i8', ALLOC_NORMAL);
-      case 0x3054 /* EGL_VERSION */: return allocate(intArrayFromString("1.4 Emscripten EGL"), 'i8', ALLOC_NORMAL);
-      case 0x3055 /* EGL_EXTENSIONS */:  return allocate(intArrayFromString(""), 'i8', ALLOC_NORMAL); // Currently not supporting any EGL extensions.
-      case 0x308D /* EGL_CLIENT_APIS */: return allocate(intArrayFromString("OpenGL_ES"), 'i8', ALLOC_NORMAL);
+      case 0x3053 /* EGL_VENDOR */: ret = allocate(intArrayFromString("Emscripten"), 'i8', ALLOC_NORMAL);
+      case 0x3054 /* EGL_VERSION */: ret = allocate(intArrayFromString("1.4 Emscripten EGL"), 'i8', ALLOC_NORMAL);
+      case 0x3055 /* EGL_EXTENSIONS */:  ret = allocate(intArrayFromString(""), 'i8', ALLOC_NORMAL); // Currently not supporting any EGL extensions.
+      case 0x308D /* EGL_CLIENT_APIS */: ret = allocate(intArrayFromString("OpenGL_ES"), 'i8', ALLOC_NORMAL);
       default:
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
     }
+    EGL.stringCache[name] = ret;
+    return ret;
   },
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglBindAPI(EGLenum api);
