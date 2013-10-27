@@ -14,4 +14,21 @@
 
 #include_next <ctype.h>
 
+/* We undef these until libcxx is fixed. Without this,
+   some things can fail to compile correctly, like
+   Boost. Issue #1716. */
+
+#undef isalpha
+#undef isblank
+#undef iscntrl
+#undef isdigit
+#undef isgraph
+#undef islower
+#undef isprint
+#undef ispunct
+#undef isspace
+#undef isupper
+#undef isxdigit
+#undef isctype
+
 #endif /* _COMPAT_CTYPE_H_ */

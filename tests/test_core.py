@@ -2949,6 +2949,23 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       '''
       self.do_run(src, '3.14159')
 
+  def test_iswdigit(self):
+      if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
+
+      src = '''
+        #include <stdio.h>
+        #include <cctype>
+        #include <cwctype>
+
+        int main() {
+          using namespace std;
+          printf("%d ", isdigit('0'));
+          printf("%d ", iswdigit(L'0'));
+          return 0;
+        }
+      '''
+      self.do_run(src, '1 1')
+
   def test_polymorph(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       src = '''
