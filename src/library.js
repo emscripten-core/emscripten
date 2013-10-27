@@ -637,10 +637,12 @@ LibraryManager.library = {
     // int chdir(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/chdir.html
     // NOTE: The path argument may be a string, to simplify fchdir().
-    if (typeof path !== 'string') path = Pointer_stringify(path);
+    if (typeof path === 'number') path = Pointer_stringify(path);
     try {
-      var lookup = FS.lookupPath(path, { follow: true });
-      FS.chdir(lookup.node);
+      var node = path;
+      if (typeof path === 'string')
+        node = FS.lookupPath(path, { follow: true }).node;
+      FS.chdir(node);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
