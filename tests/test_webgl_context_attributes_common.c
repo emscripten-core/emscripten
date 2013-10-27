@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <emscripten.h>
+
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 static const int WINDOWS_SIZE = 500;
@@ -245,12 +247,15 @@ extern int webglStencilSupported();
 static void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
     resultAA = 1;
-  } 
+    EM_ASM(alert('warning: no antialiasing\n'));
+  }
   if (!webglDepthSupported()) {
     resultDepth = 1;
-  } 
+    EM_ASM(alert('warning: no depth\n'));
+  }
   if (!webglStencilSupported()) {
     resultStencil = 1;
+    EM_ASM(alert('warning: no stencil\n'));
   }
 }
 
