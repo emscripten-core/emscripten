@@ -427,7 +427,9 @@ var LibraryGLUT = {
   glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow: function(name) {
     var contextAttributes = {
-      antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0)
+      antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0),
+      depth: ((GLUT.initDisplayMode & 0x0010 /*GLUT_DEPTH*/) != 0),
+      stencil: ((GLUT.initDisplayMode & 0x0020 /*GLUT_STENCIL*/) != 0)
     };
     Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
     return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
