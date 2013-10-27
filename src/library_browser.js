@@ -782,7 +782,11 @@ mergeInto(LibraryManager.library, {
       }
     } else {
       Browser.mainLoop.scheduler = function() {
-        Browser.requestAnimationFrame(Browser.mainLoop.runner);
+        if (typeof window === 'undefined') { // requestAnimationFrame will fail if window is undefined (e.g. in Node.js)
+          setTimeout(Browser.mainLoop.runner, 1000/60);
+        } else {
+          Browser.requestAnimationFrame(Browser.mainLoop.runner);
+        }
       }
     }
     Browser.mainLoop.scheduler();

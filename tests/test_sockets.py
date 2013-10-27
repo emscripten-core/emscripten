@@ -1,5 +1,5 @@
 import os, multiprocessing, subprocess
-from runner import BrowserCore, path_from_root
+from runner import BrowserCore, RunnerCore, path_from_root
 from tools.shared import *
 
 def clean_pids(pids):
@@ -399,4 +399,31 @@ class sockets(BrowserCore):
 
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
+
+class nodejs_sockets(RunnerCore):
+  def test_sockets_echo(self):
+    # This test checks that sockets work when the client code is run in Node.js
+    # Run with ./runner.py nodejs_sockets.test_sockets_echo
+    if not NODE_JS in JS_ENGINES:
+        return
+
+    sockets_include = '-I'+path_from_root('tests', 'sockets')
+
+    # Websockify-proxied servers can't run dgram tests
+    harnesses = [
+      # Websockify doesn't seem to like ws.WebSocket clients TODO check if this is a ws issue or Websockify issue
+      #(WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49162), 1)
+    ]
+
+    for harness, datagram in harnesses:
+      with harness:
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', path_from_root('tests', 'sockets', 'client.js'), '-DSOCKK=%d' % harness.listen_port, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+
+        self.assertContained('do_msg_read: read 14 bytes', run_js(path_from_root('tests', 'sockets', 'client.js'), engine=NODE_JS))
+
+        # Tidy up files that might have been created by this test.
+        try_delete(path_from_root('tests', 'sockets', 'client.js'))
+        try_delete(path_from_root('tests', 'sockets', 'client.js.map'))
 
