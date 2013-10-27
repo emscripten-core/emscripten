@@ -880,19 +880,13 @@ keydown(100);keyup(100); // trigger the end
           context = canvas.getContext('experimental-webgl', {antialias: true});
           attributes = context.getContextAttributes();
           return attributes.antialias;
-        }
-      });
-
-      mergeInto(LibraryManager.library, {
+        },
         webglDepthSupported: function() {
           canvas = document.createElement('canvas');
           context = canvas.getContext('experimental-webgl', {depth: true});
           attributes = context.getContextAttributes();
           return attributes.depth;
-        }
-      });
-
-      mergeInto(LibraryManager.library, {
+        },
         webglStencilSupported: function() {
           canvas = document.createElement('canvas');
           context = canvas.getContext('experimental-webgl', {stencil: true});
