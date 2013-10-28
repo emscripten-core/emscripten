@@ -95,7 +95,9 @@ mergeInto(LibraryManager.library, {
       var path;
       while (true) {
         if (FS.isRoot(node)) {
-          return path ? node.mount.mountpoint + '/' + path : node.mount.mountpoint;
+          var mount = node.mount.mountpoint;
+          if (!path) return mount;
+          return mount[mount.length-1] !== '/' ? mount + '/' + path : mount + path;
         }
         path = path ? node.name + '/' + path : node.name;
         node = node.parent;
