@@ -772,7 +772,6 @@ mergeInto(LibraryManager.library, {
       });
     },
     open: function(path, flags, mode, fd_start, fd_end) {
-      path = PATH.normalize(path);
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
       mode = typeof mode === 'undefined' ? 0666 : mode;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
@@ -781,13 +780,18 @@ mergeInto(LibraryManager.library, {
         mode = 0;
       }
       var node;
-      try {
-        var lookup = FS.lookupPath(path, {
-          follow: !(flags & {{{ cDefine('O_NOFOLLOW') }}})
-        });
-        node = lookup.node;
-      } catch (e) {
-        // ignore
+      if (typeof path === 'object') {
+        node = path;
+      } else {
+        path = PATH.normalize(path);
+        try {
+          var lookup = FS.lookupPath(path, {
+            follow: !(flags & {{{ cDefine('O_NOFOLLOW') }}})
+          });
+          node = lookup.node;
+        } catch (e) {
+          // ignore
+        }
       }
       // perhaps we need to create the node
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
@@ -1216,7 +1220,7 @@ mergeInto(LibraryManager.library, {
         }
         // make sure we can write to the file
         FS.chmod(node, mode | {{{ cDefine('S_IWUGO') }}});
-        var stream = FS.open(path, 'w');
+        var stream = FS.open(node, 'w');
         FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
         FS.chmod(path, mode);
