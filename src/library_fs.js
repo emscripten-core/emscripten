@@ -97,7 +97,7 @@ mergeInto(LibraryManager.library, {
         if (FS.isRoot(node)) {
           return path ? PATH.join2(node.mount.mountpoint, path) : node.mount.mountpoint;
         }
-        path = path ? PATH.join2(node.name, path) : node.name;
+        path = path ? node.name + '/' + path : node.name;
         node = node.parent;
       }
     },
