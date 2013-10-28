@@ -1223,7 +1223,7 @@ mergeInto(LibraryManager.library, {
         var stream = FS.open(node, 'w');
         FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
-        FS.chmod(path, mode);
+        FS.chmod(node, mode);
       }
       return node;
     },
