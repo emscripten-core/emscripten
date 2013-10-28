@@ -134,6 +134,11 @@ if (not force) and len(data_files) == 0:
 ret = '''
 var Module;
 if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
+if (!Module.expectedDataFileDownloads) {
+  Module.expectedDataFileDownloads = 0;
+  Module.finishedDataFileDownloads = 0;
+}
+Module.expectedDataFileDownloads++;
 (function() {
 '''
 
@@ -431,12 +436,6 @@ if has_preloaded:
   package_uuid = uuid.uuid4();
   remote_package_name = os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
   code += r'''
-    if (!Module.expectedDataFileDownloads) {
-      Module.expectedDataFileDownloads = 0;
-      Module.finishedDataFileDownloads = 0;
-    }
-    Module.expectedDataFileDownloads++;
-
     var PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = '%s';
