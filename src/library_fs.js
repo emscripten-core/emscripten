@@ -28,6 +28,7 @@ mergeInto(LibraryManager.library, {
     ignorePermissions: true,
     
     ErrnoError: null, // set during init
+    genericErrors: {},
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
@@ -1079,6 +1080,11 @@ mergeInto(LibraryManager.library, {
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
+      // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
+      [ERRNO_CODES.ENOENT].forEach(function(code) {
+        FS.genericErrors[code] = new FS.ErrnoError(code);
+        FS.genericErrors[code].stack = '<generic error, no stack>';
+      });
     },
     staticInit: function() {
       FS.ensureErrnoError();

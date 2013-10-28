@@ -117,7 +117,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw FS.genericErrors[ERRNO_CODES.ENOENT];
       },
       mknod: function(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
