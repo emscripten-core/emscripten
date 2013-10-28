@@ -63,7 +63,7 @@ mergeInto(LibraryManager.library, {
         }
 
         current = FS.lookupNode(current, parts[i]);
-        current_path = PATH.join(current_path, parts[i]);
+        current_path = PATH.join2(current_path, parts[i]);
 
         // jump to the mount's root node if this is a mountpoint
         if (FS.isMountpoint(current)) {
@@ -95,9 +95,9 @@ mergeInto(LibraryManager.library, {
       var path;
       while (true) {
         if (FS.isRoot(node)) {
-          return path ? PATH.join(node.mount.mountpoint, path) : node.mount.mountpoint;
+          return path ? PATH.join2(node.mount.mountpoint, path) : node.mount.mountpoint;
         }
-        path = path ? PATH.join(node.name, path) : node.name;
+        path = path ? PATH.join2(node.name, path) : node.name;
         node = node.parent;
       }
     },
@@ -1189,7 +1189,7 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
     createFolder: function(parent, name, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       return FS.mkdir(path, mode);
     },
@@ -1199,7 +1199,7 @@ mergeInto(LibraryManager.library, {
       while (parts.length) {
         var part = parts.pop();
         if (!part) continue;
-        var current = PATH.join(parent, part);
+        var current = PATH.join2(parent, part);
         try {
           FS.mkdir(current);
         } catch (e) {
@@ -1210,12 +1210,12 @@ mergeInto(LibraryManager.library, {
       return current;
     },
     createFile: function(parent, name, properties, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
-      var path = name ? PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
+      var path = name ? PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
@@ -1234,7 +1234,7 @@ mergeInto(LibraryManager.library, {
       return node;
     },
     createDevice: function(parent, name, input, output) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
@@ -1288,7 +1288,7 @@ mergeInto(LibraryManager.library, {
       return FS.mkdev(path, mode, dev);
     },
     createLink: function(parent, name, target, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       return FS.symlink(target, path);
     },
     // Makes sure a file's contents are loaded. Returns whether the file has
@@ -1478,7 +1478,7 @@ mergeInto(LibraryManager.library, {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
-      var fullname = name ? PATH.resolve(PATH.join(parent, name)) : parent;
+      var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {
