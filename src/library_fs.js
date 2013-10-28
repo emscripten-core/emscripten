@@ -1215,7 +1215,7 @@ mergeInto(LibraryManager.library, {
           data = arr;
         }
         // make sure we can write to the file
-        FS.chmod(path, mode | {{{ cDefine('S_IWUGO') }}});
+        FS.chmod(node, mode | {{{ cDefine('S_IWUGO') }}});
         var stream = FS.open(path, 'w');
         FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
