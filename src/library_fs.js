@@ -360,24 +360,28 @@ mergeInto(LibraryManager.library, {
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
+      if (!FS.FSStream) {
+        FS.FSStream = {};
+        // compatibility
+        Object.defineProperties(FS.FSStream, {
+          object: {
+            get: function() { return this.node; },
+            set: function(val) { this.node = val; }
+          },
+          isRead: {
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
+          },
+          isWrite: {
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
+          },
+          isAppend: {
+            get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
+          }
+        });
+      }
+      stream.prototype = FS.FSStream;
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
-      // compatibility
-      Object.defineProperties(stream, {
-        object: {
-          get: function() { return stream.node; },
-          set: function(val) { stream.node = val; }
-        },
-        isRead: {
-          get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
-        },
-        isWrite: {
-          get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
-        },
-        isAppend: {
-          get: function() { return (stream.flags & {{{ cDefine('O_APPEND') }}}); }
-        }
-      });
       FS.streams[fd] = stream;
       return stream;
     },
