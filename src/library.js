@@ -1745,7 +1745,7 @@ LibraryManager.library = {
             type == 'F' || type == 'E' || type == 'G') {
           var last = 0;
           next = get();
-          while (next > 0) {
+          while ( next > 0 && (!(next in __scanString.whiteSpace)) )  {
             buffer.push(String.fromCharCode(next));
             if (__isFloat(buffer.join(''))) {
               last = buffer.length;
