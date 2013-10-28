@@ -62,7 +62,9 @@ mergeInto(LibraryManager.library, {
     basename: function(path) {
       // EMSCRIPTEN return '/'' for '/', not an empty string
       if (path === '/') return '/';
-      return PATH.splitPath(path)[2];
+      var lastSlash = path.lastIndexOf('/');
+      if (lastSlash === -1) return path;
+      return path.substr(lastSlash+1);
     },
     extname: function(path) {
       return PATH.splitPath(path)[3];
