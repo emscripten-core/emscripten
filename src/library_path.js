@@ -59,14 +59,10 @@ mergeInto(LibraryManager.library, {
       }
       return root + dir;
     },
-    basename: function(path, ext) {
+    basename: function(path) {
       // EMSCRIPTEN return '/'' for '/', not an empty string
       if (path === '/') return '/';
-      var f = PATH.splitPath(path)[2];
-      if (ext && f.substr(-1 * ext.length) === ext) {
-        f = f.substr(0, f.length - ext.length);
-      }
-      return f;
+      return PATH.splitPath(path)[2];
     },
     extname: function(path) {
       return PATH.splitPath(path)[3];
