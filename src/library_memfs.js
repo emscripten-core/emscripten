@@ -1,6 +1,8 @@
 mergeInto(LibraryManager.library, {
   $MEMFS__deps: ['$FS'],
   $MEMFS: {
+    ops_table: null,
+
     // content modes
     CONTENT_OWNING: 1, // contains a subarray into the heap, and we own it, without copying (note: someone else needs to free() it, if that is necessary)
     CONTENT_FLEXIBLE: 2, // has been modified or never set to anything, and is a flexible js array that can grow/shrink
@@ -13,51 +15,71 @@ mergeInto(LibraryManager.library, {
         // no supported
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
       }
+      if (!MEMFS.ops_table) {
+        MEMFS.ops_table = {
+          dir: {
+            node: {
+              getattr: MEMFS.node_ops.getattr,
+              setattr: MEMFS.node_ops.setattr,
+              lookup: MEMFS.node_ops.lookup,
+              mknod: MEMFS.node_ops.mknod,
+              mknod: MEMFS.node_ops.mknod,
+              rename: MEMFS.node_ops.rename,
+              unlink: MEMFS.node_ops.unlink,
+              rmdir: MEMFS.node_ops.rmdir,
+              readdir: MEMFS.node_ops.readdir,
+              symlink: MEMFS.node_ops.symlink
+            },
+            stream: {
+              llseek: MEMFS.stream_ops.llseek
+            }
+          },
+          file: {
+            node: {
+              getattr: MEMFS.node_ops.getattr,
+              setattr: MEMFS.node_ops.setattr
+            },
+            stream: {
+              llseek: MEMFS.stream_ops.llseek,
+              read: MEMFS.stream_ops.read,
+              write: MEMFS.stream_ops.write,
+              allocate: MEMFS.stream_ops.allocate,
+              mmap: MEMFS.stream_ops.mmap
+            }
+          },
+          link: {
+            node: {
+              getattr: MEMFS.node_ops.getattr,
+              setattr: MEMFS.node_ops.setattr,
+              readlink: MEMFS.node_ops.readlink
+            },
+            stream: {}
+          },
+          chrdev: {
+            node: {
+              getattr: MEMFS.node_ops.getattr,
+              setattr: MEMFS.node_ops.setattr
+            },
+            stream: FS.chrdev_stream_ops
+          },
+        };
+      }
       var node = FS.createNode(parent, name, mode, dev);
       if (FS.isDir(node.mode)) {
-        node.node_ops = {
-          getattr: MEMFS.node_ops.getattr,
-          setattr: MEMFS.node_ops.setattr,
-          lookup: MEMFS.node_ops.lookup,
-          mknod: MEMFS.node_ops.mknod,
-          mknod: MEMFS.node_ops.mknod,
-          rename: MEMFS.node_ops.rename,
-          unlink: MEMFS.node_ops.unlink,
-          rmdir: MEMFS.node_ops.rmdir,
-          readdir: MEMFS.node_ops.readdir,
-          symlink: MEMFS.node_ops.symlink
-        };
-        node.stream_ops = {
-          llseek: MEMFS.stream_ops.llseek
-        };
+        node.node_ops = MEMFS.ops_table.dir.node;
+        node.stream_ops = MEMFS.ops_table.dir.stream;
         node.contents = {};
       } else if (FS.isFile(node.mode)) {
-        node.node_ops = {
-          getattr: MEMFS.node_ops.getattr,
-          setattr: MEMFS.node_ops.setattr
-        };
-        node.stream_ops = {
-          llseek: MEMFS.stream_ops.llseek,
-          read: MEMFS.stream_ops.read,
-          write: MEMFS.stream_ops.write,
-          allocate: MEMFS.stream_ops.allocate,
-          mmap: MEMFS.stream_ops.mmap
-        };
+        node.node_ops = MEMFS.ops_table.file.node;
+        node.stream_ops = MEMFS.ops_table.file.stream;
         node.contents = [];
         node.contentMode = MEMFS.CONTENT_FLEXIBLE;
       } else if (FS.isLink(node.mode)) {
-        node.node_ops = {
-          getattr: MEMFS.node_ops.getattr,
-          setattr: MEMFS.node_ops.setattr,
-          readlink: MEMFS.node_ops.readlink
-        };
-        node.stream_ops = {};
+        node.node_ops = MEMFS.ops_table.link.node;
+        node.stream_ops = MEMFS.ops_table.link.stream;
       } else if (FS.isChrdev(node.mode)) {
-        node.node_ops = {
-          getattr: MEMFS.node_ops.getattr,
-          setattr: MEMFS.node_ops.setattr
-        };
-        node.stream_ops = FS.chrdev_stream_ops;
+        node.node_ops = MEMFS.ops_table.chrdev.node;
+        node.stream_ops = MEMFS.ops_table.chrdev.stream;
       }
       node.timestamp = Date.now();
       // add the new node to the parent
