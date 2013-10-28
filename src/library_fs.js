@@ -159,44 +159,50 @@ mergeInto(LibraryManager.library, {
       return FS.lookup(parent, name);
     },
     createNode: function(parent, name, mode, rdev) {
-      var node = {
-        id: FS.nextInode++,
-        name: name,
-        mode: mode,
-        node_ops: {},
-        stream_ops: {},
-        rdev: rdev,
-        parent: null,
-        mount: null
-      };
-      if (!parent) {
-        parent = node;  // root node sets parent to itself
+      if (!FS.FSNode) {
+        FS.FSNode = function(parent, name, mode, rdev) {
+          this.id = FS.nextInode++;
+          this.name = name;
+          this.mode = mode;
+          this.node_ops = {};
+          this.stream_ops = {};
+          this.rdev = rdev;
+          this.parent = null;
+          this.mount = null;
+          if (!parent) {
+            parent = this;  // root node sets parent to itself
+          }
+          this.parent = parent;
+          this.mount = parent.mount;
+          FS.hashAddNode(this);
+        };
+
+        // compatibility
+        var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
+        var writeMode = {{{ cDefine('S_IWUGO') }}};
+
+        FS.FSNode.prototype = {};
+
+        // NOTE we must use Object.defineProperties instead of individual calls to
+        // Object.defineProperty in order to make closure compiler happy
+        Object.defineProperties(FS.FSNode.prototype, {
+          read: {
+            get: function() { return (this.mode & readMode) === readMode; },
+            set: function(val) { val ? this.mode |= readMode : this.mode &= ~readMode; }
+          },
+          write: {
+            get: function() { return (this.mode & writeMode) === writeMode; },
+            set: function(val) { val ? this.mode |= writeMode : this.mode &= ~writeMode; }
+          },
+          isFolder: {
+            get: function() { return FS.isDir(this.mode); },
+          },
+          isDevice: {
+            get: function() { return FS.isChrdev(this.mode); },
+          },
+        });
       }
-      node.parent = parent;
-      node.mount = parent.mount;
-      // compatibility
-      var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      var writeMode = {{{ cDefine('S_IWUGO') }}};
-      // NOTE we must use Object.defineProperties instead of individual calls to
-      // Object.defineProperty in order to make closure compiler happy
-      Object.defineProperties(node, {
-        read: {
-          get: function() { return (node.mode & readMode) === readMode; },
-          set: function(val) { val ? node.mode |= readMode : node.mode &= ~readMode; }
-        },
-        write: {
-          get: function() { return (node.mode & writeMode) === writeMode; },
-          set: function(val) { val ? node.mode |= writeMode : node.mode &= ~writeMode; }
-        },
-        isFolder: {
-          get: function() { return FS.isDir(node.mode); },
-        },
-        isDevice: {
-          get: function() { return FS.isChrdev(node.mode); },
-        },
-      });
-      FS.hashAddNode(node);
-      return node;
+      return new FS.FSNode(parent, name, mode, rdev);
     },
     destroyNode: function(node) {
       FS.hashRemoveNode(node);
