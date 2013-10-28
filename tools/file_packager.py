@@ -338,18 +338,9 @@ if has_preloaded:
       send: function() {},
       onload: function() {
         var byteArray = this.byteArray.subarray(this.start, this.end);
-        if (this.crunched) {
-          var ddsHeader = byteArray.subarray(0, 128);
-          var that = this;
-          requestDecrunch(this.name, byteArray.subarray(128), function(ddsData) {
-            byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
-            byteArray.set(ddsHeader, 0);
-            byteArray.set(ddsData, 128);
-            that.finish(byteArray);
-          });
-        } else {
+%s
           this.finish(byteArray);
-        }
+%s
       },
       finish: function(byteArray) {
         var that = this;
@@ -365,7 +356,20 @@ if has_preloaded:
         this.requests[this.name] = null;
       },
     };
-  '''
+  ''' % ('' if not crunch else '''
+        if (this.crunched) {
+          var ddsHeader = byteArray.subarray(0, 128);
+          var that = this;
+          requestDecrunch(this.name, byteArray.subarray(128), function(ddsData) {
+            byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
+            byteArray.set(ddsHeader, 0);
+            byteArray.set(ddsData, 128);
+            that.finish(byteArray);
+          });
+        } else {
+''', '' if not crunch else '''
+        }
+''')
 
 counter = 0
 for file_ in data_files:
