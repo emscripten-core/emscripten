@@ -73,12 +73,7 @@ mergeInto(LibraryManager.library, {
     },
     join: function() {
       var paths = Array.prototype.slice.call(arguments, 0);
-      return PATH.normalize(paths.filter(function(p, index) {
-        if (typeof p !== 'string') {
-          throw new TypeError('Arguments to path.join must be strings');
-        }
-        return p;
-      }).join('/'));
+      return PATH.normalize(paths.join('/'));
     },
     resolve: function() {
       var resolvedPath = '',
