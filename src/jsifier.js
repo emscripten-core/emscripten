@@ -1324,7 +1324,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (isNumber(item.ident)) {
           // Direct read from a memory address; this may be an intentional segfault, if not, it is a bug in the source
           if (ASM_JS) {
-            return asmCoercion('abort(' + item.ident + ')', item.type);
+            return asmFFICoercion('abort(' + item.ident + ')', item.type);
           } else {
             item.assignTo = null;
             return 'throw "fault on read from ' + item.ident + '";';
@@ -1617,8 +1617,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ret = callIdent + '(' + args.join(',') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
       if (ffiCall) {
-        ret = asmCoercion(ret, ensureValidFFIType(returnType));
-        if (FROUND && returnType === 'float') ret = asmCoercion(ret, 'float'); // receive double, then float it
+        ret = asmFFICoercion(ret, returnType);
       } else {
         ret = asmCoercion(ret, returnType);
       }
