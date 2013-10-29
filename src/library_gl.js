@@ -506,6 +506,7 @@ var LibraryGL = {
       case 0x1F01 /* GL_RENDERER */:
       case 0x1F02 /* GL_VERSION */:
         ret = allocate(intArrayFromString(Module.ctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
+        break;
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = Module.ctx.getSupportedExtensions();
         var gl_exts = [];
@@ -514,8 +515,10 @@ var LibraryGL = {
           gl_exts.push("GL_" + exts[i]);
         }
         ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
+        break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
         ret = allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
+        break;
       default:
         throw 'Failure: Invalid glGetString value: ' + name_;
     }
@@ -1800,13 +1803,16 @@ var LibraryGL = {
 
       var glGetString = _glGetString;
       _glGetString = function(name_) {
+        if (GL.stringCache[name_]) return GL.stringCache[name_];
         switch(name_) {
           case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
-            return allocate(intArrayFromString(Module.ctx.getSupportedExtensions().join(' ') +
+            var ret = allocate(intArrayFromString(Module.ctx.getSupportedExtensions().join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
                    (GL.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
                    (GL.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
             ), 'i8', ALLOC_NORMAL);
+            GL.stringCache[name_] = ret;
+            return ret;
         }
         return glGetString(name_);
       };
