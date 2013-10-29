@@ -366,8 +366,8 @@ var Functions = {
                 } else if (t[0] === 'd') {
                   retPre = 'return +';
                 } else {
-                  retPre = 'return Math_fround(';
-                  retPost = ')';
+                  retPre = 'return Math_fround(+(';
+                  retPost = '))';
                 }
               }
               for (var j = 1; j < t.length; j++) {
