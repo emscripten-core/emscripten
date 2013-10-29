@@ -360,15 +360,9 @@ var Functions = {
             if (!wrapped[curr]) {
               var args = '', arg_coercions = '', call = short + '(', retPre = '', retPost = '';
               if (t[0] != 'v') {
-                if (t[0] == 'i') {
-                  retPre = 'return ';
-                  retPost = '|0';
-                } else if (t[0] === 'd') {
-                  retPre = 'return +';
-                } else {
-                  retPre = 'return Math_fround(+(';
-                  retPost = '))';
-                }
+                var temp = asmFFICoercion('X', Functions.getSignatureType(t[0])).split('X');
+                retPre = 'return ' + temp[0];
+                retPost = temp[1];
               }
               for (var j = 1; j < t.length; j++) {
                 args += (j > 1 ? ',' : '') + 'a' + j;
