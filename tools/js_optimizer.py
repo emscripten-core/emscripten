@@ -29,13 +29,13 @@ class Minifier:
     during registerize perform minification of locals.
   '''
 
-  def __init__(self, js, js_engine):
+  def __init__(self, js, js_engine, MAX_NAMES):
     self.js = js
     self.js_engine = js_engine
+    MAX_NAMES = min(MAX_NAMES, 120000)
 
     # Create list of valid short names
 
-    MAX_NAMES = 80000
     INVALID_2 = set(['do', 'if', 'in'])
     INVALID_3 = set(['for', 'new', 'try', 'var', 'env', 'let'])
 
@@ -56,7 +56,6 @@ class Minifier:
           if len(self.names) >= MAX_NAMES: break
           curr = a + b + c
           if curr not in INVALID_3: self.names.append(curr)
-    #print >> sys.stderr, self.names
 
   def minify_shell(self, shell, minify_whitespace, source_map=False):
     #print >> sys.stderr, "MINIFY SHELL 1111111111", shell, "\n222222222222222"
@@ -187,7 +186,8 @@ EMSCRIPTEN_FUNCS();
 ''' + js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
-      minifier = Minifier(js, js_engine)
+      # we assume there is a maximum of one new name per line
+      minifier = Minifier(js, js_engine, js.count('\n') + asm_shell.count('\n'))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
