@@ -360,15 +360,19 @@ mergeInto(LibraryManager.library, {
     },
 
     requestAnimationFrame: function(func) {
-      if (!window.requestAnimationFrame) {
-        window.requestAnimationFrame = window['requestAnimationFrame'] ||
-                                       window['mozRequestAnimationFrame'] ||
-                                       window['webkitRequestAnimationFrame'] ||
-                                       window['msRequestAnimationFrame'] ||
-                                       window['oRequestAnimationFrame'] ||
-                                       window['setTimeout'];
+      if (typeof window === 'undefined') { // Provide fallback to setTimeout if window is undefined (e.g. in Node.js)
+        setTimeout(func, 1000/60);
+      } else {
+        if (!window.requestAnimationFrame) {
+          window.requestAnimationFrame = window['requestAnimationFrame'] ||
+                                         window['mozRequestAnimationFrame'] ||
+                                         window['webkitRequestAnimationFrame'] ||
+                                         window['msRequestAnimationFrame'] ||
+                                         window['oRequestAnimationFrame'] ||
+                                         window['setTimeout'];
+        }
+        window.requestAnimationFrame(func);
       }
-      window.requestAnimationFrame(func);
     },
 
     // generic abort-aware wrapper for an async callback
@@ -782,11 +786,7 @@ mergeInto(LibraryManager.library, {
       }
     } else {
       Browser.mainLoop.scheduler = function() {
-        if (typeof window === 'undefined') { // requestAnimationFrame will fail if window is undefined (e.g. in Node.js)
-          setTimeout(Browser.mainLoop.runner, 1000/60);
-        } else {
-          Browser.requestAnimationFrame(Browser.mainLoop.runner);
-        }
+        Browser.requestAnimationFrame(Browser.mainLoop.runner);
       }
     }
     Browser.mainLoop.scheduler();
