@@ -203,7 +203,7 @@ void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
  * absolute time, and is only meaningful in comparison to
  * other calls to this function. The unit is ms.
  */
-float emscripten_get_now();
+double emscripten_get_now();
 
 /*
  * Simple random number generation in [0, 1), maps to Math.random().

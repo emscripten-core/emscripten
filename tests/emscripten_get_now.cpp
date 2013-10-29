@@ -14,10 +14,10 @@ int main() {
   // b) Values returned by emscripten_get_now() are strictly nondecreasing.
   // c) emscripten_get_now() is able to return sub-millisecond precision timer values.
   bool detected_good_timer_precision = false;
-  float smallest_delta = 0.f;
+  double smallest_delta = 0.f;
   for(int x = 0; x < 1000; ++x) { // Have several attempts to find a good small delta, i.e. give time to JS engine to warm up the code and so on.
-    float t = emscripten_get_now();
-    float t2 = emscripten_get_now();
+    double t = emscripten_get_now();
+    double t2 = emscripten_get_now();
     for(int i = 0; i < 100 && t == t2; ++i) {
       t2 = emscripten_get_now();
     }
