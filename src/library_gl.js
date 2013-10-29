@@ -242,7 +242,9 @@ var LibraryGL = {
           sizePerPixel = 2;
           break;
         case 0x1406 /* GL_FLOAT */:
+#if ASSERTIONS
           assert(GL.floatExt, 'Must have OES_texture_float to use float textures');
+#endif
           switch (format) {
             case 0x1907 /* GL_RGB */:
               sizePerPixel = 3*4;
@@ -689,7 +691,9 @@ var LibraryGL = {
 
   glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
+#if ASSERTIONS
     assert(GL.compressionExt);
+#endif
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
@@ -700,7 +704,9 @@ var LibraryGL = {
 
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
+#if ASSERTIONS
     assert(GL.compressionExt);
+#endif
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
@@ -734,7 +740,9 @@ var LibraryGL = {
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels: function(x, y, width, height, format, type, pixels) {
+#if ASSERTIONS
     assert(type == 0x1401 /* GL_UNSIGNED_BYTE */);
+#endif
     var sizePerPixel;
     switch (format) {
       case 0x1907 /* GL_RGB */:
@@ -1366,7 +1374,9 @@ var LibraryGL = {
     {{{ makeSetValue('count', '0', 'len', 'i32') }}};
     for (var i = 0; i < len; ++i) {
       var id = GL.shaders.indexOf(result[i]);
+#if ASSERTIONS
       assert(id !== -1, 'shader not bound to local id');
+#endif
       {{{ makeSetValue('shaders', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -2025,7 +2035,9 @@ var LibraryGL = {
         glBindBuffer(target, buffer);
         if (target == Module.ctx.ARRAY_BUFFER) {
           if (GLEmulation.currentVao) {
+#if ASSERTIONS
             assert(GLEmulation.currentVao.arrayBuffer == buffer || GLEmulation.currentVao.arrayBuffer == 0 || buffer == 0, 'TODO: support for multiple array buffers in vao');
+#endif
             GLEmulation.currentVao.arrayBuffer = buffer;
           }
         } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
@@ -2165,7 +2177,9 @@ var LibraryGL = {
 
   glBindProgram__sig: 'vii',
   glBindProgram: function(type, id) {
+#if ASSERTIONS
     assert(id == 0);
+#endif
   },
 
   glGetPointerv: function(name, p) {
@@ -2844,9 +2858,9 @@ var LibraryGL = {
           } else if (gl) {
             maxTexUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
           }
-
+#if ASSERTIONS
           assert(maxTexUnits > 0);
-
+#endif
           s_texUnits = [];
           for (var i = 0; i < maxTexUnits; i++) {
             s_texUnits.push(new CTexUnit());
@@ -2905,9 +2919,10 @@ var LibraryGL = {
         },
 
         getTexUnitType: function(texUnitID) {
+#if ASSERTIONS
           assert(texUnitID >= 0 &&
                  texUnitID < s_texUnits.length);
-
+#endif
           return s_texUnits[texUnitID].getTexType();
         },
 
@@ -3210,9 +3225,11 @@ var LibraryGL = {
         if (!GL.immediate.enabledClientAttributes[texAttribName])
           continue;
 
+#if ASSERTIONS
         if (!useCurrProgram) {
           assert(GL.immediate.TexEnvJIT.getTexUnitType(i) != 0, "GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
         }
+#endif
 
         textureSizes[i] = GL.immediate.clientAttributes[texAttribName].size;
         textureTypes[i] = GL.immediate.clientAttributes[texAttribName].type;
@@ -3429,7 +3446,9 @@ var LibraryGL = {
           if (!GL.currArrayBuffer) {
             var start = GL.immediate.firstVertex*GL.immediate.stride;
             var end = GL.immediate.lastVertex*GL.immediate.stride;
+#if ASSERTIONS
             assert(end <= GL.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
+#endif
             arrayBuffer = GL.tempVertexBuffers[GL.tempBufferIndexLookup[end]];
             // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
           } else {
@@ -3598,10 +3617,10 @@ var LibraryGL = {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
         }
+#if ASSERTIONS
         if (!GL.currElementArrayBuffer) {
           assert(type == Module.ctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
         }
-#if ASSERTIONS
         console.log("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
         GL.immediate.prepareClientAttributes(count, false);
@@ -3809,13 +3828,17 @@ var LibraryGL = {
           if (!attribute) break;
           attribute.offset = attribute.pointer - start;
           if (attribute.offset > bytes) { // ensure we start where we should
+#if ASSERTIONS
             assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
+#endif
             bytes += attribute.offset - bytes;
           }
           bytes += attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
           if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
         }
+#if ASSERTIONS
         assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
+#endif
         if (bytes < stride) { // ensure the size is that of the stride
           bytes = stride;
         }
@@ -3842,18 +3865,21 @@ var LibraryGL = {
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
       var numVertexes = 4 * this.vertexCounter / GL.immediate.stride;
+#if ASSERTIONS
       assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
-
+#endif
       var emulatedElementArrayBuffer = false;
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
         if (!GL.currArrayBuffer && GL.immediate.firstVertex > GL.immediate.lastVertex) {
           // Figure out the first and last vertex from the index data
+#if ASSERTIONS
           assert(!GL.currElementArrayBuffer); // If we are going to upload array buffer data, we need to find which range to
                                               // upload based on the indices. If they are in a buffer on the GPU, that is very
                                               // inconvenient! So if you do not have an array buffer, you should also not have
                                               // an element array buffer. But best is to use both buffers!
+#endif
           for (var i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'i16', null, 1) }}};
             GL.immediate.firstVertex = Math.min(GL.immediate.firstVertex, currIndex);
@@ -3862,7 +3888,9 @@ var LibraryGL = {
         }
         if (!GL.currElementArrayBuffer) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
+#if ASSERTIONS
           assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
+#endif
           var indexBuffer = GL.tempIndexBuffers[GL.tempBufferIndexLookup[numProvidedIndexes << 1]];
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
           Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + (numProvidedIndexes << 1)') }}});
@@ -3874,11 +3902,15 @@ var LibraryGL = {
         // GL.immediate.firstVertex is the first vertex we want. Quad indexes are in the pattern
         // 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at index firstVertex * 1.5 to see it.
         // Then since indexes are 2 bytes each, that means 3
+#if ASSERTIONS
         assert(GL.immediate.firstVertex % 4 == 0);
+#endif
         ptr = GL.immediate.firstVertex*3;
         var numQuads = numVertexes / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
+#if ASSERTIONS
         assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
+#endif
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
       }

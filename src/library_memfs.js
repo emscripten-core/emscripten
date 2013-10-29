@@ -222,7 +222,9 @@ mergeInto(LibraryManager.library, {
 #if USE_TYPED_ARRAYS == 2
         if (length && contents.length === 0 && position === 0 && buffer.subarray) {
           // just replace it with the new data
+#if ASSERTIONS
           assert(buffer.length);
+#endif
           if (canOwn && buffer.buffer === HEAP8.buffer && offset === 0) {
             node.contents = buffer; // this is a subarray of the heap, and we can own it
             node.contentMode = MEMFS.CONTENT_OWNING;
