@@ -215,8 +215,22 @@ function isIdenticallyImplemented(type1, type2) {
 }
 
 function isIllegalType(type) {
-  var bits = getBits(type);
-  return bits > 0 && (bits >= 64 || !isPowerOfTwo(bits));
+  switch (type) {
+    case 'i1':
+    case 'i8':
+    case 'i16':
+    case 'i32':
+    case 'float':
+    case 'double':
+    case 'rawJS':
+    case '<2 x float>':
+    case '<4 x float>':
+    case '<2 x i32>':
+    case '<4 x i32>':
+    case 'void': return false;
+  }
+  if (!type || type[type.length-1] === '*') return false;
+  return true;
 }
 
 function isVoidType(type) {
