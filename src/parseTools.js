@@ -493,16 +493,10 @@ function parseParamTokens(params) {
       if (segment[2] && segment[2].text == 'to') { // part of bitcast params
         segment = segment.slice(0, 2);
       }
-      while (segment.length > 2) {
-        segment[0].text += segment[1].text;
-        segment.splice(1, 1); // TODO: merge tokens nicely
-      }
-      ret.push({
-        intertype: 'value',
-        type: segment[0].text,
-        ident: toNiceIdent(parseNumerical(segment[1].text, segment[0].text))
-      });
-      Types.needAnalysis[removeAllPointing(ret[ret.length-1].type)] = 0;
+      var parsed = parseLLVMSegment(segment);
+      if (parsed.intertype === 'value' && !isIllegalType(parsed.type)) parsed.ident = parseNumerical(parsed.ident);
+      ret.push(parsed);
+      Types.needAnalysis[removeAllPointing(parsed.type)] = 0;
     }
     ret[ret.length-1].byVal = byVal;
   }
