@@ -1187,7 +1187,7 @@ function ensureDot(value) {
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!ASM_JS) return value;
   if (!isNumber(value)) return value;
-  if (FROUND && type === 'float') {
+  if (PRECISE_F32 && type === 'float') {
     // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
     if (value == 0) return 'Math_fround(0)';
     value = ensureDot(value);
@@ -1207,7 +1207,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 
 function asmInitializer(type) {
   if (type in Runtime.FLOAT_TYPES) {
-    if (FROUND && type === 'float') return 'Math_fround(0)';
+    if (PRECISE_F32 && type === 'float') return 'Math_fround(0)';
     return RUNNING_JS_OPTS ? '+0' : '.0';
   } else {
     return '0';
@@ -1229,7 +1229,7 @@ function asmCoercion(value, type, signedness) {
           value = '(' + value + ')|0';
         }
       }
-      if (FROUND && type === 'float') {
+      if (PRECISE_F32 && type === 'float') {
         return 'Math_fround(' + value + ')';
       } else {
         return '(+(' + value + '))';
@@ -2153,7 +2153,7 @@ function makeIsNaN(value, type) {
 }
 
 function makeFloat(value, type) {
-  if (FROUND && type == 'float') {
+  if (PRECISE_F32 && type == 'float') {
     return 'Math_fround(' + value + ')';
   }
   return value;
@@ -2502,11 +2502,11 @@ function processMathop(item) {
     }
     case 'sext': return idents[0];
     case 'fpext': {
-      if (FROUND) return '+(' + idents[0] + ')';
+      if (PRECISE_F32) return '+(' + idents[0] + ')';
       return idents[0];
     }
     case 'fptrunc': {
-      if (FROUND) return 'Math_fround(' + idents[0] + ')';
+      if (PRECISE_F32) return 'Math_fround(' + idents[0] + ')';
       return idents[0];
     }
     case 'select': return idents[0] + '?' + asmEnsureFloat(idents[1], item.type) + ':' + asmEnsureFloat(idents[2], item.type);
@@ -2706,7 +2706,7 @@ function ensureValidFFIType(type) {
 // FFI return values must arrive as doubles, and we can force them to floats afterwards
 function asmFFICoercion(value, type) {
   value = asmCoercion(value, ensureValidFFIType(type));
-  if (FROUND && type === 'float') value = asmCoercion(value, 'float');
+  if (PRECISE_F32 && type === 'float') value = asmCoercion(value, 'float');
   return value;
 }
 

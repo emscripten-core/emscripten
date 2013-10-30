@@ -1515,7 +1515,7 @@ class JS:
     settings = settings or Settings
     if sig == 'i':
       return '0'
-    elif sig == 'f' and settings.get('FROUND'):
+    elif sig == 'f' and settings.get('PRECISE_F32'):
       return 'Math_fround(0)'
     else:
       return '+0'
@@ -1525,7 +1525,7 @@ class JS:
     settings = settings or Settings
     if sig == 'i':
       return value + '|0'
-    elif sig == 'f' and settings.get('FROUND'):
+    elif sig == 'f' and settings.get('PRECISE_F32'):
       return 'Math_fround(' + value + ')'
     elif sig == 'd' or sig == 'f':
       return '+' + value

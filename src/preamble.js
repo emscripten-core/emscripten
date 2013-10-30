@@ -1074,8 +1074,13 @@ Math['imul'] = function(a, b) {
 #endif
 Math.imul = Math['imul'];
 
-#if FROUND
+#if PRECISE_F32
+#if PRECISE_F32 == 1
+var froundBuffer = new Float32Array(1);
+if (!Math['fround']) Math['fround'] = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
+#else // 2
 if (!Math['fround']) Math['fround'] = function(x) { return x };
+#endif
 Math.fround = Math['fround'];
 #endif
 
