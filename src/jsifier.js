@@ -948,11 +948,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     if (item.valueType[item.valueType.length-1] === '>') {
       // vector store TODO: move to makeSetValue?
-      var base = getVectorBaseType(item.valueType);
-      return '(' + makeSetValue(item.ident,  0, value + '.x', base, 0, 0, item.align) + ',' +
-                   makeSetValue(item.ident,  4, value + '.y', base, 0, 0, item.align) + ',' +
-                   makeSetValue(item.ident,  8, value + '.z', base, 0, 0, item.align) + ',' +
-                   makeSetValue(item.ident, 12, value + '.w', base, 0, 0, item.align) + ')';
+      var native = getVectorNativeType(item.valueType);
+      var base = getSIMDName(native);
+      return '(' + makeSetValue(item.ident,  0, value + '.x', native, 0, 0, item.align) + ',' +
+                   makeSetValue(item.ident,  4, value + '.y', native, 0, 0, item.align) + ',' +
+                   makeSetValue(item.ident,  8, value + '.z', native, 0, 0, item.align) + ',' +
+                   makeSetValue(item.ident, 12, value + '.w', native, 0, 0, item.align) + ')';
     }
     switch (impl) {
       case VAR_NATIVIZED:
@@ -1323,11 +1324,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     var value = finalizeLLVMParameter(item.pointer);
     if (item.valueType[item.valueType.length-1] === '>') {
       // vector load
-      var base = getVectorBaseType(item.valueType);
-      return base + '32x4(' + makeGetValue(value,  0, base, 0, item.unsigned, 0, item.align) + ',' +
-                              makeGetValue(value,  4, base, 0, item.unsigned, 0, item.align) + ',' +
-                              makeGetValue(value,  8, base, 0, item.unsigned, 0, item.align) + ',' +
-                              makeGetValue(value, 12, base, 0, item.unsigned, 0, item.align) + ')';
+      var native = getVectorNativeType(item.valueType);
+      var base = getSIMDName(native);
+      return base + '32x4(' + makeGetValue(value,  0, native, 0, item.unsigned, 0, item.align) + ',' +
+                              makeGetValue(value,  4, native, 0, item.unsigned, 0, item.align) + ',' +
+                              makeGetValue(value,  8, native, 0, item.unsigned, 0, item.align) + ',' +
+                              makeGetValue(value, 12, native, 0, item.unsigned, 0, item.align) + ')';
     }
     var impl = item.ident ? getVarImpl(item.funcData, item.ident) : VAR_EMULATED;
     switch (impl) {

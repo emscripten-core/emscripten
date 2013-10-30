@@ -2022,6 +2022,12 @@ a(int [32], char [5]*)
 
 #include <emscripten/vector.h>
 
+static inline float32x4 __attribute__((always_inline))
+_mm_set_ps(const float __Z, const float __Y, const float __X, const float __W)
+{
+  return (float32x4){ __W, __X, __Y, __Z };
+}
+
 int main(int argc, char **argv) {
   float data[8];
   for (int i = 0; i < 32; i++) data[i] = (1+i+argc)*(2+i+argc*argc);
@@ -2031,11 +2037,11 @@ int main(int argc, char **argv) {
     float32x4 c, d;
     c = *a;
     d = *b;
-    printf("floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    printf("1floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
     c = c+d;
-    printf("floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    printf("2floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
     d = c*d;
-    printf("floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    printf("3floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
   }
   {
     uint32x4 *a = (uint32x4*)&data[0];
@@ -2043,19 +2049,30 @@ int main(int argc, char **argv) {
     uint32x4 c, d, e, f;
     c = *a;
     d = *b;
-    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+    printf("4uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
     e = c+d;
     f = c-d;
-    printf("uints! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
+    printf("5uints! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
   }
+  {
+    float32x4 c, d, e, f;
+    c = _mm_set_ps(9.0, 4.0, 0, -9.0);
+    d = _mm_set_ps(10.0, 14.0, -12, -2.0);
+    printf("6floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+  }
+
   return 0;
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '-O2']).communicate()
-    self.assertContained('''floats! 6, 12, 20, 30   42, 56, 72, 90
-floats! 48, 68, 92, 120   42, 56, 72, 90
-floats! 48, 68, 92, 120   2016, 3808, 6624, 10800
-uints! 1086324736, 1094713344, 1101004800, 1106247680   1109917696, 1113587712, 1116733440, 1119092736
-uints! -2098724864, -2086666240, -2077229056, -2069626880   -23592960, -18874368, -15728640, -12845056
+
+    for opts in [[], ['-O1'], ['-O2']]:
+      print opts
+      Popen([PYTHON, EMCC, 'src.cpp'] + opts).communicate()
+      self.assertContained('''1floats! 6, 12, 20, 30   42, 56, 72, 90
+2floats! 48, 68, 92, 120   42, 56, 72, 90
+3floats! 48, 68, 92, 120   2016, 3808, 6624, 10800
+4uints! 1086324736, 1094713344, 1101004800, 1106247680   1109917696, 1113587712, 1116733440, 1119092736
+5uints! -2098724864, -2086666240, -2077229056, -2069626880   -23592960, -18874368, -15728640, -12845056
+6floats! -9, 0, 4, 9   -2, -12, 14, 10
 ''', run_js('a.out.js'))
 

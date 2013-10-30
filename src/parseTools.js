@@ -328,17 +328,6 @@ function getVectorSize(type) {
   return parseInt(type.substring(1, type.indexOf(' ')));
 }
 
-function getVectorBaseType(type) {
-  Types.usesSIMD = true;
-  switch (type) {
-    case '<2 x float>':
-    case '<4 x float>': return 'float';
-    case '<2 x i32>':
-    case '<4 x i32>': return 'uint';
-    default: throw 'unknown vector type ' + type;
-  }
-}
-
 function getVectorNativeType(type) {
   Types.usesSIMD = true;
   switch (type) {
@@ -348,6 +337,18 @@ function getVectorNativeType(type) {
     case '<4 x i32>': return 'i32';
     default: throw 'unknown vector type ' + type;
   }
+}
+
+function getSIMDName(type) {
+  switch (type) {
+    case 'i32': return 'uint';
+    case 'float': return 'float';
+    default: throw 'getSIMDName ' + type;
+  }
+}
+
+function getVectorBaseType(type) {
+  return getSIMDName(getVectorNativeType(type));
 }
 
 function addIdent(token) {
@@ -1807,7 +1808,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     switch(type) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
-      case '<4 x i32>': case 'uint':
+      case '<4 x i32>':
       case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
       case 'double': {
         if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
