@@ -1009,11 +1009,9 @@ function getOldLabel(label) {
 }
 
 function calcAllocatedSize(type) {
-  if (pointingLevels(type) == 0 && isStructType(type)) {
-    return Types.types[type].flatSize; // makeEmptyStruct(item.allocatedType).length;
-  } else {
-    return Runtime.getNativeTypeSize(type); // We can really get away with '1', though, at least on the stack...
-  }
+  var ret = Runtime.getNativeTypeSize(type);
+  if (ret) return ret;
+  return Types.types[type].flatSize; // known type
 }
 
 // Generates the type signature for a structure, for each byte, the type that is there.
