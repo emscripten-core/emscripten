@@ -883,10 +883,7 @@ nada
     self.do_run(src, 'OK!\n');
 
   def test_float32_precise(self):
-    assert 'asm1' in test_modes
-    if self.run_name != 'asm1': return self.skip('todo')
-
-    Settings.PRECISE_F32 = 1
+    if self.emcc_args == None or 'PRECISE_F32=1' not in self.emcc_args: return self.skip('needs precise float32')
 
     src = r'''
       #include <stdio.h>
@@ -8334,16 +8331,6 @@ extern "C" {
         src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
         self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'), no_build=i>1)
 
-      assert 'asm1' in test_modes
-      if self.run_name == 'asm1':
-        # test float support in asm
-        print 'was fround', Settings.FROUND
-        Settings.FROUND = 1 - Settings.FROUND
-        print 'now fround variant', Settings.FROUND
-        i, j = results[-1]
-        src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', 'float')
-        self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'))
-
   def test_whets(self):
     if not Settings.ASM_JS: return self.skip('mainly a test for asm validation here')
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
@@ -10611,6 +10598,7 @@ o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "J
 
 # asm.js
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
+asm1f = make_run("asm1f", compiler=CLANG, emcc_args=["-O1", "-s", "PRECISE_F32=1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "CHECK_HEAP_ALIGN=1"])
 asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env={"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"})
