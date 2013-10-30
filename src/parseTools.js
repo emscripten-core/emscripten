@@ -1176,21 +1176,29 @@ function makeVarDef(js) {
   return js;
 }
 
+function ensureDot(value) {
+  value = value.toString();
+  if (value.indexOf('.') >= 0 || /[IN]/.test(value)) return value; // if already dotted, or Infinity or NaN, nothing to do here
+  var e = value.indexOf('e');
+  if (e < 0) return value + '.0';
+  return value.substr(0, e) + '.0' + value.substr(e);
+}
+
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!ASM_JS) return value;
   if (!isNumber(value)) return value;
-  if (FROUND && type === 'float') return 'Math_fround(' + value + ')';
+  if (FROUND && type === 'float') {
+    // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
+    if (value == 0) return 'Math_fround(0)';
+    value = ensureDot(value);
+    return 'Math_fround(' + value + ')';
+  }
   // coerce if missing a '.', or if smaller than 1, so could be 1e-5 which has no .
   if (type in Runtime.FLOAT_TYPES && (value.toString().indexOf('.') < 0 || Math.abs(value) < 1)) {
     if (RUNNING_JS_OPTS) {
       return '(+' + value + ')'; // JS optimizer will run, we must do +x, and it will be corrected later
     } else {
-      // ensure a .
-      value = value.toString();
-      if (value.indexOf('.') >= 0 || /[IN]/.test(value)) return value; // if already dotted, or Infinity or NaN, nothing to do here
-      var e = value.indexOf('e');
-      if (e < 0) return value + '.0';
-      return value.substr(0, e) + '.0' + value.substr(e);
+      return ensureDot(value);
     }
   } else {
     return value;
