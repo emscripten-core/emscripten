@@ -8621,6 +8621,14 @@ LibraryManager.library = {
   },
 
   //============================
+  // emscripten vector ops
+  //============================
+
+  emscripten_float32x4_signmask__inline: function(x) {
+    return x + '.signMask()';
+  },
+
+  //============================
   // i64 math
   //============================
 
