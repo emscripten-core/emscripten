@@ -2271,7 +2271,7 @@ function processMathop(item) {
       case 'lshr': {
 				throw 'shifts should have been legalized!';
       }
-      case 'uitofp': case 'sitofp': return RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u');
+      case 'uitofp': case 'sitofp': return makeFloat(RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u'), item.type);
       case 'fptoui': case 'fptosi': return finish(splitI64(idents[0], true));
       case 'icmp': {
         switch (variant) {
