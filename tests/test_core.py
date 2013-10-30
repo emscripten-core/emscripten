@@ -8305,9 +8305,12 @@ extern "C" {
         src = open(path_from_root('tests', 'fasta.cpp'), 'r').read()
         self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'), no_build=i>1)
 
-      if Settings.ASM_JS:
+      assert 'asm1' in test_modes
+      if self.run_name == 'asm1':
         # test float support in asm
-        Settings.FROUND = 1
+        print 'was fround', Settings.FROUND
+        Settings.FROUND = 1 - Settings.FROUND
+        print 'now fround variant', Settings.FROUND
         i, j = results[-1]
         src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', 'float')
         self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'))
