@@ -2027,7 +2027,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else if (param.intertype == 'mathop') {
     return processMathop(param);
   } else if (param.intertype === 'vector') {
-    return 'float32x4(' + param.idents.join(',') + ')';
+    return getVectorBaseType(param.type) + '32x4(' + param.idents.join(',') + ')';
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
