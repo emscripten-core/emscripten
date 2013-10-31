@@ -563,25 +563,6 @@ function sortGlobals(globals) {
   });
 }
 
-function finalizeParam(param) {
-  if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
-    return finalizeLLVMFunctionCall(param);
-  } else if (param.intertype === 'blockaddress') {
-    return finalizeBlockAddress(param);
-  } else if (param.intertype === 'jsvalue') {
-    return param.ident;
-  } else {
-    if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
-      return parseI64Constant(param.ident);
-    }
-    var ret = toNiceIdent(param.ident);
-    if (ret in Variables.globals) {
-      ret = makeGlobalUse(ret);
-    }
-    return ret;
-  }
-}
-
 // Segment ==> Parameter
 function parseLLVMSegment(segment) {
   var type;

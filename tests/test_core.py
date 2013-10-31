@@ -8705,7 +8705,7 @@ int main(int argc, char **argv) {
     c = _mm_set_ps(9.0, 4.0, 0, -9.0);
     d = _mm_set_ps(10.0, 14.0, -12, -2.0);
     printf("6floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
-    //printf("7calcs: %d\n", emscripten_float32x4_signmask(c));
+    printf("7calcs: %d\n", emscripten_float32x4_signmask(c)); // TODO: just not just compilation but output as well
   }
 
   return 0;

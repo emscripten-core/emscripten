@@ -1491,7 +1491,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     params.forEach(function(param, i) {
-      var val = finalizeParam(param);
+      var val = finalizeLLVMParameter(param);
       if (!hasVarArgs || useJSArgs || i < normalArgs) {
         args.push(val);
         argsTypes.push(param.type);
