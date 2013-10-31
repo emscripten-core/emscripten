@@ -483,12 +483,6 @@ function parseParamTokens(params) {
         Types.needAnalysis[ret[ret.length-1].type] = 0;
         anonymousIndex ++;
       }
-    } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
-      ret.push(parseLLVMFunctionCall(segment));
-    } else if (segment[1].text === 'blockaddress') {
-      ret.push(parseBlockAddress(segment));
-    } else if (segment[1].type && segment[1].type == '{') {
-      ret.push(parseLLVMSegment(segment));
     } else {
       if (segment[2] && segment[2].text == 'to') { // part of bitcast params
         segment = segment.slice(0, 2);
@@ -496,7 +490,6 @@ function parseParamTokens(params) {
       var parsed = parseLLVMSegment(segment);
       if (parsed.intertype === 'value' && !isIllegalType(parsed.type)) parsed.ident = parseNumerical(parsed.ident);
       ret.push(parsed);
-      Types.needAnalysis[removeAllPointing(parsed.type)] = 0;
     }
     ret[ret.length-1].byVal = byVal;
   }
