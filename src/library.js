@@ -8578,7 +8578,7 @@ LibraryManager.library = {
   },
 
   emscripten_run_script_string: function(ptr) {
-    var s = eval(Pointer_stringify(ptr));
+    var s = eval(Pointer_stringify(ptr)) + '';
     var me = _emscripten_run_script_string;
     if (!me.bufferSize || me.bufferSize < s.length+1) {
       if (me.bufferSize) _free(me.buffer);
