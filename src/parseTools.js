@@ -488,7 +488,7 @@ function parseParamTokens(params) {
         segment = segment.slice(0, 2);
       }
       var parsed = parseLLVMSegment(segment);
-      if (parsed.intertype === 'value' && !isIllegalType(parsed.type)) parsed.ident = parseNumerical(parsed.ident);
+      if (parsed.intertype === 'value' && !isIllegalType(parsed.type)) parsed.ident = parseNumerical(parsed.ident, parsed.type);
       ret.push(parsed);
     }
     ret[ret.length-1].byVal = byVal;
