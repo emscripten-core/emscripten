@@ -3227,7 +3227,9 @@ var LibraryGL = {
 
 #if ASSERTIONS
         if (!useCurrProgram) {
-          assert(GL.immediate.TexEnvJIT.getTexUnitType(i) != 0, "GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
+          if (GL.immediate.TexEnvJIT.getTexUnitType(i) == 0) {
+             Runtime.warnOnce("GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
+          }
         }
 #endif
 
