@@ -301,6 +301,9 @@ function getReturnType(type) {
   if (pointingLevels(type) > 1) return '*'; // the type of a call can be either the return value, or the entire function. ** or more means it is a return value
   var lastOpen = type.lastIndexOf('(');
   if (lastOpen > 0) {
+    // handle things like   void (i32)* (i32, void (i32)*)*
+    var closeStar = type.indexOf(')*');
+    if (closeStar > 0 && closeStar < type.length-2) lastOpen = closeStar+3;
     return type.substr(0, lastOpen-1);
   }
   return type;
