@@ -167,6 +167,7 @@ var LibrarySDL = {
       57: 38, // 9
       48: 39, // 0
       13: 40, // return
+      8: 42, // backspace
       9: 43, // tab
       27: 41, // escape
       32: 44, // space
