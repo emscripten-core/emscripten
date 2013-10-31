@@ -8674,6 +8674,12 @@ _mm_set_ps(const float __Z, const float __Y, const float __X, const float __W)
   return (float32x4){ __W, __X, __Y, __Z };
 }
 
+static __inline__ float32x4 __attribute__((__always_inline__))
+_mm_setzero_ps(void)
+{
+  return (float32x4){ 0.0, 0.0, 0.0, 0.0 };
+}
+
 int main(int argc, char **argv) {
   float data[8];
   for (int i = 0; i < 32; i++) data[i] = (1+i+argc)*(2+i+argc*argc);
@@ -8688,6 +8694,8 @@ int main(int argc, char **argv) {
     printf("2floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
     d = c*d;
     printf("3floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    c = _mm_setzero_ps();
+    printf("zeros %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3]);
   }
   {
     uint32x4 *a = (uint32x4*)&data[0];
@@ -8715,6 +8723,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '''1floats! 6, 12, 20, 30   42, 56, 72, 90
 2floats! 48, 68, 92, 120   42, 56, 72, 90
 3floats! 48, 68, 92, 120   2016, 3808, 6624, 10800
+zeros 0, 0, 0, 0
 4uints! 1086324736, 1094713344, 1101004800, 1106247680   1109917696, 1113587712, 1116733440, 1119092736
 5uints! -2098724864, -2086666240, -2077229056, -2069626880   -23592960, -18874368, -15728640, -12845056
 6floats! -9, 0, 4, 9   -2, -12, 14, 10

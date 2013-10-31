@@ -157,6 +157,10 @@ function isStructType(type) {
   return type[0] == '%';
 }
 
+function isVectorType(type) {
+  return type[type.length-1] === '>';
+}
+
 function isStructuralType(type) {
   return /^{ ?[^}]* ?}$/.test(type); // { i32, i8 } etc. - anonymous struct types
 }
@@ -1986,6 +1990,8 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else if (param.ident == 'zeroinitializer') {
     if (isStructType(param.type)) {
       return makeLLVMStruct(zeros(Types.types[param.type].fields.length));
+    } else if (isVectorType(param.type)) {
+      return ensureVector(0, getVectorBaseType(param.type));
     } else {
       return '0';
     }
