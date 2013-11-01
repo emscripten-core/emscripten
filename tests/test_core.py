@@ -8594,30 +8594,13 @@ void*:16
 
   def test_mmap_file(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    self.emcc_args += ['--embed-file', 'data.dat']
+    for extra_args in [[], ['--no-heap-copy']]:
+      self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
 
-    open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
+      open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
 
-    src = r'''
-      #include <stdio.h>
-      #include <sys/mman.h>
-
-      int main() {
-        printf("*\n");
-        FILE *f = fopen("data.dat", "r");
-        char *m;
-        m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 0);
-        for (int i = 0; i < 20; i++) putchar(m[i]);
-        munmap(m, 9000);
-        printf("\n");
-        m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 5);
-        for (int i = 0; i < 20; i++) putchar(m[i]);
-        munmap(m, 9000);
-        printf("\n*\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
+      src = open(path_from_root('tests', 'mmap_file.c')).read()
+      self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
 
   def test_cubescript(self):
     if self.emcc_args is None: return self.skip('requires emcc')

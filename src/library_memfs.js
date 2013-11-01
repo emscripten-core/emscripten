@@ -225,9 +225,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
           assert(buffer.length);
 #endif
-          if (canOwn && buffer.buffer === HEAP8.buffer && offset === 0) {
-            node.contents = buffer; // this is a subarray of the heap, and we can own it
-            node.contentMode = MEMFS.CONTENT_OWNING;
+          if (canOwn && offset === 0) {
+            node.contents = buffer; // this could be a subarray of Emscripten HEAP, or allocated from some other source.
+            node.contentMode = (buffer.buffer === HEAP8.buffer) ? MEMFS.CONTENT_OWNING : MEMFS.CONTENT_FIXED;
           } else {
             node.contents = new Uint8Array(buffer.subarray(offset, offset+length));
             node.contentMode = MEMFS.CONTENT_FIXED;
