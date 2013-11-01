@@ -194,8 +194,14 @@ int main(int argc, char *argv[])
     // sauer vertex data is apparently 0-12: V3F, 12: N1B, 16-24: T2F, 24-28: T2S, 28-32: C4B
     glVertexPointer(3, GL_FLOAT, 32, (void*)0); // all these apply to the ARRAY_BUFFER that is bound
     glTexCoordPointer(2, GL_FLOAT, 32, (void*)16);
+
     glClientActiveTexture(GL_TEXTURE1); // XXX seems to be ignored in native build
     glTexCoordPointer(2, GL_SHORT, 32, (void*)24);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_SIZE, &tempInt); assert(tempInt == 2);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_TYPE, &tempInt); assert(tempInt == GL_SHORT);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_STRIDE, &tempInt); assert(tempInt == 32);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)24);
+
     glClientActiveTexture(GL_TEXTURE0); // likely not needed, it is a cleanup
     glNormalPointer(GL_BYTE, 32, (void*)12);
     glColorPointer(4, GL_UNSIGNED_BYTE, 32, (void*)28);
