@@ -2374,6 +2374,9 @@ function processMathop(item) {
           return 'SIMD.uint32x4BitsToFloat32x4(' + idents[0] + ')';
         }
       }
+      case 'and': return 'SIMD.and(' + idents[0] + ',' + idents[1] + ')';
+      case 'or': return 'SIMD.or(' + idents[0] + ',' + idents[1] + ')';
+      case 'xor': return 'SIMD.xor(' + idents[0] + ',' + idents[1] + ')';
       default: throw 'vector op todo: ' + dump(item);
     }
   }

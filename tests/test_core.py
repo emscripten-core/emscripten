@@ -8682,7 +8682,7 @@ _mm_setzero_ps(void)
 
 int main(int argc, char **argv) {
   float data[8];
-  for (int i = 0; i < 32; i++) data[i] = (1+i+argc)*(2+i+argc*argc);
+  for (int i = 0; i < 32; i++) data[i] = (1+i+argc)*(2+i+argc*argc); // confuse optimizer
   {
     float32x4 *a = (float32x4*)&data[0];
     float32x4 *b = (float32x4*)&data[4];
@@ -8707,6 +8707,11 @@ int main(int argc, char **argv) {
     e = c+d;
     f = c-d;
     printf("5uints! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
+    e = c&d;
+    f = c|d;
+    e = ~c&d;
+    f = c^d;
+    printf("5uintops! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
   }
   {
     float32x4 c, d, e, f;
@@ -8726,6 +8731,7 @@ int main(int argc, char **argv) {
 zeros 0, 0, 0, 0
 4uints! 1086324736, 1094713344, 1101004800, 1106247680   1109917696, 1113587712, 1116733440, 1119092736
 5uints! -2098724864, -2086666240, -2077229056, -2069626880   -23592960, -18874368, -15728640, -12845056
+5uintops! 36175872, 35651584, 34603008, 33816576   48758784, 52428800, 53477376, 54788096
 6floats! -9, 0, 4, 9   -2, -12, 14, 10
 ''')
 
