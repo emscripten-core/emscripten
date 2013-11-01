@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
 
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
@@ -26,6 +26,10 @@ Usage:
   --no-force Don't create output if no valid input file is specified.
 
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
+
+  --no-heap-copy If specified, the preloaded filesystem is not copied inside the Emscripten HEAP, but kept in a separate typed array outside it.
+                 The default, if this is not specified, is to embed the VFS inside the HEAP, so that mmap()ing files in it is a no-op.
+                 Passing this flag optimizes for fread() usage, omitting it optimizes for mmap() usage.
 
 Notes:
 
@@ -43,7 +47,7 @@ from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
 See the source for more details.'''
   sys.exit(0)
 
@@ -70,7 +74,12 @@ crunch = 0
 plugins = []
 jsoutput = None
 force = True
+# If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
+# page loads can read the data from the offline cache instead.
 use_preload_cache = False
+# If set to True, the blob received from XHR is moved to the Emscripten HEAP, optimizing for mmap() performance.
+# If set to False, the XHR blob is kept intact, and fread()s etc. are performed directly to that data. This optimizes for minimal memory usage and fread() performance.
+no_heap_copy = True
 
 for arg in sys.argv[1:]:
   if arg == '--preload':
@@ -91,6 +100,8 @@ for arg in sys.argv[1:]:
     force = False
   elif arg == '--use-preload-cache':
     use_preload_cache = True
+  elif arg == '--no-heap-copy':
+    no_heap_copy = False
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
   elif arg.startswith('--crunch'):
@@ -414,11 +425,17 @@ for file_ in data_files:
 
 if has_preloaded:
   # Get the big archive and split it up
-  use_data = '''
+  if no_heap_copy:
+    use_data = '''
       // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though.
       var ptr = Module['_malloc'](byteArray.length);
       Module['HEAPU8'].set(byteArray, ptr);
       DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
+'''
+  else:
+    use_data = '''
+      // Reuse the bytearray from the XHR as the source for file reads.
+      DataRequest.prototype.byteArray = byteArray;
 '''
   for file_ in data_files:
     if file_['mode'] == 'preload':
