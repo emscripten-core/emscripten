@@ -1793,17 +1793,17 @@ var LibraryGL = {
             return;
           }
           case 0x8088: { // GL_TEXTURE_COORD_ARRAY_SIZE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
             return;
           }
           case 0x8089: { // GL_TEXTURE_COORD_ARRAY_TYPE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
             return;
           }
           case 0x808A: { // GL_TEXTURE_COORD_ARRAY_STRIDE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
@@ -2190,7 +2190,7 @@ var LibraryGL = {
       case 0x8090: // GL_COLOR_ARRAY_POINTER
         attribute = GLImmediate.clientAttributes[GLImmediate.COLOR]; break;
       case 0x8092: // GL_TEXTURE_COORD_ARRAY_POINTER
-        attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0]; break;
+        attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture]; break;
       default: throw 'TODO: glGetPointerv for ' + name;
     }
     {{{ makeSetValue('p', '0', 'attribute ? attribute.pointer : 0', 'i32') }}};
