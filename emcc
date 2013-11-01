@@ -777,6 +777,7 @@ try:
   save_bc = False
   memory_init_file = False
   use_preload_cache = False
+  no_heap_copy = False
   proxy_to_worker = False
 
   if use_cxx:
@@ -896,6 +897,9 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--use-preload-cache'):
       use_preload_cache = True
+      newargs[i] = ''
+    elif newargs[i].startswith('--no-heap-copy'):
+      no_heap_copy = True
       newargs[i] = ''
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
@@ -1667,6 +1671,8 @@ try:
       file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
     if use_preload_cache:
       file_args.append('--use-preload-cache')
+    if no_heap_copy:
+      file_args.append('--no-heap-copy')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
 
