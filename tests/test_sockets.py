@@ -400,10 +400,9 @@ class sockets(BrowserCore):
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
 
-class nodejs_sockets(RunnerCore):
-  def test_sockets_echo(self):
+  def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
-    # Run with ./runner.py nodejs_sockets.test_sockets_echo
+    # Run with ./runner.py sockets.test_nodejs_sockets_echo
     if not NODE_JS in JS_ENGINES:
         return
 
