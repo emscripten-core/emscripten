@@ -629,6 +629,8 @@ function cleanSegment(segment) {
 
 var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'frem', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 
+var JS_MATH_BUILTINS = set(['Math_sin', 'Math_cos', 'Math_tan', 'Math_asin', 'Math_acos', 'Math_atan', 'Math_ceil', 'Math_floor', 'Math_exp', 'Math_log', 'Math_sqrt']);
+
 var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast');
 mergeInto(PARSABLE_LLVM_FUNCTIONS, MATHOPS);
 

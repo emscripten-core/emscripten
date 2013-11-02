@@ -1516,7 +1516,7 @@ f6: nan
         #include <stdio.h>
         #include <stdlib.h>
         #include <cmath>
-        int main()
+        int main(int argc, char **argv)
         {
           printf("*%.2f,%.2f,%d", M_PI, -M_PI, (1/0.0) > 1e300); // could end up as infinity, or just a very very big number
           printf(",%d", isfinite(NAN) != 0);
@@ -1538,11 +1538,15 @@ f6: nan
           sincosf(0.0, &fsine, &fcosine);
           printf(",%1.1f", fsine);
           printf(",%1.1f", fcosine);
+          fsine = sinf(1.1 + argc - 1);
+          fcosine = cosf(1.1 + argc - 1);
+          printf(",%1.1f", fsine);
+          printf(",%1.1f", fcosine);
           printf("*\\n");
           return 0;
         }
       '''
-      self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0,2,3,0.0,1.0,0.0,1.0*')
+      self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0,2,3,0.0,1.0,0.0,1.0,0.9,0.5*')
 
   def test_erf(self):
       src = '''

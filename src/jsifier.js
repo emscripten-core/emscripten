@@ -1503,7 +1503,8 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     if (ASM_JS) {
-      var ffiCall = shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || extCall || funcData.setjmpTable;
+      var ffiCall = (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || extCall || funcData.setjmpTable) &&
+                    !(simpleIdent in JS_MATH_BUILTINS);
       if (ffiCall) {
         args = args.map(function(arg, i) { return asmCoercion(arg, ensureValidFFIType(argsTypes[i])) });
       } else {
