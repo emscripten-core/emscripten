@@ -682,7 +682,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
       if (item.assignTo) item.ident = 'return ' + item.ident;
       item.ident = '(function(' + params + ') { ' + item.ident + ' })(' + args + ');';
-      return { forward: null, ret: item, item: item };
+      return { ret: item, item: item };
     } 
     if (item.ident.substr(-2) == '()') {
       // See comment in isStructType()
@@ -705,13 +705,12 @@ function intertyper(lines, sidePass, baseLineNums) {
     if (item.indent == 2) {
       // standalone call - not in assign
       item.standalone = true;
-      return { forward: null, ret: item, item: item };
+      return { ret: item, item: item };
     }
-    return { forward: item, ret: null, item: item };
+    return { ret: null, item: item };
   }
   function callHandler(item) {
     var result = makeCall.call(this, item, 'call');
-    if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
     return result.ret;
   }
   function invokeHandler(item) {
@@ -721,10 +720,9 @@ function intertyper(lines, sidePass, baseLineNums) {
       finalResults.push({
         intertype: 'branch',
         label: result.item.toLabel,
-        lineNum: (result.forward ? item.parentLineNum : item.lineNum) + 0.5
+        lineNum: item.lineNum + 0.5
       });
     }
-    if (result.forward) this.forwardItem(result.forward, 'Reintegrator');
     return result.ret;
   }
   function atomicHandler(item) {

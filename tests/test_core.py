@@ -2975,6 +2975,23 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       '''
       self.do_run(src, '3.14159')
 
+  def test_iswdigit(self):
+      if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
+
+      src = '''
+        #include <stdio.h>
+        #include <cctype>
+        #include <cwctype>
+
+        int main() {
+          using namespace std;
+          printf("%d ", isdigit('0'));
+          printf("%d ", iswdigit(L'0'));
+          return 0;
+        }
+      '''
+      self.do_run(src, '1 1')
+
   def test_polymorph(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       src = '''
@@ -7294,6 +7311,18 @@ date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
     '''
     self.do_run(src, '4779 4779')
 
+  def test_sscanf_float(self):
+    src = r'''
+      #include "stdio.h"
+
+      int main(){
+        float f1, f2, f3, f4, f5, f6, f7, f8, f9;
+        sscanf("0.512 0.250x5.129_-9.98 1.12*+54.32E3 +54.32E3^87.5E-3 87.5E-3$", "%f %fx%f_%f %f*%f %f^%f %f$", &f1, &f2, &f3, &f4, &f5, &f6, &f7, &f8, &f9);
+        printf("\n%f, %f, %f, %f, %f, %f, %f, %f, %f\n", f1, f2, f3, f4, f5, f6, f7, f8, f9);
+      }
+    '''
+    self.do_run(src, '\n0.512000, 0.250000, 5.129000, -9.980000, 1.120000, 54320.000000, 54320.000000, 0.087500, 0.087500\n')
+
   def test_langinfo(self):
     src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
     expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
@@ -8591,30 +8620,13 @@ void*:16
 
   def test_mmap_file(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    self.emcc_args += ['--embed-file', 'data.dat']
+    for extra_args in [[], ['--no-heap-copy']]:
+      self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
 
-    open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
+      open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
 
-    src = r'''
-      #include <stdio.h>
-      #include <sys/mman.h>
-
-      int main() {
-        printf("*\n");
-        FILE *f = fopen("data.dat", "r");
-        char *m;
-        m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 0);
-        for (int i = 0; i < 20; i++) putchar(m[i]);
-        munmap(m, 9000);
-        printf("\n");
-        m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 5);
-        for (int i = 0; i < 20; i++) putchar(m[i]);
-        munmap(m, 9000);
-        printf("\n*\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
+      src = open(path_from_root('tests', 'mmap_file.c')).read()
+      self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
 
   def test_cubescript(self):
     if self.emcc_args is None: return self.skip('requires emcc')
@@ -8656,6 +8668,128 @@ void*:16
       main = generated[generated.find('function runPostSets'):]
       main = main[:main.find('\n}')]
       assert main.count('\n') == 7, 'must not emit too many postSets: %d' % main.count('\n')
+
+  def test_simd(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    src = r'''
+#include <stdio.h>
+
+#include <emscripten/vector.h>
+
+static inline float32x4 __attribute__((always_inline))
+_mm_set_ps(const float __Z, const float __Y, const float __X, const float __W)
+{
+  return (float32x4){ __W, __X, __Y, __Z };
+}
+
+static __inline__ float32x4 __attribute__((__always_inline__))
+_mm_setzero_ps(void)
+{
+  return (float32x4){ 0.0, 0.0, 0.0, 0.0 };
+}
+
+int main(int argc, char **argv) {
+  float data[8];
+  for (int i = 0; i < 32; i++) data[i] = (1+i+argc)*(2+i+argc*argc); // confuse optimizer
+  {
+    float32x4 *a = (float32x4*)&data[0];
+    float32x4 *b = (float32x4*)&data[4];
+    float32x4 c, d;
+    c = *a;
+    d = *b;
+    printf("1floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    c = c+d;
+    printf("2floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    d = c*d;
+    printf("3floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    c = _mm_setzero_ps();
+    printf("zeros %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3]);
+  }
+  {
+    uint32x4 *a = (uint32x4*)&data[0];
+    uint32x4 *b = (uint32x4*)&data[4];
+    uint32x4 c, d, e, f;
+    c = *a;
+    d = *b;
+    printf("4uints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
+    e = c+d;
+    f = c-d;
+    printf("5uints! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
+    e = c&d;
+    f = c|d;
+    e = ~c&d;
+    f = c^d;
+    printf("5uintops! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
+  }
+  {
+    float32x4 c, d, e, f;
+    c = _mm_set_ps(9.0, 4.0, 0, -9.0);
+    d = _mm_set_ps(10.0, 14.0, -12, -2.0);
+    printf("6floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
+    printf("7calcs: %d\n", emscripten_float32x4_signmask(c)); // TODO: just not just compilation but output as well
+  }
+
+  return 0;
+}
+    '''
+
+    self.do_run(src, '''1floats! 6, 12, 20, 30   42, 56, 72, 90
+2floats! 48, 68, 92, 120   42, 56, 72, 90
+3floats! 48, 68, 92, 120   2016, 3808, 6624, 10800
+zeros 0, 0, 0, 0
+4uints! 1086324736, 1094713344, 1101004800, 1106247680   1109917696, 1113587712, 1116733440, 1119092736
+5uints! -2098724864, -2086666240, -2077229056, -2069626880   -23592960, -18874368, -15728640, -12845056
+5uintops! 36175872, 35651584, 34603008, 33816576   48758784, 52428800, 53477376, 54788096
+6floats! -9, 0, 4, 9   -2, -12, 14, 10
+''')
+
+  def test_simd2(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+
+    self.do_run(r'''
+      #include <stdio.h>
+
+      typedef float __m128 __attribute__ ((__vector_size__ (16)));
+
+      static inline __m128 __attribute__((always_inline))
+      _mm_set_ps(const float __Z, const float __Y, const float __X, const float __W)
+      {
+        return (__m128){ __W, __X, __Y, __Z };
+      }
+
+      static inline void __attribute__((always_inline))
+      _mm_store_ps(float *__P, __m128 __A)
+      {
+        *(__m128 *)__P = __A;
+      }
+
+      static inline __m128 __attribute__((always_inline))
+      _mm_add_ps(__m128 __A, __m128 __B)
+      {
+        return __A + __B;
+      }
+
+      using namespace std;
+
+      int main(int argc, char ** argv) {
+          float __attribute__((__aligned__(16))) ar[4];
+          __m128 v1 = _mm_set_ps(9.0, 4.0, 0, -9.0);
+          __m128 v2 = _mm_set_ps(7.0, 3.0, 2.5, 1.0);
+          __m128 v3 = _mm_add_ps(v1, v2);
+          _mm_store_ps(ar, v3);
+          
+          for (int i = 0; i < 4; i++) {
+              printf("%f\n", ar[i]);
+          }
+          
+          return 0;
+      }
+      ''', '''-8.000000
+2.500000
+7.000000
+16.000000
+''')
 
   def test_gcc_unmangler(self):
     Settings.NAMED_GLOBALS = 1 # test coverage for this

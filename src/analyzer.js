@@ -418,7 +418,7 @@ function analyzer(data, sidePass) {
                     toAdd.push({
                       intertype: 'value',
                       assignTo: element.ident,
-                      type: element.bits,
+                      type: 'i' + element.bits,
                       ident: 'tempRet' + (j - 1)
                     });
                     assert(j<10); // TODO: dynamically create more than 10 tempRet-s

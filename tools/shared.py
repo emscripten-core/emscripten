@@ -284,7 +284,7 @@ def check_node_version():
   try:
     node = listify(NODE_JS)
     actual = Popen(node + ['--version'], stdout=PIPE).communicate()[0].strip()
-    version = tuple(map(int, actual.replace('v', '').split('.')))
+    version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
     logging.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))

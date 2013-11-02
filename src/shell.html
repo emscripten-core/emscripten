@@ -63,8 +63,11 @@
         },
         canvas: document.getElementById('canvas'),
         setStatus: function(text) {
-          if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var now = Date.now();
+          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
           var statusElement = document.getElementById('status');
           var progressElement = document.getElementById('progress');
           if (m) {

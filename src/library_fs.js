@@ -28,6 +28,7 @@ mergeInto(LibraryManager.library, {
     ignorePermissions: true,
     
     ErrnoError: null, // set during init
+    genericErrors: {},
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
@@ -62,7 +63,7 @@ mergeInto(LibraryManager.library, {
         }
 
         current = FS.lookupNode(current, parts[i]);
-        current_path = PATH.join(current_path, parts[i]);
+        current_path = PATH.join2(current_path, parts[i]);
 
         // jump to the mount's root node if this is a mountpoint
         if (FS.isMountpoint(current)) {
@@ -94,9 +95,11 @@ mergeInto(LibraryManager.library, {
       var path;
       while (true) {
         if (FS.isRoot(node)) {
-          return path ? PATH.join(node.mount.mountpoint, path) : node.mount.mountpoint;
+          var mount = node.mount.mountpoint;
+          if (!path) return mount;
+          return mount[mount.length-1] !== '/' ? mount + '/' + path : mount + path;
         }
-        path = path ? PATH.join(node.name, path) : node.name;
+        path = path ? node.name + '/' + path : node.name;
         node = node.parent;
       }
     },
@@ -158,44 +161,50 @@ mergeInto(LibraryManager.library, {
       return FS.lookup(parent, name);
     },
     createNode: function(parent, name, mode, rdev) {
-      var node = {
-        id: FS.nextInode++,
-        name: name,
-        mode: mode,
-        node_ops: {},
-        stream_ops: {},
-        rdev: rdev,
-        parent: null,
-        mount: null
-      };
-      if (!parent) {
-        parent = node;  // root node sets parent to itself
+      if (!FS.FSNode) {
+        FS.FSNode = function(parent, name, mode, rdev) {
+          this.id = FS.nextInode++;
+          this.name = name;
+          this.mode = mode;
+          this.node_ops = {};
+          this.stream_ops = {};
+          this.rdev = rdev;
+          this.parent = null;
+          this.mount = null;
+          if (!parent) {
+            parent = this;  // root node sets parent to itself
+          }
+          this.parent = parent;
+          this.mount = parent.mount;
+          FS.hashAddNode(this);
+        };
+
+        // compatibility
+        var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
+        var writeMode = {{{ cDefine('S_IWUGO') }}};
+
+        FS.FSNode.prototype = {};
+
+        // NOTE we must use Object.defineProperties instead of individual calls to
+        // Object.defineProperty in order to make closure compiler happy
+        Object.defineProperties(FS.FSNode.prototype, {
+          read: {
+            get: function() { return (this.mode & readMode) === readMode; },
+            set: function(val) { val ? this.mode |= readMode : this.mode &= ~readMode; }
+          },
+          write: {
+            get: function() { return (this.mode & writeMode) === writeMode; },
+            set: function(val) { val ? this.mode |= writeMode : this.mode &= ~writeMode; }
+          },
+          isFolder: {
+            get: function() { return FS.isDir(this.mode); },
+          },
+          isDevice: {
+            get: function() { return FS.isChrdev(this.mode); },
+          },
+        });
       }
-      node.parent = parent;
-      node.mount = parent.mount;
-      // compatibility
-      var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      var writeMode = {{{ cDefine('S_IWUGO') }}};
-      // NOTE we must use Object.defineProperties instead of individual calls to
-      // Object.defineProperty in order to make closure compiler happy
-      Object.defineProperties(node, {
-        read: {
-          get: function() { return (node.mode & readMode) === readMode; },
-          set: function(val) { val ? node.mode |= readMode : node.mode &= ~readMode; }
-        },
-        write: {
-          get: function() { return (node.mode & writeMode) === writeMode; },
-          set: function(val) { val ? node.mode |= writeMode : node.mode &= ~writeMode; }
-        },
-        isFolder: {
-          get: function() { return FS.isDir(node.mode); },
-        },
-        isDevice: {
-          get: function() { return FS.isChrdev(node.mode); },
-        },
-      });
-      FS.hashAddNode(node);
-      return node;
+      return new FS.FSNode(parent, name, mode, rdev);
     },
     destroyNode: function(node) {
       FS.hashRemoveNode(node);
@@ -351,24 +360,28 @@ mergeInto(LibraryManager.library, {
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
+      if (!FS.FSStream) {
+        FS.FSStream = {};
+        // compatibility
+        Object.defineProperties(FS.FSStream, {
+          object: {
+            get: function() { return this.node; },
+            set: function(val) { this.node = val; }
+          },
+          isRead: {
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
+          },
+          isWrite: {
+            get: function() { return (this.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
+          },
+          isAppend: {
+            get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
+          }
+        });
+      }
+      stream.prototype = FS.FSStream;
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
-      // compatibility
-      Object.defineProperties(stream, {
-        object: {
-          get: function() { return stream.node; },
-          set: function(val) { stream.node = val; }
-        },
-        isRead: {
-          get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
-        },
-        isWrite: {
-          get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
-        },
-        isAppend: {
-          get: function() { return (stream.flags & {{{ cDefine('O_APPEND') }}}); }
-        }
-      });
       FS.streams[fd] = stream;
       return stream;
     },
@@ -771,7 +784,6 @@ mergeInto(LibraryManager.library, {
       });
     },
     open: function(path, flags, mode, fd_start, fd_end) {
-      path = PATH.normalize(path);
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
       mode = typeof mode === 'undefined' ? 0666 : mode;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
@@ -780,13 +792,18 @@ mergeInto(LibraryManager.library, {
         mode = 0;
       }
       var node;
-      try {
-        var lookup = FS.lookupPath(path, {
-          follow: !(flags & {{{ cDefine('O_NOFOLLOW') }}})
-        });
-        node = lookup.node;
-      } catch (e) {
-        // ignore
+      if (typeof path === 'object') {
+        node = path;
+      } else {
+        path = PATH.normalize(path);
+        try {
+          var lookup = FS.lookupPath(path, {
+            follow: !(flags & {{{ cDefine('O_NOFOLLOW') }}})
+          });
+          node = lookup.node;
+        } catch (e) {
+          // ignore
+        }
       }
       // perhaps we need to create the node
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
@@ -1079,6 +1096,11 @@ mergeInto(LibraryManager.library, {
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
+      // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
+      [ERRNO_CODES.ENOENT].forEach(function(code) {
+        FS.genericErrors[code] = new FS.ErrnoError(code);
+        FS.genericErrors[code].stack = '<generic error, no stack>';
+      });
     },
     staticInit: function() {
       FS.ensureErrnoError();
@@ -1173,7 +1195,7 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
     createFolder: function(parent, name, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       return FS.mkdir(path, mode);
     },
@@ -1183,7 +1205,7 @@ mergeInto(LibraryManager.library, {
       while (parts.length) {
         var part = parts.pop();
         if (!part) continue;
-        var current = PATH.join(parent, part);
+        var current = PATH.join2(parent, part);
         try {
           FS.mkdir(current);
         } catch (e) {
@@ -1194,12 +1216,12 @@ mergeInto(LibraryManager.library, {
       return current;
     },
     createFile: function(parent, name, properties, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
-      var path = name ? PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
+      var path = name ? PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
@@ -1209,16 +1231,16 @@ mergeInto(LibraryManager.library, {
           data = arr;
         }
         // make sure we can write to the file
-        FS.chmod(path, mode | {{{ cDefine('S_IWUGO') }}});
-        var stream = FS.open(path, 'w');
+        FS.chmod(node, mode | {{{ cDefine('S_IWUGO') }}});
+        var stream = FS.open(node, 'w');
         FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
-        FS.chmod(path, mode);
+        FS.chmod(node, mode);
       }
       return node;
     },
     createDevice: function(parent, name, input, output) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
@@ -1272,7 +1294,7 @@ mergeInto(LibraryManager.library, {
       return FS.mkdev(path, mode, dev);
     },
     createLink: function(parent, name, target, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       return FS.symlink(target, path);
     },
     // Makes sure a file's contents are loaded. Returns whether the file has
@@ -1462,7 +1484,7 @@ mergeInto(LibraryManager.library, {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
-      var fullname = name ? PATH.resolve(PATH.join(parent, name)) : parent;
+      var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {

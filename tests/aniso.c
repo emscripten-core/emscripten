@@ -66,6 +66,9 @@ int main(int argc, char *argv[])
     const char *exts = (const char *)glGetString(GL_EXTENSIONS);
     assert(hasext(exts, "GL_EXT_texture_filter_anisotropic"));
 
+    const char *vendor = (const char *)glGetString(GL_VENDOR);
+    printf("vendor: %s\n", vendor);
+
     GLint aniso;
     glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso);
     printf("Max anisotropy: %d (using that)\n", aniso);

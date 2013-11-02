@@ -338,13 +338,18 @@ If manually bisecting:
       ("somefile.txt@/directory/file.txt", "/directory/file.txt"),
       ("somefile.txt@/directory/file.txt", "directory/file.txt"),
       (absolute_src_path + "@/directory/file.txt", "directory/file.txt")]
-    
+
     for test in test_cases:
       (srcpath, dstpath) = test
       print 'Testing', srcpath, dstpath
       make_main(dstpath)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+    # Test that '--no-heap-copy' works.
+    make_main('somefile.txt')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '--no-heap-copy', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     # By absolute path
 
@@ -869,6 +874,48 @@ keydown(100);keyup(100); // trigger the end
   def test_glut_wheelevents(self):
     self.btest('glut_wheelevents.c', '1')
 
+  def test_webgl_context_attributes(self):
+    # Javascript code to check the attributes support we want to test in the WebGL implementation 
+    # (request the attribute, create a context and check its value afterwards in the context attributes).
+    # Tests will succeed when an attribute is not supported.
+    open(os.path.join(self.get_dir(), 'check_webgl_attributes_support.js'), 'w').write('''
+      mergeInto(LibraryManager.library, {
+        webglAntialiasSupported: function() {
+          canvas = document.createElement('canvas');
+          context = canvas.getContext('experimental-webgl', {antialias: true});
+          attributes = context.getContextAttributes();
+          return attributes.antialias;
+        },
+        webglDepthSupported: function() {
+          canvas = document.createElement('canvas');
+          context = canvas.getContext('experimental-webgl', {depth: true});
+          attributes = context.getContextAttributes();
+          return attributes.depth;
+        },
+        webglStencilSupported: function() {
+          canvas = document.createElement('canvas');
+          context = canvas.getContext('experimental-webgl', {stencil: true});
+          attributes = context.getContextAttributes();
+          return attributes.stencil;
+       }
+      });
+    ''')
+    
+    # Copy common code file to temporary directory
+    filepath = path_from_root('tests/test_webgl_context_attributes_common.c')
+    temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
+    shutil.copyfile(filepath, temp_filepath)
+    
+    # perform tests with attributes activated 
+    self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED'])
+    self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED'])
+    self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED'])
+    
+    # perform tests with attributes desactivated
+    self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js'])
+    self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js'])
+    self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js'])
+    
   def test_emscripten_get_now(self):
     self.btest('emscripten_get_now.cpp', '1')
 
@@ -1524,3 +1571,7 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
 
+  def test_mmap_file(self):
+    open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
+    for extra_args in [[], ['--no-heap-copy']]:
+      self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'] + extra_args)

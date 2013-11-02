@@ -1579,12 +1579,12 @@ LibraryManager.library = {
   // stdio.h
   // ==========================================================================
 
-  _isFloat: function(text) {
-    return !!(/^[+-]?[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?$/.exec(text));
+  _getFloat: function(text) {
+    return /^[+-]?[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?/.exec(text);
   },
 
   // TODO: Document.
-  _scanString__deps: ['_isFloat'],
+  _scanString__deps: ['_getFloat'],
   _scanString: function(format, get, unget, varargs) {
     if (!__scanString.whiteSpace) {
       __scanString.whiteSpace = {};
@@ -1743,15 +1743,13 @@ LibraryManager.library = {
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
         if (type == 'f' || type == 'e' || type == 'g' ||
             type == 'F' || type == 'E' || type == 'G') {
-          var last = 0;
           next = get();
-          while (next > 0) {
+          while (next > 0 && (!(next in __scanString.whiteSpace)))  {
             buffer.push(String.fromCharCode(next));
-            if (__isFloat(buffer.join(''))) {
-              last = buffer.length;
-            }
             next = get();
           }
+          var m = __getFloat(buffer.join(''));
+          var last = m ? m[0].length : 0;
           for (var i = 0; i < buffer.length - last + 1; i++) {
             unget();
           }
@@ -8580,7 +8578,7 @@ LibraryManager.library = {
   },
 
   emscripten_run_script_string: function(ptr) {
-    var s = eval(Pointer_stringify(ptr));
+    var s = eval(Pointer_stringify(ptr)) + '';
     var me = _emscripten_run_script_string;
     if (!me.bufferSize || me.bufferSize < s.length+1) {
       if (me.bufferSize) _free(me.buffer);
@@ -8620,6 +8618,14 @@ LibraryManager.library = {
     if (func) return func();
     func = Runtime.asmConstCache[code] = eval('(function(){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
     return func();
+  },
+
+  //============================
+  // emscripten vector ops
+  //============================
+
+  emscripten_float32x4_signmask__inline: function(x) {
+    return x + '.signMask()';
   },
 
   //============================

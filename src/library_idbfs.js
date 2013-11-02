@@ -130,7 +130,7 @@ mergeInto(LibraryManager.library, {
       };
       var toAbsolute = function(root) {
         return function(p) {
-          return PATH.join(root, p);
+          return PATH.join2(root, p);
         }
       };
 

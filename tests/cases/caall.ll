@@ -18,7 +18,7 @@ entry:
 define (i32*)** @_ZNSt3__13mapINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPFvP6ObjectENS_4lessIS6_EENS4_INS_4pairIKS6_SA_EEEEEixERSE_(i32 %x) {
 entry:
   %ret = inttoptr i32 0 to (i32*)**
-  ret %ret
+  ret (i32*)** %ret
 }
 
 ; [#uses=1]

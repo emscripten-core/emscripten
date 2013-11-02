@@ -153,24 +153,30 @@ var LibrarySDL = {
       120: 27,
       121: 28,
       122: 29, // Z
-      44: 54, // comma
-      46: 55, // period
-      47: 56, // slash
-      49: 30, // 1
-      50: 31,
-      51: 32,
-      52: 33,
-      53: 34,
-      54: 35,
-      55: 36,
-      56: 37,
-      57: 38, // 9
-      48: 39, // 0
-      13: 40, // return
-      9: 43, // tab
-      27: 41, // escape
-      32: 44, // space
-      92: 49, // backslash
+       49: 30, // 1
+       50: 31,
+       51: 32,
+       52: 33,
+       53: 34,
+       54: 35,
+       55: 36,
+       56: 37,
+       57: 38, // 9
+       48: 39, // 0
+       13: 40, // return
+       27: 41, // escape
+        8: 42, // backspace
+        9: 43, // tab
+       32: 44, // space
+       61: 46, // equals
+       91: 47, // left bracket
+       93: 48, // right bracket
+       92: 49, // backslash
+       59: 51, // ;
+       96: 52, // apostrophe
+       44: 54, // comma
+       46: 55, // period
+       47: 56, // slash
       305: 224, // ctrl
       308: 226, // alt
     },
@@ -254,9 +260,13 @@ var LibrarySDL = {
       }
 
       var webGLContextAttributes = {
-        antialias: ((SDL.glAttributes[13 /*SDL_GL_MULTISAMPLEBUFFERS*/] != 0) && (SDL.glAttributes[14 /*SDL_GL_MULTISAMPLESAMPLES*/] > 1))
+        antialias: ((SDL.glAttributes[13 /*SDL_GL_MULTISAMPLEBUFFERS*/] != 0) && (SDL.glAttributes[14 /*SDL_GL_MULTISAMPLESAMPLES*/] > 1)),
+        depth: (SDL.glAttributes[6 /*SDL_GL_DEPTH_SIZE*/] > 0),
+        stencil: (SDL.glAttributes[7 /*SDL_GL_STENCIL_SIZE*/] > 0)
       };
+      
       var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas, webGLContextAttributes);
+            
       SDL.surfaces[surf] = {
         width: width,
         height: height,

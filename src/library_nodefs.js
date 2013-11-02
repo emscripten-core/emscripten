@@ -134,7 +134,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function (parent, name) {
-        var path = PATH.join(NODEFS.realPath(parent), name);
+        var path = PATH.join2(NODEFS.realPath(parent), name);
         var mode = NODEFS.getMode(path);
         return NODEFS.createNode(parent, name, mode);
       },
@@ -156,7 +156,7 @@ mergeInto(LibraryManager.library, {
       },
       rename: function (oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
-        var newPath = PATH.join(NODEFS.realPath(newDir), newName);
+        var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
         try {
           fs.renameSync(oldPath, newPath);
         } catch (e) {
@@ -165,7 +165,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       unlink: function(parent, name) {
-        var path = PATH.join(NODEFS.realPath(parent), name);
+        var path = PATH.join2(NODEFS.realPath(parent), name);
         try {
           fs.unlinkSync(path);
         } catch (e) {
@@ -174,7 +174,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       rmdir: function(parent, name) {
-        var path = PATH.join(NODEFS.realPath(parent), name);
+        var path = PATH.join2(NODEFS.realPath(parent), name);
         try {
           fs.rmdirSync(path);
         } catch (e) {
@@ -192,7 +192,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       symlink: function(parent, newName, oldPath) {
-        var newPath = PATH.join(NODEFS.realPath(parent), newName);
+        var newPath = PATH.join2(NODEFS.realPath(parent), newName);
         try {
           fs.symlinkSync(oldPath, newPath);
         } catch (e) {

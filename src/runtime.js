@@ -145,7 +145,7 @@ var Runtime = {
   //! @param type The type, by name.
   getNativeTypeSize: function(type) {
 #if QUANTUM_SIZE == 1
-     return 1;
+    return 1;
 #else
     switch (type) {
       case 'i1': case 'i8': return 1;
@@ -161,6 +161,8 @@ var Runtime = {
           var bits = parseInt(type.substr(1));
           assert(bits % 8 === 0);
           return bits/8;
+        } else {
+          return 0;
         }
       }
     }

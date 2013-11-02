@@ -157,6 +157,10 @@ function isStructType(type) {
   return type[0] == '%';
 }
 
+function isVectorType(type) {
+  return type[type.length-1] === '>';
+}
+
 function isStructuralType(type) {
   return /^{ ?[^}]* ?}$/.test(type); // { i32, i8 } etc. - anonymous struct types
 }
@@ -215,8 +219,22 @@ function isIdenticallyImplemented(type1, type2) {
 }
 
 function isIllegalType(type) {
-  var bits = getBits(type);
-  return bits > 0 && (bits >= 64 || !isPowerOfTwo(bits));
+  switch (type) {
+    case 'i1':
+    case 'i8':
+    case 'i16':
+    case 'i32':
+    case 'float':
+    case 'double':
+    case 'rawJS':
+    case '<2 x float>':
+    case '<4 x float>':
+    case '<2 x i32>':
+    case '<4 x i32>':
+    case 'void': return false;
+  }
+  if (!type || type[type.length-1] === '*') return false;
+  return true;
 }
 
 function isVoidType(type) {
@@ -287,6 +305,9 @@ function getReturnType(type) {
   if (pointingLevels(type) > 1) return '*'; // the type of a call can be either the return value, or the entire function. ** or more means it is a return value
   var lastOpen = type.lastIndexOf('(');
   if (lastOpen > 0) {
+    // handle things like   void (i32)* (i32, void (i32)*)*
+    var closeStar = type.indexOf(')*');
+    if (closeStar > 0 && closeStar < type.length-2) lastOpen = closeStar+3;
     return type.substr(0, lastOpen-1);
   }
   return type;
@@ -328,17 +349,6 @@ function getVectorSize(type) {
   return parseInt(type.substring(1, type.indexOf(' ')));
 }
 
-function getVectorBaseType(type) {
-  Types.usesSIMD = true;
-  switch (type) {
-    case '<2 x float>':
-    case '<4 x float>': return 'float';
-    case '<2 x i32>':
-    case '<4 x i32>': return 'uint';
-    default: throw 'unknown vector type ' + type;
-  }
-}
-
 function getVectorNativeType(type) {
   Types.usesSIMD = true;
   switch (type) {
@@ -348,6 +358,18 @@ function getVectorNativeType(type) {
     case '<4 x i32>': return 'i32';
     default: throw 'unknown vector type ' + type;
   }
+}
+
+function getSIMDName(type) {
+  switch (type) {
+    case 'i32': return 'uint';
+    case 'float': return 'float';
+    default: throw 'getSIMDName ' + type;
+  }
+}
+
+function getVectorBaseType(type) {
+  return getSIMDName(getVectorNativeType(type));
 }
 
 function addIdent(token) {
@@ -465,29 +487,13 @@ function parseParamTokens(params) {
         Types.needAnalysis[ret[ret.length-1].type] = 0;
         anonymousIndex ++;
       }
-    } else if (segment[1].text in PARSABLE_LLVM_FUNCTIONS) {
-      ret.push(parseLLVMFunctionCall(segment));
-    } else if (segment[1].text === 'blockaddress') {
-      ret.push(parseBlockAddress(segment));
-    } else if (segment[1].type && segment[1].type == '{') {
-      ret.push(parseLLVMSegment(segment));
     } else {
       if (segment[2] && segment[2].text == 'to') { // part of bitcast params
         segment = segment.slice(0, 2);
       }
-      while (segment.length > 2) {
-        segment[0].text += segment[1].text;
-        segment.splice(1, 1); // TODO: merge tokens nicely
-      }
-      var num = isNumber(segment[1].text) || (segment[1].text[0] === '0'); // handle 0x... as well
-      var ident = parseNumerical(segment[1].text, segment[0].text);
-      if (!num) ident = toNiceIdent(ident);
-      ret.push({
-        intertype: 'value',
-        type: segment[0].text,
-        ident: ident
-      });
-      Types.needAnalysis[removeAllPointing(ret[ret.length-1].type)] = 0;
+      var parsed = parseLLVMSegment(segment);
+      if (parsed.intertype === 'value' && !isIllegalType(parsed.type)) parsed.ident = parseNumerical(parsed.ident, parsed.type);
+      ret.push(parsed);
     }
     ret[ret.length-1].byVal = byVal;
   }
@@ -559,25 +565,6 @@ function sortGlobals(globals) {
     return (Number(isBSS(a)) - Number(isBSS(b))) ||
       (inv[b.ident] - inv[a.ident]);
   });
-}
-
-function finalizeParam(param) {
-  if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
-    return finalizeLLVMFunctionCall(param);
-  } else if (param.intertype === 'blockaddress') {
-    return finalizeBlockAddress(param);
-  } else if (param.intertype === 'jsvalue') {
-    return param.ident;
-  } else {
-    if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
-      return parseI64Constant(param.ident);
-    }
-    var ret = param.ident;
-    if (ret in Variables.globals) {
-      ret = makeGlobalUse(ret);
-    }
-    return ret;
-  }
 }
 
 // Segment ==> Parameter
@@ -1012,11 +999,9 @@ function getOldLabel(label) {
 }
 
 function calcAllocatedSize(type) {
-  if (pointingLevels(type) == 0 && isStructType(type)) {
-    return Types.types[type].flatSize; // makeEmptyStruct(item.allocatedType).length;
-  } else {
-    return Runtime.getNativeTypeSize(type); // We can really get away with '1', though, at least on the stack...
-  }
+  var ret = Runtime.getNativeTypeSize(type);
+  if (ret) return ret;
+  return Types.types[type].flatSize; // known type
 }
 
 // Generates the type signature for a structure, for each byte, the type that is there.
@@ -1823,7 +1808,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     switch(type) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
-      case '<4 x i32>': case 'uint':
+      case '<4 x i32>':
       case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
       case 'double': {
         if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
@@ -2016,6 +2001,8 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else if (param.ident == 'zeroinitializer') {
     if (isStructType(param.type)) {
       return makeLLVMStruct(zeros(Types.types[param.type].fields.length));
+    } else if (isVectorType(param.type)) {
+      return ensureVector(0, getVectorBaseType(param.type));
     } else {
       return '0';
     }
@@ -2038,7 +2025,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else if (param.intertype == 'mathop') {
     return processMathop(param);
   } else if (param.intertype === 'vector') {
-    return 'float32x4(' + param.idents.join(',') + ')';
+    return getVectorBaseType(param.type) + '32x4(' + param.idents.join(',') + ')';
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
@@ -2398,6 +2385,9 @@ function processMathop(item) {
           return 'SIMD.uint32x4BitsToFloat32x4(' + idents[0] + ')';
         }
       }
+      case 'and': return 'SIMD.and(' + idents[0] + ',' + idents[1] + ')';
+      case 'or': return 'SIMD.or(' + idents[0] + ',' + idents[1] + ')';
+      case 'xor': return 'SIMD.xor(' + idents[0] + ',' + idents[1] + ')';
       default: throw 'vector op todo: ' + dump(item);
     }
   }

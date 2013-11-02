@@ -59,26 +59,22 @@ mergeInto(LibraryManager.library, {
       }
       return root + dir;
     },
-    basename: function(path, ext) {
+    basename: function(path) {
       // EMSCRIPTEN return '/'' for '/', not an empty string
       if (path === '/') return '/';
-      var f = PATH.splitPath(path)[2];
-      if (ext && f.substr(-1 * ext.length) === ext) {
-        f = f.substr(0, f.length - ext.length);
-      }
-      return f;
+      var lastSlash = path.lastIndexOf('/');
+      if (lastSlash === -1) return path;
+      return path.substr(lastSlash+1);
     },
     extname: function(path) {
       return PATH.splitPath(path)[3];
     },
     join: function() {
       var paths = Array.prototype.slice.call(arguments, 0);
-      return PATH.normalize(paths.filter(function(p, index) {
-        if (typeof p !== 'string') {
-          throw new TypeError('Arguments to path.join must be strings');
-        }
-        return p;
-      }).join('/'));
+      return PATH.normalize(paths.join('/'));
+    },
+    join2: function(l, r) {
+      return PATH.normalize(l + '/' + r);
     },
     resolve: function() {
       var resolvedPath = '',

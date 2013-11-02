@@ -1110,19 +1110,21 @@ var Math_min = Math.min;
 // it happens right before run - run will be postponed until
 // the dependencies are met.
 var runDependencies = 0;
-var runDependencyTracking = {};
 var runDependencyWatcher = null;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
+#if ASSERTIONS
+var runDependencyTracking = {};
+#endif
 
 function addRunDependency(id) {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#if ASSERTIONS
   if (id) {
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
-#if ASSERTIONS
     if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(function() {
@@ -1139,10 +1141,10 @@ function addRunDependency(id) {
         }
       }, 10000);
     }
-#endif
   } else {
     Module.printErr('warning: run dependency added without ID');
   }
+#endif
 }
 Module['addRunDependency'] = addRunDependency;
 function removeRunDependency(id) {
@@ -1150,12 +1152,14 @@ function removeRunDependency(id) {
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#if ASSERTIONS
   if (id) {
     assert(runDependencyTracking[id]);
     delete runDependencyTracking[id];
   } else {
     Module.printErr('warning: run dependency removed without ID');
   }
+#endif
   if (runDependencies == 0) {
     if (runDependencyWatcher !== null) {
       clearInterval(runDependencyWatcher);
