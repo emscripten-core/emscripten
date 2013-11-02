@@ -1425,6 +1425,12 @@ try:
           'wctob.c',
           'wctomb.c',
          ]],
+         ['regex', [
+          'regcomp.c',
+          'regerror.c',
+          'regexec.c',
+          'tre-mem.c',
+         ]],
          ['stdio', [
           'fwprintf.c',
           'swprintf.c',
