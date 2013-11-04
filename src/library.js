@@ -1602,12 +1602,12 @@ LibraryManager.library = {
     if (format.indexOf('%n') >= 0) {
       // need to track soFar
       var _get = get;
-      get = function() {
+      get = function get() {
         soFar++;
         return _get();
       }
       var _unget = unget;
-      unget = function() {
+      unget = function unget() {
         soFar--;
         return _unget();
       }
@@ -2755,12 +2755,12 @@ LibraryManager.library = {
       return -1;
     }
     var buffer = [];
-    var get = function() {
+    function get() {
       var c = _fgetc(stream);
       buffer.push(c);
       return c;
     };
-    var unget = function() {
+    function unget() {
       _ungetc(buffer.pop(), stream);
     };
     return __scanString(format, get, unget, varargs);
@@ -2777,8 +2777,8 @@ LibraryManager.library = {
     // int sscanf(const char *restrict s, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     var index = 0;
-    var get = function() { return {{{ makeGetValue('s', 'index++', 'i8') }}}; };
-    var unget = function() { index--; };
+    function get() { return {{{ makeGetValue('s', 'index++', 'i8') }}}; };
+    function unget() { index--; };
     return __scanString(format, get, unget, varargs);
   },
   snprintf__deps: ['_formatString'],
@@ -3040,7 +3040,7 @@ LibraryManager.library = {
   },
 
   bsearch: function(key, base, num, size, compar) {
-    var cmp = function(x, y) {
+    function cmp(x, y) {
 #if ASM_JS
       return Module['dynCall_iii'](compar, x, y);
 #else
@@ -5108,7 +5108,7 @@ LibraryManager.library = {
         table[from + i] = {};
         sigs.forEach(function(sig) { // TODO: new Function etc.
           var full = 'dynCall_' + sig;
-          table[from + i][sig] = function() {
+          table[from + i][sig] = function dynCall_sig() {
             arguments[0] -= from;
             return asm[full].apply(null, arguments);
           }
@@ -5132,7 +5132,7 @@ LibraryManager.library = {
 
       // patch js module dynCall_* to use functionTable
       sigs.forEach(function(sig) {
-        jsModule['dynCall_' + sig] = function() {
+        jsModule['dynCall_' + sig] = function dynCall_sig() {
           return table[arguments[0]][sig].apply(null, arguments);
         };
       });
@@ -5596,7 +5596,7 @@ LibraryManager.library = {
     var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    var leadingSomething = function(value, digits, character) {
+    function leadingSomething(value, digits, character) {
       var str = typeof value === 'number' ? value.toString() : (value || '');
       while (str.length < digits) {
         str = character[0]+str;
@@ -5604,12 +5604,12 @@ LibraryManager.library = {
       return str;
     };
 
-    var leadingNulls = function(value, digits) {
+    function leadingNulls(value, digits) {
       return leadingSomething(value, digits, '0');
     };
 
-    var compareByDay = function(date1, date2) {
-      var sgn = function(value) {
+    function compareByDay(date1, date2) {
+      function sgn(value) {
         return value < 0 ? -1 : (value > 0 ? 1 : 0);
       };
 
@@ -5622,7 +5622,7 @@ LibraryManager.library = {
       return compare;
     };
 
-    var getFirstWeekStartDate = function(janFourth) {
+    function getFirstWeekStartDate(janFourth) {
         switch (janFourth.getDay()) {
           case 0: // Sunday
             return new Date(janFourth.getFullYear()-1, 11, 29);
@@ -5641,7 +5641,7 @@ LibraryManager.library = {
         }
     };
 
-    var getWeekBasedYear = function(date) {
+    function getWeekBasedYear(date) {
         var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
 
         var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
@@ -5928,8 +5928,8 @@ LibraryManager.library = {
     var matches = new RegExp('^'+pattern).exec(Pointer_stringify(buf))
     // Module['print'](Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
-    var initDate = function() {
-      var fixup = function(value, min, max) {
+    function initDate() {
+      function fixup(value, min, max) {
         return (typeof value !== 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
       return {
@@ -5946,7 +5946,7 @@ LibraryManager.library = {
       var date = initDate();
       var value;
 
-      var getMatch = function(symbol) {
+      function getMatch(symbol) {
         var pos = capture.indexOf(symbol);
         // check if symbol appears in regexp
         if (pos >= 0) {
@@ -7681,7 +7681,7 @@ LibraryManager.library = {
       var session = Module['webrtc']['session'];
       var peer = new Peer(broker);
       var listenOptions = Module['webrtc']['hostOptions'] || {};
-      peer.onconnection = function(connection) {
+      peer.onconnection = function peer_onconnection(connection) {
         console.log('connected');
         var addr;
         /* If this peer is connecting to the host, assign 10.0.0.1 to the host so it can be
@@ -7695,7 +7695,7 @@ LibraryManager.library = {
         }
         connection['addr'] = addr;
         Sockets.connections[addr] = connection;
-        connection.ondisconnect = function() {
+        connection.ondisconnect = function connection_ondisconnect() {
           console.log('disconnect');
           // Don't return the host address (10.0.0.1) to the pool
           if (!(session && session === Sockets.connections[addr]['route'])) {
@@ -7707,12 +7707,12 @@ LibraryManager.library = {
             Module['webrtc']['ondisconnect'](peer);
           }
         };
-        connection.onerror = function(error) {
+        connection.onerror = function connection_onerror(error) {
           if (Module['webrtc']['onerror'] && 'function' === typeof Module['webrtc']['onerror']) {
             Module['webrtc']['onerror'](error);
           }
         };
-        connection.onmessage = function(label, message) {
+        connection.onmessage = function connection_onmessage(label, message) {
           if ('unreliable' === label) {
             handleMessage(addr, message.data);
           }
@@ -7722,13 +7722,13 @@ LibraryManager.library = {
           Module['webrtc']['onconnect'](peer);
         }
       };
-      peer.onpending = function(pending) {
+      peer.onpending = function peer_onpending(pending) {
         console.log('pending from: ', pending['route'], '; initiated by: ', (pending['incoming']) ? 'remote' : 'local');
       };
-      peer.onerror = function(error) {
+      peer.onerror = function peer_onerror(error) {
         console.error(error);
       };
-      peer.onroute = function(route) {
+      peer.onroute = function peer_onroute(route) {
         if (Module['webrtc']['onpeer'] && 'function' === typeof Module['webrtc']['onpeer']) {
           Module['webrtc']['onpeer'](peer, route);
         }
@@ -7744,7 +7744,7 @@ LibraryManager.library = {
           console.log("unable to deliver message: ", addr, header[1], message);
         }
       }
-      window.onbeforeunload = function() {
+      window.onbeforeunload = function window_onbeforeunload() {
         var ids = Object.keys(Sockets.connections);
         ids.forEach(function(id) {
           Sockets.connections[id].close();
@@ -7813,7 +7813,7 @@ LibraryManager.library = {
     }
     info.addr = Sockets.localAddr; // 10.0.0.254
     info.host = __inet_ntop4_raw(info.addr);
-    info.close = function() {
+    info.close = function info_close() {
       Sockets.portmap[info.port] = undefined;
     }
     Sockets.portmap[info.port] = info;
@@ -8724,6 +8724,6 @@ function autoAddDeps(object, name) {
 
 // Add aborting stubs for various libc stuff needed by libc++
 ['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose', 'fputwc', '__lockfile', '__unlockfile'].forEach(function(aborter) {
-  LibraryManager.library[aborter] = function() { throw 'TODO: ' + aborter };
+  LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
 });
 

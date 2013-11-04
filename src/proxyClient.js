@@ -5,7 +5,7 @@ Module.ctx = Module.canvas.getContext('2d');
 
 var worker = new Worker('{{{ filename }}}.js');
 
-worker.onmessage = function(event) {
+worker.onmessage = function worker_onmessage(event) {
   var data = event.data;
   switch (data.target) {
     case 'stdout': {

@@ -2,12 +2,12 @@
 function EventListener() {
   this.listeners = {};
 
-  this.addEventListener = function(event, func) {
+  this.addEventListener = function addEventListener(event, func) {
     if (!this.listeners[event]) this.listeners[event] = [];
     this.listeners[event].push(func);
   };
 
-  this.fireEvent = function(event) {
+  this.fireEvent = function fireEvent(event) {
     event.preventDefault = function(){};
 
     if (event.type in this.listeners) {
@@ -22,17 +22,17 @@ var window = this;
 var windowExtra = new EventListener();
 for (var x in windowExtra) window[x] = windowExtra[x];
 
-window.close = function() {
+window.close = function window_close() {
   postMessage({ target: 'window', method: 'close' });
 };
 
 var document = new EventListener();
 
-document.createElement = function(what) {
+document.createElement = function document_createElement(what) {
   switch(what) {
     case 'canvas': {
       var canvas = new EventListener();
-      canvas.ensureData = function() {
+      canvas.ensureData = function canvas_ensureData() {
         if (!canvas.data || canvas.data.width !== canvas.width || canvas.data.height !== canvas.height) {
           canvas.data = {
             width: canvas.width,
@@ -42,7 +42,7 @@ document.createElement = function(what) {
           postMessage({ target: 'canvas', op: 'resize', width: canvas.width, height: canvas.height });
         }
       };
-      canvas.getContext = function(type) {
+      canvas.getContext = function canvas_getContext(type) {
         assert(type == '2d');
         return {
           getImageData: function(x, y, w, h) {
@@ -63,7 +63,7 @@ document.createElement = function(what) {
         };
       };
       canvas.boundingClientRect = {};
-      canvas.getBoundingClientRect = function() {
+      canvas.getBoundingClientRect = function canvas_getBoundingClientRect() {
         return {
           width: canvas.boundingClientRect.width,
           height: canvas.boundingClientRect.height,
@@ -89,10 +89,10 @@ Module.canvas = document.createElement('canvas');
 
 Module.setStatus = function(){};
 
-Module.print = function(x) {
+Module.print = function Module_print(x) {
   postMessage({ target: 'stdout', content: x });
 };
-Module.printErr = function(x) {
+Module.printErr = function Module_printErr(x) {
   postMessage({ target: 'stderr', content: x });
 };
 
@@ -112,7 +112,7 @@ function messageResender() {
   }
 }
 
-onmessage = function(message) {
+onmessage = function onmessage(message) {
   if (!calledMain) {
     if (!messageBuffer) {
       messageBuffer = [];

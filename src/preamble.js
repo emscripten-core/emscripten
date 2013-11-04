@@ -1060,7 +1060,7 @@ Module['writeAsciiToMemory'] = writeAsciiToMemory;
 {{{ reSign }}}
 
 #if PRECISE_I32_MUL
-if (!Math['imul']) Math['imul'] = function(a, b) {
+if (!Math['imul']) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
   var al = a & 0xffff;
   var bh  = b >>> 16;
@@ -1068,14 +1068,14 @@ if (!Math['imul']) Math['imul'] = function(a, b) {
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
 #else
-Math['imul'] = function(a, b) {
+Math['imul'] = function imul(a, b) {
   return (a*b)|0; // fast but imprecise
 };
 #endif
 Math.imul = Math['imul'];
 
 #if TO_FLOAT32
-if (!Math['toFloat32']) Math['toFloat32'] = function(x) {
+if (!Math['toFloat32']) Math['toFloat32'] = function toFloat32(x) {
   return x;
 };
 Math.toFloat32 = Math['toFloat32'];
