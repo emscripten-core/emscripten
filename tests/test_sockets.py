@@ -1,5 +1,5 @@
 import os, multiprocessing, subprocess
-from runner import BrowserCore, RunnerCore, path_from_root
+from runner import BrowserCore, path_from_root
 from tools.shared import *
 
 def clean_pids(pids):
@@ -404,7 +404,7 @@ class sockets(BrowserCore):
     # This test checks that sockets work when the client code is run in Node.js
     # Run with ./runner.py sockets.test_nodejs_sockets_echo
     if not NODE_JS in JS_ENGINES:
-        return
+        return self.skip('node is not present')
 
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
