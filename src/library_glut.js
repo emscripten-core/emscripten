@@ -372,7 +372,7 @@ var LibraryGLUT = {
   },
 
   glutIdleFunc: function(func) {
-    var callback = function() {
+    function callback() {
       if (GLUT.idleFunc) {
         Runtime.dynCall('v', GLUT.idleFunc);
         Browser.safeSetTimeout(callback, 0);
