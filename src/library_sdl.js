@@ -1301,12 +1301,12 @@ var LibrarySDL = {
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
       // stb_image integration support
-      var cleanup = function() {
+      function cleanup() {
         if (rwops && freeSrc) _SDL_FreeRW(rwopsID);
       };
       function addCleanup(func) {
         var old = cleanup;
-        cleanup = function() {
+        cleanup = function added_cleanup() {
           old();
           func();
         }
@@ -1481,7 +1481,7 @@ var LibrarySDL = {
       SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
       
       // Create a callback function that will be routinely called to ask more audio data from the user application.
-      SDL.audio.caller = function() {
+      SDL.audio.caller = function SDL_audio_caller() {
         if (!SDL.audio) {
           return;
         }
@@ -1495,7 +1495,7 @@ var LibrarySDL = {
         SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
         SDL.audio.mozBuffer = new Float32Array(totalSamples);
         SDL.audio.nextPlayTime = 0;
-        SDL.audio.pushAudio = function(ptr, size) {
+        SDL.audio.pushAudio = function SDL_audio_pushAudio(ptr, size) {
           var mozBuffer = SDL.audio.mozBuffer;
           // The input audio data for SDL audio is either 8-bit or 16-bit interleaved across channels, output for Mozilla Audio Data API
           // needs to be Float32 interleaved, so perform a sample conversion.
@@ -1862,7 +1862,7 @@ var LibrarySDL = {
     audio.frequency = info.audio.frequency;
     // TODO: handle N loops. Behavior matches Mix_PlayMusic
     audio.loop = loops != 0; 
-    audio['onended'] = function() { // TODO: cache these
+    audio['onended'] = function SDL_audio_onended() { // TODO: cache these
       channelInfo.audio = null;
       if (SDL.channelFinished) {
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
@@ -1889,7 +1889,7 @@ var LibrarySDL = {
         source.loop = false;
         source.buffer = context.createBuffer(numChannels, 1, audio.frequency);
         var jsNode = context.createJavaScriptNode(2048, numChannels, numChannels);
-        jsNode.onaudioprocess = function(event) {
+        jsNode.onaudioprocess = function jsNode_onaudioprocess(event) {
           var buffers = new Array(numChannels);
           for (var i = 0; i < numChannels; ++i) {
             buffers[i] = event.outputBuffer.getChannelData(i);
