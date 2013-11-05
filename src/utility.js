@@ -10,6 +10,10 @@ function safeQuote(x) {
 
 function dump(item) {
   try {
+    if (typeof item == 'object' && item !== null && item.funcData) {
+      var funcData = item.funcData;
+      item.funcData = null;
+    }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch(e) {
     var ret = [];
@@ -22,6 +26,8 @@ function dump(item) {
       }
     }
     return ret.join(',\n');
+  } finally {
+    if (funcData) item.funcData = funcData;
   }
 }
 
@@ -79,6 +85,13 @@ function warnOnce(a, msg) {
   }
 }
 
+var abortExecution = false;
+
+function error(msg) {
+  abortExecution = true;
+  printErr('Error: ' + msg);
+}
+
 function dedup(items, ident) {
   var seen = {};
   if (ident) {
@@ -105,6 +118,12 @@ function range(size) {
 function zeros(size) {
   var ret = [];
   for (var i = 0; i < size; i++) ret.push(0);
+  return ret;
+}
+
+function spaces(size) {
+  var ret = '';
+  for (var i = 0; i < size; i++) ret += ' ';
   return ret;
 }
 
@@ -178,7 +197,7 @@ function dprint() {
     text = text(); // Allows deferred calculation, so dprints don't slow us down when not needed
   }
   text = DPRINT_INDENT + '// ' + text;
-  print(text);
+  printErr(text);
 }
 
 var PROF_ORIGIN = Date.now();
@@ -255,6 +274,15 @@ function set() {
 }
 var unset = keys;
 
+function numberedSet() {
+  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
+  var ret = {};
+  for (var i = 0; i < args.length; i++) {
+    ret[args[i]] = i;
+  }
+  return ret;
+}
+
 function setSub(x, y) {
   var ret = set(keys(x));
   for (yy in y) {
@@ -270,8 +298,30 @@ function setIntersect(x, y) {
   var ret = {};
   for (xx in x) {
     if (xx in y) {
-      ret[xx] = true;
+      ret[xx] = 0;
     }
+  }
+  return ret;
+}
+
+function setUnion(x, y) {
+  var ret = set(keys(x));
+  for (yy in y) {
+    ret[yy] = 0;
+  }
+  return ret;
+}
+
+function setSize(x) {
+  var ret = 0;
+  for (var xx in x) ret++;
+  return ret;
+}
+
+function invertArray(x) {
+  var ret = {};
+  for (var i = 0; i < x.length; i++) {
+    ret[x[i]] = i;
   }
   return ret;
 }
@@ -282,6 +332,17 @@ function copy(x) {
 
 function jsonCompare(x, y) {
   return JSON.stringify(x) == JSON.stringify(y);
+}
+
+function sortedJsonCompare(x, y) {
+  if (x === null || typeof x !== 'object') return x === y;
+  for (var i in x) {
+    if (!sortedJsonCompare(x[i], y[i])) return false;
+  }
+  for (var i in y) {
+    if (!sortedJsonCompare(x[i], y[i])) return false;
+  }
+  return true;
 }
 
 function stringifyWithFunctions(obj) {
@@ -307,22 +368,37 @@ function isPowerOfTwo(x) {
   return x > 0 && ((x & (x-1)) == 0);
 }
 
+function ceilPowerOfTwo(x) {
+  var ret = 1;
+  while (ret < x) ret <<= 1;
+  return ret;
+}
+
 function Benchmarker() {
-  var starts = {}, times = {}, counts = {};
+  var totals = {};
+  var ids = [], lastTime = 0;
   this.start = function(id) {
-    //printErr(['+', id, starts[id]]);
-    starts[id] = (starts[id] || []).concat([Date.now()]);
+    var now = Date.now();
+    if (ids.length > 0) {
+      totals[ids[ids.length-1]] += now - lastTime;
+    }
+    lastTime = now;
+    ids.push(id);
+    totals[id] = totals[id] || 0;
   };
-  this.end = function(id) {
-    //printErr(['-', id, starts[id]]);
-    assert(starts[id], new Error().stack);
-    times[id] = (times[id] || 0) + Date.now() - starts[id].pop();
-    counts[id] = (counts[id] || 0) + 1;
+  this.stop = function(id) {
+    var now = Date.now();
+    assert(id === ids[ids.length-1]);
+    totals[id] += now - lastTime;
+    lastTime = now;
+    ids.pop();
   };
-  this.print = function() {
-    var ids = keys(times);
-    ids.sort(function(a, b) { return times[b] - times[a] });
-    printErr('times: \n' + ids.map(function(id) { return id + ' : ' + counts[id] + ' times, ' + times[id] + ' ms' }).join('\n'));
+  this.print = function(text) {
+    var ids = keys(totals);
+    if (ids.length > 0) {
+      ids.sort(function(a, b) { return totals[b] - totals[a] });
+      printErr(text + ' times: \n' + ids.map(function(id) { return id + ' : ' + totals[id] + ' ms' }).join('\n'));
+    }
   };
 };
 

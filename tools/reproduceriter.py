@@ -1,9 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
-
-* This is a work in progress *
-
 Reproducer Rewriter
 ===================
 
@@ -19,13 +16,19 @@ Usage:
 
 1. Run this script as
 
-    reproduceriter.py IN_DIR OUT_DIR FIRST_JS
+    reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION] [ON_IDLE]
 
    IN_DIR should be the project directory, and OUT_DIR will be
    created with the instrumented code (OUT_DIR will be overwritten
    if it exists). FIRST_JS should be a path (relative to IN_DIR) to
    the first JavaScript file loaded by the project (this tool
-   will add code to that). 
+   will add code to that). The last two parameters, WINDOW_LOCATION
+   and ON_IDLE, are relevant for shell builds. If WINDOW_LOCATION is
+   specified, we will make a build that runs in the shell and not in
+   a browser. WINDOW_LOCATION is the fake window.location we set in the
+   fake DOM, and ON_IDLE is code that runs when the fake main browser
+   event loop runs out of actions. (Note that only a browser build can
+   do recording, shell builds just replay.)
 
    You will need to call
 
@@ -79,7 +82,26 @@ Examples
  * BananaBread: Unpack into a directory called bb, then one
    directory up, run
 
-    emscripten/tools/reproduceriter.py bb bench js/game-setup.js game.html?low,low,reproduce=repro.data
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js game.html?low,low,reproduce=repro.data "function(){ print('triggering click'); document.querySelector('.fullscreen-button.low-res').callEventListeners('click'); window.onIdle = null; }"
+
+   for a shell build, or
+
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js 
+
+   for a browser build. Since only a browser build can do recording, you would normally
+   make a browser build, record a trace, then make a shell build and copy the trace
+   there so you can run it.
+
+   The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurence.
+
+Notes
+
+ * Replay can depend on browser state. One case is if you are replaying a fullscreen
+   game with pointer lock, then you will need to manually allow pointer lock if it
+   isn't already on for the machine. If you do it too early or too late, the replay
+   can be different, since mousemove events mean different things depending on
+   whether the pointer is locked or not.
+
 '''
 
 import os, sys, shutil, re
@@ -92,6 +114,11 @@ in_dir = sys.argv[1]
 out_dir = sys.argv[2]
 first_js = sys.argv[3]
 window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
+on_idle = sys.argv[5] if len(sys.argv) >= 6 else ''
+
+shell = not not window_location
+
+dirs_to_drop = 0 if not os.path.dirname(first_js) else len(os.path.dirname(first_js).split('/'))
 
 if os.path.exists(out_dir):
   shutil.rmtree(out_dir)
@@ -121,287 +148,13 @@ for parent, dirs, files in os.walk(out_dir):
 
 print 'add boilerplate...'
 
-open(os.path.join(out_dir, first_js), 'w').write('''
-
-// environment for shell
-if (typeof nagivator == 'undefined') {
-  var window = {
-    location: {
-      toString: function() {
-        return '%s';
-      },
-      search: '%s',
-    },
-    rafs: [],
-    requestAnimationFrame: function(func) {
-      window.rafs.push(func);
-    },
-    runEventLoop: function() {
-      while (1) { // run forever until an exception stops this replay
-        var currRafs = window.rafs;
-        window.rafs = [];
-        for (var i = 0; i < currRafs.length; i++) {
-          currRafs[i]();
-        }
-      }
-    },
-  };
-  var document = {
-    getElementById: function(id) {
-      switch(id) {
-        case 'canvas': {
-          return {
-            getContext: function(which) {
-              switch(which) {
-                case 'experimental-webgl': {
-                  return {
-                    getExtension: function() { return 1 },
-                    requestPointerLock: function() {
-                      throw 'pointerLock';
-                    },
-                  };
-                }
-                default: throw 'canvas.getContext: ' + which;
-              }
-            },
-          };
-        }
-        default: throw 'getElementById: ' + id;
-      }
-    },
-    querySelector: function() {
-      return {
-        classList: {
-          add: function(){},
-          remove: function(){},
-        },
-      };
-    },
-  };
-  var performance = {
-    now: function() {
-      return Date.now();
-    },
-  };
-}
-
-var Recorder = (function() {
-  var recorder;
-  var init = 'reproduce=';
-  var initLocation = window.location.search.indexOf(init);
-  var replaying = initLocation >= 0;
-  var raf = window['requestAnimationFrame'] ||
-            window['mozRequestAnimationFrame'] ||
-            window['webkitRequestAnimationFrame'] ||
-            window['msRequestAnimationFrame'] ||
-            window['oRequestAnimationFrame'];
-  if (!replaying) {
-    // Prepare to record
-    recorder = {};
-    // Start
-    recorder.frameCounter = 0; // the frame counter is used to know when to replay events
-    recorder.start = function() {
-      alert("Starting recording! Don't forget to Recorder.finish() afterwards!");
-      function count() {
-        recorder.frameCounter++;
-        raf(count);
-      }
-      count();
-      recorder.started = true;
-    };
-    // Math.random
-    recorder.randoms = [];
-    var random = Math.random;
-    Math.random = function() {
-      var ret = random();
-      recorder.randoms.push(ret);
-      return ret;
-    };
-    // Date.now, performance.now
-    recorder.dnows = [];
-    recorder.dnow = Date.now;
-    Date.now = function() {
-      var ret = recorder.dnow();
-      recorder.dnows.push(ret);
-      return ret;
-    };
-    recorder.pnows = [];
-    recorder.pnow = performance.now;
-    performance.now = function() {
-      var ret = recorder.pnow();
-      recorder.pnows.push(ret);
-      return ret;
-    };
-    // Events
-    recorder.devents = []; // document events
-    recorder.onEvent = function(which, callback) {
-      document['on' + which] = function(event) {
-        if (!recorder.started) return true;
-        event.frameCounter = recorder.frameCounter;
-        recorder.devents.push(event);
-        return callback(event); // XXX do we need to record the return value?
-      };
-    };
-    recorder.tevents = []; // custom-target events. Currently we assume a single such custom target (aside from document), e.g., a canvas for the game.
-    recorder.addListener = function(target, which, callback, arg) {
-      target.addEventListener(which, function(event) {
-        if (!recorder.started) return true;
-        event.frameCounter = recorder.frameCounter;
-        recorder.tevents.push(event);
-        return callback(event); // XXX do we need to record the return value?
-      }, arg);
-    };
-    // Finish
-    recorder.finish = function() {
-      // Reorder data because pop() is faster than shift()
-      recorder.randoms.reverse();
-      recorder.dnows.reverse();
-      recorder.pnows.reverse();
-      recorder.devents.reverse();
-      recorder.tevents.reverse();
-      // Make JSON.stringify work on data from native event objects (and only store relevant ones)
-      var importantProperties = {
-        type: 1,
-        movementX: 1, mozMovementX: 1, webkitMovementX: 1,
-        movementY: 1, mozMovementY: 1, webkitMovementY: 1,
-        detail: 1,
-        wheelDelta: 1,
-        pageX: 1,
-        pageY: 1,
-        button: 1,
-        keyCode: 1,
-        frameCounter: 1
-      };
-      function importantize(event) {
-        var ret = {};
-        for (var prop in importantProperties) {
-          if (prop in event) {
-            ret[prop] = event[prop];
-          }
-        }
-        return ret;
-      }
-      recorder.devents = recorder.devents.map(importantize);
-      recorder.tevents = recorder.tevents.map(importantize);
-      // Write out
-      alert('Writing out data, remember to save!');
-      setTimeout(function() {
-        document.open();
-        document.write(JSON.stringify(recorder));
-        document.close();
-      }, 0);
-      return '.';
-    };
-  } else {
-    // Load recording
-    var dataPath = window.location.search.substring(initLocation + init.length);
-    var baseURL = window.location.toString().replace('://', 'cheez999').split('?')[0].split('/').slice(0, -1).join('/').replace('cheez999', '://');
-    if (baseURL[baseURL.length-1] != '/') baseURL += '/';
-    var path = baseURL + dataPath;
-    alert('Loading replay from ' + path);
-    var request = new XMLHttpRequest();
-    request.open('GET', path, false);
-    request.send();
-    var raw = request.responseText;
-    raw = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}')+1); // remove <html> etc
-    recorder = JSON.parse(raw);
-    // prepare to replay
-    // Start
-    recorder.frameCounter = 0; // the frame counter is used to know when to replay events
-    recorder.start = function() {
-      function count() {
-        recorder.frameCounter++;
-        raf(count);
-        // replay relevant events for this frame
-        while (recorder.devents.length && recorder.devents[recorder.devents.length-1].frameCounter <= recorder.frameCounter) {
-          var event = recorder.devents.pop();
-          recorder['on' + event.type](event);
-        }
-        while (recorder.tevents.length && recorder.tevents[recorder.tevents.length-1].frameCounter <= recorder.frameCounter) {
-          var event = recorder.tevents.pop();
-          recorder['event' + event.type](event);
-        }
-      }
-      count();
-    };
-    // Math.random
-    Math.random = function() {
-      if (recorder.randoms.length > 0) {
-        return recorder.randoms.pop();
-      } else {
-        recorder.finish();
-        throw 'consuming too many values!';
-      }
-    };
-    // Date.now, performance.now
-    recorder.dnow = Date.now;
-    Date.now = function() {
-      if (recorder.dnows.length > 0) {
-        return recorder.dnows.pop();
-      } else {
-        recorder.finish();
-        throw 'consuming too many values!';
-      }
-    };
-    var pnow = performance.now || performance.webkitNow || performance.mozNow || performance.oNow || performance.msNow || dnow;
-    recorder.pnow = function() { return pnow.call(performance) };
-    performance.now = function() {
-      if (recorder.pnows.length > 0) {
-        return recorder.pnows.pop();
-      } else {
-        recorder.finish();
-        throw 'consuming too many values!';
-      }
-    };
-    // Events
-    recorder.onEvent = function(which, callback) {
-      recorder['on' + which] = callback;
-    };
-    recorder.eventCallbacks = {};
-    recorder.addListener = function(target, which, callback, arg) {
-      recorder['event' + which] = callback;
-    };
-    recorder.onFinish = [];
-    // Benchmarking hooks - emscripten specific
-    setTimeout(function() {
-      var totalTime = 0;
-      var totalSquared = 0;
-      var iterations = 0;
-      var maxTime = 0;
-      var curr = 0;
-      Module.preMainLoop = function() {
-        curr = recorder.pnow();
-      }
-      Module.postMainLoop = function() {
-        var time = recorder.pnow() - curr;
-        totalTime += time;
-        totalSquared += time*time;
-        maxTime = Math.max(maxTime, time);
-        iterations++;
-      };
-      recorder.onFinish.push(function() {
-        var mean = totalTime / iterations;
-        var meanSquared = totalSquared / iterations;
-        console.log('mean frame   : ' + mean + ' ms');
-        console.log('frame std dev: ' + Math.sqrt(meanSquared - (mean*mean)) + ' ms');
-        console.log('max frame    : ' + maxTime + ' ms');
-      });    
-    });
-    // Finish
-    recorder.finish = function() {
-      recorder.onFinish.forEach(function(finish) {
-        finish();
-      });
-    };
-  }
-  recorder.replaying = replaying;
-  return recorder;
-})();
-''' % (window_location, window_location.split('?')[-1]) + open(os.path.join(in_dir, first_js)).read() + '''
-if (typeof nagivator == 'undefined') {
-  window.runEventLoop();
-}
-''')
+open(os.path.join(out_dir, first_js), 'w').write(
+  (open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js')).read() % (
+    window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
+  ) if shell else '') +
+  open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() +
+  open(os.path.join(in_dir, first_js)).read() + ('\nwindow.runEventLoop();\n' if shell else '')
+)
 
 print 'done!'
 

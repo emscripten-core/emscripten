@@ -5,7 +5,7 @@ target triple = "i386-pc-linux-gnu"
 @.str = private constant [14 x i8] c"hello, world!\00", align 1 ; [#uses=1]
 
 ; [#uses=2]
-define void @"\01_Z5hellov"() {
+define void @"\01_Z5hellov"(x86_fp80 %waka) {
 entry:
   %0 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   br label %return

@@ -16,7 +16,7 @@ void finalizer(void *ptr, void *arg) {
 int stage = 0;
 float start = 0;
 
-void waiter() {
+void waiter(void*) {
   if (stage == 0) { // wait for a while, see no GCing
     assert(global);
     if (emscripten_get_now() - start > 2100) {
@@ -58,7 +58,7 @@ void waiter() {
     }
   }
 
-  emscripten_async_call(waiter, 100);
+  emscripten_async_call(waiter, NULL, 100);
 }
 
 int main() {
@@ -89,7 +89,7 @@ int main() {
   void **local2Data = (void**)local2;
   local2Data[0] = local4; // actually ignored, because local2 is atomic, so 4 is freeable
 
-  emscripten_async_call(waiter, 100);
+  emscripten_async_call(waiter, NULL, 100);
 
   return 0;
 }

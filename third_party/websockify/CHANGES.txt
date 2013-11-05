@@ -1,0 +1,23 @@
+Changes
+=======
+
+0.2.1 - Oct 15, 2012
+--------------------
+
+ * re-released with updated version number
+
+0.2.0 - Sep 17, 2012
+--------------------
+
+ * Binary data support in websock.js
+ * Target config file/dir and multiple targets with token selector
+ * IPv6 fixes
+ * SSL target support
+ * Proxy to/from unix socket
+
+
+0.1.0 - May 11, 2012
+--------------------
+
+ * Initial versioned release.
+

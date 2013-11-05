@@ -16,7 +16,8 @@ datadir = $(prefix)/share
 infodir = $(datadir)/info
 mandir = $(datadir)/man
 sysconfdir = $(prefix)/etc
-CPPFLAGS = -DDECODER_ONLY=$(DECODER_ONLY)
+CXX = g++
+CPPFLAGS = 
 CXXFLAGS = -Wall -W -O2
 LDFLAGS = 
 
@@ -27,16 +28,16 @@ INSTALL_DATA = $(INSTALL) -p -m 644
 INSTALL_DIR = $(INSTALL) -d -m 755
 SHELL = /bin/sh
 
-objs = decoder.o encoder.o fast_encoder.o main.o
-recobjs = decoder.o lziprecover.o
-unzobjs = unzcrash.o
+objs = arg_parser.o decoder.o encoder.o fast_encoder.o main.o
+recobjs = arg_parser.o decoder.o lziprecover.o
+unzobjs = arg_parser.o unzcrash.o
 
 
 .PHONY : all install install-info install-man install-strip \
          uninstall uninstall-info uninstall-man \
          doc info man check dist clean distclean
 
-all : $(progname)
+all : $(progname) lziprecover
 
 $(progname) : $(objs)
 	$(CXX) $(LDFLAGS) -o $@ $(objs)
@@ -63,12 +64,13 @@ unzcrash.o : testsuite/unzcrash.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 $(objs)        : Makefile
+arg_parser.o   : arg_parser.h
 decoder.o      : lzip.h decoder.h
 encoder.o      : lzip.h encoder.h
 fast_encoder.o : lzip.h encoder.h fast_encoder.h
-main.o         : lzip.h decoder.h encoder.h fast_encoder.h
-lziprecover.o  : lzip.h decoder.h Makefile
-unzcrash.o     : Makefile
+main.o         : arg_parser.h lzip.h decoder.h encoder.h fast_encoder.h
+lziprecover.o  : arg_parser.h lzip.h decoder.h Makefile
+unzcrash.o     : arg_parser.h Makefile
 
 
 doc : info man

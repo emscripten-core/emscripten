@@ -466,9 +466,9 @@ __cxa_rethrow()
         globals->caughtExceptions = 0;
     }
 #if __arm__
-    (void) _Unwind_SjLj_Resume_or_Rethrow(&exception_header->unwindHeader);
+    _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
 #else
-    (void)_Unwind_RaiseException(&exception_header->unwindHeader);
+    _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
 
     //  If we get here, some kind of unwinding error has occurred.
@@ -524,7 +524,7 @@ __cxa_decrement_exception_refcount(void* thrown_object) throw()
 
 /*
     Returns a pointer to the thrown object (if any) at the top of the
-    caughtExceptions stack.  Atommically increment the exception's referenceCount.
+    caughtExceptions stack.  Atomically increment the exception's referenceCount.
     If there is no such thrown object or if the thrown object is foreign,
     returns null.
 
@@ -573,7 +573,7 @@ dependent_exception_cleanup(_Unwind_Reason_Code reason, _Unwind_Exception* unwin
 }
 
 /*
-    If thrown_object is not null, allocate, initialize and thow a dependent
+    If thrown_object is not null, allocate, initialize and throw a dependent
     exception.
 */
 void

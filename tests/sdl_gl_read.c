@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 GLuint programObject;
 int width = 512;
@@ -118,8 +119,14 @@ void Draw ()
 }
 
 void Verify() {
-  unsigned char *data = malloc(width*height*4);
+  unsigned char *data = malloc(width*height*4 + 16);
+  int *last = (int*)(data + width*height*4 - 4);
+  int *after = (int*)(data + width*height*4);
+  *last = 0xdeadbeef;
+  *after = 0x12345678;
   glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+  assert(*last != 0xdeadbeef); // should overwrite the buffer to the end
+  assert(*after == 0x12345678); // nothing should be written afterwards!
   // Should see some blue, and nothing else
   int seen = 0;
   int ok = 1;

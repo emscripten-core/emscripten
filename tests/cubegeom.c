@@ -29,22 +29,13 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
-void verify() {
-  int width = 640, height = 480;
-  unsigned char *data = (unsigned char*)malloc(width*height*4);
-  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
-  int sum = 0;
-  for (int x = 0; x < width*height*4; x++) {
-    if (x % 4 != 3) sum += x * data[x];
-  }
-#if EMSCRIPTEN
-  int result = sum;
-  REPORT_RESULT();
-#endif
-}
-
 int main(int argc, char *argv[])
 {
+    // testing
+    GLint tempInt;
+    GLboolean tempBool;
+    void *tempPtr;
+
     SDL_Surface *screen;
     if ( SDL_Init(SDL_INIT_VIDEO) != 0 ) {
         printf("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -124,7 +115,9 @@ int main(int argc, char *argv[])
 
     glActiveTexture(GL_TEXTURE0);
 
+    glGetBooleanv(GL_VERTEX_ARRAY, &tempBool); assert(!tempBool);
     glEnableClientState(GL_VERTEX_ARRAY);
+    glGetBooleanv(GL_VERTEX_ARRAY, &tempBool); assert(tempBool);
 
     GLuint arrayBuffer, elementBuffer;
     glGenBuffers(1, &arrayBuffer);
@@ -207,6 +200,20 @@ int main(int argc, char *argv[])
     glNormalPointer(GL_BYTE, 32, (void*)12);
     glColorPointer(4, GL_UNSIGNED_BYTE, 32, (void*)28);
 
+    glGetPointerv(GL_VERTEX_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)0);
+    glGetPointerv(GL_COLOR_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)28);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)16);
+    glGetIntegerv(GL_VERTEX_ARRAY_SIZE, &tempInt); assert(tempInt == 3);
+    glGetIntegerv(GL_VERTEX_ARRAY_TYPE, &tempInt); assert(tempInt == GL_FLOAT);
+    glGetIntegerv(GL_VERTEX_ARRAY_STRIDE, &tempInt); assert(tempInt == 32);
+    glGetIntegerv(GL_COLOR_ARRAY_SIZE, &tempInt); assert(tempInt == 4);
+    glGetIntegerv(GL_COLOR_ARRAY_TYPE, &tempInt); assert(tempInt == GL_UNSIGNED_BYTE);
+    glGetIntegerv(GL_COLOR_ARRAY_STRIDE, &tempInt); assert(tempInt == 32);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_SIZE, &tempInt); assert(tempInt == 2);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_TYPE, &tempInt); assert(tempInt == GL_FLOAT);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_STRIDE, &tempInt); assert(tempInt == 32);
+    glGetBooleanv(GL_VERTEX_ARRAY, &tempBool); assert(tempBool);
+
     glBindTexture(GL_TEXTURE_2D, texture); // diffuse?
     glActiveTexture(GL_TEXTURE0);
     glActiveTexture(GL_TEXTURE1);
@@ -256,6 +263,14 @@ int main(int argc, char *argv[])
 
     GLint lightmapLocation = glGetUniformLocation(program, "lightmap");
     assert(lightmapLocation >= 0);
+    assert(lightmapLocation == glGetUniformLocation(program, "lightmap")); // must get identical ids
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &ok);
+    assert(ok);
+    assert(lightmapLocation != glGetUniformLocation(program, "lightmap")); // must NOT get identical ids, we re-linked!
+    lightmapLocation = glGetUniformLocation(program, "lightmap");
+    assert(lightmapLocation == glGetUniformLocation(program, "lightmap")); // must get identical ids
+
     glUniform1i(lightmapLocation, 1); // sampler2D? Is it the texture unit?
 
     GLint diffusemapLocation = glGetUniformLocation(program, "diffusemap");
@@ -282,9 +297,7 @@ int main(int argc, char *argv[])
     // END
 
     SDL_GL_SwapBuffers();
-
-    verify();
-   
+  
 #if !EMSCRIPTEN
     SDL_Delay(1500);
 #endif

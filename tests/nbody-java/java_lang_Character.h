@@ -1,0 +1,341 @@
+#ifndef __JAVA_LANG_CHARACTER__
+#define __JAVA_LANG_CHARACTER__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_java_lang_Character 8
+// Implemented interfaces:
+#include "java_io_Serializable.h"
+#include "java_lang_Comparable.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_CharSequence
+#define XMLVM_FORWARD_DECL_java_lang_CharSequence
+XMLVM_FORWARD_DECL(java_lang_CharSequence)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_Class
+#define XMLVM_FORWARD_DECL_java_lang_Class
+XMLVM_FORWARD_DECL(java_lang_Class)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_IndexOutOfBoundsException
+#define XMLVM_FORWARD_DECL_java_lang_IndexOutOfBoundsException
+XMLVM_FORWARD_DECL(java_lang_IndexOutOfBoundsException)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_NullPointerException
+#define XMLVM_FORWARD_DECL_java_lang_NullPointerException
+XMLVM_FORWARD_DECL(java_lang_NullPointerException)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_String
+#define XMLVM_FORWARD_DECL_java_lang_String
+XMLVM_FORWARD_DECL(java_lang_String)
+#endif
+// Class declarations for java.lang.Character
+XMLVM_DEFINE_CLASS(java_lang_Character, 7, XMLVM_ITABLE_SIZE_java_lang_Character)
+
+extern JAVA_OBJECT __CLASS_java_lang_Character;
+extern JAVA_OBJECT __CLASS_java_lang_Character_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_Character_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_Character_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_java_lang_Character
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_java_lang_Character \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        JAVA_CHAR value_; \
+        __ADDITIONAL_INSTANCE_FIELDS_java_lang_Character \
+    } java_lang_Character
+
+struct java_lang_Character {
+    __TIB_DEFINITION_java_lang_Character* tib;
+    struct {
+        __INSTANCE_FIELDS_java_lang_Character;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_java_lang_Character
+#define XMLVM_FORWARD_DECL_java_lang_Character
+typedef struct java_lang_Character java_lang_Character;
+#endif
+
+#define XMLVM_VTABLE_SIZE_java_lang_Character 7
+#define XMLVM_VTABLE_IDX_java_lang_Character_equals___java_lang_Object 1
+#define XMLVM_VTABLE_IDX_java_lang_Character_hashCode__ 4
+#define XMLVM_VTABLE_IDX_java_lang_Character_toString__ 5
+#define XMLVM_VTABLE_IDX_java_lang_Character_compareTo___java_lang_Object 6
+
+void __INIT_java_lang_Character();
+void __INIT_IMPL_java_lang_Character();
+void __DELETE_java_lang_Character(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_java_lang_Character(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_java_lang_Character();
+JAVA_OBJECT __NEW_INSTANCE_java_lang_Character();
+JAVA_LONG java_lang_Character_GET_serialVersionUID();
+void java_lang_Character_PUT_serialVersionUID(JAVA_LONG v);
+JAVA_CHAR java_lang_Character_GET_MIN_VALUE();
+void java_lang_Character_PUT_MIN_VALUE(JAVA_CHAR v);
+JAVA_CHAR java_lang_Character_GET_MAX_VALUE();
+void java_lang_Character_PUT_MAX_VALUE(JAVA_CHAR v);
+JAVA_INT java_lang_Character_GET_MIN_RADIX();
+void java_lang_Character_PUT_MIN_RADIX(JAVA_INT v);
+JAVA_INT java_lang_Character_GET_MAX_RADIX();
+void java_lang_Character_PUT_MAX_RADIX(JAVA_INT v);
+JAVA_OBJECT java_lang_Character_GET_TYPE();
+void java_lang_Character_PUT_TYPE(JAVA_OBJECT v);
+JAVA_BYTE java_lang_Character_GET_UNASSIGNED();
+void java_lang_Character_PUT_UNASSIGNED(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_UPPERCASE_LETTER();
+void java_lang_Character_PUT_UPPERCASE_LETTER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_LOWERCASE_LETTER();
+void java_lang_Character_PUT_LOWERCASE_LETTER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_TITLECASE_LETTER();
+void java_lang_Character_PUT_TITLECASE_LETTER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_MODIFIER_LETTER();
+void java_lang_Character_PUT_MODIFIER_LETTER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_OTHER_LETTER();
+void java_lang_Character_PUT_OTHER_LETTER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_NON_SPACING_MARK();
+void java_lang_Character_PUT_NON_SPACING_MARK(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_ENCLOSING_MARK();
+void java_lang_Character_PUT_ENCLOSING_MARK(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_COMBINING_SPACING_MARK();
+void java_lang_Character_PUT_COMBINING_SPACING_MARK(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DECIMAL_DIGIT_NUMBER();
+void java_lang_Character_PUT_DECIMAL_DIGIT_NUMBER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_LETTER_NUMBER();
+void java_lang_Character_PUT_LETTER_NUMBER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_OTHER_NUMBER();
+void java_lang_Character_PUT_OTHER_NUMBER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_SPACE_SEPARATOR();
+void java_lang_Character_PUT_SPACE_SEPARATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_LINE_SEPARATOR();
+void java_lang_Character_PUT_LINE_SEPARATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_PARAGRAPH_SEPARATOR();
+void java_lang_Character_PUT_PARAGRAPH_SEPARATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_CONTROL();
+void java_lang_Character_PUT_CONTROL(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_FORMAT();
+void java_lang_Character_PUT_FORMAT(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_PRIVATE_USE();
+void java_lang_Character_PUT_PRIVATE_USE(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_SURROGATE();
+void java_lang_Character_PUT_SURROGATE(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DASH_PUNCTUATION();
+void java_lang_Character_PUT_DASH_PUNCTUATION(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_START_PUNCTUATION();
+void java_lang_Character_PUT_START_PUNCTUATION(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_END_PUNCTUATION();
+void java_lang_Character_PUT_END_PUNCTUATION(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_CONNECTOR_PUNCTUATION();
+void java_lang_Character_PUT_CONNECTOR_PUNCTUATION(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_OTHER_PUNCTUATION();
+void java_lang_Character_PUT_OTHER_PUNCTUATION(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_MATH_SYMBOL();
+void java_lang_Character_PUT_MATH_SYMBOL(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_CURRENCY_SYMBOL();
+void java_lang_Character_PUT_CURRENCY_SYMBOL(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_MODIFIER_SYMBOL();
+void java_lang_Character_PUT_MODIFIER_SYMBOL(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_OTHER_SYMBOL();
+void java_lang_Character_PUT_OTHER_SYMBOL(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_INITIAL_QUOTE_PUNCTUATION();
+void java_lang_Character_PUT_INITIAL_QUOTE_PUNCTUATION(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_FINAL_QUOTE_PUNCTUATION();
+void java_lang_Character_PUT_FINAL_QUOTE_PUNCTUATION(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_UNDEFINED();
+void java_lang_Character_PUT_DIRECTIONALITY_UNDEFINED(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_LEFT_TO_RIGHT();
+void java_lang_Character_PUT_DIRECTIONALITY_LEFT_TO_RIGHT(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_RIGHT_TO_LEFT();
+void java_lang_Character_PUT_DIRECTIONALITY_RIGHT_TO_LEFT(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC();
+void java_lang_Character_PUT_DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_EUROPEAN_NUMBER();
+void java_lang_Character_PUT_DIRECTIONALITY_EUROPEAN_NUMBER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_EUROPEAN_NUMBER_SEPARATOR();
+void java_lang_Character_PUT_DIRECTIONALITY_EUROPEAN_NUMBER_SEPARATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_EUROPEAN_NUMBER_TERMINATOR();
+void java_lang_Character_PUT_DIRECTIONALITY_EUROPEAN_NUMBER_TERMINATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_ARABIC_NUMBER();
+void java_lang_Character_PUT_DIRECTIONALITY_ARABIC_NUMBER(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_COMMON_NUMBER_SEPARATOR();
+void java_lang_Character_PUT_DIRECTIONALITY_COMMON_NUMBER_SEPARATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_NONSPACING_MARK();
+void java_lang_Character_PUT_DIRECTIONALITY_NONSPACING_MARK(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_BOUNDARY_NEUTRAL();
+void java_lang_Character_PUT_DIRECTIONALITY_BOUNDARY_NEUTRAL(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_PARAGRAPH_SEPARATOR();
+void java_lang_Character_PUT_DIRECTIONALITY_PARAGRAPH_SEPARATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_SEGMENT_SEPARATOR();
+void java_lang_Character_PUT_DIRECTIONALITY_SEGMENT_SEPARATOR(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_WHITESPACE();
+void java_lang_Character_PUT_DIRECTIONALITY_WHITESPACE(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_OTHER_NEUTRALS();
+void java_lang_Character_PUT_DIRECTIONALITY_OTHER_NEUTRALS(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_LEFT_TO_RIGHT_EMBEDDING();
+void java_lang_Character_PUT_DIRECTIONALITY_LEFT_TO_RIGHT_EMBEDDING(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_LEFT_TO_RIGHT_OVERRIDE();
+void java_lang_Character_PUT_DIRECTIONALITY_LEFT_TO_RIGHT_OVERRIDE(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_RIGHT_TO_LEFT_EMBEDDING();
+void java_lang_Character_PUT_DIRECTIONALITY_RIGHT_TO_LEFT_EMBEDDING(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_RIGHT_TO_LEFT_OVERRIDE();
+void java_lang_Character_PUT_DIRECTIONALITY_RIGHT_TO_LEFT_OVERRIDE(JAVA_BYTE v);
+JAVA_BYTE java_lang_Character_GET_DIRECTIONALITY_POP_DIRECTIONAL_FORMAT();
+void java_lang_Character_PUT_DIRECTIONALITY_POP_DIRECTIONAL_FORMAT(JAVA_BYTE v);
+JAVA_CHAR java_lang_Character_GET_MIN_HIGH_SURROGATE();
+void java_lang_Character_PUT_MIN_HIGH_SURROGATE(JAVA_CHAR v);
+JAVA_CHAR java_lang_Character_GET_MAX_HIGH_SURROGATE();
+void java_lang_Character_PUT_MAX_HIGH_SURROGATE(JAVA_CHAR v);
+JAVA_CHAR java_lang_Character_GET_MIN_LOW_SURROGATE();
+void java_lang_Character_PUT_MIN_LOW_SURROGATE(JAVA_CHAR v);
+JAVA_CHAR java_lang_Character_GET_MAX_LOW_SURROGATE();
+void java_lang_Character_PUT_MAX_LOW_SURROGATE(JAVA_CHAR v);
+JAVA_CHAR java_lang_Character_GET_MIN_SURROGATE();
+void java_lang_Character_PUT_MIN_SURROGATE(JAVA_CHAR v);
+JAVA_CHAR java_lang_Character_GET_MAX_SURROGATE();
+void java_lang_Character_PUT_MAX_SURROGATE(JAVA_CHAR v);
+JAVA_INT java_lang_Character_GET_MIN_SUPPLEMENTARY_CODE_POINT();
+void java_lang_Character_PUT_MIN_SUPPLEMENTARY_CODE_POINT(JAVA_INT v);
+JAVA_INT java_lang_Character_GET_MIN_CODE_POINT();
+void java_lang_Character_PUT_MIN_CODE_POINT(JAVA_INT v);
+JAVA_INT java_lang_Character_GET_MAX_CODE_POINT();
+void java_lang_Character_PUT_MAX_CODE_POINT(JAVA_INT v);
+JAVA_INT java_lang_Character_GET_SIZE();
+void java_lang_Character_PUT_SIZE(JAVA_INT v);
+JAVA_OBJECT java_lang_Character_GET_bidiKeys();
+void java_lang_Character_PUT_bidiKeys(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_bidiValues();
+void java_lang_Character_PUT_bidiValues(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_mirrored();
+void java_lang_Character_PUT_mirrored(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_typeKeys();
+void java_lang_Character_PUT_typeKeys(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_typeValues();
+void java_lang_Character_PUT_typeValues(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_typeValuesCache();
+void java_lang_Character_PUT_typeValuesCache(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_uppercaseKeys();
+void java_lang_Character_PUT_uppercaseKeys(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_uppercaseValues();
+void java_lang_Character_PUT_uppercaseValues(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_uppercaseValuesCache();
+void java_lang_Character_PUT_uppercaseValuesCache(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_lowercaseKeys();
+void java_lang_Character_PUT_lowercaseKeys(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_lowercaseValues();
+void java_lang_Character_PUT_lowercaseValues(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_lowercaseValuesCache();
+void java_lang_Character_PUT_lowercaseValuesCache(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_digitKeys();
+void java_lang_Character_PUT_digitKeys(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_digitValues();
+void java_lang_Character_PUT_digitValues(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_typeTags();
+void java_lang_Character_PUT_typeTags(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_DIRECTIONALITY();
+void java_lang_Character_PUT_DIRECTIONALITY(JAVA_OBJECT v);
+JAVA_INT java_lang_Character_GET_ISJAVASTART();
+void java_lang_Character_PUT_ISJAVASTART(JAVA_INT v);
+JAVA_INT java_lang_Character_GET_ISJAVAPART();
+void java_lang_Character_PUT_ISJAVAPART(JAVA_INT v);
+JAVA_OBJECT java_lang_Character_GET_titlecaseKeys();
+void java_lang_Character_PUT_titlecaseKeys(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_titlecaseValues();
+void java_lang_Character_PUT_titlecaseValues(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_numericKeys();
+void java_lang_Character_PUT_numericKeys(JAVA_OBJECT v);
+JAVA_OBJECT java_lang_Character_GET_numericValues();
+void java_lang_Character_PUT_numericValues(JAVA_OBJECT v);
+JAVA_INT java_lang_Character_GET_CACHE_LEN();
+void java_lang_Character_PUT_CACHE_LEN(JAVA_INT v);
+JAVA_BOOLEAN java_lang_Character_GET__assertionsDisabled();
+void java_lang_Character_PUT__assertionsDisabled(JAVA_BOOLEAN v);
+void java_lang_Character___CLINIT_();
+void java_lang_Character___INIT____char(JAVA_OBJECT me, JAVA_CHAR n1);
+JAVA_CHAR java_lang_Character_charValue__(JAVA_OBJECT me);
+JAVA_INT java_lang_Character_compareTo___java_lang_Character(JAVA_OBJECT me, JAVA_OBJECT n1);
+JAVA_OBJECT java_lang_Character_valueOf___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isValidCodePoint___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isSupplementaryCodePoint___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isHighSurrogate___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isLowSurrogate___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isSurrogatePair___char_char(JAVA_CHAR n1, JAVA_CHAR n2);
+JAVA_INT java_lang_Character_charCount___int(JAVA_INT n1);
+JAVA_INT java_lang_Character_toCodePoint___char_char(JAVA_CHAR n1, JAVA_CHAR n2);
+JAVA_INT java_lang_Character_codePointAt___java_lang_CharSequence_int(JAVA_OBJECT n1, JAVA_INT n2);
+JAVA_INT java_lang_Character_codePointAt___char_1ARRAY_int(JAVA_OBJECT n1, JAVA_INT n2);
+JAVA_INT java_lang_Character_codePointAt___char_1ARRAY_int_int(JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3);
+JAVA_INT java_lang_Character_codePointBefore___java_lang_CharSequence_int(JAVA_OBJECT n1, JAVA_INT n2);
+JAVA_INT java_lang_Character_codePointBefore___char_1ARRAY_int(JAVA_OBJECT n1, JAVA_INT n2);
+JAVA_INT java_lang_Character_codePointBefore___char_1ARRAY_int_int(JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3);
+JAVA_INT java_lang_Character_toChars___int_char_1ARRAY_int(JAVA_INT n1, JAVA_OBJECT n2, JAVA_INT n3);
+JAVA_OBJECT java_lang_Character_toChars___int(JAVA_INT n1);
+JAVA_INT java_lang_Character_codePointCount___java_lang_CharSequence_int_int(JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3);
+JAVA_INT java_lang_Character_codePointCount___char_1ARRAY_int_int(JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3);
+JAVA_INT java_lang_Character_offsetByCodePoints___java_lang_CharSequence_int_int(JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3);
+JAVA_INT java_lang_Character_offsetByCodePoints___char_1ARRAY_int_int_int_int(JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3, JAVA_INT n4, JAVA_INT n5);
+JAVA_INT java_lang_Character_digit___char_int(JAVA_CHAR n1, JAVA_INT n2);
+JAVA_INT java_lang_Character_digit___int_int(JAVA_INT n1, JAVA_INT n2);
+// Vtable index: 1
+JAVA_BOOLEAN java_lang_Character_equals___java_lang_Object(JAVA_OBJECT me, JAVA_OBJECT n1);
+JAVA_CHAR java_lang_Character_forDigit___int_int(JAVA_INT n1, JAVA_INT n2);
+JAVA_INT java_lang_Character_getNumericValue___char(JAVA_CHAR n1);
+JAVA_INT java_lang_Character_getNumericValue___int(JAVA_INT n1);
+JAVA_INT java_lang_Character_getType___char(JAVA_CHAR n1);
+JAVA_INT java_lang_Character_getType___int(JAVA_INT n1);
+JAVA_BYTE java_lang_Character_getDirectionality___char(JAVA_CHAR n1);
+JAVA_BYTE java_lang_Character_getDirectionality___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isMirrored___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isMirrored___int(JAVA_INT n1);
+// Vtable index: 4
+JAVA_INT java_lang_Character_hashCode__(JAVA_OBJECT me);
+JAVA_BOOLEAN java_lang_Character_isDefined___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isDefined___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isDigit___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isDigit___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isIdentifierIgnorable___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isIdentifierIgnorable___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isISOControl___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isISOControl___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isJavaIdentifierPart___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isJavaIdentifierPart___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isJavaIdentifierStart___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isJavaIdentifierStart___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isJavaLetter___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isJavaLetterOrDigit___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isLetter___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isLetter___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isLetterOrDigit___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isLetterOrDigit___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isLowerCase___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isLowerCase___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isSpace___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isSpaceChar___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isSpaceChar___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isTitleCase___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isTitleCase___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isUnicodeIdentifierPart___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isUnicodeIdentifierPart___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isUnicodeIdentifierStart___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isUnicodeIdentifierStart___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isUpperCase___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isUpperCase___int(JAVA_INT n1);
+JAVA_BOOLEAN java_lang_Character_isWhitespace___char(JAVA_CHAR n1);
+JAVA_BOOLEAN java_lang_Character_isWhitespace___int(JAVA_INT n1);
+JAVA_CHAR java_lang_Character_reverseBytes___char(JAVA_CHAR n1);
+JAVA_CHAR java_lang_Character_toLowerCase___char(JAVA_CHAR n1);
+JAVA_INT java_lang_Character_toLowerCase___int(JAVA_INT n1);
+// Vtable index: 5
+JAVA_OBJECT java_lang_Character_toString__(JAVA_OBJECT me);
+JAVA_OBJECT java_lang_Character_toString___char(JAVA_CHAR n1);
+JAVA_CHAR java_lang_Character_toTitleCase___char(JAVA_CHAR n1);
+JAVA_INT java_lang_Character_toTitleCase___int(JAVA_INT n1);
+JAVA_CHAR java_lang_Character_toUpperCase___char(JAVA_CHAR n1);
+JAVA_INT java_lang_Character_toUpperCase___int(JAVA_INT n1);
+// Vtable index: 6
+JAVA_INT java_lang_Character_compareTo___java_lang_Object(JAVA_OBJECT me, JAVA_OBJECT n1);
+
+#endif

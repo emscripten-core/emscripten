@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <assert.h>
+#include <math.h>
 
 int main() {
   time_t xmas2002 = 1040786563ll;
@@ -64,6 +66,9 @@ int main() {
   // Verify time() returns reasonable value (between 2011 and 2030).
   time_t t4 = 0;
   time(&t4);
+  timespec ts;
+  assert(clock_gettime(0, &ts) == 0);
+  assert(abs(ts.tv_sec - t4) <= 2);
   printf("time: %d\n", t4 > 1309635200ll && t4 < 1893362400ll);
 
   // Verify difftime() calculates accurate time difference.
@@ -96,7 +101,8 @@ int main() {
   clock_t start = clock();
   printf("clock(start): %d\n", start >= 0);
   while (clock() - start < 2 * CLOCKS_PER_SEC); // Poor man's sleep().
-  printf("clock(end): %d\n", time(NULL) - start_t == 2);
+  clock_t diff = time(NULL) - start_t;
+  printf("clock(end): %d\n", diff >= 2 && diff < 30);
 
   // Verify that ctime_r(x, buf) is equivalent to asctime_r(localtime(x), buf).
   time_t t7 = time(0);

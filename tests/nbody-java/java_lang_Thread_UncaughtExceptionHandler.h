@@ -1,0 +1,36 @@
+#ifndef __JAVA_LANG_THREAD_UNCAUGHTEXCEPTIONHANDLER__
+#define __JAVA_LANG_THREAD_UNCAUGHTEXCEPTIONHANDLER__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_IDX_java_lang_Thread_UncaughtExceptionHandler_uncaughtException___java_lang_Thread_java_lang_Throwable 0
+// Implemented interfaces:
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_Thread
+#define XMLVM_FORWARD_DECL_java_lang_Thread
+XMLVM_FORWARD_DECL(java_lang_Thread)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_Throwable
+#define XMLVM_FORWARD_DECL_java_lang_Throwable
+XMLVM_FORWARD_DECL(java_lang_Throwable)
+#endif
+
+XMLVM_DEFINE_CLASS(java_lang_Thread_UncaughtExceptionHandler, 0, 0)
+
+extern JAVA_OBJECT __CLASS_java_lang_Thread_UncaughtExceptionHandler;
+extern JAVA_OBJECT __CLASS_java_lang_Thread_UncaughtExceptionHandler_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_Thread_UncaughtExceptionHandler_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_Thread_UncaughtExceptionHandler_3ARRAY;
+#ifndef XMLVM_FORWARD_DECL_java_lang_Thread_UncaughtExceptionHandler
+#define XMLVM_FORWARD_DECL_java_lang_Thread_UncaughtExceptionHandler
+typedef struct java_lang_Thread_UncaughtExceptionHandler java_lang_Thread_UncaughtExceptionHandler;
+#endif
+
+void __INIT_java_lang_Thread_UncaughtExceptionHandler();
+void __INIT_IMPL_java_lang_Thread_UncaughtExceptionHandler();
+
+#endif

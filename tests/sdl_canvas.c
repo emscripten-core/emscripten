@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
 #include <emscripten.h>
@@ -20,7 +21,7 @@ int main(int argc, char **argv) {
 
   printf("Init: %d\n", TTF_Init());
 
-  TTF_Font *font = TTF_OpenFont("myfont.ttf", 40);
+  TTF_Font *font = TTF_OpenFont("sans-serif", 40);
   printf("Font: %p\n", font);
 
   SDL_Color color = { 0xff, 0x99, 0x00, 0xff };
@@ -38,11 +39,21 @@ int main(int argc, char **argv) {
 
   // fill stuff
   SDL_Rect rect = { 200, 200, 175, 125 };
-  SDL_FillRect(screen, &rect, 0x2222ffff);
+  SDL_FillRect(screen, &rect, SDL_MapRGBA(screen->format, 0x22, 0x22, 0xff, 0xff));
 
   SDL_Flip(screen); 
 
   SDL_LockSurface(screen);
+
+  int width, height, isFullscreen;
+  emscripten_get_canvas_size(&width, &height, &isFullscreen);
+
+  if (width != 600 && height != 450)
+  {
+    printf("error: wrong width/height\n");
+    abort();
+  }
+
   int sum = 0;
   for (int i = 0; i < screen->h; i++) {
     sum += *((char*)screen->pixels + i*screen->w*4 + i*4 + 0);
@@ -52,6 +63,8 @@ int main(int argc, char **argv) {
   printf("you should see two lines of text in different colors and a blue rectangle\n");
 
   SDL_Quit();
+
+  printf("done.\n");
 
   int result = sum > 3000 && sum < 5000; // varies a little on different browsers, font differences?
   REPORT_RESULT();

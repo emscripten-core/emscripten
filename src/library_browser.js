@@ -3,10 +3,13 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
-  $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n' + // exports
+  $Browser__deps: ['$PATH'],
+  $Browser__postset: 'Module["requestFullScreen"] = function(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
+                     'Module["setCanvasSize"] = function(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
-                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
+                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n' +
+                     'Module["getUserMedia"] = function() { Browser.getUserMedia() }',
   $Browser: {
     mainLoop: {
       scheduler: null,
@@ -40,12 +43,17 @@ mergeInto(LibraryManager.library, {
         }
       }
     },
+    isFullScreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
+    workers: [],
 
-    ensureObjects: function() {
-      if (Browser.ensured) return;
-      Browser.ensured = true;
+    init: function() {
+      if (!Module["preloadPlugins"]) Module["preloadPlugins"] = []; // needs to exist even in workers
+
+      if (Browser.initted || ENVIRONMENT_IS_WORKER) return;
+      Browser.initted = true;
+
       try {
         new Blob();
         Browser.hasBlobConstructor = true;
@@ -54,7 +62,11 @@ mergeInto(LibraryManager.library, {
         console.log("warning: no blob constructor, cannot create blobs with mimetypes");
       }
       Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? console.log("warning: no BlobBuilder") : null));
-      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
+      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : undefined;
+      if (!Module.noImageDecoding && typeof Browser.URLObject === 'undefined') {
+        console.log("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
+        Module.noImageDecoding = true;
+      }
 
       // Support for plugins that can process preloaded files. You can add more of these to
       // your app by creating and appending to Module.preloadPlugins.
@@ -64,29 +76,19 @@ mergeInto(LibraryManager.library, {
       // (possibly modified) data. For example, a plugin might decompress a file, or it
       // might create some side data structure for use later (like an Image element, etc.).
 
-      function getMimetype(name) {
-        return {
-          'jpg': 'image/jpeg',
-          'png': 'image/png',
-          'bmp': 'image/bmp',
-          'ogg': 'audio/ogg',
-          'wav': 'audio/wav',
-          'mp3': 'audio/mpeg'
-        }[name.substr(-3)];
-        return ret;
-      }
-
-      if (!Module["preloadPlugins"]) Module["preloadPlugins"] = [];
-
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
-        return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
+        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
         var b = null;
         if (Browser.hasBlobConstructor) {
           try {
-            b = new Blob([byteArray], { type: getMimetype(name) });
+            b = new Blob([byteArray], { type: Browser.getMimetype(name) });
+            if (b.size !== byteArray.length) { // Safari bug #118630
+              // Safari's Blob can only take an ArrayBuffer
+              b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
+            }
           } catch(e) {
             Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
           }
@@ -97,6 +99,9 @@ mergeInto(LibraryManager.library, {
           b = bb.getBlob();
         }
         var url = Browser.URLObject.createObjectURL(b);
+#if ASSERTIONS
+        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
+#endif
         var img = new Image();
         img.onload = function() {
           assert(img.complete, 'Image ' + name + ' could not be decoded');
@@ -119,7 +124,7 @@ mergeInto(LibraryManager.library, {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function(name) {
-        return name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function(byteArray, name, onload, onerror) {
         var done = false;
@@ -137,11 +142,14 @@ mergeInto(LibraryManager.library, {
         }
         if (Browser.hasBlobConstructor) {
           try {
-            var b = new Blob([byteArray], { type: getMimetype(name) });
+            var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
           } catch(e) {
             return fail();
           }
           var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
+#if ASSERTIONS
+          assert(typeof url == 'string', 'createObjectURL must return a url as a string');
+#endif
           var audio = new Audio();
           audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
           audio.onerror = function(event) {
@@ -176,7 +184,7 @@ mergeInto(LibraryManager.library, {
           };
           audio.src = url;
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          setTimeout(function() {
+          Browser.safeSetTimeout(function() {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
@@ -184,17 +192,68 @@ mergeInto(LibraryManager.library, {
         }
       };
       Module['preloadPlugins'].push(audioPlugin);
+
+      // Canvas event setup
+
+      var canvas = Module['canvas'];
+      canvas.requestPointerLock = canvas['requestPointerLock'] ||
+                                  canvas['mozRequestPointerLock'] ||
+                                  canvas['webkitRequestPointerLock'];
+      canvas.exitPointerLock = document['exitPointerLock'] ||
+                               document['mozExitPointerLock'] ||
+                               document['webkitExitPointerLock'] ||
+                               function(){}; // no-op if function does not exist
+      canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
+
+      function pointerLockChange() {
+        Browser.pointerLock = document['pointerLockElement'] === canvas ||
+                              document['mozPointerLockElement'] === canvas ||
+                              document['webkitPointerLockElement'] === canvas;
+      }
+
+      document.addEventListener('pointerlockchange', pointerLockChange, false);
+      document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+      document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
+
+      if (Module['elementPointerLock']) {
+        canvas.addEventListener("click", function(ev) {
+          if (!Browser.pointerLock && canvas.requestPointerLock) {
+            canvas.requestPointerLock();
+            ev.preventDefault();
+          }
+        }, false);
+      }
     },
 
-    createContext: function(canvas, useWebGL, setInModule) {
+    createContext: function(canvas, useWebGL, setInModule, webGLContextAttributes) {
 #if !USE_TYPED_ARRAYS
       if (useWebGL) {
         Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
         return null;
       }
 #endif
+      var ctx;
       try {
-        var ctx = canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
+        if (useWebGL) {
+          var contextAttributes = {
+            antialias: false,
+            alpha: false
+          };
+
+          if (webGLContextAttributes) {
+            for (var attribute in webGLContextAttributes) {
+              contextAttributes[attribute] = webGLContextAttributes[attribute];
+            }
+          }
+
+#if GL_TESTING
+          contextAttributes.preserveDrawingBuffer = true;
+#endif
+
+          ctx = canvas.getContext('experimental-webgl', contextAttributes);
+        } else {
+          ctx = canvas.getContext('2d');
+        }
         if (!ctx) throw ':(';
       } catch (e) {
         Module.print('Could not create canvas - ' + e);
@@ -252,44 +311,52 @@ mergeInto(LibraryManager.library, {
         Module.ctx = ctx;
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+        Browser.init();
       }
       return ctx;
     },
 
-    requestFullScreen: function() {
+    destroyContext: function(canvas, useWebGL, setInModule) {},
+
+    fullScreenHandlersInstalled: false,
+    lockPointer: undefined,
+    resizeCanvas: undefined,
+    requestFullScreen: function(lockPointer, resizeCanvas) {
+      Browser.lockPointer = lockPointer;
+      Browser.resizeCanvas = resizeCanvas;
+      if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
+
       var canvas = Module['canvas'];
       function fullScreenChange() {
-        var isFullScreen = false;
+        Browser.isFullScreen = false;
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
              document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
              document['fullScreenElement'] || document['fullscreenElement']) === canvas) {
-          canvas.requestPointerLock = canvas['requestPointerLock'] ||
-                                      canvas['mozRequestPointerLock'] ||
-                                      canvas['webkitRequestPointerLock'];
-          canvas.requestPointerLock();
-          isFullScreen = true;
+          canvas.cancelFullScreen = document['cancelFullScreen'] ||
+                                    document['mozCancelFullScreen'] ||
+                                    document['webkitCancelFullScreen'];
+          canvas.cancelFullScreen = canvas.cancelFullScreen.bind(document);
+          if (Browser.lockPointer) canvas.requestPointerLock();
+          Browser.isFullScreen = true;
+          if (Browser.resizeCanvas) Browser.setFullScreenCanvasSize();
+        } else if (Browser.resizeCanvas){
+          Browser.setWindowedCanvasSize();
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](isFullScreen);
+        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullScreen);
       }
 
-      document.addEventListener('fullscreenchange', fullScreenChange, false);
-      document.addEventListener('mozfullscreenchange', fullScreenChange, false);
-      document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
-
-      function pointerLockChange() {
-        Browser.pointerLock = document['pointerLockElement'] === canvas ||
-                              document['mozPointerLockElement'] === canvas ||
-                              document['webkitPointerLockElement'] === canvas;
+      if (!Browser.fullScreenHandlersInstalled) {
+        Browser.fullScreenHandlersInstalled = true;
+        document.addEventListener('fullscreenchange', fullScreenChange, false);
+        document.addEventListener('mozfullscreenchange', fullScreenChange, false);
+        document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
       }
-
-      document.addEventListener('pointerlockchange', pointerLockChange, false);
-      document.addEventListener('mozpointerlockchange', pointerLockChange, false);
-      document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
 
       canvas.requestFullScreen = canvas['requestFullScreen'] ||
                                  canvas['mozRequestFullScreen'] ||
                                  (canvas['webkitRequestFullScreen'] ? function() { canvas['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
-      canvas.requestFullScreen(); 
+      canvas.requestFullScreen();
     },
 
     requestAnimationFrame: function(func) {
@@ -303,6 +370,51 @@ mergeInto(LibraryManager.library, {
       }
       window.requestAnimationFrame(func);
     },
+
+    // generic abort-aware wrapper for an async callback
+    safeCallback: function(func) {
+      return function() {
+        if (!ABORT) return func.apply(null, arguments);
+      };
+    },
+
+    // abort-aware versions
+    safeRequestAnimationFrame: function(func) {
+      return Browser.requestAnimationFrame(function() {
+        if (!ABORT) func();
+      });
+    },
+    safeSetTimeout: function(func, timeout) {
+      return setTimeout(function() {
+        if (!ABORT) func();
+      }, timeout);
+    },
+    safeSetInterval: function(func, timeout) {
+      return setInterval(function() {
+        if (!ABORT) func();
+      }, timeout);
+    },
+
+    getMimetype: function(name) {
+      return {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'bmp': 'image/bmp',
+        'ogg': 'audio/ogg',
+        'wav': 'audio/wav',
+        'mp3': 'audio/mpeg'
+      }[name.substr(name.lastIndexOf('.')+1)];
+    },
+    
+    getUserMedia: function(func) {
+      if(!window.getUserMedia) {
+        window.getUserMedia = navigator['getUserMedia'] ||
+                              navigator['mozGetUserMedia'];
+      }
+      window.getUserMedia(func);
+    },
+
 
     getMovementX: function(event) {
       return event['movementX'] ||
@@ -318,12 +430,75 @@ mergeInto(LibraryManager.library, {
              0;
     },
 
+    mouseX: 0,
+    mouseY: 0,
+    mouseMovementX: 0,
+    mouseMovementY: 0,
+
+    calculateMouseEvent: function(event) { // event should be mousemove, mousedown or mouseup
+      if (Browser.pointerLock) {
+        // When the pointer is locked, calculate the coordinates
+        // based on the movement of the mouse.
+        // Workaround for Firefox bug 764498
+        if (event.type != 'mousemove' &&
+            ('mozMovementX' in event)) {
+          Browser.mouseMovementX = Browser.mouseMovementY = 0;
+        } else {
+          Browser.mouseMovementX = Browser.getMovementX(event);
+          Browser.mouseMovementY = Browser.getMovementY(event);
+        }
+        
+        // check if SDL is available
+        if (typeof SDL != "undefined") {
+        	Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
+        	Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
+        } else {
+        	// just add the mouse delta to the current absolut mouse position
+        	// FIXME: ideally this should be clamped against the canvas size and zero
+        	Browser.mouseX += Browser.mouseMovementX;
+        	Browser.mouseY += Browser.mouseMovementY;
+        }        
+      } else {
+        // Otherwise, calculate the movement based on the changes
+        // in the coordinates.
+        var rect = Module["canvas"].getBoundingClientRect();
+        var x, y;
+        if (event.type == 'touchstart' ||
+            event.type == 'touchend' ||
+            event.type == 'touchmove') {
+          var t = event.touches.item(0);
+          if (t) {
+            x = t.pageX - (window.scrollX + rect.left);
+            y = t.pageY - (window.scrollY + rect.top);
+          } else {
+            return;
+          }
+        } else {
+          x = event.pageX - (window.scrollX + rect.left);
+          y = event.pageY - (window.scrollY + rect.top);
+        }
+
+        // the canvas might be CSS-scaled compared to its backbuffer;
+        // SDL-using content will want mouse coordinates in terms
+        // of backbuffer units.
+        var cw = Module["canvas"].width;
+        var ch = Module["canvas"].height;
+        x = x * (cw / rect.width);
+        y = y * (ch / rect.height);
+
+        Browser.mouseMovementX = x - Browser.mouseX;
+        Browser.mouseMovementY = y - Browser.mouseY;
+        Browser.mouseX = x;
+        Browser.mouseY = y;
+      }
+    },
+
     xhrLoad: function(url, onload, onerror) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
       xhr.responseType = 'arraybuffer';
       xhr.onload = function() {
-        if (xhr.status == 200) {
+        if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
           onload(xhr.response);
         } else {
           onerror();
@@ -333,11 +508,11 @@ mergeInto(LibraryManager.library, {
       xhr.send(null);
     },
 
-    asyncLoad: function(url, onload, onerror) {
+    asyncLoad: function(url, onload, onerror, noRunDep) {
       Browser.xhrLoad(url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
-        removeRunDependency('al ' + url);
+        if (!noRunDep) removeRunDependency('al ' + url);
       }, function(event) {
         if (onerror) {
           onerror();
@@ -345,25 +520,172 @@ mergeInto(LibraryManager.library, {
           throw 'Loading data file "' + url + '" failed.';
         }
       });
-      addRunDependency('al ' + url);
+      if (!noRunDep) addRunDependency('al ' + url);
     },
+
+    resizeListeners: [],
+
+    updateResizeListeners: function() {
+      var canvas = Module['canvas'];
+      Browser.resizeListeners.forEach(function(listener) {
+        listener(canvas.width, canvas.height);
+      });
+    },
+
+    setCanvasSize: function(width, height, noUpdates) {
+      var canvas = Module['canvas'];
+      canvas.width = width;
+      canvas.height = height;
+      if (!noUpdates) Browser.updateResizeListeners();
+    },
+
+    windowedWidth: 0,
+    windowedHeight: 0,
+    setFullScreenCanvasSize: function() {
+      var canvas = Module['canvas'];
+      this.windowedWidth = canvas.width;
+      this.windowedHeight = canvas.height;
+      canvas.width = screen.width;
+      canvas.height = screen.height;
+      // check if SDL is available   
+      if (typeof SDL != "undefined") {
+      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
+      	flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
+      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      }
+      Browser.updateResizeListeners();
+    },
+
+    setWindowedCanvasSize: function() {
+      var canvas = Module['canvas'];
+      canvas.width = this.windowedWidth;
+      canvas.height = this.windowedHeight;
+      // check if SDL is available       
+      if (typeof SDL != "undefined") {
+      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
+      	flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
+      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      }
+      Browser.updateResizeListeners();
+    }
+
   },
 
   emscripten_async_wget: function(url, file, onload, onerror) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
-    var index = _file.lastIndexOf('/');
     FS.createPreloadedFile(
-      _file.substr(0, index),
-      _file.substr(index +1),
+      PATH.dirname(_file),
+      PATH.basename(_file),
       _url, true, true,
       function() {
-        FUNCTION_TABLE[onload](file);
+        if (onload) Runtime.dynCall('vi', onload, [file]);
       },
       function() {
-        FUNCTION_TABLE[onerror](file);
+        if (onerror) Runtime.dynCall('vi', onerror, [file]);
       }
     );
+  },
+
+  emscripten_async_wget_data: function(url, arg, onload, onerror) {
+    Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+      var buffer = _malloc(byteArray.length);
+      HEAPU8.set(byteArray, buffer);
+      Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
+      _free(buffer);
+    }, function() {
+      if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+    }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+  },
+
+  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    var _request = Pointer_stringify(request);
+    var _param = Pointer_stringify(param);
+    var index = _file.lastIndexOf('/');
+
+    var http = new XMLHttpRequest();
+    http.open(_request, _url, true);
+    http.responseType = 'arraybuffer';
+
+    // LOAD
+    http.onload = function(e) {
+      if (http.status == 200) {
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
+        if (onload) Runtime.dynCall('vii', onload, [arg, file]);
+      } else {
+        if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
+      }
+    };
+
+    // ERROR
+    http.onerror = function(e) {
+      if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
+    };
+
+    // PROGRESS
+    http.onprogress = function(e) {
+      var percentComplete = (e.position / e.totalSize)*100;
+      if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
+    };
+
+    // Useful because the browser can limit the number of redirection
+    try {
+      if (http.channel instanceof Ci.nsIHttpChannel)
+      http.channel.redirectionLimit = 0;
+    } catch (ex) { /* whatever */ }
+
+    if (_request == "POST") {
+      //Send the proper header information along with the request
+      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader("Content-length", _param.length);
+      http.setRequestHeader("Connection", "close");
+      http.send(_param);
+    } else {
+      http.send(null);
+    }
+  },
+
+  emscripten_async_prepare: function(file, onload, onerror) {
+    var _file = Pointer_stringify(file);
+    var data = FS.analyzePath(_file);
+    if (!data.exists) return -1;
+    FS.createPreloadedFile(
+      PATH.dirname(_file),
+      PATH.basename(_file),
+      new Uint8Array(data.object.contents), true, true,
+      function() {
+        if (onload) Runtime.dynCall('vi', onload, [file]);
+      },
+      function() {
+        if (onerror) Runtime.dynCall('vi', onerror, [file]);
+      },
+      true // don'tCreateFile - it's already there
+    );
+    return 0;
+  },
+
+  emscripten_async_prepare_data: function(data, size, suffix, arg, onload, onerror) {
+    var _suffix = Pointer_stringify(suffix);
+    if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
+    var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
+    var cname = _malloc(name.length+1);
+    writeStringToMemory(name, cname);
+    FS.createPreloadedFile(
+      '/',
+      name,
+      {{{ makeHEAPView('U8', 'data', 'data + size') }}},
+      true, true,
+      function() {
+        if (onload) Runtime.dynCall('vii', onload, [arg, cname]);
+      },
+      function() {
+        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+      },
+      true // don'tCreateFile - it's already there
+    );
+    return 0;
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],
@@ -371,20 +693,39 @@ mergeInto(LibraryManager.library, {
     Module['noExitRuntime'] = true;
 
     // TODO: cache these to avoid generating garbage
-    setTimeout(function() {
+    Browser.safeSetTimeout(function() {
       _emscripten_run_script(script);
     }, millis);
   },
 
-  emscripten_set_main_loop: function(func, fps) {
+  emscripten_async_load_script: function(url, onload, onerror) {
     Module['noExitRuntime'] = true;
 
-    var jsFunc = FUNCTION_TABLE[func];
+    onload = Runtime.getFuncWrapper(onload, 'v');
+
+    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
+    var script = document.createElement('script');
+    script.onload = function() {
+      if (runDependencies > 0) {
+        dependenciesFulfilled = onload;
+      } else {
+        onload();
+      }
+    };
+    script.onerror = onerror;
+    script.src = Pointer_stringify(url);
+    document.body.appendChild(script);
+  },
+
+  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
+    Module['noExitRuntime'] = true;
+
     Browser.mainLoop.runner = function() {
+      if (ABORT) return;
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
         var blocker = Browser.mainLoop.queue.shift();
-        blocker.func();
+        blocker.func(blocker.arg);
         if (Browser.mainLoop.remainingBlockers) {
           var remaining = Browser.mainLoop.remainingBlockers;
           var next = remaining%1 == 0 ? remaining-1 : Math.floor(remaining);
@@ -412,7 +753,16 @@ mergeInto(LibraryManager.library, {
         Module['preMainLoop']();
       }
 
-      jsFunc();
+      try {
+        Runtime.dynCall('v', func);
+      } catch (e) {
+        if (e instanceof ExitStatus) {
+          return;
+        } else {
+          if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+          throw e;
+        }
+      }
 
       if (Module['postMainLoop']) {
         Module['postMainLoop']();
@@ -436,6 +786,10 @@ mergeInto(LibraryManager.library, {
       }
     }
     Browser.mainLoop.scheduler();
+
+    if (simulateInfiniteLoop) {
+      throw 'SimulateInfiniteLoop';
+    }
   },
 
   emscripten_cancel_main_loop: function() {
@@ -451,13 +805,17 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.resume();
   },
 
-  _emscripten_push_main_loop_blocker: function(func, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name), counted: true });
+  _emscripten_push_main_loop_blocker: function(func, arg, name) {
+    Browser.mainLoop.queue.push({ func: function() {
+      Runtime.dynCall('vi', func, [arg]);
+    }, name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
-  _emscripten_push_uncounted_main_loop_blocker: function(func, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], name: Pointer_stringify(name), counted: false });
+  _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
+    Browser.mainLoop.queue.push({ func: function() {
+      Runtime.dynCall('vi', func, [arg]);
+    }, name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 
@@ -467,15 +825,23 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.updateStatus();
   },
 
-  emscripten_async_call: function(func, millis) {
+  emscripten_async_call: function(func, arg, millis) {
     Module['noExitRuntime'] = true;
 
-    var asyncCall = Runtime.getFuncWrapper(func);
-    if (millis >= 0) {
-      setTimeout(asyncCall, millis);
-    } else {
-      Browser.requestAnimationFrame(asyncCall);
+    function wrapper() {
+      Runtime.getFuncWrapper(func, 'vi')(arg);
     }
+
+    if (millis >= 0) {
+      Browser.safeSetTimeout(wrapper, millis);
+    } else {
+      Browser.safeRequestAnimationFrame(wrapper);
+    }
+  },
+
+  emscripten_exit_with_live_runtime: function() {
+    Module['noExitRuntime'] = true;
+    throw 'SimulateInfiniteLoop';
   },
 
   emscripten_hide_mouse: function() {
@@ -491,16 +857,110 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_set_canvas_size: function(width, height) {
-    Module['canvas'].width = width;
-    Module['canvas'].height = height;
+    Browser.setCanvasSize(width, height);
+  },
+  
+  emscripten_get_canvas_size: function(width, height, isFullscreen) {
+    var canvas = Module['canvas'];
+    {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
+    {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
   },
 
   emscripten_get_now: function() {
-    if (window['performance'] && window['performance']['now']) {
-      return window['performance']['now']();
-    } else {
-      return Date.now();
+    if (!_emscripten_get_now.actual) {
+      if (ENVIRONMENT_IS_NODE) {
+          _emscripten_get_now.actual = function() {
+            var t = process['hrtime']();
+            return t[0] * 1e3 + t[1] / 1e6;
+          }
+      } else if (typeof dateNow !== 'undefined') {
+        _emscripten_get_now.actual = dateNow;
+      } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
+        _emscripten_get_now.actual = function() { return window['performance']['now'](); };
+      } else {
+        _emscripten_get_now.actual = Date.now;
+      }
     }
+    return _emscripten_get_now.actual();
+  },
+
+  emscripten_create_worker: function(url) {
+    url = Pointer_stringify(url);
+    var id = Browser.workers.length;
+    var info = {
+      worker: new Worker(url),
+      callbacks: [],
+      awaited: 0,
+      buffer: 0,
+      bufferSize: 0
+    };
+    info.worker.onmessage = function(msg) {
+      var info = Browser.workers[id];
+      if (!info) return; // worker was destroyed meanwhile
+      var callbackId = msg.data['callbackId'];
+      var callbackInfo = info.callbacks[callbackId];
+      if (!callbackInfo) return; // no callback or callback removed meanwhile
+      info.awaited--;
+      info.callbacks[callbackId] = null; // TODO: reuse callbackIds, compress this
+      var data = msg.data['data'];
+      if (data) {
+        if (!data.byteLength) data = new Uint8Array(data);
+        if (!info.buffer || info.bufferSize < data.length) {
+          if (info.buffer) _free(info.buffer);
+          info.bufferSize = data.length;
+          info.buffer = _malloc(data.length);
+        }
+        HEAPU8.set(data, info.buffer);
+        callbackInfo.func(info.buffer, data.length, callbackInfo.arg);
+      } else {
+        callbackInfo.func(0, 0, callbackInfo.arg);
+      }
+    };
+    Browser.workers.push(info);
+    return id;
+  },
+
+  emscripten_destroy_worker: function(id) {
+    var info = Browser.workers[id];
+    info.worker.terminate();
+    if (info.buffer) _free(info.buffer);
+    Browser.workers[id] = null;
+  },
+
+  emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
+    funcName = Pointer_stringify(funcName);
+    var info = Browser.workers[id];
+    var callbackId = -1;
+    if (callback) {
+      callbackId = info.callbacks.length;
+      info.callbacks.push({
+        func: Runtime.getFuncWrapper(callback, 'viii'),
+        arg: arg
+      });
+      info.awaited++;
+    }
+    info.worker.postMessage({
+      'funcName': funcName,
+      'callbackId': callbackId,
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
+    });
+  },
+
+  emscripten_worker_respond: function(data, size) {
+    if (!inWorkerCall) throw 'not in worker call!';
+    if (workerResponded) throw 'already responded!';
+    workerResponded = true;
+    postMessage({
+      'callbackId': workerCallbackId,
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
+    });
+  },
+
+  emscripten_get_worker_queue_size: function(id) {
+    var info = Browser.workers[id];
+    if (!info) return -1;
+    return info.awaited;
   }
 });
 

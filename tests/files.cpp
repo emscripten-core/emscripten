@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int main()
 {
@@ -55,6 +56,9 @@ int main()
   fwrite(data, 1, 5, outf);
   fclose(outf);
 
+  FILE *devNull = fopen("/dev/null", "rb");
+  assert(devNull);
+
   char data2[10];
   FILE *inf = fopen("go.out", "rb");
   int num = fread(data2, 1, 10, inf);
@@ -102,6 +106,23 @@ int main()
   num = fscanf(inf, "%d %s", &number, text);
   fclose(inf);
   printf("fscanfed: %d - %s\n", number, text);
+
+  // temp files
+  const char *tname = "file_XXXXXX.txt";
+  char tname1[100];
+  char tname2[100];
+  strcpy(tname1, tname);
+  strcpy(tname2, tname);
+  assert(!strcmp(tname1, tname2)); // equal
+  int f1 = mkstemp(tname1);
+  int f2 = mkstemp(tname2);
+  assert(f1 != f2);
+  //printf("%d,%d,%s,%s\n", f1, f2, tname1, tname2);
+  assert(strcmp(tname1, tname2)); // not equal
+  assert(fopen(tname1, "r"));
+  assert(fopen(tname2, "r"));
+  assert(!fopen(tname2+1, "r")); // sanity check that we can't open just anything
+  printf("ok.\n");
 
   return 0;
 }

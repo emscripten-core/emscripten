@@ -19,8 +19,8 @@ errno: 0
 st_mode: 0100000
 
 EXISTING FOLDER 0,1
-success: 0
-errno: 21
+success: 1
+errno: 0
 st_mode: 040000
 
 NON-EXISTING 0,1
@@ -139,8 +139,8 @@ errno: 0
 st_mode: 0100000
 
 EXISTING FOLDER 0,9
-success: 0
-errno: 21
+success: 1
+errno: 0
 st_mode: 040000
 
 NON-EXISTING 0,9

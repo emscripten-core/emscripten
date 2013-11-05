@@ -1,4 +1,4 @@
-F_DUPFD: 100
+F_DUPFD: 1
 errno: 0
 
 F_DUPFD/error1: -1

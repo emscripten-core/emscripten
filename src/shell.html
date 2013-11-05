@@ -6,9 +6,11 @@
     <title>Emscripten-Generated Code</title>
     <style>
       .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-      canvas.emscripten { border: 1px solid black; }
       textarea.emscripten { font-family: monospace; width: 80%; }
       div.emscripten { text-align: center; }
+      div.emscripten_border { border: 1px solid black; }
+      /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+      canvas.emscripten { border: 0px none; }
     </style>
   </head>
   <body>
@@ -17,9 +19,18 @@
     <div class="emscripten">
       <progress value="0" max="100" id="progress" hidden=1></progress>  
     </div>
-    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <div class="emscripten_border">
+      <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    </div>
     <hr/>
-    <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
+    <div class="emscripten">
+      <input type="checkbox" id="resize">Resize canvas
+      <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
+      &nbsp;&nbsp;&nbsp;
+      <input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, 
+                                                                                document.getElementById('resize').checked)">
+    </div>
+    
     <hr/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
@@ -32,6 +43,7 @@
           var element = document.getElementById('output');
           element.value = ''; // clear browser cache
           return function(text) {
+            text = Array.prototype.slice.call(arguments).join(' ');
             // These replacements are necessary if you render to raw HTML
             //text = text.replace(/&/g, "&amp;");
             //text = text.replace(/</g, "&lt;");
@@ -42,6 +54,7 @@
           };
         })(),
         printErr: function(text) {
+          text = Array.prototype.slice.call(arguments).join(' ');
           if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
           } else {
@@ -50,8 +63,11 @@
         },
         canvas: document.getElementById('canvas'),
         setStatus: function(text) {
-          if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var now = Date.now();
+          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
           var statusElement = document.getElementById('status');
           var progressElement = document.getElementById('progress');
           if (m) {
@@ -73,11 +89,7 @@
         }
       };
       Module.setStatus('Downloading...');
-    </script>      
-    <script type='text/javascript'>
-
-      {{{ SCRIPT_CODE }}}
-
     </script>
+    {{{ SCRIPT }}}
   </body>
 </html>

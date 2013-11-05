@@ -15,8 +15,6 @@ entry:
   %x = alloca %struct.X, align 4                  ; [#uses=2]
   %y = alloca %struct.X, align 4                  ; [#uses=2]
   store i32 0, i32* %retval
-  call void @llvm.dbg.declare(metadata !{%struct.X* %x}, metadata !6), !dbg !13
-  call void @llvm.dbg.declare(metadata !{%struct.X* %y}, metadata !14), !dbg !15
   %a = getelementptr inbounds %struct.X* %x, i32 0, i32 0, !dbg !16 ; [#uses=1]
   store i32 5, i32* %a, align 4, !dbg !16
   %b = getelementptr inbounds %struct.X* %x, i32 0, i32 1, !dbg !17 ; [#uses=1]
@@ -42,20 +40,17 @@ entry:
 
   %tmp5 = load i32* %a1, align 4, !dbg !18         ; [#uses=1]
   %tmp6 = load i32* %b2, align 4, !dbg !18        ; [#uses=1]
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %tmp5, i32 %tmp6), !dbg !18 ; [#uses=0]
+  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %tmp5, i32 %tmp6), !dbg !18 ; [#uses=0]
 
   %ptr = inttoptr i32 52 to i32*                  ; [#uses=1]
   store %struct.X { i32 ptrtoint (i32* getelementptr inbounds (i32* %ptr, i32 1, i32 0) to i32), i32 3 }, %struct.X* %y, align 4 ; store entire struct at once
 
-  %tmp5 = load i32* %a1, align 4, !dbg !18         ; [#uses=1]
-  %tmp6 = load i32* %b2, align 4, !dbg !18        ; [#uses=1]
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %tmp5, i32 %tmp6), !dbg !18 ; [#uses=0]
+  %tmp5b = load i32* %a1, align 4, !dbg !18         ; [#uses=1]
+  %tmp6b = load i32* %b2, align 4, !dbg !18        ; [#uses=1]
+  %call3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %tmp5b, i32 %tmp6b), !dbg !18 ; [#uses=0]
 
   ret i32 0, !dbg !19
 }
-
-; [#uses=2]
-declare void @llvm.dbg.declare(metadata, metadata) nounwind readnone
 
 ; [#uses=1]
 declare i32 @printf(i8*, ...)

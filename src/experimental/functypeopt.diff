@@ -1,0 +1,113 @@
+diff --git a/src/parseTools.js b/src/parseTools.js
+index 9786460..fb4be9f 100644
+--- a/src/parseTools.js
++++ b/src/parseTools.js
+@@ -205,26 +205,57 @@ function isFunctionDef(token, out) {
+ function isPossiblyFunctionType(type) {
+   // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
+   var len = type.length;
+-  return type[len-2] == ')' && type[len-1] == '*';
++  return type[len-2] == ')' && type[len-1] == '*' && type.indexOf('(') > 0;
+ }
+ 
+ function isFunctionType(type, out) {
+   if (!isPossiblyFunctionType(type)) return false;
+   type = type.replace(/"[^"]+"/g, '".."');
+-  var parts;
+   // hackish, but quick splitting of function def parts. this must be fast as it happens a lot
+-  if (type[0] != '[') {
+-    parts = type.split(' ');
+-  } else {
+-    var index = type.search(']');
+-    index += type.substr(index).search(' ');
+-    parts = [type.substr(0, index), type.substr(index+1)];
+-  }
++  var parts = type.split(' ');
+   if (pointingLevels(type) !== 1) return false;
+   var text = removeAllPointing(parts.slice(1).join(' '));
+   if (!text) return false;
+-  if (out) out.returnType = parts[0];
+-  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) }, out);
++  if (!isType(parts[0])) return false;
++  var level = 0;
++  var chunks = [];
++  var currStart = 0;
++  for (var i = 0; i < type.length; i++) {
++    var curr = type[i];
++    if (curr == '(') {
++      level++;
++      if (level == 1) {
++        chunks.push(type.substring(currStart, i));
++        currStart = i+1;
++      }
++    } else if (curr == ')') {
++      level--;
++      if (level == 0) {
++        curr = type.substring(currStart, i);
++        if (curr == '') curr = '$'; // make sure inside of () stays valid
++        chunks.push(curr);
++        currStart = i+1;
++      }
++    }
++  }
++//printErr('pre chunks ' + JSON.stringify(chunks));
++  chunks = chunks.map(function(chunk) { return chunk.replace(/ /g, '') })
++                 .filter(function(chunk) { return chunk.length > 0 })
++                 .map(function(chunk) { return chunk.replace(/\$/g, ' ') });
++//printErr('post chunks ' + JSON.stringify(chunks));
++  switch (chunks.length) {
++    case 2: { // e.g.  void (i32,i32)
++      if (out) out.returnType = chunks[0]; // TODO: add cache, with this as the value
++      return isFunctionDef({ text: '(' + chunks[1] + ')', item: tokenize(chunks[1], true) }, out);
++    }
++    case 4: { // e.g.  void (i32)* (i32, i32)  (i.e., returns void (i32)*!)
++      if (chunks[2] != '*') return false;
++      if (out) out.returnType = chunks[0] + ' ' + chunks[1];
++      return isFunctionDef({ text: '(' + chunks[1] + ')', item: tokenize(chunks[1], true) }) &&
++             isFunctionDef({ text: '(' + chunks[2] + ')', item: tokenize(chunks[2], true) }, out);
++    }
++  }
++  return false;
+ }
+ 
+ var isTypeCache = {}; // quite hot, optimize as much as possible
+diff --git a/tests/runner.py b/tests/runner.py
+index 842daca..312541f 100755
+--- a/tests/runner.py
++++ b/tests/runner.py
+@@ -2860,6 +2860,35 @@ Exiting setjmp function, level: 0, prev_jmp: -1
+           '''
+         self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16')
+ 
++    def test_funcptrfunc(self):
++      src = r'''
++        #include <stdio.h>
++
++/*
++define internal fastcc void ()* @sqlite3OsDlSym(%struct.sqlite3_vfs* %pVfs, i8* %pHdle, i8* %zSym) nounwind {
++  %1 = getelementptr inbounds %struct.sqlite3_vfs* %pVfs, i32 0, i32 12
++  %2 = load void ()* (%struct.sqlite3_vfs*, i8*, i8*)** %1, align 4
++  %3 = tail call void ()* (%struct.sqlite3_vfs*, i8*, i8*)* %2(%struct.sqlite3_vfs* %pVfs, i8* %pHdle, i8* %zSym) nounwind
++  ret void ()* %3
++}
++*/
++
++        typedef void (*funcptr)(int, int);
++        typedef funcptr (*funcptrfunc)(int);
++
++        funcptr __attribute__ ((noinline)) getIt(int x) {
++          return (funcptr)x;
++        }
++
++        int main(int argc, char **argv)
++        {
++          funcptrfunc fpf = argc < 100 ? getIt : NULL;
++          printf("*%p*\n", fpf(argc));
++          return 0;
++        }
++      '''
++      self.do_run(src, '*0x1*')
++
+     def test_emptyclass(self):
+         if self.emcc_args is None: return self.skip('requires emcc')
+         src = '''

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+usage() {
+    echo "Usage: $(basename $0) OLD_PORT NEW_PORT COMMAND_LINE"
+    echo
+    echo "Launch COMMAND_LINE, but intercept system calls to bind"
+    echo "to OLD_PORT and instead bind them to localhost:NEW_PORT"
+    exit 2
+}
+
+# Parameter defaults
+mydir=$(readlink -f $(dirname ${0}))
+
+export REBIND_PORT_OLD="${1}"; shift
+export REBIND_PORT_NEW="${1}"; shift
+
+LD_PRELOAD=${mydir}/rebind.so "${@}"
+

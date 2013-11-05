@@ -1,4 +1,4 @@
-The following authors have all licensed their contributions to Emscripten
+﻿The following authors have all licensed their contributions to Emscripten
 under the licensing terms detailed in LICENSE.
 
 (Authors keep copyright of their contributions, of course; they just grant
@@ -24,9 +24,9 @@ a license to everyone to use it as detailed in LICENSE.)
 * Pierre Renaux <pierre@talansoft.com>
 * Brian Anderson <banderson@mozilla.com>
 * Jon Bardin <diclophis@gmail.com>
-* Jukka Jyl�nki <jujjyl@gmail.com>
+* Jukka Jylänki <jujjyl@gmail.com>
 * Aleksander Guryanov <caiiiycuk@gmail.com>
-* Chad Austin <chad@chadaustin.me>
+* Chad Austin <chad@chadaustin.me> (copyright owned by IMVU)
 * nandhp <nandhp@gmail.com>
 * YeZhongWen <linghuye2.0@gmail.com>
 * Xingxing Pan <forandom@gmail.com>
@@ -35,4 +35,75 @@ a license to everyone to use it as detailed in LICENSE.)
 * James Pike <totoro.friend@chilon.net>
 * Mokhtar Naamani <mokhtar.naamani@gmail.com>
 * Benjamin Stover <benjamin.stover@gmail.com>
+* Riccardo Magliocchetti <riccardo.magliocchetti@gmail.com>
+* Janus Troelsen <janus.troelsen@stud.tu-darmstadt.de>
+* Lars Schneider <lars.schneider@autodesk.com> (copyright owned by Autodesk, Inc.)
+* Joel Martin <github@martintribe.org>
+* Manuel Wellmann <manuel.wellmann@autodesk.com> (copyright owned by Autodesk, Inc.)
+* Xuejie Xiao <xxuejie@gmail.com>
+* Dominic Wong <dom@slowbunyip.org>
+* Alan Kligman <alan.kligman@gmail.com> (copyright owned by Mozilla Foundation)
+* Anthony Liot <wolfviking0@yahoo.com>
+* Michael Riss <Michael.Riss@gmx.de>
+* Jasper St. Pierre <jstpierre@mecheye.net>
+* Manuel Schölling <manuel.schoelling@gmx.de>
+* Bruce Mitchener, Jr. <bruce.mitchener@gmail.com>
+* Michael Bishop <mbtyke@gmail.com>
+* Roger Braun <roger@rogerbraun.net>
+* Vladimir Vukicevic <vladimir@pobox.com> (copyright owned by Mozilla Foundation)
+* Lorant Pinter <lorant.pinter@prezi.com>
+* Tobias Doerffel <tobias.doerffel@gmail.com>
+* Martin von Gagern <martin@von-gagern.net>
+* Ting-Yuan Huang <thuang@mozilla.com>
+* Joshua Granick <jgranick@blackberry.com>
+* Felix H. Dahlke <fhd@ubercode.de>
+* Éloi Rivard <azmeuk@gmail.com>
+* Alexander Gladysh <ag@logiceditor.com>
+* Arlo Breault <arlolra@gmail.com>
+* Jacob Lee <artdent@gmail.com> (copyright owned by Google, Inc.)
+* Joe Lee <jlee@imvu.com> (copyright owned by IMVU)
+* Andy Friesen <andy@imvu.com> (copyright owned by IMVU)
+* Bill Welden <bwelden@imvu.com> (copyright owned by IMVU)
+* Michael Ey <mey@imvu.com> (copyright owned by IMVU)
+* Llorens Marti Garcia <lgarcia@imvu.com> (copyright owned by IMVU)
+* Jinsuck Kim <jkim@imvu.com> (copyright owned by IMVU)
+* Todd Lee <tlee@imvu.com> (copyright owned by IMVU)
+* Anthony Pesch <inolen@gmail.com>
+* Robert Bragg <robert.bragg@intel.com> (copyright owned by Intel Corporation)
+* Sylvestre Ledru <sylvestre@debian.org>
+* Tom Fairfield <fairfield@cs.xu.edu>
+* Anthony J. Thibault <ajt@hyperlogic.org>
+* John Allwine <jallwine86@gmail.com>
+* Martin Gerhardy <martin.gerhardy@gmail.com>
+* James Gregory <jgregory@zynga.com> (copyright owned by Zynga, Inc)
+* Dan Gohman <sunfish@google.com> (copyright owned by Google, Inc.)
+* Jeff Gilbert <jgilbert@mozilla.com> (copyright owned by Mozilla Foundation)
+* Frits Talbot <frits@metapathy.com>
+* Onno Jongbloed <hey@onnoj.net>
+* Jez Ng <me@jezng.com>
+* Marc Feeley <mfeeley@mozilla.com> (copyright owned by Mozilla Foundation)
+* Ludovic Perrine <jazzzz@gmail.com>
+* David Barksdale <david.barksdale@adcedosolutions.com>
+* Manfred Manik Nerurkar <nerurkar*at*made-apps.biz> (copyright owned by MADE, GmbH)
+* Joseph Gentle <me@josephg.com>
+* Douglas T. Crosher <dtc-moz@scieneer.com> (copyright owned by Mozilla Founcation)
+* Soeren Balko <soeren.balko@gmail.com>
+* Ryan Kelly (ryan@rfk.id.au)
+* Michael Lelli <toadking@toadking.com>
+* Yu Kobayashi <yukoba@accelart.jp>
+* Pin Zhang <zhangpin04@gmail.com>
+* Nick Bray <ncbray@chromium.org> (copyright owned by Google, Inc.)
+* Aidan Hobson Sayers <aidanhs@cantab.net>
+* Charlie Birks <admin@daftgames.net>
+* Ranger Harke <ranger.harke@autodesk.com> (copyright owned by Autodesk, Inc.)
+* Tobias Vrinssen <tobias@vrinssen.de>
+* Patrick R. Martin <patrick.martin.r@gmail.com>
+* Richard Quirk <richard.quirk@gmail.com>
+* Marcos Scriven <marcos@scriven.org>
+* Antoine Lambert <antoine.lambert33@gmail.com>
+* Daniel Aquino <mr.danielaquino@gmail.com>
+* Remi Papillie <remi.papillie@gmail.com>
+* Fraser Adams <fraser.adams@blueyonder.co.uk>
+* Michael Tirado <icetooth333@gmail.com>
+* Ben Noordhuis <info@bnoordhuis.nl>
 

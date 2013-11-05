@@ -27,6 +27,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #include "SDL/SDL_opengl.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
@@ -64,7 +65,10 @@ int main(int argc, char *argv[])
 
     const char *exts = (const char *)glGetString(GL_EXTENSIONS);
     assert(hasext(exts, "GL_EXT_texture_filter_anisotropic"));
-    
+
+    const char *vendor = (const char *)glGetString(GL_VENDOR);
+    printf("vendor: %s\n", vendor);
+
     GLint aniso;
     glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso);
     printf("Max anisotropy: %d (using that)\n", aniso);
@@ -73,10 +77,8 @@ int main(int argc, char *argv[])
     // Set the OpenGL state after creating the context with SDL_SetVideoMode
 
     glClearColor( 0, 0, 0, 0 );
-    
-#if !EMSCRIPTEN
-    glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
-#endif
+
+    glEnable( GL_TEXTURE_2D ); // Needed when we're using the fixed-function pipeline.
 
     glViewport( 0, 0, 600, 600 );
 
@@ -145,12 +147,17 @@ int main(int argc, char *argv[])
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
     }
+    {
+      assert(!glGetError());
+      glBindFramebuffer(GL_RENDERBUFFER, 0);
+      assert(glGetError());
+    }
 
     // Prepare and Render
 
     // Clear the screen before drawing
     glClear( GL_COLOR_BUFFER_BIT );
-    
+
     // Bind the texture to which subsequent calls refer to
     int w = 10;
     int n = 15;
@@ -158,7 +165,7 @@ int main(int argc, char *argv[])
     for (int x = 0; x < n; x++) {
       int start = x*w*2;
       glBegin( GL_TRIANGLES );
-        glTexCoord2i( 1, 0 ); glVertex3f( start  ,   0, 0 );
+        glTexCoord2i( 1, 0 ); glVertex2i( start  ,   0 );
         glTexCoord2i( 0, 0 ); glVertex3f( start+w, 300, 0 );
         glTexCoord2i( 1, 1 ); glVertex3f( start-w, 300, 0 );
       glEnd();
@@ -195,7 +202,7 @@ int main(int argc, char *argv[])
     }
 */
     SDL_GL_SwapBuffers();
-    
+
 #if !EMSCRIPTEN
     // Wait for 3 seconds to give us a chance to see the image
     SDL_Delay(2000);
@@ -203,8 +210,14 @@ int main(int argc, char *argv[])
 
     // Now we can delete the OpenGL texture and close down SDL
     glDeleteTextures( 1, &texture );
-    
+
     SDL_Quit();
-    
-    return 0;
+
+    // check for asm compilation bug with aliased functions with different sigs
+    void (*f)(int, int) = glVertex2i;
+    if ((int)f % 16 == 4) f(5, 7);
+    void (*g)(int, int) = glVertex3f;
+    if ((int)g % 16 == 4) g(5, 7);
+    return (int)f + (int)g;
 }
+

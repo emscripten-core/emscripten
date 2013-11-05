@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import os
 
@@ -21,6 +21,8 @@ def generate(env, emscripten_path=None, **kw):
   		
   		emscripten_path = EMSCRIPTEN_ROOT
 
+	env['EMSCRIPTEN_ROOT'] = emscripten_path
+	
 	try:
 		emscPath = emscripten_path.abspath
 	except:

@@ -27,7 +27,12 @@ then
   RC_ProjectSourceVersion=1
 fi
 
-EXTRA_FLAGS="-std=c++0x -stdlib=libc++ -fstrict-aliasing -Wstrict-aliasing=2 -Wnewline-eof"
+EXTRA_FLAGS="-std=c++0x -stdlib=libc++ -fstrict-aliasing -Wstrict-aliasing=2 \
+             -Wsign-conversion -Wshadow -Wconversion -Wunused-variable \
+             -Wmissing-field-initializers -Wchar-subscripts -Wmismatched-tags \
+             -Wmissing-braces -Wshorten-64-to-32 -Wsign-compare \
+             -Wstrict-aliasing=2 -Wstrict-overflow=4 -Wunused-parameter \
+             -Wnewline-eof"
 
 case $TRIPLE in
   *-apple-*)
@@ -48,6 +53,10 @@ case $TRIPLE in
         -compatibility_version 1 \
         -install_name /usr/lib/libc++abi.dylib \
         -lSystem"
+	if [ -f "${SDKROOT}/usr/local/lib/libCrashReporterClient.a" ]
+	then
+		LDSHARED_FLAGS+=" -lCrashReporterClient"
+	fi
     ;;
   *-*-mingw*)
     # FIXME: removing libgcc and libsupc++ dependencies means porting libcxxrt and LLVM/compiler-rt

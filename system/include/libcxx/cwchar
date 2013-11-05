@@ -106,8 +106,13 @@ size_t wcsrtombs(char* restrict dst, const wchar_t** restrict src, size_t len,
 #include <__config>
 #include <cwctype>
 #include <wchar.h>
+#ifdef _LIBCPP_MSVCRT
+#include <support/win32/support.h> // pull in *swprintf defines
+#endif // _LIBCPP_MSVCRT
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -119,13 +124,15 @@ using ::FILE;
 using ::fwprintf;
 using ::fwscanf;
 using ::swprintf;
-using ::swscanf;
 using ::vfwprintf;
-using ::vfwscanf;
 using ::vswprintf;
-using ::vswscanf;
 using ::vwprintf;
+#ifndef _LIBCPP_MSVCRT
+using ::swscanf;
+using ::vfwscanf;
+using ::vswscanf;
 using ::vwscanf;
+#endif // _LIBCPP_MSVCRT
 using ::wprintf;
 using ::wscanf;
 using ::fgetwc;
@@ -139,12 +146,18 @@ using ::putwc;
 using ::putwchar;
 using ::ungetwc;
 using ::wcstod;
+#ifndef _LIBCPP_MSVCRT
 using ::wcstof;
 using ::wcstold;
+#endif // _LIBCPP_MSVCRT
 using ::wcstol;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::wcstoll;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::wcstoul;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::wcstoull;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::wcscpy;
 using ::wcsncpy;
 using ::wcscat;
@@ -154,11 +167,18 @@ using ::wcscoll;
 using ::wcsncmp;
 using ::wcsxfrm;
 
+#if defined(_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_)
+
+using ::wcschr;
+using ::wcspbrk;
+using ::wcsrchr;
+using ::wcsstr;
+using ::wmemchr;
+
+#else
+
 inline _LIBCPP_INLINE_VISIBILITY const wchar_t* wcschr(const wchar_t* __s, wchar_t __c) {return ::wcschr(__s, __c);}
 inline _LIBCPP_INLINE_VISIBILITY       wchar_t* wcschr(      wchar_t* __s, wchar_t __c) {return ::wcschr(__s, __c);}
-
-using ::wcscspn;
-using ::wcslen;
 
 inline _LIBCPP_INLINE_VISIBILITY const wchar_t* wcspbrk(const wchar_t* __s1, const wchar_t* __s2) {return ::wcspbrk(__s1, __s2);}
 inline _LIBCPP_INLINE_VISIBILITY       wchar_t* wcspbrk(      wchar_t* __s1, const wchar_t* __s2) {return ::wcspbrk(__s1, __s2);}
@@ -166,16 +186,18 @@ inline _LIBCPP_INLINE_VISIBILITY       wchar_t* wcspbrk(      wchar_t* __s1, con
 inline _LIBCPP_INLINE_VISIBILITY const wchar_t* wcsrchr(const wchar_t* __s, wchar_t __c) {return ::wcsrchr(__s, __c);}
 inline _LIBCPP_INLINE_VISIBILITY       wchar_t* wcsrchr(      wchar_t* __s, wchar_t __c) {return ::wcsrchr(__s, __c);}
 
-using ::wcsspn;
-
 inline _LIBCPP_INLINE_VISIBILITY const wchar_t* wcsstr(const wchar_t* __s1, const wchar_t* __s2) {return ::wcsstr(__s1, __s2);}
 inline _LIBCPP_INLINE_VISIBILITY       wchar_t* wcsstr(      wchar_t* __s1, const wchar_t* __s2) {return ::wcsstr(__s1, __s2);}
-
-using ::wcstok;
 
 inline _LIBCPP_INLINE_VISIBILITY const wchar_t* wmemchr(const wchar_t* __s, wchar_t __c, size_t __n) {return ::wmemchr(__s, __c, __n);}
 inline _LIBCPP_INLINE_VISIBILITY       wchar_t* wmemchr(      wchar_t* __s, wchar_t __c, size_t __n) {return ::wmemchr(__s, __c, __n);}
 
+#endif
+
+using ::wcscspn;
+using ::wcslen;
+using ::wcsspn;
+using ::wcstok;
 using ::wmemcmp;
 using ::wmemcpy;
 using ::wmemmove;

@@ -12,7 +12,7 @@ label555:                                     ; preds = %353
 label569:                                     ; preds = %555
   %333 = call i32 @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   ; this should compile ok
-  store i32 ptrtoint (i8* blockaddress(@main, %569) to i32), i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), align 8
+  store i32 ptrtoint (i8* blockaddress(@main, %label569) to i32), i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), align 8
   ret i32 0
 }
 

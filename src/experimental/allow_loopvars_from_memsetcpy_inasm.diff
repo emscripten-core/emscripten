@@ -1,0 +1,97 @@
+commit a61ef3dbbaf7333ad67fca29c0aad5bcc99b653a
+Author: Alon Zakai <alonzakai@gmail.com>
+Date:   Wed Mar 6 18:18:03 2013 -0800
+
+    handle new vars in asm code, such as the loop vars from memset/memcpy loops
+
+diff --git a/tools/js-optimizer.js b/tools/js-optimizer.js
+index f2dc516..65059e8 100644
+--- a/tools/js-optimizer.js
++++ b/tools/js-optimizer.js
+@@ -1321,7 +1321,7 @@ function normalizeAsm(func) {
+       var name = v[0];
+       var value = v[1];
+       if (!(name in data.vars)) {
+-        assert(value[0] == 'num' || (value[0] == 'unary-prefix' && value[2][0] == 'num')); // must be valid coercion no-op
++        if (!(value[0] == 'num' || (value[0] == 'unary-prefix' && value[2][0] == 'num'))) break outer; // must be valid coercion no-op
+         data.vars[name] = detectAsmCoercion(value);
+         v.length = 1; // make an un-assigning var
+       } else {
+@@ -1331,6 +1331,7 @@ function normalizeAsm(func) {
+     i++;
+   }
+   // finally, look for other var definitions and collect them
++  var extra = [];
+   while (i < stats.length) {
+     traverse(stats[i], function(node, type) {
+       if (type == 'var') {
+@@ -1340,6 +1341,7 @@ function normalizeAsm(func) {
+           var value = v[1];
+           if (!(name in data.vars)) {
+             data.vars[name] = detectAsmCoercion(value);
++            extra.push(['var', [[name]]]); // add a 'var' for normal JS
+           }
+         }
+         unVarify(node[1], node);
+@@ -1353,6 +1355,7 @@ function normalizeAsm(func) {
+     });
+     i++;
+   }
++  if (extra.length > 0) stats.splice.apply(stats, [0, 0].concat(extra));
+   //printErr('normalized \n\n' + astToSrc(func) + '\n\nwith: ' + JSON.stringify(data));
+   return data;
+ }
+diff --git a/tools/test-js-optimizer-asm-regs-output.js b/tools/test-js-optimizer-asm-regs-output.js
+index 99bccd2..f84b8d5 100644
+--- a/tools/test-js-optimizer-asm-regs-output.js
++++ b/tools/test-js-optimizer-asm-regs-output.js
+@@ -9,6 +9,18 @@ function asm(d1, i2) {
+   d4 = d1 * 5;
+   return d4;
+ }
++function asm2(d1, i2) {
++  d1 = +d1;
++  i2 = i2 | 0;
++  var i3 = 0, d4 = +0;
++  i3 = i2;
++  i2 = d1 + i3 | 0;
++  d1 = d(Math_max(10, Math_min(5, f())));
++  i3 = i2 + 2 | 0;
++  print(i3);
++  d4 = d1 * 5;
++  return d4;
++}
+ function _doit(i1, i2, i3) {
+   i1 = i1 | 0;
+   i2 = i2 | 0;
+diff --git a/tools/test-js-optimizer-asm-regs.js b/tools/test-js-optimizer-asm-regs.js
+index 0afced2..fbaa7c4 100644
+--- a/tools/test-js-optimizer-asm-regs.js
++++ b/tools/test-js-optimizer-asm-regs.js
+@@ -10,6 +10,19 @@ function asm(x, y) {
+   double2 = double1*5;
+   return double2;
+ }
++function asm2(x, y) {
++  x = +x;
++  y = y | 0;
++  var int1 = 0, int2 = 0; // do not mix the types!
++  var double1 = +0, double2 = +0;
++  var tempy = y;
++  int1 = (x+tempy)|0;
++  double1 = d(Math.max(10, Math_min(5, f())));
++  int2 = (int1+2)|0;
++  print(int2);
++  double2 = double1*5;
++  return double2;
++}
+ function _doit($x, $y$0, $y$1) {
+   $x = $x | 0;
+   $y$0 = $y$0 | 0;
+@@ -41,5 +54,5 @@ function retf() {
+   }
+   // missing final return, need it as a float
+ }
+-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "rett", "ret2t", "retf"]
++// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "asm2", "_doit", "rett", "ret2t", "retf"]
+ 

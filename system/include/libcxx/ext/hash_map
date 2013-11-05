@@ -215,7 +215,11 @@ namespace __gnu_cxx {
 
 using namespace std;
 
-template <class _Tp, class _Hash, bool = is_empty<_Hash>::value>
+template <class _Tp, class _Hash, bool = is_empty<_Hash>::value
+#if __has_feature(is_final)
+                                         && !__is_final(_Hash)
+#endif
+        >
 class __hash_map_hasher
     : private _Hash
 {
@@ -247,7 +251,11 @@ public:
         {return __hash_(__x);}
 };
 
-template <class _Tp, class _Pred, bool = is_empty<_Pred>::value>
+template <class _Tp, class _Pred, bool = is_empty<_Pred>::value
+#if __has_feature(is_final)
+                                         && !__is_final(_Pred)
+#endif
+         >
 class __hash_map_equal
     : private _Pred
 {
@@ -353,7 +361,7 @@ public:
 };
 
 template <class _HashIterator>
-class _LIBCPP_VISIBLE __hash_map_iterator
+class _LIBCPP_TYPE_VIS __hash_map_iterator
 {
     _HashIterator __i_;
 
@@ -396,15 +404,15 @@ public:
     bool operator!=(const __hash_map_iterator& __x, const __hash_map_iterator& __y)
         {return __x.__i_ != __y.__i_;}
 
-    template <class, class, class, class, class> friend class _LIBCPP_VISIBLE hash_map;
-    template <class, class, class, class, class> friend class _LIBCPP_VISIBLE hash_multimap;
-    template <class> friend class _LIBCPP_VISIBLE __hash_const_iterator;
-    template <class> friend class _LIBCPP_VISIBLE __hash_const_local_iterator;
-    template <class> friend class _LIBCPP_VISIBLE __hash_map_const_iterator;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_map;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_multimap;
+    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_local_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS __hash_map_const_iterator;
 };
 
 template <class _HashIterator>
-class _LIBCPP_VISIBLE __hash_map_const_iterator
+class _LIBCPP_TYPE_VIS __hash_map_const_iterator
 {
     _HashIterator __i_;
 
@@ -455,15 +463,15 @@ public:
     bool operator!=(const __hash_map_const_iterator& __x, const __hash_map_const_iterator& __y)
         {return __x.__i_ != __y.__i_;}
 
-    template <class, class, class, class, class> friend class _LIBCPP_VISIBLE hash_map;
-    template <class, class, class, class, class> friend class _LIBCPP_VISIBLE hash_multimap;
-    template <class> friend class _LIBCPP_VISIBLE __hash_const_iterator;
-    template <class> friend class _LIBCPP_VISIBLE __hash_const_local_iterator;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_map;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_multimap;
+    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_local_iterator;
 };
 
 template <class _Key, class _Tp, class _Hash = hash<_Key>, class _Pred = equal_to<_Key>,
           class _Alloc = allocator<pair<const _Key, _Tp> > >
-class _LIBCPP_VISIBLE hash_map
+class _LIBCPP_TYPE_VIS hash_map
 {
 public:
     // types
@@ -499,8 +507,8 @@ private:
     typedef typename __table::__node_traits                __node_traits;
     typedef typename __table::__node_allocator             __node_allocator;
     typedef typename __table::__node                       __node;
-    typedef __hash_map_node_destructor<__node_allocator>   _D;
-    typedef unique_ptr<__node, _D>                         __node_holder;
+    typedef __hash_map_node_destructor<__node_allocator>   _Dp;
+    typedef unique_ptr<__node, _Dp>                         __node_holder;
     typedef allocator_traits<allocator_type>               __alloc_traits;
 public:
     typedef typename __alloc_traits::pointer         pointer;
@@ -671,7 +679,7 @@ typename hash_map<_Key, _Tp, _Hash, _Pred, _Alloc>::__node_holder
 hash_map<_Key, _Tp, _Hash, _Pred, _Alloc>::__construct_node(const key_type& __k)
 {
     __node_allocator& __na = __table_.__node_alloc();
-    __node_holder __h(__node_traits::allocate(__na, 1), _D(__na));
+    __node_holder __h(__node_traits::allocate(__na, 1), _Dp(__na));
     __node_traits::construct(__na, _VSTD::addressof(__h->__value_.first), __k);
     __h.get_deleter().__first_constructed = true;
     __node_traits::construct(__na, _VSTD::addressof(__h->__value_.second));
@@ -742,7 +750,7 @@ operator!=(const hash_map<_Key, _Tp, _Hash, _Pred, _Alloc>& __x,
 
 template <class _Key, class _Tp, class _Hash = hash<_Key>, class _Pred = equal_to<_Key>,
           class _Alloc = allocator<pair<const _Key, _Tp> > >
-class _LIBCPP_VISIBLE hash_multimap
+class _LIBCPP_TYPE_VIS hash_multimap
 {
 public:
     // types
@@ -776,8 +784,8 @@ private:
     typedef typename __table::__node_traits                __node_traits;
     typedef typename __table::__node_allocator             __node_allocator;
     typedef typename __table::__node                       __node;
-    typedef __hash_map_node_destructor<__node_allocator>   _D;
-    typedef unique_ptr<__node, _D>                         __node_holder;
+    typedef __hash_map_node_destructor<__node_allocator>   _Dp;
+    typedef unique_ptr<__node, _Dp>                         __node_holder;
     typedef allocator_traits<allocator_type>               __alloc_traits;
 public:
     typedef typename __alloc_traits::pointer         pointer;

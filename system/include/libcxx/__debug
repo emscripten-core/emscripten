@@ -16,17 +16,23 @@
 #   include <cstdlib>
 #   include <cstdio>
 #   include <cstddef>
-#   define _LIBCPP_ASSERT(x, m) ((x) ? (void)0 : (_VSTD::printf("%s\n", m), _VSTD::abort()))
+#   ifndef _LIBCPP_ASSERT
+#      define _LIBCPP_ASSERT(x, m) ((x) ? (void)0 : (_VSTD::printf("%s\n", m), _VSTD::abort()))
+#   endif
 
 #endif
 
 #if _LIBCPP_DEBUG_LEVEL >= 2
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
+#endif
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-struct _LIBCPP_VISIBLE __c_node;
+struct _LIBCPP_TYPE_VIS __c_node;
 
-struct _LIBCPP_VISIBLE __i_node
+struct _LIBCPP_TYPE_VIS __i_node
 {
     void* __i_;
     __i_node* __next_;
@@ -40,7 +46,7 @@ struct _LIBCPP_VISIBLE __i_node
     ~__i_node();
 };
 
-struct _LIBCPP_VISIBLE __c_node
+struct _LIBCPP_TYPE_VIS __c_node
 {
     void* __c_;
     __c_node* __next_;
@@ -60,7 +66,7 @@ struct _LIBCPP_VISIBLE __c_node
     virtual bool __addable(const void*, ptrdiff_t) const = 0;
     virtual bool __subscriptable(const void*, ptrdiff_t) const = 0;
 
-    _LIBCPP_HIDDEN void __add(__i_node* __i);
+    void __add(__i_node* __i);
     _LIBCPP_HIDDEN void __remove(__i_node* __i);
 };
 
@@ -83,8 +89,8 @@ _C_node<_Cont>::__dereferenceable(const void* __i) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__dereferenceable(__j);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__dereferenceable(__j);
 }
 
 template <class _Cont>
@@ -93,8 +99,8 @@ _C_node<_Cont>::__decrementable(const void* __i) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__decrementable(__j);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__decrementable(__j);
 }
 
 template <class _Cont>
@@ -103,8 +109,8 @@ _C_node<_Cont>::__addable(const void* __i, ptrdiff_t __n) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__addable(__j, __n);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__addable(__j, __n);
 }
 
 template <class _Cont>
@@ -113,11 +119,11 @@ _C_node<_Cont>::__subscriptable(const void* __i, ptrdiff_t __n) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__subscriptable(__j, __n);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__subscriptable(__j, __n);
 }
 
-class _LIBCPP_VISIBLE __libcpp_db
+class _LIBCPP_TYPE_VIS __libcpp_db
 {
     __c_node** __cbeg_;
     __c_node** __cend_;
@@ -159,6 +165,7 @@ public:
     void* __find_c_from_i(void* __i) const;
     void __invalidate_all(void* __c);
     __c_node* __find_c_and_lock(void* __c) const;
+    __c_node* __find_c(void* __c) const;
     void unlock() const;
 
     void swap(void* __c1, void* __c2);
@@ -168,18 +175,18 @@ public:
     bool __decrementable(const void* __i) const;
     bool __addable(const void* __i, ptrdiff_t __n) const;
     bool __subscriptable(const void* __i, ptrdiff_t __n) const;
-    bool __comparable(const void* __i, const void* __j) const;
+    bool __less_than_comparable(const void* __i, const void* __j) const;
 private:
     _LIBCPP_HIDDEN
     __i_node* __insert_iterator(void* __i);
     _LIBCPP_HIDDEN
     __i_node* __find_iterator(const void* __i) const;
 
-    friend _LIBCPP_VISIBLE __libcpp_db* __get_db();
+    friend _LIBCPP_FUNC_VIS __libcpp_db* __get_db();
 };
 
-_LIBCPP_VISIBLE __libcpp_db* __get_db();
-_LIBCPP_VISIBLE const __libcpp_db* __get_const_db();
+_LIBCPP_FUNC_VIS __libcpp_db* __get_db();
+_LIBCPP_FUNC_VIS const __libcpp_db* __get_const_db();
 
 
 _LIBCPP_END_NAMESPACE_STD

@@ -1,0 +1,1045 @@
+[
+    // ===========================================
+    // libc
+    // ===========================================
+    {
+        "file": "libc/dirent.h", 
+        "defines": [],
+        "structs": {
+            "dirent": [
+                "d_ino", 
+                "d_off", 
+                "d_reclen", 
+                "d_type", 
+                "d_name"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/utime.h", 
+        "defines": [],
+        "structs": {
+            "utimbuf": [
+                "actime", 
+                "modtime"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/sys/stat.h", 
+        "defines": [
+            "S_IFDIR", 
+            "S_IFREG", 
+            "S_IFMT", 
+            "S_IFIFO", 
+            "S_IFSOCK", 
+            "S_IFBLK", 
+            "S_IFLNK", 
+            "S_IFCHR"
+        ],
+        "structs": {
+            "stat": [
+                "st_dev", 
+                "__st_dev_padding", 
+                "__st_ino_truncated", 
+                "st_mode", 
+                "st_nlink", 
+                "st_uid", 
+                "st_gid", 
+                "st_rdev", 
+                "__st_rdev_padding", 
+                "st_size", 
+                "st_blksize", 
+                "st_blocks", 
+                {
+                    "st_atim": [
+                        "tv_sec", 
+                        "tv_nsec"
+                    ]
+                }, 
+                {
+                    "st_mtim": [
+                        "tv_sec", 
+                        "tv_nsec"
+                    ]
+                }, 
+                {
+                    "st_ctim": [
+                        "tv_sec", 
+                        "tv_nsec"
+                    ]
+                }, 
+                "st_ino"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/sys/statvfs.h", 
+        "defines": [],
+        "structs": {
+            "statvfs": [
+                "f_bsize", 
+                "f_frsize", 
+                "f_blocks", 
+                "f_bfree", 
+                "f_bavail", 
+                "f_files", 
+                "f_ffree", 
+                "f_favail", 
+                "f_fsid", 
+                "f_flag", 
+                "f_namemax"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/fcntl.h", 
+        "defines": [
+            "F_UNLCK", 
+            "O_RDWR", 
+            "S_IRWXO", 
+            "F_GETLK64", 
+            "F_SETLKW64", 
+            "F_SETLKW", 
+            "F_SETLK64", 
+            "F_GETLK", 
+            "S_ISVTX", 
+            "O_RDONLY", 
+            "O_ACCMODE", 
+            "F_DUPFD", 
+            "F_SETLK", 
+            "O_WRONLY"
+        ],
+        "structs": {
+            "flock": [
+                "l_type", 
+                "l_whence", 
+                "l_start", 
+                "l_len", 
+                "l_pid"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/poll.h", 
+        "defines": [
+            "POLLHUP", 
+            "POLLERR", 
+            "POLLRDNORM", 
+            "POLLPRI", 
+            "POLLIN", 
+            "POLLOUT", 
+            "POLLNVAL"
+        ],
+        "structs": {
+            "pollfd": [
+                "fd", 
+                "events", 
+                "revents"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/stdlib.h", 
+        "defines": [],
+        "structs": {
+            // NOTE: The hash sign at the end of this name is a hint to the processor that it mustn't prefix "struct " to the name to reference this struct.
+            // It will be stripped away when writing the compiled JSON file. You can just refer to it as C_STRUCTS.div_t when using it in the JS code.
+            // For more information see gen_inspect_code() in tools/gen_struct_info.py .
+            "div_t#": [
+                "quot", 
+                "rem"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/sys/utsname.h", 
+        "defines": [],
+        "structs": {
+            "utsname": [
+                "sysname", 
+                "nodename", 
+                "release", 
+                "version", 
+                "machine", 
+                "domainname"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/time.h", 
+        "defines": [
+            ["li", "CLOCKS_PER_SEC"]
+        ],
+        "structs": {
+            "timezone": [
+                "tz_minuteswest", 
+                "tz_dsttime"
+            ], 
+            "tm": [
+                "tm_sec", 
+                "tm_min", 
+                "tm_hour", 
+                "tm_mday", 
+                "tm_mon", 
+                "tm_year", 
+                "tm_wday", 
+                "tm_yday", 
+                "tm_isdst", 
+                "tm_gmtoff", 
+                "tm_zone"
+            ], 
+            "itimerspec": [
+                {
+                    "it_interval": [
+                        "tv_sec", 
+                        "tv_nsec"
+                    ]
+                }, 
+                {
+                    "it_value": [
+                        "tv_sec", 
+                        "tv_nsec"
+                    ]
+                }
+            ], 
+            "timespec": [
+                "tv_sec", 
+                "tv_nsec"
+            ], 
+            "timeval": [
+                "tv_sec", 
+                "tv_usec"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/sys/times.h", 
+        "defines": [],
+        "structs": {
+            "tms": [
+                "tms_utime", 
+                "tms_stime", 
+                "tms_cutime", 
+                "tms_cstime"
+            ]
+        }
+    },
+    {
+        "defines": [],
+        "file": "compat/sys/timeb.h", 
+        "structs": {
+            "timeb": [
+                "time", 
+                "millitm", 
+                "timezone", 
+                "dstflag"
+            ]
+        }
+    },
+    {
+        "file": "libc/sys/resource.h", 
+        "defines": [],
+        "structs": {
+            "rlimit": [
+                "rlim_cur", 
+                "rlim_max"
+            ], 
+            "rusage": [
+                {
+                    "ru_utime": [
+                        "tv_sec", 
+                        "tv_usec"
+                    ]
+                }, 
+                {
+                    "ru_stime": [
+                        "tv_sec", 
+                        "tv_usec"
+                    ]
+                }, 
+                "ru_maxrss", 
+                "ru_ixrss", 
+                "ru_idrss", 
+                "ru_isrss", 
+                "ru_minflt", 
+                "ru_majflt", 
+                "ru_nswap", 
+                "ru_inblock", 
+                "ru_oublock", 
+                "ru_msgsnd", 
+                "ru_msgrcv", 
+                "ru_nsignals", 
+                "ru_nvcsw", 
+                "ru_nivcsw"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/netdb.h", 
+        "defines": [
+            "AI_V4MAPPED", 
+            "EAI_SERVICE", 
+            "EAI_FAMILY", 
+            "AI_ALL", 
+            "AI_ADDRCONFIG", 
+            "AI_NUMERICSERV", 
+            "NI_NUMERICHOST", 
+            "EAI_OVERFLOW", 
+            "AI_NUMERICHOST", 
+            "AI_CANONNAME", 
+            "AI_PASSIVE", 
+            "NI_NAMEREQD", 
+            "EAI_NONAME", 
+            "EAI_SOCKTYPE", 
+            "EAI_BADFLAGS"
+        ],
+        "structs": {
+            "sockaddr": [
+                "sa_family", 
+                "sa_data"
+            ], 
+            "hostent": [
+                "h_name", 
+                "h_aliases", 
+                "h_addrtype", 
+                "h_length", 
+                "h_addr_list"
+            ], 
+            "addrinfo": [
+                "ai_flags", 
+                "ai_family", 
+                "ai_socktype", 
+                "ai_protocol", 
+                "ai_addrlen", 
+                "ai_addr", 
+                "ai_canonname", 
+                "ai_next"
+            ], 
+            "in_addr": [
+                "s_addr"
+            ], 
+            "linger": [
+                "l_onoff", 
+                "l_linger"
+            ], 
+            "protoent": [
+                "p_name", 
+                "p_aliases", 
+                "p_proto"
+            ], 
+            "sockaddr_in": [
+                "sin_family", 
+                "sin_port", 
+                {
+                    "sin_addr": [
+                        "s_addr"
+                    ]
+                }, 
+                "sin_zero"
+            ], 
+            "iovec": [
+                "iov_base", 
+                "iov_len"
+            ], 
+            "cmsghdr": [
+                "cmsg_len", 
+                "cmsg_level", 
+                "cmsg_type"
+            ], 
+            "sockaddr_in6": [
+                "sin6_family", 
+                "sin6_port", 
+                "sin6_flowinfo", 
+                {
+                    "sin6_addr": [
+                        {
+                            "__in6_union": [
+                                "__s6_addr", 
+                                "__s6_addr16", 
+                                "__s6_addr32"
+                            ]
+                        }
+                    ]
+                }, 
+                "sin6_scope_id"
+            ], 
+            "msghdr": [
+                "msg_name", 
+                "msg_namelen", 
+                "msg_iov", 
+                "msg_iovlen", 
+                "msg_control", 
+                "msg_controllen", 
+                "msg_flags"
+            ], 
+            "in6_addr": [
+                {
+                    "__in6_union": [
+                        "__s6_addr", 
+                        "__s6_addr16", 
+                        "__s6_addr32"
+                    ]
+                }
+            ], 
+            "netent": [
+                "n_name", 
+                "n_aliases", 
+                "n_addrtype", 
+                "n_net"
+            ]
+        }
+    }, 
+    {
+        "file": "libc/netinet/in.h", 
+        "defines": [
+            "IPPROTO_UDP", 
+            "IPPROTO_TCP", 
+            "INADDR_LOOPBACK"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/math.h", 
+        "defines": [
+            "FP_ZERO", 
+            "FP_NAN", 
+            "FP_INFINITE", 
+            "FP_NORMAL"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/bits/fcntl.h", 
+        "defines": [
+            "O_CREAT", 
+            "O_SYNC", 
+            "F_GETFD", 
+            "F_SETFL", 
+            "O_NOFOLLOW", 
+            "O_APPEND", 
+            "F_SETOWN", 
+            "O_TRUNC", 
+            "F_GETOWN", 
+            "F_SETFD", 
+            "O_EXCL", 
+            "F_GETFL"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/sys/socket.h", 
+        "defines": [
+            "SOCK_DGRAM", 
+            "SOCK_STREAM", 
+            "AF_INET", 
+            "AF_UNSPEC", 
+            "AF_INET6"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/bits/ioctl.h", 
+        "defines": [
+            "FIONREAD"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/unistd.h", 
+        "defines": [
+            "_SC_XOPEN_LEGACY", 
+            "_SC_XOPEN_VERSION", 
+            "_SC_BC_DIM_MAX", 
+            "_CS_POSIX_V6_LP64_OFF64_LIBS", 
+            "_PC_REC_MIN_XFER_SIZE", 
+            "_SC_V6_ILP32_OFFBIG", 
+            "_SC_MEMLOCK", 
+            "_SC_THREADS", 
+            "_PC_SOCK_MAXBUF", 
+            "_SC_THREAD_KEYS_MAX", 
+            "_SC_2_PBS", 
+            "_SC_TRACE_INHERIT", 
+            "_SC_REGEXP", 
+            "_CS_POSIX_V6_LP64_OFF64_CFLAGS", 
+            "_SC_VERSION", 
+            "_PC_CHOWN_RESTRICTED", 
+            "_SC_MQ_PRIO_MAX", 
+            "_SC_PAGE_SIZE", 
+            "_SC_BARRIERS", 
+            "_SC_2_LOCALEDEF", 
+            "_SC_STREAM_MAX", 
+            "_SC_TIMERS", 
+            "_PC_PATH_MAX", 
+            "_SC_SPORADIC_SERVER", 
+            "_SC_NPROCESSORS_ONLN", 
+            "_CS_POSIX_V6_LPBIG_OFFBIG_LIBS", 
+            "_PC_MAX_INPUT", 
+            "_SC_CLK_TCK", 
+            "_SC_AIO_MAX", 
+            "_SC_THREAD_PRIO_INHERIT", 
+            "_PC_2_SYMLINKS", 
+            "_SC_SPAWN", 
+            "_CS_POSIX_V6_ILP32_OFF32_LDFLAGS", 
+            "_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS", 
+            "_SC_TRACE_SYS_MAX", 
+            "_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS", 
+            "_SC_AIO_PRIO_DELTA_MAX", 
+            "_SC_MONOTONIC_CLOCK", 
+            "_SC_XOPEN_ENH_I18N", 
+            "_SC_SPIN_LOCKS", 
+            "_SC_XOPEN_SHM", 
+            "_PC_LINK_MAX", 
+            "_SC_FSYNC", 
+            "_SC_GETGR_R_SIZE_MAX", 
+            "_SC_TRACE_NAME_MAX", 
+            "_SC_BC_BASE_MAX", 
+            "_SC_XOPEN_STREAMS", 
+            "_SC_GETPW_R_SIZE_MAX", 
+            "_SC_CPUTIME", 
+            "_SC_XBS5_ILP32_OFFBIG", 
+            "_SC_TRACE_EVENT_FILTER", 
+            "_SC_OPEN_MAX", 
+            "_SC_2_FORT_RUN", 
+            "_SC_RE_DUP_MAX", 
+            "_SC_THREAD_PRIO_PROTECT", 
+            "_SC_2_PBS_CHECKPOINT", 
+            "_SC_XBS5_LPBIG_OFFBIG", 
+            "_SC_SHARED_MEMORY_OBJECTS", 
+            "_PC_ALLOC_SIZE_MIN", 
+            "_SC_READER_WRITER_LOCKS", 
+            "_SC_MEMLOCK_RANGE", 
+            "_SC_PRIORITY_SCHEDULING", 
+            "_PC_VDISABLE", 
+            "_SC_MESSAGE_PASSING", 
+            "_SC_THREAD_ATTR_STACKADDR", 
+            "_SC_THREAD_THREADS_MAX", 
+            "_SC_LOGIN_NAME_MAX", 
+            "_SC_2_C_BIND", 
+            "_PC_NO_TRUNC", 
+            "_SC_SHELL", 
+            "_SC_V6_LP64_OFF64", 
+            "_CS_GNU_LIBC_VERSION", 
+            "_SC_SEM_VALUE_MAX", 
+            "_SC_MQ_OPEN_MAX", 
+            "_SC_HOST_NAME_MAX", 
+            "_SC_THREAD_STACK_MIN", 
+            "_SC_TIMEOUTS", 
+            "_SC_CHILD_MAX", 
+            "_SC_2_PBS_MESSAGE", 
+            "_SC_2_C_DEV", 
+            "_SC_TIMER_MAX", 
+            "_SC_SYMLOOP_MAX", 
+            "_PC_REC_XFER_ALIGN", 
+            "_SC_REALTIME_SIGNALS", 
+            "_PC_ASYNC_IO", 
+            "_SC_MAPPED_FILES", 
+            "_SC_NGROUPS_MAX", 
+            "_SC_SEMAPHORES", 
+            "_SC_TRACE_LOG", 
+            "_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS", 
+            "_CS_POSIX_V6_LP64_OFF64_LDFLAGS", 
+            "_SC_THREAD_DESTRUCTOR_ITERATIONS", 
+            "_SC_TRACE_EVENT_NAME_MAX", 
+            "_SC_BC_STRING_MAX", 
+            "_SC_2_SW_DEV", 
+            "_SC_ARG_MAX", 
+            "_SC_THREAD_PRIORITY_SCHEDULING", 
+            "_SC_THREAD_CPUTIME", 
+            "_CS_POSIX_V6_ILP32_OFF32_LIBS", 
+            "_SC_SYNCHRONIZED_IO", 
+            "_CS_POSIX_V6_ILP32_OFF32_CFLAGS", 
+            "_SC_MEMORY_PROTECTION", 
+            "_PC_PRIO_IO", 
+            "_SC_V6_LPBIG_OFFBIG", 
+            "_SC_EXPR_NEST_MAX", 
+            "_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS", 
+            "_PC_REC_MAX_XFER_SIZE", 
+            "_SC_DELAYTIMER_MAX", 
+            "W_OK", 
+            "R_OK", 
+            "_SC_XOPEN_CRYPT", 
+            "_SC_XBS5_LP64_OFF64", 
+            "_SC_SIGQUEUE_MAX", 
+            "_SC_TZNAME_MAX", 
+            "_CS_PATH", 
+            "_PC_MAX_CANON", 
+            "_SC_THREAD_SAFE_FUNCTIONS", 
+            "_PC_NAME_MAX", 
+            "_SC_TRACE_USER_EVENT_MAX", 
+            "_SC_RAW_SOCKETS", 
+            "_SC_RTSIG_MAX", 
+            "_SC_PRIORITIZED_IO", 
+            "_SC_XOPEN_UNIX", 
+            "_PC_REC_INCR_XFER_SIZE", 
+            "_PC_FILESIZEBITS", 
+            "_SC_XBS5_ILP32_OFF32", 
+            "_CS_GNU_LIBPTHREAD_VERSION", 
+            "_SC_2_PBS_LOCATE", 
+            "_SC_V6_ILP32_OFF32", 
+            "_PC_SYNC_IO", 
+            "_SC_2_UPE", 
+            "_SC_SEM_NSEMS_MAX", 
+            "_SC_IOV_MAX", 
+            "_SC_TRACE", 
+            "_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS", 
+            "_SC_LINE_MAX", 
+            "_CS_POSIX_V6_ILP32_OFFBIG_LIBS", 
+            "_SC_2_FORT_DEV", 
+            "_SC_ATEXIT_MAX", 
+            "_SC_SAVED_IDS", 
+            "_SC_2_PBS_TRACK", 
+            "_SC_THREAD_PROCESS_SHARED", 
+            "_SC_JOB_CONTROL", 
+            "_SC_IPV6", 
+            "_SC_ADVISORY_INFO", 
+            "_SC_XOPEN_REALTIME_THREADS", 
+            "_PC_SYMLINK_MAX", 
+            "X_OK", 
+            "_SC_COLL_WEIGHTS_MAX", 
+            "_SC_CLOCK_SELECTION", 
+            "_SC_XOPEN_REALTIME", 
+            "_PC_PIPE_BUF", 
+            "_SC_2_PBS_ACCOUNTING", 
+            "_SC_THREAD_SPORADIC_SERVER", 
+            "_SC_THREAD_ATTR_STACKSIZE", 
+            "_SC_2_VERSION", 
+            "_SC_TYPED_MEMORY_OBJECTS", 
+            "_SC_ASYNCHRONOUS_IO", 
+            "_SC_2_CHAR_TERM", 
+            "_SC_AIO_LISTIO_MAX", 
+            "_SC_BC_SCALE_MAX", 
+            "_SC_TTY_NAME_MAX"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/bits/errno.h", 
+        "defines": [
+            "ETXTBSY", 
+            "ETOOMANYREFS", 
+            "ENAMETOOLONG", 
+            "ENOPKG", 
+            "EL3HLT", 
+            "EINPROGRESS", 
+            "ENOTSOCK", 
+            "ENOTSUP", 
+            "EFBIG", 
+            "ENOLINK", 
+            "EL3RST", 
+            "ENOTUNIQ", 
+            "ELNRNG", 
+            "ENOANO", 
+            "ENOPROTOOPT", 
+            "E2BIG", 
+            "EHOSTDOWN", 
+            "EBFONT", 
+            "ENOTEMPTY", 
+            "EBUSY", 
+            "EADDRINUSE", 
+            "ELIBACC", 
+            "EDQUOT", 
+            "ENOENT", 
+            "ECOMM", 
+            "EXFULL", 
+            "ENOTDIR", 
+            "ENETRESET", 
+            "EAFNOSUPPORT", 
+            "EINVAL", 
+            "ENODEV", 
+            "ENOCSI", 
+            "EPROTONOSUPPORT", 
+            "ETIME", 
+            "ENOTTY", 
+            "EAGAIN", 
+            "EMSGSIZE", 
+            "ELIBEXEC", 
+            "EMLINK", 
+            "ECANCELED", 
+            "EDESTADDRREQ", 
+            "EADDRNOTAVAIL", 
+            "EPERM", 
+            "EPROTOTYPE", 
+            "ENOMEDIUM", 
+            "ELOOP", 
+            "EREMOTE", 
+            "ELIBMAX", 
+            "EMULTIHOP", 
+            "ECONNABORTED", 
+            "EFAULT", 
+            "EBADMSG", 
+            "EDOM", 
+            "EILSEQ", 
+            "EPFNOSUPPORT", 
+            "ENONET", 
+            "ECHRNG", 
+            "ESRCH", 
+            "EHOSTUNREACH", 
+            "EL2HLT", 
+            "EL2NSYNC", 
+            "ENOMSG", 
+            "EISDIR", 
+            "EDEADLOCK", 
+            "ECONNRESET", 
+            "ESTRPIPE", 
+            "ESHUTDOWN", 
+            "EDEADLK", 
+            "EBADRQC", 
+            "EUNATCH", 
+            "ECHILD", 
+            "ETIMEDOUT", 
+            "EALREADY", 
+            "ENXIO", 
+            "EMFILE", 
+            "ENFILE", 
+            "EREMCHG", 
+            "ENOMEM", 
+            "ENOSR", 
+            "EOWNERDEAD", 
+            "ELIBSCN", 
+            "EPIPE", 
+            "EBADSLT", 
+            "ENOSTR", 
+            "EIO", 
+            "EWOULDBLOCK", 
+            "EBADE", 
+            "ENODATA", 
+            "ESOCKTNOSUPPORT", 
+            "ENOLCK", 
+            "EPROTO", 
+            "ESRMNT", 
+            "EXDEV", 
+            "ENOSPC", 
+            "ELIBBAD", 
+            "ERANGE", 
+            "ESTALE", 
+            "ENOTRECOVERABLE", 
+            "ENOBUFS", 
+            "EIDRM", 
+            "EINTR", 
+            "EADV", 
+            "ENOSYS", 
+            "EUSERS", 
+            "EOPNOTSUPP", 
+            "ENOTCONN", 
+            "ENETUNREACH", 
+            "ESPIPE", 
+            "EROFS", 
+            "ECONNREFUSED", 
+            "ENETDOWN", 
+            "ENOEXEC", 
+            "EBADF", 
+            "EDOTDOT", 
+            "EBADFD", 
+            "EBADR",
+            "EISCONN",
+            "ENOTBLK", 
+            "EOVERFLOW"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/langinfo.h", 
+        "defines": [
+            "ABDAY_7", 
+            "ABDAY_6", 
+            "ABDAY_5", 
+            "ABDAY_4", 
+            "ABDAY_3", 
+            "ABDAY_2", 
+            "ABDAY_1", 
+            "ABMON_1", 
+            "RADIXCHAR", 
+            "ABMON_3", 
+            "AM_STR", 
+            "ALT_DIGITS", 
+            "PM_STR", 
+            "ABMON_9", 
+            "YESEXPR", 
+            "ABMON_2", 
+            "ABMON_7", 
+            "ABMON_6", 
+            "ABMON_5", 
+            "ABMON_4", 
+            "ABMON_8", 
+            "ERA", 
+            "MON_2", 
+            "MON_3", 
+            "MON_1", 
+            "MON_6", 
+            "MON_7", 
+            "MON_4", 
+            "MON_5", 
+            "MON_8", 
+            "MON_9", 
+            "NOEXPR", 
+            "T_FMT_AMPM", 
+            "MON_10", 
+            "MON_11", 
+            "MON_12", 
+            "T_FMT", 
+            "THOUSEP", 
+            "ERA_T_FMT", 
+            "ERA_D_T_FMT", 
+            "D_FMT", 
+            "DAY_2", 
+            "DAY_3", 
+            "DAY_1", 
+            "DAY_6", 
+            "DAY_7", 
+            "DAY_4", 
+            "DAY_5", 
+            "ERA_D_FMT", 
+            "CODESET", 
+            "D_T_FMT", 
+            "CRNCYSTR", 
+            "ABMON_12", 
+            "ABMON_11", 
+            "ABMON_10"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/stdio.h", 
+        "defines": [
+            "EOF", 
+            "SEEK_END", 
+            "SEEK_SET"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "libc/arpa/tftp.h", 
+        "defines": [
+            "EACCES", 
+            "EEXIST"
+        ],
+        "structs": {}
+    }, 
+    {
+        "file": "compat/sys/stat.h", 
+        "defines": [
+            "S_IALLUGO", 
+            "S_IWUGO", 
+            "S_IRUGO", 
+            "S_IRWXUGO", 
+            "S_IXUGO"
+        ],
+        "structs": {}
+    },
+    {
+        "file": "libc/bits/mman.h",
+        "defines": [
+            "MAP_PRIVATE"
+        ],
+        "structs": {}
+    },
+    
+    // ===========================================
+    // SDL
+    // ===========================================
+    {
+        "file": "SDL/SDL_rect.h",
+        "defines": [],
+        "structs": {
+            "SDL_Rect": [
+                "x", 
+                "y", 
+                "w", 
+                "h"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_keyboard.h",
+        "defines": [],
+        "structs": {
+            "SDL_Keysym": [
+                "scancode", 
+                "sym", 
+                "mod", 
+                "unicode"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_pixels.h",
+        "defines": [],
+        "structs": {
+            "SDL_Palette": [
+                "ncolors", 
+                "colors", 
+                "version", 
+                "refcount"
+            ], 
+            "SDL_PixelFormat": [
+                "format", 
+                "palette", 
+                "BitsPerPixel", 
+                "BytesPerPixel", 
+                "padding", 
+                "Rmask", 
+                "Gmask", 
+                "Bmask", 
+                "Amask", 
+                "Rloss", 
+                "Gloss", 
+                "Bloss", 
+                "Aloss", 
+                "Rshift", 
+                "Gshift", 
+                "Bshift", 
+                "Ashift", 
+                "refcount", 
+                "next"
+            ],
+            "SDL_Color": [
+                "r", 
+                "g", 
+                "b", 
+                "unused"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_surface.h",
+        "defines": [],
+        "structs": {
+            "SDL_Surface": [
+                "flags",
+                "format",
+                "w",
+                "h",
+                "pitch",
+                "pixels",
+                "userdata",
+                "locked",
+                "lock_data",
+                "clip_rect",
+                "map",
+                "refcount"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_events.h",
+        "defines": [],
+        "structs": {
+            "SDL_KeyboardEvent": [
+                "type", 
+                "windowID", 
+                "state", 
+                "repeat", 
+                "padding2", 
+                "padding3", 
+                "keysym"
+            ],
+            "SDL_TextInputEvent": [
+                "type", 
+                "windowID", 
+                "text"
+            ],
+            "SDL_MouseMotionEvent": [
+                "type", 
+                "windowID", 
+                "state", 
+                "padding1", 
+                "padding2", 
+                "padding3", 
+                "x", 
+                "y", 
+                "xrel", 
+                "yrel"
+            ],
+            "SDL_MouseButtonEvent": [
+                "type", 
+                "windowID", 
+                "button", 
+                "state", 
+                "padding1", 
+                "padding2", 
+                "x", 
+                "y"
+            ],
+            "SDL_ResizeEvent": [
+                "type", 
+                "w", 
+                "h"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_audio.h", 
+        "defines": [
+            "SDL_AUDIO_MASK_BITSIZE", 
+            "SDL_AUDIO_MASK_DATATYPE", 
+            "SDL_AUDIO_MASK_ENDIAN", 
+            "SDL_AUDIO_MASK_SIGNED", 
+            "AUDIO_U8", 
+            "AUDIO_S8", 
+            "AUDIO_U16LSB", 
+            "AUDIO_S16LSB", 
+            "AUDIO_U16MSB", 
+            "AUDIO_S16MSB", 
+            "AUDIO_U16", 
+            "AUDIO_S16", 
+            "AUDIO_S32LSB", 
+            "AUDIO_S32MSB", 
+            "AUDIO_S32", 
+            "AUDIO_F32LSB", 
+            "AUDIO_F32MSB", 
+            "AUDIO_F32", 
+            "AUDIO_U16SYS", 
+            "AUDIO_S16SYS", 
+            "AUDIO_S32SYS", 
+            "AUDIO_F32SYS", 
+            "SDL_AUDIO_ALLOW_FREQUENCY_CHANGE", 
+            "SDL_AUDIO_ALLOW_FORMAT_CHANGE", 
+            "SDL_AUDIO_ALLOW_CHANNELS_CHANGE", 
+            "SDL_AUDIO_ALLOW_ANY_CHANGE", 
+            "SDL_MIX_MAXVOLUME"
+        ], 
+        "structs": {
+            "SDL_AudioCVT": [
+                "needed", 
+                "src_format", 
+                "dst_format", 
+                "rate_incr", 
+                "buf", 
+                "len", 
+                "len_cvt", 
+                "len_mult", 
+                "len_ratio", 
+                "filters", 
+                "filter_index"
+            ], 
+            "SDL_AudioSpec": [
+                "freq", 
+                "format", 
+                "channels", 
+                "silence", 
+                "samples", 
+                "padding", 
+                "size", 
+                "callback", 
+                "userdata"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_version.h",
+        "defines": [
+            "SDL_MAJOR_VERSION", 
+            "SDL_MINOR_VERSION", 
+            "SDL_PATCHLEVEL", 
+            "SDL_COMPILEDVERSION"
+        ], 
+        "structs": {
+            "SDL_version": [
+                "major", 
+                "minor", 
+                "patch"
+            ]
+        }
+    }
+]

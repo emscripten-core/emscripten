@@ -1,0 +1,74 @@
+<html>
+
+    <head>
+        <title>Telnet client using WebSockets</title>
+        <script src="include/base64.js"></script>
+        <script src="include/util.js"></script>
+        <script src="include/websock.js"></script>
+        <script src="include/webutil.js"></script> 
+        <script src="include/keysym.js"></script> 
+        <script src="include/VT100.js"></script> 
+        <script src="include/wstelnet.js"></script> 
+        <!-- Uncomment to activate firebug lite -->
+        <!--
+        <script type='text/javascript' 
+            src='http://getfirebug.com/releases/lite/1.2/firebug-lite-compressed.js'></script>
+        -->
+
+
+    </head>
+
+    <body>
+
+        Host: <input id='host' style='width:100'>&nbsp;
+        Port: <input id='port' style='width:50'>&nbsp;
+        Encrypt: <input id='encrypt' type='checkbox'>&nbsp;
+        <input id='connectButton' type='button' value='Connect' style='width:100px'
+            onclick="connect();">&nbsp;
+
+        <br><br>
+
+        <pre id="terminal"></pre>
+
+        <script>
+            var telnet;
+
+            function connect() {
+                telnet.connect($D('host').value,
+                               $D('port').value,
+                               $D('encrypt').checked);
+                $D('connectButton').disabled = true;
+                $D('connectButton').value = "Connecting";
+            }
+
+            function disconnect() {
+                $D('connectButton').disabled = true;
+                $D('connectButton').value = "Disconnecting";
+                telnet.disconnect();
+            }
+
+            function connected() {
+                $D('connectButton').disabled = false;
+                $D('connectButton').value = "Disconnect";
+                $D('connectButton').onclick = disconnect;
+            }
+
+            function disconnected() {
+                $D('connectButton').disabled = false;
+                $D('connectButton').value = "Connect";
+                $D('connectButton').onclick = connect;
+            }
+
+            window.onload = function() {
+                console.log("onload");
+                var url = document.location.href;
+                $D('host').value = (url.match(/host=([^&#]*)/) || ['',''])[1];
+                $D('port').value = (url.match(/port=([^&#]*)/) || ['',''])[1];
+                
+                telnet = Telnet('terminal', connected, disconnected);
+            }
+        </script>
+
+    </body>
+
+</html>

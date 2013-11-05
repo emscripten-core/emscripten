@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="enet_dll" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin\Debug\libenet" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj\Debug\" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin\Release\libenet" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj\Release\" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-DENET_DLL" />
+			<Add directory="include" />
+		</Compiler>
+		<Linker>
+			<Add library="ws2_32" />
+			<Add library="Winmm" />
+		</Linker>
+		<Unit filename="callbacks.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="compress.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="host.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="include\enet\callbacks.h" />
+		<Unit filename="include\enet\enet.h" />
+		<Unit filename="include\enet\list.h" />
+		<Unit filename="include\enet\protocol.h" />
+		<Unit filename="include\enet\time.h" />
+		<Unit filename="include\enet\types.h" />
+		<Unit filename="include\enet\unix.h" />
+		<Unit filename="include\enet\utility.h" />
+		<Unit filename="include\enet\win32.h" />
+		<Unit filename="list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="packet.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="peer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="protocol.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="unix.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="win32.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

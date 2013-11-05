@@ -3,10 +3,15 @@ n=7
 
 Characters: a A
 Decimals: 1977 650000 12 4
-Preceding with blanks:       1977
-Preceding with zeros: 0000001977
+Preceding with blanks:       1977      -1977
+Preceding with zeros: 0000001977 -000001977
+Force sign: +1977 -1977  +1977  -1977
+Force sign or space:  1977 -1977   1977  -1977
+Sign overrides space: +1977 -1977  +1977  -1977
 Some different radixes: 100 64 144 0x64 0144
-floats: 3.14 +3e+00 3.141600E+00
+floats: 3.14 +3e+00 3.141600E+00 00003.14
+negative floats: -3.14 -3e+00 -3.141600E+00 -0003.14
+Force sign or space:  3.14 -3.14   3.14  -3.14
 Width trick:    10
 A string %
 Null string:  (null)

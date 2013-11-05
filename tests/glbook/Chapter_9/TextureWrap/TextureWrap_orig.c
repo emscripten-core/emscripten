@@ -243,7 +243,7 @@ int main ( int argc, char *argv[] )
    esInitContext ( &esContext );
    esContext.userData = &userData;
 
-   esCreateWindow ( &esContext, "MipMap 2D", 640, 480, ES_WINDOW_RGB );
+   esCreateWindow ( &esContext, "MipMap 2D", 320, 240, ES_WINDOW_RGB );
 
    if ( !Init ( &esContext ) )
       return 0;

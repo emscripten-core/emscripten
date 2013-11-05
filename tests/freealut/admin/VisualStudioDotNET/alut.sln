@@ -1,0 +1,35 @@
+Microsoft Visual Studio Solution File, Format Version 7.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "alut", "alut\alut.vcproj", "{07149BCB-BE8A-4503-BE18-815D64233116}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello_world", "hello_world\hello_world.vcproj", "{64A0E948-E88A-4F4E-9039-43E539F5DF77}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "playfile", "playfile\playfile.vcproj", "{6E63082A-187E-4F18-9E54-C8A7C1CE1D0B}"
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		ConfigName.0 = Debug
+		ConfigName.1 = Release
+	EndGlobalSection
+	GlobalSection(ProjectDependencies) = postSolution
+		{64A0E948-E88A-4F4E-9039-43E539F5DF77}.0 = {07149BCB-BE8A-4503-BE18-815D64233116}
+		{6E63082A-187E-4F18-9E54-C8A7C1CE1D0B}.0 = {07149BCB-BE8A-4503-BE18-815D64233116}
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{07149BCB-BE8A-4503-BE18-815D64233116}.Debug.ActiveCfg = Debug|Win32
+		{07149BCB-BE8A-4503-BE18-815D64233116}.Debug.Build.0 = Debug|Win32
+		{07149BCB-BE8A-4503-BE18-815D64233116}.Release.ActiveCfg = Release|Win32
+		{07149BCB-BE8A-4503-BE18-815D64233116}.Release.Build.0 = Release|Win32
+		{64A0E948-E88A-4F4E-9039-43E539F5DF77}.Debug.ActiveCfg = Debug|Win32
+		{64A0E948-E88A-4F4E-9039-43E539F5DF77}.Debug.Build.0 = Debug|Win32
+		{64A0E948-E88A-4F4E-9039-43E539F5DF77}.Release.ActiveCfg = Release|Win32
+		{64A0E948-E88A-4F4E-9039-43E539F5DF77}.Release.Build.0 = Release|Win32
+		{6E63082A-187E-4F18-9E54-C8A7C1CE1D0B}.Debug.ActiveCfg = Debug|Win32
+		{6E63082A-187E-4F18-9E54-C8A7C1CE1D0B}.Debug.Build.0 = Debug|Win32
+		{6E63082A-187E-4F18-9E54-C8A7C1CE1D0B}.Release.ActiveCfg = Release|Win32
+		{6E63082A-187E-4F18-9E54-C8A7C1CE1D0B}.Release.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

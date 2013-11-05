@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: freealut
+Description: freealut is a free implementation of the OpenAL utility toolkit.
+Requires: openal
+Version: @PACKAGE_VERSION@
+Libs: -L${libdir} -lalut
+Cflags: -I${includedir}

@@ -21,9 +21,13 @@ for filename in filenames:
     if m and (' if ' not in lines[i-1] or '{' in lines[i-1]) and \
              (' if ' not in lines[i+1] or '{' in lines[i+1]) and \
              (' else' not in lines[i-1] or '{' in lines[i-1]) and \
-             (' else' not in lines[i+1] or '{' in lines[i+1]):
-      var = m.groups(1)[0].rstrip().split(' ')[-1]
-      lines[i] += ''' printf("%s:%d:%s=%%d\\n", %s);''' % (filename, i+1, var, var)
+             (' else' not in lines[i+1] or '{' in lines[i+1]) and \
+             (' for' not in lines[i-1]) and \
+             ('struct' not in lines[i]):
+      raw = m.groups(1)[0].rstrip()
+      var = raw.split(' ')[-1]
+      if ' ' in raw and '[' in var: continue
+      lines[i] += ''' printf("%s:%d:%s=%%d\\n", (int)%s);''' % (filename, i+1, var, var)
 
   f = open(filename, 'w')
   f.write('\n'.join(lines))

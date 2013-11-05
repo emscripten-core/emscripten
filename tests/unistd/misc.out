@@ -29,7 +29,7 @@ alarm: 0, errno: 0
 ualarm: 0, errno: 0
 fork: -1, errno: 11
 vfork: -1, errno: 11
-crypt: 0, errno: 38
+crypt: (null), errno: 38
 encrypt, errno: 38
 getgid: 0, errno: 0
 getegid: 0, errno: 0
@@ -44,3 +44,10 @@ setgid: -1, errno: 1
 setegid: -1, errno: 1
 setuid: -1, errno: 1
 seteuid: -1, errno: 1
+setpgrp: -1, errno: 1
+setsid: -1, errno: 1
+setpgid: -1, errno: 1
+setregid: -1, errno: 1
+setreuid: -1, errno: 1
+getgroups: 1, result: 0, errno: 0
+setgroups: -1, errno: 1

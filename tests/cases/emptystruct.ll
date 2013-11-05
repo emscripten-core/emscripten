@@ -6,12 +6,14 @@ target triple = "i386-pc-linux-gnu"
 
 @.str = private constant [14 x i8] c"hello, world!\00", align 1 ; [#uses=1]
 
+@.waka = extern_weak global i8* ; no initializer!
+
 define i32 @main() nounwind {
 entry:
   %z = alloca %struct.s, align 4
   %0 = bitcast %struct.s* %z to i8*
   call void @llvm.memset.p0i8.i32(i8* %0, i8 0, i32 4, i32 4, i1 false)
-  %0 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %1 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   ret i32 0
 }
 

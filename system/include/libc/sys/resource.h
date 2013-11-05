@@ -1,49 +1,103 @@
-#ifndef _SYS_RESOURCE_H_
-#define _SYS_RESOURCE_H_
+#ifndef	_SYS_RESOURCE_H
+#define	_SYS_RESOURCE_H
 
-#include <sys/time.h>
-
-#define	RUSAGE_SELF	0		/* calling process */
-#define	RUSAGE_CHILDREN	-1		/* terminated child processes */
-
-struct rusage {
-  struct timeval ru_utime;	/* user time used */
-  struct timeval ru_stime;	/* system time used */
-  /* XXX Emscripten */
-  int            ru_maxrss;
-  int            ru_ixrss;
-  int            ru_idrss;
-  int            ru_isrss;
-  int            ru_minflt;
-  int            ru_majflt;
-  int            ru_nswap;
-  int            ru_inblock;
-  int            ru_oublock;
-  int            ru_msgsnd;
-  int            ru_msgrcv;
-  int            ru_nsignals;
-  int            ru_nvcsw;
-  int            ru_nivcsw;
-};
-
-/* XXX Emscripten */
-int getrusage(int who, struct rusage *r_usage);
-
-/* XXX Emscripten */
-#define RLIMIT_CORE 100
-#define RLIMIT_CPU 1
-#define RLIMIT_DATA 2
-#define RLIMIT_FSIZE 3
-#define RLIMIT_NOFILE 4
-#define RLIMIT_STACK 5
-#define RLIMIT_AS 6
-
-typedef unsigned rlim_t;
-struct rlimit {
-  rlim_t rlim_cur;
-  rlim_t rlim_max;
-};
-int setrlimit(int resource, const struct rlimit *rlim);
-
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+#include <features.h>
+#include <sys/time.h>
+
+#define __NEED_id_t
+
+#ifdef _GNU_SOURCE
+#define __NEED_pid_t
+#endif
+
+#include <bits/alltypes.h>
+
+typedef unsigned long rlim_t;
+
+struct rlimit
+{
+	rlim_t rlim_cur;
+	rlim_t rlim_max;
+};
+
+struct rusage
+{
+	struct timeval ru_utime;
+	struct timeval ru_stime;
+	/* linux extentions, but useful */
+	long	ru_maxrss;
+	long	ru_ixrss;
+	long	ru_idrss;
+	long	ru_isrss;
+	long	ru_minflt;
+	long	ru_majflt;
+	long	ru_nswap;
+	long	ru_inblock;
+	long	ru_oublock;
+	long	ru_msgsnd;
+	long	ru_msgrcv;
+	long	ru_nsignals;
+	long	ru_nvcsw;
+	long	ru_nivcsw;
+	/* room for more... */
+	long    __reserved[16];
+};
+
+int getrlimit (int, struct rlimit *);
+int setrlimit (int, const struct rlimit *);
+int getrusage (int, struct rusage *);
+
+int getpriority (int, id_t);
+int setpriority (int, id_t, int);
+
+#ifdef _GNU_SOURCE
+int prlimit(pid_t, int, const struct rlimit *, struct rlimit *);
+#define prlimit64 prlimit
+#endif
+
+#define PRIO_PROCESS 0
+#define PRIO_PGRP    1
+#define PRIO_USER    2
+
+#define RUSAGE_SELF     0
+#define RUSAGE_CHILDREN 1
+
+#define RLIM_INFINITY (~0ULL)
+#define RLIM_SAVED_CUR RLIM_INFINITY
+#define RLIM_SAVED_MAX RLIM_INFINITY
+
+#define RLIMIT_CPU     0
+#define RLIMIT_FSIZE   1
+#define RLIMIT_DATA    2
+#define RLIMIT_STACK   3
+#define RLIMIT_CORE    4
+#define RLIMIT_RSS     5
+#define RLIMIT_NOFILE  7
+#define RLIMIT_AS      9
+#define RLIMIT_NPROC   6
+#define RLIMIT_MEMLOCK 8
+#define RLIMIT_LOCKS   10
+#define RLIMIT_SIGPENDING 11
+#define RLIMIT_MSGQUEUE 12
+#define RLIMIT_NICE    13
+#define RLIMIT_RTPRIO  14
+#define RLIMIT_NLIMITS 15
+
+#define RLIM_NLIMITS RLIMIT_NLIMITS
+
+#if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)
+#define getrlimit64 getrlimit
+#define setrlimit64 setrlimit
+#define rlimit64 rlimit
+#define rlim64_t rlim_t
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

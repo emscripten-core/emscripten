@@ -1,0 +1,9 @@
+- Go implementation
+
+- Support multiple targets that are selected by the path line. Some
+  sort of wildcarding of ports too.
+
+- Support SSL targets too.
+
+- wstelnet: support CSI L and CSI M
+

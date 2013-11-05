@@ -1,0 +1,786 @@
+2006-05-22  Sven Panne  <sven.panne@aedion.de>
+
+	* Prepared release candidate 1 for 1.1.0, tag is "freealut_1_1_0_RC1".
+
+	* NEWS: Added news for 1.1.0.
+
+2006-05-11  Sven Panne  <sven.panne@aedion.de>
+
+	* README, admin/VisualStudio6/alut/alut.dsp,
+	admin/VisualStudio6/hello_world/hello_world.dsp,
+	admin/VisualStudio6/playfile/playfile.dsp,
+	admin/VisualStudioDotNET/alut/alut.vcproj,
+	admin/VisualStudioDotNET/hello_world/hello_world.vcproj,
+	admin/VisualStudioDotNET/playfile/playfile.vcproj: Changed the paths to
+	the headers and the library to conform to the default of the current
+	OpenAL SDK installer from Creative.
+
+	* src/alutWaveform.c(getWaveformFunction): To avoid warnings on VC6, add
+	some redundant '&' operators.
+
+	* include/AL/alut.h: Added some fragile logic to find the right path to
+	the OpenAL headers.
+
+2006-04-12  Sven Panne  <sven.panne@aedion.de>	
+
+	* configure.ac: To guarantee version consistency, generate .spec
+	file via configure.
+
+	* admin/RPM/.cvsignore, admin/RPM/freealut.spec.in: Added.
+
+	* admin/RPM/freealut.spec: Removed.
+
+	* CMakeLists.txt, admin/VisualStudio6/alut/alut.dsp,
+	admin/VisualStudioDotNET/alut/alut.vcproj, admin/autotools/.indent.pro,
+	configure.ac, include/AL/alut.h, src/Makefile.am, src/alutBufferData.c,
+	src/alutInternal.h, src/alutLoader.c, src/alutUtil.c,
+	src/alutWaveform.c: Implemented alutLoadMemoryHelloWorld and
+	alutLoadMemoryWaveform. Refactored things internally a bit, mainly by
+	making an InputStream the central kind of sound data source. Introduced
+	the OutputStream type for generating built-in sounds. Bumped the package
+	version to 1.1.0 and the library version to 1:0:1 (i.e. a backwards
+	compatible version, only with new features). Added --enable-efence
+	configure option.
+
+	* src/alutOutputStream.c: Added.
+
+	* doc/alut.html: Added a few missing ALUT_ERROR_OUT_OF_MEMORY error
+	conditions in the descriptions of the loaders. Added
+	alutLoadMemoryHelloWorld and alutLoadMemoryWaveform. Bumped spec version
+	to 1.1.0.
+
+	* doc/alut.css: Added a remark how to make the headers stand out a
+	little bit more.
+
+2006-04-10  Sven Panne  <sven.panne@aedion.de>
+
+	* doc/alut.html: Fixed foo-config documentation. Minor cleanup.
+
+2006-03-05  Prakash Punnoor <prakash@punnoor.de>
+
+	* admin/CMakeModules/FindSleepFunction.cmake: sync to OpenAL version
+
+	* Makefile.am: add CMake Modules to EXTRA_DIST
+
+	* CMakeLists.txt: make more windows friendly; variables
+	OPENAL_INCLUDE_DIR and OPENAL_LIB_DIR introduced
+
+2006-02-13  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac, src/Makefile.am: Added version info.
+
+2006-02-16  Prakash Punnoor <prakash@punnoor.de>
+
+	* CMakeLists.txt: don't check for unistd.h twice
+
+2006-02-13  Prakash Punnoor <prakash@punnoor.de>
+
+	* CMakeLists.txt: forgot to delete old visibility macro; use OpenAL
+	module for sleep function detection; define _POSIX_C_SOURCE and add
+	comments from configure.ac
+
+2006-02-13  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac: We might need nanosleep, which is a POSIX IEEE Std
+	1003.1b-1993 feature, so tell our system headers about that. Fixes the
+	build e.g. on an old SuSE 8.2 distro.
+
+	* NEWS: Fixed release date.
+
+	* doc/alut.html: Fixed broken link.
+
+2006-02-11  Sven Panne  <sven.panne@aedion.de>
+
+	* Released Version 1.0.1, CVS tag is "freealut_1_0_1".
+
+2006-02-07  Prakash Punnoor <prakash@punnoor.de>
+
+	* CMakeLists.txt: Define __NO_CTYPE
+
+2006-02-07  Sven Panne  <sven.panne@aedion.de>
+
+	* admin/RPM/freealut.spec: Bumped to 1.0.1, too. We should really
+	automate this.
+
+	* NEWS, src/alutUtil.c: When nanosleep returns early due to a signal,
+	continue sleeping, otherwise return AL_FALSE from alutSleep.
+
+	* NEWS: Prepared for 1.0.1 release, probably more to come.
+
+	* configure.ac: Use AC_DEFINE instead of specifying preprocessor defines
+	by hand. Added a tiny comment.
+
+2006-02-06  Prakash Punnoor <prakash@punnoor.de>
+
+	* CMakeLists.txt: Use modules written for OpenAL, fixing various issues;
+	bumped version.
+
+	* admin/CMakeModules/FindCompilerAttribute.cmake,
+	admin/CMakeModules/FindCompilerFlagsSet.cmake,
+	admin/CMakeModules/FindCompilerVisibility.cmake,
+	admin/CMakeModules/admin/CMakeModules/FindConfigHelper.cmake,
+	admin/CMakeModules/FindSleepFunction.cmake: added
+
+	* configure.ac: Added symbol visibility support.
+
+2006-02-06  Sven Panne  <sven.panne@aedion.de>
+
+	* admin/pkgconfig/Makefile.am: Use a more portable way of defining
+	pkgconfdir (by Andreas Bierfert).
+
+2006-02-04  Sven Panne  <sven.panne@aedion.de>
+
+	* include/AL/alut.h: Use visibility attribute only when building ALUT
+	library.
+
+	* configure.ac: Fixed CR/LF vs. LF issue in configure on Windows. Bumped
+	version to 1.0.1.
+
+2005-12-17  Prakash Punnoor <prakash@punnoor.de>
+
+	* CMakeLists.txt, include/AL/alut.h: GCC visibility support.
+
+2005-12-16  Sven Panne  <sven.panne@aedion.de>
+
+	* Released Version 1.0.0, CVS tag is "freealut_1_0_0".
+
+	* admin/pkgconfig/freealut-config.in, admin/pkgconfig/freealut.pc.in:
+	Fixed copy-n-paste typo. Somehow this fix didn't make into RC2...
+
+2005-12-15  Sven Panne  <sven.panne@aedion.de>
+
+	* Makefile.am, admin/RPM/freealut.spec, configure.ac: Build and install
+	freealut-config and a pkg-config description.
+
+	* admin/.cvsignore, admin/Makefile.am, admin/pkgconfig/.cvsignore,
+	admin/pkgconfig/Makefile.am, admin/pkgconfig/freealut-config.in,
+	admin/pkgconfig/freealut.pc.in: Added.
+
+2005-12-15  Prakash Punnoor <prakash@punnoor.de>
+
+	* README: CMake cache clearing typos
+	
+	* CMakeLists.txt: also make freealut-config and freealut.pc; sync
+	VERSION to configure.ac
+
+2005-12-12  Prakash Punnoor <prakash@punnoor.de>
+
+	* README: CMake cache clearing
+
+2005-12-10  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutInit.c (alutExit): Do a full sanity check only when ALUT
+	itself owns the context, an external context might have been destroyed
+	before alutExit is called.
+
+2005-12-05  Prakash Punnoor <prakash@punnoor.de>
+
+	* Makefile.am: add CMakeLists.txt to EXTRA_DIST
+	
+	* README: add CMake use instructions
+
+2005-12-04  Prakash Punnoor <prakash@punnoor.de>
+
+	* CMakeLists.txt: add -DNDEBUG
+	
+	* AUTHORS: add myself
+
+2005-12-03  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac, include/AL/alut.h, src/alutBufferData.c,
+	src/alutInputStream.c, src/alutLoader.c src/alutWaveform.c: Avoid
+	generating a depedency on GLIBC 2.3. Added --enable-more-warnings
+	configure flag and fixed the resulting warnings.
+
+2005-12-03  Prakash Punnoor <prakash@punnoor.de>
+
+	* CMakeLists.txt: made pretty feature-complete
+
+2005-12-02  Prakash Punnoor <prakash@punnoor.de>
+
+	* src/alutCodec.c, src/alutLoader.c: fix warnings
+	
+	* CMakeLists.txt: added; doesn't build examples/tests yet
+
+2005-11-28  Sven Panne  <sven.panne@aedion.de>
+
+	* test_suite\Makefile.am: Distribute example sounds, too.
+
+	* admin/RPM/freealut.spec: Updated build dependencies.
+
+2005-11-27  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutCodec.c, src/alutLoader.c, src/alutWaveform.c: Re-indented.
+
+	* Makefile.am, README, configure.ac: Rearranged the admin subdirectory a
+	little bit, making it hopefully clearer which files belong to which
+	build system.
+
+	* admin/RPM/freealut.spec, admin/autotools/.cvsignore,
+	admin/autotools/.indent.pro, admin/autotools/m4/alut_c__attribute.m4,
+	admin/autotools/m4/alut_check_cflags_wall.m4,
+	admin/autotools/m4/alut_check_flag.m4,
+	admin/autotools/m4/alut_check_func.m4,
+	admin/autotools/m4/alut_eval_stderr.m4: Added.
+
+	* admin/.cvsignore, admin/.indent.pro, admin/freealut.spec,
+	admin/m4/alut_c__attribute.m4, admin/m4/alut_check_cflags_wall.m4,
+	admin/m4/alut_check_flag.m4, admin/m4/alut_check_func.m4,
+	admin/m4/alut_eval_stderr.m4: Removed.
+
+	* src/alutBufferData.c, src/alutCodec.c, src/alutInputStream.c,
+	src/alutInternal.h, src/alutLoader.c, src/alutWaveform.c: Consistently
+	use size_t for sizes internally, because ALsizei is signed and we don't
+	want to lose a bit (2GB vs. 4GB limits).
+
+	* admin/VisualStudioDotNET/.cvsignore,
+	admin/VisualStudioDotNET/alut.sln,
+	admin/VisualStudioDotNET/alut/.cvsignore,
+	admin/VisualStudioDotNET/alut/alut.vcproj,
+	admin/VisualStudioDotNET/hello_world/.cvsignore,
+	admin/VisualStudioDotNET/hello_world/hello_world.vcproj,
+	admin/VisualStudioDotNET/playfile/.cvsignore,
+	admin/VisualStudioDotNET/playfile/playfile.vcproj: Added. The structure
+	is now similar to the Visual Studio 6 directory and the
+	solution/projects are now usable with older versions of Visual Studio
+	.NET.
+
+	* admin/alut.sln, admin/alut.vcproj, admin/hello_world.vcproj,
+	admin/playfile.vcproj: Removed.
+
+	* admin/VisualStudio6/.cvsignore, admin/VisualStudio6/alut.dsw,
+	admin/VisualStudio6/alut/.cvsignore, admin/VisualStudio6/alut/alut.dsp,
+	admin/VisualStudio6/hello_world/.cvsignore,
+	admin/VisualStudio6/hello_world/hello_world.dsp,
+	admin/VisualStudio6/playfile/.cvsignore,
+	admin/VisualStudio6/playfile/playfile.dsp: Added Visual Studio 6
+	workspace and projects.
+
+	* src/alutCodec.c: Silence a useless Visual C 6 warning.
+
+	* src/alutInternal.h: Visual C 6's basetsd.h has no definitions for
+	sized integral types, so let's define them by hand.
+
+2005-11-25  Sven Panne  <sven.panne@aedion.de>
+
+	* admin/alut.vcproj: Use "Multi-threaded DLL (/MD)" and "Multi-threaded
+	Debug DLL (/MDd)" as the runtime library, bringing down the size of
+	alut.dll to something sensible.
+
+	* examples/playfile.c, test_suite/test_fileloader.c,
+	test_suite/test_memoryloader.c, test_suite/test_retrostuff.c: Changed
+	literal ALfloat constants from 0.1 to 0.1f, silencing Visual C.
+
+	* configure.ac: Tell the system headers that we might use POSIX/XPG
+	entitites like struct timespec or random(), which are not in the ANSI
+	standard. Do not define any user variables like CFLAGS. Split the old
+	configure flag --enable-warnings into a pair --enable-warnings and
+	--enable-werror. Use a (modified) macro from the autoconf archive to
+	detect strict warning flags.
+
+	* admin/m4/alut_check_cflags_wall.m4: Added. It is a modified version of
+	ax_cflags_warn_all_ansi.m4 from the autoconf archive, updated to conform
+	to more recent autoconf standards.
+
+2005-11-21  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac: Removed --enable-debug option, it was unused.
+
+2005-11-19  Sven Panne  <sven.panne@aedion.de>
+
+	* doc/alut.html: Added a remark about LD_PRELOAD to use old
+	binaries with the new ALUT.
+
+2005-11-17  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutInit.c: Fixed alutInitWithoutContext initialisation
+	state check.
+
+2005-10-29  Sven Panne  <sven.panne@aedion.de>
+
+	* examples/hello_world.c, examples/playfile.c ,include/AL/alut.h,
+	src/alutUtil.c, test_suite/test_fileloader.c,
+	test_suite/test_memoryloader.c, test_suite/test_retrostuff.c,
+	test_suite/test_waveforms.c: Synched implementation with latest spec
+	changes.
+
+	* doc/alut.html: As discussed on the mailing list, sleeping is now done
+	via an ALfloat. This is more consinstent with physical reality and
+	alutCreateBufferWaveform. Note that alutSleep can actually fail now,
+	something which the former alutMicroSleep never did.
+
+	* src/alutLoader.c: Re-indented.
+
+2005-10-24  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutLoader.c, src/alutWaveform.c: Added a few harmless casts where
+	Visual Studio was complaining about a possible loss of precision.
+
+	* admin/alut.vcproj: Added the recently introduced source files.
+
+2005-10-10  Sven Panne  <sven.panne@aedion.de>
+
+	* examples/playfile.c: Added missing alutExit call.
+
+2005-10-21  Sven Panne  <sven.panne@aedion.de>
+
+	* admin/freealut.spec: Added. Note that the neededforbuild and
+	BuildRequires info is not yet correct, need to figure out how to compute
+	those.
+
+	* Makefile.am: Unbreak "make dist". Added documentation.
+
+2005-10-05  Sven Panne  <sven.panne@aedion.de>
+
+	* src/Makefile.am, src/alutInputStream.c, src/alutInternal.h,
+	src/alutLoader.c: Factored out codecs. Simplified stream interface.
+
+	* src/alutCodec.c: Added.
+
+	* src/alutBufferData.c, src/alutInputStream.c, src/alutInternal.h,
+	src/alutLoader.c, src/alutUtil.c, src/alutWaveform.c: More heavy
+	refactoring, mainly making the buffer data an abstract data type.
+
+	* test_suite/test_errorstuff.c, test_suite/test_fileloader.c,
+	test_suite/test_memoryloader.c, test_suite/test_retrostuff.c,
+	test_suite/test_version.c, test_suite/test_waveforms.c: Cleaned up and
+	fixed the test suite (always call alutExit before exiting, test for
+	AL_NONE instead of 0, no repetitions, more error checks, return
+	EXIT_FAILURE on failure).
+
+	* src/alutBufferData.c, src/alutInputStream.c: Forgot to re-indent
+	these...
+
+2005-09-30  Sven Panne  <sven.panne@aedion.de>
+
+	* admin/.indent.pro,examples/playfile.c, include/AL/alut.h,
+	src/Makefile.am, src/alutInit.c, src/alutInternal.h, src/alutLoader.c,
+	src/alutWaveform.c: Some heavy refactoring of the input streams and
+	buffer data types, we are moving towards common OO techniques here. Not
+	completely finished, but much better than before.
+
+	* src/alutBufferData.c, src/alutInputStream.c: Added.
+
+	* src/alutWaveform.c: Instead of the 44.1kHz 16bit PCM data, use
+	11.025kHz 8-bit ISDN u-law for the "Hello, world!" sound, saving 56kB in
+	the resulting ALUT library.
+
+2005-09-28  Sven Panne  <sven.panne@aedion.de>
+
+	* examples/playfile.c, include/AL/alut.h, src/alutError.c,
+	src/alutInit.c, src/alutLoader.c: Adapted to spec changes.
+
+	* doc/alut.html: Updated list of error tokens. Replaced
+	alutEnumerateSupportedFileTypes with alutGetMIMETypes. More reformatting
+	and clarifications.
+
+2005-09-27  Sven Panne  <sven.panne@aedion.de>
+
+	* include/AL/alut.h, src/alutError.c, src/alutInit.c,
+	src/alutInternal.h, src/alutLoader.c, src/alutWaveform.c: Adapted to
+	spec changes. Added a few missing error checks. Improved SampleAttribs a
+	bit.
+
+	* doc/alut.css, doc/alut.html: Make descriptions of API entries more
+	formal, following the usual manual page style (not finished yet). Added
+	some clarifications. Changed the set of possible ALUT errors.
+
+2005-09-26  Sven Panne  <sven.panne@aedion.de>
+
+	* doc/alut.html, include/AL/alut.h, src/alutError.c, src/alutInit.c,
+	src/alutInternal.h, src/alutLoader.c, src/alutUtil.c: Clarified and
+	changed the ALUT error handling and reporting after the corresponding
+	discussion on the mailing list.
+
+2005-09-23  Sven Panne  <sven.panne@aedion.de>
+
+	* admin/.cvsignore: Ignore mkinstalldirs.
+
+	* src/alutLoader.c: Make the endianess test dynamic.
+
+2005-09-21  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutLoader.c: Removed evil byte-swapping. Fixed WAV loading
+	(still not 100% bullet-proof, I think). Cleanup.
+
+	* admin/.indent.pro: Added new typedef.
+
+	* src/alutInternal.h: Handle 32bit sized types on Windows.
+
+2005-09-18  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutInit.c, src/alutLoader.c: Added a few error checks. Made
+	testing for errors more consistent, it should be of the form:
+
+	   if (!<assertion>)
+	     { _alutSetError(<error>); <cleanup> return <whatever>; }
+
+	* admin/.indent.pro, examples/.cvsignore, examples/Makefile.am,
+	src/alutLoader.c: Merged and heavily modified Erik Hofman's fixes for
+	AU/WAV loaders. Some more cleanup + minor fixes.
+
+	* examples/playfile.c: Added.
+
+2005-09-17  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac, include/AL/alut.h, test_suite/Makefile.am: Flag
+	deprecated functions if possible (VisualC++ .NET and GCC >= 3.1.1), but
+	be careful to avoid those warnings in our test suite.
+
+	* admin/m4/alut_check_flag.m4, admin/m4/alut_eval_stderr.m4: Added.
+
+	* configure.ac, admin/alut.vcproj, include/AL/alut.h: Use AL_ALUT_H
+	instead of _AL_ALUT_H, macros starting with "_" are reserved by the C
+	standard. For the same reason, rename _ALUTLIB to ALUT_BUILD_LIBRARY.
+
+	* README: Added building instructions using VisualStudio.
+
+	* admin/.cvsignore: Ignore files generated by VisualStudio.
+
+	* AUTHORS: Added Erik Hofman. Small reformatting.
+
+	* alut.sln, alut.vcproj, hello_world.vcproj: Added. I have access to
+	VisualStudio .NET only, so I can't maintain project files for older
+	versions. Note that the OpenAL SDK is assumed to live under
+	C:\OpenALSDK, not nice to hardwire this, but I don't see another
+	solution currently. Help would be appreciated.
+
+	* alut.dsp, alut.dsw, hello_world.dsp: Removed.
+
+	* configure.ac, src/alutInternal.h, src/alutLoader.c,
+	src/alutWaveform.c: As usual, Microsoft chooses to ignore standards,
+	this time C99: VisualC doesn't have stdint.h, so hack around this
+	omission.
+
+	* Makefile.am: Moved m4 subdirectory to admin where it belongs.
+
+	* admin/m4/alut_c__attribute.m4, admin/m4/alut_check_func.m4: Added.
+
+	* m4/alut_c__attribute.m4, m4/alut_check_func.m4: Removed.
+
+	* src/Makefile.am: Fixed headers.
+
+	* .cvsignore: Ignore distribution archives.
+
+2005-09-14  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutError.c, src/alutInit.c, src/alutLoader.c, src/alutUtil.c,
+	src/alutVersion.c, src/alutWaveform.c: Use alutInternal.h.
+
+	* src/alutInternal.h: Added. This file should be #included as the first
+	header in all *.c files.
+
+	* src/alutError.h, src/alutInit.h: Removed
+
+	* Makefile.am, examples/Makefile.am, src/Makefile.am,
+	test_suite/Makefile.am: Automatically build examples and test suite
+	now. Moved local autoconf macros to a separate directory. Added a few
+	comments.
+
+	* m4/alut_c__attribute.m4, m4/alut_check_func.m4: Added.
+
+	* acinclude.m4: Removed
+
+2005-09-13  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac, src/alutLoader.c, src/alutWaveform.c: A few
+	compatibility hacks to make it compile on Linux, MinGW/MSYS and Cygwin.
+
+	* acinclude.m4: Added.
+
+2005-09-12  Sven Panne  <sven.panne@aedion.de>
+
+	* admin/.cvsignore: Improved ignorance.
+
+	* src/Makefile.am: Cleaned up and fixed include paths. Added
+	-no-undefined to libtool linker flags to prepare for building a Windows
+	DLL. Added some comments.
+
+2005-09-11  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac, src/alutWaveform.c: Cleaned up alutCreateBufferWaveform.
+
+	* configure.ac, src/alutInit.c: Header cleanup.
+
+	* src/alutUtil.c: Fixed braino in alutMicroSleep using nanosleep.
+
+	* src/alutInit.c: _alutSanityCheck doesn't terminate the program in case
+	of an error anymore, it simply sets the error condition. Some additional
+	cleanup.
+
+	* src/alutError.c: Print a message to stderr when an error condition is
+	set and the ALUT_DEBUG environment variable is defined.
+
+	* src/Makefile.am: Include src/helloworld.wav and src/README in
+	distributions.
+
+	* src/README: A few additions and corrections.
+
+	* doc/alut.html: A few clarifications and a little reformatting.
+
+2005-09-10  Sven Panne  <sven.panne@aedion.de>
+
+	* configure.ac, doc/alut.html, examples/hello_world.c,
+	include/AL/alut.h, src/Makefile.am, src/alutUtil.c,
+	test_suite/test_fileloader.c, test_suite/test_memoryloader.c,
+	test_suite/test_retrostuff.c, test_suite/test_waveforms.c: Added
+	alutMicroSleep and use it.
+
+	* include/AL/alut.h: Renamed ALUTAPI/ALUTAPIENTRY to
+	ALUT_API/ALUT_APIENTRY, so we only #define macros with the ALUT_ prefix.
+
+	* doc/alut.html, include/AL/alut.h, src/alutLoader.c,
+	src/alutWaveform.c, test_suite/test_retrostuff.c: Frequencies are
+	ALfloat again.
+
+	* doc/alut.html: Mention openal-config and pkg-config. Reformatted a
+	bit.
+	
+	* doc/alut.css: The body should have the same font-family as the
+	headers.
+
+2005-09-09  Sven Panne  <sven.panne@aedion.de>
+
+	* src/Makefile.am: Added libm dependencies.
+
+	* configure.ac, include/AL/alut.h, admin/alut.dsp: Consistently use
+	_ALUTLIB when building the ALUT DLL.
+
+	* configure.ac, include/Makefile.am: Install header directly from
+	include subdirectory, it is more logical this way.
+
+	* include/AL/Makefile.am: Removed.
+
+	* configure.ac, src/Makefile.am, examples/Makefile.am,
+	test_suite/Makefile.am: Hardwire the library name, that kind of
+	flexibility is not needed as it would break the ABI.
+
+	* Makefile.am: Added rule to update libtool.
+
+	* configure.ac: Don't change the default prefix (principle of least
+	surprise). The alut library should be able to be used by dlopen, it
+	doesn't use dlopen (yet). Removed obscure includedir adjustment, it is
+	not needed. Removed dead code. Improved logic to choose OpenAL library
+	(still not completely right).
+
+2005-09-08  Sven Panne  <sven.panne@aedion.de>
+
+	* src/Makefile.am: Distribute internal headers, too.
+
+	* Makefile.am: Include the Windows stuff in the distribution.
+
+	* autogen.sh: Simply us autoreconf, as recommended in the
+	automake/autoconf documentation.
+
+	* README: Fixed typo.
+
+	* .cvsignore, configure.ac, Makefile.am: Put all administrative files
+	into admin subdirectory.
+	
+	* .indent.pro, INSTALL, install-sh, mkinstalldirs, win_build/alut.dsp,
+	win_build/alut.dsw, win_build/hello_world.dsp: Removed.
+
+	* admin/alut.dsp, admin/alut.dsw, admin/.cvsignore,
+	admin/hello_world.dsp, admin/.indent.pro: Added.
+
+	* README: Synched with reality.
+
+2005-09-07  Sven Panne  <sven.panne@aedion.de>
+
+	* autogen.sh: Use -Wall for automake to catch some buglets, deprecated
+	stuff, etc.
+
+2005-09-03  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutLoader.c: Merged patches for AU format from Erik Hofman
+	<erik@ehofman.com>, including some changes to the original patch.
+
+2005-09-01  Sven Panne  <sven.panne@aedion.de>
+
+	* doc/alut.html, include/AL/alut.h, src/alutError.c, src/alutInit.c,
+	src/alutLoader.c, src/alutVersion.c, src/alutWaveform.c: Moved internal
+	function prototypes out of the public header. Fixed function prototypes,
+	i.e. foo() (C++) vs. foo(void) (C).
+
+	* src/alutError.h, src/alutInit.h: Added.
+
+	* .indent.pro, src/alutInit.c, src/alutLoader.c, src/alutWaveform.c,
+	test_suite/test_errorstuff.c, test_suite/test_fileloader.c,
+	test_suite/test_memoryloader.c, test_suite/test_retrostuff.c,
+	test_suite/test_version.c, test_suite/test_waveforms.c: Don't use TABs.
+
+	* test_suite/test_fileloader.c, test_suite/test_memoryloader.c,
+	test_suite/test_retrostuff.c, test_suite/test_version.c,
+	test_suite/test_waveforms.c: Hopefully make the examples compile on
+	WinDoze. Play sounds only a finite number of times, which is better for
+	automating things.
+
+	* src/alutError.c, src/alutInit.c, src/alutLoader.c, src/alutVersion.c,
+	src/alutWaveform.c, test_suite/test_errorstuff.c,
+	test_suite/test_fileloader.c, test_suite/test_memoryloader.c,
+	test_suite/test_retrostuff.c, test_suite/test_version.c,
+	test_suite/test_waveforms.c: Reformatted conforming to GNU
+	standards. Please keep it that way...
+
+	* Makefile.am: Added a target "permissions" to fix the broken
+	permissions after a checkout. Added a target "indent" to automagically
+	indent all C sources and headers according to GNU standards.
+
+	* .indent.pro: Added.
+
+	* doc/alut.html, include/AL/alut.h, src/alutError.c, src/alutInit.c,
+	src/alutLoader.c, test_suite/test_memoryloader.c,
+	test_suite/test_retrostuff.c: A bunch of API cleanups:
+
+	Changed the first parameter of alutInit and alutInitWithoutContext to
+	int*, not ALint*. argc is an int, after all.
+
+	Changed return type of alutGetError to ALenum, this is more consistent
+	with alGetError.
+
+	Changed the argument of alutGetErrorString to ALenum for the same
+	reason.
+
+	Changed the first parameter of alutLoadMemoryFromFileImage and
+	alutCreateBufferFromFileImage to "const ALvoid*", this is more
+	convenient and more consistent with alBufferData.
+
+	Changed the first parameter of alutLoadWAVFile and alutLoadWAVMemory
+	back to ALbyte*, like it was before.
+
+	Changed the frequency parameter of alutLoadMemoryFromFile and
+	alutLoadMemoryFromFileImage to an ALuint*, this is more consistent with
+	the way AL handles frequencies.
+
+	Changed the return type of alutLoadMemoryFromFile and
+	alutLoadMemoryFromFileImage to an ALvoid* for more consistency.
+
+	* doc/alut.html: Added myself. Fixed a few typos and synched examples
+	with actual sources. Use code formatting conforming to the GNU coding
+	standards.
+
+	* AUTHORS: Added myself.
+
+	* doc/alut.html: Converted spec to XHTML + CSS, no changes to the
+	content itself. This is a first step towards using DocBook, which is far
+	more flexible regarding the possible output formats
+	(XHTML, PDF, PS, ...).
+
+	* doc/alut.css: Added.
+
+	* doc/noise.gif: Removed.
+
+	* include/AL/alut.h: Synched platform-specific parts with the AL/ALC
+	headers. Reformatted according to GNU standards.
+
+	* Makefile.am, examples/Makefile.am, src/Makefile.am,
+	test_suite/Makefile.am: Do not hardwire any obscure paths into the build
+	process, the normal way of using headers/libraries in non-standard
+	places is to set CPPFLAGS/LDFLAGS when configuring and building.
+
+	* autogen.sh: Small cleanup: Be a good *nix citizen and be quiet when
+	everything works. Furthermore, terminate immediately when a tool fails.
+
+2005-09-01  Steve Baker  <sjbaker1@airmail.net>
+
+	* examples/Makefile.am, examples/hello_world.c, include/AL/alut.h,
+	src/alutLoader.c, src/alutWaveform.c, test_suite/Makefile.am:
+
+	1) Replaced '//' C++ style comments with /*...*/ style for portability.
+
+	2) According to the OpenAL headers, the third argument of alGetSourcei
+	should be ALint - not ALuint. So 'hello_world.c' wouldn't
+	compile. Fixed.
+
+	3) It's a bad idea to sit in a tight loop doing nothing but
+	alGetSourcei. On some OS's, this could lock out any other AL threads -
+	with disasterous consequences.
+
+	Rather than get into all that complexity in a 'Hello World' example, I
+	elected to simply sleep for plenty of time.
+
+	However, I did fixup the 'sleep(seconds)' versus 'Sleep(microseconds)'
+	issue (good way to be non-portable Mr Gates).
+
+	4) Makefile.am had been changed around so that ALUT demo's and
+	test_suite would link to the OpenAL library in the current build
+	tree. This is bad for many reasons discussed via email - so I reverted
+	that change.
+
+	5) Evidently 'strcasecmp' doesn't exist under Windows/MSVC and
+	strcasecmp had been replaced with 'strcmp' for Windows. I think
+	'stricmp' is the Windows version of strcmp that's case insensitive.
+
+	6) I fixed up the lack of a 'random()' function in Windows used 'rand()'
+	instead. Not the ideal fix but definitely 'good enough'.
+
+2005-08-31  Garin Hiebert  <garinh@cheesetoast.net>
+
+	* win_build/alut.dsp, win_build/hello_world.dsp: Fixed Release Build
+	Issues.
+
+	* doc/alut.html, examples/hello_world.c, include/AL/alut.h,
+	src/alutLoader.c, src/alutWaveform.c: First Stab At Moving To Windows.
+
+	* win_build/alut.dsp, win_build/alut.dsw, win_build/hello_world.dsp:
+	Added.
+
+2005-08-30  Sven Panne  <sven.panne@aedion.de>
+
+	* src/alutError.c: Namespace hygiene: Make lastError static
+
+	* examples/.cvsignore, examples/Makefile.am, test_suite/.cvsignore,
+	test_suite/Makefile.am: More tweaks to the build environment, still a
+	bit hacky...
+
+	* Makefile.am, configure.ac, src/Makefile.am, src/alutError.c,
+	src/alutInit.c, src/alutLoader.c, src/alutVersion.c, src/alutWaveform.c:
+	Move alut.h to include/AL, so we can always use the same kind of
+	#includes and always use the headers from the SI, not any installed
+	ones. Things are not perfect yet, but better...
+
+	* src/alut.h: Removed.
+
+	* .cvsignore, examples/.cvsignore, include/.cvsignore,
+	include/Makefile.am, include/AL/.cvsignore, include/AL/Makefile.am,
+	include/AL/alut.h, src/.cvsignore, test_suite/.cvsignore: Added.
+
+2005-08-30  Steve Baker  <sjbaker1@airmail.net>
+
+	* src/Makefile.am: Jason Daly said: The current build system makes the
+	assumption that OpenAL is installed. This just adds -I../../include to
+	pick up the AL headers in the top-level directory. ALUT wouldn't build
+	on my system without this (we use OpenAL from an NFS-mounted directory).
+
+2005-08-29  Steve Baker  <sjbaker1@airmail.net>
+
+	* README, examples/hello_world.c: Added some more build instructions.
+
+	* configure.ac, examples/Makefile.am, src/Makefile.am,
+	test_suite/Makefile.am: Fixed up makefiles so they find OpenAL in either
+	/usr/local/lib or /usr/lib also fixed ALUT to install in /usr/include/AL
+	and /usr/lib/.
+
+	* Makefile.am, README, test_suite/test_memoryloader.c,
+	test_suite/test_retrostuff.c: More minor cleanup.
+
+	* src/alutError.c, src/alutInit.c, src/alutLoader.c, src/alutWaveform.c:
+	Cleaned up some warning messages when -pedantic is enabled.
+
+	* src/alut.h: Added.
+
+	* autogen.sh, configure.ac, install-sh, mkinstalldirs: Added autoconf
+	stuff.
+
+2005-08-27  Steve Baker  <sjbaker1@airmail.net>
+
+	* AUTHORS, COPYING, ChangeLog, INSTALL, Makefile.am, NEWS, README,
+	doc/alut.html, doc/noise.gif, examples/Makefile.am,
+	examples/hello_world.c, src/Makefile.am, src/README, src/alutError.c,
+	src/alutInit.c, src/alutLoader.c, src/alutVersion.c, src/alutWaveform.c,
+	src/helloworld.wav, test_suite/Makefile.am, test_suite/README,
+	test_suite/file1.wav, test_suite/file2.au, test_suite/file3.raw,
+	test_suite/test_errorstuff.c, test_suite/test_fileloader.c,
+	test_suite/test_memoryloader.c, test_suite/test_retrostuff.c,
+	test_suite/test_version.c, test_suite/test_waveforms.c: Added ALUT 1.0.0
+	Alpha.
