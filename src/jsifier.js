@@ -1375,8 +1375,9 @@ function JSify(data, functionsOnly, givenFunctions) {
   function insertelementHandler(item) {
     var base = getVectorBaseType(item.type);
     var ident = ensureVector(item.ident, base);
+    var laneOp = ((base == 'float') ? 'SIMD.with' + SIMDLane[finalizeLLVMParameter(item.index)] : 'SIMD.with' + SIMDLane[finalizeLLVMParameter(item.index)] + 'u32');
     //return ident + '.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + finalizeLLVMParameter(item.value) + ')';
-    return 'SIMD.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + ident + ',' + finalizeLLVMParameter(item.value) + ')';
+    return laneOp + '(' + ident + ',' + finalizeLLVMParameter(item.value) + ')';
   }
   function extractelementHandler(item) {
     var base = getVectorBaseType(item.type);
