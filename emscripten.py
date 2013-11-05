@@ -578,7 +578,7 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global.Uint32Array(buffer);
   var HEAPF32 = new global.Float32Array(buffer);
   var HEAPF64 = new global.Float64Array(buffer);
-''' % (asm_setup, "'use asm';" if not forwarded_json['Types']['hasInlineJS'] and not settings['SIDE_MODULE'] else "'almost asm';") + '\n' + asm_global_vars + '''
+''' % (asm_setup, "'use asm';" if not forwarded_json['Types']['hasInlineJS'] and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';") + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
