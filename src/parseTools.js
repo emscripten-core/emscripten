@@ -2668,6 +2668,6 @@ var simdLane = ['x', 'y', 'z', 'w'];
 
 function ensureVector(ident, base) {
   Types.usesSIMD = true;
-  return ident == 0 ? base + '32x4.zero()' : ident;
+  return ident == 0 ? base + '32x4.splat(0)' : ident;
 }
 
