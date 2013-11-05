@@ -379,7 +379,7 @@ mergeInto(LibraryManager.library, {
           }
         });
       }
-      stream.prototype = FS.FSStream;
+      stream.__proto__ = FS.FSStream;
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;
