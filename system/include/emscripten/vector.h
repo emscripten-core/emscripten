@@ -2,7 +2,7 @@
 // Support for the JS SIMD API proposal, https://github.com/johnmccutchan/ecmascript_simd
 
 typedef float float32x4 __attribute__((__vector_size__(16)));
-typedef unsigned int uint32x4 __attribute__((__vector_size__(16)));
+typedef int int32x4 __attribute__((__vector_size__(16)));
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,10 +23,10 @@ float32x4 emscripten_float32x4_andNot(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_or(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_xor(float32x4 a, float32x4 b);
 
-float32x4 emscripten_uint32x4_bitsToFloat32x4(uint32x4 a);
-float32x4 emscripten_uint32x4_toFloat32x4(uint32x4 a);
-uint32x4 emscripten_float32x4_bitsToUint32x4(float32x4 a);
-uint32x4 emscripten_float32x4_toUint32x4(float32x4 a);
+float32x4 emscripten_int32x4_bitsToFloat32x4(int32x4 a);
+float32x4 emscripten_int32x4_toFloat32x4(int32x4 a);
+int32x4 emscripten_float32x4_bitsToInt32x4(float32x4 a);
+int32x4 emscripten_float32x4_toInt32x4(float32x4 a);
 
 #ifdef __cplusplus
 }
