@@ -8559,7 +8559,13 @@ LibraryManager.library = {
       return -1;
     }
     var arg = {{{ makeGetValue('varargs', '0', 'i32') }}};
-    return FS.ioctl(stream, request, arg);
+
+    try {
+      return FS.ioctl(stream, request, arg);
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
   },
 #endif
 
