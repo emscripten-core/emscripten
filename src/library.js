@@ -6985,6 +6985,10 @@ LibraryManager.library = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
+  pthread_rwlock_init: function() {
+    return 0; // XXX
+  },
+
   // ==========================================================================
   // malloc.h
   // ==========================================================================
