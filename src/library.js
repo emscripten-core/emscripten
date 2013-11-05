@@ -6876,6 +6876,10 @@ LibraryManager.library = {
   pthread_mutex_trylock: function() {
     return 0;
   },
+  pthread_mutexattr_setpshared: function(attr, pshared) {
+    // XXX implement if/when getpshared is required
+    return 0;
+  },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
   pthread_cond_broadcast: function() {
