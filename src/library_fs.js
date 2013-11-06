@@ -361,9 +361,10 @@ mergeInto(LibraryManager.library, {
     // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
       if (!FS.FSStream) {
-        FS.FSStream = {};
+        FS.FSStream = function(){};
+        FS.FSStream.prototype = {};
         // compatibility
-        Object.defineProperties(FS.FSStream, {
+        Object.defineProperties(FS.FSStream.prototype, {
           object: {
             get: function() { return this.node; },
             set: function(val) { this.node = val; }
@@ -379,7 +380,16 @@ mergeInto(LibraryManager.library, {
           }
         });
       }
-      stream.prototype = FS.FSStream;
+      if (stream.__proto__) {
+        // reuse the object
+        stream.__proto__ = FS.FSStream.prototype;
+      } else {
+        var newStream = new FS.FSStream();
+        for (var p in stream) {
+          newStream[p] = stream[p];
+        }
+        stream = newStream;
+      }
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;
