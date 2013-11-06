@@ -5,7 +5,14 @@ export CXX=`../../../em-config LLVM_ROOT`/clang++
 echo "native"
 make clean
 DECODER_ONLY=0 make lzip -j 4 # native build
-mv lzip ../lzma-native
+case `uname` in
+    *_NT*)
+        mv lzip.exe ../lzma-native.exe
+        ;;
+    *)
+        mv lzip ../lzma-native
+        ;;
+esac
 
 exit # just build natively, that's it
 
@@ -18,7 +25,7 @@ echo "bitcode decoder only"
 make clean
 DECODER_ONLY=1 ../../../emmake make lzip -j 4
 mv lzip lzip-decoder.bc
- 
+
 cd ..
 
 echo "javascript full"
