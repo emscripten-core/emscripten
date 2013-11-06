@@ -1237,11 +1237,11 @@ var LibrarySDL = {
       surfData.colors = new Uint8Array(256 * 3); //256 RGB colors
     } 
 
-    for (var i = firstColor; i < firstColor + nColors; i++) {
-      var index = i *3;
+    for (var i = 0; i < nColors; ++i) {
+      var index = (firstColor + i) * 3;
       surfData.colors[index] = {{{ makeGetValue('colors', 'i*4', 'i8', null, true) }}};
-      surfData.colors[index +1] = {{{ makeGetValue('colors', 'i*4 +1', 'i8', null, true) }}};
-      surfData.colors[index +2] = {{{ makeGetValue('colors', 'i*4 +2', 'i8', null, true) }}};
+      surfData.colors[index + 1] = {{{ makeGetValue('colors', 'i*4 + 1', 'i8', null, true) }}};
+      surfData.colors[index + 2] = {{{ makeGetValue('colors', 'i*4 + 2', 'i8', null, true) }}};
     }
 
     return 1;

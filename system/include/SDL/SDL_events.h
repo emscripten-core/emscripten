@@ -55,6 +55,7 @@ extern "C" {
  */
 typedef enum
 {
+    SDL_NOEVENT        = 0,
     SDL_FIRSTEVENT     = 0,     /**< Unused (do not remove) */
 
     /* Application events */
