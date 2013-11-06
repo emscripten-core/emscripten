@@ -59,6 +59,9 @@ var LibraryGLUT = {
     getSpecialKey: function(keycode) {
         var key = null;
         switch (keycode) {
+          case 8:  key = 120 /* backspace */; break;
+          case 46: key = 111 /* delete */; break;
+
           case 0x70 /*DOM_VK_F1*/: key = 1 /* GLUT_KEY_F1 */; break;
           case 0x71 /*DOM_VK_F2*/: key = 2 /* GLUT_KEY_F2 */; break;
           case 0x72 /*DOM_VK_F3*/: key = 3 /* GLUT_KEY_F3 */; break;
@@ -228,14 +231,14 @@ var LibraryGLUT = {
       if (delta < 0) {
         button = 4; // wheel down
       }
-      
+
       if (GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         Runtime.dynCall('viiii', GLUT.mouseFunc, [button, 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY]);
       }
     },
-    
+
     // TODO add fullscreen API ala:
     // http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugin/
     onFullScreenEventChange: function(event) {
@@ -304,7 +307,7 @@ var LibraryGLUT = {
       // Firefox
       window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
     }
-    
+
     Browser.resizeListeners.push(function(width, height) {
       if (GLUT.reshapeFunc) {
       	Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
