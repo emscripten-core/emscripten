@@ -138,7 +138,9 @@ mergeInto(LibraryManager.library, {
             console.log('connect: ' + url);
 #endif
             // the node ws library API is slightly different than the browser's
-            var opts = ENVIRONMENT_IS_NODE ? {} : ['binary'];
+            var opts = ENVIRONMENT_IS_NODE ? {headers: {'websocket-protocol': ['binary']}} : ['binary'];
+            // If node we use the ws library.
+            var WebSocket = ENVIRONMENT_IS_NODE ? require('ws') : window['WebSocket'];
             ws = new WebSocket(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
