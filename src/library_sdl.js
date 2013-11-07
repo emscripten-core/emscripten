@@ -642,7 +642,7 @@ var LibrarySDL = {
         }
         case 'joystick_button_up': case 'joystick_button_down': {
           var state = event.type === 'joystick_button_up' ? 0 : 1;
-          var code = event.type === 'joystick_button_down' ? 10 : 11;
+          var code = event.type === 'joystick_button_down' ? 1539 : 1540;
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.type, 'code', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.button, 'event.button', 'i8') }}};
@@ -650,7 +650,7 @@ var LibrarySDL = {
           break;
         }
         case 'joystick_axis_motion': {
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, '7', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, '1536', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
           // Need to translate value (a DOUBLE from [-1, 1]) to a 16-bit int
