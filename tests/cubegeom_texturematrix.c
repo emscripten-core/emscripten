@@ -26,22 +26,9 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-void verify() {
-  int width = 640, height = 480;
-  unsigned char *data = (unsigned char*)malloc(width*height*4);
-  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
-  int sum = 0;
-  for (int x = 0; x < width*height*4; x++) {
-    if (x % 4 != 3) sum += x * data[x];
-  }
-#if EMSCRIPTEN
-  int result = sum;
-  REPORT_RESULT();
-#endif
-}
 
 int main(int argc, char *argv[])
 {
@@ -300,8 +287,6 @@ int main(int argc, char *argv[])
 
     SDL_GL_SwapBuffers();
 
-    verify();
-   
 #if !EMSCRIPTEN
     SDL_Delay(1500);
 #endif

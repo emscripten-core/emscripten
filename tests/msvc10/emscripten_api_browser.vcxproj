@@ -80,6 +80,18 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Emscripten'">
+    <ClCompile>
+      <PreprocessorDefinitions>REPORT_RESULT=int dummy</PreprocessorDefinitions>
+      <DisableWarnings>vexing-parse</DisableWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Emscripten'">
+    <ClCompile>
+      <PreprocessorDefinitions>REPORT_RESULT=int dummy</PreprocessorDefinitions>
+      <DisableWarnings>vexing-parse</DisableWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\emscripten_api_browser.cpp" />
   </ItemGroup>

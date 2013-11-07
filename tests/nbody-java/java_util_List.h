@@ -1,0 +1,57 @@
+#ifndef __JAVA_UTIL_LIST__
+#define __JAVA_UTIL_LIST__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_IDX_java_util_List_add___int_java_lang_Object 55
+#define XMLVM_ITABLE_IDX_java_util_List_add___java_lang_Object 56
+#define XMLVM_ITABLE_IDX_java_util_List_addAll___int_java_util_Collection 53
+#define XMLVM_ITABLE_IDX_java_util_List_addAll___java_util_Collection 54
+#define XMLVM_ITABLE_IDX_java_util_List_clear__ 57
+#define XMLVM_ITABLE_IDX_java_util_List_contains___java_lang_Object 59
+#define XMLVM_ITABLE_IDX_java_util_List_containsAll___java_util_Collection 58
+#define XMLVM_ITABLE_IDX_java_util_List_equals___java_lang_Object 60
+#define XMLVM_ITABLE_IDX_java_util_List_get___int 61
+#define XMLVM_ITABLE_IDX_java_util_List_hashCode__ 62
+#define XMLVM_ITABLE_IDX_java_util_List_indexOf___java_lang_Object 63
+#define XMLVM_ITABLE_IDX_java_util_List_isEmpty__ 64
+#define XMLVM_ITABLE_IDX_java_util_List_iterator__ 65
+#define XMLVM_ITABLE_IDX_java_util_List_lastIndexOf___java_lang_Object 66
+#define XMLVM_ITABLE_IDX_java_util_List_listIterator__ 67
+#define XMLVM_ITABLE_IDX_java_util_List_listIterator___int 68
+#define XMLVM_ITABLE_IDX_java_util_List_remove___int 70
+#define XMLVM_ITABLE_IDX_java_util_List_remove___java_lang_Object 71
+#define XMLVM_ITABLE_IDX_java_util_List_removeAll___java_util_Collection 69
+#define XMLVM_ITABLE_IDX_java_util_List_retainAll___java_util_Collection 72
+#define XMLVM_ITABLE_IDX_java_util_List_set___int_java_lang_Object 73
+#define XMLVM_ITABLE_IDX_java_util_List_size__ 74
+#define XMLVM_ITABLE_IDX_java_util_List_subList___int_int 75
+#define XMLVM_ITABLE_IDX_java_util_List_toArray__ 76
+#define XMLVM_ITABLE_IDX_java_util_List_toArray___java_lang_Object_1ARRAY 77
+// Implemented interfaces:
+#include "java_util_Collection.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_util_Iterator
+#define XMLVM_FORWARD_DECL_java_util_Iterator
+XMLVM_FORWARD_DECL(java_util_Iterator)
+#endif
+
+XMLVM_DEFINE_CLASS(java_util_List, 0, 0)
+
+extern JAVA_OBJECT __CLASS_java_util_List;
+extern JAVA_OBJECT __CLASS_java_util_List_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_util_List_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_util_List_3ARRAY;
+#ifndef XMLVM_FORWARD_DECL_java_util_List
+#define XMLVM_FORWARD_DECL_java_util_List
+typedef struct java_util_List java_util_List;
+#endif
+
+void __INIT_java_util_List();
+void __INIT_IMPL_java_util_List();
+
+#endif

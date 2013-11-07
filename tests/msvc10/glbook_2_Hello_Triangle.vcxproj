@@ -92,12 +92,14 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Emscripten'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../glbook/Common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../glbook/Common</AdditionalIncludeDirectories>
+      <DisableWarnings>pointer-sign</DisableWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Emscripten'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)../glbook/Common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../glbook/Common</AdditionalIncludeDirectories>
+      <DisableWarnings>pointer-sign</DisableWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

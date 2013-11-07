@@ -42,7 +42,7 @@ int main() {
   //changing green color
   //to yellow
   pal[1].r = 255;
-  SDL_SetColors(screen, pal, 1, 1);
+  SDL_SetColors(screen, &pal[1], 1, 1);
 
   {
     SDL_Rect rect = { 300, 200, 300, 200 };

@@ -1,0 +1,14 @@
+Steve Baker <sjbaker1@airmail.net>
+  Initial version of the sources and the specification
+
+Sven Panne <sven.panne@aedion.de>
+  Build system
+  General hacking
+  Specification maintenance
+
+Erik Hofman <erik@ehofman.com>
+  Fixes and additions to the sound file loaders
+  playfile demo
+
+Prakash Punnoor <prakash@punnoor.de>
+  CMake build system

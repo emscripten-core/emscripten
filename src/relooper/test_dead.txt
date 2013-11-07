@@ -1,0 +1,9 @@
+
+
+-- If pattern --
+
+
+
+// block A
+
+I did not crash even though I have dead code with a branch!

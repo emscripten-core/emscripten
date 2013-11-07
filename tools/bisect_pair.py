@@ -23,9 +23,15 @@ rightf = open('right', 'w')
 rightf.write(file2)
 rightf.close()
 
+def run_code(name):
+  ret = run_js(name, stderr=PIPE, full_output=True)
+  # fix stack traces
+  ret = filter(lambda line: not line.startswith('    at ') and not name in line, ret.split('\n'))
+  return '\n'.join(ret)
+
 print 'running files'
-left_result = run_js('left', stderr=PIPE)
-right_result = run_js('right', stderr=PIPE) # right as in left-right, not as in correct
+left_result = run_code('left')
+right_result = run_code('right') # right as in left-right, not as in correct
 assert left_result != right_result
 
 # Calculate diff chunks
@@ -52,31 +58,31 @@ high = len(chunks)
 print 'beginning bisection, %d chunks' % high
 
 for mid in range(high):
-  print '  current: %d' % mid
+  print '  current: %d' % mid,
   # Take chunks from the middle and on. This is important because the eliminator removes variables, so starting from the beginning will add errors
   curr_diff = '\n'.join(map(lambda parts: '\n'.join(parts), chunks[mid:])) + '\n'
   difff = open('diff.diff', 'w')
   difff.write(curr_diff)
   difff.close()
   shutil.copy('left', 'middle')
-  Popen(['patch', 'middle', 'diff.diff'], stdout=PIPE, stderr=PIPE).communicate()
-  result = run_js('middle', stderr=PIPE)
-  if result == left_result:
-    print 'found where it starts to work: %d' % mid
+  Popen(['patch', 'middle', 'diff.diff'], stdout=PIPE).communicate()
+  shutil.copyfile('middle', 'middle' + str(mid))
+  result = run_code('middle')
+  print result == left_result, result == right_result#, 'XXX', left_result, 'YYY', result, 'ZZZ', right_result
+  if mid == 0:
+    assert result == right_result, '<<< ' + result + ' ??? ' + right_result + ' >>>'
+    print 'sanity check passed (a)'
+  if mid == high-1:
+    assert result == left_result, '<<< ' + result + ' ??? ' + left_result + ' >>>'
+    print 'sanity check passed (b)'
+  if result != right_result:
+    print 'found where it changes: %d' % mid
     found = mid
     break
 
-critical = '\n'.join(chunks[found-1]) + '\n'
-
+critical = Popen(['diff', '-U', '5', 'middle' + str(mid-1), 'middle' + str(mid)], stdout=PIPE).communicate()[0]
 c = open('critical.diff', 'w')
 c.write(critical)
 c.close()
-print 'sanity check'
-shutil.copy('middle', 'middle2')
-Popen(['patch', 'middle2', 'critical.diff'], stdout=PIPE, stderr=PIPE).communicate()
-assert run_js('middle', stderr=PIPE) == left_result, 'middle was expected %s' % left_result
-assert run_js('middle2', stderr=PIPE) != left_result, 'middle2 was expected NOT %s' % left_result
-
-print 'middle is like left, middle2 is like right, critical.diff is the difference that matters,'
-print critical
+print 'middle%d is like left, middle%d is like right, critical.diff is the difference that matters' % (mid-1, mid), 'diff:', critical
 

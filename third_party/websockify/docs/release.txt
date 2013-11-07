@@ -1,0 +1,9 @@
+- Update setup.py and CHANGES.txt and commit
+- Create version tag and tarball from tag
+    WVER=0.1.0
+    git tag v${WVER}
+    git push origin master
+    git push origin v${WVER}
+    git archive --format=tar --prefix=websockify-${WVER}/ v${WVER} > websockify-${WVER}.tar
+    gzip websockify-${WVER}.tar
+- Upload tarball to repo

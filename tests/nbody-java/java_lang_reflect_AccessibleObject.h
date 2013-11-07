@@ -1,0 +1,97 @@
+#ifndef __JAVA_LANG_REFLECT_ACCESSIBLEOBJECT__
+#define __JAVA_LANG_REFLECT_ACCESSIBLEOBJECT__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_java_lang_reflect_AccessibleObject 4
+// Implemented interfaces:
+#include "java_lang_reflect_AnnotatedElement.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_Class
+#define XMLVM_FORWARD_DECL_java_lang_Class
+XMLVM_FORWARD_DECL(java_lang_Class)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_String
+#define XMLVM_FORWARD_DECL_java_lang_String
+XMLVM_FORWARD_DECL(java_lang_String)
+#endif
+// Class declarations for java.lang.reflect.AccessibleObject
+XMLVM_DEFINE_CLASS(java_lang_reflect_AccessibleObject, 12, XMLVM_ITABLE_SIZE_java_lang_reflect_AccessibleObject)
+
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AccessibleObject;
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AccessibleObject_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AccessibleObject_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AccessibleObject_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_java_lang_reflect_AccessibleObject
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_java_lang_reflect_AccessibleObject \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        __ADDITIONAL_INSTANCE_FIELDS_java_lang_reflect_AccessibleObject \
+    } java_lang_reflect_AccessibleObject
+
+struct java_lang_reflect_AccessibleObject {
+    __TIB_DEFINITION_java_lang_reflect_AccessibleObject* tib;
+    struct {
+        __INSTANCE_FIELDS_java_lang_reflect_AccessibleObject;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_java_lang_reflect_AccessibleObject
+#define XMLVM_FORWARD_DECL_java_lang_reflect_AccessibleObject
+typedef struct java_lang_reflect_AccessibleObject java_lang_reflect_AccessibleObject;
+#endif
+
+#define XMLVM_VTABLE_SIZE_java_lang_reflect_AccessibleObject 12
+#define XMLVM_VTABLE_IDX_java_lang_reflect_AccessibleObject_getModifiers__ 9
+#define XMLVM_VTABLE_IDX_java_lang_reflect_AccessibleObject_getSignature__ 10
+#define XMLVM_VTABLE_IDX_java_lang_reflect_AccessibleObject_isAnnotationPresent___java_lang_Class 11
+#define XMLVM_VTABLE_IDX_java_lang_reflect_AccessibleObject_getDeclaredAnnotations__ 8
+#define XMLVM_VTABLE_IDX_java_lang_reflect_AccessibleObject_getAnnotations__ 7
+#define XMLVM_VTABLE_IDX_java_lang_reflect_AccessibleObject_getAnnotation___java_lang_Class 6
+
+void __INIT_java_lang_reflect_AccessibleObject();
+void __INIT_IMPL_java_lang_reflect_AccessibleObject();
+void __DELETE_java_lang_reflect_AccessibleObject(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_java_lang_reflect_AccessibleObject(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_java_lang_reflect_AccessibleObject();
+JAVA_OBJECT __NEW_INSTANCE_java_lang_reflect_AccessibleObject();
+void xmlvm_init_native_java_lang_reflect_AccessibleObject();
+JAVA_OBJECT java_lang_reflect_AccessibleObject_GET_emptyArgs();
+void java_lang_reflect_AccessibleObject_PUT_emptyArgs(JAVA_OBJECT v);
+void java_lang_reflect_AccessibleObject___CLINIT_();
+void java_lang_reflect_AccessibleObject_setAccessible___java_lang_reflect_AccessibleObject_1ARRAY_boolean(JAVA_OBJECT n1, JAVA_BOOLEAN n2);
+JAVA_OBJECT java_lang_reflect_AccessibleObject_marshallArguments___java_lang_Class_1ARRAY_java_lang_Object_1ARRAY(JAVA_OBJECT n1, JAVA_OBJECT n2);
+void java_lang_reflect_AccessibleObject_initializeClass___java_lang_Class(JAVA_OBJECT n1);
+JAVA_OBJECT java_lang_reflect_AccessibleObject_getStackClass___int(JAVA_INT n1);
+void java_lang_reflect_AccessibleObject___INIT___(JAVA_OBJECT me);
+JAVA_OBJECT java_lang_reflect_AccessibleObject_getParameterTypesImpl__(JAVA_OBJECT me);
+// Vtable index: 9
+JAVA_INT java_lang_reflect_AccessibleObject_getModifiers__(JAVA_OBJECT me);
+JAVA_OBJECT java_lang_reflect_AccessibleObject_getExceptionTypesImpl__(JAVA_OBJECT me);
+// Vtable index: 10
+JAVA_OBJECT java_lang_reflect_AccessibleObject_getSignature__(JAVA_OBJECT me);
+JAVA_BOOLEAN java_lang_reflect_AccessibleObject_checkAccessibility___java_lang_Class_java_lang_Object(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+JAVA_BOOLEAN java_lang_reflect_AccessibleObject_isAccessible__(JAVA_OBJECT me);
+void java_lang_reflect_AccessibleObject_setAccessible___boolean(JAVA_OBJECT me, JAVA_BOOLEAN n1);
+// Vtable index: 11
+JAVA_BOOLEAN java_lang_reflect_AccessibleObject_isAnnotationPresent___java_lang_Class(JAVA_OBJECT me, JAVA_OBJECT n1);
+// Vtable index: 8
+JAVA_OBJECT java_lang_reflect_AccessibleObject_getDeclaredAnnotations__(JAVA_OBJECT me);
+// Vtable index: 7
+JAVA_OBJECT java_lang_reflect_AccessibleObject_getAnnotations__(JAVA_OBJECT me);
+// Vtable index: 6
+JAVA_OBJECT java_lang_reflect_AccessibleObject_getAnnotation___java_lang_Class(JAVA_OBJECT me, JAVA_OBJECT n1);
+void java_lang_reflect_AccessibleObject_invokeV___java_lang_Object_java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+JAVA_OBJECT java_lang_reflect_AccessibleObject_invokeL___java_lang_Object_java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+JAVA_INT java_lang_reflect_AccessibleObject_invokeI___java_lang_Object_java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+JAVA_LONG java_lang_reflect_AccessibleObject_invokeJ___java_lang_Object_java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+JAVA_FLOAT java_lang_reflect_AccessibleObject_invokeF___java_lang_Object_java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+JAVA_DOUBLE java_lang_reflect_AccessibleObject_invokeD___java_lang_Object_java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+
+#endif

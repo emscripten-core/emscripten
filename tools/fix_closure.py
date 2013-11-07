@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 With very very large projects, closure compiler can translate FUNCTION_TABLE into something like

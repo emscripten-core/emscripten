@@ -11,9 +11,15 @@
 #ifndef _LIBCPP_CONFIG
 #define _LIBCPP_CONFIG
 
+#if !defined(_MSC_VER) || defined(__clang__)
 #pragma GCC system_header
+#endif
 
-#define _LIBCPP_VERSION 1001
+#ifdef __GNUC__
+#define _GNUC_VER (__GNUC__ * 100 + __GNUC_MINOR__)
+#endif
+
+#define _LIBCPP_VERSION 1101
 
 #define _LIBCPP_ABI_VERSION 1
 
@@ -45,16 +51,54 @@
 #   define _LIBCPP_LITTLE_ENDIAN 0
 #   define _LIBCPP_BIG_ENDIAN    1
 # endif  // _BYTE_ORDER == _LITTLE_ENDIAN
+# ifndef __LONG_LONG_SUPPORTED
+#  define _LIBCPP_HAS_NO_LONG_LONG
+# endif  // __LONG_LONG_SUPPORTED
 #endif  // __FreeBSD__
+
+#ifdef __NetBSD__
+# include <sys/endian.h>
+#  if _BYTE_ORDER == _LITTLE_ENDIAN
+#   define _LIBCPP_LITTLE_ENDIAN 1
+#   define _LIBCPP_BIG_ENDIAN    0
+# else  // _BYTE_ORDER == _LITTLE_ENDIAN
+#   define _LIBCPP_LITTLE_ENDIAN 0
+#   define _LIBCPP_BIG_ENDIAN    1
+# endif  // _BYTE_ORDER == _LITTLE_ENDIAN
+# define _LIBCPP_HAS_QUICK_EXIT
+#endif  // __NetBSD__
 
 #ifdef _WIN32
 #  define _LIBCPP_LITTLE_ENDIAN 1
 #  define _LIBCPP_BIG_ENDIAN    0
 // Compiler intrinsics (GCC or MSVC)
-#  if (defined(_MSC_VER) && _MSC_VER >= 1400) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 3)
-#    define _LIBCP_HAS_IS_BASE_OF
+#  if defined(__clang__) \
+   || (defined(_MSC_VER) && _MSC_VER >= 1400) \
+   || (defined(__GNUC__) && _GNUC_VER > 403)
+#    define _LIBCPP_HAS_IS_BASE_OF
 #  endif
+#  if defined(_MSC_VER) && !defined(__clang__)
+#    define _LIBCPP_MSVC // Using Microsoft Visual C++ compiler
+#  endif
+#  define _LIBCPP_MSVCRT // Using Microsoft's C Runtime library
 #endif  // _WIN32
+
+#ifdef __linux__
+#  if defined(__GNUC__) && _GNUC_VER >= 403
+#    define _LIBCPP_HAS_IS_BASE_OF
+#  endif
+#endif
+
+#ifdef __sun__
+# include <sys/isa_defs.h>
+# ifdef _LITTLE_ENDIAN
+#   define _LIBCPP_LITTLE_ENDIAN 1
+#   define _LIBCPP_BIG_ENDIAN    0
+# else
+#   define _LIBCPP_LITTLE_ENDIAN 0
+#   define _LIBCPP_BIG_ENDIAN    1
+# endif
+#endif // __sun__
 
 #if !defined(_LIBCPP_LITTLE_ENDIAN) || !defined(_LIBCPP_BIG_ENDIAN)
 # include <endian.h>
@@ -69,31 +113,90 @@
 # endif
 #endif  // !defined(_LIBCPP_LITTLE_ENDIAN) || !defined(_LIBCPP_BIG_ENDIAN)
 
-#ifndef _LIBCPP_VISIBILITY_TAG
-#define _LIBCPP_VISIBILITY_TAG 1
+#ifdef _WIN32
+
+// only really useful for a DLL
+#ifdef _LIBCPP_DLL // this should be a compiler builtin define ideally...
+# ifdef cxx_EXPORTS
+#  define _LIBCPP_HIDDEN
+#  define _LIBCPP_FUNC_VIS __declspec(dllexport)
+#  define _LIBCPP_TYPE_VIS __declspec(dllexport)
+# else
+#  define _LIBCPP_HIDDEN
+#  define _LIBCPP_FUNC_VIS __declspec(dllimport)
+#  define _LIBCPP_TYPE_VIS __declspec(dllimport)
+# endif
+#else
+# define _LIBCPP_HIDDEN
+# define _LIBCPP_FUNC_VIS
+# define _LIBCPP_TYPE_VIS
 #endif
 
-#if _LIBCPP_VISIBILITY_TAG
+#ifndef _LIBCPP_INLINE_VISIBILITY
+# ifdef _LIBCPP_MSVC
+#  define _LIBCPP_INLINE_VISIBILITY __forceinline
+# else // MinGW GCC and Clang
+#  define _LIBCPP_INLINE_VISIBILITY __attribute__ ((__always_inline__))
+# endif
+#endif
+
+#ifndef _LIBCPP_EXCEPTION_ABI
+#define _LIBCPP_EXCEPTION_ABI _LIBCPP_TYPE_VIS
+#endif
+
+#ifndef _LIBCPP_ALWAYS_INLINE
+# ifdef _LIBCPP_MSVC
+#  define _LIBCPP_ALWAYS_INLINE __forceinline
+# endif
+#endif
+
+#endif // _WIN32
+
+#ifndef __has_attribute
+#define __has_attribute(__x) 0
+#endif
+
+#ifndef _LIBCPP_HIDDEN
 #define _LIBCPP_HIDDEN __attribute__ ((__visibility__("hidden")))
-#define _LIBCPP_VISIBLE __attribute__ ((__visibility__("default")))
-#else  // _LIBCPP_VISIBILITY_TAG
-#define _LIBCPP_HIDDEN
-#define _LIBCPP_VISIBLE
-#endif  // _LIBCPP_VISIBILITY_TAG
+#endif
+
+#ifndef _LIBCPP_FUNC_VIS
+#define _LIBCPP_FUNC_VIS __attribute__ ((__visibility__("default")))
+#endif
+
+#ifndef _LIBCPP_TYPE_VIS
+#  if __has_attribute(type_visibility)
+#    define _LIBCPP_TYPE_VIS __attribute__ ((__type_visibility__("default")))
+#  else
+#    define _LIBCPP_TYPE_VIS __attribute__ ((__visibility__("default")))
+#  endif
+#endif
 
 #ifndef _LIBCPP_INLINE_VISIBILITY
 #define _LIBCPP_INLINE_VISIBILITY __attribute__ ((__visibility__("hidden"), __always_inline__))
 #endif
 
 #ifndef _LIBCPP_EXCEPTION_ABI
-#define _LIBCPP_EXCEPTION_ABI __attribute__ ((__visibility__("default")))
+#define _LIBCPP_EXCEPTION_ABI _LIBCPP_TYPE_VIS
 #endif
 
+#ifndef _LIBCPP_CANTTHROW
 #define _LIBCPP_CANTTHROW __attribute__ ((__nothrow__))
+#endif
 
+#ifndef _LIBCPP_ALWAYS_INLINE
 #define _LIBCPP_ALWAYS_INLINE  __attribute__ ((__visibility__("hidden"), __always_inline__))
+#endif
 
 #if defined(__clang__)
+
+#if __has_feature(cxx_alignas)
+#  define _ALIGNAS_TYPE(x) alignas(x)
+#  define _ALIGNAS(x) alignas(x)
+#else
+#  define _ALIGNAS_TYPE(x) __attribute__((__aligned__(__alignof(x))))
+#  define _ALIGNAS(x) __attribute__((__aligned__(x)))
+#endif
 
 #if !__has_feature(cxx_alias_templates)
 #define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
@@ -116,17 +219,23 @@ typedef __char32_t char32_t;
 #define _LIBCPP_NO_RTTI
 #endif
 
+#if !(__has_feature(cxx_strong_enums))
+#define _LIBCPP_HAS_NO_STRONG_ENUMS
+#endif
+
 #if !(__has_feature(cxx_decltype))
 #define _LIBCPP_HAS_NO_DECLTYPE
 #endif
 
 #if __has_feature(cxx_attributes)
-#  define _ATTRIBUTE(x) [[x]]
+#  define _LIBCPP_NORETURN [[noreturn]]
 #else
-#  define _ATTRIBUTE(x) __attribute__ ((x))
+#  define _LIBCPP_NORETURN __attribute__ ((noreturn))
 #endif
 
+#if !(__has_feature(cxx_defaulted_functions))
 #define _LIBCPP_HAS_NO_DEFAULTED_FUNCTIONS
+#endif  // !(__has_feature(cxx_defaulted_functions))
 
 #if !(__has_feature(cxx_deleted_functions))
 #define _LIBCPP_HAS_NO_DELETED_FUNCTIONS
@@ -169,7 +278,7 @@ typedef __char32_t char32_t;
 #endif
 
 #if __has_feature(is_base_of)
-#  define _LIBCP_HAS_IS_BASE_OF
+#  define _LIBCPP_HAS_IS_BASE_OF
 #endif
 
 // Objective-C++ features (opt-in)
@@ -179,20 +288,26 @@ typedef __char32_t char32_t;
 
 #if __has_feature(objc_arc_weak)
 #define _LIBCPP_HAS_OBJC_ARC_WEAK
+#define _LIBCPP_HAS_NO_STRONG_ENUMS
 #endif
-
-// Inline namespaces are available in Clang regardless of C++ dialect.
-#define _LIBCPP_BEGIN_NAMESPACE_STD namespace std {inline namespace _LIBCPP_NAMESPACE {
-#define _LIBCPP_END_NAMESPACE_STD  } }
-#define _VSTD std::_LIBCPP_NAMESPACE
-
-namespace std {
-  inline namespace _LIBCPP_NAMESPACE {
-  }
-}
 
 #if !(__has_feature(cxx_constexpr))
 #define _LIBCPP_HAS_NO_CONSTEXPR
+#endif
+
+#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
+#if defined(__FreeBSD__)
+#define _LIBCPP_HAS_QUICK_EXIT
+#define _LIBCPP_HAS_C11_FEATURES
+#elif defined(__linux__)
+#include <features.h>
+#if __GLIBC_PREREQ(2, 15)
+#define _LIBCPP_HAS_QUICK_EXIT
+#endif
+#if __GLIBC_PREREQ(2, 17)
+#define _LIBCPP_HAS_C11_FEATURES
+#endif
+#endif
 #endif
 
 #if (__has_feature(cxx_noexcept))
@@ -207,11 +322,22 @@ namespace std {
 #  define _LIBCXX_UNDERLYING_TYPE(T) __underlying_type(T)
 #endif
 
-// end defined(__clang__)
+// Inline namespaces are available in Clang regardless of C++ dialect.
+#define _LIBCPP_BEGIN_NAMESPACE_STD namespace std {inline namespace _LIBCPP_NAMESPACE {
+#define _LIBCPP_END_NAMESPACE_STD  } }
+#define _VSTD std::_LIBCPP_NAMESPACE
+
+namespace std {
+  inline namespace _LIBCPP_NAMESPACE {
+  }
+}
 
 #elif defined(__GNUC__)
 
-#define _ATTRIBUTE(x) __attribute__((x))
+#define _ALIGNAS(x) __attribute__((__aligned__(x)))
+#define _ALIGNAS_TYPE(x) __attribute__((__aligned__(__alignof(x))))
+
+#define _LIBCPP_NORETURN __attribute__((noreturn))
 
 #if !__EXCEPTIONS
 #define _LIBCPP_NO_EXCEPTIONS
@@ -241,15 +367,15 @@ namespace std {
 #define _LIBCPP_HAS_NO_TRAILING_RETURN
 #define _LIBCPP_HAS_NO_ALWAYS_INLINE_VARIADICS
 
-#if !(__GNUC__ >= 4 && __GNUC_MINOR__ >= 3)
+#if _GNUC_VER < 403
 #define _LIBCPP_HAS_NO_RVALUE_REFERENCES
 #endif
 
-#if !(__GNUC__ >= 4 && __GNUC_MINOR__ >= 3)
+#if _GNUC_VER < 403
 #define _LIBCPP_HAS_NO_STATIC_ASSERT
 #endif
 
-#if !(__GNUC__ >= 4 && __GNUC_MINOR__ >= 4)
+#if _GNUC_VER < 404
 #define _LIBCPP_HAS_NO_ADVANCED_SFINAE
 #define _LIBCPP_HAS_NO_DECLTYPE
 #define _LIBCPP_HAS_NO_DEFAULTED_FUNCTIONS
@@ -257,9 +383,9 @@ namespace std {
 #define _LIBCPP_HAS_NO_UNICODE_CHARS
 #define _LIBCPP_HAS_NO_VARIADICS
 #define _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
-#endif  // !(__GNUC__ >= 4 && __GNUC_MINOR__ >= 4)
+#endif  // _GNUC_VER < 404
 
-#if !(__GNUC__ >= 4 && __GNUC_MINOR__ >= 6)
+#if _GNUC_VER < 406
 #define _LIBCPP_HAS_NO_NULLPTR
 #endif
 
@@ -275,7 +401,29 @@ namespace _LIBCPP_NAMESPACE {
 using namespace _LIBCPP_NAMESPACE __attribute__((__strong__));
 }
 
-#endif  // defined(__GNUC__)
+#elif defined(_LIBCPP_MSVC)
+
+#define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
+#define _LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER
+#define _LIBCPP_HAS_NO_CONSTEXPR
+#define _LIBCPP_HAS_NO_UNICODE_CHARS
+#define _LIBCPP_HAS_NO_DELETED_FUNCTIONS
+#define __alignof__ __alignof
+#define _LIBCPP_NORETURN __declspec(noreturn)
+#define _ALIGNAS(x) __declspec(align(x))
+#define _LIBCPP_HAS_NO_VARIADICS
+
+#define _NOEXCEPT throw()
+#define _NOEXCEPT_(x)
+
+#define _LIBCPP_BEGIN_NAMESPACE_STD namespace std {
+#define _LIBCPP_END_NAMESPACE_STD  }
+#define _VSTD std
+
+namespace std {
+}
+
+#endif // __clang__ || __GNUC__ || _LIBCPP_MSVC
 
 #ifdef _LIBCPP_HAS_NO_UNICODE_CHARS
 typedef unsigned short char16_t;
@@ -298,22 +446,62 @@ template <unsigned> struct __static_assert_check {};
 #endif
 
 #ifdef _LIBCPP_HAS_NO_CONSTEXPR
-#define constexpr const
+#define _LIBCPP_CONSTEXPR
+#else
+#define _LIBCPP_CONSTEXPR constexpr
+#endif
+
+#ifdef _LIBCPP_HAS_NO_DEFAULTED_FUNCTIONS
+#define _LIBCPP_DEFAULT {}
+#else
+#define _LIBCPP_DEFAULT = default;
+#endif
+
+#ifdef __GNUC__
+#define _NOALIAS __attribute__((__malloc__))
+#else
+#define _NOALIAS
 #endif
 
 #ifndef __has_feature
 #define __has_feature(__x) 0
 #endif
 
-#if __APPLE__ || __FreeBSD__
+#if __has_feature(cxx_explicit_conversions)
+#   define _LIBCPP_EXPLICIT explicit
+#else
+#   define _LIBCPP_EXPLICIT
+#endif
+
+#ifdef _LIBCPP_HAS_NO_STRONG_ENUMS
+#define _LIBCPP_DECLARE_STRONG_ENUM(x) struct _LIBCPP_TYPE_VIS x { enum __lx
+#define _LIBCPP_DECLARE_STRONG_ENUM_EPILOG(x) \
+    __lx __v_; \
+    _LIBCPP_ALWAYS_INLINE x(__lx __v) : __v_(__v) {} \
+    _LIBCPP_ALWAYS_INLINE explicit x(int __v) : __v_(static_cast<__lx>(__v)) {} \
+    _LIBCPP_ALWAYS_INLINE operator int() const {return __v_;} \
+    };
+#else  // _LIBCPP_HAS_NO_STRONG_ENUMS
+#define _LIBCPP_DECLARE_STRONG_ENUM(x) enum class _LIBCPP_TYPE_VIS x
+#define _LIBCPP_DECLARE_STRONG_ENUM_EPILOG(x)
+#endif  // _LIBCPP_HAS_NO_STRONG_ENUMS
+
+#ifndef _LIBCPP_EXTERN_TEMPLATE
+#define _LIBCPP_EXTERN_TEMPLATE(...) extern template __VA_ARGS__;
+#endif
+
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(_WIN32) || defined(__sun__) || defined(__NetBSD__)
 #define _LIBCPP_LOCALE__L_EXTENSIONS 1
 #endif
-
-#ifdef __APPLE__
-#define _LIBCPP_STABLE_APPLE_ABI
+#ifdef __FreeBSD__
+#define _DECLARE_C99_LDBL_MATH 1
 #endif
 
-#if __APPLE__ || __FreeBSD__
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#define _LIBCPP_HAS_DEFAULTRUNELOCALE
+#endif
+
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__sun__)
 #define _LIBCPP_WCTYPE_IS_MASK
 #endif
 
@@ -327,10 +515,18 @@ template <unsigned> struct __static_assert_check {};
 #   endif
 #endif
 
-#ifdef _LIBCPP_DEBUG2
-#   include <__debug>
+#ifndef _LIBCPP_STD_VER
+#  if  __cplusplus <= 201103L
+#    define _LIBCPP_STD_VER 11
+#  else
+#    define _LIBCPP_STD_VER 13  // current year, or date of c++14 ratification
+#  endif
+#endif  // _LIBCPP_STD_VER
+
+#if _LIBCPP_STD_VER <= 11
+#define _LIBCPP_CONSTEXPR_AFTER_CXX11
 #else
-#   define _LIBCPP_ASSERT(x, m) ((void)0)
+#define _LIBCPP_CONSTEXPR_AFTER_CXX11 constexpr
 #endif
 
 #endif  // _LIBCPP_CONFIG

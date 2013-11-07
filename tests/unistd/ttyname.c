@@ -1,51 +1,43 @@
-#include <stdio.h>
+#include <assert.h>
 #include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 int main() {
+  int err;
+  int stdin, null, dev;
   char buffer[256];
-  int d = open("/device", O_RDWR);
-  int f = open("/", O_RDONLY);
   char* result;
 
+  stdin = open("/dev/stdin", O_RDONLY);
+  null = open("/dev/null", O_RDONLY);
+  dev = open("/dev", O_RDONLY);
+
   result = ctermid(buffer);
-  if (result) {
-    printf("ctermid: %s\n", result);
-  } else {
-    printf("ctermid errno: %d\n", errno);
-    errno = 0;
-  }
+  assert(!strcmp(result, "/dev/tty"));
 
-  if (ttyname_r(d, buffer, 256) == 0) {
-    printf("ttyname_r(d, ..., 256): %s\n", buffer);
-  } else {
-    printf("ttyname_r(d, ..., 256) errno: %d\n", errno);
-    errno = 0;
-  }
+  // strstr instead of strcmp as native code may
+  // be using a virtual console (e.g. /dev/tty02)
+  err = ttyname_r(stdin, buffer, 256);
+  assert(!err);
+  assert(strstr(buffer, "/dev/tty"));
 
-  if (ttyname_r(d, buffer, 2) == 0) {
-    printf("ttyname_r(d, ..., 2): %s\n", buffer);
-  } else {
-    printf("ttyname_r(d, ..., 2) errno: %d\n", errno);
-    errno = 0;
-  }
+  err = ttyname_r(stdin, buffer, 2);
+  assert(err == ERANGE);
 
-  result = ttyname(d);
-  if (result) {
-    printf("ttyname(d): %s\n", result);
-  } else {
-    printf("ttyname(d) errno: %d\n", errno);
-    errno = 0;
-  }
+  result = ttyname(stdin);
+  assert(strstr(result, "/dev/tty"));
 
-  result = ttyname(f);
-  if (result) {
-    printf("ttyname(f): %s\n", result);
-  } else {
-    printf("ttyname(f) errno: %d\n", errno);
-    errno = 0;
-  }
+  result = ttyname(null);
+  assert(!result);
 
-  return 0;
+  result = ttyname(dev);
+  assert(!result);
+
+  puts("success");
+
+  return EXIT_SUCCESS;
 }

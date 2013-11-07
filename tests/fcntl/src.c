@@ -5,7 +5,7 @@
 int main() {
   int f = open("/test", O_RDWR, 0777);
 
-  printf("F_DUPFD: %d\n", fcntl(f, F_DUPFD, 100));
+  printf("F_DUPFD: %d\n", fcntl(f, F_DUPFD, 100) >= 100);
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;

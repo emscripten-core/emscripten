@@ -1,0 +1,84 @@
+#ifndef __JAVA_NIO_CHARSET_SPI_CHARSETPROVIDER__
+#define __JAVA_NIO_CHARSET_SPI_CHARSETPROVIDER__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_java_nio_charset_spi_CharsetProvider 0
+// Implemented interfaces:
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_RuntimePermission
+#define XMLVM_FORWARD_DECL_java_lang_RuntimePermission
+XMLVM_FORWARD_DECL(java_lang_RuntimePermission)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_SecurityManager
+#define XMLVM_FORWARD_DECL_java_lang_SecurityManager
+XMLVM_FORWARD_DECL(java_lang_SecurityManager)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_String
+#define XMLVM_FORWARD_DECL_java_lang_String
+XMLVM_FORWARD_DECL(java_lang_String)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_System
+#define XMLVM_FORWARD_DECL_java_lang_System
+XMLVM_FORWARD_DECL(java_lang_System)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_nio_charset_Charset
+#define XMLVM_FORWARD_DECL_java_nio_charset_Charset
+XMLVM_FORWARD_DECL(java_nio_charset_Charset)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_util_Iterator
+#define XMLVM_FORWARD_DECL_java_util_Iterator
+XMLVM_FORWARD_DECL(java_util_Iterator)
+#endif
+// Class declarations for java.nio.charset.spi.CharsetProvider
+XMLVM_DEFINE_CLASS(java_nio_charset_spi_CharsetProvider, 8, XMLVM_ITABLE_SIZE_java_nio_charset_spi_CharsetProvider)
+
+extern JAVA_OBJECT __CLASS_java_nio_charset_spi_CharsetProvider;
+extern JAVA_OBJECT __CLASS_java_nio_charset_spi_CharsetProvider_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_nio_charset_spi_CharsetProvider_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_nio_charset_spi_CharsetProvider_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_java_nio_charset_spi_CharsetProvider
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_java_nio_charset_spi_CharsetProvider \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        __ADDITIONAL_INSTANCE_FIELDS_java_nio_charset_spi_CharsetProvider \
+    } java_nio_charset_spi_CharsetProvider
+
+struct java_nio_charset_spi_CharsetProvider {
+    __TIB_DEFINITION_java_nio_charset_spi_CharsetProvider* tib;
+    struct {
+        __INSTANCE_FIELDS_java_nio_charset_spi_CharsetProvider;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_java_nio_charset_spi_CharsetProvider
+#define XMLVM_FORWARD_DECL_java_nio_charset_spi_CharsetProvider
+typedef struct java_nio_charset_spi_CharsetProvider java_nio_charset_spi_CharsetProvider;
+#endif
+
+#define XMLVM_VTABLE_SIZE_java_nio_charset_spi_CharsetProvider 8
+#define XMLVM_VTABLE_IDX_java_nio_charset_spi_CharsetProvider_charsets__ 7
+#define XMLVM_VTABLE_IDX_java_nio_charset_spi_CharsetProvider_charsetForName___java_lang_String 6
+
+void __INIT_java_nio_charset_spi_CharsetProvider();
+void __INIT_IMPL_java_nio_charset_spi_CharsetProvider();
+void __DELETE_java_nio_charset_spi_CharsetProvider(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_java_nio_charset_spi_CharsetProvider(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_java_nio_charset_spi_CharsetProvider();
+JAVA_OBJECT __NEW_INSTANCE_java_nio_charset_spi_CharsetProvider();
+JAVA_OBJECT java_nio_charset_spi_CharsetProvider_GET_CONSTRUCT_PERM();
+void java_nio_charset_spi_CharsetProvider_PUT_CONSTRUCT_PERM(JAVA_OBJECT v);
+void java_nio_charset_spi_CharsetProvider___CLINIT_();
+void java_nio_charset_spi_CharsetProvider___INIT___(JAVA_OBJECT me);
+// Vtable index: 7
+JAVA_OBJECT java_nio_charset_spi_CharsetProvider_charsets__(JAVA_OBJECT me);
+// Vtable index: 6
+JAVA_OBJECT java_nio_charset_spi_CharsetProvider_charsetForName___java_lang_String(JAVA_OBJECT me, JAVA_OBJECT n1);
+
+#endif

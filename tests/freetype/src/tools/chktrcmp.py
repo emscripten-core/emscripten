@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 #
 # Check trace components in FreeType 2 source.
 # Author: suzuki toshiya, 2009

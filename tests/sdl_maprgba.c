@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <SDL/SDL.h>
-#include <emscripten.h>
 
 int main() {
   Uint32 c;

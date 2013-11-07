@@ -1,0 +1,153 @@
+#ifndef __ORG_APACHE_HARMONY_LUNI_PLATFORM_OSFILESYSTEM__
+#define __ORG_APACHE_HARMONY_LUNI_PLATFORM_OSFILESYSTEM__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_org_apache_harmony_luni_platform_OSFileSystem 19
+// Implemented interfaces:
+#include "org_apache_harmony_luni_platform_IFileSystem.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_io_FileDescriptor
+#define XMLVM_FORWARD_DECL_java_io_FileDescriptor
+XMLVM_FORWARD_DECL(java_io_FileDescriptor)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_io_IOException
+#define XMLVM_FORWARD_DECL_java_io_IOException
+XMLVM_FORWARD_DECL(java_io_IOException)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_Class
+#define XMLVM_FORWARD_DECL_java_lang_Class
+XMLVM_FORWARD_DECL(java_lang_Class)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_NullPointerException
+#define XMLVM_FORWARD_DECL_java_lang_NullPointerException
+XMLVM_FORWARD_DECL(java_lang_NullPointerException)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_String
+#define XMLVM_FORWARD_DECL_java_lang_String
+XMLVM_FORWARD_DECL(java_lang_String)
+#endif
+// Class declarations for org.apache.harmony.luni.platform.OSFileSystem
+XMLVM_DEFINE_CLASS(org_apache_harmony_luni_platform_OSFileSystem, 25, XMLVM_ITABLE_SIZE_org_apache_harmony_luni_platform_OSFileSystem)
+
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSFileSystem;
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSFileSystem_1ARRAY;
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSFileSystem_2ARRAY;
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSFileSystem_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSFileSystem
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSFileSystem \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        __ADDITIONAL_INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSFileSystem \
+    } org_apache_harmony_luni_platform_OSFileSystem
+
+struct org_apache_harmony_luni_platform_OSFileSystem {
+    __TIB_DEFINITION_org_apache_harmony_luni_platform_OSFileSystem* tib;
+    struct {
+        __INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSFileSystem;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_org_apache_harmony_luni_platform_OSFileSystem
+#define XMLVM_FORWARD_DECL_org_apache_harmony_luni_platform_OSFileSystem
+typedef struct org_apache_harmony_luni_platform_OSFileSystem org_apache_harmony_luni_platform_OSFileSystem;
+#endif
+
+#define XMLVM_VTABLE_SIZE_org_apache_harmony_luni_platform_OSFileSystem 25
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_getAllocGranularity__ 9
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_lock___long_long_long_int_boolean 10
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_unlock___long_long_long 21
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_fflush___long_boolean 8
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_seek___long_long_int 15
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_readDirect___long_long_int_int 12
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_writeDirect___long_long_int_int 22
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_read___long_byte_1ARRAY_int_int 13
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_write___long_byte_1ARRAY_int_int 23
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_readv___long_long_1ARRAY_int_1ARRAY_int_1ARRAY_int 14
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_writev___long_java_lang_Object_1ARRAY_int_1ARRAY_int_1ARRAY_int 24
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_close___long 7
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_truncate___long_long 18
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_open___byte_1ARRAY_int 11
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_transfer___long_java_io_FileDescriptor_long_long 17
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_ttyAvailable__ 19
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_available___long 6
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_size___long 16
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSFileSystem_ttyRead___byte_1ARRAY_int_int 20
+
+void __INIT_org_apache_harmony_luni_platform_OSFileSystem();
+void __INIT_IMPL_org_apache_harmony_luni_platform_OSFileSystem();
+void __DELETE_org_apache_harmony_luni_platform_OSFileSystem(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_org_apache_harmony_luni_platform_OSFileSystem(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_org_apache_harmony_luni_platform_OSFileSystem();
+JAVA_OBJECT __NEW_INSTANCE_org_apache_harmony_luni_platform_OSFileSystem();
+void xmlvm_init_native_org_apache_harmony_luni_platform_OSFileSystem();
+JAVA_OBJECT org_apache_harmony_luni_platform_OSFileSystem_GET_singleton();
+void org_apache_harmony_luni_platform_OSFileSystem_PUT_singleton(JAVA_OBJECT v);
+void org_apache_harmony_luni_platform_OSFileSystem___CLINIT_();
+JAVA_OBJECT org_apache_harmony_luni_platform_OSFileSystem_getOSFileSystem__();
+void org_apache_harmony_luni_platform_OSFileSystem___INIT___(JAVA_OBJECT me);
+void org_apache_harmony_luni_platform_OSFileSystem_oneTimeInitializationImpl__();
+void org_apache_harmony_luni_platform_OSFileSystem_validateLockArgs___int_long_long(JAVA_OBJECT me, JAVA_INT n1, JAVA_LONG n2, JAVA_LONG n3);
+JAVA_INT org_apache_harmony_luni_platform_OSFileSystem_lockImpl___long_long_long_int_boolean(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_LONG n3, JAVA_INT n4, JAVA_BOOLEAN n5);
+// Vtable index: 9
+JAVA_INT org_apache_harmony_luni_platform_OSFileSystem_getAllocGranularity__(JAVA_OBJECT me);
+// Vtable index: 10
+JAVA_BOOLEAN org_apache_harmony_luni_platform_OSFileSystem_lock___long_long_long_int_boolean(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_LONG n3, JAVA_INT n4, JAVA_BOOLEAN n5);
+JAVA_INT org_apache_harmony_luni_platform_OSFileSystem_unlockImpl___long_long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_LONG n3);
+// Vtable index: 21
+void org_apache_harmony_luni_platform_OSFileSystem_unlock___long_long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_LONG n3);
+JAVA_INT org_apache_harmony_luni_platform_OSFileSystem_fflushImpl___long_boolean(JAVA_OBJECT me, JAVA_LONG n1, JAVA_BOOLEAN n2);
+// Vtable index: 8
+void org_apache_harmony_luni_platform_OSFileSystem_fflush___long_boolean(JAVA_OBJECT me, JAVA_LONG n1, JAVA_BOOLEAN n2);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_seekImpl___long_long_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_INT n3);
+// Vtable index: 15
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_seek___long_long_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_INT n3);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_readDirectImpl___long_long_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_INT n3, JAVA_INT n4);
+// Vtable index: 12
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_readDirect___long_long_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_INT n3, JAVA_INT n4);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_writeDirectImpl___long_long_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_INT n3, JAVA_INT n4);
+// Vtable index: 22
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_writeDirect___long_long_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_INT n3, JAVA_INT n4);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_readImpl___long_byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_INT n3, JAVA_INT n4);
+// Vtable index: 13
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_read___long_byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_INT n3, JAVA_INT n4);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_writeImpl___long_byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_INT n3, JAVA_INT n4);
+// Vtable index: 23
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_write___long_byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_INT n3, JAVA_INT n4);
+// Vtable index: 14
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_readv___long_long_1ARRAY_int_1ARRAY_int_1ARRAY_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_OBJECT n3, JAVA_OBJECT n4, JAVA_INT n5);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_readvImpl___long_long_1ARRAY_int_1ARRAY_int_1ARRAY_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_OBJECT n3, JAVA_OBJECT n4, JAVA_INT n5);
+// Vtable index: 24
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_writev___long_java_lang_Object_1ARRAY_int_1ARRAY_int_1ARRAY_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_OBJECT n3, JAVA_OBJECT n4, JAVA_INT n5);
+JAVA_INT org_apache_harmony_luni_platform_OSFileSystem_closeImpl___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 7
+void org_apache_harmony_luni_platform_OSFileSystem_close___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 18
+void org_apache_harmony_luni_platform_OSFileSystem_truncate___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+JAVA_INT org_apache_harmony_luni_platform_OSFileSystem_truncateImpl___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+// Vtable index: 11
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_open___byte_1ARRAY_int(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_INT n2);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_openImpl___byte_1ARRAY_int(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_INT n2);
+// Vtable index: 17
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_transfer___long_java_io_FileDescriptor_long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_LONG n3, JAVA_LONG n4);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_transferImpl___long_java_io_FileDescriptor_long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_LONG n3, JAVA_LONG n4);
+// Vtable index: 19
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_ttyAvailable__(JAVA_OBJECT me);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_ttyAvailableImpl__(JAVA_OBJECT me);
+// Vtable index: 6
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_available___long(JAVA_OBJECT me, JAVA_LONG n1);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_availableImpl___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 16
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_size___long(JAVA_OBJECT me, JAVA_LONG n1);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_sizeImpl___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 20
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_ttyRead___byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3);
+JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_ttyReadImpl___byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3);
+
+#endif

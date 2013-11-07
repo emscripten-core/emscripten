@@ -2,9 +2,17 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <emscripten.h>
 
 int main() {
-  int f = open("/", O_RDONLY);
+  EM_ASM(
+    FS.mkdir('working');
+#if NODEFS
+    FS.mount(NODEFS, { root: '.' }, 'working');
+#endif
+  );
+
+  int f = open("working", O_RDONLY);
 
   sync();
 
@@ -36,7 +44,7 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("link: %d", link("/here", "/there"));
+  printf("link: %d", link("working/here", "working/there"));
   printf(", errno: %d\n", errno);
   errno = 0;
 
@@ -65,10 +73,10 @@ int main() {
 
   char* exec_argv[] = {"arg", 0};
   char* exec_env[] = {"a=b", 0};
-  printf("execl: %d", execl("/program", "arg", 0));
+  printf("execl: %d", execl("working/program", "arg", 0));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("execle: %d", execle("/program", "arg", 0, exec_env));
+  printf("execle: %d", execle("working/program", "arg", 0, exec_env));
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("execlp: %d", execlp("program", "arg", 0));
@@ -84,16 +92,16 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("chown(good): %d", chown("/", 123, 456));
+  printf("chown(good): %d", chown("working", 123, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("chown(bad): %d", chown("/noexist", 123, 456));
+  printf("chown(bad): %d", chown("working/noexist", 123, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("lchown(good): %d", lchown("/", 123, 456));
+  printf("lchown(good): %d", lchown("working", 123, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("lchown(bad): %d", lchown("/noexist", 123, 456));
+  printf("lchown(bad): %d", lchown("working/noexist", 123, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("fchown(good): %d", fchown(f, 123, 456));
@@ -106,7 +114,7 @@ int main() {
   printf("alarm: %d", alarm(42));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("ualarm: %d", ualarm(123, 456));
+  printf("ualarm: %ld", ualarm(123, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
 
@@ -117,7 +125,7 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("crypt: %d", crypt("foo", "bar"));
+  printf("crypt: %s", crypt("foo", "bar"));
   printf(", errno: %d\n", errno);
   errno = 0;
   char encrypt_block[64] = {0};
@@ -189,6 +197,11 @@ int main() {
   gid_t groups[10] = {42};
   printf("getgroups: %d", getgroups(10, groups));
   printf(", result: %d", groups[0]);
+  printf(", errno: %d\n", errno);
+  errno = 0;
+
+  gid_t groups2[1] = {0};
+  printf("setgroups: %d", setgroups(1, groups2));
   printf(", errno: %d\n", errno);
   errno = 0;
 

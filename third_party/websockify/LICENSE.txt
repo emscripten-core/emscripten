@@ -1,0 +1,16 @@
+websockify is licensed under the LGPL version 3 (see docs/LICENSE.GPL-3 and
+docs/LICENSE.LGPL-3) with the following exceptions:
+
+    include/websock.js         : MPL 2.0
+
+    include/base64.js          : MPL 2.0
+
+    include/des.js             : Various BSD style licenses
+
+    include/web-socket-js/     : New BSD license (3-clause). Source code at
+                                 https://github.com/gimite/web-socket-js
+
+    other/kumina.c             : Simplified BSD license (2 clause).
+                                 Original source at
+                                 https://github.com/kumina/wsproxy
+

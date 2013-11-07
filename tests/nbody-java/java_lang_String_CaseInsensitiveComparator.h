@@ -1,0 +1,64 @@
+#ifndef __JAVA_LANG_STRING_CASEINSENSITIVECOMPARATOR__
+#define __JAVA_LANG_STRING_CASEINSENSITIVECOMPARATOR__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_java_lang_String_CaseInsensitiveComparator 2
+// Implemented interfaces:
+#include "java_io_Serializable.h"
+#include "java_util_Comparator.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_String
+#define XMLVM_FORWARD_DECL_java_lang_String
+XMLVM_FORWARD_DECL(java_lang_String)
+#endif
+// Class declarations for java.lang.String$CaseInsensitiveComparator
+XMLVM_DEFINE_CLASS(java_lang_String_CaseInsensitiveComparator, 7, XMLVM_ITABLE_SIZE_java_lang_String_CaseInsensitiveComparator)
+
+extern JAVA_OBJECT __CLASS_java_lang_String_CaseInsensitiveComparator;
+extern JAVA_OBJECT __CLASS_java_lang_String_CaseInsensitiveComparator_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_String_CaseInsensitiveComparator_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_String_CaseInsensitiveComparator_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_java_lang_String_CaseInsensitiveComparator
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_java_lang_String_CaseInsensitiveComparator \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        __ADDITIONAL_INSTANCE_FIELDS_java_lang_String_CaseInsensitiveComparator \
+    } java_lang_String_CaseInsensitiveComparator
+
+struct java_lang_String_CaseInsensitiveComparator {
+    __TIB_DEFINITION_java_lang_String_CaseInsensitiveComparator* tib;
+    struct {
+        __INSTANCE_FIELDS_java_lang_String_CaseInsensitiveComparator;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_java_lang_String_CaseInsensitiveComparator
+#define XMLVM_FORWARD_DECL_java_lang_String_CaseInsensitiveComparator
+typedef struct java_lang_String_CaseInsensitiveComparator java_lang_String_CaseInsensitiveComparator;
+#endif
+
+#define XMLVM_VTABLE_SIZE_java_lang_String_CaseInsensitiveComparator 7
+#define XMLVM_VTABLE_IDX_java_lang_String_CaseInsensitiveComparator_compare___java_lang_Object_java_lang_Object 6
+
+void __INIT_java_lang_String_CaseInsensitiveComparator();
+void __INIT_IMPL_java_lang_String_CaseInsensitiveComparator();
+void __DELETE_java_lang_String_CaseInsensitiveComparator(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_java_lang_String_CaseInsensitiveComparator(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_java_lang_String_CaseInsensitiveComparator();
+JAVA_OBJECT __NEW_INSTANCE_java_lang_String_CaseInsensitiveComparator();
+JAVA_LONG java_lang_String_CaseInsensitiveComparator_GET_serialVersionUID();
+void java_lang_String_CaseInsensitiveComparator_PUT_serialVersionUID(JAVA_LONG v);
+void java_lang_String_CaseInsensitiveComparator___INIT___(JAVA_OBJECT me);
+JAVA_INT java_lang_String_CaseInsensitiveComparator_compare___java_lang_String_java_lang_String(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+// Vtable index: 6
+JAVA_INT java_lang_String_CaseInsensitiveComparator_compare___java_lang_Object_java_lang_Object(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2);
+void java_lang_String_CaseInsensitiveComparator___INIT____java_lang_String_1(JAVA_OBJECT me, JAVA_OBJECT n1);
+
+#endif

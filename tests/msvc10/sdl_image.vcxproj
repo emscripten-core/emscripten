@@ -80,6 +80,23 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Emscripten'">
+    <ClCompile>
+      <PreprocessorDefinitions>REPORT_RESULT=int dummy;SCREENSHOT_DIRNAME=\"/assets\";SCREENSHOT_BASENAME=\"screenshot.jpg\"</PreprocessorDefinitions>
+      <EchoCommandLines>true</EchoCommandLines>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>--preload-file ../screenshot.jpg@/assets/ %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Emscripten'">
+    <ClCompile>
+      <PreprocessorDefinitions>REPORT_RESULT=int dummy;SCREENSHOT_DIRNAME=\"/assets\";SCREENSHOT_BASENAME=\"screenshot.jpg\"</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>--preload-file ../screenshot.jpg@/assets/ %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\sdl_image.c" />
   </ItemGroup>

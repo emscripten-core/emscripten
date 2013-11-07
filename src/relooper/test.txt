@@ -1,0 +1,272 @@
+
+
+-- If pattern --
+
+
+
+// block A
+switch (the_var) {
+check == 10 {
+ atob();
+ // block B
+ switch (the_var) {
+ default: {
+  btoc();
+ }
+ }
+ break;
+}
+default: {
+ atoc();
+}
+}
+// block C
+
+
+
+-- If-else pattern --
+
+
+
+// block A
+switch (the_var) {
+check == 15 {
+ // block B
+ switch (the_var) {
+ default: {
+ }
+ }
+ break;
+}
+default: {
+ // block C
+ switch (the_var) {
+ default: {
+ }
+ }
+}
+}
+// block D
+
+
+
+-- Loop + tail pattern --
+
+
+
+L9: while(1) {
+ // block A
+ var check = maybe();
+ switch (the_var) {
+ default: {
+ }
+ }
+ // block B
+ switch (the_var) {
+ check == 41 {
+  break;
+ }
+ default: {
+  break L9;
+ }
+ }
+}
+// block C
+
+
+
+-- Loop with phi to head 
+
+// code 1
+switch (the_var) {
+default: {
+ var $i_0 = 0;var $x_0 = 5; 
+}
+}
+L14: while(1) {
+ // code 2
+ switch (the_var) {
+ $2 {
+  break;
+ }
+ default: {
+  var $x_1 = $x_0; 
+  label = 18;
+  break L14;
+ }
+ }
+ // code 3
+ switch (the_var) {
+ $6 {
+  break L14;
+  break;
+ }
+ default: {
+  var $i_0 = $7;var $x_0 = $5; 
+ }
+ }
+}
+if (label == 18) {
+ // code 7
+}
+// code 4
+switch (the_var) {
+$10 {
+ // code 5
+ switch (the_var) {
+ default: {
+ }
+ }
+ break;
+}
+default: {
+}
+}
+// code 6
+switch (the_var) {
+default: {
+ var $x_1 = $13; 
+}
+}
+// code 7
+
+
+
+-- phi on split dead ends --
+
+
+
+// block A...................................................................................................
+switch (the_var) {
+chak() {
+ atob();
+ // block B...................................................................................................
+ switch (the_var) {
+ default: {
+  btod();
+ }
+ }
+ // block D
+ break;
+}
+default: {
+ atoc();
+ // block C...................................................................................................
+ switch (the_var) {
+ default: {
+  ctod2();
+ }
+ }
+ // block D
+}
+}
+
+
+
+-- Unbalanced with a dead end --
+
+
+
+// block A
+switch (the_var) {
+check == 10 {
+ break;
+}
+default: {
+ return C;
+}
+}
+while(1) {
+ // block B
+ switch (the_var) {
+ default: {
+ }
+ }
+ // block D
+ switch (the_var) {
+ default: {
+ }
+ }
+}
+
+
+
+-- if (expensive || expensive2) X else Y; Z --
+
+
+
+// block A
+L37: do {
+ switch (the_var) {
+ expensive() {
+  label = 33;
+  break;
+ }
+ default: {
+  // block B
+  switch (the_var) {
+  expensive2() {
+   label = 33;
+   break L37;
+   break;
+  }
+  default: {
+  }
+  }
+  // block D
+  switch (the_var) {
+  default: {
+  }
+  }
+ }
+ }
+} while(0);
+if (label == 33) {
+ // block C;
+ switch (the_var) {
+ default: {
+ }
+ }
+}
+while(1) {
+ // block E
+ switch (the_var) {
+ default: {
+ }
+ }
+ // block F
+ switch (the_var) {
+ default: {
+ }
+ }
+}
+
+
+
+-- conditional loop --
+
+
+
+// block A
+L46: do {
+ switch (the_var) {
+ shouldLoop() {
+  while(1) {
+   // block B
+   switch (the_var) {
+   moarLoop() {
+    break;
+   }
+   default: {
+    break L46;
+   }
+   }
+  }
+  break;
+ }
+ default: {
+ }
+ }
+} while(0);
+// block C
+
