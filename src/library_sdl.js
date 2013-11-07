@@ -770,7 +770,7 @@ var LibrarySDL = {
     // value [-32768, 32767]
     joystickAxisValueConversion: function(value) {
       // Ensures that 0 is 0, 1 is 32767, and -1 is 32768.
-      return Math.ceil(((value+1) * 32767.5) - 32768)
+      return Math.ceil(((value+1) * 32767.5) - 32768);
     },
 
     getGamepads: function() {
