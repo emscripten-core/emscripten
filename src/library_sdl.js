@@ -649,7 +649,7 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.state, 'state', 'i8') }}};
           break;
         }
-        case 'joystick_axis_motion' {
+        case 'joystick_axis_motion': {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, '7', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
