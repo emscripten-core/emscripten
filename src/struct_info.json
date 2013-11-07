@@ -961,10 +961,13 @@
                 "x", 
                 "y"
             ],
-            "SDL_ResizeEvent": [
+            "SDL_JoyAxisEvent": [
                 "type", 
-                "w", 
-                "h"
+                "which", 
+                "axis", 
+                "padding1", 
+                "padding2", 
+                "value"
             ],
             "SDL_JoyButtonEvent": [
                 "type", 
@@ -973,13 +976,10 @@
                 "state", 
                 "padding1"
             ],
-            "SDL_JoyAxisEvent": [
+            "SDL_ResizeEvent": [
                 "type", 
-                "which", 
-                "axis", 
-                "padding1", 
-                "padding2", 
-                "value"
+                "w", 
+                "h"
             ]
         }
     },

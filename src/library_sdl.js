@@ -2447,25 +2447,31 @@ var LibrarySDL = {
       }
     }
   },
-  // Will be 'undefined' if the current browser does not support the gamepad API.
-  getGamepads: navigator.webkitGamepads || navigator.mozGamepads || navigator.gamepads || navigator.webkitGetGamepads,
+
+  getGamepads: function() {
+    var fcn = navigator.webkitGamepads || navigator.mozGamepads || navigator.gamepads || navigator.webkitGetGamepads;
+    if (fcn !== undefined) {
+      // The function must be applied on the navigator object.
+      return fcn.apply(navigator);
+    } else {
+      return [];
+    }
+  },
+
   // Helper function: Returns the gamepad if available, or null if not.
   getGamepad: function(deviceIndex) {
-    if (SDL.getGamepads !== undefined) {
-      var gamepads = SDL.getGamepads();
-      if (gamepads.length > deviceIndex && deviceIndex >= 0)
-        return gamepads[deviceIndex];
-    }
+    var gamepads = SDL.getGamepads();
+    if (gamepads.length > deviceIndex && deviceIndex >= 0)
+      return gamepads[deviceIndex];
     return null;
   },
+
   SDL_NumJoysticks: function() {
     var count = 0;
-    if (SDL.getGamepads !== undefined) {
-      var gamepads = SDL.getGamepads();
-      // The length is not the number of gamepads; check which ones are defined.
-      for (var i = 0; i < gamepads.length; i++) {
-        if (gamepads[i] !== undefined) count++;
-      }
+    var gamepads = SDL.getGamepads();
+    // The length is not the number of gamepads; check which ones are defined.
+    for (var i = 0; i < gamepads.length; i++) {
+      if (gamepads[i] !== undefined) count++;
     }
     return count;
   },
