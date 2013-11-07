@@ -874,7 +874,7 @@ keydown(100);keyup(100); // trigger the end
   def test_glut_wheelevents(self):
     self.btest('glut_wheelevents.c', '1')
 
-  def test_sdl_joystick(self):
+  def test_sdl_joystick_chrome(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var gamepads = [];
       // Spoof this function.
@@ -905,6 +905,80 @@ keydown(100);keyup(100); // trigger the end
       window['simulateAxisMotion'] = function (index, axis, value) {
         gamepads[index].axes[axis] = value;
         gamepads[index].timestamp++;
+      };
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl_joystick.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_joystick.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+    self.run_browser('page.html', '', '/report_result?2')
+
+  def test_sdl_joystick_firefox_old(self):
+    # Firefox (old) is the same as Chrome, but lacks timestamps.
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      var gamepads = [];
+      // Spoof this function.
+      navigator['getGamepads'] = function() {
+        return gamepads;
+      };
+      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+        var index = gamepads.length;
+        gamepads.push({
+          axes: new Array(numAxes),
+          buttons: new Array(numButtons),
+          id: id,
+          index: index
+        });
+        var i;
+        for (i = 0; i < numAxes; i++) gamepads[index].axes[i] = 0;
+        for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = 0;
+      };
+      window['simulateGamepadButtonDown'] = function (index, button) {
+        gamepads[index].buttons[button] = 1;
+      };
+      window['simulateGamepadButtonUp'] = function (index, button) {
+        gamepads[index].buttons[button] = 0;
+      };
+      window['simulateAxisMotion'] = function (index, axis, value) {
+        gamepads[index].axes[axis] = value;
+      };
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl_joystick.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_joystick.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+    self.run_browser('page.html', '', '/report_result?2')
+
+  def test_sdl_joystick_firefox(self):
+    # Firefox uses objects to represent buttons.
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      var gamepads = [];
+      // Spoof this function.
+      navigator['getGamepads'] = function() {
+        return gamepads;
+      };
+      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+        var index = gamepads.length;
+        gamepads.push({
+          axes: new Array(numAxes),
+          buttons: new Array(numButtons),
+          id: id,
+          index: index
+        });
+        var i;
+        for (i = 0; i < numAxes; i++) gamepads[index].axes[i] = 0;
+        // Buttons are objects
+        for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = { pressed: false, value: 0 };
+      };
+      // FF mutates the original objects.
+      window['simulateGamepadButtonDown'] = function (index, button) {
+        gamepads[index].buttons[button].pressed = true;
+        gamepads[index].buttons[button].value = 1;
+      };
+      window['simulateGamepadButtonUp'] = function (index, button) {
+        gamepads[index].buttons[button].pressed = false;
+        gamepads[index].buttons[button].value = 0;
+      };
+      window['simulateAxisMotion'] = function (index, axis, value) {
+        gamepads[index].axes[axis] = value;
       };
     ''')
     open(os.path.join(self.get_dir(), 'sdl_joystick.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_joystick.c')).read()))
