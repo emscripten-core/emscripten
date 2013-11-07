@@ -735,8 +735,9 @@ var LibrarySDL = {
       for (var joystick in SDL.lastJoystickState) {
         var state = SDL.getGamepad(joystick - 1);
         var prevState = SDL.lastJoystickState[joystick];
-        // Check if the timestamp has differed.
-        if (state.timestamp !== prevState.timestamp) {
+        // Check only if the timestamp has differed.
+        // NOTE: Timestamp is not available in Firefox.
+        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
             if (state.buttons[i] !== prevState.buttons[i]) {
@@ -813,6 +814,14 @@ var LibrarySDL = {
       document.addEventListener("keypress", SDL.receiveEvent);
       window.addEventListener("blur", SDL.receiveEvent);
       document.addEventListener("visibilitychange", SDL.receiveEvent);
+    }
+
+    if (initFlags & 0x200) {
+      // SDL_INIT_JOYSTICK
+      // Firefox will not give us Joystick data unless we register this NOP
+      // callback.
+      // https://bugzilla.mozilla.org/show_bug.cgi?id=936104
+      addEventListener("gamepadconnected", function() {});
     }
 
     window.addEventListener("unload", SDL.receiveEvent);
