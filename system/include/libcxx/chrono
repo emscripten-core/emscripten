@@ -292,7 +292,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 namespace chrono
 {
 
-template <class _Rep, class _Period = ratio<1> > class _LIBCPP_TYPE_VIS duration;
+template <class _Rep, class _Period = ratio<1> > class _LIBCPP_TYPE_VIS_ONLY duration;
 
 template <class _Tp>
 struct __is_duration : false_type {};
@@ -312,8 +312,8 @@ struct __is_duration<const volatile duration<_Rep, _Period> > : true_type  {};
 } // chrono
 
 template <class _Rep1, class _Period1, class _Rep2, class _Period2>
-struct _LIBCPP_TYPE_VIS common_type<chrono::duration<_Rep1, _Period1>,
-                                   chrono::duration<_Rep2, _Period2> >
+struct _LIBCPP_TYPE_VIS_ONLY common_type<chrono::duration<_Rep1, _Period1>,
+                                         chrono::duration<_Rep2, _Period2> >
 {
     typedef chrono::duration<typename common_type<_Rep1, _Rep2>::type,
                              typename __ratio_gcd<_Period1, _Period2>::type> type;
@@ -390,10 +390,10 @@ duration_cast(const duration<_Rep, _Period>& __fd)
 }
 
 template <class _Rep>
-struct _LIBCPP_TYPE_VIS treat_as_floating_point : is_floating_point<_Rep> {};
+struct _LIBCPP_TYPE_VIS_ONLY treat_as_floating_point : is_floating_point<_Rep> {};
 
 template <class _Rep>
-struct _LIBCPP_TYPE_VIS duration_values
+struct _LIBCPP_TYPE_VIS_ONLY duration_values
 {
 public:
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR _Rep zero() {return _Rep(0);}
@@ -404,11 +404,42 @@ public:
 // duration
 
 template <class _Rep, class _Period>
-class _LIBCPP_TYPE_VIS duration
+class _LIBCPP_TYPE_VIS_ONLY duration
 {
     static_assert(!__is_duration<_Rep>::value, "A duration representation can not be a duration");
     static_assert(__is_ratio<_Period>::value, "Second template parameter of duration must be a std::ratio");
     static_assert(_Period::num > 0, "duration period must be positive");
+
+    template <class _R1, class _R2>
+    struct __no_overflow
+    {
+    private:
+        static const intmax_t __gcd_n1_n2 = __static_gcd<_R1::num, _R2::num>::value;
+        static const intmax_t __gcd_d1_d2 = __static_gcd<_R1::den, _R2::den>::value;
+        static const intmax_t __n1 = _R1::num / __gcd_n1_n2;
+        static const intmax_t __d1 = _R1::den / __gcd_d1_d2;
+        static const intmax_t __n2 = _R2::num / __gcd_n1_n2;
+        static const intmax_t __d2 = _R2::den / __gcd_d1_d2;
+        static const intmax_t max = -((intmax_t(1) << (sizeof(intmax_t) * CHAR_BIT - 1)) + 1);
+
+        template <intmax_t _Xp, intmax_t _Yp, bool __overflow>
+        struct __mul    // __overflow == false
+        {
+            static const intmax_t value = _Xp * _Yp;
+        };
+
+        template <intmax_t _Xp, intmax_t _Yp>
+        struct __mul<_Xp, _Yp, true>
+        {
+            static const intmax_t value = 1;
+        };
+
+    public:
+        static const bool value = (__n1 <= max / __d2) && (__n2 <= max / __d1);
+        typedef ratio<__mul<__n1, __d2, !value>::value,
+                      __mul<__n2, __d1, !value>::value> type;
+    };
+    
 public:
     typedef _Rep rep;
     typedef _Period period;
@@ -440,9 +471,10 @@ public:
         duration(const duration<_Rep2, _Period2>& __d,
             typename enable_if
             <
+                __no_overflow<_Period2, period>::value && (
                 treat_as_floating_point<rep>::value ||
-                (ratio_divide<_Period2, period>::type::den == 1 &&
-                 !treat_as_floating_point<_Rep2>::value)
+                (__no_overflow<_Period2, period>::type::den == 1 &&
+                 !treat_as_floating_point<_Rep2>::value))
             >::type* = 0)
                 : __rep_(_VSTD::chrono::duration_cast<duration>(__d).count()) {}
 
@@ -715,7 +747,7 @@ operator%(const duration<_Rep1, _Period1>& __lhs, const duration<_Rep2, _Period2
 //////////////////////////////////////////////////////////
 
 template <class _Clock, class _Duration = typename _Clock::duration>
-class _LIBCPP_TYPE_VIS time_point
+class _LIBCPP_TYPE_VIS_ONLY time_point
 {
     static_assert(__is_duration<_Duration>::value,
                   "Second template parameter of time_point must be a std::chrono::duration");
@@ -759,8 +791,8 @@ public:
 } // chrono
 
 template <class _Clock, class _Duration1, class _Duration2>
-struct _LIBCPP_TYPE_VIS common_type<chrono::time_point<_Clock, _Duration1>,
-                                   chrono::time_point<_Clock, _Duration2> >
+struct _LIBCPP_TYPE_VIS_ONLY common_type<chrono::time_point<_Clock, _Duration1>,
+                                         chrono::time_point<_Clock, _Duration2> >
 {
     typedef chrono::time_point<_Clock, typename common_type<_Duration1, _Duration2>::type> type;
 };
@@ -910,12 +942,9 @@ typedef steady_clock high_resolution_clock;
 
 } // chrono
 
-#if _LIBCPP_STD_VER > 11 
-// Literal suffixes for chrono types
-// inline // Deviation from N3690.
-//    We believe the inline to be a defect and have submitted an LWG issue.
-//    An LWG issue number has not yet been assigned.
-namespace literals
+#if _LIBCPP_STD_VER > 11
+// Suffixes for duration literals [time.duration.literals]
+inline namespace literals
 { 
   inline namespace chrono_literals
   {
@@ -986,6 +1015,11 @@ namespace literals
     }
 
 }}
+
+namespace chrono { // hoist the literals into namespace std::chrono
+   using namespace literals::chrono_literals;
+}
+
 #endif
 
 _LIBCPP_END_NAMESPACE_STD

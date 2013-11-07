@@ -73,7 +73,7 @@ public:
 const unspecified ignore;
 
 template <class... T> tuple<V...>  make_tuple(T&&...); // constexpr in C++14
-template <class... T> tuple<ATypes...> forward_as_tuple(T&&...) noexcept;
+template <class... T> tuple<ATypes...> forward_as_tuple(T&&...) noexcept; // constexpr in C++14
 template <class... T> tuple<T&...> tie(T&...) noexcept;
 template <class... Tuples> tuple<CTypes...> tuple_cat(Tuples&&... tpls); // constexpr in C++14
   
@@ -133,74 +133,12 @@ template <class... Types>
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-// allocator_arg_t
-
-struct _LIBCPP_TYPE_VIS allocator_arg_t { };
-
-#if defined(_LIBCPP_HAS_NO_CONSTEXPR) || defined(_LIBCPP_BUILDING_MEMORY)
-extern const allocator_arg_t allocator_arg;
-#else
-constexpr allocator_arg_t allocator_arg = allocator_arg_t();
-#endif
-
-// uses_allocator
-
-template <class _Tp>
-struct __has_allocator_type
-{
-private:
-    struct __two {char __lx; char __lxx;};
-    template <class _Up> static __two __test(...);
-    template <class _Up> static char __test(typename _Up::allocator_type* = 0);
-public:
-    static const bool value = sizeof(__test<_Tp>(0)) == 1;
-};
-
-template <class _Tp, class _Alloc, bool = __has_allocator_type<_Tp>::value>
-struct __uses_allocator
-    : public integral_constant<bool,
-        is_convertible<_Alloc, typename _Tp::allocator_type>::value>
-{
-};
-
-template <class _Tp, class _Alloc>
-struct __uses_allocator<_Tp, _Alloc, false>
-    : public false_type
-{
-};
-
-template <class _Tp, class _Alloc>
-struct _LIBCPP_TYPE_VIS uses_allocator
-    : public __uses_allocator<_Tp, _Alloc>
-{
-};
-
-#ifndef _LIBCPP_HAS_NO_VARIADICS
-
-// uses-allocator construction
-
-template <class _Tp, class _Alloc, class ..._Args>
-struct __uses_alloc_ctor_imp
-{
-    static const bool __ua = uses_allocator<_Tp, _Alloc>::value;
-    static const bool __ic =
-        is_constructible<_Tp, allocator_arg_t, _Alloc, _Args...>::value;
-    static const int value = __ua ? 2 - __ic : 0;
-};
-
-template <class _Tp, class _Alloc, class ..._Args>
-struct __uses_alloc_ctor
-    : integral_constant<int, __uses_alloc_ctor_imp<_Tp, _Alloc, _Args...>::value>
-    {};
-
-#endif  // _LIBCPP_HAS_NO_VARIADICS
-
 #ifndef _LIBCPP_HAS_NO_VARIADICS
 
 // tuple_size
 
 template <class ..._Tp>
-class _LIBCPP_TYPE_VIS tuple_size<tuple<_Tp...> >
+class _LIBCPP_TYPE_VIS_ONLY tuple_size<tuple<_Tp...> >
     : public integral_constant<size_t, sizeof...(_Tp)>
 {
 };
@@ -208,7 +146,7 @@ class _LIBCPP_TYPE_VIS tuple_size<tuple<_Tp...> >
 // tuple_element
 
 template <size_t _Ip, class ..._Tp>
-class _LIBCPP_TYPE_VIS tuple_element<_Ip, tuple<_Tp...> >
+class _LIBCPP_TYPE_VIS_ONLY tuple_element<_Ip, tuple<_Tp...> >
 {
 public:
     typedef typename tuple_element<_Ip, __tuple_types<_Tp...> >::type type;
@@ -332,7 +270,7 @@ public:
     _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR_AFTER_CXX11
     __tuple_leaf(__tuple_leaf&& __t) _NOEXCEPT_(is_nothrow_move_constructible<_Hp>::value)
-        : value(_VSTD::move(__t.get()))
+        : value(_VSTD::forward<_Hp>(__t.get()))
         {}
 
     template <class _Tp>
@@ -519,13 +457,24 @@ struct __tuple_impl<__tuple_indices<_Indx...>, _Tp...>
             return *this;
         }
 
-        _LIBCPP_INLINE_VISIBILITY
-        __tuple_impl&
-        operator=(const __tuple_impl& __t) _NOEXCEPT_((__all<is_nothrow_copy_assignable<_Tp>::value...>::value))
-        {
-            __swallow(__tuple_leaf<_Indx, _Tp>::operator=(static_cast<const __tuple_leaf<_Indx, _Tp>&>(__t).get())...);
-            return *this;
-        }
+    __tuple_impl(const __tuple_impl&) = default;
+    __tuple_impl(__tuple_impl&&) = default;
+
+    _LIBCPP_INLINE_VISIBILITY
+    __tuple_impl&
+    operator=(const __tuple_impl& __t) _NOEXCEPT_((__all<is_nothrow_copy_assignable<_Tp>::value...>::value))
+    {
+        __swallow(__tuple_leaf<_Indx, _Tp>::operator=(static_cast<const __tuple_leaf<_Indx, _Tp>&>(__t).get())...);
+        return *this;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY
+    __tuple_impl&
+    operator=(__tuple_impl&& __t) _NOEXCEPT_((__all<is_nothrow_move_assignable<_Tp>::value...>::value))
+    {
+        __swallow(__tuple_leaf<_Indx, _Tp>::operator=(_VSTD::forward<_Tp>(static_cast<__tuple_leaf<_Indx, _Tp>&>(__t).get()))...);
+        return *this;
+    }
 
     _LIBCPP_INLINE_VISIBILITY
     void swap(__tuple_impl& __t)
@@ -536,7 +485,7 @@ struct __tuple_impl<__tuple_indices<_Indx...>, _Tp...>
 };
 
 template <class ..._Tp>
-class _LIBCPP_TYPE_VIS tuple
+class _LIBCPP_TYPE_VIS_ONLY tuple
 {
     typedef __tuple_impl<typename __make_tuple_indices<sizeof...(_Tp)>::type, _Tp...> base;
 
@@ -724,7 +673,7 @@ public:
 };
 
 template <>
-class _LIBCPP_TYPE_VIS tuple<>
+class _LIBCPP_TYPE_VIS_ONLY tuple<>
 {
 public:
     _LIBCPP_INLINE_VISIBILITY
@@ -810,7 +759,7 @@ struct __find_exactly_one_t_helper <_T1, _Idx, _Head, _Args...> {
     static constexpr size_t value =
         std::conditional<
             std::is_same<_T1, _Head>::value,
-            __find_exactly_one_t_checker<_T1, _Idx,   _Args...>,
+            __find_exactly_one_t_checker<_T1, _Idx,   _Args...>,
             __find_exactly_one_t_helper <_T1, _Idx+1, _Args...>
         >::type::value;
     };
@@ -864,7 +813,7 @@ struct __ignore_t
 
 namespace { const __ignore_t<unsigned char> ignore = __ignore_t<unsigned char>(); }
 
-template <class _Tp> class _LIBCPP_TYPE_VIS reference_wrapper;
+template <class _Tp> class _LIBCPP_TYPE_VIS_ONLY reference_wrapper;
 
 template <class _Tp>
 struct ___make_tuple_return
@@ -894,14 +843,6 @@ make_tuple(_Tp&&... __t)
 
 template <class... _Tp>
 inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
-tuple<_Tp&&...>
-__forward_as_tuple(_Tp&&... __t) _NOEXCEPT
-{
-    return tuple<_Tp&&...>(_VSTD::forward<_Tp>(__t)...);
-}
-
-template <class... _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
 tuple<_Tp&&...>
 forward_as_tuple(_Tp&&... __t) _NOEXCEPT
 {
@@ -1103,7 +1044,7 @@ struct __tuple_cat<tuple<_Types...>, __tuple_indices<_I0...>, __tuple_indices<_J
     typename __tuple_cat_return_ref<tuple<_Types...>&&, _Tuple0&&>::type
     operator()(tuple<_Types...> __t, _Tuple0&& __t0)
     {
-        return __forward_as_tuple(_VSTD::forward<_Types>(get<_I0>(__t))...,
+        return forward_as_tuple(_VSTD::forward<_Types>(get<_I0>(__t))...,
                                       get<_J0>(_VSTD::forward<_Tuple0>(__t0))...);
     }
 
@@ -1118,7 +1059,7 @@ struct __tuple_cat<tuple<_Types...>, __tuple_indices<_I0...>, __tuple_indices<_J
            tuple<_Types..., typename __apply_cv<_Tuple0, typename tuple_element<_J0, _T0>::type>::type&&...>,
            typename __make_tuple_indices<sizeof ...(_Types) + tuple_size<_T0>::value>::type,
            typename __make_tuple_indices<tuple_size<_T1>::value>::type>()
-                           (__forward_as_tuple(
+                           (forward_as_tuple(
                               _VSTD::forward<_Types>(get<_I0>(__t))...,
                               get<_J0>(_VSTD::forward<_Tuple0>(__t0))...
                             ),
@@ -1140,7 +1081,7 @@ tuple_cat(_Tuple0&& __t0, _Tuples&&... __tpls)
 }
 
 template <class ..._Tp, class _Alloc>
-struct _LIBCPP_TYPE_VIS uses_allocator<tuple<_Tp...>, _Alloc>
+struct _LIBCPP_TYPE_VIS_ONLY uses_allocator<tuple<_Tp...>, _Alloc>
     : true_type {};
 
 template <class _T1, class _T2>

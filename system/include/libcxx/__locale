@@ -19,11 +19,13 @@
 #include <cstdint>
 #include <cctype>
 #include <locale.h>
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 # include <support/win32/locale_win32.h>
-#elif (defined(__GLIBC__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__sun__)) || defined(__EMSCRIPTEN__)
+#elif _AIX
+# include <support/ibm/xlocale.h>
+#elif (defined(__GLIBC__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__sun__)) || defined(__EMSCRIPTEN__) || defined(__IBMCPP__)
 # include <xlocale.h>
-#endif  // _WIN32 || __GLIBC__ || __APPLE__ || __FreeBSD__ || __sun__ || __EMSCRIPTEN__
+#endif  // _WIN32 || __GLIBC__ || __APPLE__ || __FreeBSD__ || __sun__ || __EMSCRIPTEN__ || __IBMCPP__
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -175,7 +177,7 @@ use_facet(const locale& __l)
 // template <class _CharT> class collate;
 
 template <class _CharT>
-class _LIBCPP_TYPE_VIS collate
+class _LIBCPP_TYPE_VIS_ONLY collate
     : public locale::facet
 {
 public:
@@ -254,12 +256,12 @@ collate<_CharT>::do_hash(const char_type* __lo, const char_type* __hi) const
     return static_cast<long>(__h);
 }
 
-_LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_TYPE_VIS collate<char>)
-_LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_TYPE_VIS collate<wchar_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS collate<char>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS collate<wchar_t>)
 
 // template <class CharT> class collate_byname;
 
-template <class _CharT> class _LIBCPP_TYPE_VIS collate_byname;
+template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY collate_byname;
 
 template <>
 class _LIBCPP_TYPE_VIS collate_byname<char>
@@ -361,7 +363,7 @@ public:
 # else
     static const mask blank  = _CTYPE_B;
 # endif
-#elif defined(__sun__)
+#elif defined(__sun__) || defined(_AIX)
     typedef unsigned int mask;
     static const mask space  = _ISSPACE;
     static const mask print  = _ISPRINT;
@@ -392,7 +394,7 @@ public:
     _LIBCPP_ALWAYS_INLINE ctype_base() {}
 };
 
-template <class _CharT> class _LIBCPP_TYPE_VIS ctype;
+template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY ctype;
 
 template <>
 class _LIBCPP_TYPE_VIS ctype<wchar_t>
@@ -510,7 +512,7 @@ public:
     _LIBCPP_ALWAYS_INLINE
     bool is(mask __m, char_type __c) const
     {
-        return isascii(__c) ? __tab_[static_cast<int>(__c)] & __m : false;
+        return isascii(__c) ? (__tab_[static_cast<int>(__c)] & __m) !=0 : false;
     }
 
     _LIBCPP_ALWAYS_INLINE
@@ -619,7 +621,7 @@ protected:
 
 // template <class CharT> class ctype_byname;
 
-template <class _CharT> class _LIBCPP_TYPE_VIS ctype_byname;
+template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY ctype_byname;
 
 template <>
 class _LIBCPP_TYPE_VIS ctype_byname<char>
@@ -780,7 +782,7 @@ public:
 
 // template <class internT, class externT, class stateT> class codecvt;
 
-template <class _InternT, class _ExternT, class _StateT> class _LIBCPP_TYPE_VIS codecvt;
+template <class _InternT, class _ExternT, class _StateT> class _LIBCPP_TYPE_VIS_ONLY codecvt;
 
 // template <> class codecvt<char, char, mbstate_t>
 
@@ -1126,7 +1128,7 @@ protected:
 // template <class _InternT, class _ExternT, class _StateT> class codecvt_byname
 
 template <class _InternT, class _ExternT, class _StateT>
-class _LIBCPP_TYPE_VIS codecvt_byname
+class _LIBCPP_TYPE_VIS_ONLY codecvt_byname
     : public codecvt<_InternT, _ExternT, _StateT>
 {
 public:
@@ -1145,10 +1147,10 @@ codecvt_byname<_InternT, _ExternT, _StateT>::~codecvt_byname()
 {
 }
 
-_LIBCPP_EXTERN_TEMPLATE(class codecvt_byname<char, char, mbstate_t>)
-_LIBCPP_EXTERN_TEMPLATE(class codecvt_byname<wchar_t, char, mbstate_t>)
-_LIBCPP_EXTERN_TEMPLATE(class codecvt_byname<char16_t, char, mbstate_t>)
-_LIBCPP_EXTERN_TEMPLATE(class codecvt_byname<char32_t, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<char, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<wchar_t, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<char16_t, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<char32_t, char, mbstate_t>)
 
 _LIBCPP_FUNC_VIS void __throw_runtime_error(const char*);
 
@@ -1334,7 +1336,7 @@ struct __widen_from_utf8<32>
 
 // template <class charT> class numpunct
 
-template <class _CharT> class _LIBCPP_TYPE_VIS numpunct;
+template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY numpunct;
 
 template <>
 class _LIBCPP_TYPE_VIS numpunct<char>
@@ -1400,7 +1402,7 @@ protected:
 
 // template <class charT> class numpunct_byname
 
-template <class charT> class _LIBCPP_TYPE_VIS numpunct_byname;
+template <class charT> class _LIBCPP_TYPE_VIS_ONLY numpunct_byname;
 
 template <>
 class _LIBCPP_TYPE_VIS numpunct_byname<char>

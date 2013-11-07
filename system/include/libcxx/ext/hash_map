@@ -206,7 +206,11 @@ template <class Key, class T, class Hash, class Pred, class Alloc>
 #include <ext/__hash>
 
 #if __DEPRECATED
-#warning Use of the header <ext/hash_map> is deprecated.  Migrate to <unordered_map>
+#if defined(_MSC_VER) && ! defined(__clang__)
+    _LIBCPP_WARNING("Use of the header <ext/hash_map> is deprecated.  Migrate to <unordered_map>")
+#else
+#   warning Use of the header <ext/hash_map> is deprecated.  Migrate to <unordered_map>
+#endif
 #endif
 
 #pragma GCC system_header
@@ -361,7 +365,7 @@ public:
 };
 
 template <class _HashIterator>
-class _LIBCPP_TYPE_VIS __hash_map_iterator
+class _LIBCPP_TYPE_VIS_ONLY __hash_map_iterator
 {
     _HashIterator __i_;
 
@@ -404,15 +408,15 @@ public:
     bool operator!=(const __hash_map_iterator& __x, const __hash_map_iterator& __y)
         {return __x.__i_ != __y.__i_;}
 
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_map;
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_multimap;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_iterator;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_local_iterator;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_map_const_iterator;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY hash_map;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY hash_multimap;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_local_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_map_const_iterator;
 };
 
 template <class _HashIterator>
-class _LIBCPP_TYPE_VIS __hash_map_const_iterator
+class _LIBCPP_TYPE_VIS_ONLY __hash_map_const_iterator
 {
     _HashIterator __i_;
 
@@ -463,15 +467,15 @@ public:
     bool operator!=(const __hash_map_const_iterator& __x, const __hash_map_const_iterator& __y)
         {return __x.__i_ != __y.__i_;}
 
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_map;
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS hash_multimap;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_iterator;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_local_iterator;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY hash_map;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY hash_multimap;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_local_iterator;
 };
 
 template <class _Key, class _Tp, class _Hash = hash<_Key>, class _Pred = equal_to<_Key>,
           class _Alloc = allocator<pair<const _Key, _Tp> > >
-class _LIBCPP_TYPE_VIS hash_map
+class _LIBCPP_TYPE_VIS_ONLY hash_map
 {
 public:
     // types
@@ -684,7 +688,7 @@ hash_map<_Key, _Tp, _Hash, _Pred, _Alloc>::__construct_node(const key_type& __k)
     __h.get_deleter().__first_constructed = true;
     __node_traits::construct(__na, _VSTD::addressof(__h->__value_.second));
     __h.get_deleter().__second_constructed = true;
-    return _VSTD::move(__h);
+    return _VSTD::move(__h);  // explicitly moved for C++03
 }
 
 template <class _Key, class _Tp, class _Hash, class _Pred, class _Alloc>
@@ -750,7 +754,7 @@ operator!=(const hash_map<_Key, _Tp, _Hash, _Pred, _Alloc>& __x,
 
 template <class _Key, class _Tp, class _Hash = hash<_Key>, class _Pred = equal_to<_Key>,
           class _Alloc = allocator<pair<const _Key, _Tp> > >
-class _LIBCPP_TYPE_VIS hash_multimap
+class _LIBCPP_TYPE_VIS_ONLY hash_multimap
 {
 public:
     // types

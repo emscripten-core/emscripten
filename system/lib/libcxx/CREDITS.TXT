@@ -31,7 +31,7 @@ D: FreeBSD and Solaris ports, libcxxrt support, some atomics work.
 N: Marshall Clow
 E: mclow.lists@gmail.com
 E: marshall@idio.com
-D: Minor patches and bug fixes.
+D: C++14 support, patches and bug fixes.
 
 N: Bill Fisher
 E: william.w.fisher@gmail.com
@@ -76,6 +76,10 @@ N: Bjorn Reese
 E: breese@users.sourceforge.net
 D: Initial regex prototype
 
+N: Nico Rieck
+E: nico.rieck@gmail.com
+D: Windows fixes
+
 N: Jonathan Sauer
 D: Minor patches, mostly related to constexpr
 
@@ -104,6 +108,10 @@ D: Minor bug fix.
 N: Zhang Xiongpang
 E: zhangxiongpang@gmail.com
 D: Minor patches and bug fixes.
+
+N: Xing Xue
+E: xingxue@ca.ibm.com
+D: AIX port
 
 N: Zhihao Yuan
 E: lichray@gmail.com

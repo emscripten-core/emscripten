@@ -40,6 +40,7 @@ public:
         noexcept(is_nothrow_default_constructible<allocator_type>::value);
     explicit list(const allocator_type& a);
     explicit list(size_type n);
+    explicit list(size_type n, const allocator_type& a); // C++14
     list(size_type n, const value_type& value);
     list(size_type n, const value_type& value, const allocator_type& a);
     template <class Iter>
@@ -178,7 +179,7 @@ template <class T, class Alloc>
 
 #include <__undef_min_max>
 
-#ifdef _LIBCPP_DEBUG2
+#ifdef _LIBCPP_DEBUG
 #   include <__debug>
 #else
 #   define _LIBCPP_ASSERT(x, m) ((void)0)
@@ -226,12 +227,12 @@ struct __list_node
     _Tp __value_;
 };
 
-template <class _Tp, class _Alloc> class _LIBCPP_TYPE_VIS list;
+template <class _Tp, class _Alloc> class _LIBCPP_TYPE_VIS_ONLY list;
 template <class _Tp, class _Alloc> class __list_imp;
-template <class _Tp, class _VoidPtr> class _LIBCPP_TYPE_VIS __list_const_iterator;
+template <class _Tp, class _VoidPtr> class _LIBCPP_TYPE_VIS_ONLY __list_const_iterator;
 
 template <class _Tp, class _VoidPtr>
-class _LIBCPP_TYPE_VIS __list_iterator
+class _LIBCPP_TYPE_VIS_ONLY __list_iterator
 {
     typedef typename pointer_traits<_VoidPtr>::template
 #ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
@@ -364,7 +365,7 @@ public:
 };
 
 template <class _Tp, class _VoidPtr>
-class _LIBCPP_TYPE_VIS __list_const_iterator
+class _LIBCPP_TYPE_VIS_ONLY __list_const_iterator
 {
     typedef typename pointer_traits<_VoidPtr>::template
 #ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
@@ -806,7 +807,7 @@ __list_imp<_Tp, _Alloc>::swap(__list_imp& __c)
 }
 
 template <class _Tp, class _Alloc = allocator<_Tp> >
-class _LIBCPP_TYPE_VIS list
+class _LIBCPP_TYPE_VIS_ONLY list
     : private __list_imp<_Tp, _Alloc>
 {
     typedef __list_imp<_Tp, _Alloc> base;
@@ -842,13 +843,16 @@ public:
 #endif
     }
     _LIBCPP_INLINE_VISIBILITY
-    list(const allocator_type& __a) : base(__a)
+    explicit list(const allocator_type& __a) : base(__a)
     {
 #if _LIBCPP_DEBUG_LEVEL >= 2
         __get_db()->__insert_c(this);
 #endif
     }
-    list(size_type __n);
+    explicit list(size_type __n);
+#if _LIBCPP_STD_VER > 11
+    explicit list(size_type __n, const allocator_type& __a);
+#endif
     list(size_type __n, const value_type& __x);
     list(size_type __n, const value_type& __x, const allocator_type& __a);
     template <class _InpIter>
@@ -1099,6 +1103,22 @@ list<_Tp, _Alloc>::list(size_type __n)
         push_back(value_type());
 #endif
 }
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp, class _Alloc>
+list<_Tp, _Alloc>::list(size_type __n, const allocator_type& __a) : base(__a)
+{
+#if _LIBCPP_DEBUG_LEVEL >= 2
+    __get_db()->__insert_c(this);
+#endif
+    for (; __n > 0; --__n)
+#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+        emplace_back();
+#else
+        push_back(value_type());
+#endif
+}
+#endif
 
 template <class _Tp, class _Alloc>
 list<_Tp, _Alloc>::list(size_type __n, const value_type& __x)

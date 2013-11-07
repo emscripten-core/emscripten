@@ -41,6 +41,7 @@ public:
     deque() noexcept(is_nothrow_default_constructible<allocator_type>::value);
     explicit deque(const allocator_type& a);
     explicit deque(size_type n);
+    explicit deque(size_type n, const allocator_type& a); // C++14
     deque(size_type n, const value_type& v);
     deque(size_type n, const value_type& v, const allocator_type& a);
     template <class InputIterator>
@@ -170,7 +171,7 @@ template <class _Tp, class _Allocator> class __deque_base;
 
 template <class _ValueType, class _Pointer, class _Reference, class _MapPointer,
           class _DiffType, _DiffType _BlockSize>
-class _LIBCPP_TYPE_VIS __deque_iterator;
+class _LIBCPP_TYPE_VIS_ONLY __deque_iterator;
 
 template <class _RAIter,
           class _V2, class _P2, class _R2, class _M2, class _D2, _D2 _B2>
@@ -262,7 +263,7 @@ move_backward(__deque_iterator<_V1, _P1, _R1, _M1, _D1, _B1> __f,
 
 template <class _ValueType, class _Pointer, class _Reference, class _MapPointer,
           class _DiffType, _DiffType _BlockSize>
-class _LIBCPP_TYPE_VIS __deque_iterator
+class _LIBCPP_TYPE_VIS_ONLY __deque_iterator
 {
     typedef _MapPointer __map_iterator;
 public:
@@ -414,9 +415,9 @@ private:
         : __m_iter_(__m), __ptr_(__p) {}
 
     template <class _Tp, class _Ap> friend class __deque_base;
-    template <class _Tp, class _Ap> friend class _LIBCPP_TYPE_VIS deque;
+    template <class _Tp, class _Ap> friend class _LIBCPP_TYPE_VIS_ONLY deque;
     template <class _Vp, class _Pp, class _Rp, class _MP, class _Dp, _Dp>
-        friend class _LIBCPP_TYPE_VIS __deque_iterator;
+        friend class _LIBCPP_TYPE_VIS_ONLY __deque_iterator;
 
     template <class _RAIter,
               class _V2, class _P2, class _R2, class _M2, class _D2, _D2 _B2>
@@ -1178,7 +1179,7 @@ __deque_base<_Tp, _Allocator>::clear() _NOEXCEPT
 }
 
 template <class _Tp, class _Allocator = allocator<_Tp> >
-class _LIBCPP_TYPE_VIS deque
+class _LIBCPP_TYPE_VIS_ONLY deque
     : private __deque_base<_Tp, _Allocator>
 {
 public:
@@ -1209,6 +1210,9 @@ public:
         {}
     _LIBCPP_INLINE_VISIBILITY deque(const allocator_type& __a) : __base(__a) {}
     explicit deque(size_type __n);
+#if _LIBCPP_STD_VER > 11
+    explicit deque(size_type __n, const _Allocator& __a);
+#endif
     deque(size_type __n, const value_type& __v);
     deque(size_type __n, const value_type& __v, const allocator_type& __a);
     template <class _InputIter>
@@ -1430,6 +1434,16 @@ deque<_Tp, _Allocator>::deque(size_type __n)
     if (__n > 0)
         __append(__n);
 }
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp, class _Allocator>
+deque<_Tp, _Allocator>::deque(size_type __n, const _Allocator& __a)
+    : __base(__a)
+{
+    if (__n > 0)
+        __append(__n);
+}
+#endif
 
 template <class _Tp, class _Allocator>
 deque<_Tp, _Allocator>::deque(size_type __n, const value_type& __v)
@@ -2797,7 +2811,7 @@ deque<_Tp, _Allocator>::clear() _NOEXCEPT
 }
 
 template <class _Tp, class _Allocator>
-_LIBCPP_INLINE_VISIBILITY inline
+inline _LIBCPP_INLINE_VISIBILITY
 bool
 operator==(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 {
@@ -2806,7 +2820,7 @@ operator==(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 }
 
 template <class _Tp, class _Allocator>
-_LIBCPP_INLINE_VISIBILITY inline
+inline _LIBCPP_INLINE_VISIBILITY
 bool
 operator!=(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 {
@@ -2814,7 +2828,7 @@ operator!=(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 }
 
 template <class _Tp, class _Allocator>
-_LIBCPP_INLINE_VISIBILITY inline
+inline _LIBCPP_INLINE_VISIBILITY
 bool
 operator< (const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 {
@@ -2822,7 +2836,7 @@ operator< (const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 }
 
 template <class _Tp, class _Allocator>
-_LIBCPP_INLINE_VISIBILITY inline
+inline _LIBCPP_INLINE_VISIBILITY
 bool
 operator> (const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 {
@@ -2830,7 +2844,7 @@ operator> (const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 }
 
 template <class _Tp, class _Allocator>
-_LIBCPP_INLINE_VISIBILITY inline
+inline _LIBCPP_INLINE_VISIBILITY
 bool
 operator>=(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 {
@@ -2838,7 +2852,7 @@ operator>=(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 }
 
 template <class _Tp, class _Allocator>
-_LIBCPP_INLINE_VISIBILITY inline
+inline _LIBCPP_INLINE_VISIBILITY
 bool
 operator<=(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 {
@@ -2846,7 +2860,7 @@ operator<=(const deque<_Tp, _Allocator>& __x, const deque<_Tp, _Allocator>& __y)
 }
 
 template <class _Tp, class _Allocator>
-_LIBCPP_INLINE_VISIBILITY inline
+inline _LIBCPP_INLINE_VISIBILITY
 void
 swap(deque<_Tp, _Allocator>& __x, deque<_Tp, _Allocator>& __y)
     _NOEXCEPT_(_NOEXCEPT_(__x.swap(__y)))

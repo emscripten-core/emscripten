@@ -74,7 +74,7 @@ int fputc(int c, FILE* stream);
 int fputs(const char* restrict s, FILE* restrict stream);
 int getc(FILE* stream);
 int getchar(void);
-char* gets(char* s);
+char* gets(char* s);  // removed in C++14
 int putc(int c, FILE* stream);
 int putchar(int c);
 int puts(const char* s);
@@ -101,6 +101,11 @@ void perror(const char* s);
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
+
+// snprintf
+#if defined(_LIBCPP_MSVCRT)
+#include "support/win32/support.h"
 #endif
 
 #ifdef getc
@@ -153,7 +158,9 @@ using ::fputc;
 using ::fputs;
 using ::getc;
 using ::getchar;
+#if _LIBCPP_STD_VER <= 11
 using ::gets;
+#endif
 using ::putc;
 using ::putchar;
 using ::puts;
