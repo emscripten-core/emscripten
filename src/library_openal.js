@@ -8,13 +8,13 @@ var LibraryOpenAL = {
     QUEUE_INTERVAL: 25,
     QUEUE_LOOKAHEAD: 100,
 
-    updateSources: function(context) {
+    updateSources: function updateSources(context) {
       for (var i = 0; i < context.src.length; i++) {
         AL.updateSource(context.src[i]);
       }
     },
 
-    updateSource: function(src) {
+    updateSource: function updateSource(src) {
 #if OPENAL_DEBUG
       var idx = AL.currentContext.src.indexOf(src);
 #endif
@@ -65,7 +65,7 @@ var LibraryOpenAL = {
       }
     },
 
-    setSourceState: function(src, state) {
+    setSourceState: function setSourceState(src, state) {
 #if OPENAL_DEBUG
       var idx = AL.currentContext.src.indexOf(src);
 #endif
@@ -119,7 +119,7 @@ var LibraryOpenAL = {
       }
     },
 
-    stopSourceQueue: function(src) {
+    stopSourceQueue: function stopSourceQueue(src) {
       for (var i = 0; i < src.queue.length; i++) {
         var entry = src.queue[i];
         if (entry.src) {
