@@ -75,6 +75,7 @@ var LibrarySDL = {
     textInput: false,
 
     startTime: null,
+    initFlags: 0, // The flags passed to SDL_Init
     buttonState: 0,
     modState: 0,
     DOMButtons: [0, 0, 0],
@@ -639,6 +640,21 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_ResizeEvent.h, 'event.h', 'i32') }}};
           break;
         }
+        case 'joystick_button_up': case 'joystick_button_down': {
+          var state = event.type === 'joystick_button_up' ? 0 : 1;
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.which, 'event.index', 'i8') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.button, 'event.button', 'i8') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.state, 'state', 'i8') }}};
+          break;
+        }
+        case 'joystick_axis_motion': {
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'SDL.joystickAxisValueConversion(event.value)', 'i32') }}};
+          break;
+        }
         default: throw 'Unhandled SDL event: ' + event.type;
       }
     },
@@ -695,7 +711,109 @@ var LibrarySDL = {
       for (var i = 0; i < num; i++) {
         console.log('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
-    }
+    },
+
+    // Joystick helper methods and state
+
+    joystickEventState: 0,
+    lastJoystickState: {}, // Map from SDL_Joystick* to their last known state. Required to determine if a change has occurred.
+    // Maps Joystick names to pointers. Allows us to avoid reallocating memory for
+    // joystick names each time this function is called.
+    joystickNamePool: {},
+    recordJoystickState: function(joystick, state) {
+      // Standardize button state.
+      var buttons = new Array(state.buttons.length);
+      for (var i = 0; i < state.buttons.length; i++) {
+        buttons[i] = SDL.getJoystickButtonState(state.buttons[i]);
+      }
+
+      SDL.lastJoystickState[joystick] = {
+        buttons: buttons,
+        axes: state.axes.slice(0),
+        timestamp: state.timestamp,
+        index: state.index,
+        id: state.id
+      };
+    },
+    // Retrieves the button state of the given gamepad button.
+    // Abstracts away implementation differences.
+    // Returns 'true' if pressed, 'false' otherwise.
+    getJoystickButtonState: function(button) {
+      if (typeof button === 'object') {
+        // Current gamepad API editor's draft (Firefox Nightly)
+        // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
+        return button.pressed;
+      } else {
+        // Current gamepad API working draft (Firefox / Chrome Stable)
+        // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
+        return button > 0;
+      }
+    },
+    // Queries for and inserts controller events into the SDL queue.
+    queryJoysticks: function() {
+      for (var joystick in SDL.lastJoystickState) {
+        var state = SDL.getGamepad(joystick - 1);
+        var prevState = SDL.lastJoystickState[joystick];
+        // Check only if the timestamp has differed.
+        // NOTE: Timestamp is not available in Firefox.
+        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
+          var i;
+          for (i = 0; i < state.buttons.length; i++) {
+            var buttonState = SDL.getJoystickButtonState(state.buttons[i]);
+            // NOTE: The previous state already has a boolean representation of
+            //       its button, so no need to standardize its button state here.
+            if (buttonState !== prevState.buttons[i]) {
+              // Insert button-press event.
+              SDL.events.push({
+                type: buttonState ? 'joystick_button_down' : 'joystick_button_up',
+                joystick: joystick,
+                index: joystick - 1,
+                button: i
+              });
+            }
+          }
+          for (i = 0; i < state.axes.length; i++) {
+            if (state.axes[i] !== prevState.axes[i]) {
+              // Insert axes-change event.
+              SDL.events.push({
+                type: 'joystick_axis_motion',
+                joystick: joystick,
+                index: joystick - 1,
+                axis: i,
+                value: state.axes[i]
+              });
+            }
+          }
+
+          SDL.recordJoystickState(joystick, state);
+        }
+      }
+    },
+    // Converts the double-based browser axis value [-1, 1] into SDL's 16-bit
+    // value [-32768, 32767]
+    joystickAxisValueConversion: function(value) {
+      // Ensures that 0 is 0, 1 is 32767, and -1 is 32768.
+      return Math.ceil(((value+1) * 32767.5) - 32768);
+    },
+
+    getGamepads: function() {
+      var fcn = navigator.getGamepads || navigator.webkitGamepads || navigator.mozGamepads || navigator.gamepads || navigator.webkitGetGamepads;
+      if (fcn !== undefined) {
+        // The function must be applied on the navigator object.
+        return fcn.apply(navigator);
+      } else {
+        return [];
+      }
+    },
+
+    // Helper function: Returns the gamepad if available, or null if not.
+    getGamepad: function(deviceIndex) {
+      var gamepads = SDL.getGamepads();
+      if (gamepads.length > deviceIndex && deviceIndex >= 0) {
+        return gamepads[deviceIndex];
+      }
+      return null;
+    },
   },
 
   SDL_Linked_Version: function() {
@@ -708,8 +826,10 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init: function(what) {
+  SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
+    SDL.initFlags = initFlags;
+
     // capture all key events. we just keep down and up, but also capture press to prevent default actions
     if (!Module['doNotCaptureKeyboard']) {
       document.addEventListener("keydown", SDL.receiveEvent);
@@ -718,6 +838,15 @@ var LibrarySDL = {
       window.addEventListener("blur", SDL.receiveEvent);
       document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
+
+    if (initFlags & 0x200) {
+      // SDL_INIT_JOYSTICK
+      // Firefox will not give us Joystick data unless we register this NOP
+      // callback.
+      // https://bugzilla.mozilla.org/show_bug.cgi?id=936104
+      addEventListener("gamepadconnected", function() {});
+    }
+
     window.addEventListener("unload", SDL.receiveEvent);
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
     _memset(SDL.keyboardState, 0, 0x10000);
@@ -730,6 +859,12 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
     SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
     SDL.DOMEventToSDLEvent['resize'] = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
+    // These are not technically DOM events; the HTML gamepad API is poll-based.
+    // However, we define them here, as the rest of the SDL code assumes that
+    // all SDL events originate as DOM events.
+    SDL.DOMEventToSDLEvent['joystick_axis_motion'] = 0x600 /* SDL_JOYAXISMOTION */;
+    SDL.DOMEventToSDLEvent['joystick_button_down'] = 0x603 /* SDL_JOYBUTTONDOWN */;
+    SDL.DOMEventToSDLEvent['joystick_button_up'] = 0x604 /* SDL_JOYBUTTONUP */;
     return 0; // success
   },
 
@@ -1189,6 +1324,11 @@ var LibrarySDL = {
   },
 
   SDL_PollEvent: function(ptr) {
+    if (SDL.initFlags & 0x200 && SDL.joystickEventState) {
+      // If SDL_INIT_JOYSTICK was supplied AND the joystick system is configured
+      // to automatically query for events, query for joystick events.
+      SDL.queryJoysticks();
+    }
     if (SDL.events.length === 0) return 0;
     if (ptr) {
       SDL.makeCEvent(SDL.events.shift(), ptr);
@@ -2375,37 +2515,103 @@ var LibrarySDL = {
 
   // Joysticks
 
-  SDL_NumJoysticks: function() { return 0; },
+  SDL_NumJoysticks: function() {
+    var count = 0;
+    var gamepads = SDL.getGamepads();
+    // The length is not the number of gamepads; check which ones are defined.
+    for (var i = 0; i < gamepads.length; i++) {
+      if (gamepads[i] !== undefined) count++;
+    }
+    return count;
+  },
 
-  SDL_JoystickName: function(deviceIndex) { return 0; },
+  SDL_JoystickName: function(deviceIndex) {
+    var gamepad = SDL.getGamepad(deviceIndex);
+    if (gamepad) {
+      var name = gamepad.id;
+      if (SDL.joystickNamePool.hasOwnProperty(name)) {
+        return SDL.joystickNamePool[name];
+      }
+      return SDL.joystickNamePool[name] = allocate(intArrayFromString(name), 'i8', ALLOC_NORMAL);
+    }
+    return 0;
+  },
 
-  SDL_JoystickOpen: function(deviceIndex) { return 0; },
+  SDL_JoystickOpen: function(deviceIndex) {
+    var gamepad = SDL.getGamepad(deviceIndex);
+    if (gamepad) {
+      // Use this as a unique 'pointer' for this joystick.
+      var joystick = deviceIndex+1;
+      SDL.recordJoystickState(joystick, gamepad);
+      return joystick;
+    }
+    return 0;
+  },
 
-  SDL_JoystickOpened: function(deviceIndex) { return 0; },
+  SDL_JoystickOpened: function(deviceIndex) {
+    return SDL.lastJoystickState.hasOwnProperty(deviceIndex+1) ? 1 : 0;
+  },
 
-  SDL_JoystickIndex: function(joystick) { return 0; },
+  SDL_JoystickIndex: function(joystick) {
+    // joystick pointers are simply the deviceIndex+1.
+    return joystick - 1;
+  },
 
-  SDL_JoystickNumAxes: function(joystick) { return 0; },
+  SDL_JoystickNumAxes: function(joystick) {
+    var gamepad = SDL.getGamepad(joystick - 1);
+    if (gamepad) {
+      return gamepad.axes.length;
+    }
+    return 0;
+  },
 
   SDL_JoystickNumBalls: function(joystick) { return 0; },
 
   SDL_JoystickNumHats: function(joystick) { return 0; },
 
-  SDL_JoystickNumButtons: function(joystick) { return 0; },
+  SDL_JoystickNumButtons: function(joystick) {
+    var gamepad = SDL.getGamepad(joystick - 1);
+    if (gamepad) {
+      return gamepad.buttons.length;
+    }
+    return 0;
+  },
 
-  SDL_JoystickUpdate: function() {},
+  SDL_JoystickUpdate: function() {
+    SDL.queryJoysticks();
+  },
 
-  SDL_JoystickEventState: function(state) { return 0; },
+  SDL_JoystickEventState: function(state) {
+    if (state < 0) {
+      // SDL_QUERY: Return current state.
+      return SDL.joystickEventState;
+    }
+    return SDL.joystickEventState = state;
+  },
 
-  SDL_JoystickGetAxis: function(joystick, axis) { return 0; },
+  SDL_JoystickGetAxis: function(joystick, axis) {
+    var gamepad = SDL.getGamepad(joystick - 1);
+    if (gamepad && gamepad.axes.length > axis) {
+      return SDL.joystickAxisValueConversion(gamepad.axes[axis]);
+    }
+    return 0;
+  },
 
   SDL_JoystickGetHat: function(joystick, hat) { return 0; },
 
   SDL_JoystickGetBall: function(joystick, ball, dxptr, dyptr) { return -1; },
 
-  SDL_JoystickGetButton: function(joystick, button) { return 0; },
+  SDL_JoystickGetButton: function(joystick, button) {
+    var gamepad = SDL.getGamepad(joystick - 1);
+    if (gamepad && gamepad.buttons.length > button) {
+      return SDL.getJoystickButtonState(gamepad.buttons[button]) ? 1 : 0;
+    }
+    return 0;
+  },
 
-  SDL_JoystickClose: function(joystick) {},
+  SDL_JoystickClose: function(joystick) {
+    delete SDL.lastJoystickState[joystick];
+  },
 
   // Misc
 
