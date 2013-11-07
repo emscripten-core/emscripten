@@ -656,7 +656,6 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'value', 'i32') }}};
           break;
         }
-        c
         default: throw 'Unhandled SDL event: ' + event.type;
       }
     },
