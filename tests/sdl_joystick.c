@@ -79,7 +79,7 @@ void main_2(void* arg) {
   // Enable automatic updates.
   SDL_JoystickEventState(SDL_ENABLE);
   emscripten_run_script("window.simulateGamepadButtonUp(0, 1)");
-  assertJoystickEvent(0, SDL_JOYBUTTONDOWN, 1, SDL_RELEASED);
+  assertJoystickEvent(0, SDL_JOYBUTTONUP, 1, SDL_RELEASED);
   // No button change: Should not result in a new event.
   emscripten_run_script("window.simulateGamepadButtonUp(0, 1)");
   assertNoJoystickEvent();
@@ -88,8 +88,8 @@ void main_2(void* arg) {
   assertNoJoystickEvent();
 
   // Joystick wiggling
-  emscripten_run_script("window.simulateAxisMotion(0, 1, 1)");
-  assertJoystickEvent(0, SDL_JOYAXISMOTION, 1, 32767);
+  emscripten_run_script("window.simulateAxisMotion(0, 0, 1)");
+  assertJoystickEvent(0, SDL_JOYAXISMOTION, 0, 32767);
   emscripten_run_script("window.simulateAxisMotion(0, 0, 0)");
   assertJoystickEvent(0, SDL_JOYAXISMOTION, 0, 0);
   emscripten_run_script("window.simulateAxisMotion(0, 1, -1)");
@@ -98,10 +98,10 @@ void main_2(void* arg) {
   // No joystick change: Should not result in a new event.
   assertNoJoystickEvent();
   // Joystick 1 is not opened; should not result in a new event.
-  assertJoystickEvent(1, SDL_JOYAXISMOTION, 1, -32768);
+  emscripten_run_script("window.simulateAxisMotion(1, 1, -1)");
   assertNoJoystickEvent();
 
-  SDL_JoystickClose(0);
+  SDL_JoystickClose(pad1);
   assert(!SDL_JoystickOpened(0));
 
   // Joystick 0 is closed; we should not process any new gamepad events from it.

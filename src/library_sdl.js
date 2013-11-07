@@ -653,10 +653,7 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, '1536', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
-          // Need to translate value (a DOUBLE from [-1, 1]) to a 16-bit int
-          // (range: -32768 to 32767)
-          var value = Math.ceil(event.value * 32767);
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'value', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'SDL.joystickAxisValueConversion(event.value)', 'i32') }}};
           break;
         }
         default: throw 'Unhandled SDL event: ' + event.type;
@@ -768,6 +765,12 @@ var LibrarySDL = {
           SDL.recordJoystickState(joystick, state);
         }
       }
+    },
+    // Converts the double-based browser axis value [-1, 1] into SDL's 16-bit
+    // value [-32768, 32767]
+    joystickAxisValueConversion: function(value) {
+      // Ensures that 0 is 0, 1 is 32767, and -1 is 32768.
+      return Math.ceil(((value+1) * 32767.5) - 32768)
     },
 
     getGamepads: function() {
@@ -2551,9 +2554,7 @@ var LibrarySDL = {
   SDL_JoystickGetAxis: function(joystick, axis) {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad && gamepad.axes.length > axis)
-      // Need to translate value (a DOUBLE from [-1, 1]) to a 16-bit int
-      // (range: -32768 to 32767)
-      return Math.ceil(gamepad.axes[axis] * 32767);
+      return SDL.joystickAxisValueConversion(gamepad.axes[axis]);
     return 0;
   },
 
