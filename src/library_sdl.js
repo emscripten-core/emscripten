@@ -771,7 +771,7 @@ var LibrarySDL = {
     },
 
     getGamepads: function() {
-      var fcn = navigator.webkitGamepads || navigator.mozGamepads || navigator.gamepads || navigator.webkitGetGamepads;
+      var fcn = navigator.getGamepads || navigator.webkitGamepads || navigator.mozGamepads || navigator.gamepads || navigator.webkitGetGamepads;
       if (fcn !== undefined) {
         // The function must be applied on the navigator object.
         return fcn.apply(navigator);

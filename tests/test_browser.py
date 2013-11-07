@@ -874,6 +874,42 @@ keydown(100);keyup(100); // trigger the end
   def test_glut_wheelevents(self):
     self.btest('glut_wheelevents.c', '1')
 
+  def test_sdl_joystick(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      var gamepads = [];
+      // Spoof this function.
+      navigator['getGamepads'] = function() {
+        return gamepads;
+      };
+      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+        var index = gamepads.length;
+        gamepads.push({
+          axes: new Array(numAxes),
+          buttons: new Array(numButtons),
+          id: id,
+          index: index,
+          timestamp: 0
+        });
+      };
+      window['simulateGamepadButtonDown'] = function (index, button) {
+        gamepads[index].buttons[button] = 1;
+        gamepads[index].timestamp++;
+      };
+      window['simulateGamepadButtonUp'] = function (index, button) {
+        gamepads[index].buttons[button] = 0;
+        gamepads[index].timestamp++;
+      };
+      window['simulateAxisMotion'] = function (index, axis, value) {
+        gamepads[index].axes[axis] = value;
+        gamepads[index].timestamp++;
+      };
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl_joystick.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_joystick.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+
   def test_webgl_context_attributes(self):
     # Javascript code to check the attributes support we want to test in the WebGL implementation 
     # (request the attribute, create a context and check its value afterwards in the context attributes).
