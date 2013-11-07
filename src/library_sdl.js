@@ -722,13 +722,32 @@ var LibrarySDL = {
     // joystick names each time this function is called.
     joystickNamePool: {},
     recordJoystickState: function(joystick, state) {
+      // Standardize button state.
+      var buttons = new Array(state.buttons.length);
+      for (var i = 0; i < state.buttons.length; i++)
+        buttons[i] = SDL.getJoystickButtonState(state.buttons[i]);
+
       SDL.lastJoystickState[joystick] = {
-        buttons: state.buttons.slice(0),
+        buttons: buttons,
         axes: state.axes.slice(0),
         timestamp: state.timestamp,
         index: state.index,
         id: state.id
       };
+    },
+    // Retrieves the button state of the given gamepad button.
+    // Abstracts away implementation differences.
+    // Returns 'true' if pressed, 'false' otherwise.
+    getJoystickButtonState: function(button) {
+      if (typeof button === 'object') {
+        // Latest Firefox builds: Button is a value with 'pressed' and
+        // 'value' attributes.
+        return button.pressed;
+      } else {
+        // Older Firefox / Chrome: Button is a number indicating whether
+        // or not it is pressed.
+        return button > 0;
+      }
     },
     // Queries for and inserts controller events into the SDL queue.
     queryJoysticks: function() {
@@ -740,10 +759,13 @@ var LibrarySDL = {
         if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
-            if (state.buttons[i] !== prevState.buttons[i]) {
+            var buttonState = SDL.getJoystickButtonState(state.buttons[i]);
+            // NOTE: The previous state already has a boolean representation of
+            //       its button, so no need to standardize its button state here.
+            if (buttonState !== prevState.buttons[i]) {
               // Insert button-press event.
               SDL.events.push({
-                type: state.buttons[i] === 0 ? 'joystick_button_up' : 'joystick_button_down',
+                type: buttonState ? 'joystick_button_down' : 'joystick_button_up',
                 joystick: joystick,
                 index: joystick - 1,
                 button: i
