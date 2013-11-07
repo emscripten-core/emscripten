@@ -965,6 +965,21 @@
                 "type", 
                 "w", 
                 "h"
+            ],
+            "SDL_JoyButtonEvent": [
+                "type", 
+                "which", 
+                "button", 
+                "state", 
+                "padding1"
+            ],
+            "SDL_JoyAxisEvent": [
+                "type", 
+                "which", 
+                "axis", 
+                "padding1", 
+                "padding2", 
+                "value"
             ]
         }
     },
