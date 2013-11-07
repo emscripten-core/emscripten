@@ -653,6 +653,9 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, '7', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
+          // Need to translate value (a DOUBLE from [-1, 1]) to a 16-bit int
+          // (range: -32768 to 32767)
+          var value = Math.ceil(event.value * 32767);
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'value', 'i32') }}};
           break;
         }
