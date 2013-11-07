@@ -65,6 +65,7 @@ void main_2(void* arg) {
   assert(!SDL_JoystickOpened(1));
   SDL_Joystick* pad1 = SDL_JoystickOpen(0);
   assert(SDL_JoystickOpened(0));
+  assert(SDL_JoystickIndex(pad1) == 0);
   assert(strncmp(SDL_JoystickName(0), "Pad Thai", 9) == 0);
   assert(strncmp(SDL_JoystickName(1), "Pad Kee Mao", 12) == 0);
   assert(SDL_JoystickNumAxes(pad1) == 4);
@@ -76,10 +77,13 @@ void main_2(void* arg) {
   assertNoJoystickEvent();
   SDL_JoystickUpdate();
   assertJoystickEvent(0, SDL_JOYBUTTONDOWN, 1, SDL_PRESSED);
+  assert(SDL_JoystickGetButton(pad1, 1) == 1);
   // Enable automatic updates.
   SDL_JoystickEventState(SDL_ENABLE);
+  assert(SDL_JoystickEventState(SDL_QUERY) == SDL_ENABLE);
   emscripten_run_script("window.simulateGamepadButtonUp(0, 1)");
   assertJoystickEvent(0, SDL_JOYBUTTONUP, 1, SDL_RELEASED);
+  assert(SDL_JoystickGetButton(pad1, 1) == 0);
   // No button change: Should not result in a new event.
   emscripten_run_script("window.simulateGamepadButtonUp(0, 1)");
   assertNoJoystickEvent();
@@ -90,10 +94,13 @@ void main_2(void* arg) {
   // Joystick wiggling
   emscripten_run_script("window.simulateAxisMotion(0, 0, 1)");
   assertJoystickEvent(0, SDL_JOYAXISMOTION, 0, 32767);
+  assert(SDL_JoystickGetAxis(pad1, 0) == 32767);
   emscripten_run_script("window.simulateAxisMotion(0, 0, 0)");
   assertJoystickEvent(0, SDL_JOYAXISMOTION, 0, 0);
+  assert(SDL_JoystickGetAxis(pad1, 0) == 0);
   emscripten_run_script("window.simulateAxisMotion(0, 1, -1)");
   assertJoystickEvent(0, SDL_JOYAXISMOTION, 1, -32768);
+  assert(SDL_JoystickGetAxis(pad1, 1) == -32768);
   emscripten_run_script("window.simulateAxisMotion(0, 1, -1)");
   // No joystick change: Should not result in a new event.
   assertNoJoystickEvent();
@@ -107,5 +114,8 @@ void main_2(void* arg) {
   // Joystick 0 is closed; we should not process any new gamepad events from it.
   emscripten_run_script("window.simulateGamepadButtonDown(0, 1)");
   assertNoJoystickEvent();
+
+  // End test.
+  result = 2;
 }
 

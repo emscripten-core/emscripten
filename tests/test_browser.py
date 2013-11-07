@@ -910,7 +910,7 @@ keydown(100);keyup(100); // trigger the end
     open(os.path.join(self.get_dir(), 'sdl_joystick.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_joystick.c')).read()))
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
+    self.run_browser('page.html', '', '/report_result?2')
 
 
   def test_webgl_context_attributes(self):
