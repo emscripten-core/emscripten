@@ -890,6 +890,9 @@ keydown(100);keyup(100); // trigger the end
           index: index,
           timestamp: 0
         });
+        var i;
+        for (i = 0; i < numAxes; i++) gamepads[index].axes[i] = 0;
+        for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = 0;
       };
       window['simulateGamepadButtonDown'] = function (index, button) {
         gamepads[index].buttons[button] = 1;
