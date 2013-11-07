@@ -2536,27 +2536,24 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_JoystickUpdate: function() {},
+  SDL_JoystickUpdate: function() {
+    SDL.queryJoysticks();
+  },
 
   SDL_JoystickEventState: function(state) {
     if (state < 0) {
       // SDL_QUERY: Return current state.
       return SDL.joystickEventState;
     }
-    SDL.joystickEventState = state;
-    if (state === 1) {
-      // SDL_ENABLE
-      // Automatically update joystick state.
-    } else {
-      // Stop updating joystick state.
-    }
-    return state;
+    return SDL.joystickEventState = state;
   },
 
   SDL_JoystickGetAxis: function(joystick, axis) {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad && gamepad.axes.length > axis)
-      return gamepad.axes[axis];
+      // Need to translate value (a DOUBLE from [-1, 1]) to a 16-bit int
+      // (range: -32768 to 32767)
+      return Math.ceil(gamepad.axes[axis] * 32767);
     return 0;
   },
 
