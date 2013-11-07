@@ -149,7 +149,7 @@ ios_base::getloc() const
 }
 
 // xalloc
-#if __has_feature(cxx_atomic)
+#if __has_feature(cxx_atomic) && !defined(__EMSCRIPTEN__)
 atomic<int> ios_base::__xindex_ = ATOMIC_VAR_INIT(0);
 #else
 int ios_base::__xindex_ = 0;

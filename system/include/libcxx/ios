@@ -367,7 +367,7 @@ private:
     int*            __index_;
     size_t          __event_size_;
     size_t          __event_cap_;
-#if __has_feature(cxx_atomic)
+#if __has_feature(cxx_atomic) && !defined(__EMSCRIPTEN__)
     static atomic<int> __xindex_;
 #else
     static int      __xindex_;
