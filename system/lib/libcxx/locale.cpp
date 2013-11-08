@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#define _LIBCPP_EXTERN_TEMPLATE(...) extern template __VA_ARGS__;
+
 // On Solaris, we need to define something to make the C99 parts of localeconv
 // visible.
 #ifdef __sun__
@@ -26,7 +28,7 @@
 #include "cstring"
 #include "cwctype"
 #include "__sso_allocator"
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include <support/win32/locale_win32.h>
 #else // _LIBCPP_MSVCRT
 #include <langinfo.h>
@@ -36,7 +38,9 @@
 
 // On Linux, wint_t and wchar_t have different signed-ness, and this causes
 // lots of noise in the build log, but no bugs that I know of. 
+#if defined(__clang__)
 #pragma clang diagnostic ignored "-Wsign-conversion"
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -107,6 +111,11 @@ countof(const T * const begin, const T * const end)
 
 }
 
+#if defined(_AIX)
+// Set priority to INT_MIN + 256 + 150
+# pragma priority ( -2147483242 )
+#endif
+
 const locale::category locale::none;
 const locale::category locale::collate;
 const locale::category locale::ctype;
@@ -116,14 +125,23 @@ const locale::category locale::time;
 const locale::category locale::messages;
 const locale::category locale::all;
 
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
+#endif
 
 class _LIBCPP_HIDDEN locale::__imp
     : public facet
 {
     enum {N = 28};
+#if defined(_LIBCPP_MSVC)
+// FIXME: MSVC doesn't support aligned parameters by value.
+// I can't get the __sso_allocator to work here
+// for MSVC I think for this reason.
+    vector<facet*> facets_;
+#else
     vector<facet*, __sso_allocator<facet*, N> > facets_;
+#endif
     string         name_;
 public:
     explicit __imp(size_t refs = 0);
@@ -147,7 +165,9 @@ private:
     template <class F> void install_from(const __imp& other);
 };
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
 
 locale::__imp::__imp(size_t refs)
     : facet(refs),
@@ -757,7 +777,7 @@ ctype<wchar_t>::~ctype()
 bool
 ctype<wchar_t>::do_is(mask m, char_type c) const
 {
-    return isascii(c) ? ctype<char>::classic_table()[c] & m : false;
+    return isascii(c) ? (ctype<char>::classic_table()[c] & m) != 0 : false;
 }
 
 const wchar_t*
@@ -1009,12 +1029,14 @@ ctype<char>::classic_table()  _NOEXCEPT
     return __cloc()->__ctype_b;
 #elif __sun__
     return __ctype_mask;
-#elif defined(_LIBCPP_MSVCRT)
+#elif defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
     return _ctype+1; // internal ctype mask table defined in msvcrt.dll
 // This is assumed to be safe, which is a nonsense assumption because we're
 // going to end up dereferencing it later...
 #elif defined(__EMSCRIPTEN__)
     return *__ctype_b_loc();
+#elif defined(_AIX)
+    return (const unsigned long *)__lc_ctype_ptr->obj->mask;
 #else
     // Platform not supported: abort so the person doing the port knows what to
     // fix
@@ -4350,7 +4372,7 @@ __num_put_base::__format_float(char* __fmtp, const char* __len,
     if (__flags & ios_base::showpoint)
         *__fmtp++ = '#';
     ios_base::fmtflags floatfield = __flags & ios_base::floatfield;
-    bool uppercase = __flags & ios_base::uppercase;
+    bool uppercase = (__flags & ios_base::uppercase) != 0;
     if (floatfield == (ios_base::fixed | ios_base::scientific))
         specify_precision = false;
     else
@@ -4681,9 +4703,12 @@ __time_get::~__time_get()
 {
     freelocale(__loc_);
 }
-
+#if defined(__clang__)
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#endif
+#if defined(__GNUG__)
 #pragma GCC   diagnostic ignored "-Wmissing-field-initializers"
+#endif
 
 template <>
 string
@@ -4829,7 +4854,9 @@ __time_get_storage<char>::__analyze(char fmt, const ctype<char>& ct)
     return result;
 }
 
+#if defined(__clang__)
 #pragma clang diagnostic ignored "-Wmissing-braces"
+#endif
 
 template <>
 wstring
@@ -5848,7 +5875,7 @@ moneypunct_byname<char, true>::init(const char* nm)
         __frac_digits_ = lc->int_frac_digits;
     else
         __frac_digits_ = base::do_frac_digits();
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
     if (lc->p_sign_posn == 0)
 #else // _LIBCPP_MSVCRT
     if (lc->int_p_sign_posn == 0)
@@ -5856,7 +5883,7 @@ moneypunct_byname<char, true>::init(const char* nm)
         __positive_sign_ = "()";
     else
         __positive_sign_ = lc->positive_sign;
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
     if(lc->n_sign_posn == 0)
 #else // _LIBCPP_MSVCRT
     if (lc->int_n_sign_posn == 0)
@@ -5868,7 +5895,7 @@ moneypunct_byname<char, true>::init(const char* nm)
     // the same places in curr_symbol since there's no way to
     // represent anything else.
     string_type __dummy_curr_symbol = __curr_symbol_;
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
     __init_pat(__pos_format_, __dummy_curr_symbol, true,
                lc->p_cs_precedes, lc->p_sep_by_space, lc->p_sign_posn, ' ');
     __init_pat(__neg_format_, __curr_symbol_, true,
@@ -6007,7 +6034,7 @@ moneypunct_byname<wchar_t, true>::init(const char* nm)
         __frac_digits_ = lc->int_frac_digits;
     else
         __frac_digits_ = base::do_frac_digits();
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
     if (lc->p_sign_posn == 0)
 #else // _LIBCPP_MSVCRT
     if (lc->int_p_sign_posn == 0)
@@ -6027,7 +6054,7 @@ moneypunct_byname<wchar_t, true>::init(const char* nm)
         wbe = wbuf + j;
         __positive_sign_.assign(wbuf, wbe);
     }
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
     if (lc->n_sign_posn == 0)
 #else // _LIBCPP_MSVCRT
     if (lc->int_n_sign_posn == 0)
@@ -6051,7 +6078,7 @@ moneypunct_byname<wchar_t, true>::init(const char* nm)
     // the same places in curr_symbol since there's no way to
     // represent anything else.
     string_type __dummy_curr_symbol = __curr_symbol_;
-#ifdef _LIBCPP_MSVCRT
+#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
     __init_pat(__pos_format_, __dummy_curr_symbol, true,
                lc->p_cs_precedes, lc->p_sep_by_space, lc->p_sign_posn, L' ');
     __init_pat(__neg_format_, __curr_symbol_, true,

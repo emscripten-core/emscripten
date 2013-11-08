@@ -69,6 +69,22 @@ public:
     unordered_map(initializer_list<value_type>, size_type n = 0,
                   const hasher& hf = hasher(), const key_equal& eql = key_equal(),
                   const allocator_type& a = allocator_type());
+    unordered_map(size_type n, const allocator_type& a)
+      : unordered_map(n, hasher(), key_equal(), a) {}  // C++14
+    unordered_map(size_type n, const hasher& hf, const allocator_type& a)
+      : unordered_map(n, hf, key_equal(), a) {}  // C++14
+    template <class InputIterator>
+      unordered_map(InputIterator f, InputIterator l, size_type n, const allocator_type& a)
+      : unordered_map(f, l, n, hasher(), key_equal(), a) {}  // C++14
+    template <class InputIterator>
+      unordered_map(InputIterator f, InputIterator l, size_type n, const hasher& hf, 
+        const allocator_type& a)
+      : unordered_map(f, l, n, hf, key_equal(), a) {}  // C++14
+    unordered_map(initializer_list<value_type> il, size_type n, const allocator_type& a)
+      : unordered_map(il, n, hasher(), key_equal(), a) {}  // C++14
+    unordered_map(initializer_list<value_type> il, size_type n, const hasher& hf, 
+      const allocator_type& a)
+      : unordered_map(il, n, hf, key_equal(), a) {}  // C++14
     ~unordered_map();
     unordered_map& operator=(const unordered_map&);
     unordered_map& operator=(unordered_map&&)
@@ -217,6 +233,22 @@ public:
     unordered_multimap(initializer_list<value_type>, size_type n = 0,
                   const hasher& hf = hasher(), const key_equal& eql = key_equal(),
                   const allocator_type& a = allocator_type());
+    unordered_multimap(size_type n, const allocator_type& a)
+      : unordered_multimap(n, hasher(), key_equal(), a) {}  // C++14
+    unordered_multimap(size_type n, const hasher& hf, const allocator_type& a)
+      : unordered_multimap(n, hf, key_equal(), a) {}  // C++14
+    template <class InputIterator>
+      unordered_multimap(InputIterator f, InputIterator l, size_type n, const allocator_type& a)
+      : unordered_multimap(f, l, n, hasher(), key_equal(), a) {}  // C++14
+    template <class InputIterator>
+      unordered_multimap(InputIterator f, InputIterator l, size_type n, const hasher& hf, 
+        const allocator_type& a)
+      : unordered_multimap(f, l, n, hf, key_equal(), a) {}  // C++14
+    unordered_multimap(initializer_list<value_type> il, size_type n, const allocator_type& a)
+      : unordered_multimap(il, n, hasher(), key_equal(), a) {}  // C++14
+    unordered_multimap(initializer_list<value_type> il, size_type n, const hasher& hf, 
+      const allocator_type& a)
+      : unordered_multimap(il, n, hf, key_equal(), a) {}  // C++14
     ~unordered_multimap();
     unordered_multimap& operator=(const unordered_multimap&);
     unordered_multimap& operator=(unordered_multimap&&)
@@ -493,8 +525,73 @@ public:
     }
 };
 
+#if __cplusplus >= 201103L
+
+template <class _Key, class _Tp>
+union __hash_value_type
+{
+    typedef _Key                                     key_type;
+    typedef _Tp                                      mapped_type;
+    typedef pair<const key_type, mapped_type>        value_type;
+    typedef pair<key_type, mapped_type>              __nc_value_type;
+
+    value_type __cc;
+    __nc_value_type __nc;
+
+    template <class ..._Args>
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type(_Args&& ...__args)
+        : __cc(std::forward<_Args>(__args)...) {}
+
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type(const __hash_value_type& __v)
+        : __cc(__v.__cc) {}
+
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type(__hash_value_type&& __v)
+        : __nc(std::move(__v.__nc)) {}
+
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type& operator=(const __hash_value_type& __v)
+        {__nc = __v.__cc; return *this;}
+
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type& operator=(__hash_value_type&& __v)
+        {__nc = std::move(__v.__nc); return *this;}
+
+    _LIBCPP_INLINE_VISIBILITY
+    ~__hash_value_type() {__cc.~value_type();}
+};
+
+#else
+
+template <class _Key, class _Tp>
+struct __hash_value_type
+{
+    typedef _Key                                     key_type;
+    typedef _Tp                                      mapped_type;
+    typedef pair<const key_type, mapped_type>        value_type;
+
+    value_type __cc;
+
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type() {}
+
+    template <class _A0>
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type(const _A0& __a0)
+        : __cc(__a0) {}
+
+    template <class _A0, class _A1>
+    _LIBCPP_INLINE_VISIBILITY
+    __hash_value_type(const _A0& __a0, const _A1& __a1)
+        : __cc(__a0, __a1) {}
+};
+
+#endif
+
 template <class _HashIterator>
-class _LIBCPP_TYPE_VIS __hash_map_iterator
+class _LIBCPP_TYPE_VIS_ONLY __hash_map_iterator
 {
     _HashIterator __i_;
 
@@ -542,15 +639,15 @@ public:
         bool operator!=(const __hash_map_iterator& __x, const __hash_map_iterator& __y)
         {return __x.__i_ != __y.__i_;}
 
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS unordered_map;
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS unordered_multimap;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_iterator;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_local_iterator;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_map_const_iterator;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY unordered_map;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY unordered_multimap;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_local_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_map_const_iterator;
 };
 
 template <class _HashIterator>
-class _LIBCPP_TYPE_VIS __hash_map_const_iterator
+class _LIBCPP_TYPE_VIS_ONLY __hash_map_const_iterator
 {
     _HashIterator __i_;
 
@@ -603,15 +700,15 @@ public:
         bool operator!=(const __hash_map_const_iterator& __x, const __hash_map_const_iterator& __y)
         {return __x.__i_ != __y.__i_;}
 
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS unordered_map;
-    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS unordered_multimap;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_iterator;
-    template <class> friend class _LIBCPP_TYPE_VIS __hash_const_local_iterator;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY unordered_map;
+    template <class, class, class, class, class> friend class _LIBCPP_TYPE_VIS_ONLY unordered_multimap;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_iterator;
+    template <class> friend class _LIBCPP_TYPE_VIS_ONLY __hash_const_local_iterator;
 };
 
 template <class _Key, class _Tp, class _Hash = hash<_Key>, class _Pred = equal_to<_Key>,
           class _Alloc = allocator<pair<const _Key, _Tp> > >
-class _LIBCPP_TYPE_VIS unordered_map
+class _LIBCPP_TYPE_VIS_ONLY unordered_map
 {
 public:
     // types
@@ -628,49 +725,7 @@ public:
                   "Invalid allocator::value_type");
 
 private:
-#if __cplusplus >= 201103L
-    union __value_type
-    {
-        typedef typename unordered_map::value_type value_type;
-        typedef typename unordered_map::__nc_value_type __nc_value_type;
-        value_type __cc;
-        __nc_value_type __nc;
-
-        template <class ..._Args>
-        __value_type(_Args&& ...__args)
-            : __cc(std::forward<_Args>(__args)...) {}
-
-        __value_type(const __value_type& __v)
-            : __cc(std::move(__v.__cc)) {}
-
-        __value_type(__value_type&& __v)
-            : __nc(std::move(__v.__nc)) {}
-
-        __value_type& operator=(const __value_type& __v)
-            {__nc = __v.__cc; return *this;}
-
-        __value_type& operator=(__value_type&& __v)
-            {__nc = std::move(__v.__nc); return *this;}
-
-        ~__value_type() {__cc.~value_type();}
-    };
-#else
-    struct __value_type
-    {
-        typedef typename unordered_map::value_type value_type;
-        value_type __cc;
-
-        __value_type() {}
-
-        template <class _A0>
-        __value_type(const _A0& __a0)
-            : __cc(__a0) {}
-
-        template <class _A0, class _A1>
-        __value_type(const _A0& __a0, const _A1& __a1)
-            : __cc(__a0, __a1) {}
-    };
-#endif
+    typedef __hash_value_type<key_type, mapped_type>                 __value_type;
     typedef __unordered_map_hasher<key_type, __value_type, hasher>   __hasher;
     typedef __unordered_map_equal<key_type, __value_type, key_equal> __key_equal;
     typedef typename allocator_traits<allocator_type>::template
@@ -745,6 +800,30 @@ public:
                   const hasher& __hf, const key_equal& __eql,
                   const allocator_type& __a);
 #endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
+#if _LIBCPP_STD_VER > 11
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_map(size_type __n, const allocator_type& __a)
+      : unordered_map(__n, hasher(), key_equal(), __a) {}
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_map(size_type __n, const hasher& __hf, const allocator_type& __a)
+      : unordered_map(__n, __hf, key_equal(), __a) {}
+    template <class _InputIterator>
+    _LIBCPP_INLINE_VISIBILITY
+      unordered_map(_InputIterator __first, _InputIterator __last, size_type __n, const allocator_type& __a)
+      : unordered_map(__first, __last, __n, hasher(), key_equal(), __a) {}
+    template <class _InputIterator>
+    _LIBCPP_INLINE_VISIBILITY
+      unordered_map(_InputIterator __first, _InputIterator __last, size_type __n, const hasher& __hf, 
+        const allocator_type& __a)
+      : unordered_map(__first, __last, __n, __hf, key_equal(), __a) {}
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_map(initializer_list<value_type> __il, size_type __n, const allocator_type& __a)
+      : unordered_map(__il, __n, hasher(), key_equal(), __a) {}
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_map(initializer_list<value_type> __il, size_type __n, const hasher& __hf, 
+      const allocator_type& __a)
+      : unordered_map(__il, __n, __hf, key_equal(), __a) {}
+#endif
     // ~unordered_map() = default;
     _LIBCPP_INLINE_VISIBILITY
     unordered_map& operator=(const unordered_map& __u)
@@ -1211,7 +1290,7 @@ unordered_map<_Key, _Tp, _Hash, _Pred, _Alloc>::__construct_node_with_key(key_ty
     __h.get_deleter().__first_constructed = true;
     __node_traits::construct(__na, _VSTD::addressof(__h->__value_.__cc.second));
     __h.get_deleter().__second_constructed = true;
-    return _VSTD::move(__h);
+    return __h;
 }
 
 #ifndef _LIBCPP_HAS_NO_VARIADICS
@@ -1258,7 +1337,7 @@ unordered_map<_Key, _Tp, _Hash, _Pred, _Alloc>::__construct_node_with_key(const 
     __h.get_deleter().__first_constructed = true;
     __node_traits::construct(__na, _VSTD::addressof(__h->__value_.__cc.second));
     __h.get_deleter().__second_constructed = true;
-    return _VSTD::move(__h);
+    return _VSTD::move(__h);  // explicitly moved for C++03
 }
 
 template <class _Key, class _Tp, class _Hash, class _Pred, class _Alloc>
@@ -1366,7 +1445,7 @@ operator!=(const unordered_map<_Key, _Tp, _Hash, _Pred, _Alloc>& __x,
 
 template <class _Key, class _Tp, class _Hash = hash<_Key>, class _Pred = equal_to<_Key>,
           class _Alloc = allocator<pair<const _Key, _Tp> > >
-class _LIBCPP_TYPE_VIS unordered_multimap
+class _LIBCPP_TYPE_VIS_ONLY unordered_multimap
 {
 public:
     // types
@@ -1383,49 +1462,7 @@ public:
                   "Invalid allocator::value_type");
 
 private:
-#if __cplusplus >= 201103L
-    union __value_type
-    {
-        typedef typename unordered_multimap::value_type value_type;
-        typedef typename unordered_multimap::__nc_value_type __nc_value_type;
-        value_type __cc;
-        __nc_value_type __nc;
-
-        template <class ..._Args>
-        __value_type(_Args&& ...__args)
-            : __cc(std::forward<_Args>(__args)...) {}
-
-        __value_type(const __value_type& __v)
-            : __cc(std::move(__v.__cc)) {}
-
-        __value_type(__value_type&& __v)
-            : __nc(std::move(__v.__nc)) {}
-
-        __value_type& operator=(const __value_type& __v)
-            {__nc = __v.__cc; return *this;}
-
-        __value_type& operator=(__value_type&& __v)
-            {__nc = std::move(__v.__nc); return *this;}
-
-        ~__value_type() {__cc.~value_type();}
-    };
-#else
-    struct __value_type
-    {
-        typedef typename unordered_multimap::value_type value_type;
-        value_type __cc;
-
-        __value_type() {}
-
-        template <class _A0>
-        __value_type(const _A0& __a0)
-            : __cc(__a0) {}
-
-        template <class _A0, class _A1>
-        __value_type(const _A0& __a0, const _A1& __a1)
-            : __cc(__a0, __a1) {}
-    };
-#endif
+    typedef __hash_value_type<key_type, mapped_type>                 __value_type;
     typedef __unordered_map_hasher<key_type, __value_type, hasher>   __hasher;
     typedef __unordered_map_equal<key_type, __value_type, key_equal> __key_equal;
     typedef typename allocator_traits<allocator_type>::template
@@ -1499,6 +1536,30 @@ public:
                        const hasher& __hf, const key_equal& __eql,
                        const allocator_type& __a);
 #endif  // _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
+#if _LIBCPP_STD_VER > 11
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_multimap(size_type __n, const allocator_type& __a)
+      : unordered_multimap(__n, hasher(), key_equal(), __a) {}
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_multimap(size_type __n, const hasher& __hf, const allocator_type& __a)
+      : unordered_multimap(__n, __hf, key_equal(), __a) {}
+    template <class _InputIterator>
+    _LIBCPP_INLINE_VISIBILITY
+      unordered_multimap(_InputIterator __first, _InputIterator __last, size_type __n, const allocator_type& __a)
+      : unordered_multimap(__first, __last, __n, hasher(), key_equal(), __a) {}
+    template <class _InputIterator>
+    _LIBCPP_INLINE_VISIBILITY
+      unordered_multimap(_InputIterator __first, _InputIterator __last, size_type __n, const hasher& __hf, 
+        const allocator_type& __a)
+      : unordered_multimap(__first, __last, __n, __hf, key_equal(), __a) {}
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_multimap(initializer_list<value_type> __il, size_type __n, const allocator_type& __a)
+      : unordered_multimap(__il, __n, hasher(), key_equal(), __a) {}
+    _LIBCPP_INLINE_VISIBILITY
+    unordered_multimap(initializer_list<value_type> __il, size_type __n, const hasher& __hf, 
+      const allocator_type& __a)
+      : unordered_multimap(__il, __n, __hf, key_equal(), __a) {}
+#endif
     // ~unordered_multimap() = default;
     _LIBCPP_INLINE_VISIBILITY
     unordered_multimap& operator=(const unordered_multimap& __u)

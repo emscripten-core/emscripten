@@ -203,9 +203,9 @@ enum class io_errc
 };
 
 concept_map ErrorCodeEnum<io_errc> { };
-error_code make_error_code(io_errc e);
-error_condition make_error_condition(io_errc e);
-storage-class-specifier const error_category& iostream_category;
+error_code make_error_code(io_errc e) noexcept; 
+error_condition make_error_condition(io_errc e) noexcept; 
+storage-class-specifier const error_category& iostream_category() noexcept;
 
 }  // std
 
@@ -215,6 +215,10 @@ storage-class-specifier const error_category& iostream_category;
 #include <iosfwd>
 #include <__locale>
 #include <system_error>
+
+#if __has_feature(cxx_atomic)
+#include <atomic>     // for __xindex_
+#endif
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -319,7 +323,7 @@ public:
     _LIBCPP_INLINE_VISIBILITY bool bad() const;
 
     _LIBCPP_INLINE_VISIBILITY iostate exceptions() const;
-    _LIBCPP_INLINE_VISIBILITY void exceptions(iostate __except);
+    _LIBCPP_INLINE_VISIBILITY void exceptions(iostate __iostate);
 
     void __set_badbit_and_consider_rethrow();
     void __set_failbit_and_consider_rethrow();
@@ -363,7 +367,11 @@ private:
     int*            __index_;
     size_t          __event_size_;
     size_t          __event_cap_;
+#if __has_feature(cxx_atomic) && !defined(__EMSCRIPTEN__)
+    static atomic<int> __xindex_;
+#else
     static int      __xindex_;
+#endif
     long*           __iarray_;
     size_t          __iarray_size_;
     size_t          __iarray_cap_;
@@ -380,26 +388,26 @@ _LIBCPP_DECLARE_STRONG_ENUM(io_errc)
 _LIBCPP_DECLARE_STRONG_ENUM_EPILOG(io_errc)
 
 template <>
-struct _LIBCPP_TYPE_VIS is_error_code_enum<io_errc> : public true_type { };
+struct _LIBCPP_TYPE_VIS_ONLY is_error_code_enum<io_errc> : public true_type { };
 
 #ifdef _LIBCPP_HAS_NO_STRONG_ENUMS
 template <>
-struct _LIBCPP_TYPE_VIS is_error_code_enum<io_errc::__lx> : public true_type { };
+struct _LIBCPP_TYPE_VIS_ONLY is_error_code_enum<io_errc::__lx> : public true_type { };
 #endif
 
 _LIBCPP_FUNC_VIS
-const error_category& iostream_category();
+const error_category& iostream_category() _NOEXCEPT;
 
 inline _LIBCPP_INLINE_VISIBILITY
 error_code
-make_error_code(io_errc __e)
+make_error_code(io_errc __e) _NOEXCEPT
 {
     return error_code(static_cast<int>(__e), iostream_category());
 }
 
 inline _LIBCPP_INLINE_VISIBILITY
 error_condition
-make_error_condition(io_errc __e)
+make_error_condition(io_errc __e) _NOEXCEPT
 {
     return error_condition(static_cast<int>(__e), iostream_category());
 }
@@ -527,21 +535,21 @@ inline _LIBCPP_INLINE_VISIBILITY
 bool
 ios_base::eof() const
 {
-    return __rdstate_ & eofbit;
+    return (__rdstate_ & eofbit) != 0;
 }
 
 inline _LIBCPP_INLINE_VISIBILITY
 bool
 ios_base::fail() const
 {
-    return __rdstate_ & (failbit | badbit);
+    return (__rdstate_ & (failbit | badbit)) != 0;
 }
 
 inline _LIBCPP_INLINE_VISIBILITY
 bool
 ios_base::bad() const
 {
-    return __rdstate_ & badbit;
+    return (__rdstate_ & badbit) != 0;
 }
 
 inline _LIBCPP_INLINE_VISIBILITY
@@ -553,14 +561,14 @@ ios_base::exceptions() const
 
 inline _LIBCPP_INLINE_VISIBILITY
 void
-ios_base::exceptions(iostate __except)
+ios_base::exceptions(iostate __iostate)
 {
-    __exceptions_ = __except;
+    __exceptions_ = __iostate;
     clear(__rdstate_);
 }
 
 template <class _CharT, class _Traits>
-class _LIBCPP_TYPE_VIS basic_ios
+class _LIBCPP_TYPE_VIS_ONLY basic_ios
     : public ios_base
 {
 public:
@@ -585,7 +593,7 @@ public:
     _LIBCPP_ALWAYS_INLINE bool bad() const  {return ios_base::bad();}
 
     _LIBCPP_ALWAYS_INLINE iostate exceptions() const {return ios_base::exceptions();}
-    _LIBCPP_ALWAYS_INLINE void exceptions(iostate __except) {ios_base::exceptions(__except);}
+    _LIBCPP_ALWAYS_INLINE void exceptions(iostate __iostate) {ios_base::exceptions(__iostate);}
 
     // 27.5.4.1 Constructor/destructor:
     _LIBCPP_INLINE_VISIBILITY

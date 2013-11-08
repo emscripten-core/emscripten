@@ -79,8 +79,14 @@
 #  endif
 #  if defined(_MSC_VER) && !defined(__clang__)
 #    define _LIBCPP_MSVC // Using Microsoft Visual C++ compiler
+#    define _LIBCPP_TOSTRING2(x) #x
+#    define _LIBCPP_TOSTRING(x) _LIBCPP_TOSTRING2(x)
+#    define _LIBCPP_WARNING(x) __pragma(message(__FILE__ "(" _LIBCPP_TOSTRING(__LINE__) ") : warning note: " x))
 #  endif
-#  define _LIBCPP_MSVCRT // Using Microsoft's C Runtime library
+#  // If mingw not explicitly detected, assume using MS C runtime only.
+#  ifndef __MINGW32__
+#    define _LIBCPP_MSVCRT // Using Microsoft's C Runtime library
+#  endif
 #endif  // _WIN32
 
 #ifdef __linux__
@@ -132,6 +138,9 @@
 # define _LIBCPP_TYPE_VIS
 #endif
 
+#define _LIBCPP_TYPE_VIS_ONLY
+#define _LIBCPP_FUNC_VIS_ONLY
+
 #ifndef _LIBCPP_INLINE_VISIBILITY
 # ifdef _LIBCPP_MSVC
 #  define _LIBCPP_INLINE_VISIBILITY __forceinline
@@ -172,16 +181,20 @@
 #  endif
 #endif
 
+#ifndef _LIBCPP_TYPE_VIS_ONLY
+# define _LIBCPP_TYPE_VIS_ONLY _LIBCPP_TYPE_VIS
+#endif
+
+#ifndef _LIBCPP_FUNC_VIS_ONLY
+# define _LIBCPP_FUNC_VIS_ONLY _LIBCPP_FUNC_VIS
+#endif
+
 #ifndef _LIBCPP_INLINE_VISIBILITY
 #define _LIBCPP_INLINE_VISIBILITY __attribute__ ((__visibility__("hidden"), __always_inline__))
 #endif
 
 #ifndef _LIBCPP_EXCEPTION_ABI
 #define _LIBCPP_EXCEPTION_ABI _LIBCPP_TYPE_VIS
-#endif
-
-#ifndef _LIBCPP_CANTTHROW
-#define _LIBCPP_CANTTHROW __attribute__ ((__nothrow__))
 #endif
 
 #ifndef _LIBCPP_ALWAYS_INLINE
@@ -408,6 +421,7 @@ using namespace _LIBCPP_NAMESPACE __attribute__((__strong__));
 #define _LIBCPP_HAS_NO_CONSTEXPR
 #define _LIBCPP_HAS_NO_UNICODE_CHARS
 #define _LIBCPP_HAS_NO_DELETED_FUNCTIONS
+#define _LIBCPP_HAS_NO_DEFAULTED_FUNCTIONS
 #define __alignof__ __alignof
 #define _LIBCPP_NORETURN __declspec(noreturn)
 #define _ALIGNAS(x) __declspec(align(x))
@@ -420,10 +434,43 @@ using namespace _LIBCPP_NAMESPACE __attribute__((__strong__));
 #define _LIBCPP_END_NAMESPACE_STD  }
 #define _VSTD std
 
+#  define _LIBCPP_WEAK
 namespace std {
 }
 
-#endif // __clang__ || __GNUC__ || _LIBCPP_MSVC
+#elif defined(__IBMCPP__)
+
+#define _ALIGNAS(x) __attribute__((__aligned__(x)))
+#define _ALIGNAS_TYPE(x) __attribute__((__aligned__(__alignof(x))))
+#define _ATTRIBUTE(x) __attribute__((x))
+#define _LIBCPP_NORETURN __attribute__((noreturn))
+
+#define _NOEXCEPT throw()
+#define _NOEXCEPT_(x)
+
+#define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
+#define _LIBCPP_HAS_NO_ADVANCED_SFINAE
+#define _LIBCPP_HAS_NO_ALWAYS_INLINE_VARIADICS
+#define _LIBCPP_HAS_NO_GENERALIZED_INITIALIZERS
+#define _LIBCPP_HAS_NO_NULLPTR
+#define _LIBCPP_HAS_NO_UNICODE_CHARS
+#define _LIBCPP_HAS_NO_STRONG_ENUMS
+#define _LIBCPP_HAS_IS_BASE_OF
+
+#if defined(_AIX)
+#define __MULTILOCALE_API
+#endif
+
+#define _LIBCPP_BEGIN_NAMESPACE_STD namespace std {inline namespace _LIBCPP_NAMESPACE {
+#define _LIBCPP_END_NAMESPACE_STD  } }
+#define _VSTD std::_LIBCPP_NAMESPACE
+
+namespace std {
+  inline namespace _LIBCPP_NAMESPACE {
+  }
+}
+
+#endif // __clang__ || __GNUC___ || _MSC_VER || __IBMCPP__
 
 #ifdef _LIBCPP_HAS_NO_UNICODE_CHARS
 typedef unsigned short char16_t;
@@ -486,8 +533,23 @@ template <unsigned> struct __static_assert_check {};
 #define _LIBCPP_DECLARE_STRONG_ENUM_EPILOG(x)
 #endif  // _LIBCPP_HAS_NO_STRONG_ENUMS
 
+#ifdef _LIBCPP_DEBUG
+#   if _LIBCPP_DEBUG == 0
+#       define _LIBCPP_DEBUG_LEVEL 1
+#   elif _LIBCPP_DEBUG == 1
+#       define _LIBCPP_DEBUG_LEVEL 2
+#   else
+#       error Supported values for _LIBCPP_DEBUG are 0 and 1
+#   endif
+#   define _LIBCPP_EXTERN_TEMPLATE(...)
+#endif
+
 #ifndef _LIBCPP_EXTERN_TEMPLATE
-#define _LIBCPP_EXTERN_TEMPLATE(...) extern template __VA_ARGS__;
+#define _LIBCPP_EXTERN_TEMPLATE(...)
+#endif
+
+#ifndef _LIBCPP_EXTERN_TEMPLATE2
+#define _LIBCPP_EXTERN_TEMPLATE2(...) extern template __VA_ARGS__;
 #endif
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(_WIN32) || defined(__sun__) || defined(__NetBSD__)
@@ -505,16 +567,6 @@ template <unsigned> struct __static_assert_check {};
 #define _LIBCPP_WCTYPE_IS_MASK
 #endif
 
-#ifdef _LIBCPP_DEBUG2
-#   if _LIBCPP_DEBUG2 == 0
-#       define _LIBCPP_DEBUG_LEVEL 1
-#   elif _LIBCPP_DEBUG2 == 1
-#       define _LIBCPP_DEBUG_LEVEL 2
-#   else
-#       error Supported values for _LIBCPP_DEBUG2 are 0 and 1
-#   endif
-#endif
-
 #ifndef _LIBCPP_STD_VER
 #  if  __cplusplus <= 201103L
 #    define _LIBCPP_STD_VER 11
@@ -523,10 +575,36 @@ template <unsigned> struct __static_assert_check {};
 #  endif
 #endif  // _LIBCPP_STD_VER
 
+#if _LIBCPP_STD_VER > 11
+#define _LIBCPP_DEPRECATED [[deprecated]]
+#else
+#define _LIBCPP_DEPRECATED
+#endif
+
 #if _LIBCPP_STD_VER <= 11
 #define _LIBCPP_CONSTEXPR_AFTER_CXX11
+#define _LIBCPP_EXPLICIT_AFTER_CXX11
+#define _LIBCPP_DEPRECATED_AFTER_CXX11
 #else
 #define _LIBCPP_CONSTEXPR_AFTER_CXX11 constexpr
+#define _LIBCPP_EXPLICIT_AFTER_CXX11 explicit
+#define _LIBCPP_DEPRECATED_AFTER_CXX11 [[deprecated]]
+#endif
+
+// Try to find out if RTTI is disabled.
+// g++ and cl.exe have RTTI on by default and define a macro when it is.
+// g++ only defines the macro in 4.3.2 and onwards.
+#if !defined(_LIBCPP_NO_RTTI)
+#  if defined(__GNUG__) && (__GNUC__ >= 4 && \
+   (__GNUC_MINOR__ >= 3 || __GNUC_PATCHLEVEL__ >= 2)) && !defined(__GXX_RTTI)
+#    define _LIBCPP_NO_RTTI
+#  elif (defined(_MSC_VER) && !defined(__clang__)) && !defined(_CPPRTTI)
+#    define _LIBCPP_NO_RTTI
+#  endif
+#endif
+
+#ifndef _LIBCPP_WEAK
+#  define _LIBCPP_WEAK __attribute__((__weak__))
 #endif
 
 #endif  // _LIBCPP_CONFIG

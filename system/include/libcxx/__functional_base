@@ -15,6 +15,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <exception>
+#include <new>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -23,21 +24,21 @@
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _Arg, class _Result>
-struct _LIBCPP_TYPE_VIS unary_function
+struct _LIBCPP_TYPE_VIS_ONLY unary_function
 {
     typedef _Arg    argument_type;
     typedef _Result result_type;
 };
 
 template <class _Arg1, class _Arg2, class _Result>
-struct _LIBCPP_TYPE_VIS binary_function
+struct _LIBCPP_TYPE_VIS_ONLY binary_function
 {
     typedef _Arg1   first_argument_type;
     typedef _Arg2   second_argument_type;
     typedef _Result result_type;
 };
 
-template <class _Tp> struct _LIBCPP_TYPE_VIS hash;
+template <class _Tp> struct _LIBCPP_TYPE_VIS_ONLY hash;
 
 template <class _Tp>
 struct __has_result_type
@@ -55,20 +56,73 @@ template <class _Tp = void>
 #else
 template <class _Tp>
 #endif
-struct _LIBCPP_TYPE_VIS less : binary_function<_Tp, _Tp, bool>
+struct _LIBCPP_TYPE_VIS_ONLY less : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY 
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x < __y;}
 };
 
 #if _LIBCPP_STD_VER > 11
 template <>
-struct _LIBCPP_TYPE_VIS less<void>
+struct _LIBCPP_TYPE_VIS_ONLY less<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2> 
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) < _VSTD::forward<_T2>(__u); }
+    typedef void is_transparent;
 };
+#endif
+
+// addressof
+
+template <class _Tp>
+inline _LIBCPP_INLINE_VISIBILITY
+_Tp*
+addressof(_Tp& __x) _NOEXCEPT
+{
+    return (_Tp*)&reinterpret_cast<const volatile char&>(__x);
+}
+
+#if defined(_LIBCPP_HAS_OBJC_ARC) && !defined(_LIBCPP_PREDEFINED_OBJC_ARC_ADDRESSOF)
+// Objective-C++ Automatic Reference Counting uses qualified pointers
+// that require special addressof() signatures. When
+// _LIBCPP_PREDEFINED_OBJC_ARC_ADDRESSOF is defined, the compiler
+// itself is providing these definitions. Otherwise, we provide them.
+template <class _Tp>
+inline _LIBCPP_INLINE_VISIBILITY
+__strong _Tp*
+addressof(__strong _Tp& __x) _NOEXCEPT
+{
+  return &__x;
+}
+
+#ifdef _LIBCPP_HAS_OBJC_ARC_WEAK
+template <class _Tp>
+inline _LIBCPP_INLINE_VISIBILITY
+__weak _Tp*
+addressof(__weak _Tp& __x) _NOEXCEPT
+{
+  return &__x;
+}
+#endif
+
+template <class _Tp>
+inline _LIBCPP_INLINE_VISIBILITY
+__autoreleasing _Tp*
+addressof(__autoreleasing _Tp& __x) _NOEXCEPT
+{
+  return &__x;
+}
+
+template <class _Tp>
+inline _LIBCPP_INLINE_VISIBILITY
+__unsafe_unretained _Tp*
+addressof(__unsafe_unretained _Tp& __x) _NOEXCEPT
+{
+  return &__x;
+}
 #endif
 
 #ifdef _LIBCPP_HAS_NO_VARIADICS
@@ -366,7 +420,7 @@ struct __invoke_return
 };
 
 template <class _Tp>
-class _LIBCPP_TYPE_VIS reference_wrapper
+class _LIBCPP_TYPE_VIS_ONLY reference_wrapper
     : public __weak_result_type<_Tp>
 {
 public:
@@ -377,7 +431,8 @@ private:
 
 public:
     // construct/copy/destroy
-    _LIBCPP_INLINE_VISIBILITY reference_wrapper(type& __f) _NOEXCEPT : __f_(&__f) {}
+    _LIBCPP_INLINE_VISIBILITY reference_wrapper(type& __f) _NOEXCEPT
+        : __f_(_VSTD::addressof(__f)) {}
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     private: reference_wrapper(type&&); public: // = delete; // do not bind to temps
 #endif
@@ -448,6 +503,111 @@ template <class _Tp> void cref(const _Tp&&);// = delete;
 
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
+#endif  // _LIBCPP_HAS_NO_VARIADICS
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp1, class _Tp2 = void>
+struct __is_transparent
+{
+private:
+    struct __two {char __lx; char __lxx;};
+    template <class _Up> static __two __test(...);
+    template <class _Up> static char __test(typename _Up::is_transparent* = 0);
+public:
+    static const bool value = sizeof(__test<_Tp1>(0)) == 1;
+};
+#endif
+
+// allocator_arg_t
+
+struct _LIBCPP_TYPE_VIS_ONLY allocator_arg_t { };
+
+#if defined(_LIBCPP_HAS_NO_CONSTEXPR) || defined(_LIBCPP_BUILDING_MEMORY)
+extern const allocator_arg_t allocator_arg;
+#else
+constexpr allocator_arg_t allocator_arg = allocator_arg_t();
+#endif
+
+// uses_allocator
+
+template <class _Tp>
+struct __has_allocator_type
+{
+private:
+    struct __two {char __lx; char __lxx;};
+    template <class _Up> static __two __test(...);
+    template <class _Up> static char __test(typename _Up::allocator_type* = 0);
+public:
+    static const bool value = sizeof(__test<_Tp>(0)) == 1;
+};
+
+template <class _Tp, class _Alloc, bool = __has_allocator_type<_Tp>::value>
+struct __uses_allocator
+    : public integral_constant<bool,
+        is_convertible<_Alloc, typename _Tp::allocator_type>::value>
+{
+};
+
+template <class _Tp, class _Alloc>
+struct __uses_allocator<_Tp, _Alloc, false>
+    : public false_type
+{
+};
+
+template <class _Tp, class _Alloc>
+struct _LIBCPP_TYPE_VIS_ONLY uses_allocator
+    : public __uses_allocator<_Tp, _Alloc>
+{
+};
+
+#ifndef _LIBCPP_HAS_NO_VARIADICS
+
+// allocator construction
+
+template <class _Tp, class _Alloc, class ..._Args>
+struct __uses_alloc_ctor_imp
+{
+    static const bool __ua = uses_allocator<_Tp, _Alloc>::value;
+    static const bool __ic =
+        is_constructible<_Tp, allocator_arg_t, _Alloc, _Args...>::value;
+    static const int value = __ua ? 2 - __ic : 0;
+};
+
+template <class _Tp, class _Alloc, class ..._Args>
+struct __uses_alloc_ctor
+    : integral_constant<int, __uses_alloc_ctor_imp<_Tp, _Alloc, _Args...>::value>
+    {};
+
+template <class _Tp, class _Allocator, class... _Args>
+inline _LIBCPP_INLINE_VISIBILITY
+void __user_alloc_construct_impl (integral_constant<int, 0>, _Tp *__storage, const _Allocator &, _Args &&... __args )
+{
+    new (__storage) _Tp (_VSTD::forward<_Args>(__args)...);
+}
+
+template <class _Tp, class _Allocator, class... _Args>
+inline _LIBCPP_INLINE_VISIBILITY
+void __user_alloc_construct_impl (integral_constant<int, 1>, _Tp *__storage, const _Allocator &__a, _Args &&... __args )
+{
+    new (__storage) _Tp (allocator_arg, __a, _VSTD::forward<_Args>(__args)...);
+}
+
+template <class _Tp, class _Allocator, class... _Args>
+inline _LIBCPP_INLINE_VISIBILITY
+void __user_alloc_construct_impl (integral_constant<int, 2>, _Tp *__storage, const _Allocator &__a, _Args &&... __args )
+{
+    new (__storage) _Tp (_VSTD::forward<_Args>(__args)..., __a);
+}
+
+template <class _Tp, class _Allocator, class... _Args>
+inline _LIBCPP_INLINE_VISIBILITY
+void __user_alloc_construct (_Tp *__storage, const _Allocator &__a, _Args &&... __args)
+{ 
+    __user_alloc_construct_impl( 
+             __uses_alloc_ctor<_Tp, _Allocator>(), 
+             __storage, __a, _VSTD::forward<_Args>(__args)...
+        );
+}
 #endif  // _LIBCPP_HAS_NO_VARIADICS
 
 _LIBCPP_END_NAMESPACE_STD
