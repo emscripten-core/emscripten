@@ -7335,6 +7335,7 @@ LibraryManager.library = {
   // we're generating fake IP addresses with lookup_name that we can
   // resolve later on with lookup_addr.
   // We do the aliasing in 172.29.*.*, giving us 65536 possibilities.
+  $DNS__deps: ['_inet_pton4_raw', '_inet_pton6_raw'],
   $DNS: {
     address_map: {
       id: 1,
@@ -7342,7 +7343,6 @@ LibraryManager.library = {
       names: {}
     },
 
-    lookup_name__deps: ['_inet_pton4_raw', '_inet_pton6_raw'],
     lookup_name: function (name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
       var res = __inet_pton4_raw(name);
