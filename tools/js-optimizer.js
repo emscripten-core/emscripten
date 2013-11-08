@@ -2485,6 +2485,10 @@ function eliminate(ast, memSafe) {
         } else if (type === 'return') {
           if (node[1]) traverseInOrder(node[1]);
         } else if (type === 'conditional') {
+          if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into a branch of an LLVM select/JS conditional that does not execute
+            invalidateCalls();
+            callsInvalidated = true;
+          }
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
           traverseInOrder(node[3]);
