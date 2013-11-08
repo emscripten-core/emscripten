@@ -285,7 +285,7 @@ var LibraryGL = {
     },
 
 #if FULL_ES2
-    calcBufLength: function(size, type, stride, count) {
+    calcBufLength: function calcBufLength(size, type, stride, count) {
       if (stride > 0) {
         return count * stride;  // XXXvlad this is not exactly correct I don't think
       }
@@ -295,7 +295,7 @@ var LibraryGL = {
 
     usedTempBuffers: [],
 
-    preDrawHandleClientVertexAttribBindings: function(count) {
+    preDrawHandleClientVertexAttribBindings: function preDrawHandleClientVertexAttribBindings(count) {
       GL.resetBufferBinding = false;
 
       var used = GL.usedTempBuffers;
@@ -329,7 +329,7 @@ var LibraryGL = {
       }
     },
 
-    postDrawHandleClientVertexAttribBindings: function() {
+    postDrawHandleClientVertexAttribBindings: function postDrawHandleClientVertexAttribBindings() {
       if (GL.resetBufferBinding) {
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, GL.buffers[GL.currArrayBuffer]);
       }

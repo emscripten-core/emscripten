@@ -359,7 +359,7 @@ mergeInto(LibraryManager.library, {
       canvas.requestFullScreen();
     },
 
-    requestAnimationFrame: function(func) {
+    requestAnimationFrame: function requestAnimationFrame(func) {
       if (typeof window === 'undefined') { // Provide fallback to setTimeout if window is undefined (e.g. in Node.js)
         setTimeout(func, 1000/60);
       } else {
