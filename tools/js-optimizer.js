@@ -1144,9 +1144,10 @@ function simplifyNotComps(ast) {
 
 function hasSideEffects(node) { // this is 99% incomplete!
   switch (node[0]) {
-    case 'num': case 'name': return false;
+    case 'num': case 'name': case 'string': return false;
     case 'unary-prefix': return hasSideEffects(node[2]);
     case 'binary': return hasSideEffects(node[2]) || hasSideEffects(node[3]);
+    case 'sub': return hasSideEffects(node[1]) || hasSideEffects(node[2]);
     default: return true;
   }
 }
@@ -2081,7 +2082,6 @@ function registerize(ast) {
 // can happen in ALLOW_MEMORY_GROWTH mode
 
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label', 'switch'); // do is checked carefully, however
-var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
@@ -2173,7 +2173,7 @@ function eliminate(ast, memSafe) {
       if (definitions[name] === 1 && uses[name] === 1) {
         potentials[name] = 1;
       } else if (uses[name] === 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow) (no definition means it is a function parameter, or a local with just |var x;| but no defining assignment)
-        var hasSideEffects = false;
+        var sideEffects = false;
         var value = values[name];
         if (value) {
           // TODO: merge with other side effect code
@@ -2183,15 +2183,10 @@ function eliminate(ast, memSafe) {
           if (!(value[0] === 'seq' && value[1][0] === 'assign' && value[1][2][0] === 'sub' && value[1][2][2][0] === 'binary' && value[1][2][2][1] === '>>' &&
                 value[1][2][2][2][0] === 'name' && value[1][2][2][2][1] === 'tempDoublePtr')) {
             // If not that, then traverse and scan normally.
-            traverse(value, function(node, type) {
-              if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
-                hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
-                return true;
-              }
-            });
+            sideEffects = hasSideEffects(value);
           }
         }
-        if (!hasSideEffects) {
+        if (!sideEffects) {
           varsToRemove[name] = !definitions[name] ? 2 : 1; // remove it normally
           sideEffectFree[name] = true;
           // Each time we remove a variable with 0 uses, if its value has no
