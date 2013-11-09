@@ -1142,12 +1142,26 @@ function simplifyNotComps(ast) {
   simplifyNotCompsPass = false;
 }
 
+function callHasSideEffects(node) { // checks if the call itself (not the args) has side effects (or is not statically known)
+  return !(node[1][0] === 'name' && /^Math_/.test(node[1][1]));
+}
+
 function hasSideEffects(node) { // this is 99% incomplete!
   switch (node[0]) {
     case 'num': case 'name': case 'string': return false;
     case 'unary-prefix': return hasSideEffects(node[2]);
     case 'binary': return hasSideEffects(node[2]) || hasSideEffects(node[3]);
     case 'sub': return hasSideEffects(node[1]) || hasSideEffects(node[2]);
+    case 'call': {
+      if (callHasSideEffects(node)) return true;
+      // This is a statically known call, with no side effects. only args can side effect us
+      var args = node[2];
+      var num = args.length;
+      for (var i = 0; i < num; i++) {
+        if (hasSideEffects(args[i])) return true;
+      }
+      return false;
+    }
     default: return true;
   }
 }
@@ -2445,14 +2459,16 @@ function eliminate(ast, memSafe) {
           for (var i = 0; i < args.length; i++) {
             traverseInOrder(args[i]);
           }
-          // these two invalidations will also invalidate calls
-          if (!globalsInvalidated) {
-            invalidateGlobals();
-            globalsInvalidated = true;
-          }
-          if (!memoryInvalidated) {
-            invalidateMemory();
-            memoryInvalidated = true;
+          if (callHasSideEffects(node)) {
+            // these two invalidations will also invalidate calls
+            if (!globalsInvalidated) {
+              invalidateGlobals();
+              globalsInvalidated = true;
+            }
+            if (!memoryInvalidated) {
+              invalidateMemory();
+              memoryInvalidated = true;
+            }
           }
         } else if (type === 'if') {
           if (allowTracking) {

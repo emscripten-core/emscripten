@@ -8852,5 +8852,13 @@ function intoCond() {
   HEAP32[$504 >> 2] = $503;
  }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi", "intoCond"]
+function math(a, b, c, d) {
+ var x, y, z, w;
+ x = a;
+ y = Math_abs(b);
+ z = Math_fround(c);
+ w = Math_imul(d);
+ print(x + y + z + w);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi", "intoCond", "math"]
 
