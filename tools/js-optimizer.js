@@ -1515,21 +1515,33 @@ function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i
 // annotations, plus explicit metadata) and denormalize (vice versa)
 var ASM_INT = 0;
 var ASM_DOUBLE = 1;
+var ASM_FLOAT = 2;
 
 function detectAsmCoercion(node, asmInfo) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
   if (node[0] === 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
   if (node[0] === 'unary-prefix') return ASM_DOUBLE;
+  if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
   if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
   return ASM_INT;
 }
 
 function makeAsmCoercion(node, type) {
-  return type === ASM_INT ? ['binary', '|', node, ['num', 0]] : ['unary-prefix', '+', node];
+  switch (type) {
+    case ASM_INT: return ['binary', '|', node, ['num', 0]];
+    case ASM_DOUBLE: return ['unary-prefix', '+', node];
+    case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
+    default: throw 'wha? ' + JSON.stringify([node, type]) + new Error().stack;
+  }
 }
 
 function makeAsmVarDef(v, type) {
-  return [v, type === ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
+  switch (type) {
+    case ASM_INT: return [v, ['num', 0]];
+    case ASM_DOUBLE: return [v, ['unary-prefix', '+', ['num', 0]]];
+    case ASM_FLOAT: return [v, ['call', ['name', 'Math_fround'], [['num', 0]]]];
+    default: throw 'wha?';
+  }
 }
 
 function getAsmType(name, asmInfo) {
@@ -1568,7 +1580,8 @@ function normalizeAsm(func) {
       var name = v[0];
       var value = v[1];
       if (!(name in data.vars)) {
-        assert(value[0] === 'num' || (value[0] === 'unary-prefix' && value[2][0] === 'num')); // must be valid coercion no-op
+        assert(value[0] === 'num' || (value[0] === 'unary-prefix' && value[2][0] === 'num') // must be valid coercion no-op
+                                  || (value[0] === 'call' && value[1][0] === 'name' && value[1][1] === 'Math_fround'));
         data.vars[name] = detectAsmCoercion(value);
         v.length = 1; // make an un-assigning var
       } else {
@@ -3173,7 +3186,7 @@ function outline(ast) {
 
     var writes = {};
     var namings = {};
-    var hasReturn = false, hasReturnInt = false, hasReturnDouble = false, hasBreak = false, hasContinue = false;
+    var hasReturn = false, hasReturnType = {}, hasBreak = false, hasContinue = false;
     var breaks = {};    // set of labels we break or continue
     var continues = {}; // to (name -> id, just like labels)
     var breakCapturers = 0;
@@ -3193,10 +3206,8 @@ function outline(ast) {
       } else if (type == 'return') {
         if (!node[1]) {
           hasReturn = true;
-        } else if (detectAsmCoercion(node[1]) == ASM_INT) {
-          hasReturnInt = true;
         } else {
-          hasReturnDouble = true;
+          hasReturnType[detectAsmCoercion(node[1])] = true;
         }
       } else if (type == 'break') {
         var label = node[1] || 0;
@@ -3226,7 +3237,6 @@ function outline(ast) {
         continueCapturers--;
       }
     });
-    assert(hasReturn + hasReturnInt + hasReturnDouble <= 1);
 
     var reads = {};
     for (var v in namings) {
@@ -3234,7 +3244,7 @@ function outline(ast) {
       if (actualReads > 0) reads[v] = actualReads;
     }
 
-    return { writes: writes, reads: reads, hasReturn: hasReturn, hasReturnInt: hasReturnInt, hasReturnDouble: hasReturnDouble, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
+    return { writes: writes, reads: reads, hasReturn: hasReturn, hasReturnType: hasReturnType, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
   }
 
   function makeAssign(dst, src) {
@@ -3255,7 +3265,10 @@ function outline(ast) {
     return ['switch', value, cases];
   }
 
-  var CONTROL_BREAK = 1, CONTROL_BREAK_LABEL = 2, CONTROL_CONTINUE = 3, CONTROL_CONTINUE_LABEL = 4, CONTROL_RETURN_VOID = 5, CONTROL_RETURN_INT = 6, CONTROL_RETURN_DOUBLE = 7;
+  var CONTROL_BREAK = 1, CONTROL_BREAK_LABEL = 2, CONTROL_CONTINUE = 3, CONTROL_CONTINUE_LABEL = 4, CONTROL_RETURN_VOID = 5, CONTROL_RETURN_INT = 6, CONTROL_RETURN_DOUBLE = 7, CONTROL_RETURN_FLOAT = 8;
+  function controlFromAsmType(asmType) {
+    return CONTROL_RETURN_INT + (asmType | 0); // assumes ASM_INT starts at 0, and order of these two is identical!
+  }
 
   var sizeToOutline = null; // customized per function and as we make progress
   function calculateThreshold(func, asmData) {
@@ -3314,7 +3327,7 @@ function outline(ast) {
     });
 
     // Generate new function
-    if (codeInfo.hasReturn || codeInfo.hasReturnInt || codeInfo.hasReturnDouble || codeInfo.hasBreak || codeInfo.hasContinue) {
+    if (codeInfo.hasReturn || codeInfo.hasReturnType[ASM_INT] || codeInfo.hasReturnType[ASM_DOUBLE] || codeInfo.hasReturnType[ASM_FLOAT] || codeInfo.hasBreak || codeInfo.hasContinue) {
       // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
       var breakCapturers = 0;
       var continueCapturers = 0;
@@ -3339,7 +3352,7 @@ function outline(ast) {
                 ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', CONTROL_RETURN_VOID])]);
               } else {
                 var type = detectAsmCoercion(node[1], asmData);
-                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', type == ASM_INT ? CONTROL_RETURN_INT : CONTROL_RETURN_DOUBLE])]);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', controlFromAsmType(type)])]);
                 ret.push(['stat', makeAssign(makeStackAccess(type, asmData.controlDataStackPos(outlineIndex)), node[1])]);
               }
               ret.push(['stat', ['break', 'OL']]);
@@ -3402,16 +3415,10 @@ function outline(ast) {
           [['stat', ['return']]]
         ));
       }
-      if (codeInfo.hasReturnInt) {
+      for (var returnType in codeInfo.hasReturnType) {
         reps.push(makeIf(
-          makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_RETURN_INT]),
-          [['stat', ['return', makeAsmCoercion(['name', 'tempInt'], ASM_INT)]]]
-        ));
-      }
-      if (codeInfo.hasReturnDouble) {
-        reps.push(makeIf(
-          makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_RETURN_DOUBLE]),
-          [['stat', ['return', makeAsmCoercion(['name', 'tempDouble'], ASM_DOUBLE)]]]
+          makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', controlFromAsmType(returnType)]),
+          [['stat', ['return', makeAsmCoercion(['name', 'tempInt'], returnType | 0)]]]
         ));
       }
       if (codeInfo.hasBreak) {
@@ -3490,8 +3497,9 @@ function outline(ast) {
     var last = getStatements(func)[getStatements(func).length-1];
     if (last[0] === 'stat') last = last[1];
     if (last[0] !== 'return') {
-      if (allCodeInfo.hasReturnInt || allCodeInfo.hasReturnDouble) {
-        getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], allCodeInfo.hasReturnInt ? ASM_INT : ASM_DOUBLE)]]);
+      for (var returnType in codeInfo.hasReturnType) {
+        getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], returnType | 0)]]);
+        break;
       }
     }
     outliningParents[newIdent] = func[1];
