@@ -59,8 +59,9 @@ o:	$(ALL_O)
 
 a:	$(ALL_A)
 
+# XXX EMSCRIPTEN: add AR_ARGS
 $(LUA_A): $(BASE_O)
-	$(AR) $(AR_ARGS) $@ $(BASE_O) # XXX EMSCRIPTEN: add AR_ARGS
+	$(AR) $(AR_ARGS) $@ $(BASE_O)
 	$(RANLIB) $@
 
 $(LUA_T): $(LUA_O) $(LUA_A)
