@@ -1165,7 +1165,9 @@ function makeVarDef(js) {
 
 function ensureDot(value) {
   value = value.toString();
-  if (value.indexOf('.') >= 0 || /[IN]/.test(value)) return value; // if already dotted, or Infinity or NaN, nothing to do here
+  // if already dotted, or Infinity or NaN, nothing to do here
+  // if smaller than 1 and running js opts, we always need to force a coercion (0.001 will turn into 1e-3, which has no .)
+  if ((value.indexOf('.') >= 0 || /[IN]/.test(value)) && (!RUNNING_JS_OPTS || Math.abs(value) >= 1)) return value;
   if (RUNNING_JS_OPTS) return '(+' + value + ')'; // JS optimizer will run, we must do +x, and it will be corrected later
   var e = value.indexOf('e');
   if (e < 0) return value + '.0';
@@ -1181,8 +1183,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
     value = ensureDot(value);
     return 'Math_fround(' + value + ')';
   }
-  // coerce if missing a '.', or if smaller than 1, so could be 1e-5 which has no .
-  if (type in Runtime.FLOAT_TYPES && (value.toString().indexOf('.') < 0 || Math.abs(value) < 1)) {
+  if (type in Runtime.FLOAT_TYPES) {
     return ensureDot(value);
   } else {
     return value;
