@@ -1145,10 +1145,12 @@ function simplifyNotComps(ast) {
 var NO_SIDE_EFFECTS = set('num', 'name');
 
 function hasSideEffects(node) { // this is 99% incomplete!
-  if (node[0] in NO_SIDE_EFFECTS) return false;
-  if (node[0] === 'unary-prefix') return hasSideEffects(node[2]);
-  if (node[0] === 'binary') return hasSideEffects(node[2]) || hasSideEffects(node[3]);
-  return true;
+  switch (node[0]) {
+    case 'num': case 'name': return false;
+    case 'unary-prefix': return hasSideEffects(node[2]);
+    case 'binary': return hasSideEffects(node[2]) || hasSideEffects(node[3]);
+    default: return true;
+  }
 }
 
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
