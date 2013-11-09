@@ -174,6 +174,7 @@ int main() {
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(sa4->sin_port == ntohs(89));
+  freeaddrinfo(servinfo);
 
   // test non-numeric host with AF_INET6
   memset(&hints, 0, sizeof(hints));
@@ -189,6 +190,65 @@ int main() {
          *((uint32_t*)&(sa6->sin6_addr)+2) != 0 ||
          *((uint32_t*)&(sa6->sin6_addr)+3) != 0);
   assert(sa6->sin6_port == ntohs(90));
+  freeaddrinfo(servinfo);
+
+  // test with NULL hints
+  // Specifying hints as NULL is equivalent to setting ai_socktype and ai_protocol to 0;
+  // ai_family to AF_UNSPEC; and ai_flags to (AI_V4MAPPED | AI_ADDRCONFIG)
+  // N.B. with NULL hints getaddrinfo should really be passing back multiple addrinfo structures in a
+  // linked list with next values given in ai_next. The current implementation doesn't do that yet but the
+  // following tests have assert(servinfo->ai_next == NULL) so that they will fail when multiple values do
+  // eventually get implemented, so we know to improve the tests then to cope with multiple values.
+
+  // test numeric host
+  err = getaddrinfo("1.2.3.4", "85", NULL, &servinfo);
+  assert(!err);
+  sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
+  assert(servinfo->ai_family == AF_INET);
+  assert(servinfo->ai_socktype == SOCK_STREAM);
+  assert(servinfo->ai_protocol == IPPROTO_TCP);
+  assert(sa4->sin_port == ntohs(85));
+  assert(servinfo->ai_next == NULL);
+  freeaddrinfo(servinfo);
+
+  // test non-numeric host
+  err = getaddrinfo("www.mozilla.org", "89", NULL, &servinfo);
+  assert(!err);
+  sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
+  assert(servinfo->ai_family == AF_INET);
+  assert(servinfo->ai_socktype == SOCK_STREAM);
+  assert(servinfo->ai_protocol == IPPROTO_TCP);
+  assert(sa4->sin_port == ntohs(89));
+  assert(servinfo->ai_next == NULL);
+  freeaddrinfo(servinfo);
+
+  // test loopback resolution
+  err = getaddrinfo(NULL, "80", NULL, &servinfo);
+  assert(!err);
+  sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
+  assert(servinfo->ai_family == AF_INET);
+  assert(servinfo->ai_socktype == SOCK_STREAM);
+  assert(servinfo->ai_protocol == IPPROTO_TCP);
+  assert(sa4->sin_port == ntohs(80));
+  assert(servinfo->ai_next == NULL);
+  freeaddrinfo(servinfo);
+
+  // test gai_strerror
+  assert(strncmp(gai_strerror(0), "Success", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_BADFLAGS), "Invalid value for 'ai_flags' field", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_NONAME), "NAME or SERVICE is unknown", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_AGAIN), "Temporary failure in name resolution", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_FAIL), "Non-recoverable failure in name res", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_FAMILY), "'ai_family' not supported", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_SOCKTYPE), "'ai_socktype' not supported", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_SERVICE), "SERVICE not supported for 'ai_socktype'", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_MEMORY), "Memory allocation failure", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_SYSTEM), "System error returned in 'errno'", 256) == 0);
+  assert(strncmp(gai_strerror(EAI_OVERFLOW), "Argument buffer overflow", 256) == 0);
+  assert(strncmp(gai_strerror(-5), "Unknown error", 256) == 0);
+  assert(strncmp(gai_strerror(-9), "Unknown error", 256) == 0);
+  assert(strncmp(gai_strerror(-13), "Unknown error", 256) == 0);
+  assert(strncmp(gai_strerror(-100), "Unknown error", 256) == 0);
 
   puts("success");
 

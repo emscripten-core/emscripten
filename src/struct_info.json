@@ -290,7 +290,11 @@
             "AI_CANONNAME", 
             "AI_PASSIVE", 
             "NI_NAMEREQD", 
-            "EAI_NONAME", 
+            "EAI_NONAME",
+            "EAI_AGAIN", 
+            "EAI_FAIL",
+            "EAI_MEMORY",
+            "EAI_SYSTEM",  
             "EAI_SOCKTYPE", 
             "EAI_BADFLAGS"
         ],
