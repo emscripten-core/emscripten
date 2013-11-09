@@ -10736,6 +10736,7 @@ o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "J
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm1f = make_run("asm1f", compiler=CLANG, emcc_args=["-O1", "-s", "PRECISE_F32=1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
+asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-O2", "-s", "PRECISE_F32=1", "-g"]) # TODO: collapse into another test subsuite
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "CHECK_HEAP_ALIGN=1"])
 asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env={"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"})
 
