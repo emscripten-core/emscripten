@@ -14,9 +14,9 @@
 #include "limits"
 #include <sys/types.h>
 #if !defined(_WIN32)
-#if !defined(__sun__) && !defined(__linux__)
+#if !defined(__sun__) && !defined(__linux__) && !defined(_AIX)
 #include <sys/sysctl.h>
-#endif // !__sun__ && !__linux__
+#endif // !__sun__ && !__linux__ && !_AIX
 #include <unistd.h>
 #endif // !_WIN32
 
@@ -89,7 +89,11 @@ thread::hardware_concurrency() _NOEXCEPT
 #else  // defined(CTL_HW) && defined(HW_NCPU)
     // TODO: grovel through /proc or check cpuid on x86 and similar
     // instructions on other architectures.
-#warning hardware_concurrency not yet implemented
+#   if defined(_MSC_VER) && ! defined(__clang__)
+        _LIBCPP_WARNING("hardware_concurrency not yet implemented")
+#   else
+#       warning hardware_concurrency not yet implemented
+#   endif
     return 0;  // Means not computable [thread.thread.static]
 #endif  // defined(CTL_HW) && defined(HW_NCPU)
 }

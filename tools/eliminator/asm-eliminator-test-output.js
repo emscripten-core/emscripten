@@ -291,4 +291,11 @@ function watIf() {
   if ($cmp38) {} else {}
  }
 }
+function select2($foundBase_0_off0) {
+ $foundBase_0_off0 = $foundBase_0_off0 | 0;
+ var $call24 = 0;
+ $call24 = MUST_RUN() | 0;
+ STACKTOP = sp;
+ return ($foundBase_0_off0 ? 0 : $call24) | 0;
+}
 

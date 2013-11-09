@@ -2010,6 +2010,49 @@ a(int [32], char [5]*)
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
     try_delete(path_from_root('tests', 'Module-exports', 'test.js.map'))
 
+  def test_fs_stream_proto(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
+
+int main()
+{
+    int file_size = 0;
+    int h = open("src.cpp", O_RDONLY, 0666);
+    if (0 != h)
+    {
+        FILE* file = fdopen(h, "rb");
+        if (0 != file)
+        {
+            fseek(file, 0, SEEK_END);
+            file_size = ftell(file);
+            fseek(file, 0, SEEK_SET);
+        }
+        else
+        {
+            printf("fdopen() failed: %s\n", strerror(errno));
+            return 10;
+        }
+        close(h);
+        printf("File size: %d\n", file_size);
+    }
+    else
+    {
+        printf("open() failed: %s\n", strerror(errno));
+        return 10;
+    }
+    return 0;
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp', '--embed-file', 'src.cpp']).communicate()
+    for engine in JS_ENGINES:
+      out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
+      self.assertContained('File size: 722', out)
+
   def test_simd(self):
     self.clear()
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-DSP', '--llvm-opts', '''['-O3', '-vectorize', '-vectorize-loops', '-bb-vectorize-vector-bits=128', '-force-vector-width=4']''']).communicate()

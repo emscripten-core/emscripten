@@ -3844,7 +3844,6 @@ def process(filename):
       self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
 
   def test_inlinejs(self):
-      if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
       if not self.is_le32(): return self.skip('le32 needed for inline js')
       src = r'''
         #include <stdio.h>
@@ -3872,7 +3871,6 @@ def process(filename):
       self.do_run(src, 'Inline JS is very cool\n3.64\n') # TODO 1\n2\n3\n1\n2\n3\n')
 
   def test_inlinejs2(self):
-      if Settings.ASM_JS: Settings.ASM_JS = 2 # skip validation, asm does not support random code
       if not self.is_le32(): return self.skip('le32 needed for inline js')
       src = r'''
         #include <stdio.h>

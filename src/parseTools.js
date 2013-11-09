@@ -2290,7 +2290,7 @@ function processMathop(item) {
       case 'trunc': {
         return '((' + idents[0] + '[0]) & ' + (Math.pow(2, bitsLeft)-1) + ')';
       }
-      case 'select': return idents[0] + ' ? ' + makeCopyI64(idents[1]) + ' : ' + makeCopyI64(idents[2]);
+      case 'select': return '(' + idents[0] + ' ? ' + makeCopyI64(idents[1]) + ' : ' + makeCopyI64(idents[2]) + ')';;
       case 'ptrtoint': return makeI64(idents[0], 0);
       case 'inttoptr': {
         var m = /\(?\[(\d+),\d+\]\)?/.exec(idents[0]);
@@ -2501,7 +2501,7 @@ function processMathop(item) {
       if (PRECISE_F32) return 'Math_fround(' + idents[0] + ')';
       return idents[0];
     }
-    case 'select': return idents[0] + '?' + asmEnsureFloat(idents[1], item.type) + ':' + asmEnsureFloat(idents[2], item.type);
+    case 'select': return '(' + idents[0] + '?' + asmEnsureFloat(idents[1], item.type) + ':' + asmEnsureFloat(idents[2], item.type) + ')';
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
       if (QUANTUM_SIZE == 1) {

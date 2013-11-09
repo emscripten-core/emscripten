@@ -361,9 +361,10 @@ mergeInto(LibraryManager.library, {
     // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
       if (!FS.FSStream) {
-        FS.FSStream = {};
+        FS.FSStream = function(){};
+        FS.FSStream.prototype = {};
         // compatibility
-        Object.defineProperties(FS.FSStream, {
+        Object.defineProperties(FS.FSStream.prototype, {
           object: {
             get: function() { return this.node; },
             set: function(val) { this.node = val; }
@@ -379,7 +380,16 @@ mergeInto(LibraryManager.library, {
           }
         });
       }
-      stream.prototype = FS.FSStream;
+      if (stream.__proto__) {
+        // reuse the object
+        stream.__proto__ = FS.FSStream.prototype;
+      } else {
+        var newStream = new FS.FSStream();
+        for (var p in stream) {
+          newStream[p] = stream[p];
+        }
+        stream = newStream;
+      }
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;
@@ -439,7 +449,7 @@ mergeInto(LibraryManager.library, {
 
       var completed = 0;
       var total = FS.mounts.length;
-      var done = function(err) {
+      function done(err) {
         if (err) {
           return callback(err);
         }
@@ -1326,11 +1336,11 @@ mergeInto(LibraryManager.library, {
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-        var LazyUint8Array = function() {
+        function LazyUint8Array() {
           this.lengthKnown = false;
           this.chunks = []; // Loaded chunks. Index is the chunk number
         }
-        LazyUint8Array.prototype.get = function(idx) {
+        LazyUint8Array.prototype.get = function LazyUint8Array_get(idx) {
           if (idx > this.length-1 || idx < 0) {
             return undefined;
           }
@@ -1338,10 +1348,10 @@ mergeInto(LibraryManager.library, {
           var chunkNum = Math.floor(idx / this.chunkSize);
           return this.getter(chunkNum)[chunkOffset];
         }
-        LazyUint8Array.prototype.setDataGetter = function(getter) {
+        LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
           this.getter = getter;
         }
-        LazyUint8Array.prototype.cacheLength = function() {
+        LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
             // Find length
             var xhr = new XMLHttpRequest();
             xhr.open('HEAD', url, false);
@@ -1437,7 +1447,7 @@ mergeInto(LibraryManager.library, {
       var keys = Object.keys(node.stream_ops);
       keys.forEach(function(key) {
         var fn = node.stream_ops[key];
-        stream_ops[key] = function() {
+        stream_ops[key] = function forceLoadLazyFile() {
           if (!FS.forceLoadFile(node)) {
             throw new FS.ErrnoError(ERRNO_CODES.EIO);
           }
@@ -1445,7 +1455,7 @@ mergeInto(LibraryManager.library, {
         };
       });
       // use a custom read function
-      stream_ops.read = function(stream, buffer, offset, length, position) {
+      stream_ops.read = function stream_ops_read(stream, buffer, offset, length, position) {
         if (!FS.forceLoadFile(node)) {
           throw new FS.ErrnoError(ERRNO_CODES.EIO);
         }
@@ -1539,12 +1549,12 @@ mergeInto(LibraryManager.library, {
       } catch (e) {
         return onerror(e);
       }
-      openRequest.onupgradeneeded = function() {
+      openRequest.onupgradeneeded = function openRequest_onupgradeneeded() {
         console.log('creating db');
         var db = openRequest.result;
         db.createObjectStore(FS.DB_STORE_NAME);
       };
-      openRequest.onsuccess = function() {
+      openRequest.onsuccess = function openRequest_onsuccess() {
         var db = openRequest.result;
         var transaction = db.transaction([FS.DB_STORE_NAME], 'readwrite');
         var files = transaction.objectStore(FS.DB_STORE_NAME);
@@ -1554,8 +1564,8 @@ mergeInto(LibraryManager.library, {
         }
         paths.forEach(function(path) {
           var putRequest = files.put(FS.analyzePath(path).object.contents, path);
-          putRequest.onsuccess = function() { ok++; if (ok + fail == total) finish() };
-          putRequest.onerror = function() { fail++; if (ok + fail == total) finish() };
+          putRequest.onsuccess = function putRequest_onsuccess() { ok++; if (ok + fail == total) finish() };
+          putRequest.onerror = function putRequest_onerror() { fail++; if (ok + fail == total) finish() };
         });
         transaction.onerror = onerror;
       };
@@ -1573,7 +1583,7 @@ mergeInto(LibraryManager.library, {
         return onerror(e);
       }
       openRequest.onupgradeneeded = onerror; // no database to load from
-      openRequest.onsuccess = function() {
+      openRequest.onsuccess = function openRequest_onsuccess() {
         var db = openRequest.result;
         try {
           var transaction = db.transaction([FS.DB_STORE_NAME], 'readonly');
@@ -1588,7 +1598,7 @@ mergeInto(LibraryManager.library, {
         }
         paths.forEach(function(path) {
           var getRequest = files.get(path);
-          getRequest.onsuccess = function() {
+          getRequest.onsuccess = function getRequest_onsuccess() {
             if (FS.analyzePath(path).exists) {
               FS.unlink(path);
             }
@@ -1596,7 +1606,7 @@ mergeInto(LibraryManager.library, {
             ok++;
             if (ok + fail == total) finish();
           };
-          getRequest.onerror = function() { fail++; if (ok + fail == total) finish() };
+          getRequest.onerror = function getRequest_onerror() { fail++; if (ok + fail == total) finish() };
         });
         transaction.onerror = onerror;
       };

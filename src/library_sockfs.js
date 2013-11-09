@@ -138,7 +138,9 @@ mergeInto(LibraryManager.library, {
             console.log('connect: ' + url);
 #endif
             // the node ws library API is slightly different than the browser's
-            var opts = ENVIRONMENT_IS_NODE ? {} : ['binary'];
+            var opts = ENVIRONMENT_IS_NODE ? {headers: {'websocket-protocol': ['binary']}} : ['binary'];
+            // If node we use the ws library.
+            var WebSocket = ENVIRONMENT_IS_NODE ? require('ws') : window['WebSocket'];
             ws = new WebSocket(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
@@ -208,7 +210,7 @@ mergeInto(LibraryManager.library, {
           }
         };
 
-        var handleMessage = function(data) {
+        function handleMessage(data) {
           assert(typeof data !== 'string' && data.byteLength !== undefined);  // must receive an ArrayBuffer
           data = new Uint8Array(data);  // make a typed array view on the array buffer
 
@@ -247,7 +249,7 @@ mergeInto(LibraryManager.library, {
           });
         } else {
           peer.socket.onopen = handleOpen;
-          peer.socket.onmessage = function(event) {
+          peer.socket.onmessage = function peer_socket_onmessage(event) {
             handleMessage(event.data);
           };
         }

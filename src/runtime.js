@@ -394,7 +394,7 @@ var Runtime = {
   getFuncWrapper: function(func, sig) {
     assert(sig);
     if (!Runtime.funcWrappers[func]) {
-      Runtime.funcWrappers[func] = function() {
+      Runtime.funcWrappers[func] = function dynCall_wrapper() {
         return Runtime.dynCall(sig, func, arguments);
       };
     }
@@ -452,7 +452,7 @@ var Runtime = {
       buffer.length = 0;
       return ret;
     }
-    this.processJSString = function(string) {
+    this.processJSString = function processJSString(string) {
       string = unescape(encodeURIComponent(string));
       var ret = [];
       for (var i = 0; i < string.length; i++) {

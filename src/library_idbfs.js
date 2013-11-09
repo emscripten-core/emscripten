@@ -58,7 +58,7 @@ mergeInto(LibraryManager.library, {
       }
 
       var completed = 0;
-      var done = function(err) {
+      function done(err) {
         if (err) return callback(err);
         if (++completed >= total) {
           return callback(null);
@@ -68,7 +68,7 @@ mergeInto(LibraryManager.library, {
       // create a single transaction to handle and IDB reads / writes we'll need to do
       var db = src.type === 'remote' ? src.db : dst.db;
       var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
-      transaction.onerror = function() { callback(this.error); };
+      transaction.onerror = function transaction_onerror() { callback(this.error); };
       var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
 
       for (var path in create) {
@@ -92,8 +92,8 @@ mergeInto(LibraryManager.library, {
         } else {
           // save file to IDB
           var req = store.put(entry, path);
-          req.onsuccess = function() { done(null); };
-          req.onerror = function() { done(this.error); };
+          req.onsuccess = function req_onsuccess() { done(null); };
+          req.onerror = function req_onerror() { done(this.error); };
         }
       }
 
@@ -117,18 +117,18 @@ mergeInto(LibraryManager.library, {
         } else {
           // delete file from IDB
           var req = store.delete(path);
-          req.onsuccess = function() { done(null); };
-          req.onerror = function() { done(this.error); };
+          req.onsuccess = function req_onsuccess() { done(null); };
+          req.onerror = function req_onerror() { done(this.error); };
         }
       }
     },
     getLocalSet: function(mount, callback) {
       var files = {};
 
-      var isRealDir = function(p) {
+      function isRealDir(p) {
         return p !== '.' && p !== '..';
       };
-      var toAbsolute = function(root) {
+      function toAbsolute(root) {
         return function(p) {
           return PATH.join2(root, p);
         }
@@ -177,17 +177,17 @@ mergeInto(LibraryManager.library, {
       } catch (e) {
         return onerror(e);
       }
-      req.onupgradeneeded = function() {
+      req.onupgradeneeded = function req_onupgradeneeded() {
         db = req.result;
         db.createObjectStore(IDBFS.DB_STORE_NAME);
       };
-      req.onsuccess = function() {
+      req.onsuccess = function req_onsuccess() {
         db = req.result;
         // add to the cache
         IDBFS.dbs[name] = db;
         callback(null, db);
       };
-      req.onerror = function() {
+      req.onerror = function req_onerror() {
         callback(this.error);
       };
     },
@@ -198,10 +198,10 @@ mergeInto(LibraryManager.library, {
         if (err) return callback(err);
 
         var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
-        transaction.onerror = function() { callback(this.error); };
+        transaction.onerror = function transaction_onerror() { callback(this.error); };
 
         var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
-        store.openCursor().onsuccess = function(event) {
+        store.openCursor().onsuccess = function store_openCursor_onsuccess(event) {
           var cursor = event.target.result;
           if (!cursor) {
             return callback(null, { type: 'remote', db: db, files: files });

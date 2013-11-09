@@ -4,12 +4,12 @@
 
 mergeInto(LibraryManager.library, {
   $Browser__deps: ['$PATH'],
-  $Browser__postset: 'Module["requestFullScreen"] = function(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
-                     'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
-                     'Module["setCanvasSize"] = function(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
-                     'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
-                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n' +
-                     'Module["getUserMedia"] = function() { Browser.getUserMedia() }',
+  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
+                     'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
+                     'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
+                     'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
+                     'Module["resumeMainLoop"] = function Module_resumeMainLoop() { Browser.mainLoop.resume() };\n' +
+                     'Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() }',
   $Browser: {
     mainLoop: {
       scheduler: null,
@@ -77,10 +77,10 @@ mergeInto(LibraryManager.library, {
       // might create some side data structure for use later (like an Image element, etc.).
 
       var imagePlugin = {};
-      imagePlugin['canHandle'] = function(name) {
+      imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
         return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
       };
-      imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
+      imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
         var b = null;
         if (Browser.hasBlobConstructor) {
           try {
@@ -103,7 +103,7 @@ mergeInto(LibraryManager.library, {
         assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
         var img = new Image();
-        img.onload = function() {
+        img.onload = function img_onload() {
           assert(img.complete, 'Image ' + name + ' could not be decoded');
           var canvas = document.createElement('canvas');
           canvas.width = img.width;
@@ -114,7 +114,7 @@ mergeInto(LibraryManager.library, {
           Browser.URLObject.revokeObjectURL(url);
           if (onload) onload(byteArray);
         };
-        img.onerror = function(event) {
+        img.onerror = function img_onerror(event) {
           console.log('Image ' + url + ' could not be decoded');
           if (onerror) onerror();
         };
@@ -123,10 +123,10 @@ mergeInto(LibraryManager.library, {
       Module['preloadPlugins'].push(imagePlugin);
 
       var audioPlugin = {};
-      audioPlugin['canHandle'] = function(name) {
+      audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
         return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
-      audioPlugin['handle'] = function(byteArray, name, onload, onerror) {
+      audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
         var done = false;
         function finish(audio) {
           if (done) return;
@@ -152,7 +152,7 @@ mergeInto(LibraryManager.library, {
 #endif
           var audio = new Audio();
           audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
-          audio.onerror = function(event) {
+          audio.onerror = function audio_onerror(event) {
             if (done) return;
             console.log('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
             function encode64(data) {
@@ -268,7 +268,7 @@ mergeInto(LibraryManager.library, {
           (function(prop) {
             switch (typeof tempCtx[prop]) {
               case 'function': {
-                wrapper[prop] = function() {
+                wrapper[prop] = function gl_wrapper() {
                   if (GL.debug) {
                     var printArgs = Array.prototype.slice.call(arguments).map(Runtime.prettyPrint);
                     Module.printErr('[gl_f:' + prop + ':' + printArgs + ']');
@@ -359,16 +359,20 @@ mergeInto(LibraryManager.library, {
       canvas.requestFullScreen();
     },
 
-    requestAnimationFrame: function(func) {
-      if (!window.requestAnimationFrame) {
-        window.requestAnimationFrame = window['requestAnimationFrame'] ||
-                                       window['mozRequestAnimationFrame'] ||
-                                       window['webkitRequestAnimationFrame'] ||
-                                       window['msRequestAnimationFrame'] ||
-                                       window['oRequestAnimationFrame'] ||
-                                       window['setTimeout'];
+    requestAnimationFrame: function requestAnimationFrame(func) {
+      if (typeof window === 'undefined') { // Provide fallback to setTimeout if window is undefined (e.g. in Node.js)
+        setTimeout(func, 1000/60);
+      } else {
+        if (!window.requestAnimationFrame) {
+          window.requestAnimationFrame = window['requestAnimationFrame'] ||
+                                         window['mozRequestAnimationFrame'] ||
+                                         window['webkitRequestAnimationFrame'] ||
+                                         window['msRequestAnimationFrame'] ||
+                                         window['oRequestAnimationFrame'] ||
+                                         window['setTimeout'];
+        }
+        window.requestAnimationFrame(func);
       }
-      window.requestAnimationFrame(func);
     },
 
     // generic abort-aware wrapper for an async callback
@@ -497,7 +501,7 @@ mergeInto(LibraryManager.library, {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
       xhr.responseType = 'arraybuffer';
-      xhr.onload = function() {
+      xhr.onload = function xhr_onload() {
         if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
           onload(xhr.response);
         } else {
@@ -610,7 +614,7 @@ mergeInto(LibraryManager.library, {
     http.responseType = 'arraybuffer';
 
     // LOAD
-    http.onload = function(e) {
+    http.onload = function http_onload(e) {
       if (http.status == 200) {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
         if (onload) Runtime.dynCall('vii', onload, [arg, file]);
@@ -620,12 +624,12 @@ mergeInto(LibraryManager.library, {
     };
 
     // ERROR
-    http.onerror = function(e) {
+    http.onerror = function http_onerror(e) {
       if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
     };
 
     // PROGRESS
-    http.onprogress = function(e) {
+    http.onprogress = function http_onprogress(e) {
       var percentComplete = (e.position / e.totalSize)*100;
       if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
     };
@@ -705,7 +709,7 @@ mergeInto(LibraryManager.library, {
 
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
     var script = document.createElement('script');
-    script.onload = function() {
+    script.onload = function script_onload() {
       if (runDependencies > 0) {
         dependenciesFulfilled = onload;
       } else {
@@ -720,7 +724,7 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     Module['noExitRuntime'] = true;
 
-    Browser.mainLoop.runner = function() {
+    Browser.mainLoop.runner = function Browser_mainLoop_runner() {
       if (ABORT) return;
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
@@ -777,11 +781,11 @@ mergeInto(LibraryManager.library, {
       Browser.mainLoop.scheduler();
     }
     if (fps && fps > 0) {
-      Browser.mainLoop.scheduler = function() {
+      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
         setTimeout(Browser.mainLoop.runner, 1000/fps); // doing this each time means that on exception, we stop
       }
     } else {
-      Browser.mainLoop.scheduler = function() {
+      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
         Browser.requestAnimationFrame(Browser.mainLoop.runner);
       }
     }
@@ -870,14 +874,14 @@ mergeInto(LibraryManager.library, {
   emscripten_get_now: function() {
     if (!_emscripten_get_now.actual) {
       if (ENVIRONMENT_IS_NODE) {
-          _emscripten_get_now.actual = function() {
+          _emscripten_get_now.actual = function _emscripten_get_now_actual() {
             var t = process['hrtime']();
             return t[0] * 1e3 + t[1] / 1e6;
           }
       } else if (typeof dateNow !== 'undefined') {
         _emscripten_get_now.actual = dateNow;
       } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
-        _emscripten_get_now.actual = function() { return window['performance']['now'](); };
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return window['performance']['now'](); };
       } else {
         _emscripten_get_now.actual = Date.now;
       }
@@ -895,7 +899,7 @@ mergeInto(LibraryManager.library, {
       buffer: 0,
       bufferSize: 0
     };
-    info.worker.onmessage = function(msg) {
+    info.worker.onmessage = function info_worker_onmessage(msg) {
       var info = Browser.workers[id];
       if (!info) return; // worker was destroyed meanwhile
       var callbackId = msg.data['callbackId'];
