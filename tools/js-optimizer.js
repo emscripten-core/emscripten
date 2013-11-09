@@ -1142,8 +1142,6 @@ function simplifyNotComps(ast) {
   simplifyNotCompsPass = false;
 }
 
-var NO_SIDE_EFFECTS = set('num', 'name');
-
 function hasSideEffects(node) { // this is 99% incomplete!
   switch (node[0]) {
     case 'num': case 'name': return false;
