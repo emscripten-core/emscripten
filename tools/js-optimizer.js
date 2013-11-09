@@ -618,6 +618,7 @@ function simplifyExpressions(ast) {
 
     if (asm) {
       if (hasTempDoublePtr) {
+        var asmData = normalizeAsm(ast);
         traverse(ast, function(node, type) {
           if (type === 'assign') {
             if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name' && node[2][1][1] === 'HEAP32') {
@@ -642,7 +643,7 @@ function simplifyExpressions(ast) {
                 node[2][0] !== 'seq') { // avoid (x, y, z) which can be used for tempDoublePtr on doubles for alignment fixes
               if (node[1][2][1][1] === 'HEAP32') {
                 node[1][3][1][1] = 'HEAPF32';
-                return ['unary-prefix', '+', node[1][3]];
+                return makeAsmCoercion(node[1][3], detectAsmCoercion(node[2]));
               } else {
                 node[1][3][1][1] = 'HEAP32';
                 return ['binary', '|', node[1][3], ['num', 0]];
@@ -686,7 +687,6 @@ function simplifyExpressions(ast) {
             }
           }
         });
-        var asmData = normalizeAsm(ast);
         for (var v in bitcastVars) {
           var info = bitcastVars[v];
           // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
