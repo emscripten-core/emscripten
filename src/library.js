@@ -7506,7 +7506,7 @@ LibraryManager.library = {
         {{{ cDefine('AI_NUMERICSERV') }}}|{{{ cDefine('AI_V4MAPPED') }}}|{{{ cDefine('AI_ALL') }}}|{{{ cDefine('AI_ADDRCONFIG') }}})) {
       return {{{ cDefine('EAI_BADFLAGS') }}};
     }
-    if (hint != 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
+    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
       return {{{ cDefine('EAI_BADFLAGS') }}};
     }
     if (flags & {{{ cDefine('AI_ADDRCONFIG') }}}) {
