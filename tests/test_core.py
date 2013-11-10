@@ -8358,11 +8358,14 @@ extern "C" {
       if self.emcc_args is None: return self.skip('requires emcc')
       results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
 (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''') ]
-      for t in ['float', 'double']:
-        print t
-        src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', t)
-        for i, j in results:
-          self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'), no_build=i>1)
+      for precision in [0, 1, 2]:
+        Settings.PRECISE_F32 = precision
+        for t in ['float', 'double']:
+          print precision, t
+          src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', t)
+          for i, j in results:
+            self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'), no_build=i>1)
+          shutil.copyfile('src.cpp.o.js', '%d_%s.js' % (precision, t))
 
   def test_whets(self):
     if not Settings.ASM_JS: return self.skip('mainly a test for asm validation here')
