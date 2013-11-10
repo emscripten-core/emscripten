@@ -2,6 +2,9 @@
          T __strxfrm_l
          W __towlower_l
          W __towupper_l
+         T __tre_mem_alloc_impl
+         T __tre_mem_destroy
+         T __tre_mem_new_impl
          T __wcscoll_l
          T __wcsxfrm_l
          W __wctype_l
@@ -47,6 +50,10 @@
          T mbsrtowcs
          T mbstowcs
          T mbtowc
+         T regcomp
+         T regerror
+         T regexec
+         T regfree
          T strfmon
          T strfmon_l
          T strxfrm
