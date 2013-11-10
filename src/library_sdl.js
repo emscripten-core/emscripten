@@ -642,15 +642,14 @@ var LibrarySDL = {
         }
         case 'joystick_button_up': case 'joystick_button_down': {
           var state = event.type === 'joystick_button_up' ? 0 : 1;
-          var code = event.type === 'joystick_button_down' ? 1539 : 1540;
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.type, 'code', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.button, 'event.button', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.state, 'state', 'i8') }}};
           break;
         }
         case 'joystick_axis_motion': {
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, '1536', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'SDL.joystickAxisValueConversion(event.value)', 'i32') }}};
@@ -741,12 +740,12 @@ var LibrarySDL = {
     // Returns 'true' if pressed, 'false' otherwise.
     getJoystickButtonState: function(button) {
       if (typeof button === 'object') {
-        // Latest Firefox builds: Button is a value with 'pressed' and
-        // 'value' attributes.
+        // Current gamepad API editor's draft (Firefox Nightly)
+        // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
         return button.pressed;
       } else {
-        // Older Firefox / Chrome: Button is a number indicating whether
-        // or not it is pressed.
+        // Current gamepad API working draft (Firefox / Chrome Stable)
+        // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
         return button > 0;
       }
     },
@@ -860,6 +859,12 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
     SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
     SDL.DOMEventToSDLEvent['resize'] = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
+    // These are not technically DOM events; the HTML gamepad API is poll-based.
+    // However, we define them here, as the rest of the SDL code assumes that
+    // all SDL events originate as DOM events.
+    SDL.DOMEventToSDLEvent['joystick_axis_motion'] = 0x600 /* SDL_JOYAXISMOTION */;
+    SDL.DOMEventToSDLEvent['joystick_button_down'] = 0x603 /* SDL_JOYBUTTONDOWN */;
+    SDL.DOMEventToSDLEvent['joystick_button_up'] = 0x604 /* SDL_JOYBUTTONUP */;
     return 0; // success
   },
 
@@ -2586,8 +2591,9 @@ var LibrarySDL = {
 
   SDL_JoystickGetAxis: function(joystick, axis) {
     var gamepad = SDL.getGamepad(joystick - 1);
-    if (gamepad && gamepad.axes.length > axis)
+    if (gamepad && gamepad.axes.length > axis) {
       return SDL.joystickAxisValueConversion(gamepad.axes[axis]);
+    }
     return 0;
   },
 
@@ -2597,8 +2603,9 @@ var LibrarySDL = {
 
   SDL_JoystickGetButton: function(joystick, button) {
     var gamepad = SDL.getGamepad(joystick - 1);
-    if (gamepad && gamepad.buttons.length > button)
+    if (gamepad && gamepad.buttons.length > button) {
       return SDL.getJoystickButtonState(gamepad.buttons[button]) ? 1 : 0;
+    }
     return 0;
   },
 
