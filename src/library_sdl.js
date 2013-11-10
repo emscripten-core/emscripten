@@ -724,8 +724,9 @@ var LibrarySDL = {
     recordJoystickState: function(joystick, state) {
       // Standardize button state.
       var buttons = new Array(state.buttons.length);
-      for (var i = 0; i < state.buttons.length; i++)
+      for (var i = 0; i < state.buttons.length; i++) {
         buttons[i] = SDL.getJoystickButtonState(state.buttons[i]);
+      }
 
       SDL.lastJoystickState[joystick] = {
         buttons: buttons,
@@ -809,8 +810,9 @@ var LibrarySDL = {
     // Helper function: Returns the gamepad if available, or null if not.
     getGamepad: function(deviceIndex) {
       var gamepads = SDL.getGamepads();
-      if (gamepads.length > deviceIndex && deviceIndex >= 0)
+      if (gamepads.length > deviceIndex && deviceIndex >= 0) {
         return gamepads[deviceIndex];
+      }
       return null;
     },
   },
