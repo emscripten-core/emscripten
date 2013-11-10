@@ -2596,7 +2596,7 @@ var LibrarySDL = {
   SDL_JoystickGetButton: function(joystick, button) {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad && gamepad.buttons.length > button)
-      return gamepad.buttons[button];
+      return SDL.getJoystickButtonState(gamepad.buttons[button]) ? 1 : 0;
     return 0;
   },
 
