@@ -530,7 +530,11 @@ var LibraryGL = {
         ret = allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
         break;
       default:
-        throw 'Failure: Invalid glGetString value: ' + name_;
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetString: Unknown parameter ' + name_ + '!');
+#endif
+        return 0;
     }
     GL.stringCache[name_] = ret;
     return ret;
@@ -561,7 +565,11 @@ var LibraryGL = {
         {{{ makeSetValue('p', '0', 'result ? 1 : 0', 'i8') }}};
         break;
       case "string":
-        throw 'Native code calling glGetIntegerv(' + name_ + ') on a name which returns a string!';
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGetIntegerv(' + name_ + ') on a name which returns a string!');
+#endif
+        return;
       case "object":
         if (result === null) {
           {{{ makeSetValue('p', '0', '0', 'i32') }}};
@@ -583,13 +591,19 @@ var LibraryGL = {
         } else if (result instanceof WebGLTexture) {
           {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
         } else {
-          throw 'Unknown object returned from WebGL getParameter';
+          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Unknown object returned from WebGL getParameter(' + name_ + ')!');
+#endif
+          return;
         }
         break;
-      case "undefined":
-        throw 'Native code calling glGetIntegerv(' + name_ + ') and it returns undefined';
       default:
-        throw 'Why did we hit the default case?';
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGetIntegerv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+        return;
     }
   },
 
@@ -607,7 +621,11 @@ var LibraryGL = {
           {{{ makeSetValue('p', '0', '0', 'float') }}};
       case "object":
         if (result === null) {
-          throw 'Native code calling glGetFloatv(' + name_ + ') and it returns null';
+          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetFloatv: Native code calling glGetFloatv(' + name_ + ') and it returns null!');
+#endif
+          return;
         } else if (result instanceof Float32Array ||
                    result instanceof Uint32Array ||
                    result instanceof Int32Array ||
@@ -626,13 +644,19 @@ var LibraryGL = {
         } else if (result instanceof WebGLTexture) {
           {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
         } else {
-          throw 'Unknown object returned from WebGL getParameter';
+          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetFloatv: Native code calling glGetFloatv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+          return;
         }
         break;
-      case "undefined":
-        throw 'Native code calling glGetFloatv(' + name_ + ') and it returns undefined';
       default:
-        throw 'Why did we hit the default case?';
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetFloatv: Native code calling glGetFloatv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+        return;
     }
   },
 
@@ -647,7 +671,11 @@ var LibraryGL = {
         {{{ makeSetValue('p', '0', 'result != 0', 'i8') }}};
         break;
       case "string":
-        throw 'Native code calling glGetBooleanv(' + name_ + ') on a name which returns a string!';
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetBooleanv: Native code calling glGetBooleanv(' + name_ + ') on a name which returns a string!');
+#endif
+        return;
       case "object":
         if (result === null) {
           {{{ makeSetValue('p', '0', '0', 'i8') }}};
@@ -665,13 +693,19 @@ var LibraryGL = {
                    result instanceof WebGLTexture) {
           {{{ makeSetValue('p', '0', '1', 'i8') }}}; // non-zero ID is always 1!
         } else {
-          throw 'Unknown object returned from WebGL getParameter';
+          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetBooleanv: Unknown object returned from WebGL getParameter(' + name_ + ')!');
+#endif
+          return;
         }
         break;
-      case "undefined":
-          throw 'Unknown object returned from WebGL getParameter';
       default:
-        throw 'Why did we hit the default case?';
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetBooleanv: Native code calling glGetBooleanv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+        return;
     }
   },
 
@@ -759,7 +793,12 @@ var LibraryGL = {
       case 0x1908 /* GL_RGBA */:
         sizePerPixel = 4;
         break;
-      default: throw 'unsupported glReadPixels format';
+      default: 
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glReadPixels: Unsupported format ' + format + '!');
+#endif
+        return;
     }
     var totalSize = width*height*sizePerPixel;
     Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
@@ -2191,7 +2230,12 @@ var LibraryGL = {
         attribute = GLImmediate.clientAttributes[GLImmediate.COLOR]; break;
       case 0x8092: // GL_TEXTURE_COORD_ARRAY_POINTER
         attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture]; break;
-      default: throw 'TODO: glGetPointerv for ' + name;
+      default:
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetPointerv: Unsupported name ' + name + '!');
+#endif
+        return;
     }
     {{{ makeSetValue('p', '0', 'attribute ? attribute.pointer : 0', 'i32') }}};
   },
