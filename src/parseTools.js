@@ -981,6 +981,12 @@ function parseLLVMString(str) {
   return ret;
 }
 
+function expandLLVMString(str) {
+  return str.replace(/\\../g, function(m) {
+    return String.fromCharCode(parseInt(m.substr(1), '16'));
+  });
+}
+
 function getLabelIds(labels) {
   return labels.map(function(label) { return label.ident });
 }
