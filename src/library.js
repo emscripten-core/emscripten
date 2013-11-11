@@ -847,10 +847,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE);
       return 0;
     } else {
-      for (var i = 0; i < cwd.length; i++) {
-        {{{ makeSetValue('buf', 'i', 'cwd.charCodeAt(i)', 'i8') }}}
-      }
-      {{{ makeSetValue('buf', 'i', '0', 'i8') }}}
+      writeAsciiToMemory(cwd, buf);
       return buf;
     }
   },
@@ -1293,10 +1290,7 @@ LibraryManager.library = {
     if (namesize < ret.length + 1) {
       return ___setErrNo(ERRNO_CODES.ERANGE);
     } else {
-      for (var i = 0; i < ret.length; i++) {
-        {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
-      }
-      {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+      writeAsciiToMemory(ret, name);
       return 0;
     }
   },
@@ -2699,10 +2693,7 @@ LibraryManager.library = {
     var result = dir + '/' + name;
     if (!_tmpnam.buffer) _tmpnam.buffer = _malloc(256);
     if (!s) s = _tmpnam.buffer;
-    for (var i = 0; i < result.length; i++) {
-      {{{ makeSetValue('s', 'i', 'result.charCodeAt(i)', 'i8') }}};
-    }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
+    writeAsciiToMemory(result, s);
     return s;
   },
   tempnam__deps: ['tmpnam'],
@@ -3343,10 +3334,7 @@ LibraryManager.library = {
     var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
-      for (var j = 0; j < line.length; j++) {
-        {{{ makeSetValue('poolPtr', 'j', 'line.charCodeAt(j)', 'i8') }}};
-      }
-      {{{ makeSetValue('poolPtr', 'j', '0', 'i8') }}};
+      writeAsciiToMemory(line, poolPtr);
       {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
@@ -3976,10 +3964,7 @@ LibraryManager.library = {
         return ___setErrNo(ERRNO_CODES.ERANGE);
       } else {
         var msg = ERRNO_MESSAGES[errnum];
-        for (var i = 0; i < msg.length; i++) {
-          {{{ makeSetValue('strerrbuf', 'i', 'msg.charCodeAt(i)', 'i8') }}}
-        }
-        {{{ makeSetValue('strerrbuf', 'i', 0, 'i8') }}}
+        writeAsciiToMemory(msg, strerrbuf);
         return 0;
       }
     } else {
@@ -5067,10 +5052,7 @@ LibraryManager.library = {
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
     function copyString(element, value) {
       var offset = layout[element];
-      for (var i = 0; i < value.length; i++) {
-        {{{ makeSetValue('name', 'offset + i', 'value.charCodeAt(i)', 'i8') }}}
-      }
-      {{{ makeSetValue('name', 'offset + i', '0', 'i8') }}}
+      writeAsciiToMemory(value, name + offset);
     }
     if (name === 0) {
       return -1;
@@ -6574,10 +6556,7 @@ LibraryManager.library = {
 
     var me = _nl_langinfo;
     if (!me.ret) me.ret = _malloc(32);
-    for (var i = 0; i < result.length; i++) {
-      {{{ makeSetValue('me.ret', 'i', 'result.charCodeAt(i)', 'i8') }}}
-    }
-    {{{ makeSetValue('me.ret', 'i', '0', 'i8') }}}
+    writeAsciiToMemory(result, me.ret);
     return me.ret;
   },
 
