@@ -2059,6 +2059,25 @@ function registerize(ast) {
         }
       }
       denormalizeAsm(fun, finalAsmData);
+      if (extraInfo && extraInfo.globals) {
+        // minify in asm var definitions, that denormalizeAsm just generated
+        var stats = fun[3];
+        for (var i = fun[2].length; i < stats.length; i++) {
+          var line = stats[i];
+          if (line[0] !== 'var') break;
+          var pairs = line[1];
+          for (var j = 0; j < pairs.length; j++) {
+            var value = pairs[j][1];
+            if (value && value[0] === 'call' && value[1][0] === 'name') {
+              var name = value[1][1];
+              var minified = extraInfo.globals[name];
+              if (minified) {
+                value[1][1] = minified;
+              }
+            }
+          }
+        }
+      }
     }
   });
 }
