@@ -7643,7 +7643,8 @@ LibraryManager.library = {
 
     return 0;
   },
-  // Can't use a literal for GAI_ERRNO_MESSAGES as the keys are negative values.
+  // Can't use a literal for $GAI_ERRNO_MESSAGES as was done for $ERRNO_MESSAGES as the keys (e.g. EAI_BADFLAGS)
+  // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
   $GAI_ERRNO_MESSAGES: {},
 
   gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
@@ -7677,11 +7678,7 @@ LibraryManager.library = {
       }
     }
 
-    for (var i = 0; i < msg.length; i++) {
-      {{{ makeSetValue('_gai_strerror.buffer', 'i', 'msg.charCodeAt(i)', 'i8') }}}
-    }
-    {{{ makeSetValue('_gai_strerror.buffer', 'i', 0, 'i8') }}}
-
+    writeAsciiToMemory(msg, _gai_strerror.buffer);
     return _gai_strerror.buffer;
   },
 
