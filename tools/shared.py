@@ -3,7 +3,7 @@ from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 from distutils.spawn import find_executable
 import jsrun, cache, tempfiles
-from response_file import create_response_file
+import response_file
 import logging, platform
 
 def listify(x):
@@ -41,8 +41,8 @@ class WindowsPopen:
     # emscripten.py supports reading args from a response file instead of cmdline.
     # Use .rsp to avoid cmdline length limitations on Windows.
     if len(args) >= 2 and args[1].endswith("emscripten.py"):
-      self.response_filename = create_response_file(args[2:], TEMP_DIR)
-      args = args[0:2] + ['@' + self.response_filename]
+      response_filename = response_file.create_response_file(args[2:], TEMP_DIR)
+      args = args[0:2] + ['@' + response_filename]
       
     try:
       # Call the process with fixed streams.
@@ -78,13 +78,6 @@ class WindowsPopen:
   def kill(self):
     return self.process.kill()
   
-  def __del__(self):
-    try:
-      # Clean up the temporary response file that was used to spawn this process, so that we don't leave temp files around.
-      tempfiles.try_delete(self.response_filename)
-    except:
-      pass # Mute all exceptions in dtor, particularly if we didn't use a response file, self.response_filename doesn't exist.
-
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
@@ -1214,7 +1207,13 @@ class Building:
     # Run Emscripten
     Settings.RELOOPER = Cache.get_path('relooper.js')
     settings = Settings.serialize()
-    compiler_output = jsrun.timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    args = settings + extra_args
+    if WINDOWS:
+      args = ['@' + response_file.create_response_file(args, TEMP_DIR)]
+    cmdline = [PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
+    if jsrun.TRACK_PROCESS_SPAWNS:
+      logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
+    compiler_output = jsrun.timeout_run(Popen(cmdline, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors

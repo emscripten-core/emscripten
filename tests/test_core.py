@@ -3851,6 +3851,10 @@ def process(filename):
         double get() {
           double ret = 0;
           __asm __volatile__("Math.abs(-12/3.3)":"=r"(ret)); // write to a variable
+          asm("#comment1");
+          asm volatile("#comment2");
+          asm volatile("#comment3\n"
+                       "#comment4\n");
           return ret;
         }
 
@@ -3869,6 +3873,9 @@ def process(filename):
         '''
 
       self.do_run(src, 'Inline JS is very cool\n3.64\n') # TODO 1\n2\n3\n1\n2\n3\n')
+      if self.emcc_args == []: # opts will eliminate the comments
+        out = open('src.cpp.o.js').read()
+        for i in range(1, 5): assert ('comment%d' % i) in out
 
   def test_inlinejs2(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')

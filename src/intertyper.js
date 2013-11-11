@@ -680,6 +680,9 @@ function intertyper(lines, sidePass, baseLineNums) {
           args.push(ident);
         });
       }
+      item.ident = expandLLVMString(item.ident).replace(/(#[^\n]*)/g, function(m) {
+        return '/* ' + m.substr(1) + ' */'; // fix asm comments to js comments
+      });
       if (item.assignTo) item.ident = 'return ' + item.ident;
       item.ident = '(function(' + params + ') { ' + item.ident + ' })(' + args + ');';
       return { ret: item, item: item };
