@@ -2259,7 +2259,7 @@ function processMathop(item) {
 				throw 'shifts should have been legalized!';
       }
       case 'uitofp': case 'sitofp': return makeFloat(RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u'), item.type);
-      case 'fptoui': case 'fptosi': return finish(splitI64(idents[0], true));
+      case 'fptoui': case 'fptosi': return finish(splitI64(asmCoercion(idents[0], 'double'), true)); // coerce to double before conversion to i64
       case 'icmp': {
         switch (variant) {
           case 'uge': return '((' + high1 + '>>>0) >= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) >  ('  + high2 + '>>>0)) | ' +
