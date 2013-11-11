@@ -2061,19 +2061,27 @@ function registerize(ast) {
       denormalizeAsm(fun, finalAsmData);
       if (extraInfo && extraInfo.globals) {
         // minify in asm var definitions, that denormalizeAsm just generated
+        function minify(value) {
+          if (value && value[0] === 'call' && value[1][0] === 'name') {
+            var name = value[1][1];
+            var minified = extraInfo.globals[name];
+            if (minified) {
+              value[1][1] = minified;
+            }
+          }
+        }
         var stats = fun[3];
-        for (var i = fun[2].length; i < stats.length; i++) {
+        for (var i = 0; i < stats.length; i++) {
           var line = stats[i];
-          if (line[0] !== 'var') break;
-          var pairs = line[1];
-          for (var j = 0; j < pairs.length; j++) {
-            var value = pairs[j][1];
-            if (value && value[0] === 'call' && value[1][0] === 'name') {
-              var name = value[1][1];
-              var minified = extraInfo.globals[name];
-              if (minified) {
-                value[1][1] = minified;
-              }
+          if (i >= fun[2].length && line[0] !== 'var') break; // when we pass the arg and var coercions, break
+          if (line[0] === 'stat') {
+            assert(line[1][0] === 'assign');
+            minify(line[1][3]);
+          } else {
+            assert(line[0] === 'var');
+            var pairs = line[1];
+            for (var j = 0; j < pairs.length; j++) {
+              minify(pairs[j][1]);
             }
           }
         }
