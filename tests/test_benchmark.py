@@ -119,7 +119,7 @@ process(sys.argv[1])
     try_delete(final_filename)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
                     '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                    '--llvm-lto', '3', '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
+                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     '--closure', '1',
                     #'-s', 'PRECISE_F32=1',
