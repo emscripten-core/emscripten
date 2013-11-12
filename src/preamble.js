@@ -716,7 +716,12 @@ function demangle(func) {
         return '(' + list.join(', ') + ')';
       }
       var name;
-      if (func[i] !== 'N') {
+      if (func[i] === 'N') {
+        // namespaced N-E
+        name = parseNested().join('::');
+        limit--;
+        if (limit === 0) return rawList ? [name] : name;
+      } else {
         // not namespaced
         if (func[i] === 'K') i++; // ignore const
         var size = parseInt(func.substr(i));
@@ -725,11 +730,6 @@ function demangle(func) {
           name = func.substr(i + pre, size);
           i += pre + size;
         }
-      } else {
-        // namespaced N-E
-        name = parseNested().join('::');
-        limit--;
-        if (limit === 0) return rawList ? [name] : name;
       }
       if (func[i] === 'I') {
         i++;
