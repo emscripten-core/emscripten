@@ -119,5 +119,6 @@ void main_2(void* arg) {
   // End test.
   result = 2;
   printf("Test passed!\n");
+  REPORT_RESULT();
 }
 
