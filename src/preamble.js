@@ -682,7 +682,7 @@ function demangle(func) {
     var subs = [];
     function parseNested() {
       i++;
-      if (func[i] === 'K') i++;
+      if (func[i] === 'K') i++; // ignore const
       var parts = [];
       while (func[i] !== 'E') {
         if (func[i] === 'S') { // substitution
@@ -691,6 +691,11 @@ function demangle(func) {
           var num = func.substring(i, next) || 0;
           parts.push(subs[num] || '?');
           i = next+1;
+          continue;
+        }
+        if (func[i] === 'C') { // constructor
+          parts.push(parts[parts.length-1]);
+          i += 2;
           continue;
         }
         var size = parseInt(func.substr(i));
@@ -713,7 +718,7 @@ function demangle(func) {
       var name;
       if (func[i] !== 'N') {
         // not namespaced
-        if (func[i] === 'K') i++;
+        if (func[i] === 'K') i++; // ignore const
         var size = parseInt(func.substr(i));
         if (size) {
           var pre = size.toString().length;

@@ -1937,6 +1937,7 @@ done.
         EM_ASM(Module.print(demangle('__Z9parsewordRPKciRi')));
         EM_ASM(Module.print(demangle('__Z5multiwahtjmxyz')));
         EM_ASM(Module.print(demangle('__Z1aA32_iPA5_c')));
+        EM_ASM(Module.print(demangle('__ZN21FWakaGLXFleeflsMarfooC2EjjjPKvbjj')));
         one(17);
         return 0;
       }
@@ -1958,6 +1959,7 @@ __cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_in
 parseword(char*&, int, int&)
 multi(wchar_t, signed char, unsigned char, unsigned short, unsigned int, unsigned long, long long, unsigned long long, ...)
 a(int [32], char [5]*)
+FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigned int, void*, bool, unsigned int, unsigned int)
 ''', output)
     # test for multiple functions in one stack trace
     assert 'one(int)' in output
