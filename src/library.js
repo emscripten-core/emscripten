@@ -7414,6 +7414,9 @@ LibraryManager.library = {
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
   getaddrinfo: function(node, service, hint, out) {
+    // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
+    // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
+    // really should provide a linked list of suitable addrinfo values.
     var addrs = [];
     var canon = null;
     var addr = 0;
@@ -7468,6 +7471,15 @@ LibraryManager.library = {
       type = proto === {{{ cDefine('IPPROTO_UDP') }}} ? {{{ cDefine('SOCK_DGRAM') }}} : {{{ cDefine('SOCK_STREAM') }}};
     }
 
+    // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
+    // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
+    if (proto === 0) {
+      proto = {{{ cDefine('IPPROTO_TCP') }}};
+    }
+    if (type === 0) {
+      type = {{{ cDefine('SOCK_STREAM') }}};
+    }
+
     if (!node && !service) {
       return {{{ cDefine('EAI_NONAME') }}};
     }
@@ -7475,14 +7487,14 @@ LibraryManager.library = {
         {{{ cDefine('AI_NUMERICSERV') }}}|{{{ cDefine('AI_V4MAPPED') }}}|{{{ cDefine('AI_ALL') }}}|{{{ cDefine('AI_ADDRCONFIG') }}})) {
       return {{{ cDefine('EAI_BADFLAGS') }}};
     }
-    if (({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
+    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
       return {{{ cDefine('EAI_BADFLAGS') }}};
     }
     if (flags & {{{ cDefine('AI_ADDRCONFIG') }}}) {
       // TODO
       return {{{ cDefine('EAI_NONAME') }}};
     }
-    if (type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
+    if (type !== 0 && type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
       return {{{ cDefine('EAI_SOCKTYPE') }}};
     }
     if (family !== {{{ cDefine('AF_UNSPEC') }}} && family !== {{{ cDefine('AF_INET') }}} && family !== {{{ cDefine('AF_INET6') }}}) {
@@ -7612,12 +7624,43 @@ LibraryManager.library = {
 
     return 0;
   },
+  // Can't use a literal for $GAI_ERRNO_MESSAGES as was done for $ERRNO_MESSAGES as the keys (e.g. EAI_BADFLAGS)
+  // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
+  $GAI_ERRNO_MESSAGES: {},
 
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
   gai_strerror: function(val) {
-    if (!_gai_strerror.error) {
-      _gai_strerror.error = allocate(intArrayFromString("unknown error"), 'i8', ALLOC_NORMAL);
+    var buflen = 256;
+
+    // On first call to gai_strerror we initialise the buffer and populate the error messages.
+    if (!_gai_strerror.buffer) {
+        _gai_strerror.buffer = _malloc(buflen);
+
+        GAI_ERRNO_MESSAGES['0'] = 'Success';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_BADFLAGS') }}}] = 'Invalid value for \'ai_flags\' field';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_NONAME') }}}] = 'NAME or SERVICE is unknown';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_AGAIN') }}}] = 'Temporary failure in name resolution';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAIL') }}}] = 'Non-recoverable failure in name res';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAMILY') }}}] = '\'ai_family\' not supported';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SOCKTYPE') }}}] = '\'ai_socktype\' not supported';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SERVICE') }}}] = 'SERVICE not supported for \'ai_socktype\'';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_MEMORY') }}}] = 'Memory allocation failure';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SYSTEM') }}}] = 'System error returned in \'errno\'';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_OVERFLOW') }}}] = 'Argument buffer overflow';
     }
-    return _gai_strerror.error;
+
+    var msg = 'Unknown error';
+
+    if (val in GAI_ERRNO_MESSAGES) {
+      if (GAI_ERRNO_MESSAGES[val].length > buflen - 1) {
+        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above. 
+      } else {
+        msg = GAI_ERRNO_MESSAGES[val];
+      }
+    }
+
+    writeAsciiToMemory(msg, _gai_strerror.buffer);
+    return _gai_strerror.buffer;
   },
 
   // ==========================================================================
