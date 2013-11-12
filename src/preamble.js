@@ -709,6 +709,7 @@ function demangle(func) {
       i++; // skip E
       return parts;
     }
+    var first = true;
     function parse(rawList, limit, allowVoid) { // main parser
       limit = limit || Infinity;
       var ret = '', list = [];
@@ -723,7 +724,7 @@ function demangle(func) {
         if (limit === 0) return rawList ? [name] : name;
       } else {
         // not namespaced
-        if (func[i] === 'K') i++; // ignore const
+        if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
         var size = parseInt(func.substr(i));
         if (size) {
           var pre = size.toString().length;
@@ -731,6 +732,7 @@ function demangle(func) {
           i += pre + size;
         }
       }
+      first = false;
       if (func[i] === 'I') {
         i++;
         var iList = parse(true);

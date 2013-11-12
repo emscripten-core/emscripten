@@ -1927,6 +1927,7 @@ done.
         EM_ASM(Module.print(demangle('_main')));
         EM_ASM(Module.print(demangle('__Z2f2v')));
         EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
+        EM_ASM(Module.print(demangle('__ZL12abcdabcdabcdi')));
         EM_ASM(Module.print(demangle('__Z4testcsifdPvPiPc')));
         EM_ASM(Module.print(demangle('__ZN4test5moarrEcslfdPvPiPc')));
         EM_ASM(Module.print(demangle('__ZN4Waka1f12a234123412345pointEv')));
@@ -1948,6 +1949,7 @@ done.
     self.assertContained('''operator new()
 _main
 f2()
+abcdabcdabcd(int)
 abcdabcdabcd(int)
 test(char, short, int, float, double, void*, int*, char*)
 test::moarr(char, short, long, float, double, void*, int*, char*)
