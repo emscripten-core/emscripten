@@ -1944,7 +1944,8 @@ done.
 
     Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1']).communicate()
     output = run_js('a.out.js')
-    self.assertContained('''main
+    self.assertContained('''operator new()
+_main
 f2()
 abcdabcdabcd(int)
 test(char, short, int, float, double, void*, int*, char*)

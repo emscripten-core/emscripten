@@ -646,6 +646,10 @@ function demangle(func) {
     if (func[0] !== '_') return func;
     if (func[1] !== '_') return func; // C function
     if (func[2] !== 'Z') return func;
+    switch (func[3]) {
+      case 'n': return 'operator new()';
+      case 'd': return 'operator delete()';
+    }
     var i = 3;
     // params, etc.
     var basicTypes = {
