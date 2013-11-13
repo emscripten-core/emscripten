@@ -41,7 +41,11 @@ var LibraryGL = {
       8  // GL_DOUBLE
     ],
 
-    uniformTable: {}, // name => uniform ID. the uID must be identical until relinking, cannot create a new uID each call to glGetUniformLocation
+    programInfos: {}, // Stores additional information needed for each shader program. Each entry is of form:
+    /* { uniforms: {}, // Maps ints back to the opaque WebGLUniformLocation objects.
+         maxUniformLength: int, // Cached in order to implement glGetProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH)
+         maxAttributeLength: int // Cached in order to implement glGetProgramiv(GL_ACTIVE_ATTRIBUTE_MAX_LENGTH)
+       } */
 
     stringCache: {},
 
@@ -463,15 +467,23 @@ var LibraryGL = {
       GL.validateGLObjectID(GL.programs, program, 'populateUniformTable', 'program');
 #endif
       var p = GL.programs[program];
-      GL.uniformTable[program] = {};
-      var ptable = GL.uniformTable[program];
-      // A program's uniformTable maps the string name of an uniform to an integer location of that uniform.
+      GL.programInfos[program] = {
+        uniforms: {},
+        maxUniformLength: 0, // This is eagerly computed below, since we already enumerate all uniforms anyway.
+        maxAttributeLength: -1 // This is lazily computed and cached, computed when/if first asked, "-1" meaning not computed yet.
+      };
+
+      var ptable = GL.programInfos[program];
+      var utable = ptable.uniforms;
+      // A program's uniform table maps the string name of an uniform to an integer location of that uniform.
       // The global GL.uniforms map maps integer locations to WebGLUniformLocations.
       var numUniforms = Module.ctx.getProgramParameter(p, Module.ctx.ACTIVE_UNIFORMS);
       for (var i = 0; i < numUniforms; ++i) {
         var u = Module.ctx.getActiveUniform(p, i);
 
         var name = u.name;
+        ptable.maxUniformLength = Math.max(ptable.maxUniformLength, name.length+1);
+
         // Strip off any trailing array specifier we might have got, e.g. "[0]".
         if (name.indexOf(']', name.length-1) !== -1) {
           var ls = name.lastIndexOf('[');
@@ -479,11 +491,11 @@ var LibraryGL = {
         }
 
         // Optimize memory usage slightly: If we have an array of uniforms, e.g. 'vec3 colors[3];', then 
-        // only store the string 'colors' in ptable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
+        // only store the string 'colors' in utable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
         // Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
         var loc = Module.ctx.getUniformLocation(p, name);
         var id = GL.getNewId(GL.uniforms);
-        ptable[name] = [u.size, id];
+        utable[name] = [u.size, id];
         GL.uniforms[id] = loc;
 
         for (var j = 1; j < u.size; ++j) {
@@ -1002,11 +1014,12 @@ var LibraryGL = {
       name = name.slice(0, ls);
     }
 
-    var ptable = GL.uniformTable[program];
+    var ptable = GL.programInfos[program];
     if (!ptable) {
       return -1;
     }
-    var uniformInfo = ptable[name]; // returns pair [ dimension_of_uniform_array, uniform_location ]
+    var utable = ptable.uniforms;
+    var uniformInfo = utable[name]; // returns pair [ dimension_of_uniform_array, uniform_location ]
     if (uniformInfo && arrayOffset < uniformInfo[0]) { // Check if user asked for an out-of-bounds element, i.e. for 'vec4 colors[3];' user could ask for 'colors[10]' which should return -1.
       return uniformInfo[1]+arrayOffset;
     } else {
@@ -1494,6 +1507,47 @@ var LibraryGL = {
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       {{{ makeSetValue('p', '0', 'Module.ctx.getProgramInfoLog(GL.programs[program]).length + 1', 'i32') }}};
+    } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
+      var ptable = GL.programInfos[program];
+      if (ptable) {
+        {{{ makeSetValue('p', '0', 'ptable.maxUniformLength', 'i32') }}};
+        return;
+      } else if (program < GL.counter) {
+#if GL_ASSERTIONS
+        Module.printErr("A GL object " + program + " that is not a program object was passed to glGetProgramiv!");
+#endif
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      } else {
+#if GL_ASSERTIONS
+        Module.printErr("A GL object " + program + " that did not come from GL was passed to glGetProgramiv!");
+#endif
+        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      }
+    } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
+      var ptable = GL.programInfos[program];
+      if (ptable) {
+        if (ptable.maxAttributeLength == -1) {
+          var program = GL.programs[program];
+          var numAttribs = Module.ctx.getProgramParameter(program, Module.ctx.ACTIVE_ATTRIBUTES);
+          ptable.maxAttributeLength = 0; // Spec says if there are no active attribs, 0 must be returned.
+          for(var i = 0; i < numAttribs; ++i) {
+            var activeAttrib = Module.ctx.getActiveAttrib(program, i);
+            ptable.maxAttributeLength = Math.max(ptable.maxAttributeLength, activeAttrib.name.length+1);
+          }
+        }
+        {{{ makeSetValue('p', '0', 'ptable.maxAttributeLength', 'i32') }}};
+        return;
+      } else if (program < GL.counter) {
+#if GL_ASSERTIONS
+        Module.printErr("A GL object " + program + " that is not a program object was passed to glGetProgramiv!");
+#endif
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      } else {
+#if GL_ASSERTIONS
+        Module.printErr("A GL object " + program + " that did not come from GL was passed to glGetProgramiv!");
+#endif
+        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      }
     } else {
       {{{ makeSetValue('p', '0', 'Module.ctx.getProgramParameter(GL.programs[program], pname)', 'i32') }}};
     }
@@ -1521,7 +1575,7 @@ var LibraryGL = {
     Module.ctx.deleteProgram(program);
     program.name = 0;
     GL.programs[program] = null;
-    GL.uniformTable[program] = null;
+    GL.programInfos[program] = null;
   },
 
   glAttachShader__sig: 'vii',
@@ -1557,7 +1611,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glLinkProgram', 'program');
 #endif
     Module.ctx.linkProgram(GL.programs[program]);
-    GL.uniformTable[program] = {}; // uniforms no longer keep the same names after linking
+    GL.programInfos[program] = null; // uniforms no longer keep the same names after linking
     GL.populateUniformTable(program);
   },
 
