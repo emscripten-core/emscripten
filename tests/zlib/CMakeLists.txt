@@ -110,7 +110,7 @@ set(ZLIB_SRCS
     trees.c
     uncompr.c
     zutil.c
-    win32/zlib1.rc
+#    win32/zlib1.rc XXX Emscripten remove the Windows resource file from build, not needed and not included in source tree.
 )
 
 # parse the full version number from zlib.h and include in ZLIB_FULL_VERSION
