@@ -428,6 +428,8 @@ var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and 
                          // reducing code size.
                          // If a dead function is actually called, you will get a runtime
                          // error.
+                         // This can affect both functions in compiled code, and system
+                         // library functions (e.g., you can use this to kill printf).
                          // TODO: options to lazily load such functions
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:

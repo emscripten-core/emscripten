@@ -490,10 +490,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       // If this is not linkable, anything not in the library is definitely missing
       var cancel = false;
+      if (item.ident in DEAD_FUNCTIONS) {
+        LibraryManager.library[shortident] = new Function("Module['printErr']('dead function: " + shortident + "'); abort(-1);");
+        delete LibraryManager.library[shortident + '__inline'];
+        delete LibraryManager.library[shortident + '__deps'];
+      }
       if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
         if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) printErr('warning: unresolved symbol: ' + shortident);
-        if (ASM_JS || item.ident in DEAD_FUNCTIONS) {
+        if (ASM_JS) {
           // emit a stub that will fail during runtime. this allows asm validation to succeed.
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
