@@ -13,11 +13,6 @@ from tools.shared import *
 DEFAULT_ARG = '4'
 
 TEST_REPS = 2
-TOTAL_TESTS = 8
-
-tests_done = 0
-total_times = map(lambda x: 0., range(TOTAL_TESTS))
-total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
 class benchmark(RunnerCore):
   save_dir = True
@@ -128,7 +123,6 @@ process(sys.argv[1])
     assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
     # Run JS
-    global total_times, tests_done
     times = []
     for i in range(reps):
       start = time.time()
@@ -142,7 +136,6 @@ process(sys.argv[1])
       else:
         curr = output_parser(js_output)
       times.append(curr)
-      total_times[tests_done] += curr
       if i == 0:
         # Sanity check on output
         self.assertContained(expected_output, js_output)
@@ -153,7 +146,6 @@ process(sys.argv[1])
     else:
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
-    global total_native_times
     native_times = []
     for i in range(reps):
       start = time.time()
@@ -166,14 +158,8 @@ process(sys.argv[1])
       else:
         curr = output_parser(native_output)
       native_times.append(curr)
-      total_native_times[tests_done] += curr
 
     self.print_stats(times, native_times, reps=reps)
-
-    #tests_done += 1
-    #if tests_done == TOTAL_TESTS:
-    #  print 'Total stats:',
-    #  self.print_stats(total_times, total_native_times, last=True)
 
   def test_primes(self):
     src = r'''
