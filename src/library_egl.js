@@ -9,12 +9,12 @@
 var LibraryEGL = {
   $EGL: {
     // This variable tracks the success status of the most recently invoked EGL function call.
-    eglErrorCode: 0x3000 /* EGL_SUCCESS */,
+    errorCode: 0x3000 /* EGL_SUCCESS */,
 
     stringCache: {},
     
     setErrorCode: function(code) {
-      EGL.eglErrorCode = code;
+      EGL.errorCode = code;
     },
     
     chooseConfig: function(display, attribList, config, config_size, numConfigs) { 
@@ -407,7 +407,7 @@ var LibraryEGL = {
   
   // EGLAPI EGLint EGLAPIENTRY eglGetError(void);
   eglGetError: function() { 
-    return EGL.eglErrorCode;
+    return EGL.errorCode;
   },
 
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
