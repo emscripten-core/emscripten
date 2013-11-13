@@ -2016,7 +2016,7 @@ FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigne
     try_delete(path_from_root('tests', 'Module-exports', 'test.js.map'))
 
   def test_fs_stream_proto(self):
-    open('src.cpp', 'w').write(r'''
+    open('src.cpp', 'wb').write(r'''
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
