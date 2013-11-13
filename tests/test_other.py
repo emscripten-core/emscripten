@@ -819,8 +819,12 @@ f.close()
       }),
     ]:
       Building.COMPILER_TEST_OPTS = test_opts
+      if WINDOWS:
+        zlib_library = self.get_library('zlib', os.path.join('libz.a'), configure=['emconfigure.bat'], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
+      else:
+        zlib_library = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
       test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
-                   self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
+                   zlib_library,
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    expected_ranges,
                    args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
