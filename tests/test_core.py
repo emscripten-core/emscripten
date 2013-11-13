@@ -2908,7 +2908,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
     ''')
 
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run(src, '''reported\nexit(1) called\nExit Status: 1\npostRun\nok.\n''')
+    self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
 
   def test_class(self):
       src = '''
@@ -10517,7 +10517,7 @@ def process(filename):
       Module.callMain();
     ''')
     self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
-    self.do_run(src, 'hello, world!\nexit(118) called\ncleanup\nI see exit status: 118')
+    self.do_run(src, 'hello, world!\ncleanup\nI see exit status: 118')
 
   def test_gc(self):
     if self.emcc_args == None: return self.skip('needs ta2')
