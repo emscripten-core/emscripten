@@ -420,7 +420,7 @@ process(sys.argv[1])
       return 100.0/float(re.search('Unrolled Double  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
-  def test_linpack_float(self):
+  def test_linpack_float(self): # TODO: investigate if this might benefit from -ffast-math in LLVM 3.3+ which has fast math stuff in LLVM IR
     def output_parser(output):
       return 100.0/float(re.search('Unrolled Single  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_float', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Single  Precision''', force_c=True, output_parser=output_parser, shared_args=['-DSP'])
