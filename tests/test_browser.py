@@ -1147,6 +1147,12 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'glfw.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
+  def test_egl(self):
+    open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
+
+    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'test_egl.c'), '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
   def test_egl_width_height(self):
     open(os.path.join(self.get_dir(), 'test_egl_width_height.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl_width_height.c')).read()))
 
