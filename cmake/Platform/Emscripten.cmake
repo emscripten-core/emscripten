@@ -151,7 +151,11 @@ function(em_add_tracked_link_flag target flagname)
 	foreach(jsFileList ${ARGN})
 		foreach(jsfile ${jsFileList})
 			# Add link command to the given JS file.
-			set(props "${props} ${flagname} \"${jsfile}\"")
+			if(props)
+				set(props "${props} ${flagname} \"${jsfile}\"")
+			else()
+				set(props "${flagname} \"${jsfile}\"")
+			endif()
 			
 			# If the user edits the JS file, we want to relink the emscripten application, but unfortunately it is not possible to make a link step
 			# depend directly on a source file. Instead, we must make a dummy no-op build target on that source file, and make the project depend on
