@@ -1455,26 +1455,21 @@ f.close()
     def clear(): try_delete('a.out.js')
 
     for args in [[], ['-O2']]:
-      clear()
-      print 'warn', args
-      output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'] + args, stderr=PIPE).communicate()
-      self.assertContained('unresolved symbol: something', output[1])
-
-      clear()
-      output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + args, stderr=PIPE).communicate()
-      self.assertNotContained('unresolved symbol: something\n', output[1])
-
-    for args in [[], ['-O2']]:
-      clear()
-      print 'error', args
-      output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] + args, stderr=PIPE).communicate()
-      self.assertContained('unresolved symbol: something', output[1])
-      assert not os.path.exists('a.out.js')
-
-      clear()
-      output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + args, stderr=PIPE).communicate()
-      self.assertNotContained('unresolved symbol: something\n', output[1])
-      assert os.path.exists('a.out.js')
+      for action in ['WARN', 'ERROR', None]:
+        for value in ([0, 1] if action else [0]):
+          clear()
+          print 'warn', args, action, value
+          extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
+          output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + extra + args, stderr=PIPE).communicate()
+          if action == None or (action == 'WARN' and value):
+            self.assertContained('unresolved symbol: something', output[1])
+            assert os.path.exists('a.out.js')
+          elif action == 'ERROR' and value:
+            self.assertContained('unresolved symbol: something', output[1])
+            assert not os.path.exists('a.out.js')
+          elif action == 'WARN' and not value:
+            self.assertNotContained('unresolved symbol', output[1])
+            assert os.path.exists('a.out.js')
 
   def test_toobig(self):
     # very large [N x i8], we should not oom in the compiler
