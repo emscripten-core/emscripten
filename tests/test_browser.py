@@ -1449,6 +1449,9 @@ keydown(100);keyup(100); // trigger the end
   # def test_gles2_uniform_arrays(self):
   #  self.btest('gles2_uniform_arrays.cpp', args=['-s', 'GL_ASSERTIONS=1'], expected=['1'])
 
+  def test_gles2_conformance(self):
+    self.btest('gles2_conformance.cpp', args=['-s', 'GL_ASSERTIONS=1'], expected=['1'])
+
   def test_matrix_identity(self):
     self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'], args=['-s', 'LEGACY_GL_EMULATION=1'])
 
