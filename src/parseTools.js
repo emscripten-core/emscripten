@@ -2455,6 +2455,11 @@ function processMathop(item) {
     // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
     //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
     case 'icmp': {
+      // unsigned coercions can be (X&Y), which is not a valid asm coercion for comparisons
+      if (ASM_JS && variant[0] === 'u') {
+        if (idents[0].indexOf('>>>') < 0) idents[0] = '((' + idents[0] + ')>>>0)';
+        if (idents[1].indexOf('>>>') < 0) idents[1] = '((' + idents[1] + ')>>>0)';
+      }
       switch (variant) {
         case 'uge': case 'sge': return idents[0] + '>=' + idents[1];
         case 'ule': case 'sle': return idents[0] + '<=' + idents[1];
