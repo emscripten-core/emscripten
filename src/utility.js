@@ -68,7 +68,7 @@ function warn(a, msg) {
     a = false;
   }
   if (!a) {
-    printErr('Warning: ' + msg);
+    printErr('warning: ' + msg);
   }
 }
 
@@ -81,7 +81,7 @@ function warnOnce(a, msg) {
     if (!warnOnce.msgs) warnOnce.msgs = {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
-    printErr('Warning: ' + msg);
+    printErr('warning: ' + msg);
   }
 }
 
@@ -89,7 +89,7 @@ var abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
-  printErr('Error: ' + msg);
+  printErr('error: ' + msg);
 }
 
 function dedup(items, ident) {
