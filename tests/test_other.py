@@ -1470,6 +1470,7 @@ f.close()
           elif action == 'ERROR' and value:
             self.assertContained('unresolved symbol: something', output[1])
             self.assertContained('unresolved symbol: elsey', output[1])
+            self.assertNotContained('warning', output[1])
             assert not os.path.exists('a.out.js')
           elif action == 'WARN' and not value:
             self.assertNotContained('unresolved symbol', output[1])
