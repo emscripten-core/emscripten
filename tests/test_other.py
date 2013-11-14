@@ -1444,10 +1444,12 @@ f.close()
 
       extern "C" {
         void something();
+        void elsey();
       }
 
       int main() {
         something();
+        elsey();
         return 0;
       }
     ''')
@@ -1463,9 +1465,11 @@ f.close()
           output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + extra + args, stderr=PIPE).communicate()
           if action == None or (action == 'WARN' and value):
             self.assertContained('unresolved symbol: something', output[1])
+            self.assertContained('unresolved symbol: elsey', output[1])
             assert os.path.exists('a.out.js')
           elif action == 'ERROR' and value:
             self.assertContained('unresolved symbol: something', output[1])
+            self.assertContained('unresolved symbol: elsey', output[1])
             assert not os.path.exists('a.out.js')
           elif action == 'WARN' and not value:
             self.assertNotContained('unresolved symbol', output[1])
