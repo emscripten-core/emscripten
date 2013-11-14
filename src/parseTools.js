@@ -2058,7 +2058,7 @@ function makeSignOp(value, type, op, force, ignore) {
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
   if (!value) return value;
   var bits, full;
-  if (type in Runtime.INT_TYPES) {
+  if (type[0] === 'i') {
     bits = parseInt(type.substr(1));
     full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || correctSpecificSign()) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
@@ -2067,7 +2067,7 @@ function makeSignOp(value, type, op, force, ignore) {
     }
   }
   if ((ignore || !correctSigns()) && !CHECK_SIGNS && !force) return value;
-  if (type in Runtime.INT_TYPES) {
+  if (type[0] === 'i') {
     // this is an integer, but not a number (or we would have already handled it)
     // shortcuts
     if (!CHECK_SIGNS || ignore) {
