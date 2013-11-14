@@ -1913,7 +1913,8 @@ done.
 
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-E'], stdout=PIPE).communicate()
     assert not os.path.exists('a.out.js')
-    assert '''tests/hello_world.c"''' in out
+    assert '''#line 1 ''' in out
+    assert '''hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
 
   def test_demangle(self):
