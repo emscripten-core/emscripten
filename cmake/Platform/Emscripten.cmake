@@ -146,6 +146,10 @@ set(link_js_counter 1)
 # Internal function: Do not call from user CMakeLists.txt files. Use one of em_link_js_library()/em_link_pre_js()/em_link_post_js() instead.
 function(em_add_tracked_link_flag target flagname)
 	get_target_property(props ${target} LINK_FLAGS)
+	if(NOT props)
+	    set(props "")
+	endif()
+
 	# User can input list of JS files either as a single list, or as variable arguments to this function, so iterate over varargs, and treat each
 	# item in varargs as a list itself, to support both syntax forms.
 	foreach(jsFileList ${ARGN})
