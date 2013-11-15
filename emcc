@@ -1638,18 +1638,26 @@ try:
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
-    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-    if DEBUG: save_intermediate('linktime', 'bc')
+    if not save_bc:
+      # let llvm opt directly emit ll, to skip writing and reading all the bitcode
+      link_opts += ['-S']
+      shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
+      final = final + '.link.ll'
+      if DEBUG: save_intermediate('linktime', 'll')
+    else:
+      shared.Building.llvm_opt(final, link_opts)
+      if DEBUG: save_intermediate('linktime', 'bc')
 
   if save_bc:
     shutil.copyfile(final, save_bc)
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
-    final = shared.Building.llvm_dis(final, final + '.ll')
+    if save_bc:
+      final = shared.Building.llvm_dis(final, final + '.ll')
   else:
     assert len(input_files) == 1
-  if DEBUG: save_intermediate('ll', 'll')
+  if DEBUG and save_bc: save_intermediate('ll', 'll')
 
   if AUTODEBUG:
     logging.debug('autodebug')

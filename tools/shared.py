@@ -1110,14 +1110,16 @@ class Building:
   # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
   #            optimization passes passed to llvm opt
   @staticmethod
-  def llvm_opt(filename, opts):
+  def llvm_opt(filename, opts, out=None):
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
     logging.debug('emcc: LLVM opts: ' + str(opts))
-    output = Popen([LLVM_OPT, filename] + opts + ['-o', filename + '.opt.bc'], stdout=PIPE).communicate()[0]
-    assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
-    shutil.move(filename + '.opt.bc', filename)
+    target = out or (filename + '.opt.bc')
+    output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
+    assert os.path.exists(target), 'Failed to run llvm optimizations: ' + output
+    if not out:
+      shutil.move(filename + '.opt.bc', filename)
 
   @staticmethod
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
