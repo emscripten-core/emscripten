@@ -117,7 +117,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     last = func_start
     func_start = ll.find('\ndefine ', func_start)
     if func_start > last:
-      pre.append(ll[last:min(func_start+1, meta_start)] + '\n')
+      pre.append(ll[last:min(func_start+1, meta_start) if meta_start > 0 else func_start+1] + '\n')
     if func_start < 0:
       pre.append(ll[last:meta_start] + '\n')
       break
