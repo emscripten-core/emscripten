@@ -491,9 +491,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       // If this is not linkable, anything not in the library is definitely missing
       var cancel = false;
       if (item.ident in DEAD_FUNCTIONS) {
-        LibraryManager.library[shortident] = new Function("Module['printErr']('dead function: " + shortident + "'); abort(-1);");
-        delete LibraryManager.library[shortident + '__inline'];
-        delete LibraryManager.library[shortident + '__deps'];
+        if (LibraryManager.library[shortident + '__asm']) {
+          warn('cannot kill asm library function ' + item.ident);
+        } else {
+          LibraryManager.library[shortident] = new Function("Module['printErr']('dead function: " + shortident + "'); abort(-1);");
+          delete LibraryManager.library[shortident + '__inline'];
+          delete LibraryManager.library[shortident + '__deps'];
+        }
       }
       if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
