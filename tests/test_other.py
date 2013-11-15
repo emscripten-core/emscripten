@@ -169,7 +169,7 @@ Options that are modified or new in %s include:
           if keep_debug:
             assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or '$i_04' in generated or '$i_05' in generated or 'var $original = 0' in generated, 'micro opts should always be on'
+            assert '$i' in generated or '$storemerge' in generated or '$original' in generated, 'micro opts should always be on'
           if opt_level >= 2 and '-g' in params:
             assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
           assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
