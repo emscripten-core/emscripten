@@ -541,6 +541,16 @@ void Relooper::Calculate(Block *Entry) {
           for (BlockSet::iterator iter = Curr->BranchesIn.begin(); iter != Curr->BranchesIn.end(); iter++) {
             Queue.insert(*iter);
           }
+#if 0
+          // Add elements it leads to, if they are dead ends. There is no reason not to hoist dead ends
+          // into loops, as it can avoid multiple entries after the loop
+          for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
+            Block *Target = iter->first;
+            if (Target->BranchesIn.size() <= 1 && Target->BranchesOut.size() == 0) {
+              Queue.insert(Target);
+            }
+          }
+#endif
         }
       }
       assert(InnerBlocks.size() > 0);
