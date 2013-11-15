@@ -1913,7 +1913,11 @@ done.
 
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-E'], stdout=PIPE).communicate()
     assert not os.path.exists('a.out.js')
-    assert '''#line 1 ''' in out
+    # Test explicitly that the output contains a line typically written by the preprocessor.
+    # Clang outputs on Windows lines like "#line 1", on Unix '# 1 '.
+    # TODO: This is one more of those platform-specific discrepancies, investigate more if this ever becomes an issue,
+    # ideally we would have emcc output identical data on all platforms.
+    assert '''#line 1 ''' in out or '''# 1 ''' in out
     assert '''hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
 
