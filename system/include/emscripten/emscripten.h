@@ -26,8 +26,11 @@ extern "C" {
  * This also works with asm.js, as it outlines the code (it
  * does a function call to reach it).
  *
- * Note: double-quotes (") are not supported, but you can use
- *       single-quotes (') in js anyhow.
+ * Notes: double-quotes (") are not supported, but you can use
+ *        single-quotes (') in js anyhow.
+ *
+ *        you can't access C variables with EM_ASM, use gcc
+ *        inline asm for that, asm("code" : .. etc.)
  */
 #define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
 
