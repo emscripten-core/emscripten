@@ -1408,6 +1408,26 @@ Succeeded!
       '''
       self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\nsmall: 0.0000010000\n')
 
+  def test_fast_math(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    Building.COMPILER_TEST_OPTS += ['-ffast-math']
+
+    self.do_run(r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char** argv) {
+  char* endptr;
+  --argc, ++argv;
+  double total = 0.0;
+  for (; argc; argc--, argv++) {
+    total += strtod(*argv, &endptr);
+  }
+  printf("total: %g\n", total);
+  return 0;
+}
+''', 'total: 19', ['5', '6', '8'])
+
   def test_zerodiv(self):
     self.do_run(r'''
       #include <stdio.h>

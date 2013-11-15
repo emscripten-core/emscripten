@@ -842,7 +842,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       item.variant = item.tokens[1].text;
       item.tokens.splice(1, 1);
     }
-    if (item.tokens[1].text == 'exact') item.tokens.splice(1, 1); // TODO: Implement trap values
+    while (item.tokens[1].text in LLVM.MATHOP_IGNORABLES) item.tokens.splice(1, 1);
     var segments = splitTokenList(item.tokens.slice(1));
     item.params = [];
     for (var i = 1; i <= 4; i++) {
