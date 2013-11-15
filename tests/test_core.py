@@ -9002,6 +9002,7 @@ def process(filename):
                                   'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
     for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
+      print 'cmake', use_cmake
       # Windows cannot run configure sh scripts.
       if WINDOWS and not use_cmake:
         continue
@@ -9016,7 +9017,7 @@ def process(filename):
       test()
 
       assert 'asm2g' in test_modes
-      if self.run_name == 'asm2g' and configure[0] == 'sh':
+      if self.run_name == 'asm2g' and not use_cmake:
         # Test forced alignment
         print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
         old = open('src.cpp.o.js').read()
