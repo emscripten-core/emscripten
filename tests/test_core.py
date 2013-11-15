@@ -3,7 +3,7 @@
 import glob, hashlib, os, re, shutil, subprocess, sys
 import tools.shared
 from tools.shared import *
-from runner import RunnerCore, path_from_root, checked_sanity, test_modes
+from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_bullet_library
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_le32(self):
@@ -9001,30 +9001,17 @@ def process(filename):
       Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                                   'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
-    configure_commands = [['sh', './configure'], ['cmake', '.']]
-    configure_args = [['--disable-demos','--disable-dependency-tracking'], ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']]
-    for c in range(0,2):
-      configure = configure_commands[c]
+    for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
       # Windows cannot run configure sh scripts.
-      if WINDOWS and configure[0] == 'sh':
+      if WINDOWS and not use_cmake:
         continue
-
-      # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
-      if configure[0] == 'sh':
-        generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                          os.path.join('src', '.libs', 'libBulletCollision.a'),
-                          os.path.join('src', '.libs', 'libLinearMath.a')]
-      else:
-        generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
-                          os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
-                          os.path.join('src', 'LinearMath', 'libLinearMath.a')]
 
       def test():
         self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                      [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                       open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
                       open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
-                     libraries=self.get_library('bullet', generated_libs, configure=configure, configure_args=configure_args[c], cache_name_extra=configure[0]),
+                     libraries=get_bullet_library(self, use_cmake),
                      includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 

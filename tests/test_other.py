@@ -1,9 +1,15 @@
 import multiprocessing, os, re, shutil, subprocess, sys
 import tools.shared
 from tools.shared import *
-from runner import RunnerCore, path_from_root
+from runner import RunnerCore, path_from_root, get_bullet_library
 
 class other(RunnerCore):
+  def get_zlib_library(self):
+    if WINDOWS:
+      return self.get_library('zlib', os.path.join('libz.a'), configure=['emconfigure.bat'], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
+    else:
+      return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
+    
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -740,20 +746,20 @@ f.close()
 
     # zlib compression library. tests function pointers in initializers and many other things
     test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
-                     self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
+                     self.get_zlib_library(),
                      open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                      args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
+    use_cmake = WINDOWS
+    bullet_library = get_bullet_library(self, use_cmake)
+
     # bullet physics engine. tests all the things
     test('bullet', '', open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(), 
-         self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                     os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                     os.path.join('src', '.libs', 'libLinearMath.a')]),
+         bullet_library,
          [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
           open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
           open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
          args=['-I' + path_from_root('tests', 'bullet', 'src')])
-
 
   def test_outline(self):
     def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp'):
@@ -819,12 +825,8 @@ f.close()
       }),
     ]:
       Building.COMPILER_TEST_OPTS = test_opts
-      if WINDOWS:
-        zlib_library = self.get_library('zlib', os.path.join('libz.a'), configure=['emconfigure.bat'], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
-      else:
-        zlib_library = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
       test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
-                   zlib_library,
+                   self.get_zlib_library(),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    expected_ranges,
                    args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
