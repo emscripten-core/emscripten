@@ -311,12 +311,16 @@ function compile(raw) {
 
 B = new Benchmarker();
 
-if (ll_file) {
-  if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
-    compile(read(ll_file));
-  } else {
-    compile(ll_file); // we are given raw .ll
+try {
+  if (ll_file) {
+    if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
+      compile(read(ll_file));
+    } else {
+      compile(ll_file); // we are given raw .ll
+    }
   }
+} catch(err) {
+  printErr('aborting from js compiler due to exception: ' + err);
 }
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });
