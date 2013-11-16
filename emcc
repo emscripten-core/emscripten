@@ -62,6 +62,8 @@ ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 
+WINDOWS = sys.platform.startswith('win')
+
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
@@ -887,8 +889,17 @@ try:
       check_bad_eq(newargs[i])
       parts = newargs[i+1].split(',')
       assert len(parts) == 3, '--compression requires specifying    native_encoder,js_decoder,js_name  - see emcc --help. got: %s' % newargs[i+1]
-      Compression.encoder = parts[0]
-      Compression.decoder = parts[1]
+      def locate(tool):
+        if WINDOWS:
+          if os.path.exists(tool+'.exe'):
+            return tool+'.exe'
+          if os.path.exists(tool+'.bat'):
+            return tool+'.bat'
+          if os.path.exists(tool+'.cmd'):
+            return tool+'.cmd'
+        return tool
+      Compression.encoder = locate(parts[0])
+      Compression.decoder = locate(parts[1])
       Compression.js_name = parts[2]
       assert os.path.exists(Compression.encoder), 'native encoder %s does not exist' % Compression.encoder
       assert os.path.exists(Compression.decoder), 'js decoder %s does not exist' % Compression.decoder
