@@ -16,7 +16,7 @@ so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat, string
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string
 
 # Setup
 
@@ -491,22 +491,14 @@ def harness_server_func(q):
   httpd.serve_forever() # test runner will kill us
 
 def server_func(dir, q):
-  class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    def do_GET(s):
-      if 'report_' in s.path:
-        q.put(s.path)
+  class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    def do_GET(self):
+      if 'report_' in self.path:
+        q.put(self.path)
       else:
-        filename = s.path.split('?')[0][1:]
-        if os.path.exists(filename):
-          s.send_response(200)
-          s.send_header("Content-type", "text/html")
-          s.end_headers()
-          s.wfile.write(open(filename).read())
-          s.wfile.close()
-        else:
-          s.send_response(500)
-          s.send_header("Content-type", "text/html")
-          s.end_headers()
+        # Use SimpleHTTPServer default file serving operation for GET.
+        SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
