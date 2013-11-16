@@ -85,7 +85,10 @@ If manually bisecting:
     cwd = os.getcwd()
     try:
       os.chdir(path_from_root('third_party', 'lzma.js'))
-      Popen(['sh', './doit.sh']).communicate()
+      if WINDOWS and Building.which('mingw32-make'): # On Windows prefer using MinGW make if it exists, otherwise fall back to hoping we have cygwin make.
+        Popen(['doit.bat']).communicate()
+      else:
+        Popen(['sh', './doit.sh']).communicate()
     finally:
       os.chdir(cwd)
 
