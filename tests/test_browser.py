@@ -185,7 +185,7 @@ If manually bisecting:
     self.reftest(path_from_root('tests', 'htmltest.png'))
     output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
     assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
-    assert os.path.exists(self.get_dir() + '/something/' + path_from_root('tests', 'hello_world_sdl.cpp.js')), 'must be functions js file'
+    assert os.path.exists(os.path.join(self.get_dir(), 'something', 'hello_world_sdl.cpp.js')), 'must be functions js file'
     assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
 
     open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
