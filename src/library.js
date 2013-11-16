@@ -6118,12 +6118,17 @@ LibraryManager.library = {
     }
     return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
-  // TODO: Implement these for real.
+  clock_gettime__deps: ['emscripten_get_now'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
-    var now = Date.now();
+    var now;
+    if (clk_id ===  {{{ cDefine('CLOCK_REALTIME') }}}) {
+      now = Date.now();
+    } else {
+      now = _emscripten_get_now();
+    }
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, 'Math.floor(now/1000)', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '(now % 1000) * 1000 * 1000', 'i32') }}}; // nanoseconds (really milliseconds)
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, 'Math.floor((now % 1000)*1000*1000)', 'i32') }}}; // nanoseconds
     return 0;
   },
   clock_settime: function(clk_id, tp) {
@@ -8670,6 +8675,24 @@ LibraryManager.library = {
     if (func) return func();
     func = Runtime.asmConstCache[code] = eval('(function(){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
     return func();
+  },
+
+  emscripten_get_now: function() {
+    if (!_emscripten_get_now.actual) {
+      if (ENVIRONMENT_IS_NODE) {
+          _emscripten_get_now.actual = function _emscripten_get_now_actual() {
+            var t = process['hrtime']();
+            return t[0] * 1e3 + t[1] / 1e6;
+          }
+      } else if (typeof dateNow !== 'undefined') {
+        _emscripten_get_now.actual = dateNow;
+      } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return window['performance']['now'](); };
+      } else {
+        _emscripten_get_now.actual = Date.now;
+      }
+    }
+    return _emscripten_get_now.actual();
   },
 
   //============================

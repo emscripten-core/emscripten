@@ -871,24 +871,6 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
   },
 
-  emscripten_get_now: function() {
-    if (!_emscripten_get_now.actual) {
-      if (ENVIRONMENT_IS_NODE) {
-          _emscripten_get_now.actual = function _emscripten_get_now_actual() {
-            var t = process['hrtime']();
-            return t[0] * 1e3 + t[1] / 1e6;
-          }
-      } else if (typeof dateNow !== 'undefined') {
-        _emscripten_get_now.actual = dateNow;
-      } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
-        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return window['performance']['now'](); };
-      } else {
-        _emscripten_get_now.actual = Date.now;
-      }
-    }
-    return _emscripten_get_now.actual();
-  },
-
   emscripten_create_worker: function(url) {
     url = Pointer_stringify(url);
     var id = Browser.workers.length;
