@@ -1162,8 +1162,14 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'test_egl_width_height.c'), '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
 
+  def get_freealut_library(self):
+    if WINDOWS and Building.which('cmake'):
+      return self.get_library('freealut', os.path.join('hello_world.bc'), configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
+    else:
+      return self.get_library('freealut', os.path.join('examples', '.libs', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+
   def test_freealut(self):
-    programs = self.get_library('freealut', os.path.join('examples', '.libs', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+    programs = self.get_freealut_library()
     for program in programs:
       assert os.path.exists(program)
       Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
