@@ -18,6 +18,8 @@ JAVA = 'java' # executable
 
 TEMP_DIR = '{{{ TEMP }}}'
 
+CRUNCH = os.path.expanduser(os.getenv('CRUNCH') or 'crunch') # executable
+
 #CLOSURE_COMPILER = '..' # define this to not use the bundled version
 
 ########################################################################################################
