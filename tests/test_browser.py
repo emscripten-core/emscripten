@@ -1,4 +1,4 @@
-import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest
+import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib
 from runner import BrowserCore, path_from_root
 from tools.shared import *
 
@@ -7,6 +7,45 @@ def run_in_other_browser(url):
   execute(['yourbrowser', url])
 webbrowser.open_new = run_in_other_browser
 '''
+
+def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
+  class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    def sendheaders(s, extra=[], length=len(data)):
+      s.send_response(200)
+      s.send_header("Content-Length", str(length))
+      s.send_header("Access-Control-Allow-Origin", "http://localhost:8888")
+      s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
+      s.send_header("Content-type", "application/octet-stream")
+      if support_byte_ranges:
+        s.send_header("Accept-Ranges", "bytes")
+      for i in extra:
+        s.send_header(i[0], i[1])
+      s.end_headers()
+
+    def do_HEAD(s):
+      s.sendheaders()
+
+    def do_OPTIONS(s):
+      s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
+
+    def do_GET(s):
+      if not support_byte_ranges:
+        s.sendheaders()
+        s.wfile.write(data)
+      else:
+        (start, end) = s.headers.get("range").split("=")[1].split("-")
+        start = int(start)
+        end = int(end)
+        end = min(len(data)-1, end)
+        length = end-start+1
+        s.sendheaders([],length)
+        s.wfile.write(data[start:end+1])
+      s.wfile.close()
+
+  expectedConns = 11
+  httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
+  for i in range(expectedConns+1):
+    httpd.handle_request()
 
 class browser(BrowserCore):
   @staticmethod
@@ -1265,51 +1304,15 @@ keydown(100);keyup(100); // trigger the end
 
     chunkSize = 1024
     data = os.urandom(10*chunkSize+1) # 10 full chunks and one 1 byte chunk
-    expectedConns = 11
-    import zlib
     checksum = zlib.adler32(data)
 
-    def chunked_server(support_byte_ranges):
-      class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-        def sendheaders(s, extra=[], length=len(data)):
-          s.send_response(200)
-          s.send_header("Content-Length", str(length))
-          s.send_header("Access-Control-Allow-Origin", "http://localhost:8888")
-          s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
-          s.send_header("Content-type", "application/octet-stream")
-          if support_byte_ranges:
-            s.send_header("Accept-Ranges", "bytes")
-          for i in extra:
-            s.send_header(i[0], i[1])
-          s.end_headers()
-
-        def do_HEAD(s):
-          s.sendheaders()
-
-        def do_OPTIONS(s):
-          s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
-
-        def do_GET(s):
-          if not support_byte_ranges:
-            s.sendheaders()
-            s.wfile.write(data)
-          else:
-            (start, end) = s.headers.get("range").split("=")[1].split("-")
-            start = int(start)
-            end = int(end)
-            end = min(len(data)-1, end)
-            length = end-start+1
-            s.sendheaders([],length)
-            s.wfile.write(data[start:end+1])
-          s.wfile.close()
-      httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
-      for i in range(expectedConns+1):
-        httpd.handle_request()
-
-    server = multiprocessing.Process(target=chunked_server, args=(True,))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True,chunkSize,data,checksum,))
     server.start()
     self.run_browser(main, 'Chunked binary synchronous XHR in Web Workers!', '/report_result?' + str(checksum))
     server.terminate()
+    # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
+    # attempt to rmdir() files in use.
+    time.sleep(2)
 
   def test_glgears(self):
     self.btest('hello_world_gles.c', reference='gears.png', reference_slack=1,
