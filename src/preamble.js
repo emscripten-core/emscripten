@@ -246,7 +246,7 @@ var EXITSTATUS = 0;
 var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
 // for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
-var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
+var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD, tempDouble, tempFloat;
 #if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
 var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;

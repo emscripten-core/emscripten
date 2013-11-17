@@ -3193,7 +3193,7 @@ LibraryManager.library = {
       }
     }
     if (!finalBase) finalBase = 10;
-    start = str;
+    var start = str;
 
     // Get digits.
     var chr;
