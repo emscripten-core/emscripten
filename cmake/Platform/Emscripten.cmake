@@ -44,9 +44,10 @@ endif()
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
 get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 
-if ("${CMAKE_MODULE_PATH}" STREQUAL "")
-	set(CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake")
+if (NOT CMAKE_MODULE_PATH)
+	set(CMAKE_MODULE_PATH "")
 endif()
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
 set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake")
 
@@ -81,6 +82,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
 # We would prefer to specify a standard set of Clang+Emscripten-friendly common convention for suffix files, especially for CMake executable files,
 # but if these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail, since it depends on being able to compile output files with predefined names.

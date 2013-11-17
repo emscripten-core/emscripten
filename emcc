@@ -50,7 +50,7 @@ emcc can be influenced by a few environment variables:
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE, STDOUT
 from tools import shared, jsrun
-from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
+from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS
 from tools.response_file import read_response_file
 
 CXX_SUFFIXES = ('.cpp', '.cxx', '.cc')
@@ -887,8 +887,17 @@ try:
       check_bad_eq(newargs[i])
       parts = newargs[i+1].split(',')
       assert len(parts) == 3, '--compression requires specifying    native_encoder,js_decoder,js_name  - see emcc --help. got: %s' % newargs[i+1]
-      Compression.encoder = parts[0]
-      Compression.decoder = parts[1]
+      def locate(tool):
+        if WINDOWS:
+          if os.path.exists(tool+'.exe'):
+            return tool+'.exe'
+          if os.path.exists(tool+'.bat'):
+            return tool+'.bat'
+          if os.path.exists(tool+'.cmd'):
+            return tool+'.cmd'
+        return tool
+      Compression.encoder = locate(parts[0])
+      Compression.decoder = locate(parts[1])
       Compression.js_name = parts[2]
       assert os.path.exists(Compression.encoder), 'native encoder %s does not exist' % Compression.encoder
       assert os.path.exists(Compression.decoder), 'js decoder %s does not exist' % Compression.decoder
