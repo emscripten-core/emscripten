@@ -6122,7 +6122,7 @@ LibraryManager.library = {
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
     var now;
-    if (clk_id ===  {{{ cDefine('CLOCK_REALTIME') }}}) {
+    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       now = Date.now();
     } else {
       now = _emscripten_get_now();
@@ -6136,10 +6136,17 @@ LibraryManager.library = {
     // Nothing.
     return 0;
   },
+  clock_getres__deps: ['emscripten_get_now_res'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
+    var nsec;
+    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
+      nsec = 1000 * 1000;
+    } else {
+      nsec = _emscripten_get_now_res();
+    }
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '1', 'i32') }}}
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, '1000 * 1000', 'i32') }}} // resolution is milliseconds
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is milliseconds
     return 0;
   },
 
@@ -8680,10 +8687,10 @@ LibraryManager.library = {
   emscripten_get_now: function() {
     if (!_emscripten_get_now.actual) {
       if (ENVIRONMENT_IS_NODE) {
-          _emscripten_get_now.actual = function _emscripten_get_now_actual() {
-            var t = process['hrtime']();
-            return t[0] * 1e3 + t[1] / 1e6;
-          }
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() {
+          var t = process['hrtime']();
+          return t[0] * 1e3 + t[1] / 1e6;
+        }
       } else if (typeof dateNow !== 'undefined') {
         _emscripten_get_now.actual = dateNow;
       } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
@@ -8693,6 +8700,17 @@ LibraryManager.library = {
       }
     }
     return _emscripten_get_now.actual();
+  },
+
+  emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
+    if (ENVIRONMENT_IS_NODE) {
+      return 1; // nanoseconds
+    } else if (typeof dateNow !== 'undefined' ||
+               (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now'])) {
+      return 1000; // microseconds (1/1000 of a millisecond)
+    } else {
+      return 1000*1000; // milliseconds
+    }
   },
 
   //============================
