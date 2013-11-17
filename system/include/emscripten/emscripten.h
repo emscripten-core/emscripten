@@ -24,15 +24,36 @@ extern "C" {
  *    EM_ASM(window.alert('hai'));
  *
  * This also works with asm.js, as it outlines the code (it
- * does a function call to reach it).
+ * does a function call to reach it). It supports newlines,
  *
- * Notes: double-quotes (") are not supported, but you can use
+ *    EM_ASM(
+ *      window.alert('hai'));
+ *      window.alert('bai'));
+ *    )
+ *
+ * Notes: Double-quotes (") are not supported, but you can use
  *        single-quotes (') in js anyhow.
  *
- *        you can't access C variables with EM_ASM, use gcc
- *        inline asm for that, asm("code" : .. etc.)
+ *        You can't access C variables with EM_ASM, nor receive
+ *        a value back. use EM_ASM_INT or EM_ASM_DOUBLE for that
  */
 #define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
+
+/*
+ * Input-output versions of EM_ASM. EM_ASM_INT receives arguments of
+ * either int or double type and returns an int; EM_ASM_DOUBLE
+ * receives similar arguments (int or double) but returns a double.
+ * Arguments arrive as $0, $1 etc; output value should be returned:
+ *
+ *    int x = EM_ASM_INT({
+ *      console.log('I received: ' + [$0, $1]);
+ *      return $0 + $1;
+ *    }, calc(), otherCalc());
+ *
+ * Note the {,}
+ */
+#define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
+#define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, __VA_ARGS__)
 
 /*
  * Forces LLVM to not dead-code-eliminate a function. Note that
@@ -423,6 +444,8 @@ void emscripten_jcache_printf_(...); /* internal use */
 
 /* Helper API for EM_ASM - do not call this yourself */
 void emscripten_asm_const(const char *code);
+int emscripten_asm_const_int(const char *code, ...);
+double emscripten_asm_const_double(const char *code, ...);
 
 #ifdef __cplusplus
 }

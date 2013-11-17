@@ -8676,12 +8676,19 @@ LibraryManager.library = {
   },
 
   emscripten_asm_const: function(code) {
-    // code is a constant string on the heap, so we can cache these
-    if (!Runtime.asmConstCache) Runtime.asmConstCache = {};
-    var func = Runtime.asmConstCache[code];
-    if (func) return func();
-    func = Runtime.asmConstCache[code] = eval('(function(){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
-    return func();
+    Runtime.getAsmConst(code, 0)();
+  },
+
+  emscripten_asm_const_int__jsargs: true,
+  emscripten_asm_const_int: function(code) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return Runtime.getAsmConst(code, args.length).apply(null, args) | 0;
+  },
+
+  emscripten_asm_const_double__jsargs: true,
+  emscripten_asm_const_double: function(code) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return +Runtime.getAsmConst(code, args.length).apply(null, args);
   },
 
   emscripten_get_now: function() {
