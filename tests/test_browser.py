@@ -1312,7 +1312,8 @@ keydown(100);keyup(100); // trigger the end
     server.terminate()
     # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
     # attempt to rmdir() files in use.
-    time.sleep(2)
+    if WINDOWS:
+      time.sleep(2)
 
   def test_glgears(self):
     self.btest('hello_world_gles.c', reference='gears.png', reference_slack=1,
