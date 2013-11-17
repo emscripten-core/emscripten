@@ -2675,7 +2675,7 @@ var LibrarySDL = {
 
   SDL_WaitThread: function() { throw 'SDL_WaitThread' },
   SDL_GetThreadID: function() { throw 'SDL_GetThreadID' },
-  SDL_ThreadID: function() { throw 'SDL_ThreadID' },
+  SDL_ThreadID: function() { return 0; },
   SDL_AllocRW: function() { throw 'SDL_AllocRW: TODO' },
   SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
   SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
