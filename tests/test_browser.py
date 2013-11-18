@@ -1,12 +1,15 @@
-import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib
+import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
 from runner import BrowserCore, path_from_root
 from tools.shared import *
 
-''' Enable this code to run in another browser than webbrowser detects as default
-def run_in_other_browser(url):
-  execute(['yourbrowser', url])
-webbrowser.open_new = run_in_other_browser
-'''
+# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
+# run using another browser command line than the default system browser.
+emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
+if emscripten_browser:
+  cmd = shlex.split(emscripten_browser)
+  def run_in_other_browser(url):
+    Popen(cmd + [url])
+  webbrowser.open_new = run_in_other_browser
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
   class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -108,7 +111,6 @@ class browser(BrowserCore):
         cwd=self.get_dir()).communicate()
     assert os.path.exists(html_file)
     assert os.path.exists(html_file + '.map')
-    import webbrowser, time
     webbrowser.open_new('file://' + html_file)
     time.sleep(1)
     print '''
