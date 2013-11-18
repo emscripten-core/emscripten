@@ -1273,8 +1273,8 @@ try:
           # It will be deleted with the rest of the temporary directory.
           deps = open(temp_output_base + '.d').read()
           deps = deps.replace(temp_output_base + '.o', specified_target)
-          with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_files[0]) + '.d')), "w") as outDep:
-            outDep.write(deps)
+          with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_files[0]) + '.d')), "w") as out_dep:
+            out_dep.write(deps)
       else:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
