@@ -8237,7 +8237,7 @@ LibraryManager.library = {
   },
 
   accept__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
-  accept: function(fd, addrp, addrlen) {
+  accept: function(fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -8245,7 +8245,7 @@ LibraryManager.library = {
     }
     try {
       var newsock = sock.sock_ops.accept(sock);
-      if (addrp) {
+      if (addr) {
         var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
         assert(!res.errno);
       }
