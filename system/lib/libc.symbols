@@ -55,9 +55,6 @@
          T err
          T errx
          W free
-         T getopt
-         T getopt_long
-         T getopt_long_only
          W independent_calloc
          W independent_comalloc
          W mallinfo
@@ -71,11 +68,6 @@
          W malloc_usable_size
          W mallopt
          W memalign
-         C optarg
-         D opterr
-         D optind
-         D optopt
-         C optreset
          W posix_memalign
          W pvalloc
          W realloc
