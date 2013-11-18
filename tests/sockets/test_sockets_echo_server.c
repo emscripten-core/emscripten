@@ -72,7 +72,16 @@ void main_loop(void *arg) {
 #if !USE_UDP
   // for TCP sockets, we may need to accept a connection
   if (FD_ISSET(server.fd, &fdr)) {
+#if TEST_ACCEPT_ADDR
+    // Do an accept with non-NULL addr and addlen parameters. This tests a fix to a bug in the implementation of
+    // accept which had a parameter "addrp" but used "addr" internally if addrp was set - giving a ReferenceError.
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    socklen_t addrlen = sizeof(addr);
+    client.fd = accept(server.fd, (struct sockaddr *) &addr, &addrlen);
+#else
     client.fd = accept(server.fd, NULL, NULL);
+#endif
     assert(client.fd != -1);
   }
 #endif
