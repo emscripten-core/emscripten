@@ -250,7 +250,9 @@ mergeInto(LibraryManager.library, {
           contextAttributes.preserveDrawingBuffer = true;
 #endif
 
-          ctx = canvas.getContext('experimental-webgl', contextAttributes);
+          ['experimental-webgl', 'webgl'].some(function(webglId) {
+            return ctx = canvas.getContext(webglId, contextAttributes);
+          });
         } else {
           ctx = canvas.getContext('2d');
         }
