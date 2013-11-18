@@ -2631,7 +2631,7 @@ back
       Settings.EXCEPTION_DEBUG = 1
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if '-O2' in self.emcc_args:
+      if '-O2' in self.emcc_args and self.run_name != 'asm2f': # XXX closure problem with asm2f
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
       src = '''
