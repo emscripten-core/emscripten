@@ -1274,7 +1274,16 @@ try:
         shutil.move(in_temp(unsuffixed(uniquename(input_file)) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
     else:
       if len(input_files) == 1:
-        shutil.move(in_temp(unsuffixed(uniquename(input_files[0])) + '.o'), specified_target)
+        temp_output_base = in_temp(unsuffixed(uniquename(input_files[0])))
+        shutil.move(temp_output_base + '.o', specified_target)
+        if os.path.exists(temp_output_base + '.d'):
+          # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
+          # adjusting the target name away from the temporary file name to the specified target.
+          # It will be deleted with the rest of the temporary directory.
+          deps = open(temp_output_base + '.d').read()
+          deps = deps.replace(temp_output_base + '.o', specified_target)
+          with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_files[0]) + '.d')), "w") as outDep:
+            outDep.write(deps)
       else:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
