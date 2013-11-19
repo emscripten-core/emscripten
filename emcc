@@ -1140,16 +1140,53 @@ try:
       shared.Settings.CORRECT_OVERFLOWS = 1
     assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-    heap = 4096
-    while heap < shared.Settings.TOTAL_MEMORY:
-      heap *= 2
-      #if heap <= 16*1024*1024:
-      #  heap *= 2
-      #else:
-      #  heap += 16*1024*1024
-    if heap != shared.Settings.TOTAL_MEMORY:
-      logging.warning('increasing TOTAL_MEMORY to %d to be more reasonable for asm.js' % heap)
-      shared.Settings.TOTAL_MEMORY = heap
+    def is_pow2(x):
+      return x & (x-1) == 0
+
+    # Returns the largest pow2 smaller or equal than x
+    def floor_pow2(x):
+      while not is_pow2(x):
+        x &= x-1
+      return x
+
+    # Returns smallest pow2 larger or equal than x
+    def ceil_pow2(x):
+      x -= 1
+      x |= x >> 32
+      x |= x >> 16
+      x |= x >> 8
+      x |= x >> 4
+      x |= x >> 2
+      x |= x >> 1
+      x += 1
+      return x
+
+    def floor_mul16(x):
+      return x & ~(16*1024*1024-1)
+
+    # Returns smallest multiple of 16MB larger or equal than x
+    def ceil_mul16(x):
+      return (x + 16*1024*1024-1) & ~(16*1024*1024-1)
+
+    def floor_valid_heap_size(x):
+      return max(floor_mul16(x), floor_pow2(x))
+    
+    def ceil_valid_heap_size(x):
+      return min(ceil_mul16(x), ceil_pow2(x))
+
+    # Returns true if x is a multiple of 16MB
+    def is_mul16(x):
+      return x & (16*1024*1024-1) == 0
+    
+    heap = shared.Settings.TOTAL_MEMORY
+    next_pow2 = ceil_pow2(heap)
+    if not is_pow2(heap):
+      if is_mul16(heap):
+        logging.warning('A multiple of 16MB asm.js heap size of ' + str(heap/1024/1024) + 'MB is only valid in Firefox 26 and newer, not in current stable Firefox 25. Firefox 26 ships around December 10th.')
+      else:
+        logging.warning('TOTAL_MEMORY='+str(heap)+' is not a valid asm.js heap size. Valid values would be powers of two: ' + str(floor_pow2(heap)) + ' and ' + str(ceil_pow2(heap)) + ', and once Firefox 26 ships (December 10th), also multiples of 16MB: ' + str(floor_valid_heap_size(heap)) + ' and ' + str(ceil_valid_heap_size(heap)) + '. Increasing TOTAL_MEMORY to ' + str(ceil_pow2(heap)) + '. Firefox 26 ships around December 10th.')
+        heap = ceil_pow2(heap) # TODO: Replace with ceil_mul16(heap) once Firefox 26 ships.
+    shared.Settings.TOTAL_MEMORY = heap
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
