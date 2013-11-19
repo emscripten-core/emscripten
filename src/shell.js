@@ -91,6 +91,8 @@ else if (ENVIRONMENT_IS_SHELL) {
   }
 
   this['{{{ EXPORT_NAME }}}'] = Module;
+
+  eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function read(url) {
