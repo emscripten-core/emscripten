@@ -206,12 +206,12 @@ if (phase == 'pre') {
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
 // Load struct and define information.
-try {
+//try {
   var temp = JSON.parse(read(STRUCT_INFO));
-} catch(e) {
-  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
-  temp = JSON.parse(read('struct_info.compiled.json'));
-}
+//} catch(e) {
+//  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
+//  temp = JSON.parse(read('struct_info.compiled.json'));
+//}
 C_STRUCTS = temp.structs;
 C_DEFINES = temp.defines;
 
@@ -224,12 +224,12 @@ load('analyzer.js');
 load('jsifier.js');
 if (phase == 'funcs' && RELOOP) { // XXX handle !singlePhase
   RelooperModule = { TOTAL_MEMORY: ceilPowerOfTwo(2*RELOOPER_BUFFER_SIZE) };
-  try {
+  //try {
     load(RELOOPER);
-  } catch(e) {
-    printErr('cannot load relooper at ' + RELOOPER + ' : ' + e + ', trying in current dir');
-    load('relooper.js');
-  }
+  //} catch(e) {
+  //  printErr('cannot load relooper at ' + RELOOPER + ' : ' + e + ', trying in current dir');
+  //  load('relooper.js');
+  //}
   assert(typeof Relooper != 'undefined');
 }
 globalEval(processMacros(preprocess(read('runtime.js'))));
