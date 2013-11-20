@@ -44,9 +44,10 @@ endif()
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
 get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 
-if ("${CMAKE_MODULE_PATH}" STREQUAL "")
-	set(CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake")
+if (NOT CMAKE_MODULE_PATH)
+	set(CMAKE_MODULE_PATH "")
 endif()
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
 set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake")
 
@@ -81,6 +82,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
 # We would prefer to specify a standard set of Clang+Emscripten-friendly common convention for suffix files, especially for CMake executable files,
 # but if these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail, since it depends on being able to compile output files with predefined names.
@@ -146,6 +149,10 @@ set(link_js_counter 1)
 # Internal function: Do not call from user CMakeLists.txt files. Use one of em_link_js_library()/em_link_pre_js()/em_link_post_js() instead.
 function(em_add_tracked_link_flag target flagname)
 	get_target_property(props ${target} LINK_FLAGS)
+	if(NOT props)
+	    set(props "")
+	endif()
+
 	# User can input list of JS files either as a single list, or as variable arguments to this function, so iterate over varargs, and treat each
 	# item in varargs as a list itself, to support both syntax forms.
 	foreach(jsFileList ${ARGN})

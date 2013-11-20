@@ -68,7 +68,7 @@ function warn(a, msg) {
     a = false;
   }
   if (!a) {
-    printErr('Warning: ' + msg);
+    printErr('warning: ' + msg);
   }
 }
 
@@ -81,7 +81,7 @@ function warnOnce(a, msg) {
     if (!warnOnce.msgs) warnOnce.msgs = {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
-    printErr('Warning: ' + msg);
+    printErr('warning: ' + msg);
   }
 }
 
@@ -89,7 +89,7 @@ var abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
-  printErr('Error: ' + msg);
+  printErr('error: ' + msg);
 }
 
 function dedup(items, ident) {
@@ -222,7 +222,8 @@ function mergeInto(obj, other) {
 }
 
 function isNumber(x) {
-  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/));
+  // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
+  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x === 'NaN';
 }
 
 function isArray(x) {

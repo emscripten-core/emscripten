@@ -115,7 +115,13 @@ var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which i
 var PRECISE_I32_MUL = 1; // If enabled, i32 multiplication is done with full precision, which means it is
                          // correct even if the value exceeds the JS double-integer limit of ~52 bits (otherwise,
                          // rounding will occur above that range).
-var TO_FLOAT32 = 0; // Use Math.toFloat32
+var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 64-bit and do not model C++
+                     //    floats exactly, which are 32-bit.
+                     // 1: Model C++ floats precisely, using Math.fround, polyfilling when necessary. This
+                     //    can be slow if the polyfill is used on heavy float32 computation.
+                     // 2: Model C++ floats precisely using Math.fround if available in the JS engine, otherwise
+                     //    use an empty polyfill. This will have less of a speed penalty than using the full
+                     //    polyfill in cases where engine support is not present.
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -384,13 +390,16 @@ var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. I
 
 var GC_SUPPORT = 1; // Enables GC, see gc.h (this does not add overhead, so it is on by default)
 
-var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined symbols that
-                                   // are not resolved by the library_*.js files. We by default
-                                   // do not warn because (1) it is normal in large projects to
+var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined symbols that
+                                   // are not resolved by the library_*.js files. Note that
+                                   // it is common in large projects to
                                    // not implement everything, when you know what is not
                                    // going to actually be called (and don't want to mess with
-                                   // the existing buildsystem), and (2) functions might be
-                                   // implemented later on, say in --pre-js
+                                   // the existing buildsystem), and functions might be
+                                   // implemented later on, say in --pre-js, so you may
+                                   // want to build with -s WARN_ON_UNDEFINED_SYMBOLS=0 to
+                                   // disable the warnings if they annoy you.
+                                   // See also ERROR_ON_UNDEFINED_SYMBOLS
 
 var ERROR_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will give a compile-time error on any
                                     // undefined symbols (see WARN_ON_UNDEFINED_SYMBOLS).
@@ -422,6 +431,8 @@ var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and 
                          // reducing code size.
                          // If a dead function is actually called, you will get a runtime
                          // error.
+                         // This can affect both functions in compiled code, and system
+                         // library functions (e.g., you can use this to kill printf).
                          // TODO: options to lazily load such functions
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:

@@ -11,6 +11,7 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging
 
+from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
 
@@ -25,7 +26,6 @@ def get_configuration():
   if hasattr(get_configuration, 'configuration'):
     return get_configuration.configuration
 
-  from tools import shared
   configuration = shared.Configuration(environ=os.environ)
   get_configuration.configuration = configuration
   return configuration
@@ -117,7 +117,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     last = func_start
     func_start = ll.find('\ndefine ', func_start)
     if func_start > last:
-      pre.append(ll[last:min(func_start+1, meta_start)] + '\n')
+      pre.append(ll[last:min(func_start+1, meta_start) if meta_start > 0 else func_start+1] + '\n')
     if func_start < 0:
       pre.append(ll[last:meta_start] + '\n')
       break
@@ -425,8 +425,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       Counter.i += 1
       bad = 'b' + str(i)
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
-      coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] != 'i' else '', p, '' if sig[p+1] != 'i' else '|0') for p in range(len(sig)-1)]) + ';'
-      ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] != 'i' else ''))
+      coercions = ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
+      ret = '' if sig[0] == 'v' else ('return %s' % shared.JS.make_initializer(sig[0], settings))
       start = raw.index('[')
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
@@ -451,7 +451,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
 
-    if settings['TO_FLOAT32']: maths += ['Math.toFloat32']
+    if settings['PRECISE_F32']: maths += ['Math.fround']
 
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
@@ -476,18 +476,14 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
-    def asm_coerce(value, sig):
-      if sig == 'v': return value
-      return ('+' if sig != 'i' else '') + value + ('|0' if sig == 'i' else '')
-
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
 
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-      arg_coercions = ' '.join(['a' + str(i) + '=' + asm_coerce('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
-      coerced_args = ','.join([asm_coerce('a' + str(i), sig[i]) for i in range(1, len(sig))])
-      ret = ('return ' if sig[0] != 'v' else '') + asm_coerce('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0])
+      arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
+      coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
+      ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
       function_tables_impls.append('''
   function dynCall_%s(index%s%s) {
     index = index|0;
@@ -497,7 +493,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
 
       for i in range(settings['RESERVED_FUNCTION_POINTERS']):
-        jsret = ('return ' if sig[0] != 'v' else '') + asm_coerce('jsCall(%d%s%s)' % (i, ',' if coerced_args else '', coerced_args), sig[0])
+        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall(%d%s%s)' % (i, ',' if coerced_args else '', coerced_args), sig[0], settings)
         function_tables_impls.append('''
   function jsCall_%s_%s(%s) {
     %s
@@ -505,7 +501,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   }
 
 ''' % (sig, i, args, arg_coercions, jsret))
-      from tools import shared
       shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
@@ -585,7 +580,7 @@ var asm = (function(global, env, buffer) {
   var undef = 0;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
 ''' + ''.join(['''
-  var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs + '''
+  var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + ['''
 // EMSCRIPTEN_START_FUNCS
 function stackAlloc(size) {
   size = size|0;
@@ -727,14 +722,12 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
       relooper = cache.get_path('relooper.js')
     settings.setdefault('RELOOPER', relooper)
     if not os.path.exists(relooper):
-      from tools import shared
       shared.Building.ensure_relooper(relooper)
   
   settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
   
   if not os.path.exists(struct_info):
-    from tools import shared
     shared.Building.ensure_struct_info(struct_info)
   
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
@@ -833,7 +826,6 @@ WARNING: You should normally never use this! Use emcc instead.
     temp_files = tempfiles.TempFiles(temp_dir)
 
   if keywords.compiler is None:
-    from tools import shared
     keywords.compiler = shared.COMPILER_ENGINE
 
   if keywords.verbose is None:

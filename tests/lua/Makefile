@@ -51,8 +51,9 @@ R= $V.1
 # Targets start here.
 all:	$(PLAT)
 
+# XXX Emscripten Added quotes to $(MAKE) to properly call make when the path contains spaces
 $(PLATS) clean:
-	cd src && $(MAKE) $@
+	cd src && "$(MAKE)" $@
 
 test:	dummy
 	src/lua -v

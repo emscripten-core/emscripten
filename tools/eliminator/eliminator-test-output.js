@@ -6119,4 +6119,7 @@ function intoCond() {
   HEAP32[$115 >> 2] = $NumWords;
  }
 }
+function math(a, b, c, d) {
+ print(Math_imul(d) + (Math_fround(c) + (a + Math_abs(b))));
+}
 

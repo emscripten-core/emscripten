@@ -490,10 +490,19 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       // If this is not linkable, anything not in the library is definitely missing
       var cancel = false;
+      if (item.ident in DEAD_FUNCTIONS) {
+        if (LibraryManager.library[shortident + '__asm']) {
+          warn('cannot kill asm library function ' + item.ident);
+        } else {
+          LibraryManager.library[shortident] = new Function("Module['printErr']('dead function: " + shortident + "'); abort(-1);");
+          delete LibraryManager.library[shortident + '__inline'];
+          delete LibraryManager.library[shortident + '__deps'];
+        }
+      }
       if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
-        if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) printErr('warning: unresolved symbol: ' + shortident);
-        if (ASM_JS || item.ident in DEAD_FUNCTIONS) {
+        else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) warn('unresolved symbol: ' + shortident);
+        if (ASM_JS) {
           // emit a stub that will fail during runtime. this allows asm validation to succeed.
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
@@ -756,14 +765,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (func.setjmpTable && !ASM_JS) {
             ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
           }
-          if (ASM_JS && func.returnType !== 'void') {
-            // Add a return
-            if (func.returnType in Runtime.FLOAT_TYPES) {
-              ret += ' return +0;\n';
-            } else {
-              ret += ' return 0;\n';
-            }
-          }
+          if (ASM_JS && func.returnType !== 'void') ret += '  return ' + asmInitializer(func.returnType) + ';\n'; // Add a return
         } else {
           ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0]);
         }
@@ -833,11 +835,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var lastReturn = func.JS.lastIndexOf('return ');
       if ((lastCurly < 0 && lastReturn < 0) || // no control flow, no return
           (lastCurly >= 0 && lastReturn < lastCurly)) { // control flow, no return past last join
-        if (func.returnType in Runtime.FLOAT_TYPES) {
-          func.JS += ' return +0;\n';
-        } else {
-          func.JS += ' return 0;\n';
-        }
+        func.JS += '  return ' + asmInitializer(func.returnType) + ';\n';
       }
     }
     func.JS += '}\n';
@@ -1337,7 +1335,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (isNumber(item.ident)) {
           // Direct read from a memory address; this may be an intentional segfault, if not, it is a bug in the source
           if (ASM_JS) {
-            return asmCoercion('abort(' + item.ident + ')', item.type);
+            return asmFFICoercion('abort(' + item.ident + ')', item.type);
           } else {
             item.assignTo = null;
             return 'throw "fault on read from ' + item.ident + '";';
@@ -1514,8 +1512,10 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     if (ASM_JS) {
-      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || extCall || funcData.setjmpTable) {
-        args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+      var ffiCall = (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || extCall || funcData.setjmpTable) &&
+                    !(simpleIdent in JS_MATH_BUILTINS);
+      if (ffiCall) {
+        args = args.map(function(arg, i) { return asmCoercion(arg, ensureValidFFIType(argsTypes[i])) });
       } else {
         args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
       }
@@ -1592,7 +1592,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       returnType = getReturnType(type);
       if (callIdent in Functions.implementedFunctions) {
         // LLVM sometimes bitcasts for no reason. We must call using the exact same type as the actual function is generated as
-        var trueType = Functions.getSignatureReturnType(Functions.implementedFunctions[callIdent]);
+        var trueType = Functions.getSignatureType(Functions.implementedFunctions[callIdent][0]);
         if (trueType !== returnType && !isIdenticallyImplemented(trueType, returnType)) {
           if (VERBOSE) warnOnce('Fixing function call based on return type from signature, on ' + [callIdent, returnType, trueType]);
           returnType = trueType;
@@ -1628,7 +1628,11 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     var ret = callIdent + '(' + args.join(',') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
-      ret = asmCoercion(ret, returnType);
+      if (ffiCall) {
+        ret = asmFFICoercion(ret, returnType);
+      } else {
+        ret = asmCoercion(ret, returnType);
+      }
       if (simpleIdent == 'abort' && funcData.returnType != 'void') {
         ret += '; return ' + asmCoercion('0', funcData.returnType); // special case: abort() can happen without return, breaking the return type of asm functions. ensure a return
       }

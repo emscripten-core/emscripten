@@ -847,10 +847,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE);
       return 0;
     } else {
-      for (var i = 0; i < cwd.length; i++) {
-        {{{ makeSetValue('buf', 'i', 'cwd.charCodeAt(i)', 'i8') }}}
-      }
-      {{{ makeSetValue('buf', 'i', '0', 'i8') }}}
+      writeAsciiToMemory(cwd, buf);
       return buf;
     }
   },
@@ -1193,7 +1190,6 @@ LibraryManager.library = {
   _exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-    Module.print('exit(' + status + ') called');
     Module['exit'](status);
   },
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -1293,10 +1289,7 @@ LibraryManager.library = {
     if (namesize < ret.length + 1) {
       return ___setErrNo(ERRNO_CODES.ERANGE);
     } else {
-      for (var i = 0; i < ret.length; i++) {
-        {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
-      }
-      {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+      writeAsciiToMemory(ret, name);
       return 0;
     }
   },
@@ -2699,10 +2692,7 @@ LibraryManager.library = {
     var result = dir + '/' + name;
     if (!_tmpnam.buffer) _tmpnam.buffer = _malloc(256);
     if (!s) s = _tmpnam.buffer;
-    for (var i = 0; i < result.length; i++) {
-      {{{ makeSetValue('s', 'i', 'result.charCodeAt(i)', 'i8') }}};
-    }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
+    writeAsciiToMemory(result, s);
     return s;
   },
   tempnam__deps: ['tmpnam'],
@@ -3203,7 +3193,7 @@ LibraryManager.library = {
       }
     }
     if (!finalBase) finalBase = 10;
-    start = str;
+    var start = str;
 
     // Get digits.
     var chr;
@@ -3343,10 +3333,7 @@ LibraryManager.library = {
     var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
     for (var i = 0; i < strings.length; i++) {
       var line = strings[i];
-      for (var j = 0; j < line.length; j++) {
-        {{{ makeSetValue('poolPtr', 'j', 'line.charCodeAt(j)', 'i8') }}};
-      }
-      {{{ makeSetValue('poolPtr', 'j', '0', 'i8') }}};
+      writeAsciiToMemory(line, poolPtr);
       {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
       poolPtr += line.length + 1;
     }
@@ -3976,10 +3963,7 @@ LibraryManager.library = {
         return ___setErrNo(ERRNO_CODES.ERANGE);
       } else {
         var msg = ERRNO_MESSAGES[errnum];
-        for (var i = 0; i < msg.length; i++) {
-          {{{ makeSetValue('strerrbuf', 'i', 'msg.charCodeAt(i)', 'i8') }}}
-        }
-        {{{ makeSetValue('strerrbuf', 'i', 0, 'i8') }}}
+        writeAsciiToMemory(msg, strerrbuf);
         return 0;
       }
     } else {
@@ -5067,10 +5051,7 @@ LibraryManager.library = {
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
     function copyString(element, value) {
       var offset = layout[element];
-      for (var i = 0; i < value.length; i++) {
-        {{{ makeSetValue('name', 'offset + i', 'value.charCodeAt(i)', 'i8') }}}
-      }
-      {{{ makeSetValue('name', 'offset + i', '0', 'i8') }}}
+      writeAsciiToMemory(value, name + offset);
     }
     if (name === 0) {
       return -1;
@@ -6131,16 +6112,23 @@ LibraryManager.library = {
     // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
     var seconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_sec, 'i32') }}};
     var nanoseconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-    {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}}
-    {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}}
+    if (rmtp !== 0) {
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}}
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}}
+    }
     return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
-  // TODO: Implement these for real.
+  clock_gettime__deps: ['emscripten_get_now'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
-    var now = Date.now();
+    var now;
+    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
+      now = Date.now();
+    } else {
+      now = _emscripten_get_now();
+    }
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, 'Math.floor(now/1000)', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '(now % 1000) * 1000 * 1000', 'i32') }}}; // nanoseconds (really milliseconds)
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, 'Math.floor((now % 1000)*1000*1000)', 'i32') }}}; // nanoseconds
     return 0;
   },
   clock_settime: function(clk_id, tp) {
@@ -6148,10 +6136,17 @@ LibraryManager.library = {
     // Nothing.
     return 0;
   },
+  clock_getres__deps: ['emscripten_get_now_res'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
+    var nsec;
+    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
+      nsec = 1000 * 1000;
+    } else {
+      nsec = _emscripten_get_now_res();
+    }
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '1', 'i32') }}}
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, '1000 * 1000', 'i32') }}} // resolution is milliseconds
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is milliseconds
     return 0;
   },
 
@@ -6572,10 +6567,7 @@ LibraryManager.library = {
 
     var me = _nl_langinfo;
     if (!me.ret) me.ret = _malloc(32);
-    for (var i = 0; i < result.length; i++) {
-      {{{ makeSetValue('me.ret', 'i', 'result.charCodeAt(i)', 'i8') }}}
-    }
-    {{{ makeSetValue('me.ret', 'i', '0', 'i8') }}}
+    writeAsciiToMemory(result, me.ret);
     return me.ret;
   },
 
@@ -7433,6 +7425,9 @@ LibraryManager.library = {
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
   getaddrinfo: function(node, service, hint, out) {
+    // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
+    // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
+    // really should provide a linked list of suitable addrinfo values.
     var addrs = [];
     var canon = null;
     var addr = 0;
@@ -7487,6 +7482,15 @@ LibraryManager.library = {
       type = proto === {{{ cDefine('IPPROTO_UDP') }}} ? {{{ cDefine('SOCK_DGRAM') }}} : {{{ cDefine('SOCK_STREAM') }}};
     }
 
+    // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
+    // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
+    if (proto === 0) {
+      proto = {{{ cDefine('IPPROTO_TCP') }}};
+    }
+    if (type === 0) {
+      type = {{{ cDefine('SOCK_STREAM') }}};
+    }
+
     if (!node && !service) {
       return {{{ cDefine('EAI_NONAME') }}};
     }
@@ -7494,14 +7498,14 @@ LibraryManager.library = {
         {{{ cDefine('AI_NUMERICSERV') }}}|{{{ cDefine('AI_V4MAPPED') }}}|{{{ cDefine('AI_ALL') }}}|{{{ cDefine('AI_ADDRCONFIG') }}})) {
       return {{{ cDefine('EAI_BADFLAGS') }}};
     }
-    if (({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
+    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
       return {{{ cDefine('EAI_BADFLAGS') }}};
     }
     if (flags & {{{ cDefine('AI_ADDRCONFIG') }}}) {
       // TODO
       return {{{ cDefine('EAI_NONAME') }}};
     }
-    if (type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
+    if (type !== 0 && type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
       return {{{ cDefine('EAI_SOCKTYPE') }}};
     }
     if (family !== {{{ cDefine('AF_UNSPEC') }}} && family !== {{{ cDefine('AF_INET') }}} && family !== {{{ cDefine('AF_INET6') }}}) {
@@ -7631,12 +7635,43 @@ LibraryManager.library = {
 
     return 0;
   },
+  // Can't use a literal for $GAI_ERRNO_MESSAGES as was done for $ERRNO_MESSAGES as the keys (e.g. EAI_BADFLAGS)
+  // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
+  $GAI_ERRNO_MESSAGES: {},
 
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
   gai_strerror: function(val) {
-    if (!_gai_strerror.error) {
-      _gai_strerror.error = allocate(intArrayFromString("unknown error"), 'i8', ALLOC_NORMAL);
+    var buflen = 256;
+
+    // On first call to gai_strerror we initialise the buffer and populate the error messages.
+    if (!_gai_strerror.buffer) {
+        _gai_strerror.buffer = _malloc(buflen);
+
+        GAI_ERRNO_MESSAGES['0'] = 'Success';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_BADFLAGS') }}}] = 'Invalid value for \'ai_flags\' field';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_NONAME') }}}] = 'NAME or SERVICE is unknown';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_AGAIN') }}}] = 'Temporary failure in name resolution';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAIL') }}}] = 'Non-recoverable failure in name res';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_FAMILY') }}}] = '\'ai_family\' not supported';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SOCKTYPE') }}}] = '\'ai_socktype\' not supported';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SERVICE') }}}] = 'SERVICE not supported for \'ai_socktype\'';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_MEMORY') }}}] = 'Memory allocation failure';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_SYSTEM') }}}] = 'System error returned in \'errno\'';
+        GAI_ERRNO_MESSAGES['' + {{{ cDefine('EAI_OVERFLOW') }}}] = 'Argument buffer overflow';
     }
-    return _gai_strerror.error;
+
+    var msg = 'Unknown error';
+
+    if (val in GAI_ERRNO_MESSAGES) {
+      if (GAI_ERRNO_MESSAGES[val].length > buflen - 1) {
+        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above. 
+      } else {
+        msg = GAI_ERRNO_MESSAGES[val];
+      }
+    }
+
+    writeAsciiToMemory(msg, _gai_strerror.buffer);
+    return _gai_strerror.buffer;
   },
 
   // ==========================================================================
@@ -8202,7 +8237,7 @@ LibraryManager.library = {
   },
 
   accept__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
-  accept: function(fd, addrp, addrlen) {
+  accept: function(fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -8210,7 +8245,7 @@ LibraryManager.library = {
     }
     try {
       var newsock = sock.sock_ops.accept(sock);
-      if (addrp) {
+      if (addr) {
         var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
         assert(!res.errno);
       }
@@ -8641,12 +8676,48 @@ LibraryManager.library = {
   },
 
   emscripten_asm_const: function(code) {
-    // code is a constant string on the heap, so we can cache these
-    if (!Runtime.asmConstCache) Runtime.asmConstCache = {};
-    var func = Runtime.asmConstCache[code];
-    if (func) return func();
-    func = Runtime.asmConstCache[code] = eval('(function(){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
-    return func();
+    Runtime.getAsmConst(code, 0)();
+  },
+
+  emscripten_asm_const_int__jsargs: true,
+  emscripten_asm_const_int: function(code) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return Runtime.getAsmConst(code, args.length).apply(null, args) | 0;
+  },
+
+  emscripten_asm_const_double__jsargs: true,
+  emscripten_asm_const_double: function(code) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return +Runtime.getAsmConst(code, args.length).apply(null, args);
+  },
+
+  emscripten_get_now: function() {
+    if (!_emscripten_get_now.actual) {
+      if (ENVIRONMENT_IS_NODE) {
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() {
+          var t = process['hrtime']();
+          return t[0] * 1e3 + t[1] / 1e6;
+        }
+      } else if (typeof dateNow !== 'undefined') {
+        _emscripten_get_now.actual = dateNow;
+      } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return window['performance']['now'](); };
+      } else {
+        _emscripten_get_now.actual = Date.now;
+      }
+    }
+    return _emscripten_get_now.actual();
+  },
+
+  emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
+    if (ENVIRONMENT_IS_NODE) {
+      return 1; // nanoseconds
+    } else if (typeof dateNow !== 'undefined' ||
+               (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now'])) {
+      return 1000; // microseconds (1/1000 of a millisecond)
+    } else {
+      return 1000*1000; // milliseconds
+    }
   },
 
   //============================

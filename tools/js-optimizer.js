@@ -618,6 +618,7 @@ function simplifyExpressions(ast) {
 
     if (asm) {
       if (hasTempDoublePtr) {
+        var asmData = normalizeAsm(ast);
         traverse(ast, function(node, type) {
           if (type === 'assign') {
             if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name' && node[2][1][1] === 'HEAP32') {
@@ -642,7 +643,7 @@ function simplifyExpressions(ast) {
                 node[2][0] !== 'seq') { // avoid (x, y, z) which can be used for tempDoublePtr on doubles for alignment fixes
               if (node[1][2][1][1] === 'HEAP32') {
                 node[1][3][1][1] = 'HEAPF32';
-                return ['unary-prefix', '+', node[1][3]];
+                return makeAsmCoercion(node[1][3], detectAsmCoercion(node[2]));
               } else {
                 node[1][3][1][1] = 'HEAP32';
                 return ['binary', '|', node[1][3], ['num', 0]];
@@ -686,7 +687,6 @@ function simplifyExpressions(ast) {
             }
           }
         });
-        var asmData = normalizeAsm(ast);
         for (var v in bitcastVars) {
           var info = bitcastVars[v];
           // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
@@ -1142,13 +1142,28 @@ function simplifyNotComps(ast) {
   simplifyNotCompsPass = false;
 }
 
-var NO_SIDE_EFFECTS = set('num', 'name');
+function callHasSideEffects(node) { // checks if the call itself (not the args) has side effects (or is not statically known)
+  return !(node[1][0] === 'name' && /^Math_/.test(node[1][1]));
+}
 
 function hasSideEffects(node) { // this is 99% incomplete!
-  if (node[0] in NO_SIDE_EFFECTS) return false;
-  if (node[0] === 'unary-prefix') return hasSideEffects(node[2]);
-  if (node[0] === 'binary') return hasSideEffects(node[2]) || hasSideEffects(node[3]);
-  return true;
+  switch (node[0]) {
+    case 'num': case 'name': case 'string': return false;
+    case 'unary-prefix': return hasSideEffects(node[2]);
+    case 'binary': return hasSideEffects(node[2]) || hasSideEffects(node[3]);
+    case 'sub': return hasSideEffects(node[1]) || hasSideEffects(node[2]);
+    case 'call': {
+      if (callHasSideEffects(node)) return true;
+      // This is a statically known call, with no side effects. only args can side effect us
+      var args = node[2];
+      var num = args.length;
+      for (var i = 0; i < num; i++) {
+        if (hasSideEffects(args[i])) return true;
+      }
+      return false;
+    }
+    default: return true;
+  }
 }
 
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
@@ -1515,21 +1530,33 @@ function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i
 // annotations, plus explicit metadata) and denormalize (vice versa)
 var ASM_INT = 0;
 var ASM_DOUBLE = 1;
+var ASM_FLOAT = 2;
 
 function detectAsmCoercion(node, asmInfo) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
   if (node[0] === 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
   if (node[0] === 'unary-prefix') return ASM_DOUBLE;
+  if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
   if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
   return ASM_INT;
 }
 
 function makeAsmCoercion(node, type) {
-  return type === ASM_INT ? ['binary', '|', node, ['num', 0]] : ['unary-prefix', '+', node];
+  switch (type) {
+    case ASM_INT: return ['binary', '|', node, ['num', 0]];
+    case ASM_DOUBLE: return ['unary-prefix', '+', node];
+    case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
+    default: throw 'wha? ' + JSON.stringify([node, type]) + new Error().stack;
+  }
 }
 
 function makeAsmVarDef(v, type) {
-  return [v, type === ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
+  switch (type) {
+    case ASM_INT: return [v, ['num', 0]];
+    case ASM_DOUBLE: return [v, ['unary-prefix', '+', ['num', 0]]];
+    case ASM_FLOAT: return [v, ['call', ['name', 'Math_fround'], [['num', 0]]]];
+    default: throw 'wha?';
+  }
 }
 
 function getAsmType(name, asmInfo) {
@@ -1568,7 +1595,8 @@ function normalizeAsm(func) {
       var name = v[0];
       var value = v[1];
       if (!(name in data.vars)) {
-        assert(value[0] === 'num' || (value[0] === 'unary-prefix' && value[2][0] === 'num')); // must be valid coercion no-op
+        assert(value[0] === 'num' || (value[0] === 'unary-prefix' && value[2][0] === 'num') // must be valid coercion no-op
+                                  || (value[0] === 'call' && value[1][0] === 'name' && value[1][1] === 'Math_fround'));
         data.vars[name] = detectAsmCoercion(value);
         v.length = 1; // make an un-assigning var
       } else {
@@ -1917,7 +1945,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], []] : []; // two classes for asm, one otherwise
+    var freeRegsClasses = asm ? [[], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2031,6 +2059,33 @@ function registerize(ast) {
         }
       }
       denormalizeAsm(fun, finalAsmData);
+      if (extraInfo && extraInfo.globals) {
+        // minify in asm var definitions, that denormalizeAsm just generated
+        function minify(value) {
+          if (value && value[0] === 'call' && value[1][0] === 'name') {
+            var name = value[1][1];
+            var minified = extraInfo.globals[name];
+            if (minified) {
+              value[1][1] = minified;
+            }
+          }
+        }
+        var stats = fun[3];
+        for (var i = 0; i < stats.length; i++) {
+          var line = stats[i];
+          if (i >= fun[2].length && line[0] !== 'var') break; // when we pass the arg and var coercions, break
+          if (line[0] === 'stat') {
+            assert(line[1][0] === 'assign');
+            minify(line[1][3]);
+          } else {
+            assert(line[0] === 'var');
+            var pairs = line[1];
+            for (var j = 0; j < pairs.length; j++) {
+              minify(pairs[j][1]);
+            }
+          }
+        }
+      }
     }
   });
 }
@@ -2068,7 +2123,6 @@ function registerize(ast) {
 // can happen in ALLOW_MEMORY_GROWTH mode
 
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label', 'switch'); // do is checked carefully, however
-var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
@@ -2160,7 +2214,7 @@ function eliminate(ast, memSafe) {
       if (definitions[name] === 1 && uses[name] === 1) {
         potentials[name] = 1;
       } else if (uses[name] === 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow) (no definition means it is a function parameter, or a local with just |var x;| but no defining assignment)
-        var hasSideEffects = false;
+        var sideEffects = false;
         var value = values[name];
         if (value) {
           // TODO: merge with other side effect code
@@ -2170,15 +2224,10 @@ function eliminate(ast, memSafe) {
           if (!(value[0] === 'seq' && value[1][0] === 'assign' && value[1][2][0] === 'sub' && value[1][2][2][0] === 'binary' && value[1][2][2][1] === '>>' &&
                 value[1][2][2][2][0] === 'name' && value[1][2][2][2][1] === 'tempDoublePtr')) {
             // If not that, then traverse and scan normally.
-            traverse(value, function(node, type) {
-              if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
-                hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
-                return true;
-              }
-            });
+            sideEffects = hasSideEffects(value);
           }
         }
-        if (!hasSideEffects) {
+        if (!sideEffects) {
           varsToRemove[name] = !definitions[name] ? 2 : 1; // remove it normally
           sideEffectFree[name] = true;
           // Each time we remove a variable with 0 uses, if its value has no
@@ -2437,14 +2486,16 @@ function eliminate(ast, memSafe) {
           for (var i = 0; i < args.length; i++) {
             traverseInOrder(args[i]);
           }
-          // these two invalidations will also invalidate calls
-          if (!globalsInvalidated) {
-            invalidateGlobals();
-            globalsInvalidated = true;
-          }
-          if (!memoryInvalidated) {
-            invalidateMemory();
-            memoryInvalidated = true;
+          if (callHasSideEffects(node)) {
+            // these two invalidations will also invalidate calls
+            if (!globalsInvalidated) {
+              invalidateGlobals();
+              globalsInvalidated = true;
+            }
+            if (!memoryInvalidated) {
+              invalidateMemory();
+              memoryInvalidated = true;
+            }
           }
         } else if (type === 'if') {
           if (allowTracking) {
@@ -3173,7 +3224,7 @@ function outline(ast) {
 
     var writes = {};
     var namings = {};
-    var hasReturn = false, hasReturnInt = false, hasReturnDouble = false, hasBreak = false, hasContinue = false;
+    var hasReturn = false, hasReturnType = {}, hasBreak = false, hasContinue = false;
     var breaks = {};    // set of labels we break or continue
     var continues = {}; // to (name -> id, just like labels)
     var breakCapturers = 0;
@@ -3193,10 +3244,8 @@ function outline(ast) {
       } else if (type == 'return') {
         if (!node[1]) {
           hasReturn = true;
-        } else if (detectAsmCoercion(node[1]) == ASM_INT) {
-          hasReturnInt = true;
         } else {
-          hasReturnDouble = true;
+          hasReturnType[detectAsmCoercion(node[1])] = true;
         }
       } else if (type == 'break') {
         var label = node[1] || 0;
@@ -3226,7 +3275,6 @@ function outline(ast) {
         continueCapturers--;
       }
     });
-    assert(hasReturn + hasReturnInt + hasReturnDouble <= 1);
 
     var reads = {};
     for (var v in namings) {
@@ -3234,7 +3282,7 @@ function outline(ast) {
       if (actualReads > 0) reads[v] = actualReads;
     }
 
-    return { writes: writes, reads: reads, hasReturn: hasReturn, hasReturnInt: hasReturnInt, hasReturnDouble: hasReturnDouble, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
+    return { writes: writes, reads: reads, hasReturn: hasReturn, hasReturnType: hasReturnType, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
   }
 
   function makeAssign(dst, src) {
@@ -3255,7 +3303,10 @@ function outline(ast) {
     return ['switch', value, cases];
   }
 
-  var CONTROL_BREAK = 1, CONTROL_BREAK_LABEL = 2, CONTROL_CONTINUE = 3, CONTROL_CONTINUE_LABEL = 4, CONTROL_RETURN_VOID = 5, CONTROL_RETURN_INT = 6, CONTROL_RETURN_DOUBLE = 7;
+  var CONTROL_BREAK = 1, CONTROL_BREAK_LABEL = 2, CONTROL_CONTINUE = 3, CONTROL_CONTINUE_LABEL = 4, CONTROL_RETURN_VOID = 5, CONTROL_RETURN_INT = 6, CONTROL_RETURN_DOUBLE = 7, CONTROL_RETURN_FLOAT = 8;
+  function controlFromAsmType(asmType) {
+    return CONTROL_RETURN_INT + (asmType | 0); // assumes ASM_INT starts at 0, and order of these two is identical!
+  }
 
   var sizeToOutline = null; // customized per function and as we make progress
   function calculateThreshold(func, asmData) {
@@ -3314,7 +3365,7 @@ function outline(ast) {
     });
 
     // Generate new function
-    if (codeInfo.hasReturn || codeInfo.hasReturnInt || codeInfo.hasReturnDouble || codeInfo.hasBreak || codeInfo.hasContinue) {
+    if (codeInfo.hasReturn || codeInfo.hasReturnType[ASM_INT] || codeInfo.hasReturnType[ASM_DOUBLE] || codeInfo.hasReturnType[ASM_FLOAT] || codeInfo.hasBreak || codeInfo.hasContinue) {
       // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
       var breakCapturers = 0;
       var continueCapturers = 0;
@@ -3339,7 +3390,7 @@ function outline(ast) {
                 ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', CONTROL_RETURN_VOID])]);
               } else {
                 var type = detectAsmCoercion(node[1], asmData);
-                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', type == ASM_INT ? CONTROL_RETURN_INT : CONTROL_RETURN_DOUBLE])]);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', controlFromAsmType(type)])]);
                 ret.push(['stat', makeAssign(makeStackAccess(type, asmData.controlDataStackPos(outlineIndex)), node[1])]);
               }
               ret.push(['stat', ['break', 'OL']]);
@@ -3402,16 +3453,10 @@ function outline(ast) {
           [['stat', ['return']]]
         ));
       }
-      if (codeInfo.hasReturnInt) {
+      for (var returnType in codeInfo.hasReturnType) {
         reps.push(makeIf(
-          makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_RETURN_INT]),
-          [['stat', ['return', makeAsmCoercion(['name', 'tempInt'], ASM_INT)]]]
-        ));
-      }
-      if (codeInfo.hasReturnDouble) {
-        reps.push(makeIf(
-          makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_RETURN_DOUBLE]),
-          [['stat', ['return', makeAsmCoercion(['name', 'tempDouble'], ASM_DOUBLE)]]]
+          makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', controlFromAsmType(returnType)]),
+          [['stat', ['return', makeAsmCoercion(['name', 'tempInt'], returnType | 0)]]]
         ));
       }
       if (codeInfo.hasBreak) {
@@ -3490,8 +3535,9 @@ function outline(ast) {
     var last = getStatements(func)[getStatements(func).length-1];
     if (last[0] === 'stat') last = last[1];
     if (last[0] !== 'return') {
-      if (allCodeInfo.hasReturnInt || allCodeInfo.hasReturnDouble) {
-        getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], allCodeInfo.hasReturnInt ? ASM_INT : ASM_DOUBLE)]]);
+      for (var returnType in codeInfo.hasReturnType) {
+        getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], returnType | 0)]]);
+        break;
       }
     }
     outliningParents[newIdent] = func[1];

@@ -1,12 +1,54 @@
-import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest
+import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
 from runner import BrowserCore, path_from_root
 from tools.shared import *
 
-''' Enable this code to run in another browser than webbrowser detects as default
-def run_in_other_browser(url):
-  execute(['yourbrowser', url])
-webbrowser.open_new = run_in_other_browser
-'''
+# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
+# run using another browser command line than the default system browser.
+emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
+if emscripten_browser:
+  cmd = shlex.split(emscripten_browser)
+  def run_in_other_browser(url):
+    Popen(cmd + [url])
+  webbrowser.open_new = run_in_other_browser
+
+def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
+  class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    def sendheaders(s, extra=[], length=len(data)):
+      s.send_response(200)
+      s.send_header("Content-Length", str(length))
+      s.send_header("Access-Control-Allow-Origin", "http://localhost:8888")
+      s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
+      s.send_header("Content-type", "application/octet-stream")
+      if support_byte_ranges:
+        s.send_header("Accept-Ranges", "bytes")
+      for i in extra:
+        s.send_header(i[0], i[1])
+      s.end_headers()
+
+    def do_HEAD(s):
+      s.sendheaders()
+
+    def do_OPTIONS(s):
+      s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
+
+    def do_GET(s):
+      if not support_byte_ranges:
+        s.sendheaders()
+        s.wfile.write(data)
+      else:
+        (start, end) = s.headers.get("range").split("=")[1].split("-")
+        start = int(start)
+        end = int(end)
+        end = min(len(data)-1, end)
+        length = end-start+1
+        s.sendheaders([],length)
+        s.wfile.write(data[start:end+1])
+      s.wfile.close()
+
+  expectedConns = 11
+  httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
+  for i in range(expectedConns+1):
+    httpd.handle_request()
 
 class browser(BrowserCore):
   @staticmethod
@@ -69,7 +111,6 @@ class browser(BrowserCore):
         cwd=self.get_dir()).communicate()
     assert os.path.exists(html_file)
     assert os.path.exists(html_file + '.map')
-    import webbrowser, time
     webbrowser.open_new('file://' + html_file)
     time.sleep(1)
     print '''
@@ -85,7 +126,10 @@ If manually bisecting:
     cwd = os.getcwd()
     try:
       os.chdir(path_from_root('third_party', 'lzma.js'))
-      Popen(['sh', './doit.sh']).communicate()
+      if WINDOWS and Building.which('mingw32-make'): # On Windows prefer using MinGW make if it exists, otherwise fall back to hoping we have cygwin make.
+        Popen(['doit.bat']).communicate()
+      else:
+        Popen(['sh', './doit.sh']).communicate()
     finally:
       os.chdir(cwd)
 
@@ -185,7 +229,7 @@ If manually bisecting:
     self.reftest(path_from_root('tests', 'htmltest.png'))
     output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
     assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
-    assert os.path.exists(self.get_dir() + '/something/' + path_from_root('tests', 'hello_world_sdl.cpp.js')), 'must be functions js file'
+    assert os.path.exists(os.path.join(self.get_dir(), 'something', 'hello_world_sdl.cpp.js')), 'must be functions js file'
     assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
 
     open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
@@ -1147,14 +1191,26 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'glfw.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
+  def test_egl(self):
+    open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
+
+    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'test_egl.c'), '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
   def test_egl_width_height(self):
     open(os.path.join(self.get_dir(), 'test_egl_width_height.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl_width_height.c')).read()))
 
     Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'test_egl_width_height.c'), '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
 
+  def get_freealut_library(self):
+    if WINDOWS and Building.which('cmake'):
+      return self.get_library('freealut', os.path.join('hello_world.bc'), configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
+    else:
+      return self.get_library('freealut', os.path.join('examples', '.libs', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+
   def test_freealut(self):
-    programs = self.get_library('freealut', os.path.join('examples', '.libs', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+    programs = self.get_freealut_library()
     for program in programs:
       assert os.path.exists(program)
       Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
@@ -1250,51 +1306,16 @@ keydown(100);keyup(100); // trigger the end
 
     chunkSize = 1024
     data = os.urandom(10*chunkSize+1) # 10 full chunks and one 1 byte chunk
-    expectedConns = 11
-    import zlib
     checksum = zlib.adler32(data)
 
-    def chunked_server(support_byte_ranges):
-      class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-        def sendheaders(s, extra=[], length=len(data)):
-          s.send_response(200)
-          s.send_header("Content-Length", str(length))
-          s.send_header("Access-Control-Allow-Origin", "http://localhost:8888")
-          s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
-          s.send_header("Content-type", "application/octet-stream")
-          if support_byte_ranges:
-            s.send_header("Accept-Ranges", "bytes")
-          for i in extra:
-            s.send_header(i[0], i[1])
-          s.end_headers()
-
-        def do_HEAD(s):
-          s.sendheaders()
-
-        def do_OPTIONS(s):
-          s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
-
-        def do_GET(s):
-          if not support_byte_ranges:
-            s.sendheaders()
-            s.wfile.write(data)
-          else:
-            (start, end) = s.headers.get("range").split("=")[1].split("-")
-            start = int(start)
-            end = int(end)
-            end = min(len(data)-1, end)
-            length = end-start+1
-            s.sendheaders([],length)
-            s.wfile.write(data[start:end+1])
-          s.wfile.close()
-      httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
-      for i in range(expectedConns+1):
-        httpd.handle_request()
-
-    server = multiprocessing.Process(target=chunked_server, args=(True,))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True,chunkSize,data,checksum,))
     server.start()
     self.run_browser(main, 'Chunked binary synchronous XHR in Web Workers!', '/report_result?' + str(checksum))
     server.terminate()
+    # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
+    # attempt to rmdir() files in use.
+    if WINDOWS:
+      time.sleep(2)
 
   def test_glgears(self):
     self.btest('hello_world_gles.c', reference='gears.png', reference_slack=1,
@@ -1442,6 +1463,9 @@ keydown(100);keyup(100); // trigger the end
   # Does not pass due to https://bugzilla.mozilla.org/show_bug.cgi?id=924264 so disabled for now.
   # def test_gles2_uniform_arrays(self):
   #  self.btest('gles2_uniform_arrays.cpp', args=['-s', 'GL_ASSERTIONS=1'], expected=['1'])
+
+  def test_gles2_conformance(self):
+    self.btest('gles2_conformance.cpp', args=['-s', 'GL_ASSERTIONS=1'], expected=['1'])
 
   def test_matrix_identity(self):
     self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'], args=['-s', 'LEGACY_GL_EMULATION=1'])

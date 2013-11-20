@@ -16,7 +16,7 @@ so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat, string
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string
 
 # Setup
 
@@ -36,7 +36,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
+test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2f', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):
@@ -491,22 +491,14 @@ def harness_server_func(q):
   httpd.serve_forever() # test runner will kill us
 
 def server_func(dir, q):
-  class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    def do_GET(s):
-      if 'report_' in s.path:
-        q.put(s.path)
+  class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    def do_GET(self):
+      if 'report_' in self.path:
+        q.put(self.path)
       else:
-        filename = s.path.split('?')[0][1:]
-        if os.path.exists(filename):
-          s.send_response(200)
-          s.send_header("Content-type", "text/html")
-          s.end_headers()
-          s.wfile.write(open(filename).read())
-          s.wfile.close()
-        else:
-          s.send_response(500)
-          s.send_header("Content-type", "text/html")
-          s.end_headers()
+        # Use SimpleHTTPServer default file serving operation for GET.
+        SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
@@ -672,6 +664,24 @@ class BrowserCore(RunnerCore):
     self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
 
 ###################################################################################################
+
+# Both test_core and test_other access the Bullet library, share the access here to avoid duplication.
+def get_bullet_library(runner_core, use_cmake):
+  if use_cmake:
+    configure_commands = ['cmake', '.']
+    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']
+    # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
+    generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
+                      os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
+                      os.path.join('src', 'LinearMath', 'libLinearMath.a')]
+  else:
+    configure_commands = ['sh', './configure']
+    configure_args = ['--disable-demos','--disable-dependency-tracking']
+    generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                      os.path.join('src', '.libs', 'libBulletCollision.a'),
+                      os.path.join('src', '.libs', 'libLinearMath.a')]
+
+  return runner_core.get_library('bullet', generated_libs, configure=configure_commands, configure_args=configure_args, cache_name_extra=configure_commands[0])
 
 if __name__ == '__main__':
   # Sanity checks

@@ -246,7 +246,7 @@ var EXITSTATUS = 0;
 var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
 // for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
-var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
+var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD, tempDouble, tempFloat;
 #if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
 var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;
@@ -646,6 +646,10 @@ function demangle(func) {
     if (func[0] !== '_') return func;
     if (func[1] !== '_') return func; // C function
     if (func[2] !== 'Z') return func;
+    switch (func[3]) {
+      case 'n': return 'operator new()';
+      case 'd': return 'operator delete()';
+    }
     var i = 3;
     // params, etc.
     var basicTypes = {
@@ -678,7 +682,7 @@ function demangle(func) {
     var subs = [];
     function parseNested() {
       i++;
-      if (func[i] === 'K') i++;
+      if (func[i] === 'K') i++; // ignore const
       var parts = [];
       while (func[i] !== 'E') {
         if (func[i] === 'S') { // substitution
@@ -687,6 +691,11 @@ function demangle(func) {
           var num = func.substring(i, next) || 0;
           parts.push(subs[num] || '?');
           i = next+1;
+          continue;
+        }
+        if (func[i] === 'C') { // constructor
+          parts.push(parts[parts.length-1]);
+          i += 2;
           continue;
         }
         var size = parseInt(func.substr(i));
@@ -700,6 +709,7 @@ function demangle(func) {
       i++; // skip E
       return parts;
     }
+    var first = true;
     function parse(rawList, limit, allowVoid) { // main parser
       limit = limit || Infinity;
       var ret = '', list = [];
@@ -707,21 +717,22 @@ function demangle(func) {
         return '(' + list.join(', ') + ')';
       }
       var name;
-      if (func[i] !== 'N') {
+      if (func[i] === 'N') {
+        // namespaced N-E
+        name = parseNested().join('::');
+        limit--;
+        if (limit === 0) return rawList ? [name] : name;
+      } else {
         // not namespaced
-        if (func[i] === 'K') i++;
+        if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
         var size = parseInt(func.substr(i));
         if (size) {
           var pre = size.toString().length;
           name = func.substr(i + pre, size);
           i += pre + size;
         }
-      } else {
-        // namespaced N-E
-        name = parseNested().join('::');
-        limit--;
-        if (limit === 0) return rawList ? [name] : name;
       }
+      first = false;
       if (func[i] === 'I') {
         i++;
         var iList = parse(true);
@@ -1074,11 +1085,16 @@ Math['imul'] = function imul(a, b) {
 #endif
 Math.imul = Math['imul'];
 
-#if TO_FLOAT32
-if (!Math['toFloat32']) Math['toFloat32'] = function toFloat32(x) {
-  return x;
-};
-Math.toFloat32 = Math['toFloat32'];
+#if PRECISE_F32
+#if PRECISE_F32 == 1
+if (!Math['fround']) {
+  var froundBuffer = new Float32Array(1);
+  Math['fround'] = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
+}
+#else // 2
+if (!Math['fround']) Math['fround'] = function(x) { return x };
+#endif
+Math.fround = Math['fround'];
 #endif
 
 var Math_abs = Math.abs;
@@ -1096,7 +1112,7 @@ var Math_ceil = Math.ceil;
 var Math_floor = Math.floor;
 var Math_pow = Math.pow;
 var Math_imul = Math.imul;
-var Math_toFloat32 = Math.toFloat32;
+var Math_fround = Math.fround;
 var Math_min = Math.min;
 
 // A counter of dependencies for calling run(). If we need to

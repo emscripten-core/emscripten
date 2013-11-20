@@ -250,7 +250,9 @@ mergeInto(LibraryManager.library, {
           contextAttributes.preserveDrawingBuffer = true;
 #endif
 
-          ctx = canvas.getContext('experimental-webgl', contextAttributes);
+          ['experimental-webgl', 'webgl'].some(function(webglId) {
+            return ctx = canvas.getContext(webglId, contextAttributes);
+          });
         } else {
           ctx = canvas.getContext('2d');
         }
@@ -869,24 +871,6 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
     {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
-  },
-
-  emscripten_get_now: function() {
-    if (!_emscripten_get_now.actual) {
-      if (ENVIRONMENT_IS_NODE) {
-          _emscripten_get_now.actual = function _emscripten_get_now_actual() {
-            var t = process['hrtime']();
-            return t[0] * 1e3 + t[1] / 1e6;
-          }
-      } else if (typeof dateNow !== 'undefined') {
-        _emscripten_get_now.actual = dateNow;
-      } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
-        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return window['performance']['now'](); };
-      } else {
-        _emscripten_get_now.actual = Date.now;
-      }
-    }
-    return _emscripten_get_now.actual();
   },
 
   emscripten_create_worker: function(url) {

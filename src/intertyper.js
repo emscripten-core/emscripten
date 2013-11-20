@@ -660,9 +660,10 @@ function intertyper(lines, sidePass, baseLineNums) {
     var tokensLeft = item.tokens.slice(2);
     item.ident = eatLLVMIdent(tokensLeft);
     if (item.ident == 'asm') {
+      warnOnce('inline JavaScript using asm() has some oddities due to how gcc asm() syntax works. use EM_ASM where possible (see emscripten.h)');
       if (ASM_JS) {
         Types.hasInlineJS = true;
-        warnOnce('inline JavaScript (asm, EM_ASM) will cause the code to no longer fall in the asm.js subset of JavaScript, which can reduce performance - consider using emscripten_run_script');
+        warnOnce('inline JavaScript using asm() will cause the code to no longer fall in the asm.js subset of JavaScript, which can reduce performance - consider using emscripten_run_script');
       }
       assert(TARGET_LE32, 'inline js is only supported in le32');
       // Inline assembly is just JavaScript that we paste into the code
@@ -842,7 +843,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       item.variant = item.tokens[1].text;
       item.tokens.splice(1, 1);
     }
-    if (item.tokens[1].text == 'exact') item.tokens.splice(1, 1); // TODO: Implement trap values
+    while (item.tokens[1].text in LLVM.MATHOP_IGNORABLES) item.tokens.splice(1, 1);
     var segments = splitTokenList(item.tokens.slice(1));
     item.params = [];
     for (var i = 1; i <= 4; i++) {

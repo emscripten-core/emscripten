@@ -629,6 +629,8 @@ function cleanSegment(segment) {
 
 var MATHOPS = set(['add', 'sub', 'sdiv', 'udiv', 'mul', 'icmp', 'zext', 'urem', 'srem', 'fadd', 'fsub', 'fmul', 'fdiv', 'fcmp', 'frem', 'uitofp', 'sitofp', 'fpext', 'fptrunc', 'fptoui', 'fptosi', 'trunc', 'sext', 'select', 'shl', 'shr', 'ashl', 'ashr', 'lshr', 'lshl', 'xor', 'or', 'and', 'ptrtoint', 'inttoptr']);
 
+var JS_MATH_BUILTINS = set(['Math_sin', 'Math_cos', 'Math_tan', 'Math_asin', 'Math_acos', 'Math_atan', 'Math_ceil', 'Math_floor', 'Math_exp', 'Math_log', 'Math_sqrt']);
+
 var PARSABLE_LLVM_FUNCTIONS = set('getelementptr', 'bitcast');
 mergeInto(PARSABLE_LLVM_FUNCTIONS, MATHOPS);
 
@@ -788,8 +790,8 @@ function splitI64(value, floatConversion) {
   var high = makeInlineCalculation(
     asmCoercion('Math_abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
       '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
-               asmCoercion('Math_min(' + asmCoercion('Math_floor((VALUE)/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0' +
-               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'float') + ')', 'double')) + '>>>0' + 
+               asmCoercion('Math_min(' + asmCoercion('Math_floor((VALUE)/' + asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
+               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' + 
       ')' +
     ' : 0',
     value,
@@ -1167,32 +1169,37 @@ function makeVarDef(js) {
   return js;
 }
 
+function ensureDot(value) {
+  value = value.toString();
+  // if already dotted, or Infinity or NaN, nothing to do here
+  // if smaller than 1 and running js opts, we always need to force a coercion (0.001 will turn into 1e-3, which has no .)
+  if ((value.indexOf('.') >= 0 || /[IN]/.test(value)) && (!RUNNING_JS_OPTS || Math.abs(value) >= 1)) return value;
+  if (RUNNING_JS_OPTS) return '(+' + value + ')'; // JS optimizer will run, we must do +x, and it will be corrected later
+  var e = value.indexOf('e');
+  if (e < 0) return value + '.0';
+  return value.substr(0, e) + '.0' + value.substr(e);
+}
+
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!ASM_JS) return value;
-  // coerce if missing a '.', or if smaller than 1, so could be 1e-5 which has no .
-  if (type in Runtime.FLOAT_TYPES && isNumber(value) && (value.toString().indexOf('.') < 0 || Math.abs(value) < 1)) {
-    if (RUNNING_JS_OPTS) {
-      return '(+' + value + ')'; // JS optimizer will run, we must do +x, and it will be corrected later
-    } else {
-      // ensure a .
-      value = value.toString();
-      if (value.indexOf('.') >= 0 || /[IN]/.test(value)) return value; // if already dotted, or Infinity or NaN, nothing to do here
-      var e = value.indexOf('e');
-      if (e < 0) return value + '.0';
-      return value.substr(0, e) + '.0' + value.substr(e);
-    }
+  if (!isNumber(value)) return value;
+  if (PRECISE_F32 && type === 'float') {
+    // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
+    if (value == 0) return 'Math_fround(0)';
+    value = ensureDot(value);
+    return 'Math_fround(' + value + ')';
+  }
+  if (type in Runtime.FLOAT_TYPES) {
+    return ensureDot(value);
   } else {
     return value;
   }
 }
 
-function asmInitializer(type, impl) {
+function asmInitializer(type) {
   if (type in Runtime.FLOAT_TYPES) {
-    if (RUNNING_JS_OPTS) {
-      return '+0';
-    } else {
-      return '.0';
-    }
+    if (PRECISE_F32 && type === 'float') return 'Math_fround(0)';
+    return RUNNING_JS_OPTS ? '+0' : '.0';
   } else {
     return '0';
   }
@@ -1213,7 +1220,11 @@ function asmCoercion(value, type, signedness) {
           value = '(' + value + ')|0';
         }
       }
-      return '(+(' + value + '))';
+      if (PRECISE_F32 && type === 'float') {
+        return 'Math_fround(' + value + ')';
+      } else {
+        return '(+(' + value + '))';
+      }
     }
   } else {
     return '((' + value + ')|0)';
@@ -2047,7 +2058,7 @@ function makeSignOp(value, type, op, force, ignore) {
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
   if (!value) return value;
   var bits, full;
-  if (type in Runtime.INT_TYPES) {
+  if (type[0] === 'i') {
     bits = parseInt(type.substr(1));
     full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || correctSpecificSign()) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
@@ -2056,7 +2067,7 @@ function makeSignOp(value, type, op, force, ignore) {
     }
   }
   if ((ignore || !correctSigns()) && !CHECK_SIGNS && !force) return value;
-  if (type in Runtime.INT_TYPES) {
+  if (type[0] === 'i') {
     // this is an integer, but not a number (or we would have already handled it)
     // shortcuts
     if (!CHECK_SIGNS || ignore) {
@@ -2129,14 +2140,14 @@ function makeRounding(value, bits, signed, floatConversion) {
   }
 }
 
-function makeIsNaN(value) {
-  if (ASM_JS) return makeInlineCalculation('((VALUE) != (VALUE))', value, 'tempDouble');
+function makeIsNaN(value, type) {
+  if (ASM_JS) return makeInlineCalculation('((VALUE) != (VALUE))', value, type === 'float' ? 'tempFloat' : 'tempDouble');
   return 'isNaN(' + value + ')';
 }
 
 function makeFloat(value, type) {
-  if (TO_FLOAT32 && type == 'float') {
-    return 'Math_toFloat32(' + value + ')';
+  if (PRECISE_F32 && type == 'float') {
+    return 'Math_fround(' + value + ')';
   }
   return value;
 }
@@ -2253,8 +2264,8 @@ function processMathop(item) {
       case 'lshr': {
 				throw 'shifts should have been legalized!';
       }
-      case 'uitofp': case 'sitofp': return RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u');
-      case 'fptoui': case 'fptosi': return finish(splitI64(idents[0], true));
+      case 'uitofp': case 'sitofp': return makeFloat(RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u'), item.type);
+      case 'fptoui': case 'fptosi': return finish(splitI64(asmCoercion(idents[0], 'double'), true)); // coerce to double before conversion to i64
       case 'icmp': {
         switch (variant) {
           case 'uge': return '((' + high1 + '>>>0) >= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) >  ('  + high2 + '>>>0)) | ' +
@@ -2438,12 +2449,17 @@ function processMathop(item) {
     case 'fdiv': return makeFloat(getFastValue(idents[0], '/', idents[1], item.type), item.type);
     case 'fmul': return makeFloat(getFastValue(idents[0], '*', idents[1], item.type), item.type);
     case 'frem': return makeFloat(getFastValue(idents[0], '%', idents[1], item.type), item.type);
-    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double', op[0]);
+    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], item.type, op[0]);
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 
     // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
     //       Note that with typed arrays, these become 0 when written. So that is a potential difference with non-typed array runs.
     case 'icmp': {
+      // unsigned coercions can be (X&Y), which is not a valid asm coercion for comparisons
+      if (ASM_JS && variant[0] === 'u') {
+        if (idents[0].indexOf('>>>') < 0) idents[0] = '((' + idents[0] + ')>>>0)';
+        if (idents[1].indexOf('>>>') < 0) idents[1] = '((' + idents[1] + ')>>>0)';
+      }
       switch (variant) {
         case 'uge': case 'sge': return idents[0] + '>=' + idents[1];
         case 'ule': case 'sle': return idents[0] + '<=' + idents[1];
@@ -2470,8 +2486,8 @@ function processMathop(item) {
         case 'ult': case 'olt': return idents[0] + '<' + idents[1];
         case 'une': case 'one': return idents[0] + '!=' + idents[1];
         case 'ueq': case 'oeq': return idents[0] + '==' + idents[1];
-        case 'ord': return '!' + makeIsNaN(idents[0]) + '&!' + makeIsNaN(idents[1]);
-        case 'uno': return makeIsNaN(idents[0]) + '|' + makeIsNaN(idents[1]);
+        case 'ord': return '!' + makeIsNaN(idents[0], paramTypes[0]) + '&!' + makeIsNaN(idents[1], paramTypes[0]);
+        case 'uno': return makeIsNaN(idents[0], paramTypes[0]) + '|' + makeIsNaN(idents[1], paramTypes[0]);
         case 'true': return '1';
         default: throw 'Unknown fcmp variant: ' + variant;
       }
@@ -2485,8 +2501,15 @@ function processMathop(item) {
       }
       // otherwise, fall through
     }
-    case 'fpext': case 'sext': return idents[0];
-    case 'fptrunc': return idents[0];
+    case 'sext': return idents[0];
+    case 'fpext': {
+      if (PRECISE_F32) return '+(' + idents[0] + ')';
+      return idents[0];
+    }
+    case 'fptrunc': {
+      if (PRECISE_F32) return 'Math_fround(' + idents[0] + ')';
+      return idents[0];
+    }
     case 'select': return '(' + idents[0] + '?' + asmEnsureFloat(idents[1], item.type) + ':' + asmEnsureFloat(idents[2], item.type) + ')';
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
@@ -2675,5 +2698,16 @@ var simdLane = ['x', 'y', 'z', 'w'];
 function ensureVector(ident, base) {
   Types.usesSIMD = true;
   return ident == 0 ? base + '32x4.zero()' : ident;
+}
+
+function ensureValidFFIType(type) {
+  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
+}
+
+// FFI return values must arrive as doubles, and we can force them to floats afterwards
+function asmFFICoercion(value, type) {
+  value = asmCoercion(value, ensureValidFFIType(type));
+  if (PRECISE_F32 && type === 'float') value = asmCoercion(value, 'float');
+  return value;
 }
 

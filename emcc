@@ -50,7 +50,7 @@ emcc can be influenced by a few environment variables:
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE, STDOUT
 from tools import shared, jsrun
-from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
+from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS
 from tools.response_file import read_response_file
 
 CXX_SUFFIXES = ('.cpp', '.cxx', '.cc')
@@ -887,8 +887,17 @@ try:
       check_bad_eq(newargs[i])
       parts = newargs[i+1].split(',')
       assert len(parts) == 3, '--compression requires specifying    native_encoder,js_decoder,js_name  - see emcc --help. got: %s' % newargs[i+1]
-      Compression.encoder = parts[0]
-      Compression.decoder = parts[1]
+      def locate(tool):
+        if WINDOWS:
+          if os.path.exists(tool+'.exe'):
+            return tool+'.exe'
+          if os.path.exists(tool+'.bat'):
+            return tool+'.bat'
+          if os.path.exists(tool+'.cmd'):
+            return tool+'.cmd'
+        return tool
+      Compression.encoder = locate(parts[0])
+      Compression.decoder = locate(parts[1])
       Compression.js_name = parts[2]
       assert os.path.exists(Compression.encoder), 'native encoder %s does not exist' % Compression.encoder
       assert os.path.exists(Compression.decoder), 'js decoder %s does not exist' % Compression.decoder
@@ -1133,10 +1142,11 @@ try:
 
     heap = 4096
     while heap < shared.Settings.TOTAL_MEMORY:
-      if heap <= 16*1024*1024:
-        heap *= 2
-      else:
-        heap += 16*1024*1024
+      heap *= 2
+      #if heap <= 16*1024*1024:
+      #  heap *= 2
+      #else:
+      #  heap += 16*1024*1024
     if heap != shared.Settings.TOTAL_MEMORY:
       logging.warning('increasing TOTAL_MEMORY to %d to be more reasonable for asm.js' % heap)
       shared.Settings.TOTAL_MEMORY = heap
@@ -1429,6 +1439,12 @@ try:
           'wctob.c',
           'wctomb.c',
          ]],
+         ['regex', [
+          'regcomp.c',
+          'regerror.c',
+          'regexec.c',
+          'tre-mem.c',
+         ]],
          ['stdio', [
           'fwprintf.c',
           'swprintf.c',
@@ -1631,18 +1647,26 @@ try:
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
-    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-    if DEBUG: save_intermediate('linktime', 'bc')
+    if not save_bc:
+      # let llvm opt directly emit ll, to skip writing and reading all the bitcode
+      link_opts += ['-S']
+      shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
+      final = final + '.link.ll'
+      if DEBUG: save_intermediate('linktime', 'll')
+    else:
+      shared.Building.llvm_opt(final, link_opts)
+      if DEBUG: save_intermediate('linktime', 'bc')
 
   if save_bc:
     shutil.copyfile(final, save_bc)
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
-    final = shared.Building.llvm_dis(final, final + '.ll')
+    if save_bc:
+      final = shared.Building.llvm_dis(final, final + '.ll')
   else:
     assert len(input_files) == 1
-  if DEBUG: save_intermediate('ll', 'll')
+  if DEBUG and save_bc: save_intermediate('ll', 'll')
 
   if AUTODEBUG:
     logging.debug('autodebug')

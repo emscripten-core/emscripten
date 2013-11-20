@@ -82,8 +82,8 @@ var RuntimeGenerator = {
   // Rounding is inevitable if the number is large. This is a particular problem for small negative numbers
   // (-1 will be rounded!), so handle negatives separately and carefully
   makeBigInt: function(low, high, unsigned) {
-    var unsignedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'float') + '+(' + asmCoercion(makeSignOp(high, 'i32', 'un', 1, 1), 'float') + '*' + asmEnsureFloat(4294967296, 'float') + '))';
-    var signedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'float') + '+(' + asmCoercion(makeSignOp(high, 'i32', 're', 1, 1), 'float') + '*' + asmEnsureFloat(4294967296, 'float') + '))';
+    var unsignedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'double') + '+(' + asmCoercion(makeSignOp(high, 'i32', 'un', 1, 1), 'double') + '*' + asmEnsureFloat(4294967296, 'double') + '))';
+    var signedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'double') + '+(' + asmCoercion(makeSignOp(high, 'i32', 're', 1, 1), 'double') + '*' + asmEnsureFloat(4294967296, 'double') + '))';
     if (typeof unsigned === 'string') return '(' + unsigned + ' ? ' + unsignedRet + ' : ' + signedRet + ')';
     return unsigned ? unsignedRet : signedRet;
   }
@@ -379,6 +379,18 @@ var Runtime = {
     var table = FUNCTION_TABLE;
     table[index] = null;
 #endif
+  },
+
+  getAsmConst: function(code, numArgs) {
+    // code is a constant string on the heap, so we can cache these
+    if (!Runtime.asmConstCache) Runtime.asmConstCache = {};
+    var func = Runtime.asmConstCache[code];
+    if (func) return func;
+    var args = [];
+    for (var i = 0; i < numArgs; i++) {
+      args.push(String.fromCharCode(36) + i); // $0, $1 etc
+    }
+    return Runtime.asmConstCache[code] = eval('(function(' + args.join(',') + '){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
   },
 
   warnOnce: function(text) {

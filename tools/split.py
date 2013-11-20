@@ -1,16 +1,13 @@
 import sys
 import os
+from sets import Set
 
 def split_javascript_file(input_filename, output_filename_prefix, max_part_size_in_bytes):
  
   try:
-    # Contains the entire Emscripten generated Javascript code
-    input_file = open(input_filename,'r')
-
     # Javascript main file. On execution, this file needs to be loaded at last (!)
     output_main_filename = output_filename_prefix + ".js"
     output_main_file = open(output_main_filename,'w')
-
     # File with HTML script tags to load the Javascript files in HTML later on
     output_html_include_file = open(output_filename_prefix + ".include.html",'w')
 
@@ -22,8 +19,19 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
     function_buckets = {};
     
     output_part_file = None
-  
+
+    # Locate names of all the source files (.c/.cpp) that produced output to the .js file.
+    source_files = Set()
+    for line in open(input_filename,'r'):
+      if line.startswith("//FUNCTION_END_MARKER_OF_SOURCE_FILE_"):
+        associated_source_file_base = line[len("//FUNCTION_END_MARKER_OF_SOURCE_FILE_"):len(line)-1]
+        if not associated_source_file_base == "NO_SOURCE":
+          source_files.add(os.path.dirname(os.path.abspath(os.path.realpath(associated_source_file_base))))
+
+    common_source_file_prefix = os.path.commonprefix(list(source_files))
+
     # Iterate over Javascript source; write main file; parse function declarations.
+    input_file = open(input_filename,'r')
     for line in input_file:
       if line == "//FUNCTION_BEGIN_MARKER\n":
         js_function = "//Func\n"
@@ -36,8 +44,8 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
           associated_source_file_base = output_filename_prefix + "_functions";
         else:
           # Functions with a known associated source file are stored in a file in the directory `output_filename_prefix`
-          associated_source_file_base = output_filename_prefix + os.path.realpath(associated_source_file_base)
-        
+          associated_source_file_base = os.path.join(output_filename_prefix, os.path.relpath(os.path.abspath(os.path.realpath(associated_source_file_base)), common_source_file_prefix))
+
         associated_source_file_base_lower = associated_source_file_base.lower()
         
         # Add the function to its respective file
@@ -68,7 +76,7 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
       output_part_file = None
       for js_function in function_buckets[associated_source_file_base][1]:
         if output_part_file is None:
-          output_html_include_file.write("<script type=\"text/javascript\" src=\"" + js_source_file + "\"></script>")
+          output_html_include_file.write("<script type=\"text/javascript\" src=\"" + js_source_file.replace('\\', '/') + "\"></script>")
           output_part_file = open(js_source_file,'w')
         
         output_part_file.write(js_function)
@@ -85,13 +93,13 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
       
     # Write the main Javascript file at last to the HTML includes because this file contains the code to start
     # the execution of the generated Emscripten application and requires all the extracted functions.
-    output_html_include_file.write("<script type=\"text/javascript\" src=\"" + output_main_filename + "\"></script>")
+    output_html_include_file.write("<script type=\"text/javascript\" src=\"" + output_main_filename.replace('\\', '/') + "\"></script>")
 
   except Exception, e:
     print >> sys.stderr, 'error: Splitting of Emscripten generated Javascript failed: %s' % str(e)
   
   finally:
-     if input_file is not None: input_file.close()
-     if output_main_file is not None: output_main_file.close()
-     if output_part_file is not None: output_part_file.close()
-     if output_html_include_file is not None: output_html_include_file.close()
+    if input_file is not None: input_file.close()
+    if output_main_file is not None: output_main_file.close()
+    if output_part_file is not None: output_part_file.close()
+    if output_html_include_file is not None: output_html_include_file.close()

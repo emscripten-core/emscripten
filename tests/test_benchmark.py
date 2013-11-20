@@ -13,11 +13,6 @@ from tools.shared import *
 DEFAULT_ARG = '4'
 
 TEST_REPS = 2
-TOTAL_TESTS = 8
-
-tests_done = 0
-total_times = map(lambda x: 0., range(TOTAL_TESTS))
-total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
 class benchmark(RunnerCore):
   save_dir = True
@@ -119,15 +114,15 @@ process(sys.argv[1])
     try_delete(final_filename)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
                     '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                    '--llvm-lto', '3', '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
+                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     '--closure', '1',
+                    #'-s', 'PRECISE_F32=1',
                     #'-g',
                     '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
     assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
     # Run JS
-    global total_times, tests_done
     times = []
     for i in range(reps):
       start = time.time()
@@ -141,7 +136,6 @@ process(sys.argv[1])
       else:
         curr = output_parser(js_output)
       times.append(curr)
-      total_times[tests_done] += curr
       if i == 0:
         # Sanity check on output
         self.assertContained(expected_output, js_output)
@@ -152,7 +146,6 @@ process(sys.argv[1])
     else:
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
-    global total_native_times
     native_times = []
     for i in range(reps):
       start = time.time()
@@ -165,14 +158,8 @@ process(sys.argv[1])
       else:
         curr = output_parser(native_output)
       native_times.append(curr)
-      total_native_times[tests_done] += curr
 
     self.print_stats(times, native_times, reps=reps)
-
-    #tests_done += 1
-    #if tests_done == TOTAL_TESTS:
-    #  print 'Total stats:',
-    #  self.print_stats(total_times, total_native_times, last=True)
 
   def test_primes(self):
     src = r'''
@@ -428,10 +415,15 @@ process(sys.argv[1])
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
-  def test_linpack(self):
+  def test_linpack_double(self):
     def output_parser(output):
       return 100.0/float(re.search('Unrolled Double  Precision +([\d\.]+) Mflops', output).group(1))
-    self.do_benchmark('linpack', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
+    self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
+
+  def test_linpack_float(self): # TODO: investigate if this might benefit from -ffast-math in LLVM 3.3+ which has fast math stuff in LLVM IR
+    def output_parser(output):
+      return 100.0/float(re.search('Unrolled Single  Precision +([\d\.]+) Mflops', output).group(1))
+    self.do_benchmark('linpack_float', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Single  Precision''', force_c=True, output_parser=output_parser, shared_args=['-DSP'])
 
   def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
     args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
