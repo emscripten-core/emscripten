@@ -686,6 +686,38 @@ f.close()
       }
     ''', ['hello through side\n'])
 
+    # js library call
+    open('lib.js', 'w').write(r'''
+      mergeInto(LibraryManager.library, {
+        test_lib_func: function(x) {
+          return x + 17.2;
+        }
+      });
+    ''')
+    test('js-lib', 'extern "C" { extern double test_lib_func(int input); }', r'''
+      #include <stdio.h>
+      #include "header.h"
+      extern double sidey();
+      int main2() { return 11; }
+      int main() {
+        int input = sidey();
+        double temp = test_lib_func(input);
+        printf("other says %.2f\n", temp);
+        printf("more: %.5f, %d\n", temp, input);
+        return 0;
+      }
+    ''', r'''
+      #include <stdio.h>
+      #include "header.h"
+      extern int main2();
+      double sidey() {
+        int temp = main2();
+        printf("main2 sed: %d\n", temp);
+        printf("main2 sed: %u, %c\n", temp, temp/2);
+        return test_lib_func(temp);
+      }
+    ''', 'other says 45.2', ['--js-library', 'lib.js'])
+
     # libc usage in one modules. must force libc inclusion in the main module if that isn't the one using mallinfo()
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
