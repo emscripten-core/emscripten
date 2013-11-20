@@ -715,7 +715,7 @@ var LibrarySDL = {
 
     // Joystick helper methods and state
 
-    joystickEventState: 0,
+    joystickEventState: 1, // SDL_ENABLE
     lastJoystickState: {}, // Map from SDL_Joystick* to their last known state. Required to determine if a change has occurred.
     // Maps Joystick names to pointers. Allows us to avoid reallocating memory for
     // joystick names each time this function is called.

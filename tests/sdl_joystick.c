@@ -72,6 +72,10 @@ void main_2(void* arg) {
   assert(SDL_JoystickNumAxes(pad1) == 4);
   assert(SDL_JoystickNumButtons(pad1) == 16);
 
+  // By default, SDL will automatically process events. Test this behavior, and then disable it.
+  assert(SDL_JoystickEventState(SDL_QUERY) == SDL_ENABLE);
+  SDL_JoystickEventState(SDL_DISABLE);
+  assert(SDL_JoystickEventState(SDL_QUERY) == SDL_DISABLE);
   // Button events.
   emscripten_run_script("window.simulateGamepadButtonDown(0, 1)");
   // We didn't tell SDL to automatically update this joystick's state.
