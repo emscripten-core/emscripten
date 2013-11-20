@@ -320,7 +320,7 @@ try {
     }
   }
 } catch(err) {
-  printErr('aborting from js compiler due to exception: ' + err);
+  printErr('aborting from js compiler due to exception: ' + err + ' | ' + err.stack);
 }
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });
