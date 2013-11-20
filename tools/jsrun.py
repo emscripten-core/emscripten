@@ -3,7 +3,7 @@ from subprocess import Popen, PIPE, STDOUT
 
 TRACK_PROCESS_SPAWNS = True if (os.getenv('EM_BUILD_VERBOSE') and int(os.getenv('EM_BUILD_VERBOSE')) >= 3) else False
 
-def timeout_run(proc, timeout, note='unnamed process', full_output=False):
+def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:

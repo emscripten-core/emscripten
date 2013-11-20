@@ -9,7 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging, shutil
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -733,62 +733,43 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
   #     JS library dependencies, etc.
 
-  if DEBUG: logging.debug('emscript: ll=>js')
+  if DEBUG: logging.debug('emscript: llvm backend')
 
-  # Pre-scan ll and alter settings as necessary
-  if DEBUG: t = time.time()
-  ll = open(infile).read()
-  scan(ll, settings)
-  total_ll_size = len(ll)
-  if DEBUG: logging.debug('  emscript: scan took %s seconds' % (time.time() - t))
+  # TODO: proper temp files
+  # TODO: use a single LLVM toolchain instead of normal for source, pnacl for simplification, custom for js backend
 
-  # Split input into the relevant parts for each phase
+  if DEBUG: shutil.copyfile(infile, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp0.bc'))
 
-  if DEBUG: t = time.time()
+  if DEBUG: logging.debug('  ..1..')
+  temp1 = temp_files.get('.1.bc').name
+  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-opt'), infile, '-pnacl-abi-simplify-preopt', '-o', temp1]))
+  assert os.path.exists(temp1)
+  if DEBUG: shutil.copyfile(temp1, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp1.bc'))
 
-  pre = []
-  funcs = [] # split up functions here, for parallelism later
+  if DEBUG: logging.debug('  ..2..')
+  temp2 = temp_files.get('.2.bc').name
+  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-opt'), temp1, '-O3', '-o', temp2]))
+  assert os.path.exists(temp2)
+  if DEBUG: shutil.copyfile(temp2, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp2.bc'))
 
-  meta_start = ll.find('\n!')
-  if meta_start > 0:
-    meta = ll[meta_start:]
-  else:
-    meta = ''
-    meta_start = -1
+  if DEBUG: logging.debug('  ..3..')
+  temp3 = temp_files.get('.3.bc').name
+  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-opt'), temp2, '-pnacl-abi-simplify-postopt', '-o', temp3]))
+  assert os.path.exists(temp3)
+  if DEBUG: shutil.copyfile(temp3, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp3.bc'))
 
-  start = ll.find('\n') if ll[0] == ';' else 0 # ignore first line, which contains ; ModuleID = '/dir name'
+  if DEBUG: logging.debug('  ..4..')
+  temp4 = temp_files.get('.4.js').name
+  backend_compiler = os.path.join(shared.JS_BACKEND_ROOT, 'llc')
+  shared.jsrun.timeout_run(subprocess.Popen([backend_compiler, temp3, '-march=js', '-filetype=asm', '-o', temp4], stdout=subprocess.PIPE))
+  backend_output = open(temp4).read()
+  print >> sys.stderr, backend_output
 
-  func_start = start
-  last = func_start
-  while 1:
-    last = func_start
-    func_start = ll.find('\ndefine ', func_start)
-    if func_start > last:
-      pre.append(ll[last:min(func_start+1, meta_start) if meta_start > 0 else func_start+1] + '\n')
-    if func_start < 0:
-      pre.append(ll[last:meta_start] + '\n')
-      break
-    header = ll[func_start+1:ll.find('\n', func_start+1)+1]
-    end = ll.find('\n}', func_start)
-    last = end+3
-    funcs.append((header, ll[func_start+1:last]))
-    pre.append(header + '}\n')
-    func_start = last
-  ll = None
+  if DEBUG: logging.debug('  ..5..')
 
-  if DEBUG and len(meta) > 1024*1024: logging.debug('emscript warning: large amounts of metadata, will slow things down')
-  if DEBUG: logging.debug('  emscript: split took %s seconds' % (time.time() - t))
+  1/0 # XXX
 
-  if len(funcs) == 0:
-    logging.error('No functions to process. Make sure you prevented LLVM from eliminating them as dead (use EXPORTED_FUNCTIONS if necessary, see the FAQ)')
-
-  #if DEBUG:
-  #  logging.debug('========= pre ================\n')
-  #  logging.debug(''.join(pre))
-  #  logging.debug('========== funcs ===============\n')
-  #  for func in funcs:
-  #    logging.debug('\n// ===\n\n', ''.join(func))
-  #  logging.debug('=========================\n')
+  if DEBUG: logging.debug('emscript: js compiler glue')
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
