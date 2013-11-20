@@ -762,10 +762,26 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   temp4 = temp_files.get('.4.js').name
   backend_compiler = os.path.join(shared.JS_BACKEND_ROOT, 'llc')
   shared.jsrun.timeout_run(subprocess.Popen([backend_compiler, temp3, '-march=js', '-filetype=asm', '-o', temp4], stdout=subprocess.PIPE))
+  if DEBUG: shutil.copyfile(temp4, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp4.js'))
+
+  # Split up output
   backend_output = open(temp4).read()
   print >> sys.stderr, backend_output
 
-  if DEBUG: logging.debug('  ..5..')
+  start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
+  end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
+  metadata_split_marker = '// EMSCRIPTEN_METADATA'
+
+  start_funcs = backend_output.index(start_funcs_marker)
+  end_funcs = backend_output.rindex(end_funcs_marker)
+  metadata_split = backend_output.rindex(metadata_split_marker)
+
+  funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
+  metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
+  metadata = json.loads(metadata_raw)
+  print >> sys.stderr, "FUNCS", funcs
+  print >> sys.stderr, "META", metadata
+
 
   1/0 # XXX
 
