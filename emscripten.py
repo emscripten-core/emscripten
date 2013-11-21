@@ -779,8 +779,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
   metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
   metadata = json.loads(metadata_raw)
+  mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
   print >> sys.stderr, "FUNCS", funcs
   print >> sys.stderr, "META", metadata
+  print >> sys.stderr, "meminit", mem_init
 
   if DEBUG: logging.debug('emscript: js compiler glue')
 
@@ -815,6 +817,12 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
   #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
+
+  # memory initializer
+
+  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + Runtime.alignMemory(%d);
+// /* global initializers */ __ATINIT__.push({ func: function() { runPostSets() } });
+%s''' % (mem_init.count(',')+1, mem_init)) # XXX wrong size calculation!
 
   funcs_js = [funcs]
   if settings.get('ASM_JS'):

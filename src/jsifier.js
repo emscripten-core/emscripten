@@ -1742,7 +1742,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           });
           // write out the singleton big memory initialization value
           print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
-        } else {
+        } else if (phase !== 'glue') {
           print('/* no memory initializer */'); // test purposes
         }
 
