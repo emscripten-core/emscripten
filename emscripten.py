@@ -782,10 +782,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   print >> sys.stderr, "FUNCS", funcs
   print >> sys.stderr, "META", metadata
 
-
-  1/0 # XXX
-
   if DEBUG: logging.debug('emscript: js compiler glue')
+
+  # Integrate info from backend
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + metadata['declares']
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
@@ -797,172 +797,33 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     s.close()
   save_settings()
 
-  # Phase 1 - pre
+  # Call js compiler
   if DEBUG: t = time.time()
-  pre_file = temp_files.get('.pre.ll').name
-  pre_input = ''.join(pre) + '\n' + meta
-  out = None
-  if not out:
-    open(pre_file, 'w').write(pre_input)
-    #print >> sys.stderr, 'running', str([settings_file, pre_file, 'pre'] + libraries).replace("'/", "'") # see funcs
-    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'))
-    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-  pre, forwarded_data = out.split('//FORWARDED_DATA:')
-  forwarded_file = temp_files.get('.json').name
-  pre_input = None
-  open(forwarded_file, 'w').write(forwarded_data)
-  if DEBUG: logging.debug('  emscript: phase 1 took %s seconds' % (time.time() - t))
+  out = jsrun.run_js(compiler, compiler_engine, [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                     cwd=path_from_root('src'))
+  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+  glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
-  indexed_functions = set()
-  forwarded_json = json.loads(forwarded_data)
+  #print >> sys.stderr, out
+
+  last_forwarded_json = forwarded_json = json.loads(forwarded_data)
+
+  '''indexed_functions = set()
   for key in forwarded_json['Functions']['indexedFunctions'].iterkeys():
-    indexed_functions.add(key)
+    indexed_functions.add(key)'''
 
-  # Phase 2 - func
+  pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
-  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
-  assert cores >= 1
-  if cores > 1:
-    intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
-    chunk_size = max(MIN_CHUNK_SIZE, total_ll_size / intended_num_chunks)
-    chunk_size += 3*len(meta) # keep ratio of lots of function code to meta (expensive to process, and done in each parallel task)
-    chunk_size = min(MAX_CHUNK_SIZE, chunk_size)
-  else:
-    chunk_size = MAX_CHUNK_SIZE # if 1 core, just use the max chunk size
+  #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
 
-  if DEBUG: t = time.time()
-  if settings.get('ASM_JS'):
-    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
-    save_settings()
-
-  chunks = cache_module.chunkify(
-    funcs, chunk_size,
-    None)
-
-  #sys.exit(1)
-  #chunks = [chunks[0]] # pick specific chunks for debugging/profiling
-
-  funcs = None
-
-  # TODO: minimize size of forwarded data from funcs to what we actually need
-
-  if len(chunks) > 0:
-    if cores == 1 and total_ll_size < MAX_CHUNK_SIZE:
-      assert len(chunks) == 1, 'no point in splitting up without multiple cores'
-
-    if DEBUG: logging.debug('  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.)))
-
-    commands = []
-    for i in range(len(chunks)):
-      funcs_file = temp_files.get('.func_%d.ll' % i).name
-      f = open(funcs_file, 'w')
-      f.write(chunks[i])
-      chunks[i] = None # leave chunks array alive (need its length later)
-      f.write('\n')
-      f.write(meta)
-      f.close()
-      commands.append(
-        (i, funcs_file, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine,# + ['--prof'],
-         DEBUG)
-      )
-
-    if len(chunks) > 1:
-      pool = multiprocessing.Pool(processes=cores)
-      outputs = pool.map(process_funcs, commands, chunksize=1)
-    elif len(chunks) == 1:
-      outputs = [process_funcs(commands[0])]
-
-    commands = None
-
-  else:
-    outputs = []
-
-  chunks = None
-
-  outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
-  for output in outputs:
-    assert len(output) == 2, 'Did not receive forwarded data in an output - process failed? We only got: ' + output[0][-3000:]
-
-  if DEBUG: logging.debug('  emscript: phase 2 took %s seconds' % (time.time() - t))
-  if DEBUG: t = time.time()
-
-  # merge forwarded data
-  if settings.get('ASM_JS'):
-    all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
-    for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
-      all_exported_functions.add('_' + additional_export)
-    exported_implemented_functions = set()
-  for func_js, curr_forwarded_data in outputs:
-    curr_forwarded_json = json.loads(curr_forwarded_data)
-    forwarded_json['Types']['hasInlineJS'] = forwarded_json['Types']['hasInlineJS'] or curr_forwarded_json['Types']['hasInlineJS']
-    forwarded_json['Types']['usesSIMD'] = forwarded_json['Types']['usesSIMD'] or curr_forwarded_json['Types']['usesSIMD']
-    forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
-    for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
-      forwarded_json['Functions']['blockAddresses'][key] = value
-    for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
-      indexed_functions.add(key)
-    if settings.get('ASM_JS'):
-      export_bindings = settings['EXPORT_BINDINGS']
-      export_all = settings['EXPORT_ALL']
-      for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
-        if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-          exported_implemented_functions.add(key)
-    for key, value in curr_forwarded_json['Functions']['unimplementedFunctions'].iteritems():
-      forwarded_json['Functions']['unimplementedFunctions'][key] = value
-    for key, value in curr_forwarded_json['Functions']['neededTables'].iteritems():
-      forwarded_json['Functions']['neededTables'][key] = value
-
+  funcs_js = [funcs]
   if settings.get('ASM_JS'):
     parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
     if len(parts) > 1:
       pre = parts[0]
-      outputs.append([parts[1]])
-  funcs_js = [output[0] for output in outputs]
+      funcs_js.append(parts[1])
 
-  outputs = None
-  if DEBUG: logging.debug('  emscript: phase 2b took %s seconds' % (time.time() - t))
-  if DEBUG: t = time.time()
-
-  # calculations on merged forwarded data
-  forwarded_json['Functions']['indexedFunctions'] = {}
-  i = settings['FUNCTION_POINTER_ALIGNMENT'] # universal counter
-  if settings['ASM_JS']: i += settings['RESERVED_FUNCTION_POINTERS']*settings['FUNCTION_POINTER_ALIGNMENT']
-  base_fp = i
-  table_counters = {} # table-specific counters
-  alias = settings['ASM_JS'] and settings['ALIASING_FUNCTION_POINTERS']
-  sig = None
-  for indexed in indexed_functions:
-    if alias:
-      sig = forwarded_json['Functions']['implementedFunctions'].get(indexed) or forwarded_json['Functions']['unimplementedFunctions'].get(indexed)
-      assert sig, indexed
-      if sig not in table_counters:
-        table_counters[sig] = base_fp
-      curr = table_counters[sig]
-      table_counters[sig] += settings['FUNCTION_POINTER_ALIGNMENT']
-    else:
-      curr = i
-      i += settings['FUNCTION_POINTER_ALIGNMENT']
-    #logging.debug('function indexing ' + str([indexed, curr, sig]))
-    forwarded_json['Functions']['indexedFunctions'][indexed] = curr # make sure not to modify this python object later - we use it in indexize
-
-  def split_32(x):
-    x = int(x)
-    return '%d,%d,%d,%d' % (x&255, (x >> 8)&255, (x >> 16)&255, (x >> 24)&255)
-
-  indexing = forwarded_json['Functions']['indexedFunctions']
-  def indexize_mem(js):
-    return re.sub(r"\"?'?{{ FI_([\w\d_$]+) }}'?\"?,0,0,0", lambda m: split_32(indexing.get(m.groups(0)[0]) or 0), js)
-  def indexize(js):
-    return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), js)
-
-  blockaddrs = forwarded_json['Functions']['blockAddresses']
-  def blockaddrsize_mem(js):
-    return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?,0,0,0', lambda m: split_32(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
-  def blockaddrsize(js):
-    return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
-
-  pre = blockaddrsize(blockaddrsize_mem(indexize(indexize_mem(pre))))
+  # calculations on merged forwarded data TODO
 
   if settings.get('ASM_JS'):
     # move postsets into the asm module
@@ -978,24 +839,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   #if DEBUG: outfile.write('// funcs\n')
 
-  # forward
-  forwarded_data = json.dumps(forwarded_json)
-  forwarded_file = temp_files.get('.2.json').name
-  open(forwarded_file, 'w').write(indexize(forwarded_data))
-  if DEBUG: logging.debug('  emscript: phase 2c took %s seconds' % (time.time() - t))
-
-  # Phase 3 - post
-  if DEBUG: t = time.time()
-  post_file = temp_files.get('.post.ll').name
-  open(post_file, 'w').write('\n') # no input, just processing of forwarded data
-  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                     cwd=path_from_root('src'))
-  post, last_forwarded_data = out.split('//FORWARDED_DATA:') # if this fails, perhaps the process failed prior to printing forwarded data?
-  last_forwarded_json = json.loads(last_forwarded_data)
-
   if settings.get('ASM_JS'):
-    post_funcs, post_rest = post.split('// EMSCRIPTEN_END_FUNCS\n')
-    post = post_rest
+    #print >> sys.stderr, '<<<<<<', post, '>>>>>>'
+    post_funcs = '' #, post_rest = post.split('// EMSCRIPTEN_END_FUNCS\n')
+    #post = post_rest
 
     # Move preAsms to their right place
     def move_preasm(m):
@@ -1057,7 +904,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
 
-    if forwarded_json['Types']['preciseI64MathUsed'] or \
+    if metadata.get('preciseI64MathUsed') or \
        forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
        forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
       basic_vars += ['cttz_i8', 'ctlz_i8']
@@ -1102,7 +949,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         basic_funcs.append('extCall_%s' % sig)
 
     # calculate exports
-    exported_implemented_functions = list(exported_implemented_functions)
+    exported_implemented_functions = ['_main'] # XXX list(exported_implemented_functions)
     exported_implemented_functions.append('runPostSets')
     exports = []
     if not simple:
@@ -1117,7 +964,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     except:
       pass
     # If no named globals, only need externals
-    global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
+    global_vars = []
     global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
@@ -1166,7 +1013,7 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global.Uint32Array(buffer);
   var HEAPF32 = new global.Float32Array(buffer);
   var HEAPF64 = new global.Float64Array(buffer);
-''' % (asm_setup, "'use asm';" if not forwarded_json['Types']['hasInlineJS'] and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';") + '\n' + asm_global_vars + '''
+''' % (asm_setup, "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';") + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
@@ -1287,15 +1134,10 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
     outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table).replace('"', ''))
 
   for i in range(len(funcs_js)): # do this loop carefully to save memory
-    funcs_js_item = funcs_js[i]
-    funcs_js[i] = None
-    funcs_js_item = indexize(funcs_js_item)
-    funcs_js_item = blockaddrsize(funcs_js_item)
-    outfile.write(funcs_js_item)
+    outfile.write(funcs_js[i])
   funcs_js = None
 
-  outfile.write(indexize(post))
-  if DEBUG: logging.debug('  emscript: phase 3 took %s seconds' % (time.time() - t))
+  outfile.write(post)
 
   outfile.close()
 

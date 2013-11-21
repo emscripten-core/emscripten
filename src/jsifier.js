@@ -28,7 +28,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   if (mainPass) {
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
-    if (phase == 'pre') {
+    if (phase == 'pre' || phase == 'glue') {
       // We will start to print out the data, but must do so carefully - we are
       // dealing with potentially *huge* strings. Convenient replacements and
       // manipulations may create in-memory copies, and we may OOM.
@@ -72,7 +72,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     LibraryManager.load();
     //B.stop('jsifier-libload');
 
-    if (phase == 'pre') {
+    if (phase == 'pre' || phase == 'glue') {
       var libFuncsToInclude;
       if (INCLUDE_FULL_LIBRARY) {
         assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
@@ -474,7 +474,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
       if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
-      if ((!ASM_JS || phase == 'pre') &&
+      if ((!ASM_JS || phase == 'pre' || phase == 'glue') &&
           (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
         contentText += '\nModule["' + ident + '"] = ' + ident + ';';
       }
@@ -1704,7 +1704,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     //
 
     if (!mainPass) {
-      if (phase == 'pre' && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
+      if ((phase == 'pre' || phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
@@ -1719,7 +1719,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
 
-      if (phase == 'pre') {
+      if (phase == 'pre' || phase == 'glue') {
         if (memoryInitialization.length > 0) {
           // apply postsets directly into the big memory initialization
           itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
@@ -1780,7 +1780,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     // Print out global variables and postsets TODO: batching
-    if (phase == 'pre') {
+    if (phase == 'pre' || phase == 'glue') {
       var legalizedI64sDefault = legalizedI64s;
       legalizedI64s = false;
 

@@ -483,6 +483,10 @@ var PassManager = {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Functions: { tables: Functions.tables }
       }));
+    } else if (phase == 'glue') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Functions: Functions
+      }));
     }
   },
   load: function(json) {

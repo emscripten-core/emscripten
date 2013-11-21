@@ -267,7 +267,7 @@ function compile(raw) {
   function runPhase(currPhase) {
     //printErr('// JS compiler in action, phase ' + currPhase + typeof lines + (lines === null));
     phase = currPhase;
-    if (phase != 'pre') {
+    if (phase != 'pre' && phase != 'glue') {
       if (singlePhase) PassManager.load(read(forwardedDataFile));
 
       if (phase == 'funcs') {
@@ -313,7 +313,9 @@ B = new Benchmarker();
 
 try {
   if (ll_file) {
-    if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
+    if (phase === 'glue') {
+      compile(';');
+    } else if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
       compile(read(ll_file));
     } else {
       compile(ll_file); // we are given raw .ll
