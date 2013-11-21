@@ -833,6 +833,18 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # calculations on merged forwarded data TODO
 
+  # merge forwarded data
+  assert settings.get('ASM_JS'), 'fastcomp is asm.js only'
+  all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
+  for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+    all_exported_functions.add('_' + additional_export)
+  exported_implemented_functions = set()
+  export_bindings = settings['EXPORT_BINDINGS']
+  export_all = settings['EXPORT_ALL']
+  for key in metadata['implementedFunctions']:
+    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
+      exported_implemented_functions.add(key)
+
   if settings.get('ASM_JS'):
     # move postsets into the asm module
     class PostSets: js = ''
@@ -957,7 +969,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         basic_funcs.append('extCall_%s' % sig)
 
     # calculate exports
-    exported_implemented_functions = ['_main'] # XXX list(exported_implemented_functions)
+    exported_implemented_functions = list(exported_implemented_functions)
     exported_implemented_functions.append('runPostSets')
     exports = []
     if not simple:
