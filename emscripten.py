@@ -738,25 +738,31 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   # TODO: proper temp files
   # TODO: use a single LLVM toolchain instead of normal for source, pnacl for simplification, custom for js backend
 
-  if DEBUG: shutil.copyfile(infile, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp0.bc'))
+  if DEBUG: shutil.copyfile(infile, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp0.ll'))
 
   if DEBUG: logging.debug('  ..1..')
   temp1 = temp_files.get('.1.bc').name
   shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-opt'), infile, '-pnacl-abi-simplify-preopt', '-o', temp1]))
   assert os.path.exists(temp1)
-  if DEBUG: shutil.copyfile(temp1, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp1.bc'))
+  if DEBUG:
+    shutil.copyfile(temp1, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp1.bc'))
+    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-dis'), 'temp1.bc', '-o', 'temp1.ll']))
 
   if DEBUG: logging.debug('  ..2..')
   temp2 = temp_files.get('.2.bc').name
   shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-opt'), temp1, '-O3', '-o', temp2]))
   assert os.path.exists(temp2)
-  if DEBUG: shutil.copyfile(temp2, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp2.bc'))
+  if DEBUG:
+    shutil.copyfile(temp2, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp2.bc'))
+    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-dis'), 'temp2.bc', '-o', 'temp2.ll']))
 
   if DEBUG: logging.debug('  ..3..')
   temp3 = temp_files.get('.3.bc').name
   shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-opt'), temp2, '-pnacl-abi-simplify-postopt', '-o', temp3]))
   assert os.path.exists(temp3)
-  if DEBUG: shutil.copyfile(temp3, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp3.bc'))
+  if DEBUG:
+    shutil.copyfile(temp3, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp3.bc'))
+    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'pnacl-dis'), 'temp3.bc', '-o', 'temp3.ll']))
 
   if DEBUG: logging.debug('  ..4..')
   temp4 = temp_files.get('.4.js').name
@@ -766,7 +772,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # Split up output
   backend_output = open(temp4).read()
-  if DEBUG: print >> sys.stderr, backend_output
+  #if DEBUG: print >> sys.stderr, backend_output
 
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
@@ -780,9 +786,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
   metadata = json.loads(metadata_raw)
   mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
-  if DEBUG: print >> sys.stderr, "FUNCS", funcs
-  if DEBUG: print >> sys.stderr, "META", metadata
-  if DEBUG: print >> sys.stderr, "meminit", mem_init
+  #if DEBUG: print >> sys.stderr, "FUNCS", funcs
+  #if DEBUG: print >> sys.stderr, "META", metadata
+  #if DEBUG: print >> sys.stderr, "meminit", mem_init
 
   if DEBUG: logging.debug('emscript: js compiler glue')
 
