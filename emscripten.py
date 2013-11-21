@@ -841,7 +841,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   exported_implemented_functions = set()
   export_bindings = settings['EXPORT_BINDINGS']
   export_all = settings['EXPORT_ALL']
-  for key in metadata['implementedFunctions']:
+  for key in metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys(): # XXX perf
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
 
