@@ -997,8 +997,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
                        ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
-    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
-                      ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
+    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
     # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
     if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
       assert settings.get('TARGET_LE32'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
@@ -1045,6 +1044,7 @@ var asm = (function(global, env, buffer) {
   var threwValue = 0;
   var setjmpId = 0;
   var undef = 0;
+  var nan = +env.NaN, inf = +env.Infinity;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
 ''' + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + ['''
