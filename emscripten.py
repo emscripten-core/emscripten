@@ -766,7 +766,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # Split up output
   backend_output = open(temp4).read()
-  print >> sys.stderr, backend_output
+  if DEBUG: print >> sys.stderr, backend_output
 
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
@@ -780,9 +780,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
   metadata = json.loads(metadata_raw)
   mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
-  print >> sys.stderr, "FUNCS", funcs
-  print >> sys.stderr, "META", metadata
-  print >> sys.stderr, "meminit", mem_init
+  if DEBUG: print >> sys.stderr, "FUNCS", funcs
+  if DEBUG: print >> sys.stderr, "META", metadata
+  if DEBUG: print >> sys.stderr, "meminit", mem_init
 
   if DEBUG: logging.debug('emscript: js compiler glue')
 
