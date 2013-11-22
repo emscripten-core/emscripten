@@ -742,32 +742,32 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   if DEBUG: logging.debug('  ..1..')
   temp1 = temp_files.get('.1.bc').name
-  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'opt'), infile, '-pnacl-abi-simplify-preopt', '-o', temp1]))
+  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), infile, '-pnacl-abi-simplify-preopt', '-o', temp1]))
   assert os.path.exists(temp1)
   if DEBUG:
     shutil.copyfile(temp1, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp1.bc'))
-    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'llvm-dis'), 'temp1.bc', '-o', 'temp1.ll']))
+    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'llvm-dis'), 'temp1.bc', '-o', 'temp1.ll']))
 
   #if DEBUG: logging.debug('  ..2..')
   #temp2 = temp_files.get('.2.bc').name
-  #shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'opt'), temp1, '-O3', '-o', temp2]))
+  #shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), temp1, '-O3', '-o', temp2]))
   #assert os.path.exists(temp2)
   #if DEBUG:
   #  shutil.copyfile(temp2, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp2.bc'))
-  #  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'llvm-dis'), 'temp2.bc', '-o', 'temp2.ll']))
+  #  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'llvm-dis'), 'temp2.bc', '-o', 'temp2.ll']))
   temp2 = temp1 # XXX if we optimize the bc, we remove some pnacl clutter, but it also makes varargs stores be 8-byte aligned
 
   if DEBUG: logging.debug('  ..3..')
   temp3 = temp_files.get('.3.bc').name
-  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'opt'), temp2, '-pnacl-abi-simplify-postopt', '-o', temp3]))
+  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), temp2, '-pnacl-abi-simplify-postopt', '-o', temp3]))
   assert os.path.exists(temp3)
   if DEBUG:
     shutil.copyfile(temp3, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp3.bc'))
-    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'llvm-dis'), 'temp3.bc', '-o', 'temp3.ll']))
+    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'llvm-dis'), 'temp3.bc', '-o', 'temp3.ll']))
 
   if DEBUG: logging.debug('  ..4..')
   temp4 = temp_files.get('.4.js').name
-  backend_compiler = os.path.join(shared.PNACL_ROOT, 'llc')
+  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   shared.jsrun.timeout_run(subprocess.Popen([backend_compiler, temp3, '-march=js', '-filetype=asm', '-o', temp4], stdout=subprocess.PIPE))
   if DEBUG: shutil.copyfile(temp4, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp4.js'))
 
