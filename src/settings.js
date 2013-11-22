@@ -23,7 +23,8 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // Changing this from the default of 4 is deprecated.
 
 var TARGET_X86 = 0;  // For i386-pc-linux-gnu
-var TARGET_LE32 = 1; // For le32-unknown-nacl
+var TARGET_LE32 = 1; // For le32-unknown-nacl. 1 is normal, 2 is for the fastcomp llvm
+                     // backend using pnacl abi simplification
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be

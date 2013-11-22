@@ -755,6 +755,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG:
     shutil.copyfile(temp2, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp2.bc'))
     shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'llvm-dis'), 'temp2.bc', '-o', 'temp2.ll']))
+  #temp2 = temp1
 
   if DEBUG: logging.debug('  ..3..')
   temp3 = temp_files.get('.3.bc').name
@@ -795,6 +796,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # Integrate info from backend
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + metadata['declares']
+
+  # Settings changes
+  assert settings['TARGET_LE32'] == 1
+  settings['TARGET_LE32'] = 2
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name

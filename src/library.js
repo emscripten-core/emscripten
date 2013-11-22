@@ -1855,7 +1855,11 @@ LibraryManager.library = {
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
       if (type === 'double') {
+#if TARGET_LE32 == 2
+        ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true, 4) }}};
+#else
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
+#endif
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
 
@@ -1876,7 +1880,11 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
+#if TARGET_LE32 == 2
+      argIndex += Runtime.getNativeFieldSize(type);
+#else
       argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
+#endif
       return ret;
     }
 
