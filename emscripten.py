@@ -748,14 +748,14 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     shutil.copyfile(temp1, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp1.bc'))
     shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'llvm-dis'), 'temp1.bc', '-o', 'temp1.ll']))
 
-  if DEBUG: logging.debug('  ..2..')
-  temp2 = temp_files.get('.2.bc').name
-  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'opt'), temp1, '-O3', '-o', temp2]))
-  assert os.path.exists(temp2)
-  if DEBUG:
-    shutil.copyfile(temp2, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp2.bc'))
-    shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'llvm-dis'), 'temp2.bc', '-o', 'temp2.ll']))
-  #temp2 = temp1
+  #if DEBUG: logging.debug('  ..2..')
+  #temp2 = temp_files.get('.2.bc').name
+  #shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'opt'), temp1, '-O3', '-o', temp2]))
+  #assert os.path.exists(temp2)
+  #if DEBUG:
+  #  shutil.copyfile(temp2, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp2.bc'))
+  #  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.PNACL_ROOT, 'llvm-dis'), 'temp2.bc', '-o', 'temp2.ll']))
+  temp2 = temp1 # XXX if we optimize the bc, we remove some pnacl clutter, but it also makes varargs stores be 8-byte aligned
 
   if DEBUG: logging.debug('  ..3..')
   temp3 = temp_files.get('.3.bc').name
