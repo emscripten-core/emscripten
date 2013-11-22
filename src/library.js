@@ -6963,7 +6963,7 @@ LibraryManager.library = {
 
   pthread_setspecific__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
   pthread_setspecific: function(key, value) {
-    if (value == 0) {
+    if (!(key in PTHREAD_SPECIFIC)) {
       return ERRNO_CODES.EINVAL;
     }
     PTHREAD_SPECIFIC[key] = value;
