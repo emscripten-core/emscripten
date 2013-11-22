@@ -725,7 +725,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     outfile: The file where the output is written.
   """
 
-  compiler = path_from_root('src', 'compiler.js')
+  assert(settings['RUNNING_JS_OPTS'])
 
   # Overview:
   #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
@@ -813,7 +813,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # Call js compiler
   if DEBUG: t = time.time()
-  out = jsrun.run_js(compiler, compiler_engine, [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+  out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine, [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                      cwd=path_from_root('src'))
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
