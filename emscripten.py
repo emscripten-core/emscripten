@@ -767,7 +767,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   if DEBUG: logging.debug('  ..4..')
   temp4 = temp_files.get('.4.js').name
-  backend_compiler = os.path.join(shared.JS_BACKEND_ROOT, 'llc')
+  backend_compiler = os.path.join(shared.PNACL_ROOT, 'llc')
   shared.jsrun.timeout_run(subprocess.Popen([backend_compiler, temp3, '-march=js', '-filetype=asm', '-o', temp4], stdout=subprocess.PIPE))
   if DEBUG: shutil.copyfile(temp4, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp4.js'))
 
