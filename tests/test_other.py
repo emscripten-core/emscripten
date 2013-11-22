@@ -2126,7 +2126,8 @@ int main()
 
     assert os.path.exists(os.path.join(self.get_dir(), 'test.d')), 'No dependency file generated'
     deps = open(os.path.join(self.get_dir(), 'test.d')).read()
-    head, tail = deps.split( ':', 2 )
+    # Look for ': ' instead of just ':' to not confuse C:\path\ notation with make "target: deps" rule. Not perfect, but good enough for this test.
+    head, tail = deps.split(': ', 2)
     assert 'test.o' in head, 'Invalid dependency target'
     assert 'test.cpp' in tail and 'test.hpp' in tail, 'Invalid dependencies generated'
 
