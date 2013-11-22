@@ -585,16 +585,16 @@ function UTF16ToString(ptr) {
 }
 Module['UTF16ToString'] = UTF16ToString;
 
-// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF16LE form. The copy will require at most (str.length*2+1)*2 bytes of space in the HEAP.
 function stringToUTF16(str, outPtr) {
   for(var i = 0; i < str.length; ++i) {
     // charCodeAt returns a UTF-16 encoded code unit, so it can be directly written to the HEAP.
     var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
-    {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}}
+    {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}};
   }
   // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 'str.length*2', 0, 'i16') }}}
+  {{{ makeSetValue('outPtr', 'str.length*2', 0, 'i16') }}};
 }
 Module['stringToUTF16'] = stringToUTF16;
 
@@ -620,7 +620,7 @@ function UTF32ToString(ptr) {
 }
 Module['UTF32ToString'] = UTF32ToString;
 
-// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF32LE form. The copy will require at most (str.length+1)*4 bytes of space in the HEAP,
 // but can use less, since str.length does not return the number of characters in the string, but the number of UTF-16 code units in the string.
 function stringToUTF32(str, outPtr) {
@@ -632,11 +632,11 @@ function stringToUTF32(str, outPtr) {
       var trailSurrogate = str.charCodeAt(++iCodeUnit);
       codeUnit = 0x10000 + ((codeUnit & 0x3FF) << 10) | (trailSurrogate & 0x3FF);
     }
-    {{{ makeSetValue('outPtr', 'iChar*4', 'codeUnit', 'i32') }}}
+    {{{ makeSetValue('outPtr', 'iChar*4', 'codeUnit', 'i32') }}};
     ++iChar;
   }
   // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 'iChar*4', 0, 'i32') }}}
+  {{{ makeSetValue('outPtr', 'iChar*4', 0, 'i32') }}};
 }
 Module['stringToUTF32'] = stringToUTF32;
 
@@ -1043,7 +1043,7 @@ function writeStringToMemory(string, buffer, dontAddNull) {
   var i = 0;
   while (i < array.length) {
     var chr = array[i];
-    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}}
+    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}};
     i = i + 1;
   }
 }
@@ -1061,9 +1061,9 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 #if ASSERTIONS
     assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
 #endif
-    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}}
+    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}};
   }
-  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}}
+  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}};
 }
 Module['writeAsciiToMemory'] = writeAsciiToMemory;
 
