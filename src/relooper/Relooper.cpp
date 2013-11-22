@@ -71,11 +71,7 @@ static int AsmJS = 0;
 
 // Indenter
 
-#if EMSCRIPTEN
 int Indenter::CurrIndent = 1;
-#else
-int Indenter::CurrIndent = 0;
-#endif
 
 // Branch
 
