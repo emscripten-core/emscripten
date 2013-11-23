@@ -250,15 +250,24 @@ mergeInto(LibraryManager.library, {
           contextAttributes.preserveDrawingBuffer = true;
 #endif
 
-          ['experimental-webgl', 'webgl'].some(function(webglId) {
-            return ctx = canvas.getContext(webglId, contextAttributes);
-          });
+          var errorInfo = '?';
+          function onContextCreationError(event) {
+            errorInfo = e.statusMessage || errorInfo;
+          }
+          canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
+          try {
+            ['experimental-webgl', 'webgl'].some(function(webglId) {
+              return ctx = canvas.getContext(webglId, contextAttributes);
+            });
+          } finally {
+            canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
+          }
         } else {
           ctx = canvas.getContext('2d');
         }
         if (!ctx) throw ':(';
       } catch (e) {
-        Module.print('Could not create canvas - ' + e);
+        Module.print('Could not create canvas: ' + [errorInfo, e]);
         return null;
       }
       if (useWebGL) {
