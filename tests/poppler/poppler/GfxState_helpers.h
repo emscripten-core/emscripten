@@ -13,12 +13,14 @@
 // All changes made under the Poppler project to this file are licensed
 // under GPL version 2 or later
 //
-// Copyright (C) 2009 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2009, 2011 Albert Astals Cid <aacid@kde.org>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
 //
 //========================================================================
+
+#include "GfxState.h"
 
 static inline GfxColorComp clip01(GfxColorComp x) {
   return (x < 0) ? 0 : (x > gfxColorComp1) ? gfxColorComp1 : x;

@@ -18,6 +18,7 @@
 // Copyright (C) 2007-2008 Julien Rebetez <julienr@svn.gnome.org>
 // Copyright (C) 2010 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2010 Paweł Wiejacha <pawel.wiejacha@gmail.com>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -31,7 +32,9 @@
 #pragma interface
 #endif
 
+#include "poppler-config.h"
 #include "Object.h"
+#include "goo/GooMutex.h"
 
 //------------------------------------------------------------------------
 // Dict
@@ -48,13 +51,14 @@ public:
   // Constructor.
   Dict(XRef *xrefA);
   Dict(Dict* dictA);
+  Dict *copy(XRef *xrefA);
 
   // Destructor.
   ~Dict();
 
   // Reference counting.
-  int incRef() { return ++ref; }
-  int decRef() { return --ref; }
+  int incRef();
+  int decRef();
 
   // Get number of entries.
   int getLength() { return length; }
@@ -63,17 +67,17 @@ public:
   void add(char *key, Object *val);
 
   // Update the value of an existing entry, otherwise create it
-  void set(char *key, Object *val);
+  void set(const char *key, Object *val);
   // Remove an entry. This invalidate indexes
-  void remove(char *key);
+  void remove(const char *key);
 
   // Check if dictionary is of specified type.
-  GBool is(char *type);
+  GBool is(const char *type);
 
   // Look up an entry and return the value.  Returns a null object
   // if <key> is not in the dictionary.
-  Object *lookup(char *key, Object *obj, std::set<int> *fetchOriginatorNums = NULL);
-  Object *lookupNF(char *key, Object *obj);
+  Object *lookup(const char *key, Object *obj, int recursion = 0);
+  Object *lookupNF(const char *key, Object *obj);
   GBool lookupInt(const char *key, const char *alt_key, int *value);
 
   // Iterative accessors.
@@ -88,7 +92,7 @@ public:
   
   XRef *getXRef() { return xref; }
   
-  GBool hasKey(char *key);
+  GBool hasKey(const char *key);
 
 private:
 
@@ -98,8 +102,11 @@ private:
   int size;			// size of <entries> array
   int length;			// number of entries in dictionary
   int ref;			// reference count
+#if MULTITHREADED
+  GooMutex mutex;
+#endif
 
-  DictEntry *find(char *key);
+  DictEntry *find(const char *key);
 };
 
 #endif

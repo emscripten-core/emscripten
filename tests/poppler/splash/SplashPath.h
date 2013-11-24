@@ -77,8 +77,10 @@ public:
 		      SplashCoord x2, SplashCoord y2,
 		      SplashCoord x3, SplashCoord y3);
 
-  // Close the last subpath, adding a line segment if necessary.
-  SplashError close();
+  // Close the last subpath, adding a line segment if necessary.  If
+  // <force> is true, this adds a line segment even if the current
+  // point is equal to the first point in the subpath.
+  SplashError close(GBool force = gFalse);
 
   // Add a stroke adjustment hint.  The controlling segments are
   // <ctrl0> and <ctrl1> (where segments are identified by their first

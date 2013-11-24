@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009-2010, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2011, Albert Astals Cid <aacid@kde.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -121,7 +122,7 @@ page_transition& page_transition::operator=(const page_transition &pt)
     if (&pt != this) {
         page_transition_private *new_d = new page_transition_private(*pt.d);
         delete d;
-        new_d = d;
+        d = new_d;
     }
     return *this;
 }

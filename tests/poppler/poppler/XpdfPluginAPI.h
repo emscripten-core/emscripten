@@ -4,6 +4,20 @@
  * Copyright 2004 Glyph & Cog, LLC
  */
 
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2012 Albert Astals Cid <aacid@kde.org>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
 #ifndef XPDFPLUGINAPI_H
 #define XPDFPLUGINAPI_H
 
@@ -173,7 +187,7 @@ typedef struct {
    * document.  Returns non-zero if successful.
    */
   XpdfBool (*getKey)(void *handlerData, void *docData,
-		     char **key, int *keyLen, int *cryptVersion);
+		     char **key, int *keyLen, int *cryptVersion, int *cryptRevision);
 
   /*
    * Free the data allocated by getKey.
@@ -207,24 +221,6 @@ XpdfObject (*_xpdfGetInfoDict)(XpdfDoc doc);
  * must be freed with xpdfFreeObj.)
  */
 XpdfObject (*_xpdfGetCatalog)(XpdfDoc doc);
-
-#ifdef _WIN32
-
-/*
- * Get the handle for the viewer window associated with the specified
- * document.  [Win32 only]
- */
-HWND (*_xpdfWin32GetWindow)(XpdfDoc doc);
-
-#else
-
-/*
- * Get the Motif widget for the viewer window associated with the
- * specified document.  [X only]
- */
-Widget (*_xpdfXGetWindow)(XpdfDoc doc);
-
-#endif
 
 /*------------------------------------------------------------------------
  * Object access functions

@@ -54,6 +54,10 @@ G_BEGIN_DECLS
 #define POPPLER_ANNOT_SCREEN(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), POPPLER_TYPE_ANNOT_SCREEN, PopplerAnnotScreen))
 #define POPPLER_IS_ANNOT_SCREEN(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), POPPLER_TYPE_ANNOT_SCREEN))
 
+#define POPPLER_TYPE_ANNOT_LINE              (poppler_annot_line_get_type ())
+#define POPPLER_ANNOT_LINE(obj)              (G_TYPE_CHECK_INSTANCE_CAST ((obj), POPPLER_TYPE_ANNOT_LINE, PopplerAnnotLine))
+#define POPPLER_IS_ANNOT_LINE(obj)           (G_TYPE_CHECK_INSTANCE_TYPE ((obj), POPPLER_TYPE_ANNOT_LINE))
+
 #define POPPLER_TYPE_ANNOT_CALLOUT_LINE      (poppler_annot_callout_line_get_type ())
 
 
@@ -162,10 +166,16 @@ void                          poppler_annot_set_contents                       (
 gchar                        *poppler_annot_get_name                           (PopplerAnnot *poppler_annot);
 gchar                        *poppler_annot_get_modified                       (PopplerAnnot *poppler_annot);
 PopplerAnnotFlag              poppler_annot_get_flags                          (PopplerAnnot *poppler_annot);
+void                          poppler_annot_set_flags                          (PopplerAnnot *poppler_annot,
+										PopplerAnnotFlag flags);
 PopplerColor                 *poppler_annot_get_color                          (PopplerAnnot *poppler_annot);
 void                          poppler_annot_set_color                          (PopplerAnnot *poppler_annot,
 										PopplerColor *poppler_color);
 gint                          poppler_annot_get_page_index                     (PopplerAnnot *poppler_annot);
+void                          poppler_annot_get_rectangle                      (PopplerAnnot     *poppler_annot,
+										PopplerRectangle *poppler_rect);
+void                          poppler_annot_set_rectangle                      (PopplerAnnot     *poppler_annot,
+										PopplerRectangle *poppler_rect);
 
 /* PopplerAnnotMarkup */
 GType                         poppler_annot_markup_get_type                    (void) G_GNUC_CONST;
@@ -219,7 +229,15 @@ PopplerMovie                 *poppler_annot_movie_get_movie                    (
 GType                         poppler_annot_screen_get_type                    (void) G_GNUC_CONST;
 PopplerAction                *poppler_annot_screen_get_action                  (PopplerAnnotScreen *poppler_annot);
 
-/* PopplerCalloutLine */
+/* PopplerAnnotLine */
+GType                         poppler_annot_line_get_type                      (void) G_GNUC_CONST;
+PopplerAnnot                 *poppler_annot_line_new                           (PopplerDocument  *doc,
+                                                                                PopplerRectangle *rect);
+void                          poppler_annot_line_set_vertices                  (PopplerAnnotLine *poppler_annot,
+										PopplerPoint     *start,
+										PopplerPoint     *end);
+
+/* PopplerAnnotCalloutLine */
 GType                         poppler_annot_callout_line_get_type              (void) G_GNUC_CONST;
 PopplerAnnotCalloutLine      *poppler_annot_callout_line_new                   (void);
 PopplerAnnotCalloutLine      *poppler_annot_callout_line_copy                  (PopplerAnnotCalloutLine *callout);

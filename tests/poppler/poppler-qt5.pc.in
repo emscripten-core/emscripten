@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: poppler-qt5
+Description: Qt5 bindings for poppler
+Version: @VERSION@
+Requires: @PC_REQUIRES@
+@PC_REQUIRES_PRIVATE@
+
+Libs: -L${libdir} -lpoppler-qt5
+Cflags: -I${includedir}/poppler/qt5

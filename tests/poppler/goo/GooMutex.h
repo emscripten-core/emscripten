@@ -16,6 +16,9 @@
 // under GPL version 2 or later
 //
 // Copyright (C) 2009 Kovid Goyal <kovid@kovidgoyal.net>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
+// Copyright (C) 2013 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2013 Adam Reichold <adamreichold@myopera.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -53,11 +56,26 @@ typedef CRITICAL_SECTION GooMutex;
 
 typedef pthread_mutex_t GooMutex;
 
-#define gInitMutex(m) pthread_mutex_init(m, NULL)
+inline void gInitMutex(GooMutex *m) {
+  pthread_mutexattr_t mutexattr;
+  pthread_mutexattr_init(&mutexattr);
+  pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(m, &mutexattr);
+  pthread_mutexattr_destroy(&mutexattr);
+}
 #define gDestroyMutex(m) pthread_mutex_destroy(m)
 #define gLockMutex(m) pthread_mutex_lock(m)
 #define gUnlockMutex(m) pthread_mutex_unlock(m)
 
 #endif
+
+class MutexLocker {
+public:
+  MutexLocker(GooMutex *mutexA) : mutex(mutexA) { gLockMutex(mutex); }
+  ~MutexLocker() { gUnlockMutex(mutex); }
+
+private:
+  GooMutex *mutex;
+};
 
 #endif

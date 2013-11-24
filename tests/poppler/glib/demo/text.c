@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "text.h"
+#include "utils.h"
 
 enum {
 	TEXT_X1_COLUMN,
@@ -35,7 +36,15 @@ typedef struct {
 
 	GtkWidget       *timer_label;
 	GtkTextBuffer   *buffer;
+        GtkWidget       *treeview;
 	GtkListStore    *model;
+
+        /* Text attributes */
+        GList           *text_attrs;
+	GtkWidget       *font_name;
+        GtkWidget       *font_size;
+        GtkWidget       *is_underlined;
+        GtkWidget       *text_color;
 
 	gint             page;
 } PgdTextDemo;
@@ -55,6 +64,11 @@ pgd_text_free (PgdTextDemo *demo)
 		g_object_unref (demo->buffer);
 		demo->buffer = NULL;
 	}
+
+        if (demo->text_attrs) {
+                poppler_page_free_text_attributes (demo->text_attrs);
+                demo->text_attrs = NULL;
+        }
 
 	if (demo->model) {
 		g_object_unref (demo->model);
@@ -80,6 +94,9 @@ pgd_text_get_text (GtkWidget   *button,
 		return;
 
 	gtk_list_store_clear (demo->model);
+        if (demo->text_attrs)
+                poppler_page_free_text_attributes (demo->text_attrs);
+        demo->text_attrs = NULL;
 
 	timer = g_timer_new ();
 	text = poppler_page_get_text (page);
@@ -87,7 +104,7 @@ pgd_text_get_text (GtkWidget   *button,
 
 	if (text) {
 		gchar  *str;
-		gdouble text_elapsed;
+		gdouble text_elapsed, layout_elapsed;
 
 		text_elapsed = g_timer_elapsed (timer, NULL);
 
@@ -95,8 +112,14 @@ pgd_text_get_text (GtkWidget   *button,
 		poppler_page_get_text_layout (page, &recs, &n_recs);
 		g_timer_stop (timer);
 
-		str = g_strdup_printf ("<i>got text in %.4f seconds, text layout in %.4f seconds</i>",
-				       text_elapsed, g_timer_elapsed (timer, NULL));
+                layout_elapsed = g_timer_elapsed (timer, NULL);
+
+                g_timer_start (timer);
+                demo->text_attrs = poppler_page_get_text_attributes (page);
+                g_timer_stop (timer);
+
+		str = g_strdup_printf ("<i>got text in %.4f seconds, text layout in %.4f seconds, text attrs in %.4f seconds</i>",
+				       text_elapsed, layout_elapsed, g_timer_elapsed (timer, NULL));
 		gtk_label_set_markup (GTK_LABEL (demo->timer_label), str);
 		g_free (str);
 	} else {
@@ -145,6 +168,34 @@ pgd_text_get_text (GtkWidget   *button,
 }
 
 static void
+pgd_text_set_text_attrs_for_offset (PgdTextDemo *demo,
+                                    gint         offset)
+{
+        GList *l;
+
+        for (l = demo->text_attrs; l; l = g_list_next (l)) {
+                PopplerTextAttributes *attrs = (PopplerTextAttributes *)l->data;
+
+                if (offset >= attrs->start_index && offset <= attrs->end_index) {
+                        gchar *str;
+                        GdkPixbuf *pixbuf;
+
+                        gtk_label_set_text (GTK_LABEL (demo->font_name), attrs->font_name);
+
+                        str = g_strdup_printf ("%.2f", attrs->font_size);
+                        gtk_label_set_text (GTK_LABEL (demo->font_size), str);
+                        g_free (str);
+
+                        gtk_label_set_text (GTK_LABEL (demo->is_underlined), attrs->is_underlined ? "Yes" : "No");
+
+                        pixbuf = pgd_pixbuf_new_for_color (&(attrs->color));
+                        gtk_image_set_from_pixbuf (GTK_IMAGE (demo->text_color), pixbuf);
+                        g_object_unref (pixbuf);
+                }
+        }
+}
+
+static void
 pgd_text_selection_changed (GtkTreeSelection *treeselection,
 			    PgdTextDemo      *demo)
 {
@@ -163,7 +214,63 @@ pgd_text_selection_changed (GtkTreeSelection *treeselection,
 		end_iter = begin_iter;
 		gtk_text_iter_forward_char (&end_iter);
 		gtk_text_buffer_select_range (demo->buffer, &begin_iter, &end_iter);
+
+                pgd_text_set_text_attrs_for_offset (demo, GPOINTER_TO_INT (offset));
 	}
+}
+
+static void
+pgd_text_buffer_selection_changed (GtkTextBuffer *buffer,
+                                   GParamSpec    *pspec,
+                                   GtkWidget    *textview)
+{
+        gtk_widget_set_has_tooltip (textview, gtk_text_buffer_get_has_selection (buffer));
+}
+
+static gboolean
+pgd_text_view_query_tooltip (GtkTextView   *textview,
+                             gint           x,
+                             gint           y,
+                             gboolean       keyboard_tip,
+                             GtkTooltip    *tooltip,
+                             PgdTextDemo   *demo)
+{
+        GtkTreeModel     *model;
+        GtkTreeIter       iter;
+        GtkTreeSelection *selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (demo->treeview));
+
+        if (gtk_tree_selection_get_selected (selection, &model, &iter)) {
+                PopplerPage *page;
+                gchar *x1, *y1, *x2, *y2;
+                PopplerRectangle rect;
+                gchar *text;
+
+                gtk_tree_model_get (model, &iter,
+                                    TEXT_X1_COLUMN, &x1,
+                                    TEXT_Y1_COLUMN, &y1,
+                                    TEXT_X2_COLUMN, &x2,
+                                    TEXT_Y2_COLUMN, &y2,
+                                    -1);
+
+                rect.x1 = g_strtod (x1, NULL);
+                rect.y1 = g_strtod (y1, NULL);
+                rect.x2 = g_strtod (x2, NULL);
+                rect.y2 = g_strtod (y2, NULL);
+
+                g_free (x1);
+                g_free (y1);
+                g_free (x2);
+                g_free (y2);
+
+                page = poppler_document_get_page (demo->doc, demo->page);
+                text = poppler_page_get_selected_text (page, POPPLER_SELECTION_GLYPH, &rect);
+                gtk_tooltip_set_text (tooltip, text);
+                g_free (text);
+                g_object_unref (page);
+                return TRUE;
+        } else {
+                return FALSE;
+        }
 }
 
 
@@ -179,15 +286,17 @@ pgd_text_create_widget (PopplerDocument *document)
 {
 	PgdTextDemo      *demo;
 	GtkWidget        *label;
-	GtkWidget        *vbox;
+	GtkWidget        *vbox, *vbox2;
 	GtkWidget        *hbox, *page_selector;
 	GtkWidget        *button;
 	GtkWidget        *swindow, *textview, *treeview;
 	GtkTreeSelection *selection;
+        GtkWidget        *frame, *alignment, *table;
 	GtkWidget        *hpaned;
 	GtkCellRenderer  *renderer;
 	gchar            *str;
 	gint              n_pages;
+        gint              row = 0;
 
 	demo = g_new0 (PgdTextDemo, 1);
 
@@ -195,9 +304,10 @@ pgd_text_create_widget (PopplerDocument *document)
 
 	n_pages = poppler_document_get_n_pages (document);
 
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
+	vbox2 = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 
 	label = gtk_label_new ("Page:");
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, TRUE, 0);
@@ -232,7 +342,7 @@ pgd_text_create_widget (PopplerDocument *document)
 	gtk_box_pack_start (GTK_BOX (vbox), demo->timer_label, FALSE, TRUE, 0);
 	gtk_widget_show (demo->timer_label);
 
-	hpaned = gtk_hpaned_new ();
+	hpaned = gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);
 	gtk_paned_set_position (GTK_PANED (hpaned), 300);
 
 	swindow = gtk_scrolled_window_new (NULL, NULL);
@@ -246,6 +356,7 @@ pgd_text_create_widget (PopplerDocument *document)
 					  G_TYPE_STRING, G_TYPE_STRING,
 					  G_TYPE_POINTER);
 	treeview = gtk_tree_view_new_with_model (GTK_TREE_MODEL (demo->model));
+        demo->treeview = treeview;
 
 	renderer = gtk_cell_renderer_text_new ();
 	gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
@@ -287,8 +398,42 @@ pgd_text_create_widget (PopplerDocument *document)
 	gtk_container_add (GTK_CONTAINER (swindow), treeview);
 	gtk_widget_show (treeview);
 
-	gtk_paned_add1 (GTK_PANED (hpaned), swindow);
-	gtk_widget_show (swindow);
+        gtk_box_pack_start (GTK_BOX (vbox2), swindow, TRUE, TRUE, 0);
+        gtk_widget_show (swindow);
+
+        /* Text attributes */
+        frame = gtk_frame_new (NULL);
+        gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_NONE);
+        label = gtk_label_new (NULL);
+        gtk_label_set_markup (GTK_LABEL (label), "<b>Text Attributes</b>");
+        gtk_frame_set_label_widget (GTK_FRAME (frame), label);
+        gtk_widget_show (label);
+
+        alignment = gtk_alignment_new (0.5, 0.5, 1, 1);
+        gtk_alignment_set_padding (GTK_ALIGNMENT (alignment), 5, 5, 12, 5);
+        gtk_container_add (GTK_CONTAINER (frame), alignment);
+        gtk_widget_show (alignment);
+
+        table = gtk_grid_new ();
+        gtk_grid_set_column_spacing (GTK_GRID (table), 6);
+        gtk_grid_set_row_spacing (GTK_GRID (table), 6);
+
+        demo->font_name = gtk_label_new (NULL);
+        pgd_table_add_property_with_custom_widget (GTK_GRID (table), "<b>Font Name:</b>", demo->font_name, &row);
+        demo->font_size = gtk_label_new (NULL);
+        pgd_table_add_property_with_custom_widget (GTK_GRID (table), "<b>Font Size:</b>", demo->font_size, &row);
+        demo->is_underlined = gtk_label_new (NULL);
+        pgd_table_add_property_with_custom_widget (GTK_GRID (table), "<b>Underlined:</b>", demo->is_underlined, &row);
+        demo->text_color = gtk_image_new ();
+        pgd_table_add_property_with_custom_widget (GTK_GRID (table), "<b>Color:</b>", demo->text_color, &row);
+
+        gtk_container_add (GTK_CONTAINER (alignment), table);
+        gtk_widget_show (table);
+
+	gtk_box_pack_start (GTK_BOX (vbox2), frame, FALSE, FALSE, 12);
+        gtk_widget_show (frame);
+	gtk_paned_add1 (GTK_PANED (hpaned), vbox2);
+	gtk_widget_show (vbox2);
 
 	swindow = gtk_scrolled_window_new (NULL, NULL);
 	gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (swindow),
@@ -297,6 +442,12 @@ pgd_text_create_widget (PopplerDocument *document)
 
 	demo->buffer = gtk_text_buffer_new (NULL);
 	textview = gtk_text_view_new_with_buffer (demo->buffer);
+        g_signal_connect (textview, "query-tooltip",
+                          G_CALLBACK (pgd_text_view_query_tooltip),
+                          demo);
+        g_signal_connect (demo->buffer, "notify::has-selection",
+                          G_CALLBACK (pgd_text_buffer_selection_changed),
+                          textview);
 
 	gtk_container_add (GTK_CONTAINER (swindow), textview);
 	gtk_widget_show (textview);

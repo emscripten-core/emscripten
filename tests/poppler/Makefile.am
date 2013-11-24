@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
+DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc --with-testdatadir=$(TESTDATADIR)
 
 if BUILD_SPLASH_OUTPUT
 splash_subdir = splash
@@ -15,15 +15,16 @@ glib_subdir = glib
 glib_pc_file = poppler-glib.pc
 endif
 
-if BUILD_POPPLER_QT
-qt_subdir = qt
-qt_pc_file = poppler-qt.pc
+if BUILD_POPPLER_QT5
+qt5_subdir = qt5
+qt5_pc_file = poppler-qt5.pc
 endif
 
 if BUILD_POPPLER_QT4
 qt4_subdir = qt4
 qt4_pc_file = poppler-qt4.pc
 endif
+
 
 if BUILD_POPPLER_CPP
 cpp_subdir = cpp
@@ -34,7 +35,7 @@ if BUILD_UTILS
 utils_subdir = utils
 endif
 
-SUBDIRS = goo fofi $(splash_subdir) poppler $(utils_subdir) $(glib_subdir) $(qt_subdir) test $(qt4_subdir) $(cpp_subdir)
+SUBDIRS = goo fofi $(splash_subdir) poppler $(utils_subdir) $(glib_subdir) test $(qt4_subdir) $(qt5_subdir) $(cpp_subdir)
 
 EXTRA_DIST =					\
 	README-XPDF				\
@@ -44,10 +45,10 @@ EXTRA_DIST =					\
 	poppler-cairo-uninstalled.pc.in		\
 	poppler-splash.pc.in			\
 	poppler-splash-uninstalled.pc.in	\
-	poppler-qt.pc.in			\
-	poppler-qt-uninstalled.pc.in		\
 	poppler-qt4.pc.in			\
 	poppler-qt4-uninstalled.pc.in		\
+	poppler-qt5.pc.in			\
+	poppler-qt5-uninstalled.pc.in		\
 	poppler-cpp.pc.in			\
 	poppler-cpp-uninstalled.pc.in
 
@@ -57,8 +58,8 @@ pkgconfig_DATA =				\
 	$(cairo_pc_file)			\
 	$(splash_pc_file)			\
 	$(glib_pc_file)				\
-	$(qt_pc_file)                           \
 	$(qt4_pc_file)				\
+	$(qt5_pc_file)				\
 	$(cpp_pc_file)
 
 # Add CMake buildsystem files here so they get added on make dist
@@ -68,25 +69,29 @@ EXTRA_DIST +=							\
 	glib/demo/CMakeLists.txt				\
 	glib/CMakeLists.txt					\
 	glib/poppler-features.h.cmake				\
-	qt/CMakeLists.txt					\
 	qt4/src/CMakeLists.txt					\
 	qt4/tests/CMakeLists.txt				\
 	qt4/CMakeLists.txt					\
 	qt4/demos/CMakeLists.txt				\
+	qt5/src/CMakeLists.txt					\
+	qt5/tests/CMakeLists.txt				\
+	qt5/CMakeLists.txt					\
+	qt5/demos/CMakeLists.txt				\
 	test/CMakeLists.txt					\
 	utils/CMakeLists.txt					\
 	CMakeLists.txt						\
 	ConfigureChecks.cmake					\
+	cmake/modules/CheckFileOffsetBits.c			\
+	cmake/modules/CheckFileOffsetBits.cmake			\
 	cmake/modules/COPYING-CMAKE-SCRIPTS			\
 	cmake/modules/FindCairo.cmake				\
 	cmake/modules/FindFontconfig.cmake			\
-	cmake/modules/FindGDK.cmake				\
 	cmake/modules/FindGLIB.cmake				\
 	cmake/modules/FindGObjectIntrospection.cmake		\
 	cmake/modules/FindGTK.cmake				\
 	cmake/modules/FindIconv.cmake				\
 	cmake/modules/FindLCMS.cmake				\
-	cmake/modules/FindQt3.cmake				\
+	cmake/modules/FindLCMS2.cmake				\
 	cmake/modules/FindQt4.cmake				\
 	cmake/modules/GObjectIntrospectionMacros.cmake		\
 	cmake/modules/MacroBoolTo01.cmake			\
@@ -101,8 +106,8 @@ EXTRA_DIST +=							\
 	poppler/poppler-config.h.cmake				\
 	poppler-cpp.pc.cmake					\
 	poppler-glib.pc.cmake					\
-	poppler-qt.pc.cmake					\
 	poppler-qt4.pc.cmake					\
+	poppler-qt5.pc.cmake					\
 	poppler-splash.pc.cmake					\
 	poppler.pc.cmake
 

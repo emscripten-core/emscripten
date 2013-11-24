@@ -14,12 +14,17 @@
 // under GPL version 2 or later
 //
 // Copyright (C) 2005 Kristian Høgsberg <krh@redhat.com>
-// Copyright (C) 2005, 2007, 2009, 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2005, 2007, 2009-2011, 2013 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2005 Jonathan Blandford <jrb@redhat.com>
 // Copyright (C) 2005, 2006, 2008 Brad Hards <bradh@frogmouth.net>
 // Copyright (C) 2007 Julien Rebetez <julienr@svn.gnome.org>
-// Copyright (C) 2008 Pino Toscano <pino@kde.org>
+// Copyright (C) 2008, 2011 Pino Toscano <pino@kde.org>
 // Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
+// Copyright (C) 2012 Fabio D'Urso <fabiodurso@hotmail.it>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
+// Copyright (C) 2013 Adrian Perez de Castro <aperez@igalia.com>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
+// Copyright (C) 2013 José Aliste <jaliste@src.gnome.org>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -33,17 +38,26 @@
 #pragma interface
 #endif
 
+#include "poppler-config.h"
+#include "Object.h"
+#include "goo/GooMutex.h"
+
 #include <vector>
 
+class PDFDoc;
 class XRef;
 class Object;
 class Page;
 class PageAttrs;
 struct Ref;
 class LinkDest;
+class LinkAction;
 class PageLabelInfo;
 class Form;
 class OCGs;
+class ViewerPreferences;
+class FileSpec;
+class StructTreeRoot;
 
 //------------------------------------------------------------------------
 // NameTree
@@ -54,10 +68,9 @@ public:
   NameTree();
   ~NameTree();
   void init(XRef *xref, Object *tree);
-  void parse(Object *tree);
   GBool lookup(GooString *name, Object *obj);
   int numEntries() { return length; };
-  // iterator accessor
+  // iterator accessor, note it returns a shallow copy, do not free the object
   Object getValue(int i);
   GooString *getName(int i);
 
@@ -68,9 +81,11 @@ private:
     GooString name;
     Object value;
     void free();
+    static int cmpEntry(const void *voidEntry, const void *voidOtherEntry);
     static int cmp(const void *key, const void *entry);
   };
 
+  void parse(Object *tree);
   void addEntry(Entry *entry);
 
   XRef *xref;
@@ -81,58 +96,6 @@ private:
                     // length is the number of real Entry
 };
 
-class EmbFile {
-public:
-  EmbFile(GooString *name, GooString *description, 
-	  int size,
-	  GooString *createDate,
-	  GooString *modDate, GooString *checksum,
-	  GooString *mimetype,
-	  Object objStr) :
-    m_name(name),
-    m_description(description),
-    m_size(size),
-    m_createDate(createDate),
-    m_modDate(modDate),
-    m_checksum(checksum),
-    m_mimetype(mimetype)
-  {
-    objStr.copy(&m_objStr);
-  }
-  EmbFile(Object *efDict, GooString *description = 0);
-
-  ~EmbFile()
-  {
-    delete m_name;
-    delete m_description;
-    delete m_modDate;
-    delete m_createDate;
-    delete m_checksum;
-    delete m_mimetype;
-    m_objStr.free();
-  }
-
-  GooString *name() { return m_name; }
-  GooString *description() { return m_description; }
-  int size() { return m_size; }
-  GooString *modDate() { return m_modDate; }
-  GooString *createDate() { return m_createDate; }
-  GooString *checksum() { return m_checksum; }
-  GooString *mimeType() { return m_mimetype; }
-  Object &streamObject() { return m_objStr; }
-  bool isOk() { return m_objStr.isStream(); }
-
-private:
-  GooString *m_name;
-  GooString *m_description;
-  int m_size;
-  GooString *m_createDate;
-  GooString *m_modDate;
-  GooString *m_checksum;
-  GooString *m_mimetype;
-  Object m_objStr;
-};
-
 //------------------------------------------------------------------------
 // Catalog
 //------------------------------------------------------------------------
@@ -141,7 +104,7 @@ class Catalog {
 public:
 
   // Constructor.
-  Catalog(XRef *xrefA);
+  Catalog(PDFDoc *docA);
 
   // Destructor.
   ~Catalog();
@@ -166,7 +129,16 @@ public:
   GooString *readMetadata();
 
   // Return the structure tree root object.
-  Object *getStructTreeRoot();
+  StructTreeRoot *getStructTreeRoot();
+
+  // Return values from the MarkInfo dictionary as flags in a bitfield.
+  enum MarkInfoFlags {
+    markInfoNull           = 1 << 0,
+    markInfoMarked         = 1 << 1,
+    markInfoUserProperties = 1 << 2,
+    markInfoSuspects       = 1 << 3,
+  };
+  Guint getMarkInfo();
 
   // Find a page, given its object ID.  Returns page number, or 0 if
   // not found.
@@ -182,10 +154,11 @@ public:
   int numEmbeddedFiles() { return getEmbeddedFileNameTree()->numEntries(); }
 
   // Get the i'th file embedded (at the Document level) in the document
-  EmbFile *embeddedFile(int i);
+  FileSpec *embeddedFile(int i);
 
   // Get the number of javascript scripts
   int numJS() { return getJSNameTree()->numEntries(); }
+  GooString *getJSName(int i) { return getJSNameTree()->getName(i); }
 
   // Get the i'th JavaScript script (at the Document level) in the document
   GooString *getJS(int i);
@@ -200,7 +173,17 @@ public:
 
   OCGs *getOptContentConfig() { return optContent; }
 
+  enum FormType
+  {
+    NoForm,
+    AcroForm,
+    XfaForm
+  };
+
+  FormType getFormType();
   Form* getForm();
+
+  ViewerPreferences *getViewerPreferences();
 
   enum PageMode {
     pageModeNone,
@@ -226,11 +209,22 @@ public:
   PageMode getPageMode();
   PageLayout getPageLayout();
 
+  enum DocumentAdditionalActionsType {
+    actionCloseDocument,        ///< Performed before closing the document
+    actionSaveDocumentStart,    ///< Performed before saving the document
+    actionSaveDocumentFinish,   ///< Performed after saving the document
+    actionPrintDocumentStart,   ///< Performed before printing the document
+    actionPrintDocumentFinish,  ///< Performed after printing the document
+  };
+
+  LinkAction *getAdditionalAction(DocumentAdditionalActionsType type);
+
 private:
 
   // Get page label info.
   PageLabelInfo *getPageLabelInfo();
 
+  PDFDoc *doc;
   XRef *xref;			// the xref table for this PDF file
   Page **pages;			// array of pages
   Ref *pageRefs;		// object ID for each page
@@ -240,6 +234,7 @@ private:
   std::vector<PageAttrs *> *attrsList;
   std::vector<int> *kidsIdxList;
   Form *form;
+  ViewerPreferences *viewerPrefs;
   int numPages;			// number of pages
   int pagesSize;		// size of pages array
   Object dests;			// named destination dictionary
@@ -249,14 +244,17 @@ private:
   NameTree *jsNameTree;		// Java Script name-tree
   GooString *baseURI;		// base URI for URI-type links
   Object metadata;		// metadata stream
-  Object structTreeRoot;	// structure tree root dictionary
+  StructTreeRoot *structTreeRoot;	// structure tree root
+  Guint markInfo;               // Flags from MarkInfo dictionary
   Object outline;		// outline dictionary
   Object acroForm;		// AcroForm dictionary
+  Object viewerPreferences;     // ViewerPreference dictionary
   OCGs *optContent;		// Optional Content groups
   GBool ok;			// true if catalog is valid
   PageLabelInfo *pageLabelInfo; // info about page labels
   PageMode pageMode;		// page mode
   PageLayout pageLayout;	// page layout
+  Object additionalActions;     // page additional actions
 
   GBool cachePageTree(int page); // Cache first <page> pages.
   Object *findDestInTree(Object *tree, GooString *name, Object *obj);
@@ -265,6 +263,9 @@ private:
   NameTree *getDestNameTree();
   NameTree *getEmbeddedFileNameTree();
   NameTree *getJSNameTree();
+#if MULTITHREADED
+  GooMutex mutex;
+#endif
 
 };
 

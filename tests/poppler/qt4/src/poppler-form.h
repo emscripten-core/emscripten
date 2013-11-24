@@ -1,6 +1,7 @@
 /* poppler-form.h: qt4 interface to poppler
  * Copyright (C) 2007-2008, Pino Toscano <pino@kde.org>
- * Copyright (C) 2008, Albert Astals Cid <aacid@kde.org>
+ * Copyright (C) 2008, 2011, Albert Astals Cid <aacid@kde.org>
+ * Copyright (C) 2012, Adam Reichold <adamreichold@myopera.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +77,12 @@ namespace Poppler {
 	  The internal name of the field.
 	 */
 	QString name() const;
+	
+	/**
+	  The internal fully qualified name of the field.
+	  \since 0.18
+	 */
+	QString fullyQualifiedName() const;
 
 	/**
 	  The name of the field to be used in user interface (eg messages to
@@ -299,6 +306,20 @@ namespace Poppler {
 	  Sets the selected choices to \p choice.
 	 */
 	void setCurrentChoices( const QList<int> &choice );
+	
+	/**
+	  The text entered into an editable combo box choice field. Otherwise a null string.
+	  
+	  \since 0.22
+	*/
+	QString editChoice() const;
+	
+	/**
+	  Sets the text entered into an editable combo box choice field. Otherwise does nothing.
+	  
+	  \since 0.22
+	*/
+	void setEditChoice(const QString& text);
 
 	/**
 	  The horizontal alignment for the text of this text field.

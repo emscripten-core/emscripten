@@ -7,6 +7,8 @@
 //
 // Copyright (C) 2008-2009 Carlos Garcia Campos <carlosgc@gnome.org>
 // Copyright (C) 2009 Kovid Goyal <kovid@kovidgoyal.net>
+// Copyright (C) 2012 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2012 Hib Eris <hib@hiberis.nl>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -24,6 +26,159 @@
 #include <config.h>
 
 #include "FileSpec.h"
+
+EmbFile::EmbFile(Object *efStream)
+{
+  m_size = -1;
+  m_createDate = NULL;
+  m_modDate = NULL;
+  m_checksum = NULL;
+  m_mimetype = NULL;
+
+  efStream->copy(&m_objStr);
+
+  if (efStream->isStream()) {
+    // dataDict corresponds to Table 3.41 in the PDF1.6 spec.
+    Dict *dataDict = efStream->streamGetDict();
+
+    // subtype is normally the mimetype
+    Object subtypeName;
+    if (dataDict->lookup("Subtype", &subtypeName)->isName()) {
+      m_mimetype = new GooString(subtypeName.getName());
+    }
+    subtypeName.free();
+
+    // paramDict corresponds to Table 3.42 in the PDF1.6 spec
+    Object paramDict;
+    if (dataDict->lookup("Params", &paramDict)->isDict()) {
+      Object paramObj;
+      if (paramDict.dictLookup("ModDate", &paramObj)->isString())
+        m_modDate = new GooString(paramObj.getString());
+      paramObj.free();
+
+      if (paramDict.dictLookup("CreationDate", &paramObj)->isString())
+        m_createDate = new GooString(paramObj.getString());
+      paramObj.free();
+
+      if (paramDict.dictLookup("Size", &paramObj)->isInt())
+        m_size = paramObj.getInt();
+      paramObj.free();
+
+      if (paramDict.dictLookup("CheckSum", &paramObj)->isString())
+        m_checksum = new GooString(paramObj.getString());
+      paramObj.free();
+    }
+    paramDict.free();
+  }
+}
+
+EmbFile::~EmbFile()
+{
+  delete m_createDate;
+  delete m_modDate;
+  delete m_checksum;
+  delete m_mimetype;
+  m_objStr.free();
+}
+
+GBool EmbFile::save(const char *path) {
+  FILE *f;
+  GBool ret;
+
+  if (!(f = fopen(path, "wb"))) {
+    return gFalse;
+  }
+  ret = save2(f);
+  fclose(f);
+  return ret;
+}
+
+GBool EmbFile::save2(FILE *f) {
+  int c;
+
+  m_objStr.streamReset();
+  while ((c = m_objStr.streamGetChar()) != EOF) {
+    fputc(c, f);
+  }
+  return gTrue;
+}
+
+FileSpec::FileSpec(Object *fileSpecA)
+{
+  ok = gTrue;
+  fileName = NULL;
+  platformFileName = NULL;
+  embFile = NULL;
+  desc = NULL;
+  fileSpecA->copy(&fileSpec);
+
+  Object obj1;
+  if (!getFileSpecName(fileSpecA, &obj1)) {
+    ok = gFalse;
+    obj1.free();
+    error(errSyntaxError, -1, "Invalid FileSpec");
+    return;
+  }
+
+  fileName = obj1.getString()->copy();
+  obj1.free();
+
+  if (fileSpec.isDict()) {
+    if (fileSpec.dictLookup("EF", &obj1)->isDict()) {
+      if (!obj1.dictLookupNF("F", &fileStream)->isRef()) {
+        ok = gFalse;
+        fileStream.free();
+        error(errSyntaxError, -1, "Invalid FileSpec: Embedded file stream is not an indirect reference");
+        obj1.free();
+        return;
+      }
+    }
+    obj1.free();
+  }
+
+  if (fileSpec.dictLookup("Desc", &obj1)->isString())
+    desc = obj1.getString()->copy();
+  obj1.free();
+}
+
+FileSpec::~FileSpec()
+{
+  fileSpec.free();
+  fileStream.free();
+  delete fileName;
+  delete platformFileName;
+  delete embFile;
+  delete desc;
+}
+
+EmbFile *FileSpec::getEmbeddedFile()
+{
+  if(!ok)
+    return NULL;
+
+  if (embFile)
+    return embFile;
+
+  Object obj1;
+  XRef *xref = fileSpec.getDict()->getXRef();
+  embFile = new EmbFile(fileStream.fetch(xref, &obj1));
+  obj1.free();
+
+  return embFile;
+}
+
+GooString *FileSpec::getFileNameForPlatform()
+{
+  if (platformFileName)
+    return platformFileName;
+
+  Object obj1;
+  if (getFileSpecNameForPlatform(&fileSpec, &obj1))
+    platformFileName = obj1.getString()->copy();
+  obj1.free();
+
+  return platformFileName;
+}
 
 GBool getFileSpecName (Object *fileSpec, Object *fileName)
 {
@@ -75,19 +230,19 @@ GBool getFileSpecNameForPlatform (Object *fileSpec, Object *fileName)
       if (!fileSpec->dictLookup("F", fileName)->isString ()) {
         fileName->free();
 #ifdef _WIN32
-	char *platform = "DOS";
+	const char *platform = "DOS";
 #else
-	char *platform = "Unix";
+	const char *platform = "Unix";
 #endif
 	if (!fileSpec->dictLookup(platform, fileName)->isString ()) {
 	  fileName->free();
-	  error(-1, "Illegal file spec");
+	  error(errSyntaxError, -1, "Illegal file spec");
 	  return gFalse;
 	}
       }
     }
   } else {
-    error(-1, "Illegal file spec");
+    error(errSyntaxError, -1, "Illegal file spec");
     return gFalse;
   }
 

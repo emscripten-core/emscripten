@@ -1,10 +1,10 @@
 #! /bin/sh
 # Common stub for a few missing GNU programs while installing.
 
-scriptversion=2009-04-28.21; # UTC
+scriptversion=2012-01-06.13; # UTC
 
 # Copyright (C) 1996, 1997, 1999, 2000, 2002, 2003, 2004, 2005, 2006,
-# 2008, 2009 Free Software Foundation, Inc.
+# 2008, 2009, 2010, 2011, 2012 Free Software Foundation, Inc.
 # Originally by Fran,cois Pinard <pinard@iro.umontreal.ca>, 1996.
 
 # This program is free software; you can redistribute it and/or modify
@@ -84,7 +84,6 @@ Supported PROGRAM values:
   help2man     touch the output file
   lex          create \`lex.yy.c', if possible, from existing .c
   makeinfo     touch the output file
-  tar          try tar, gnutar, gtar, then tar without non-portable flags
   yacc         create \`y.tab.[ch]', if possible, from existing .[ch]
 
 Version suffixes to PROGRAM as well as the prefixes \`gnu-', \`gnu', and
@@ -120,15 +119,6 @@ program=`echo "$1" | sed '
 case $1 in
   lex*|yacc*)
     # Not GNU programs, they don't have --version.
-    ;;
-
-  tar*)
-    if test -n "$run"; then
-       echo 1>&2 "ERROR: \`tar' requires --run"
-       exit 1
-    elif test "x$2" = "x--version" || test "x$2" = "x--help"; then
-       exit 1
-    fi
     ;;
 
   *)
@@ -226,7 +216,7 @@ WARNING: \`$1' $msg.  You should only need it if
          \`Bison' from any GNU archive site."
     rm -f y.tab.c y.tab.h
     if test $# -ne 1; then
-        eval LASTARG="\${$#}"
+        eval LASTARG=\${$#}
 	case $LASTARG in
 	*.y)
 	    SRCFILE=`echo "$LASTARG" | sed 's/y$/c/'`
@@ -256,7 +246,7 @@ WARNING: \`$1' is $msg.  You should only need it if
          \`Flex' from any GNU archive site."
     rm -f lex.yy.c
     if test $# -ne 1; then
-        eval LASTARG="\${$#}"
+        eval LASTARG=\${$#}
 	case $LASTARG in
 	*.l)
 	    SRCFILE=`echo "$LASTARG" | sed 's/l$/c/'`
@@ -316,41 +306,6 @@ WARNING: \`$1' is $msg.  You should only need it if
     # let's fail without touching anything.
     test -f $file || exit 1
     touch $file
-    ;;
-
-  tar*)
-    shift
-
-    # We have already tried tar in the generic part.
-    # Look for gnutar/gtar before invocation to avoid ugly error
-    # messages.
-    if (gnutar --version > /dev/null 2>&1); then
-       gnutar "$@" && exit 0
-    fi
-    if (gtar --version > /dev/null 2>&1); then
-       gtar "$@" && exit 0
-    fi
-    firstarg="$1"
-    if shift; then
-	case $firstarg in
-	*o*)
-	    firstarg=`echo "$firstarg" | sed s/o//`
-	    tar "$firstarg" "$@" && exit 0
-	    ;;
-	esac
-	case $firstarg in
-	*h*)
-	    firstarg=`echo "$firstarg" | sed s/h//`
-	    tar "$firstarg" "$@" && exit 0
-	    ;;
-	esac
-    fi
-
-    echo 1>&2 "\
-WARNING: I can't seem to be able to run \`tar' with the given arguments.
-         You may want to install GNU tar or Free paxutils, or check the
-         command line arguments."
-    exit 1
     ;;
 
   *)

@@ -4,14 +4,12 @@ INCLUDES =					\
 	-I$(top_srcdir)				\
 	-I$(top_srcdir)/poppler			\
 	-I$(top_srcdir)/qt4/src			\
-	-I$(top_srcdir)/qt			\
-	$(FONTCONFIG_CFLAGS)			\
+	-DTESTDATADIR=\"$(TESTDATADIR)\"        \
 	$(POPPLER_QT4_CFLAGS)
 
 LDADDS =					\
 	$(top_builddir)/poppler/libpoppler.la	\
 	$(top_builddir)/qt4/src/libpoppler-qt4.la	\
-	$(FONTCONFIG_LIBS)				\
 	$(POPPLER_QT4_LIBS)
 
 SUFFIXES: .moc
@@ -21,7 +19,8 @@ SUFFIXES: .moc
 
 noinst_PROGRAMS = test-poppler-qt4 stress-poppler-qt4 \
 	poppler-fonts test-password-qt4 stress-poppler-dir \
-	poppler-attachments poppler-texts
+	poppler-attachments poppler-texts poppler-forms \
+	stress-threads-qt4
 
 
 test_poppler_qt4_SOURCES =			\
@@ -51,6 +50,11 @@ poppler_texts_SOURCES =			\
 
 poppler_texts_LDADD = $(LDADDS)
 
+poppler_forms_SOURCES =			\
+       poppler-forms.cpp
+
+poppler_forms_LDADD = $(LDADDS)
+
 
 stress_poppler_qt4_SOURCES =			\
        stress-poppler-qt4.cpp
@@ -61,6 +65,12 @@ stress_poppler_dir_SOURCES =			\
        stress-poppler-dir.cpp
 
 stress_poppler_dir_LDADD = $(LDADDS)
+
+stress_threads_qt4_SOURCES =			\
+       stress-threads-qt4.cpp
+
+stress_threads_qt4_LDADD = $(LDADDS)
+
 
 clean-generic:
 	rm -f *.moc
@@ -75,11 +85,14 @@ TESTS = \
 	check_metadata         	\
 	check_optcontent	\
 	check_permissions      	\
+	check_pagelabelinfo    	\
 	check_pagemode    	\
 	check_password    	\
 	check_pagelayout	\
 	check_search		\
-	check_strings
+	check_strings		\
+	check_lexer		\
+	check_goostring
 
 check_PROGRAMS = $(TESTS)
 
@@ -134,6 +147,18 @@ check_search_LDADD = $(LDADDS) $(POPPLER_QT4_TEST_LIBS)
 check_strings_SOURCES = check_strings.cpp
 check_strings.$(OBJEXT): check_strings.moc
 check_strings_LDADD = $(LDADDS) $(POPPLER_QT4_TEST_LIBS)
+
+check_lexer_SOURCES = check_lexer.cpp
+check_lexer.$(OBJEXT): check_lexer.moc
+check_lexer_LDADD = $(LDADDS) $(POPPLER_QT4_TEST_LIBS)
+
+check_pagelabelinfo_SOURCES = check_pagelabelinfo.cpp
+check_pagelabelinfo.$(OBJEXT): check_pagelabelinfo.moc
+check_pagelabelinfo_LDADD = $(LDADDS) $(POPPLER_QT4_TEST_LIBS)
+
+check_goostring_SOURCES = check_goostring.cpp
+check_goostring.$(OBJEXT): check_goostring.moc
+check_goostring_LDADD = $(LDADDS) $(POPPLER_QT4_TEST_LIBS)
 
 endif
 

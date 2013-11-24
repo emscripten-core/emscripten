@@ -52,12 +52,12 @@ public:
   static UnicodeMap *parse(GooString *encodingNameA);
 
   // Create a resident UnicodeMap.
-  UnicodeMap(char *encodingNameA, GBool unicodeOutA,
+  UnicodeMap(const char *encodingNameA, GBool unicodeOutA,
 	     UnicodeMapRange *rangesA, int lenA);
 
   // Create a resident UnicodeMap that uses a function instead of a
   // list of ranges.
-  UnicodeMap(char *encodingNameA, GBool unicodeOutA,
+  UnicodeMap(const char *encodingNameA, GBool unicodeOutA,
 	     UnicodeMapFunc funcA);
 
   ~UnicodeMap();

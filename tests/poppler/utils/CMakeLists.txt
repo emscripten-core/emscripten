@@ -5,9 +5,6 @@ set(common_srcs
 set(common_libs
   poppler
 )
-if (FONTCONFIG_FOUND)
-  set(common_libs ${common_libs} ${FONTCONFIG_LIBRARIES})
-endif (FONTCONFIG_FOUND)
 
 if (ENABLE_SPLASH)
   # pdftoppm
@@ -19,6 +16,44 @@ if (ENABLE_SPLASH)
   install(TARGETS pdftoppm DESTINATION bin)
   install(FILES pdftoppm.1 DESTINATION share/man/man1)
 endif (ENABLE_SPLASH)
+
+if (HAVE_CAIRO)
+  # pdftocairo
+  set(pdftocairo_SOURCES ${common_srcs}
+    pdftocairo.cc
+    ${CMAKE_SOURCE_DIR}/poppler/CairoFontEngine.cc
+    ${CMAKE_SOURCE_DIR}/poppler/CairoOutputDev.cc
+    ${CMAKE_SOURCE_DIR}/poppler/CairoRescaleBox.cc
+  )
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CAIRO_INCLUDE_DIRS}
+  )
+  add_definitions(${CAIRO_CFLAGS})
+  add_executable(pdftocairo ${pdftocairo_SOURCES})
+  target_link_libraries(pdftocairo ${CAIRO_LIBRARIES} ${FREETYPE_LIBRARIES} ${common_libs})
+  if(LCMS_FOUND)
+    target_link_libraries(pdftocairo ${LCMS_LIBRARIES})
+  endif(LCMS_FOUND)
+  if(HAVE_PTHREAD)
+    target_link_libraries(pdftocairo ${CMAKE_THREAD_LIBS_INIT})
+  endif()
+  if(LCMS2_FOUND)
+    target_link_libraries(pdftocairo ${LCMS2_LIBRARIES})
+  endif(LCMS2_FOUND)
+  install(TARGETS pdftocairo DESTINATION bin)
+  install(FILES pdftocairo.1 DESTINATION share/man/man1)
+endif (HAVE_CAIRO)
+
+# pdfdetach
+set(pdfdetach_SOURCES ${common_srcs}
+  pdfdetach.cc
+)
+add_executable(pdfdetach ${pdfdetach_SOURCES})
+target_link_libraries(pdfdetach ${common_libs})
+install(TARGETS pdfdetach DESTINATION bin)
+install(FILES pdfdetach.1 DESTINATION share/man/man1)
 
 # pdffonts
 set(pdffonts_SOURCES ${common_srcs}
@@ -34,6 +69,8 @@ set(pdfimages_SOURCES ${common_srcs}
   pdfimages.cc
   ImageOutputDev.cc
   ImageOutputDev.h
+  JSInfo.cc
+  JSInfo.h
 )
 add_executable(pdfimages ${pdfimages_SOURCES})
 target_link_libraries(pdfimages ${common_libs})
@@ -43,6 +80,8 @@ install(FILES pdfimages.1 DESTINATION share/man/man1)
 # pdfinfo
 set(pdfinfo_SOURCES ${common_srcs}
   pdfinfo.cc printencodings.cc
+  JSInfo.cc
+  JSInfo.h
 )
 add_executable(pdfinfo ${pdfinfo_SOURCES})
 target_link_libraries(pdfinfo ${common_libs})
@@ -79,13 +118,20 @@ target_link_libraries(pdftohtml ${common_libs})
 install(TARGETS pdftohtml DESTINATION bin)
 install(FILES pdftohtml.1 DESTINATION share/man/man1)
 
-if (ENABLE_ABIWORD)
-  # pdftoabw
-  set(pdftoabw_SOURCES ${common_srcs}
-    pdftoabw.cc
-  )
-  add_executable(pdftoabw ${pdftoabw_SOURCES})
-  target_link_libraries(pdftoabw ${common_libs} ${LIBXML2_LIBRARIES})
-  install(TARGETS pdftoabw DESTINATION bin)
-endif (ENABLE_ABIWORD)
+# pdfseparate
+set(pdfseparate_SOURCES ${common_srcs}
+  pdfseparate.cc
+)
+add_executable(pdfseparate ${pdfseparate_SOURCES})
+target_link_libraries(pdfseparate ${common_libs})
+install(TARGETS pdfseparate DESTINATION bin)
+install(FILES pdfseparate.1 DESTINATION share/man/man1)
 
+# pdfunite
+set(pdfunite_SOURCES ${common_srcs}
+  pdfunite.cc
+)
+add_executable(pdfunite ${pdfunite_SOURCES})
+target_link_libraries(pdfunite ${common_libs})
+install(TARGETS pdfunite DESTINATION bin)
+install(FILES pdfunite.1 DESTINATION share/man/man1)

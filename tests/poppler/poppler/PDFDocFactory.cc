@@ -59,7 +59,7 @@ PDFDocFactory::createPDFDoc(const GooString &uri, GooString *ownerPassword,
     }
   }
 
-  error(-1, "Cannot handle URI '%s'.", uri.getCString());
+  error(errInternal, -1, "Cannot handle URI '{0:t}'.", &uri);
   GooString *fileName = uri.copy();
   return PDFDoc::ErrorPDFDoc(errOpenFile, fileName);
 }

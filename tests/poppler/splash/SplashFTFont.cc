@@ -15,6 +15,8 @@
 // Copyright (C) 2006 Kristian Høgsberg <krh@bitplanet.net>
 // Copyright (C) 2009 Petr Gajdos <pgajdos@novell.com>
 // Copyright (C) 2010 Suzuki Toshiya <mpsuzuki@hiroshima-u.ac.jp>
+// Copyright (C) 2011 Andreas Hartmetz <ahartmetz@gmail.com>
+// Copyright (C) 2012 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -57,30 +59,88 @@ static int glyphPathCubicTo(const FT_Vector *ctrl1, const FT_Vector *ctrl2,
 SplashFTFont::SplashFTFont(SplashFTFontFile *fontFileA, SplashCoord *matA,
 			   SplashCoord *textMatA):
   SplashFont(fontFileA, matA, textMatA, fontFileA->engine->aa), 
-  enableFreeTypeHinting(fontFileA->engine->enableFreeTypeHinting)
+  enableFreeTypeHinting(fontFileA->engine->enableFreeTypeHinting),
+  enableSlightHinting(fontFileA->engine->enableSlightHinting)
 {
   FT_Face face;
-  double div;
+  int div;
   int x, y;
+#if USE_FIXEDPOINT
+  SplashCoord scale;
+#endif
 
   face = fontFileA->face;
   if (FT_New_Size(face, &sizeObj)) {
     return;
   }
   face->size = sizeObj;
-  size = splashSqrt(mat[2]*mat[2] + mat[3]*mat[3]);
-  if ((int)size < 1) {
+  size = splashRound(splashDist(0, 0, mat[2], mat[3]));
+  if (size < 1) {
     size = 1;
   }
-  if (FT_Set_Pixel_Sizes(face, 0, (int)size)) {
+  if (FT_Set_Pixel_Sizes(face, 0, size)) {
     return;
   }
   // if the textMat values are too small, FreeType's fixed point
   // arithmetic doesn't work so well
-  textScale = splashSqrt(textMat[2]*textMat[2] + textMat[3]*textMat[3]) / size;
+  textScale = splashDist(0, 0, textMat[2], textMat[3]) / size;
 
   div = face->bbox.xMax > 20000 ? 65536 : 1;
 
+#if USE_FIXEDPOINT
+  scale = (SplashCoord)1 / (SplashCoord)face->units_per_EM;
+
+  // transform the four corners of the font bounding box -- the min
+  // and max values form the bounding box of the transformed font
+  x = (int)(mat[0] * (scale * (face->bbox.xMin / div)) +
+	    mat[2] * (scale * (face->bbox.yMin / div)));
+  xMin = xMax = x;
+  y = (int)(mat[1] * (scale * (face->bbox.xMin / div)) +
+	    mat[3] * (scale * (face->bbox.yMin / div)));
+  yMin = yMax = y;
+  x = (int)(mat[0] * (scale * (face->bbox.xMin / div)) +
+	    mat[2] * (scale * (face->bbox.yMax / div)));
+  if (x < xMin) {
+    xMin = x;
+  } else if (x > xMax) {
+    xMax = x;
+  }
+  y = (int)(mat[1] * (scale * (face->bbox.xMin / div)) +
+	    mat[3] * (scale * (face->bbox.yMax / div)));
+  if (y < yMin) {
+    yMin = y;
+  } else if (y > yMax) {
+    yMax = y;
+  }
+  x = (int)(mat[0] * (scale * (face->bbox.xMax / div)) +
+	    mat[2] * (scale * (face->bbox.yMin / div)));
+  if (x < xMin) {
+    xMin = x;
+  } else if (x > xMax) {
+    xMax = x;
+  }
+  y = (int)(mat[1] * (scale * (face->bbox.xMax / div)) +
+	    mat[3] * (scale * (face->bbox.yMin / div)));
+  if (y < yMin) {
+    yMin = y;
+  } else if (y > yMax) {
+    yMax = y;
+  }
+  x = (int)(mat[0] * (scale * (face->bbox.xMax / div)) +
+	    mat[2] * (scale * (face->bbox.yMax / div)));
+  if (x < xMin) {
+    xMin = x;
+  } else if (x > xMax) {
+    xMax = x;
+  }
+  y = (int)(mat[1] * (scale * (face->bbox.xMax / div)) +
+	    mat[3] * (scale * (face->bbox.yMax / div)));
+  if (y < yMin) {
+    yMin = y;
+  } else if (y > yMax) {
+    yMax = y;
+  }
+#else // USE_FIXEDPOINT
   // transform the four corners of the font bounding box -- the min
   // and max values form the bounding box of the transformed font
   x = (int)((mat[0] * face->bbox.xMin + mat[2] * face->bbox.yMin) /
@@ -131,11 +191,12 @@ SplashFTFont::SplashFTFont(SplashFTFontFile *fontFileA, SplashCoord *matA,
   } else if (y > yMax) {
     yMax = y;
   }
+#endif // USE_FIXEDPOINT
   // This is a kludge: some buggy PDF generators embed fonts with
   // zero bounding boxes.
   if (xMax == xMin) {
     xMin = 0;
-    xMax = (int)size;
+    xMax = size;
   }
   if (yMax == yMin) {
     yMin = 0;
@@ -144,23 +205,23 @@ SplashFTFont::SplashFTFont(SplashFTFontFile *fontFileA, SplashCoord *matA,
 
   // compute the transform matrix
 #if USE_FIXEDPOINT
-  matrix.xx = (FT_Fixed)((mat[0] / size).getRaw());
-  matrix.yx = (FT_Fixed)((mat[1] / size).getRaw());
-  matrix.xy = (FT_Fixed)((mat[2] / size).getRaw());
-  matrix.yy = (FT_Fixed)((mat[3] / size).getRaw());
-  textMatrix.xx = (FT_Fixed)((textMat[0] / (textScale * size)).getRaw());
-  textMatrix.yx = (FT_Fixed)((textMat[1] / (textScale * size)).getRaw());
-  textMatrix.xy = (FT_Fixed)((textMat[2] / (textScale * size)).getRaw());
-  textMatrix.yy = (FT_Fixed)((textMat[3] / (textScale * size)).getRaw());
+  matrix.xx = (FT_Fixed)((mat[0] / size).get16Dot16());
+  matrix.yx = (FT_Fixed)((mat[1] / size).get16Dot16());
+  matrix.xy = (FT_Fixed)((mat[2] / size).get16Dot16());
+  matrix.yy = (FT_Fixed)((mat[3] / size).get16Dot16());
+  textMatrix.xx = (FT_Fixed)((textMat[0] / (textScale * size)).get16Dot16());
+  textMatrix.yx = (FT_Fixed)((textMat[1] / (textScale * size)).get16Dot16());
+  textMatrix.xy = (FT_Fixed)((textMat[2] / (textScale * size)).get16Dot16());
+  textMatrix.yy = (FT_Fixed)((textMat[3] / (textScale * size)).get16Dot16());
 #else
   matrix.xx = (FT_Fixed)((mat[0] / size) * 65536);
   matrix.yx = (FT_Fixed)((mat[1] / size) * 65536);
   matrix.xy = (FT_Fixed)((mat[2] / size) * 65536);
   matrix.yy = (FT_Fixed)((mat[3] / size) * 65536);
-  textMatrix.xx = (FT_Fixed)((textMat[0] / (size * textScale)) * 65536);
-  textMatrix.yx = (FT_Fixed)((textMat[1] / (size * textScale)) * 65536);
-  textMatrix.xy = (FT_Fixed)((textMat[2] / (size * textScale)) * 65536);
-  textMatrix.yy = (FT_Fixed)((textMat[3] / (size * textScale)) * 65536);
+  textMatrix.xx = (FT_Fixed)((textMat[0] / (textScale * size)) * 65536);
+  textMatrix.yx = (FT_Fixed)((textMat[1] / (textScale * size)) * 65536);
+  textMatrix.xy = (FT_Fixed)((textMat[2] / (textScale * size)) * 65536);
+  textMatrix.yy = (FT_Fixed)((textMat[3] / (textScale * size)) * 65536);
 #endif
 }
 
@@ -172,12 +233,33 @@ GBool SplashFTFont::getGlyph(int c, int xFrac, int yFrac,
   return SplashFont::getGlyph(c, xFrac, 0, bitmap, x0, y0, clip, clipRes);
 }
 
-static FT_Int32 getFTLoadFlags(GBool aa, GBool enableFreeTypeHinting)
+static FT_Int32 getFTLoadFlags(GBool type1, GBool trueType, GBool aa, GBool enableFreeTypeHinting, GBool enableSlightHinting)
 {
-  if (aa && enableFreeTypeHinting) return FT_LOAD_NO_BITMAP;
-  else if (aa && !enableFreeTypeHinting) return FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP;
-  else if (!aa && enableFreeTypeHinting) return FT_LOAD_DEFAULT;
-  else return FT_LOAD_NO_HINTING;
+  int ret = FT_LOAD_DEFAULT;
+  if (aa)
+    ret |= FT_LOAD_NO_BITMAP;
+  
+  if (enableFreeTypeHinting) {
+    if (enableSlightHinting) {
+      ret |= FT_LOAD_TARGET_LIGHT;
+    } else {
+      if (trueType) {
+	// FT2's autohinting doesn't always work very well (especially with
+	// font subsets), so turn it off if anti-aliasing is enabled; if
+	// anti-aliasing is disabled, this seems to be a tossup - some fonts
+	// look better with hinting, some without, so leave hinting on
+	if (aa) {
+	  ret |= FT_LOAD_NO_AUTOHINT;
+	}
+      } else if (type1) {
+	// Type 1 fonts seem to look better with 'light' hinting mode
+	ret |= FT_LOAD_TARGET_LIGHT;
+      }
+    }
+  } else {
+    ret |= FT_LOAD_NO_HINTING;
+  }
+  return ret;
 }
 
 GBool SplashFTFont::makeGlyph(int c, int xFrac, int yFrac,
@@ -204,7 +286,7 @@ GBool SplashFTFont::makeGlyph(int c, int xFrac, int yFrac,
     gid = (FT_UInt)c;
   }
 
-  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(aa, enableFreeTypeHinting))) {
+  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(ff->type1, ff->trueType, aa, enableFreeTypeHinting, enableSlightHinting))) {
     return gFalse;
   }
 
@@ -228,6 +310,12 @@ GBool SplashFTFont::makeGlyph(int c, int xFrac, int yFrac,
 
   if (FT_Render_Glyph(slot, aa ? ft_render_mode_normal
 		               : ft_render_mode_mono)) {
+    return gFalse;
+  }
+
+  if (slot->bitmap.width == 0 || slot->bitmap.rows == 0) {
+    // this can happen if (a) the glyph is really tiny or (b) the
+    // metrics in the TrueType file are broken
     return gFalse;
   }
 
@@ -282,12 +370,8 @@ double SplashFTFont::getGlyphAdvance(int c)
   } else {
     gid = (FT_UInt)c;
   }
-  if (ff->trueType && gid == 0) {
-    // skip the TrueType notdef glyph
-    return -1;
-  }
 
-  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(aa, enableFreeTypeHinting))) {
+  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(ff->type1, ff->trueType, aa, enableFreeTypeHinting, enableSlightHinting))) {
     return -1;
   }
 
@@ -331,14 +415,13 @@ SplashPath *SplashFTFont::getGlyphPath(int c) {
   } else {
     gid = (FT_UInt)c;
   }
-  if (ff->trueType && gid == 0) {
-    // skip the TrueType notdef glyph
-    return NULL;
-  }
-  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(aa, enableFreeTypeHinting))) {
+  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(ff->type1, ff->trueType, aa, enableFreeTypeHinting, enableSlightHinting))) {
     return NULL;
   }
   if (FT_Get_Glyph(slot, &glyph)) {
+    return NULL;
+  }
+  if (FT_Outline_Check(&((FT_OutlineGlyph)glyph)->outline)) {
     return NULL;
   }
   path.path = new SplashPath();

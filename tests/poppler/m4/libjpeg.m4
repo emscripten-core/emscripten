@@ -68,7 +68,13 @@ KDE_FIND_JPEG_HELPER(6b, 6b,
 
 dnl then search the headers (can't use simply AC_TRY_xxx, as jpeglib.h
 dnl requires system dependent includes loaded before it)
+ac_save_CPPFLAGS="$CPPFLAGS"
+ac_save_CFLAGS="$CFLAGS"
+CPPFLAGS="$CPPFLAGS $all_includes $USER_INCLUDES"
+CFLAGS="$CFLAGS $all_includes $USER_INCLUDES"
 AC_CHECK_HEADER([jpeglib.h], [jpeg_incdir=yes], [jpeg_incdir=NO])
+CPPFLAGS="$ac_save_CPPFLAGS"
+CFLAGS="$ac_save_CFLAGS"
 test "x$jpeg_incdir" = xNO && jpeg_incdir=
 
 dnl if headers _and_ libraries are missing, this is no error, and we

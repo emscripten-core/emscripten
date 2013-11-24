@@ -5,7 +5,7 @@
 // Copyright 2007 Brad Hards <bradh@kde.org>
 // Copyright 2008 Pino Toscano <pino@kde.org>
 // Copyright 2008, 2010 Carlos Garcia Campos <carlosgc@gnome.org>
-// Copyright 2008, 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright 2008, 2010, 2011 Albert Astals Cid <aacid@kde.org>
 // Copyright 2008 Mark Kaplan <mkaplan@finjan.com>
 //
 // Released under the GPL (version 2, or later, at your option)
@@ -25,6 +25,14 @@
 // #include "PDFDocEncoding.h"
 #include "OptionalContent.h"
 
+// Max depth of nested visibility expressions.  This is used to catch
+// infinite loops in the visibility expression object structure.
+#define visibilityExprRecursionLimit 50
+
+// Max depth of nested display nodes.  This is used to catch infinite
+// loops in the "Order" object structure.
+#define displayNodeRecursionLimit 50
+
 //------------------------------------------------------------------------
 
 OCGs::OCGs(Object *ocgObject, XRef *xref) :
@@ -33,11 +41,12 @@ OCGs::OCGs(Object *ocgObject, XRef *xref) :
   // we need to parse the dictionary here, and build optionalContentGroups
   ok = gTrue;
   optionalContentGroups = new GooList();
+  display = NULL;
 
   Object ocgList;
   ocgObject->dictLookup("OCGs", &ocgList);
   if (!ocgList.isArray()) {
-    error(-1, "Expected the optional content group list, but wasn't able to find it, or it isn't an Array");
+    error(errSyntaxError, -1, "Expected the optional content group list, but wasn't able to find it, or it isn't an Array");
     ocgList.free();
     ok = gFalse;
     return;
@@ -65,7 +74,7 @@ OCGs::OCGs(Object *ocgObject, XRef *xref) :
   Object defaultOcgConfig;
   ocgObject->dictLookup("D", &defaultOcgConfig);
   if (!defaultOcgConfig.isDict()) {
-    error(-1, "Expected the default config, but wasn't able to find it, or it isn't a Dictionary");
+    error(errSyntaxError, -1, "Expected the default config, but wasn't able to find it, or it isn't a Dictionary");
     defaultOcgConfig.free();
     ocgList.free();
     ok = gFalse;
@@ -99,7 +108,7 @@ OCGs::OCGs(Object *ocgObject, XRef *xref) :
       OptionalContentGroup *group = findOcgByRef( reference.getRef() );
       reference.free();
       if (!group) {
-	error(-1, "Couldn't find group for reference");
+	error(errSyntaxWarning, -1, "Couldn't find group for reference");
 	break;
       }
       group->setState(OptionalContentGroup::On);
@@ -122,7 +131,7 @@ OCGs::OCGs(Object *ocgObject, XRef *xref) :
       OptionalContentGroup *group = findOcgByRef( reference.getRef() );
       reference.free();
       if (!group) {
-	error(-1, "Couldn't find group for reference to set OFF");
+	error(errSyntaxWarning, -1, "Couldn't find group for reference to set OFF");
 	break;
       }
       group->setState(OptionalContentGroup::Off);
@@ -141,6 +150,8 @@ OCGs::~OCGs()
 {
   deleteGooList(optionalContentGroups, OptionalContentGroup);
   order.free();
+  if (display)
+    delete display;
   rbgroups.free();
 }
 
@@ -161,10 +172,19 @@ OptionalContentGroup* OCGs::findOcgByRef( const Ref &ref)
     }
   }
 
-  error(-1, "Could not find a OCG with Ref (%d:%d)", ref.num, ref.gen);
-
   // not found
   return NULL;
+}
+
+OCDisplayNode *OCGs::getDisplayRoot()
+{
+  if (display)
+    return display;
+
+  if (order.isArray())
+    display = OCDisplayNode::parse(&order, this, m_xref);
+
+  return display;
 }
 
 bool OCGs::optContentIsVisible( Object *dictRef )
@@ -174,10 +194,21 @@ bool OCGs::optContentIsVisible( Object *dictRef )
   Object dictType;
   Object ocg;
   Object policy;
+  Object ve;
   bool result = true;
+
+  if (dictRef->isNull())
+    return result;
+
+  if (dictRef->isRef()) {
+    OptionalContentGroup *oc = findOcgByRef(dictRef->getRef());
+    if (oc)
+      return oc->getState() == OptionalContentGroup::On;
+  }
+
   dictRef->fetch( m_xref, &dictObj );
   if ( ! dictObj.isDict() ) {
-    error(-1, "Unexpected oc reference target: %i", dictObj.getType() );
+    error(errSyntaxWarning, -1, "Unexpected oc reference target: {0:d}", dictObj.getType() );
     dictObj.free();
     return result;
   }
@@ -185,35 +216,37 @@ bool OCGs::optContentIsVisible( Object *dictRef )
   // printf("checking if optContent is visible\n");
   dict->lookup("Type", &dictType);
   if (dictType.isName("OCMD")) {
-    // If we supported Visibility Expressions, we'd check
-    // for a VE entry, and then call out to the parser here...
-    // printf("found OCMD dict\n");
-    dict->lookup("P", &policy);
-    dict->lookupNF("OCGs", &ocg);
-    if (ocg.isArray()) {
-      if (policy.isName("AllOn")) {
-	result = allOn( ocg.getArray() );
-      } else if (policy.isName("AllOff")) {
-	result = allOff( ocg.getArray() );
-      } else if (policy.isName("AnyOff")) {
-	result = anyOff( ocg.getArray() );
-      } else if ( (!policy.isName()) || (policy.isName("AnyOn") ) ) {
-	// this is the default
-	result = anyOn( ocg.getArray() );
+    if (dict->lookup("VE", &ve)->isArray()) {
+      result = evalOCVisibilityExpr(&ve, 0);
+    } else {
+      dict->lookupNF("OCGs", &ocg);
+      if (ocg.isArray()) {
+        dict->lookup("P", &policy);
+        if (policy.isName("AllOn")) {
+          result = allOn( ocg.getArray() );
+        } else if (policy.isName("AllOff")) {
+          result = allOff( ocg.getArray() );
+        } else if (policy.isName("AnyOff")) {
+          result = anyOff( ocg.getArray() );
+        } else if ( (!policy.isName()) || (policy.isName("AnyOn") ) ) {
+          // this is the default
+          result = anyOn( ocg.getArray() );
+        }
+        policy.free();
+      } else if (ocg.isRef()) {
+        OptionalContentGroup *oc = findOcgByRef( ocg.getRef() );
+        if ( oc && oc->getState() == OptionalContentGroup::Off ) {
+          result = false;
+        } else {
+          result = true ;
+        }
       }
-    } else if (ocg.isRef()) {
-      OptionalContentGroup* oc = findOcgByRef( ocg.getRef() );      
-      if ( oc && oc->getState() == OptionalContentGroup::Off ) {
-	result = false;
-      } else {
-	result = true ;
-      }
+      ocg.free();
     }
-    ocg.free();
-    policy.free();
+    ve.free();
   } else if ( dictType.isName("OCG") ) {
     OptionalContentGroup* oc = findOcgByRef( dictRef->getRef() );
-    if ( !oc || oc->getState() == OptionalContentGroup::Off ) {
+    if ( oc && oc->getState() == OptionalContentGroup::Off ) {
       result=false;
     }
   }
@@ -221,6 +254,64 @@ bool OCGs::optContentIsVisible( Object *dictRef )
   dictObj.free();
   // printf("visibility: %s\n", result? "on" : "off");
   return result;
+}
+
+GBool OCGs::evalOCVisibilityExpr(Object *expr, int recursion) {
+  OptionalContentGroup *ocg;
+  Object expr2, op, obj;
+  GBool ret;
+  int i;
+
+  if (recursion > visibilityExprRecursionLimit) {
+    error(errSyntaxError, -1,
+	  "Loop detected in optional content visibility expression");
+    return gTrue;
+  }
+  if (expr->isRef()) {
+    if ((ocg = findOcgByRef(expr->getRef()))) {
+      return ocg->getState() == OptionalContentGroup::On;
+    }
+  }
+  expr->fetch(m_xref, &expr2);
+  if (!expr2.isArray() || expr2.arrayGetLength() < 1) {
+    error(errSyntaxError, -1,
+	  "Invalid optional content visibility expression");
+    expr2.free();
+    return gTrue;
+  }
+  expr2.arrayGet(0, &op);
+  if (op.isName("Not")) {
+    if (expr2.arrayGetLength() == 2) {
+      expr2.arrayGetNF(1, &obj);
+      ret = !evalOCVisibilityExpr(&obj, recursion + 1);
+      obj.free();
+    } else {
+      error(errSyntaxError, -1,
+	    "Invalid optional content visibility expression");
+      ret = gTrue;
+    }
+  } else if (op.isName("And")) {
+    ret = gTrue;
+    for (i = 1; i < expr2.arrayGetLength() && ret; ++i) {
+      expr2.arrayGetNF(i, &obj);
+      ret = evalOCVisibilityExpr(&obj, recursion + 1);
+      obj.free();
+    }
+  } else if (op.isName("Or")) {
+    ret = gFalse;
+    for (i = 1; i < expr2.arrayGetLength() && !ret; ++i) {
+      expr2.arrayGetNF(i, &obj);
+      ret = evalOCVisibilityExpr(&obj, recursion + 1);
+      obj.free();
+    }
+  } else {
+    error(errSyntaxError, -1,
+	  "Invalid optional content visibility expression");
+    ret = gTrue;
+  }
+  op.free();
+  expr2.free();
+  return ret;
 }
 
 bool OCGs::allOn( Array *ocgArray )
@@ -287,14 +378,42 @@ bool OCGs::anyOff( Array *ocgArray )
 
 OptionalContentGroup::OptionalContentGroup(Dict *ocgDict) : m_name(NULL)
 {
+  Object obj1, obj2, obj3;
   Object ocgName;
   ocgDict->lookup("Name", &ocgName);
   if (!ocgName.isString()) {
-    error(-1, "Expected the name of the OCG, but wasn't able to find it, or it isn't a String");
+    error(errSyntaxWarning, -1, "Expected the name of the OCG, but wasn't able to find it, or it isn't a String");
   } else {
     m_name = new GooString( ocgName.getString() );
   }
   ocgName.free();
+
+  viewState = printState = ocUsageUnset;
+  if (ocgDict->lookup("Usage", &obj1)->isDict()) {
+    if (obj1.dictLookup("View", &obj2)->isDict()) {
+      if (obj2.dictLookup("ViewState", &obj3)->isName()) {
+	if (obj3.isName("ON")) {
+	  viewState = ocUsageOn;
+	} else {
+	  viewState = ocUsageOff;
+	}
+      }
+      obj3.free();
+    }
+    obj2.free();
+    if (obj1.dictLookup("Print", &obj2)->isDict()) {
+      if (obj2.dictLookup("PrintState", &obj3)->isName()) {
+	if (obj3.isName("ON")) {
+	  printState = ocUsageOn;
+	} else {
+	  printState = ocUsageOff;
+	}
+      }
+      obj3.free();
+    }
+    obj2.free();
+  }
+  obj1.free();
 }
 
 OptionalContentGroup::OptionalContentGroup(GooString *label)
@@ -323,3 +442,112 @@ OptionalContentGroup::~OptionalContentGroup()
   delete m_name;
 }
 
+//------------------------------------------------------------------------
+
+OCDisplayNode *OCDisplayNode::parse(Object *obj, OCGs *oc,
+				    XRef *xref, int recursion) {
+  Object obj2, obj3;
+  OptionalContentGroup *ocgA;
+  OCDisplayNode *node, *child;
+  int i;
+
+  if (recursion > displayNodeRecursionLimit) {
+    error(errSyntaxError, -1, "Loop detected in optional content order");
+    return NULL;
+  }
+  if (obj->isRef()) {
+    if ((ocgA = oc->findOcgByRef(obj->getRef()))) {
+      return new OCDisplayNode(ocgA);
+    }
+  }
+  obj->fetch(xref, &obj2);
+  if (!obj2.isArray()) {
+    obj2.free();
+    return NULL;
+  }
+  i = 0;
+  if (obj2.arrayGetLength() >= 1) {
+    if (obj2.arrayGet(0, &obj3)->isString()) {
+      node = new OCDisplayNode(obj3.getString());
+      i = 1;
+    } else {
+      node = new OCDisplayNode();
+    }
+    obj3.free();
+  } else {
+    node = new OCDisplayNode();
+  }
+  for (; i < obj2.arrayGetLength(); ++i) {
+    obj2.arrayGetNF(i, &obj3);
+    if ((child = OCDisplayNode::parse(&obj3, oc, xref, recursion + 1))) {
+      if (!child->ocg && !child->name && node->getNumChildren() > 0) {
+	node->getChild(node->getNumChildren() - 1)->addChildren(child->takeChildren());
+	delete child;
+      } else {
+	node->addChild(child);
+      }
+    }
+    obj3.free();
+  }
+  obj2.free();
+  return node;
+}
+
+OCDisplayNode::OCDisplayNode() {
+  name = NULL;
+  ocg = NULL;
+  children = NULL;
+}
+
+OCDisplayNode::OCDisplayNode(GooString *nameA) {
+  name = new GooString(nameA);
+  ocg = NULL;
+  children = NULL;
+}
+
+OCDisplayNode::OCDisplayNode(OptionalContentGroup *ocgA) {
+  name = (ocgA->getName()) ? ocgA->getName()->copy() : NULL;
+  ocg = ocgA;
+  children = NULL;
+}
+
+void OCDisplayNode::addChild(OCDisplayNode *child) {
+  if (!children) {
+    children = new GooList();
+  }
+  children->append(child);
+}
+
+void OCDisplayNode::addChildren(GooList *childrenA) {
+  if (!children) {
+    children = new GooList();
+  }
+  children->append(childrenA);
+  delete childrenA;
+}
+
+GooList *OCDisplayNode::takeChildren() {
+  GooList *childrenA;
+
+  childrenA = children;
+  children = NULL;
+  return childrenA;
+}
+
+OCDisplayNode::~OCDisplayNode() {
+  gfree(name);
+  if (children) {
+    deleteGooList(children, OCDisplayNode);
+  }
+}
+
+int OCDisplayNode::getNumChildren() {
+  if (!children) {
+    return 0;
+  }
+  return children->getLength();
+}
+
+OCDisplayNode *OCDisplayNode::getChild(int idx) {
+  return (OCDisplayNode *)children->get(idx);
+}

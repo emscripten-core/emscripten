@@ -12,6 +12,7 @@
 // under GPL version 2 or later
 //
 // Copyright (C) 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -116,7 +117,14 @@ public:
   // Clips an anti-aliased line by setting pixels to zero.  On entry,
   // all non-zero pixels are between <x0> and <x1>.  This function
   // will update <x0> and <x1>.
-  void clipAALine(SplashBitmap *aaBuf, int *x0, int *x1, int y);
+  void clipAALine(SplashBitmap *aaBuf, int *x0, int *x1, int y,
+    GBool adjustVertLine = gFalse);
+
+  // Get the rectangle part of the clip region.
+  SplashCoord getXMin() { return xMin; }
+  SplashCoord getXMax() { return xMax; }
+  SplashCoord getYMin() { return yMin; }
+  SplashCoord getYMax() { return yMax; }
 
   // Get the rectangle part of the clip region, in integer coordinates.
   int getXMinI() { return xMinI; }

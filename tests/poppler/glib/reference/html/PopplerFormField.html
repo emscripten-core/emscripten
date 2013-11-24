@@ -3,12 +3,12 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>PoppplerFormField</title>
-<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
 <link rel="home" href="index.html" title="Poppler Reference Manual">
 <link rel="up" href="ch01.html" title="Poppler">
 <link rel="prev" href="PopplerAttachment.html" title="PopplerAttachment">
 <link rel="next" href="PopplerAnnot.html" title="PopplerAnnot">
-<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<meta name="generator" content="GTK-Doc V1.19 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -47,64 +47,65 @@ enum                <a class="link" href="PopplerFormField.html#PopplerFormField
 enum                <a class="link" href="PopplerFormField.html#PopplerFormButtonType" title="enum PopplerFormButtonType">PopplerFormButtonType</a>;
 enum                <a class="link" href="PopplerFormField.html#PopplerFormChoiceType" title="enum PopplerFormChoiceType">PopplerFormChoiceType</a>;
 enum                <a class="link" href="PopplerFormField.html#PopplerFormTextType" title="enum PopplerFormTextType">PopplerFormTextType</a>;
-<a class="link" href="PopplerFormField.html#PopplerFormFieldType" title="enum PopplerFormFieldType"><span class="returnvalue">PopplerFormFieldType</span></a>  <a class="link" href="PopplerFormField.html#poppler-form-field-get-field-type" title="poppler_form_field_get_field_type ()">poppler_form_field_get_field_type</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gint</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-get-id" title="poppler_form_field_get_id ()">poppler_form_field_get_id</a>           (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-is-read-only" title="poppler_form_field_is_read_only ()">poppler_form_field_is_read_only</a>     (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gdouble</span>             <a class="link" href="PopplerFormField.html#poppler-form-field-get-font-size" title="poppler_form_field_get_font_size ()">poppler_form_field_get_font_size</a>    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerFormField.html#poppler-form-field-get-partial-name" title="poppler_form_field_get_partial_name ()">poppler_form_field_get_partial_name</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerFormField.html#poppler-form-field-get-mapping-name" title="poppler_form_field_get_mapping_name ()">poppler_form_field_get_mapping_name</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerFormField.html#poppler-form-field-get-name" title="poppler_form_field_get_name ()">poppler_form_field_get_name</a>         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<a class="link" href="PopplerFormField.html#PopplerFormButtonType" title="enum PopplerFormButtonType"><span class="returnvalue">PopplerFormButtonType</span></a>  <a class="link" href="PopplerFormField.html#poppler-form-field-button-get-button-type" title="poppler_form_field_button_get_button_type ()">poppler_form_field_button_get_button_type</a>
+<a class="link" href="PopplerFormField.html#PopplerFormFieldType" title="enum PopplerFormFieldType"><span class="returnvalue">PopplerFormFieldType</span></a> <a class="link" href="PopplerFormField.html#poppler-form-field-get-field-type" title="poppler_form_field_get_field_type ()">poppler_form_field_get_field_type</a>  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="returnvalue">gint</span></a>                <a class="link" href="PopplerFormField.html#poppler-form-field-get-id" title="poppler_form_field_get_id ()">poppler_form_field_get_id</a>           (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-is-read-only" title="poppler_form_field_is_read_only ()">poppler_form_field_is_read_only</a>     (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gdouble"><span class="returnvalue">gdouble</span></a>             <a class="link" href="PopplerFormField.html#poppler-form-field-get-font-size" title="poppler_form_field_get_font_size ()">poppler_form_field_get_font_size</a>    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerFormField.html#poppler-form-field-get-partial-name" title="poppler_form_field_get_partial_name ()">poppler_form_field_get_partial_name</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerFormField.html#poppler-form-field-get-mapping-name" title="poppler_form_field_get_mapping_name ()">poppler_form_field_get_mapping_name</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerFormField.html#poppler-form-field-get-name" title="poppler_form_field_get_name ()">poppler_form_field_get_name</a>         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="returnvalue">PopplerAction</span></a> *     <a class="link" href="PopplerFormField.html#poppler-form-field-get-action" title="poppler_form_field_get_action ()">poppler_form_field_get_action</a>       (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a class="link" href="PopplerFormField.html#PopplerFormButtonType" title="enum PopplerFormButtonType"><span class="returnvalue">PopplerFormButtonType</span></a> <a class="link" href="PopplerFormField.html#poppler-form-field-button-get-button-type" title="poppler_form_field_button_get_button_type ()">poppler_form_field_button_get_button_type</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-button-get-state" title="poppler_form_field_button_get_state ()">poppler_form_field_button_get_state</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-button-get-state" title="poppler_form_field_button_get_state ()">poppler_form_field_button_get_state</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-button-set-state" title="poppler_form_field_button_set_state ()">poppler_form_field_button_set_state</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gboolean</span> state</code></em>);
-<a class="link" href="PopplerFormField.html#PopplerFormChoiceType" title="enum PopplerFormChoiceType"><span class="returnvalue">PopplerFormChoiceType</span></a>  <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-choice-type" title="poppler_form_field_choice_get_choice_type ()">poppler_form_field_choice_get_choice_type</a>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a> state</code></em>);
+<a class="link" href="PopplerFormField.html#PopplerFormChoiceType" title="enum PopplerFormChoiceType"><span class="returnvalue">PopplerFormChoiceType</span></a> <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-choice-type" title="poppler_form_field_choice_get_choice_type ()">poppler_form_field_choice_get_choice_type</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-can-select-multiple" title="poppler_form_field_choice_can_select_multiple ()">poppler_form_field_choice_can_select_multiple</a>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-can-select-multiple" title="poppler_form_field_choice_can_select_multiple ()">poppler_form_field_choice_can_select_multiple</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-commit-on-change" title="poppler_form_field_choice_commit_on_change ()">poppler_form_field_choice_commit_on_change</a>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-commit-on-change" title="poppler_form_field_choice_commit_on_change ()">poppler_form_field_choice_commit_on_change</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-do-spell-check" title="poppler_form_field_choice_do_spell_check ()">poppler_form_field_choice_do_spell_check</a>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-do-spell-check" title="poppler_form_field_choice_do_spell_check ()">poppler_form_field_choice_do_spell_check</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-item" title="poppler_form_field_choice_get_item ()">poppler_form_field_choice_get_item</a>  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);
-<span class="returnvalue">gint</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-n-items" title="poppler_form_field_choice_get_n_items ()">poppler_form_field_choice_get_n_items</a>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-item" title="poppler_form_field_choice_get_item ()">poppler_form_field_choice_get_item</a>  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="returnvalue">gint</span></a>                <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-n-items" title="poppler_form_field_choice_get_n_items ()">poppler_form_field_choice_get_n_items</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-text" title="poppler_form_field_choice_get_text ()">poppler_form_field_choice_get_text</a>  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerFormField.html#poppler-form-field-choice-get-text" title="poppler_form_field_choice_get_text ()">poppler_form_field_choice_get_text</a>  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-choice-set-text" title="poppler_form_field_choice_set_text ()">poppler_form_field_choice_set_text</a>  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code>const <span class="type">gchar</span> *text</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-is-editable" title="poppler_form_field_choice_is_editable ()">poppler_form_field_choice_is_editable</a>
+                                                         <em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *text</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-is-editable" title="poppler_form_field_choice_is_editable ()">poppler_form_field_choice_is_editable</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-is-item-selected" title="poppler_form_field_choice_is_item_selected ()">poppler_form_field_choice_is_item_selected</a>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-choice-is-item-selected" title="poppler_form_field_choice_is_item_selected ()">poppler_form_field_choice_is_item_selected</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-choice-select-item" title="poppler_form_field_choice_select_item ()">poppler_form_field_choice_select_item</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-choice-toggle-item" title="poppler_form_field_choice_toggle_item ()">poppler_form_field_choice_toggle_item</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-choice-unselect-all" title="poppler_form_field_choice_unselect_all ()">poppler_form_field_choice_unselect_all</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<a class="link" href="PopplerFormField.html#PopplerFormTextType" title="enum PopplerFormTextType"><span class="returnvalue">PopplerFormTextType</span></a>  <a class="link" href="PopplerFormField.html#poppler-form-field-text-get-text-type" title="poppler_form_field_text_get_text_type ()">poppler_form_field_text_get_text_type</a>
+<a class="link" href="PopplerFormField.html#PopplerFormTextType" title="enum PopplerFormTextType"><span class="returnvalue">PopplerFormTextType</span></a> <a class="link" href="PopplerFormField.html#poppler-form-field-text-get-text-type" title="poppler_form_field_text_get_text_type ()">poppler_form_field_text_get_text_type</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerFormField.html#poppler-form-field-text-get-text" title="poppler_form_field_text_get_text ()">poppler_form_field_text_get_text</a>    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerFormField.html#poppler-form-field-text-get-text" title="poppler_form_field_text_get_text ()">poppler_form_field_text_get_text</a>    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-text-set-text" title="poppler_form_field_text_set_text ()">poppler_form_field_text_set_text</a>    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code>const <span class="type">gchar</span> *text</code></em>);
-<span class="returnvalue">gint</span>                <a class="link" href="PopplerFormField.html#poppler-form-field-text-get-max-len" title="poppler_form_field_text_get_max_len ()">poppler_form_field_text_get_max_len</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-do-scroll" title="poppler_form_field_text_do_scroll ()">poppler_form_field_text_do_scroll</a>   (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-do-spell-check" title="poppler_form_field_text_do_spell_check ()">poppler_form_field_text_do_spell_check</a>
+                                                         <em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *text</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="returnvalue">gint</span></a>                <a class="link" href="PopplerFormField.html#poppler-form-field-text-get-max-len" title="poppler_form_field_text_get_max_len ()">poppler_form_field_text_get_max_len</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-do-scroll" title="poppler_form_field_text_do_scroll ()">poppler_form_field_text_do_scroll</a>   (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-do-spell-check" title="poppler_form_field_text_do_spell_check ()">poppler_form_field_text_do_spell_check</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-is-password" title="poppler_form_field_text_is_password ()">poppler_form_field_text_is_password</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-is-rich-text" title="poppler_form_field_text_is_rich_text ()">poppler_form_field_text_is_rich_text</a>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-is-password" title="poppler_form_field_text_is_password ()">poppler_form_field_text_is_password</a> (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerFormField.html#poppler-form-field-text-is-rich-text" title="poppler_form_field_text_is_rich_text ()">poppler_form_field_text_is_rich_text</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);
 </pre>
 </div>
 <div class="refsect1">
 <a name="PopplerFormField.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
-  GObject
+  <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
    +----PopplerFormField
 </pre>
 </div>
@@ -120,8 +121,7 @@ enum                <a class="link" href="PopplerFormField.html#PopplerFormTextT
 <hr>
 <div class="refsect2">
 <a name="PopplerFormFieldType"></a><h3>enum PopplerFormFieldType</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
   POPPLER_FORM_FIELD_UNKNOWN,
   POPPLER_FORM_FIELD_BUTTON,
   POPPLER_FORM_FIELD_TEXT,
@@ -129,48 +129,132 @@ enum                <a class="link" href="PopplerFormField.html#PopplerFormTextT
   POPPLER_FORM_FIELD_SIGNATURE
 } PopplerFormFieldType;
 </pre>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><a name="POPPLER-FORM-FIELD-UNKNOWN:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_FIELD_UNKNOWN</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-FIELD-BUTTON:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_FIELD_BUTTON</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-FIELD-TEXT:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_FIELD_TEXT</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-FIELD-CHOICE:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_FIELD_CHOICE</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-FIELD-SIGNATURE:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_FIELD_SIGNATURE</code></span></p></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
 </div>
 <hr>
 <div class="refsect2">
 <a name="PopplerFormButtonType"></a><h3>enum PopplerFormButtonType</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
   POPPLER_FORM_BUTTON_PUSH,
   POPPLER_FORM_BUTTON_CHECK,
   POPPLER_FORM_BUTTON_RADIO
 } PopplerFormButtonType;
 </pre>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><a name="POPPLER-FORM-BUTTON-PUSH:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_BUTTON_PUSH</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-BUTTON-CHECK:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_BUTTON_CHECK</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-BUTTON-RADIO:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_BUTTON_RADIO</code></span></p></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
 </div>
 <hr>
 <div class="refsect2">
 <a name="PopplerFormChoiceType"></a><h3>enum PopplerFormChoiceType</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
   POPPLER_FORM_CHOICE_COMBO,
   POPPLER_FORM_CHOICE_LIST
 } PopplerFormChoiceType;
 </pre>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><a name="POPPLER-FORM-CHOICE-COMBO:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_CHOICE_COMBO</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-CHOICE-LIST:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_CHOICE_LIST</code></span></p></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
 </div>
 <hr>
 <div class="refsect2">
 <a name="PopplerFormTextType"></a><h3>enum PopplerFormTextType</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
   POPPLER_FORM_TEXT_NORMAL,
   POPPLER_FORM_TEXT_MULTILINE,
   POPPLER_FORM_TEXT_FILE_SELECT
 } PopplerFormTextType;
 </pre>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><a name="POPPLER-FORM-TEXT-NORMAL:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_TEXT_NORMAL</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-TEXT-MULTILINE:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_TEXT_MULTILINE</code></span></p></td>
+<td></td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-FORM-TEXT-FILE-SELECT:CAPS"></a><span class="term"><code class="literal">POPPLER_FORM_TEXT_FILE_SELECT</code></span></p></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
 </div>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-get-field-type"></a><h3>poppler_form_field_get_field_type ()</h3>
-<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormFieldType" title="enum PopplerFormFieldType"><span class="returnvalue">PopplerFormFieldType</span></a>  poppler_form_field_get_field_type (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormFieldType" title="enum PopplerFormFieldType"><span class="returnvalue">PopplerFormFieldType</span></a> poppler_form_field_get_field_type  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the type of <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -189,12 +273,15 @@ Gets the type of <em class="parameter"><code>field</code></em>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-get-id"></a><h3>poppler_form_field_get_id ()</h3>
-<pre class="programlisting"><span class="returnvalue">gint</span>                poppler_form_field_get_id           (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="returnvalue">gint</span></a>                poppler_form_field_get_id           (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the id of <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -212,12 +299,15 @@ Gets the id of <em class="parameter"><code>field</code></em>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-is-read-only"></a><h3>poppler_form_field_is_read_only ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_is_read_only     (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_is_read_only     (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Checks whether <em class="parameter"><code>field</code></em> is read only
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -227,7 +317,7 @@ Checks whether <em class="parameter"><code>field</code></em> is read only
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if <em class="parameter"><code>field</code></em> is read only</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if <em class="parameter"><code>field</code></em> is read only</td>
 </tr>
 </tbody>
 </table></div>
@@ -235,12 +325,15 @@ Checks whether <em class="parameter"><code>field</code></em> is read only
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-get-font-size"></a><h3>poppler_form_field_get_font_size ()</h3>
-<pre class="programlisting"><span class="returnvalue">gdouble</span>             poppler_form_field_get_font_size    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gdouble"><span class="returnvalue">gdouble</span></a>             poppler_form_field_get_font_size    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the font size of <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -258,12 +351,15 @@ Gets the font size of <em class="parameter"><code>field</code></em>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-get-partial-name"></a><h3>poppler_form_field_get_partial_name ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_form_field_get_partial_name (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_form_field_get_partial_name (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the partial name of <em class="parameter"><code>field</code></em>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -272,7 +368,7 @@ Gets the partial name of <em class="parameter"><code>field</code></em>.
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new allocated string. It must be freed with <code class="function">g_free()</code> when done.</td>
+<td>a new allocated string. It must be freed with <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> when done.</td>
 </tr>
 </tbody>
 </table></div>
@@ -281,13 +377,16 @@ Gets the partial name of <em class="parameter"><code>field</code></em>.
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-get-mapping-name"></a><h3>poppler_form_field_get_mapping_name ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_form_field_get_mapping_name (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_form_field_get_mapping_name (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the mapping name of <em class="parameter"><code>field</code></em> that is used when
 exporting interactive form field data from the document
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -296,7 +395,7 @@ exporting interactive form field data from the document
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new allocated string. It must be freed with <code class="function">g_free()</code> when done.</td>
+<td>a new allocated string. It must be freed with <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> when done.</td>
 </tr>
 </tbody>
 </table></div>
@@ -305,13 +404,16 @@ exporting interactive form field data from the document
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-get-name"></a><h3>poppler_form_field_get_name ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_form_field_get_name         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_form_field_get_name         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the fully qualified name of <em class="parameter"><code>field</code></em>. It's constructed by concatenating
 the partial field names of the field and all of its ancestors.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -320,7 +422,7 @@ the partial field names of the field and all of its ancestors.
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new allocated string. It must be freed with <code class="function">g_free()</code> when done.</td>
+<td>a new allocated string. It must be freed with <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> when done.</td>
 </tr>
 </tbody>
 </table></div>
@@ -328,14 +430,46 @@ the partial field names of the field and all of its ancestors.
 </div>
 <hr>
 <div class="refsect2">
+<a name="poppler-form-field-get-action"></a><h3>poppler_form_field_get_action ()</h3>
+<pre class="programlisting"><a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="returnvalue">PopplerAction</span></a> *     poppler_form_field_get_action       (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<p>
+Retrieves the action (<a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="type">PopplerAction</span></a>) that shall be
+performed when <em class="parameter"><code>field</code></em> is activated, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
+</p>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the action to perform. The returned
+object is owned by <em class="parameter"><code>field</code></em> and should not be freed. <span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>]</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.18</p>
+</div>
+<hr>
+<div class="refsect2">
 <a name="poppler-form-field-button-get-button-type"></a><h3>poppler_form_field_button_get_button_type ()</h3>
-<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormButtonType" title="enum PopplerFormButtonType"><span class="returnvalue">PopplerFormButtonType</span></a>  poppler_form_field_button_get_button_type
+<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormButtonType" title="enum PopplerFormButtonType"><span class="returnvalue">PopplerFormButtonType</span></a> poppler_form_field_button_get_button_type
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the button type of <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -354,13 +488,16 @@ Gets the button type of <em class="parameter"><code>field</code></em>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-button-get-state"></a><h3>poppler_form_field_button_get_state ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_button_get_state (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_button_get_state (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
-Queries a <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> and returns its current state. Returns <code class="literal">TRUE</code> if
-<em class="parameter"><code>field</code></em> is pressed in and <code class="literal">FALSE</code> if it is raised.
+Queries a <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> and returns its current state. Returns <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if
+<em class="parameter"><code>field</code></em> is pressed in and <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> if it is raised.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -379,13 +516,16 @@ Queries a <a class="link" href="PopplerFormField.html" title="PoppplerFormField"
 <div class="refsect2">
 <a name="poppler-form-field-button-set-state"></a><h3>poppler_form_field_button_set_state ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>                poppler_form_field_button_set_state (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gboolean</span> state</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a> state</code></em>);</pre>
 <p>
-Sets the status of <em class="parameter"><code>field</code></em>. Set to <code class="literal">TRUE</code> if you want the <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a>
-to be 'pressed in', and <code class="literal">FALSE</code> to raise it.
+Sets the status of <em class="parameter"><code>field</code></em>. Set to <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if you want the <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a>
+to be 'pressed in', and <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> to raise it.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -395,7 +535,7 @@ to be 'pressed in', and <code class="literal">FALSE</code> to raise it.
 <tr>
 <td><p><span class="term"><em class="parameter"><code>state</code></em> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> or <code class="literal">FALSE</code>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a>
 </td>
 </tr>
 </tbody>
@@ -404,13 +544,16 @@ to be 'pressed in', and <code class="literal">FALSE</code> to raise it.
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-get-choice-type"></a><h3>poppler_form_field_choice_get_choice_type ()</h3>
-<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormChoiceType" title="enum PopplerFormChoiceType"><span class="returnvalue">PopplerFormChoiceType</span></a>  poppler_form_field_choice_get_choice_type
+<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormChoiceType" title="enum PopplerFormChoiceType"><span class="returnvalue">PopplerFormChoiceType</span></a> poppler_form_field_choice_get_choice_type
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the choice type of <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -429,13 +572,16 @@ Gets the choice type of <em class="parameter"><code>field</code></em>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-can-select-multiple"></a><h3>poppler_form_field_choice_can_select_multiple ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_choice_can_select_multiple
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_choice_can_select_multiple
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Checks whether <em class="parameter"><code>field</code></em> allows multiple choices to be selected
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -445,7 +591,7 @@ Checks whether <em class="parameter"><code>field</code></em> allows multiple cho
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if <em class="parameter"><code>field</code></em> allows multiple choices to be selected</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if <em class="parameter"><code>field</code></em> allows multiple choices to be selected</td>
 </tr>
 </tbody>
 </table></div>
@@ -453,19 +599,22 @@ Checks whether <em class="parameter"><code>field</code></em> allows multiple cho
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-commit-on-change"></a><h3>poppler_form_field_choice_commit_on_change ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_choice_commit_on_change
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_choice_commit_on_change
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 </div>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-do-spell-check"></a><h3>poppler_form_field_choice_do_spell_check ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_choice_do_spell_check
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_choice_do_spell_check
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Checks whether spell checking should be done for the contents of <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -475,7 +624,7 @@ Checks whether spell checking should be done for the contents of <em class="para
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if spell checking should be done for <em class="parameter"><code>field</code></em>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if spell checking should be done for <em class="parameter"><code>field</code></em>
 </td>
 </tr>
 </tbody>
@@ -484,13 +633,16 @@ Checks whether spell checking should be done for the contents of <em class="para
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-get-item"></a><h3>poppler_form_field_choice_get_item ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_form_field_choice_get_item  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_form_field_choice_get_item  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);</pre>
 <p>
 Returns the contents of the item on <em class="parameter"><code>field</code></em> at the given index
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -503,7 +655,7 @@ Returns the contents of the item on <em class="parameter"><code>field</code></em
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new allocated string. It must be freed with <code class="function">g_free()</code> when done.</td>
+<td>a new allocated string. It must be freed with <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> when done.</td>
 </tr>
 </tbody>
 </table></div>
@@ -511,13 +663,16 @@ Returns the contents of the item on <em class="parameter"><code>field</code></em
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-get-n-items"></a><h3>poppler_form_field_choice_get_n_items ()</h3>
-<pre class="programlisting"><span class="returnvalue">gint</span>                poppler_form_field_choice_get_n_items
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="returnvalue">gint</span></a>                poppler_form_field_choice_get_n_items
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Returns the number of items on <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -535,12 +690,15 @@ Returns the number of items on <em class="parameter"><code>field</code></em>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-get-text"></a><h3>poppler_form_field_choice_get_text ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_form_field_choice_get_text  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_form_field_choice_get_text  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Retrieves the contents of <em class="parameter"><code>field</code></em>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -549,7 +707,7 @@ Retrieves the contents of <em class="parameter"><code>field</code></em>.
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new allocated string. It must be freed with <code class="function">g_free()</code> when done.</td>
+<td>a new allocated string. It must be freed with <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> when done.</td>
 </tr>
 </tbody>
 </table></div>
@@ -558,12 +716,15 @@ Retrieves the contents of <em class="parameter"><code>field</code></em>.
 <div class="refsect2">
 <a name="poppler-form-field-choice-set-text"></a><h3>poppler_form_field_choice_set_text ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>                poppler_form_field_choice_set_text  (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code>const <span class="type">gchar</span> *text</code></em>);</pre>
+                                                         <em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *text</code></em>);</pre>
 <p>
 Sets the text in <em class="parameter"><code>field</code></em> to the given value, replacing the current contents
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -580,13 +741,16 @@ Sets the text in <em class="parameter"><code>field</code></em> to the given valu
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-is-editable"></a><h3>poppler_form_field_choice_is_editable ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_choice_is_editable
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_choice_is_editable
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Checks whether <em class="parameter"><code>field</code></em> is editable
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -596,7 +760,7 @@ Checks whether <em class="parameter"><code>field</code></em> is editable
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if <em class="parameter"><code>field</code></em> is editable</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if <em class="parameter"><code>field</code></em> is editable</td>
 </tr>
 </tbody>
 </table></div>
@@ -604,14 +768,17 @@ Checks whether <em class="parameter"><code>field</code></em> is editable
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-choice-is-item-selected"></a><h3>poppler_form_field_choice_is_item_selected ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_choice_is_item_selected
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_choice_is_item_selected
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);</pre>
 <p>
 Checks whether the item at the given index on <em class="parameter"><code>field</code></em> is currently selected
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -625,7 +792,7 @@ Checks whether the item at the given index on <em class="parameter"><code>field<
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if item at <em class="parameter"><code>index</code></em> is currently selected</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if item at <em class="parameter"><code>index</code></em> is currently selected</td>
 </tr>
 </tbody>
 </table></div>
@@ -635,12 +802,15 @@ Checks whether the item at the given index on <em class="parameter"><code>field<
 <a name="poppler-form-field-choice-select-item"></a><h3>poppler_form_field_choice_select_item ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>                poppler_form_field_choice_select_item
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);</pre>
 <p>
 Selects the item at the given index on <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -659,12 +829,15 @@ Selects the item at the given index on <em class="parameter"><code>field</code><
 <a name="poppler-form-field-choice-toggle-item"></a><h3>poppler_form_field_choice_toggle_item ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>                poppler_form_field_choice_toggle_item
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> index</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> index</code></em>);</pre>
 <p>
 Changes the state of the item at the given index
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -686,8 +859,11 @@ Changes the state of the item at the given index
 <p>
 Unselects all the items on <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
 <td>a <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a>
@@ -698,13 +874,16 @@ Unselects all the items on <em class="parameter"><code>field</code></em>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-text-get-text-type"></a><h3>poppler_form_field_text_get_text_type ()</h3>
-<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormTextType" title="enum PopplerFormTextType"><span class="returnvalue">PopplerFormTextType</span></a>  poppler_form_field_text_get_text_type
+<pre class="programlisting"><a class="link" href="PopplerFormField.html#PopplerFormTextType" title="enum PopplerFormTextType"><span class="returnvalue">PopplerFormTextType</span></a> poppler_form_field_text_get_text_type
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Gets the text type of <em class="parameter"><code>field</code></em>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -723,12 +902,15 @@ Gets the text type of <em class="parameter"><code>field</code></em>.
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-text-get-text"></a><h3>poppler_form_field_text_get_text ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_form_field_text_get_text    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_form_field_text_get_text    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Retrieves the contents of <em class="parameter"><code>field</code></em>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -737,7 +919,7 @@ Retrieves the contents of <em class="parameter"><code>field</code></em>.
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new allocated string. It must be freed with <code class="function">g_free()</code> when done.</td>
+<td>a new allocated string. It must be freed with <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> when done.</td>
 </tr>
 </tbody>
 </table></div>
@@ -746,12 +928,15 @@ Retrieves the contents of <em class="parameter"><code>field</code></em>.
 <div class="refsect2">
 <a name="poppler-form-field-text-set-text"></a><h3>poppler_form_field_text_set_text ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>                poppler_form_field_text_set_text    (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>,
-                                                         <em class="parameter"><code>const <span class="type">gchar</span> *text</code></em>);</pre>
+                                                         <em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *text</code></em>);</pre>
 <p>
 Sets the text in <em class="parameter"><code>field</code></em> to the given value, replacing the current contents.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -768,12 +953,15 @@ Sets the text in <em class="parameter"><code>field</code></em> to the given valu
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-text-get-max-len"></a><h3>poppler_form_field_text_get_max_len ()</h3>
-<pre class="programlisting"><span class="returnvalue">gint</span>                poppler_form_field_text_get_max_len (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="returnvalue">gint</span></a>                poppler_form_field_text_get_max_len (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Retrieves the maximum allowed length of the text in <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -790,18 +978,21 @@ Retrieves the maximum allowed length of the text in <em class="parameter"><code>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-text-do-scroll"></a><h3>poppler_form_field_text_do_scroll ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_text_do_scroll   (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_text_do_scroll   (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 </div>
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-text-do-spell-check"></a><h3>poppler_form_field_text_do_spell_check ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_text_do_spell_check
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_text_do_spell_check
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Checks whether spell checking should be done for the contents of <em class="parameter"><code>field</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -811,7 +1002,7 @@ Checks whether spell checking should be done for the contents of <em class="para
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if spell checking should be done for <em class="parameter"><code>field</code></em>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if spell checking should be done for <em class="parameter"><code>field</code></em>
 </td>
 </tr>
 </tbody>
@@ -820,12 +1011,15 @@ Checks whether spell checking should be done for the contents of <em class="para
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-text-is-password"></a><h3>poppler_form_field_text_is_password ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_text_is_password (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_text_is_password (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Checks whether content of <em class="parameter"><code>field</code></em> is a password and it must be hidden
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -835,7 +1029,7 @@ Checks whether content of <em class="parameter"><code>field</code></em> is a pas
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if the content of <em class="parameter"><code>field</code></em> is a password</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if the content of <em class="parameter"><code>field</code></em> is a password</td>
 </tr>
 </tbody>
 </table></div>
@@ -843,13 +1037,16 @@ Checks whether content of <em class="parameter"><code>field</code></em> is a pas
 <hr>
 <div class="refsect2">
 <a name="poppler-form-field-text-is-rich-text"></a><h3>poppler_form_field_text_is_rich_text ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_form_field_text_is_rich_text
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_form_field_text_is_rich_text
                                                         (<em class="parameter"><code><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> *field</code></em>);</pre>
 <p>
 Checks whether the contents of <em class="parameter"><code>field</code></em> are rich text
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>field</code></em> :</span></p></td>
@@ -859,7 +1056,7 @@ Checks whether the contents of <em class="parameter"><code>field</code></em> are
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if the contents of <em class="parameter"><code>field</code></em> are rich text</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if the contents of <em class="parameter"><code>field</code></em> are rich text</td>
 </tr>
 </tbody>
 </table></div>
@@ -868,6 +1065,6 @@ Checks whether the contents of <em class="parameter"><code>field</code></em> are
 </div>
 <div class="footer">
 <hr>
-          Generated by GTK-Doc V1.17</div>
+          Generated by GTK-Doc V1.19</div>
 </body>
 </html>

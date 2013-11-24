@@ -110,7 +110,7 @@ int FlateStream::fill_buffer() {
   return 0;
 }
 
-GooString *FlateStream::getPSFilter(int psLevel, char *indent) {
+GooString *FlateStream::getPSFilter(int psLevel, const char *indent) {
   GooString *s;
 
   if (psLevel < 3 || pred) {

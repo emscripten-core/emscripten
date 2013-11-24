@@ -14,6 +14,7 @@ PopplerPageTransitionType
 PopplerPageTransitionAlignment
 PopplerPageTransitionDirection
 PopplerSelectionStyle
+PopplerTextAttributes
 poppler_page_get_index
 poppler_page_get_label
 poppler_page_get_size
@@ -22,22 +23,21 @@ poppler_page_get_duration
 poppler_page_get_transition
 poppler_page_get_thumbnail_size
 poppler_page_get_thumbnail
-poppler_page_get_thumbnail_pixbuf
 poppler_page_render
 poppler_page_render_for_printing
 poppler_page_render_for_printing_with_options
-poppler_page_render_to_pixbuf
-poppler_page_render_to_pixbuf_for_printing
 poppler_page_render_to_ps
 poppler_page_render_selection
-poppler_page_render_selection_to_pixbuf
 poppler_page_get_selected_region
 poppler_page_get_selection_region
 poppler_page_selection_region_free
 poppler_page_get_selected_text
 poppler_page_find_text
+poppler_page_find_text_with_options
 poppler_page_get_text
 poppler_page_get_text_layout
+poppler_page_get_text_attributes
+poppler_page_free_text_attributes
 poppler_page_get_link_mapping
 poppler_page_free_link_mapping
 poppler_page_get_image_mapping
@@ -48,6 +48,7 @@ poppler_page_free_form_field_mapping
 poppler_page_get_annot_mapping
 poppler_page_free_annot_mapping
 poppler_page_add_annot
+poppler_page_remove_annot
 poppler_rectangle_new
 poppler_rectangle_copy
 poppler_rectangle_free
@@ -66,12 +67,16 @@ poppler_form_field_mapping_free
 poppler_annot_mapping_new
 poppler_annot_mapping_copy
 poppler_annot_mapping_free
+poppler_text_attributes_new
+poppler_text_attributes_copy
+poppler_text_attributes_free
 
 <SUBSECTION Standard>
 POPPLER_PAGE
 POPPLER_IS_PAGE
 POPPLER_TYPE_PAGE
 POPPLER_TYPE_RECTANGLE
+POPPLER_TYPE_TEXT_ATTRIBUTES
 POPPLER_TYPE_PAGE_TRANSITION
 POPPLER_TYPE_LINK_MAPPING
 POPPLER_TYPE_IMAGE_MAPPING
@@ -93,6 +98,7 @@ poppler_page_transition_alignment_get_type
 poppler_page_transition_direction_get_type
 poppler_page_transition_type_get_type
 poppler_selection_style_get_type
+poppler_text_attributes_get_type
 </SECTION>
 
 <SECTION>
@@ -111,6 +117,8 @@ PopplerViewerPreferences
 PopplerPermissions
 poppler_document_new_from_file
 poppler_document_new_from_data
+poppler_document_new_from_stream
+poppler_document_new_from_gfile
 poppler_document_save
 poppler_document_save_a_copy
 poppler_document_get_id
@@ -128,12 +136,12 @@ poppler_document_get_page_layout
 poppler_document_get_page_mode
 poppler_document_get_permissions
 poppler_document_get_metadata
-poppler_document_get_permissions
 poppler_document_is_linearized
 poppler_document_get_n_pages
 poppler_document_get_page
 poppler_document_get_page_by_label
 poppler_document_find_dest
+poppler_document_get_n_attachments
 poppler_document_has_attachments
 poppler_document_get_attachments
 poppler_document_get_form_field
@@ -152,7 +160,9 @@ poppler_fonts_iter_free
 poppler_fonts_iter_get_name
 poppler_fonts_iter_get_full_name
 poppler_fonts_iter_get_font_type
+poppler_fonts_iter_get_substitute_name
 poppler_fonts_iter_get_file_name
+poppler_fonts_iter_get_encoding
 poppler_fonts_iter_is_embedded
 poppler_fonts_iter_is_subset
 poppler_fonts_iter_next
@@ -216,6 +226,7 @@ PopplerActionNamed
 PopplerActionMovie
 PopplerActionRendition
 PopplerActionOCGState
+PopplerActionJavascript
 PopplerActionType
 PopplerDestType
 PopplerActionMovieOperation
@@ -277,6 +288,7 @@ poppler_form_field_get_font_size
 poppler_form_field_get_partial_name
 poppler_form_field_get_mapping_name
 poppler_form_field_get_name
+poppler_form_field_get_action
 poppler_form_field_button_get_button_type
 poppler_form_field_button_get_state
 poppler_form_field_button_set_state
@@ -327,6 +339,7 @@ PopplerOrientation
 PopplerBackend
 PopplerColor
 PopplerPrintFlags
+PopplerFindFlags
 poppler_get_backend
 poppler_get_version
 poppler_date_parse
@@ -342,6 +355,7 @@ POPPLER_TYPE_ORIENTATION
 POPPLER_TYPE_PRINT_FLAGS
 
 <SUBSECTION Private>
+POPPLER_DEFINE_BOXED_TYPE
 poppler_error_get_type
 poppler_error_quark
 poppler_backend_get_type
@@ -358,6 +372,7 @@ PopplerAnnotMarkup
 PopplerAnnotText
 PopplerAnnotFreeText
 PopplerAnnotFileAttachment
+PopplerAnnotLine
 PopplerAnnotMovie
 PopplerAnnotScreen
 PopplerAnnotType
@@ -367,6 +382,7 @@ PopplerAnnotMarkupReplyType
 PopplerAnnotTextState
 PopplerAnnotCalloutLine
 PopplerAnnotFreeTextQuadding
+PopplerPoint
 poppler_annot_get_annot_type
 poppler_annot_get_flags
 poppler_annot_get_name
@@ -376,6 +392,8 @@ poppler_annot_set_color
 poppler_annot_get_contents
 poppler_annot_set_contents
 poppler_annot_get_modified
+poppler_annot_get_rectangle
+poppler_annot_set_rectangle
 poppler_annot_markup_get_label
 poppler_annot_markup_set_label
 poppler_annot_markup_get_subject
@@ -414,6 +432,12 @@ poppler_annot_movie_get_title
 poppler_annot_callout_line_new
 poppler_annot_callout_line_copy
 poppler_annot_callout_line_free
+poppler_annot_line_new
+poppler_annot_line_set_vertices
+poppler_point_copy
+poppler_point_free
+poppler_point_get_type
+poppler_point_new
 
 <SUBSECTION Standard>
 POPPLER_ANNOT
@@ -425,6 +449,9 @@ POPPLER_TYPE_ANNOT_FILE_ATTACHMENT
 POPPLER_ANNOT_FREE_TEXT
 POPPLER_IS_ANNOT_FREE_TEXT
 POPPLER_TYPE_ANNOT_FREE_TEXT
+POPPLER_ANNOT_LINE
+POPPLER_IS_ANNOT_LINE
+POPPLER_TYPE_ANNOT_LINE
 POPPLER_ANNOT_MARKUP
 POPPLER_IS_ANNOT_MARKUP
 POPPLER_TYPE_ANNOT_MARKUP
@@ -460,6 +487,7 @@ poppler_annot_markup_reply_type_get_type
 poppler_annot_callout_line_get_type
 poppler_annot_text_state_get_type
 poppler_annot_free_text_quadding_get_type
+poppler_annot_line_get_type
 </SECTION>
 
 <SECTION>
@@ -479,6 +507,7 @@ POPPLER_IS_LAYER
 POPPLER_TYPE_LAYER
 
 <SUBSECTION Private>
+Layer
 poppler_layer_get_type
 </SECTION>
 
@@ -522,7 +551,6 @@ poppler_movie_get_type
 <SECTION>
 <FILE>poppler-features</FILE>
 POPPLER_HAS_CAIRO
-POPPLER_WITH_GDK
 POPPLER_MAJOR_VERSION
 POPPLER_MINOR_VERSION
 POPPLER_MICRO_VERSION

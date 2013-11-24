@@ -1,7 +1,8 @@
 /* poppler-link.h: qt interface to poppler
- * Copyright (C) 2006, Albert Astals Cid <aacid@kde.org>
+ * Copyright (C) 2006, 2013, Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2007-2008, 2010, Pino Toscano <pino@kde.org>
- * Copyright (C) 2010, Guillermo Amaral <gamaral@kdab.com>
+ * Copyright (C) 2010, 2012, Guillermo Amaral <gamaral@kdab.com>
+ * Copyright (C) 2012, Tobias Koenig <tokoe@kdab.com>
  * Adapting code from
  *   Copyright (C) 2004 by Enrico Ros <eros.kde@email.it>
  *
@@ -28,6 +29,9 @@
 #include <QtCore/QSharedDataPointer>
 #include "poppler-export.h"
 
+struct Ref;
+class MediaRendition;
+
 namespace Poppler {
 
 class LinkPrivate;
@@ -40,6 +44,8 @@ class LinkJavaScriptPrivate;
 class LinkMoviePrivate;
 class LinkDestinationData;
 class LinkDestinationPrivate;
+class LinkRenditionPrivate;
+class MediaRendition;
 class SoundObject;
 
 /**
@@ -183,6 +189,7 @@ class POPPLER_QT4_EXPORT Link
 		    Action,   ///< A "standard" action to be executed in the viewer
 		    Sound,    ///< A link representing a sound to be played
 		    Movie,    ///< An action to be executed on a movie
+		    Rendition,    ///< A rendition link \since 0.20
 		    JavaScript    ///< A JavaScript code to be interpreted \since 0.10
 		};
 
@@ -440,6 +447,87 @@ class POPPLER_QT4_EXPORT LinkSound : public Link
 };
 
 /**
+ * Rendition: Rendition link.
+ *
+ * \since 0.20
+ */
+class POPPLER_QT4_EXPORT LinkRendition : public Link
+{
+	public:
+		/**
+		 * Describes the possible rendition actions.
+		 *
+		 * \since 0.22
+		 */
+		enum RenditionAction {
+			NoRendition,
+			PlayRendition,
+			StopRendition,
+			PauseRendition,
+			ResumeRendition
+		};
+
+		/**
+		 * Create a new rendition link.
+		 *
+		 * \param linkArea the active area of the link
+		 * \param rendition the media rendition object. Ownership is taken
+		 *
+		 * \deprecated Use the constructor that takes all parameter instead
+		 */
+		Q_DECL_DEPRECATED LinkRendition( const QRectF &linkArea, ::MediaRendition *rendition );
+
+		/**
+		 * Create a new rendition link.
+		 *
+		 * \param linkArea the active area of the link
+		 * \param rendition the media rendition object. Ownership is taken
+		 * \param operation the numeric operation (action) (@see ::LinkRendition::RenditionOperation)
+		 * \param script the java script code
+		 * \param annotationReference the object reference of the screen annotation associated with this rendition action
+		 * \since 0.22
+		 */
+		LinkRendition( const QRectF &linkArea, ::MediaRendition *rendition, int operation, const QString &script, const Ref &annotationReference );
+
+		/**
+		 * Destructor.
+		 */
+		virtual ~LinkRendition();
+
+		LinkType linkType() const;
+
+		/**
+		 * Returns the media rendition object if the redition provides one, @c 0 otherwise
+		 */
+		MediaRendition *rendition() const;
+
+		/**
+		 * Returns the action that should be executed if a rendition object is provided.
+		 *
+		 * \since 0.22
+		 */
+		RenditionAction action() const;
+
+		/**
+		 * The JS code that shall be executed or an empty string.
+		 *
+		 * \since 0.22
+		 */
+		QString script() const;
+
+		/**
+		 * Returns whether the given @p annotation is the referenced screen annotation for this rendition @p link.
+		 *
+		 * \since 0.22
+		 */
+		bool isReferencedAnnotation( const ScreenAnnotation *annotation ) const;
+
+	private:
+		Q_DECLARE_PRIVATE( LinkRendition )
+		Q_DISABLE_COPY( LinkRendition )
+};
+
+/**
  * JavaScript: a JavaScript code to be interpreted.
  *
  * \since 0.10
@@ -471,21 +559,52 @@ class POPPLER_QT4_EXPORT LinkJavaScript : public Link
 		Q_DISABLE_COPY( LinkJavaScript )
 };	
 
-#if 0
-/** Movie: Not yet defined -> think renaming to 'Media' link **/
+/**
+ * Movie: a movie to be played.
+ *
+ * \since 0.20
+ */
 class POPPLER_QT4_EXPORT LinkMovie : public Link
-// TODO this (Movie link)
 {
 	public:
-		LinkMovie( const QRectF &linkArea );
+		/**
+		 * Describes the operation to be performed on the movie.
+		 */
+		enum Operation { Play,
+		                 Stop,
+		                 Pause,
+		                 Resume
+		};
+
+		/**
+		 * Create a new Movie link.
+		 *
+		 * \param linkArea the active area of the link
+		 * \param operation the operation to be performed on the movie
+		 * \param annotationTitle the title of the movie annotation identifying the movie to be played
+		 * \param annotationReference the object reference of the movie annotation identifying the movie to be played
+		 *
+		 * Note: This constructor is supposed to be used by Poppler::Page only.
+		 */
+		LinkMovie( const QRectF &linkArea, Operation operation, const QString &annotationTitle, const Ref &annotationReference );
+		/**
+		 * Destructor.
+		 */
 		~LinkMovie();
 		LinkType linkType() const;
+		/**
+		 * Returns the operation to be performed on the movie.
+		 */
+		Operation operation() const;
+		/**
+		 * Returns whether the given @p annotation is the referenced movie annotation for this movie @p link.
+		 */
+		bool isReferencedAnnotation( const MovieAnnotation *annotation ) const;
 
 	private:
 		Q_DECLARE_PRIVATE( LinkMovie )
 		Q_DISABLE_COPY( LinkMovie )
 };
-#endif
 
 }
 

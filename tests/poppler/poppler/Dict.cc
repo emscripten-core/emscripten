@@ -16,8 +16,10 @@
 // Copyright (C) 2005 Kristian Høgsberg <krh@redhat.com>
 // Copyright (C) 2006 Krzysztof Kowalczyk <kkowalczyk@gmail.com>
 // Copyright (C) 2007-2008 Julien Rebetez <julienr@svn.gnome.org>
-// Copyright (C) 2008, 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2008, 2010, 2013 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2010 Paweł Wiejacha <pawel.wiejacha@gmail.com>
+// Copyright (C) 2012 Fabio D'Urso <fabiodurso@hotmail.it>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -38,6 +40,11 @@
 #include "XRef.h"
 #include "Dict.h"
 
+#if MULTITHREADED
+#  define dictLocker()   MutexLocker locker(&mutex)
+#else
+#  define dictLocker()
+#endif
 //------------------------------------------------------------------------
 // Dict
 //------------------------------------------------------------------------
@@ -73,20 +80,42 @@ Dict::Dict(XRef *xrefA) {
   size = length = 0;
   ref = 1;
   sorted = gFalse;
+#if MULTITHREADED
+  gInitMutex(&mutex);
+#endif
 }
 
 Dict::Dict(Dict* dictA) {
   xref = dictA->xref;
   size = length = dictA->length;
   ref = 1;
+#if MULTITHREADED
+  gInitMutex(&mutex);
+#endif
 
   sorted = dictA->sorted;
   entries = (DictEntry *)gmallocn(size, sizeof(DictEntry));
   for (int i=0; i<length; i++) {
-    entries[i].key = strdup(dictA->entries[i].key);
-    entries[i].val.zeroUnion(); // XXX Emscripten
+    entries[i].key = copyString(dictA->entries[i].key);
     dictA->entries[i].val.copy(&entries[i].val);
   }
+}
+
+Dict *Dict::copy(XRef *xrefA) {
+  dictLocker();
+  Dict *dictA = new Dict(this);
+  dictA->xref = xrefA;
+  for (int i=0; i<length; i++) {
+    if (dictA->entries[i].val.getType() == objDict) {
+       Dict *dict = dictA->entries[i].val.getDict();
+       Object obj;
+       obj.initDict(dict->copy(xrefA));
+       dictA->entries[i].val.free();
+       dictA->entries[i].val = obj;
+       obj.free();
+    }
+  }
+  return dictA;
 }
 
 Dict::~Dict() {
@@ -97,9 +126,25 @@ Dict::~Dict() {
     entries[i].val.free();
   }
   gfree(entries);
+#if MULTITHREADED
+  gDestroyMutex(&mutex);
+#endif
+}
+
+int Dict::incRef() {
+  dictLocker();
+  ++ref;
+  return ref;
+}
+
+int Dict::decRef() {
+  dictLocker();
+  --ref;
+  return ref;
 }
 
 void Dict::add(char *key, Object *val) {
+  dictLocker();
   if (sorted) {
     // We use add on very few occasions so
     // virtually this will never be hit
@@ -113,19 +158,16 @@ void Dict::add(char *key, Object *val) {
       size *= 2;
     }
     entries = (DictEntry *)greallocn(entries, size, sizeof(DictEntry));
-    // XXX Emscripten: Initialize the entries, to prevent undefined values
-    for (int i=length; i<size; i++) {
-      entries[i].val.zeroUnion();
-    }
   }
   entries[length].key = key;
   entries[length].val = *val;
   ++length;
 }
 
-inline DictEntry *Dict::find(char *key) {
+inline DictEntry *Dict::find(const char *key) {
   if (!sorted && length >= SORT_LENGTH_LOWER_LIMIT)
   {
+      dictLocker();
       sorted = gTrue;
       std::sort(entries, entries+length, cmpDictEntries);
   }
@@ -146,11 +188,12 @@ inline DictEntry *Dict::find(char *key) {
   return NULL;
 }
 
-GBool Dict::hasKey(char *key) {
+GBool Dict::hasKey(const char *key) {
   return find(key) != NULL;
 }
 
-void Dict::remove(char *key) {
+void Dict::remove(const char *key) {
+  dictLocker();
   if (sorted) {
     const int pos = binarySearch(key, entries, length);
     if (pos != -1) {
@@ -163,7 +206,9 @@ void Dict::remove(char *key) {
     int i; 
     bool found = false;
     DictEntry tmp;
-    if(length == 0) return;
+    if(length == 0) {
+      return;
+    }
 
     for(i=0; i<length; i++) {
       if (!strcmp(key, entries[i].key)) {
@@ -171,7 +216,9 @@ void Dict::remove(char *key) {
         break;
       }
     }
-    if(!found) return;
+    if(!found) {
+      return;
+    }
     //replace the deleted entry with the last entry
     length -= 1;
     tmp = entries[length];
@@ -180,10 +227,15 @@ void Dict::remove(char *key) {
   }
 }
 
-void Dict::set(char *key, Object *val) {
+void Dict::set(const char *key, Object *val) {
   DictEntry *e;
+  if (val->isNull()) {
+    remove(key);
+    return;
+  }
   e = find (key);
   if (e) {
+    dictLocker();
     e->val.free();
     e->val = *val;
   } else {
@@ -192,19 +244,19 @@ void Dict::set(char *key, Object *val) {
 }
 
 
-GBool Dict::is(char *type) {
+GBool Dict::is(const char *type) {
   DictEntry *e;
 
   return (e = find("Type")) && e->val.isName(type);
 }
 
-Object *Dict::lookup(char *key, Object *obj, std::set<int> *fetchOriginatorNums) {
+Object *Dict::lookup(const char *key, Object *obj, int recursion) {
   DictEntry *e;
 
-  return (e = find(key)) ? e->val.fetch(xref, obj, fetchOriginatorNums) : obj->initNull();
+  return (e = find(key)) ? e->val.fetch(xref, obj, recursion) : obj->initNull();
 }
 
-Object *Dict::lookupNF(char *key, Object *obj) {
+Object *Dict::lookupNF(const char *key, Object *obj) {
   DictEntry *e;
 
   return (e = find(key)) ? e->val.copy(obj) : obj->initNull();

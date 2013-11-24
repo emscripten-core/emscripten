@@ -1,6 +1,7 @@
 #include <QtTest/QtTest>
 
 #include "PDFDoc.h"
+#include "GlobalParams.h"
 
 #include <poppler-qt4.h>
 
@@ -19,7 +20,7 @@ private slots:
 void TestOptionalContent::checkVisPolicy()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/vis_policy_test.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/vis_policy_test.pdf");
     QVERIFY( doc );
 
     QVERIFY( doc->hasOptionalContent() );
@@ -39,7 +40,7 @@ void TestOptionalContent::checkVisPolicy()
 void TestOptionalContent::checkNestedLayers()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/NestedLayers.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/NestedLayers.pdf");
     QVERIFY( doc );
 
     QVERIFY( doc->hasOptionalContent() );
@@ -74,7 +75,7 @@ void TestOptionalContent::checkNestedLayers()
 void TestOptionalContent::checkNoOptionalContent()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/orientation.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/orientation.pdf");
     QVERIFY( doc );
 
     QCOMPARE( doc->hasOptionalContent(), false );
@@ -84,7 +85,8 @@ void TestOptionalContent::checkNoOptionalContent()
 
 void TestOptionalContent::checkIsVisible()
 {
-    GooString *fileName = new GooString("../../../test/unittestcases/vis_policy_test.pdf"); 
+    GooString *fileName = new GooString(TESTDATADIR "/unittestcases/vis_policy_test.pdf");
+    globalParams = new GlobalParams();
     PDFDoc *doc = new PDFDoc( fileName );
     QVERIFY( doc );
 
@@ -161,11 +163,13 @@ void TestOptionalContent::checkIsVisible()
     obj.free();
 
     delete doc;
+    delete globalParams;
 }
 
 void TestOptionalContent::checkVisibilitySetting()
 {
-    GooString *fileName = new GooString("../../../test/unittestcases/vis_policy_test.pdf"); 
+    globalParams = new GlobalParams();
+    GooString *fileName = new GooString(TESTDATADIR "/unittestcases/vis_policy_test.pdf");
     PDFDoc *doc = new PDFDoc( fileName );
     QVERIFY( doc );
 
@@ -394,12 +398,13 @@ void TestOptionalContent::checkVisibilitySetting()
     obj.free();
 
     delete doc;
+    delete globalParams;
 }
 
 void TestOptionalContent::checkRadioButtons()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/ClarityOCGs.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/ClarityOCGs.pdf");
     QVERIFY( doc );
 
     QVERIFY( doc->hasOptionalContent() );
@@ -425,7 +430,7 @@ void TestOptionalContent::checkRadioButtons()
     QCOMPARE( static_cast<Qt::CheckState>( optContent->data( subindex, Qt::CheckStateRole ).toInt() ), Qt::Unchecked );
 
     // RBGroup of languages, so turning on Japanese should turn off English
-    bool result = optContent->setData( subindex, QVariant( true ), Qt::CheckStateRole );
+    QVERIFY( optContent->setData( subindex, QVariant( true ), Qt::CheckStateRole ) );
 
     subindex = optContent->index( 0, 0, index );
     QCOMPARE( optContent->data( subindex, Qt::DisplayRole ).toString(), QString( "English" ) );
@@ -440,7 +445,7 @@ void TestOptionalContent::checkRadioButtons()
     QCOMPARE( static_cast<Qt::CheckState>( optContent->data( subindex, Qt::CheckStateRole ).toInt() ), Qt::Unchecked );
 
     // and turning on French should turn off Japanese
-    result = optContent->setData( subindex, QVariant( true ), Qt::CheckStateRole );
+    QVERIFY( optContent->setData( subindex, QVariant( true ), Qt::CheckStateRole ) );
 
     subindex = optContent->index( 0, 0, index );
     QCOMPARE( optContent->data( subindex, Qt::DisplayRole ).toString(), QString( "English" ) );
@@ -456,7 +461,7 @@ void TestOptionalContent::checkRadioButtons()
 
 
     // and turning off French should leave them all off
-    result = optContent->setData( subindex, QVariant( false ), Qt::CheckStateRole );
+    QVERIFY( optContent->setData( subindex, QVariant( false ), Qt::CheckStateRole ) );
 
     subindex = optContent->index( 0, 0, index );
     QCOMPARE( optContent->data( subindex, Qt::DisplayRole ).toString(), QString( "English" ) );

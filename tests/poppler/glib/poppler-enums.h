@@ -70,6 +70,8 @@ GType poppler_selection_style_get_type (void) G_GNUC_CONST;
 #define POPPLER_TYPE_SELECTION_STYLE (poppler_selection_style_get_type ())
 GType poppler_print_flags_get_type (void) G_GNUC_CONST;
 #define POPPLER_TYPE_PRINT_FLAGS (poppler_print_flags_get_type ())
+GType poppler_find_flags_get_type (void) G_GNUC_CONST;
+#define POPPLER_TYPE_FIND_FLAGS (poppler_find_flags_get_type ())
 GType poppler_backend_get_type (void) G_GNUC_CONST;
 #define POPPLER_TYPE_BACKEND (poppler_backend_get_type ())
 G_END_DECLS

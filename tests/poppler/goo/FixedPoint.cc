@@ -82,28 +82,32 @@ FixedPoint FixedPoint::pow(FixedPoint x, FixedPoint y) {
 }
 
 int FixedPoint::mul(int x, int y) {
-#if 1 //~tmp
-  return ((FixPtInt64)x * y) >> fixptShift;
-#else
-  int ah0, ah, bh, al, bl;
-  ah0 = x & fixptMaskH;
-  ah = x >> fixptShift;
-  al = x - ah0;
-  bh = y >> fixptShift;
-  bl = y - (bh << fixptShift);
-  return ah0 * bh + ah * bl + al * bh + ((al * bl) >> fixptShift);
-#endif
+  FixPtInt64 z;
+
+  z = ((FixPtInt64)x * y) >> fixptShift;
+  if (z > 0x7fffffffLL) {
+    return 0x7fffffff;
+  } else if (z < -0x80000000LL) {
+    return 0x80000000;
+  } else {
+    return (int)z;
+  }
 }
 
 int FixedPoint::div(int x, int y) {
-#if 1 //~tmp
-  return ((FixPtInt64)x << fixptShift) / y;
-#else
-#endif
+  FixPtInt64 z;
+
+  z = ((FixPtInt64)x << fixptShift) / y;
+  if (z > 0x7fffffffLL) {
+    return 0x7fffffff;
+  } else if (z < -0x80000000LL) {
+    return 0x80000000;
+  } else {
+    return (int)z;
+  }
 }
 
 GBool FixedPoint::divCheck(FixedPoint x, FixedPoint y, FixedPoint *result) {
-#if 1 //~tmp
   FixPtInt64 z;
 
   z = ((FixPtInt64)x.val << fixptShift) / y.val;
@@ -113,8 +117,19 @@ GBool FixedPoint::divCheck(FixedPoint x, FixedPoint y, FixedPoint *result) {
   }
   result->val = z;
   return gTrue;
-#else
-#endif
+}
+
+GBool FixedPoint::checkDet(FixedPoint m11, FixedPoint m12,
+                          FixedPoint m21, FixedPoint m22,
+                          FixedPoint epsilon) {
+  FixPtInt64 det, e;
+
+  det = (FixPtInt64)m11.val * (FixPtInt64)m22.val
+        - (FixPtInt64)m12.val * (FixPtInt64)m21.val;
+  e = (FixPtInt64)epsilon.val << fixptShift;
+  // NB: this comparison has to be >= not > because epsilon can be
+  // truncated to zero as a fixed point value.
+  return det >= e || det <= -e;
 }
 
 #endif // USE_FIXEDPOINT

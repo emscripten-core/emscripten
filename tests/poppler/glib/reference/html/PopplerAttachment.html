@@ -3,12 +3,12 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>PopplerAttachment</title>
-<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
 <link rel="home" href="index.html" title="Poppler Reference Manual">
 <link rel="up" href="ch01.html" title="Poppler">
 <link rel="prev" href="poppler-PopplerAction.html" title="PopplerAction">
 <link rel="next" href="PopplerFormField.html" title="PoppplerFormField">
-<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<meta name="generator" content="GTK-Doc V1.19 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -43,23 +43,23 @@
 #include &lt;poppler.h&gt;
 
                     <a class="link" href="PopplerAttachment.html#PopplerAttachment-struct" title="PopplerAttachment">PopplerAttachment</a>;
-<span class="returnvalue">gboolean</span>            (<a class="link" href="PopplerAttachment.html#PopplerAttachmentSaveFunc" title="PopplerAttachmentSaveFunc ()">*PopplerAttachmentSaveFunc</a>)        (<em class="parameter"><code>const <span class="type">gchar</span> *buf</code></em>,
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            (<a class="link" href="PopplerAttachment.html#PopplerAttachmentSaveFunc" title="PopplerAttachmentSaveFunc ()">*PopplerAttachmentSaveFunc</a>)        (<em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *buf</code></em>,
                                                          <em class="parameter"><code><span class="type">gsize</span> count</code></em>,
-                                                         <em class="parameter"><code><span class="type">gpointer</span> data</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerAttachment.html#poppler-attachment-save" title="poppler_attachment_save ()">poppler_attachment_save</a>             (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> data</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerAttachment.html#poppler-attachment-save" title="poppler_attachment_save ()">poppler_attachment_save</a>             (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *filename</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()">poppler_attachment_save_to_callback</a> (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()">poppler_attachment_save_to_callback</a> (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
                                                          <em class="parameter"><code><a class="link" href="PopplerAttachment.html#PopplerAttachmentSaveFunc" title="PopplerAttachmentSaveFunc ()"><span class="type">PopplerAttachmentSaveFunc</span></a> save_func</code></em>,
-                                                         <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> user_data</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
 </pre>
 </div>
 <div class="refsect1">
 <a name="PopplerAttachment.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
-  GObject
+  <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
    +----PopplerAttachment
 </pre>
 </div>
@@ -75,27 +75,29 @@
 <hr>
 <div class="refsect2">
 <a name="PopplerAttachmentSaveFunc"></a><h3>PopplerAttachmentSaveFunc ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            (*PopplerAttachmentSaveFunc)        (<em class="parameter"><code>const <span class="type">gchar</span> *buf</code></em>,
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            (*PopplerAttachmentSaveFunc)        (<em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *buf</code></em>,
                                                          <em class="parameter"><code><span class="type">gsize</span> count</code></em>,
-                                                         <em class="parameter"><code><span class="type">gpointer</span> data</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> data</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
 <p>
 Specifies the type of the function passed to
 <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()"><code class="function">poppler_attachment_save_to_callback()</code></a>.  It is called once for each block of
 bytes that is "written" by <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()"><code class="function">poppler_attachment_save_to_callback()</code></a>.  If
-successful it should return <code class="literal">TRUE</code>.  If an error occurs it should set
-<em class="parameter"><code>error</code></em> and return <code class="literal">FALSE</code>, in which case <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()"><code class="function">poppler_attachment_save_to_callback()</code></a>
+successful it should return <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>.  If an error occurs it should set
+<em class="parameter"><code>error</code></em> and return <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a>, in which case <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()"><code class="function">poppler_attachment_save_to_callback()</code></a>
 will fail with the same error.
 </p>
-<p>
-<em class="parameter"><code>Returns</code></em>: <code class="literal">TRUE</code> if successful, <code class="literal">FALSE</code> (with <em class="parameter"><code>error</code></em> set) if failed.
-</p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>buf</code></em> :</span></p></td>
-<td>buffer containing bytes to be written.</td>
+<td>buffer containing
+bytes to be written. <span class="annotation">[<acronym title="Parameter points to an array of items."><span class="acronym">array</span></acronym> length=count][<acronym title="Generics and defining elements of containers and arrays."><span class="acronym">element-type</span></acronym> guint8]</span>
+</td>
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>count</code></em> :</span></p></td>
@@ -103,12 +105,18 @@ will fail with the same error.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>data</code></em> :</span></p></td>
-<td>user data passed to <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()"><code class="function">poppler_attachment_save_to_callback()</code></a>
+<td>user data passed to <a class="link" href="PopplerAttachment.html#poppler-attachment-save-to-callback" title="poppler_attachment_save_to_callback ()"><code class="function">poppler_attachment_save_to_callback()</code></a>. <span class="annotation">[<acronym title="This parameter is a 'user_data', for callbacks; many bindings can pass NULL here."><span class="acronym">closure</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
-<td>GError to set on error, or NULL</td>
+<td>GError to set on error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if successful, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> (with <em class="parameter"><code>error</code></em> set) if failed.</td>
 </tr>
 </tbody>
 </table></div>
@@ -116,16 +124,19 @@ will fail with the same error.
 <hr>
 <div class="refsect2">
 <a name="poppler-attachment-save"></a><h3>poppler_attachment_save ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_attachment_save             (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_attachment_save             (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *filename</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
 <p>
-Saves <em class="parameter"><code>attachment</code></em> to a file indicated by <em class="parameter"><code>filename</code></em>.  If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code>
-will be returned. Possible errors include those in the <span class="type">G_FILE_ERROR</span> domain
+Saves <em class="parameter"><code>attachment</code></em> to a file indicated by <em class="parameter"><code>filename</code></em>.  If <em class="parameter"><code>error</code></em> is set, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a>
+will be returned. Possible errors include those in the <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a> domain
 and whatever the save function generates.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>attachment</code></em> :</span></p></td>
@@ -137,13 +148,13 @@ and whatever the save function generates.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
-<td>return location for error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>return location for error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if the file successfully saved</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if the file successfully saved</td>
 </tr>
 </tbody>
 </table></div>
@@ -151,19 +162,22 @@ and whatever the save function generates.
 <hr>
 <div class="refsect2">
 <a name="poppler-attachment-save-to-callback"></a><h3>poppler_attachment_save_to_callback ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_attachment_save_to_callback (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_attachment_save_to_callback (<em class="parameter"><code><a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a> *attachment</code></em>,
                                                          <em class="parameter"><code><a class="link" href="PopplerAttachment.html#PopplerAttachmentSaveFunc" title="PopplerAttachmentSaveFunc ()"><span class="type">PopplerAttachmentSaveFunc</span></a> save_func</code></em>,
-                                                         <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> user_data</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
 <p>
 Saves <em class="parameter"><code>attachment</code></em> by feeding the produced data to <em class="parameter"><code>save_func</code></em>. Can be used
 when you want to store the attachment to something other than a file, such as
-an in-memory buffer or a socket. If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code> will be
-returned. Possible errors include those in the <span class="type">G_FILE_ERROR</span> domain and
+an in-memory buffer or a socket. If <em class="parameter"><code>error</code></em> is set, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> will be
+returned. Possible errors include those in the <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a> domain and
 whatever the save function generates.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>attachment</code></em> :</span></p></td>
@@ -180,13 +194,13 @@ whatever the save function generates.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
-<td>return location for error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>return location for error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if the save successfully completed</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if the save successfully completed</td>
 </tr>
 </tbody>
 </table></div>
@@ -195,6 +209,6 @@ whatever the save function generates.
 </div>
 <div class="footer">
 <hr>
-          Generated by GTK-Doc V1.17</div>
+          Generated by GTK-Doc V1.19</div>
 </body>
 </html>

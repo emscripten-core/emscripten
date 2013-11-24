@@ -1,8 +1,8 @@
-.\" Copyright 1996-2004 Glyph & Cog, LLC
-.TH pdftops 1 "31 July 2009"
+.\" Copyright 1996-2011 Glyph & Cog, LLC
+.TH pdftops 1 "15 August 2011"
 .SH NAME
 pdftops \- Portable Document Format (PDF) to PostScript converter
-(version 3.00)
+(version 3.03)
 .SH SYNOPSIS
 .B pdftops
 [options]
@@ -41,7 +41,7 @@ Generate Level 1 PostScript.  The resulting PostScript files will be
 significantly larger (if they contain images), but will print on Level
 1 printers.  This also converts all images to black and white.  No
 more than one of the PostScript level options (\-level1, \-level1sep,
-\-level2, \-level2sep, \-level3, \-level3Sep) may be given.
+\-level2, \-level2sep, \-level3, \-level3sep) may be given.
 .TP
 .B \-level1sep
 Generate Level 1 separable PostScript.  All colors are converted to
@@ -61,9 +61,9 @@ handle custom (spot) colors.
 Generate Level 3 PostScript.  This enables all Level 2 features plus
 CID font embedding.
 .TP
-.B \-level3Sep
+.B \-level3sep
 Generate Level 3 separable PostScript.  The separation handling is the
-same as for \-level2Sep.
+same as for \-level2sep.
 .TP
 .B \-origpagesizes
 Generate a PostScript file with variable page sizes and orientations,
@@ -94,6 +94,19 @@ given.
 Generate OPI comments for all images and forms which have OPI
 information.  (This option is only available if pdftops was compiled
 with OPI support.)
+.TP
+.B \-binary
+Write binary data in Level 1 PostScript.  By default, pdftops writes
+hex-encoded data in Level 1 PostScript.  Binary data is non-standard
+in Level 1 PostScript but reduces the file size and can be useful
+when Level 1 PostScript is required only for its restricted use
+of PostScript operators.
+.TP
+.BI \-r " number"
+Set the resolution in DPI when pdftops rasterizes images with
+transparencies or, for Level 1 PostScript, when pdftops
+rasterizes images with color masks.
+By default, pdftops rasterizes images to 300 DPI.
 .TP
 .B \-noembt1
 By default, any Type 1 fonts which are embedded in the PDF file are
@@ -201,11 +214,14 @@ Error related to PDF permissions.
 99
 Other error.
 .SH AUTHOR
-The pdftops software and documentation are copyright 1996-2004 Glyph &
+The pdftops software and documentation are copyright 1996-2011 Glyph &
 Cog, LLC.
 .SH "SEE ALSO"
-.BR pdftotext (1),
-.BR pdfinfo (1),
+.BR pdfdetach (1),
 .BR pdffonts (1),
-.BR pdftoppm (1),
 .BR pdfimages (1),
+.BR pdfinfo (1),
+.BR pdftocairo (1),
+.BR pdftohtml (1),
+.BR pdftoppm (1),
+.BR pdftotext (1)

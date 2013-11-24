@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2009-2011, Pino Toscano <pino@kde.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,22 +24,23 @@
 #include "Object.h"
 #include "Stream.h"
 #include "Catalog.h"
+#include "FileSpec.h"
 
 using namespace poppler;
 
-embedded_file_private::embedded_file_private(EmbFile *ef)
-    : emb_file(ef)
+embedded_file_private::embedded_file_private(FileSpec *fs)
+    : file_spec(fs)
 {
 }
 
 embedded_file_private::~embedded_file_private()
 {
-    delete emb_file;
+    delete file_spec;
 }
 
-embedded_file* embedded_file_private::create(EmbFile *ef)
+embedded_file* embedded_file_private::create(FileSpec *fs)
 {
-    return new embedded_file(*new embedded_file_private(ef));
+    return new embedded_file(*new embedded_file_private(fs));
 }
 
 /**
@@ -67,7 +68,7 @@ embedded_file::~embedded_file()
  */
 bool embedded_file::is_valid() const
 {
-    return d->emb_file->isOk();
+    return d->file_spec->isOk();
 }
 
 /**
@@ -75,7 +76,8 @@ bool embedded_file::is_valid() const
  */
 std::string embedded_file::name() const
 {
-    return std::string(d->emb_file->name()->getCString());
+    GooString *goo = d->file_spec->getFileName();
+    return goo ? std::string(goo->getCString()) : std::string();
 }
 
 /**
@@ -83,7 +85,8 @@ std::string embedded_file::name() const
  */
 ustring embedded_file::description() const
 {
-    return detail::unicode_GooString_to_ustring(d->emb_file->description());
+    GooString *goo = d->file_spec->getDescription();
+    return goo ? detail::unicode_GooString_to_ustring(goo) : ustring();
 }
 
 /**
@@ -94,7 +97,7 @@ ustring embedded_file::description() const
  */
 int embedded_file::size() const
 {
-    return d->emb_file->size();
+    return d->file_spec->getEmbeddedFile()->size();
 }
 
 /**
@@ -103,7 +106,8 @@ int embedded_file::size() const
  */
 time_type embedded_file::modification_date() const
 {
-    return detail::convert_date(d->emb_file->modDate()->getCString());
+    GooString *goo = d->file_spec->getEmbeddedFile()->modDate();
+    return goo ? detail::convert_date(goo->getCString()) : time_type(-1);
 }
 
 /**
@@ -112,7 +116,8 @@ time_type embedded_file::modification_date() const
  */
 time_type embedded_file::creation_date() const
 {
-    return detail::convert_date(d->emb_file->createDate()->getCString());
+    GooString *goo = d->file_spec->getEmbeddedFile()->createDate();
+    return goo ? detail::convert_date(goo->getCString()) : time_type(-1);
 }
 
 /**
@@ -120,7 +125,10 @@ time_type embedded_file::creation_date() const
  */
 byte_array embedded_file::checksum() const
 {
-    GooString *cs = d->emb_file->checksum();
+    GooString *cs = d->file_spec->getEmbeddedFile()->checksum();
+    if (!cs) {
+        return byte_array();
+    }
     const char *ccs = cs->getCString();
     byte_array data(cs->getLength());
     for (int i = 0; i < cs->getLength(); ++i) {
@@ -134,7 +142,8 @@ byte_array embedded_file::checksum() const
  */
 std::string embedded_file::mime_type() const
 {
-    return std::string(d->emb_file->mimeType()->getCString());
+    GooString *goo = d->file_spec->getEmbeddedFile()->mimeType();
+    return goo ? std::string(goo->getCString()) : std::string();
 }
 
 /**
@@ -147,8 +156,11 @@ byte_array embedded_file::data() const
     if (!is_valid()) {
         return byte_array();
     }
+    Stream *stream = d->file_spec->getEmbeddedFile()->stream();
+    if (!stream) {
+        return byte_array();
+    }
 
-    Stream *stream = d->emb_file->streamObject().getStream();
     stream->reset();
     byte_array ret(1024);
     size_t data_len = 0;

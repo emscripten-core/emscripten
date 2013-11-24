@@ -2,6 +2,8 @@
  * Copyright (C) 2006-2007, Albert Astals Cid
  * Copyright (C) 2007-2008, Pino Toscano <pino@kde.org>
  * Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
+ * Copyright (C) 2012, Tobias Koenig <tokoe@kdab.com>
+ * Copyright (C) 2012, Guillermo A. Amaral B. <gamaral@kde.org>
  * Adapting code from
  *   Copyright (C) 2004 by Enrico Ros <eros.kde@email.it>
  *
@@ -22,10 +24,19 @@
 
 #include <poppler-qt4.h>
 #include <poppler-private.h>
+#include <poppler-media.h>
 
 #include <QtCore/QStringList>
 
+#include "poppler-annotation-private.h"
+
 #include "Link.h"
+#include "Rendition.h"
+
+bool operator==( const Ref &r1, const Ref &r2 )
+{
+	return r1.num == r2.num && r1.gen == r2.gen;
+}
 
 namespace Poppler {
 
@@ -154,6 +165,50 @@ class LinkSoundPrivate : public LinkPrivate
 		delete sound;
 	}
 
+class LinkRenditionPrivate : public LinkPrivate
+{
+	public:
+		LinkRenditionPrivate( const QRectF &area, ::MediaRendition *rendition, ::LinkRendition::RenditionOperation operation, const QString &script, const Ref &annotationReference );
+		~LinkRenditionPrivate();
+
+		MediaRendition *rendition;
+		LinkRendition::RenditionAction action;
+		QString script;
+		Ref annotationReference;
+};
+
+	LinkRenditionPrivate::LinkRenditionPrivate( const QRectF &area, ::MediaRendition *r, ::LinkRendition::RenditionOperation operation, const QString &javaScript, const Ref &ref )
+		: LinkPrivate( area )
+		, rendition( r ? new MediaRendition( r ) : 0 )
+		, action( LinkRendition::PlayRendition )
+		, script( javaScript )
+		, annotationReference( ref )
+	{
+		switch ( operation )
+		{
+			case ::LinkRendition::NoRendition:
+				action = LinkRendition::NoRendition;
+				break;
+			case ::LinkRendition::PlayRendition:
+				action = LinkRendition::PlayRendition;
+				break;
+			case ::LinkRendition::StopRendition:
+				action = LinkRendition::StopRendition;
+				break;
+			case ::LinkRendition::PauseRendition:
+				action = LinkRendition::PauseRendition;
+				break;
+			case ::LinkRendition::ResumeRendition:
+				action = LinkRendition::ResumeRendition;
+				break;
+		}
+	}
+
+	LinkRenditionPrivate::~LinkRenditionPrivate()
+	{
+		delete rendition;
+	}
+
 class LinkJavaScriptPrivate : public LinkPrivate
 {
 	public:
@@ -167,18 +222,20 @@ class LinkJavaScriptPrivate : public LinkPrivate
 	{
 	}
 
-#if 0
 class LinkMoviePrivate : public LinkPrivate
 {
 	public:
-		LinkMoviePrivate( const QRectF &area );
+		LinkMoviePrivate( const QRectF &area, LinkMovie::Operation operation, const QString &title, const Ref &reference );
+
+		LinkMovie::Operation operation;
+		QString annotationTitle;
+		Ref annotationReference;
 };
 
-	LinkMoviePrivate::LinkMoviePrivate( const QRectF &area )
-		: LinkPrivate( area )
+	LinkMoviePrivate::LinkMoviePrivate( const QRectF &area, LinkMovie::Operation _operation, const QString &title, const Ref &reference  )
+		: LinkPrivate( area ), operation( _operation ), annotationTitle( title ), annotationReference( reference )
 	{
 	}
-#endif
 
 	static void cvtUserToDev(::Page *page, double xu, double yu, int *xd, int *yd) {
 		double ctm[6];
@@ -544,6 +601,55 @@ class LinkMoviePrivate : public LinkPrivate
 		return d->sound;
 	}
 
+	// LinkRendition
+	LinkRendition::LinkRendition( const QRectF &linkArea, ::MediaRendition *rendition )
+		: Link( *new LinkRenditionPrivate( linkArea, rendition, ::LinkRendition::NoRendition, QString(), Ref() ) )
+	{
+	}
+	
+	LinkRendition::LinkRendition( const QRectF &linkArea, ::MediaRendition *rendition, int operation, const QString &script, const Ref &annotationReference )
+		: Link( *new LinkRenditionPrivate( linkArea, rendition, static_cast<enum ::LinkRendition::RenditionOperation>(operation), script, annotationReference ) )
+	{
+	}
+
+	LinkRendition::~LinkRendition()
+	{
+	}
+	
+	Link::LinkType LinkRendition::linkType() const
+	{
+		return Rendition;
+	}
+	
+	MediaRendition * LinkRendition::rendition() const
+	{
+		Q_D( const LinkRendition );
+		return d->rendition;
+	}
+
+	LinkRendition::RenditionAction LinkRendition::action() const
+	{
+		Q_D( const LinkRendition );
+		return d->action;
+	}
+
+	QString LinkRendition::script() const
+	{
+		Q_D( const LinkRendition );
+		return d->script;
+	}
+
+	bool LinkRendition::isReferencedAnnotation( const ScreenAnnotation *annotation ) const
+	{
+		Q_D( const LinkRendition );
+		if ( d->annotationReference.num != -1 && d->annotationReference == annotation->d_ptr->pdfObjectReference() )
+		{
+			return true;
+		}
+
+		return false;
+	}
+
 	// LinkJavaScript
 	LinkJavaScript::LinkJavaScript( const QRectF &linkArea, const QString &js )
 		: Link( *new LinkJavaScriptPrivate( linkArea ) )
@@ -567,10 +673,9 @@ class LinkMoviePrivate : public LinkPrivate
 		return d->js;
 	}
 
-#if 0
 	// LinkMovie
-	LinkMovie::LinkMovie( const QRectF &linkArea )
-		: Link( *new LinkMoviePrivate( linkArea ) )
+	LinkMovie::LinkMovie( const QRectF &linkArea, Operation operation, const QString &annotationTitle, const Ref &annotationReference )
+		: Link( *new LinkMoviePrivate( linkArea, operation, annotationTitle, annotationReference ) )
 	{
 	}
 	
@@ -582,6 +687,25 @@ class LinkMoviePrivate : public LinkPrivate
 	{
 		return Movie;
 	}
-#endif
+	
+	LinkMovie::Operation LinkMovie::operation() const
+	{
+		Q_D( const LinkMovie );
+		return d->operation;
+	}
 
+	bool LinkMovie::isReferencedAnnotation( const MovieAnnotation *annotation ) const
+	{
+		Q_D( const LinkMovie );
+		if ( d->annotationReference.num != -1 && d->annotationReference == annotation->d_ptr->pdfObjectReference() )
+		{
+			return true;
+		}
+		else if ( !d->annotationTitle.isNull() )
+		{
+			return ( annotation->movieTitle() == d->annotationTitle );
+		}
+
+		return false;
+	}
 }

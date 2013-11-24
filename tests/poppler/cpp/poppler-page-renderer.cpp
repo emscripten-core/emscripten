@@ -174,8 +174,8 @@ image page_renderer::render_page(const page *p,
     const GBool text_AA = d->hints & text_antialiasing ? gTrue : gFalse;
     SplashOutputDev splashOutputDev(splashModeXBGR8, 4, gFalse, bgColor, gTrue, text_AA);
     splashOutputDev.setVectorAntialias(d->hints & antialiasing ? gTrue : gFalse);
-    splashOutputDev.setFreeTypeHinting(d->hints & text_hinting ? gTrue : gFalse);
-    splashOutputDev.startDoc(pdfdoc->getXRef());
+    splashOutputDev.setFreeTypeHinting(d->hints & text_hinting ? gTrue : gFalse, gFalse);
+    splashOutputDev.startDoc(pdfdoc);
     pdfdoc->displayPageSlice(&splashOutputDev, pp->index + 1,
                              xres, yres, int(rotate) * 90,
                              gFalse, gTrue, gFalse,

@@ -4,9 +4,10 @@
 //
 // This file is licensed under the GPLv2 or later
 //
-// Copyright 2010 Hib Eris <hib@hiberis.nl>
-// Copyright 2010 Albert Astals Cid <aacid@kde.org>
-// Copyright 2010 Pino Toscano <pino@kde.org>
+// Copyright 2010, 2012 Hib Eris <hib@hiberis.nl>
+// Copyright 2010, 2011, 2013 Albert Astals Cid <aacid@kde.org>
+// Copyright 2010, 2013 Pino Toscano <pino@kde.org>
+// Copyright 2013 Adrian Johnson <ajohnson@redneon.com>
 //
 //========================================================================
 
@@ -36,7 +37,7 @@ Hints::Hints(BaseStream *str, Linearization *linearization, XRef *xref, Security
   pageEndFirst = linearization->getEndFirst();
   pageObjectFirst = linearization->getObjectNumberFirst();
   if (pageObjectFirst < 0 || pageObjectFirst >= xref->getNumObjects()) {
-    error(-1,
+    error(errSyntaxWarning, -1,
       "Invalid reference for first page object (%d) in linearization table ",
       pageObjectFirst);
     pageObjectFirst = 0;
@@ -44,23 +45,26 @@ Hints::Hints(BaseStream *str, Linearization *linearization, XRef *xref, Security
   pageOffsetFirst = xref->getEntry(pageObjectFirst)->offset;
 
   if (nPages >= INT_MAX / (int)sizeof(Guint)) {
-     error(-1, "Invalid number of pages (%d) for hints table", nPages);
+     error(errSyntaxWarning, -1, "Invalid number of pages ({0:d}) for hints table", nPages);
      nPages = 0;
   }
   nObjects = (Guint *) gmallocn_checkoverflow(nPages, sizeof(Guint));
   pageObjectNum = (int *) gmallocn_checkoverflow(nPages, sizeof(int));
   xRefOffset = (Guint *) gmallocn_checkoverflow(nPages, sizeof(Guint));
   pageLength = (Guint *) gmallocn_checkoverflow(nPages, sizeof(Guint));
-  pageOffset = (Guint *) gmallocn_checkoverflow(nPages, sizeof(Guint));
+  pageOffset = (Goffset *) gmallocn_checkoverflow(nPages, sizeof(Goffset));
   numSharedObject = (Guint *) gmallocn_checkoverflow(nPages, sizeof(Guint));
   sharedObjectId = (Guint **) gmallocn_checkoverflow(nPages, sizeof(Guint*));
   if (!nObjects || !pageObjectNum || !xRefOffset || !pageLength || !pageOffset ||
       !numSharedObject || !sharedObjectId) {
-    error(-1, "Failed to allocate memory for hints tabel");
+    error(errSyntaxWarning, -1, "Failed to allocate memory for hints table");
     nPages = 0;
   }
 
+  memset(pageLength, 0, nPages * sizeof(Guint));
+  memset(pageOffset, 0, nPages * sizeof(Guint));
   memset(numSharedObject, 0, nPages * sizeof(Guint));
+  memset(pageObjectNum, 0, nPages * sizeof(int));
 
   nSharedGroups = 0;
   groupLength = NULL;
@@ -133,11 +137,11 @@ void Hints::readTables(BaseStream *str, Linearization *linearization, XRef *xref
   if (parser->getObj(&obj)->isInt() &&
      (num = obj.getInt(), obj.free(), parser->getObj(&obj)->isInt()) &&
      (gen = obj.getInt(), obj.free(), parser->getObj(&obj)->isCmd("obj")) &&
-     (obj.free(), parser->getObj(&obj,
+     (obj.free(), parser->getObj(&obj, gFalse,
          secHdlr ? secHdlr->getFileKey() : (Guchar *)NULL,
          secHdlr ? secHdlr->getEncAlgorithm() : cryptRC4,
          secHdlr ? secHdlr->getFileKeyLength() : 0,
-         num, gen)->isStream())) {
+         num, gen, 0, gTrue)->isStream())) {
     Stream *hintsStream = obj.getStream();
     Dict *hintsDict = obj.streamGetDict();
 
@@ -152,10 +156,10 @@ void Hints::readTables(BaseStream *str, Linearization *linearization, XRef *xref
         for (int i=0; i<sharedStreamOffset; i++) hintsStream->getChar();
         readSharedObjectsTable(hintsStream);
     } else {
-      error(-1, "Invalid shared object hint table offset");
+      error(errSyntaxWarning, -1, "Invalid shared object hint table offset");
     }
   } else {
-    error(-1, "Failed parsing hints table object");
+    error(errSyntaxWarning, -1, "Failed parsing hints table object");
   }
   obj.free();
 
@@ -165,7 +169,7 @@ void Hints::readTables(BaseStream *str, Linearization *linearization, XRef *xref
 void Hints::readPageOffsetTable(Stream *str)
 {
   if (nPages < 1) {
-    error(-1, "Invalid number of pages reading page offset hints table");
+    error(errSyntaxWarning, -1, "Invalid number of pages reading page offset hints table");
     return;
   }
 
@@ -226,13 +230,13 @@ void Hints::readPageOffsetTable(Stream *str)
   for (int i=1; i<nPages; i++) {
     numSharedObject[i] = readBits(nBitsNumShared, str);
     if (numSharedObject[i] >= INT_MAX / (int)sizeof(Guint)) {
-       error(-1, "Invalid number of shared objects");
+       error(errSyntaxWarning, -1, "Invalid number of shared objects");
        numSharedObject[i] = 0;
        return;
     }
     sharedObjectId[i] = (Guint *) gmallocn_checkoverflow(numSharedObject[i], sizeof(Guint));
     if (numSharedObject[i] && !sharedObjectId[i]) {
-       error(-1, "Failed to allocate memory for shared object IDs");
+       error(errSyntaxWarning, -1, "Failed to allocate memory for shared object IDs");
        numSharedObject[i] = 0;
        return;
     }
@@ -273,13 +277,14 @@ void Hints::readSharedObjectsTable(Stream *str)
   Guint nBitsDiffGroupLength = readBits(16, str);
 
   if ((!nSharedGroups) || (nSharedGroups >= INT_MAX / (int)sizeof(Guint))) {
-     error(-1, "Invalid number of shared object groups");
+     error(errSyntaxWarning, -1, "Invalid number of shared object groups");
      nSharedGroups = 0;
      return;
   }
   if ((!nSharedGroupsFirst) || (nSharedGroupsFirst > nSharedGroups)) {
-     error(-1, "Invalid number of first page shared object groups");
-     nSharedGroupsFirst = nSharedGroups;
+     error(errSyntaxWarning, -1, "Invalid number of first page shared object groups");
+     nSharedGroups = 0;
+     return;
   }
 
   groupLength = (Guint *) gmallocn_checkoverflow(nSharedGroups, sizeof(Guint));
@@ -289,7 +294,7 @@ void Hints::readSharedObjectsTable(Stream *str)
   groupXRefOffset = (Guint *) gmallocn_checkoverflow(nSharedGroups, sizeof(Guint));
   if (!groupLength || !groupOffset || !groupHasSignature ||
       !groupNumObjects || !groupXRefOffset) {
-     error(-1, "Failed to allocate memory for shared object groups");
+     error(errSyntaxWarning, -1, "Failed to allocate memory for shared object groups");
      nSharedGroups = 0;
      return;
   }
@@ -341,7 +346,7 @@ void Hints::readSharedObjectsTable(Stream *str)
   }
 }
 
-Guint Hints::getPageOffset(int page)
+Goffset Hints::getPageOffset(int page)
 {
   if ((page < 1) || (page > nPages)) return 0;
 

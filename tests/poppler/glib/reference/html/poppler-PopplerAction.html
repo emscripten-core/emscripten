@@ -3,12 +3,12 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>PopplerAction</title>
-<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
 <link rel="home" href="index.html" title="Poppler Reference Manual">
 <link rel="up" href="ch01.html" title="Poppler">
 <link rel="prev" href="PopplerPage.html" title="PopplerPage">
 <link rel="next" href="PopplerAttachment.html" title="PopplerAttachment">
-<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<meta name="generator" content="GTK-Doc V1.19 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -51,6 +51,7 @@ struct              <a class="link" href="poppler-PopplerAction.html#PopplerActi
 struct              <a class="link" href="poppler-PopplerAction.html#PopplerActionMovie" title="struct PopplerActionMovie">PopplerActionMovie</a>;
 struct              <a class="link" href="poppler-PopplerAction.html#PopplerActionRendition" title="struct PopplerActionRendition">PopplerActionRendition</a>;
 struct              <a class="link" href="poppler-PopplerAction.html#PopplerActionOCGState" title="struct PopplerActionOCGState">PopplerActionOCGState</a>;
+struct              <a class="link" href="poppler-PopplerAction.html#PopplerActionJavascript" title="struct PopplerActionJavascript">PopplerActionJavascript</a>;
 enum                <a class="link" href="poppler-PopplerAction.html#PopplerActionType" title="enum PopplerActionType">PopplerActionType</a>;
 enum                <a class="link" href="poppler-PopplerAction.html#PopplerDestType" title="enum PopplerDestType">PopplerDestType</a>;
 enum                <a class="link" href="poppler-PopplerAction.html#PopplerActionMovieOperation" title="enum PopplerActionMovieOperation">PopplerActionMovieOperation</a>;
@@ -95,8 +96,11 @@ A data structure for holding actions
 <p>
 Data structure for holding a destination
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><a class="link" href="poppler-PopplerAction.html#PopplerDestType" title="enum PopplerDestType"><span class="type">PopplerDestType</span></a> <em class="structfield"><code><a name="PopplerDest.type"></a>type</code></em>;</span></p></td>
@@ -127,19 +131,19 @@ Data structure for holding a destination
 <td>scale factor</td>
 </tr>
 <tr>
-<td><p><span class="term"><span class="type">gchar</span> *<em class="structfield"><code><a name="PopplerDest.named-dest"></a>named_dest</code></em>;</span></p></td>
+<td><p><span class="term"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *<em class="structfield"><code><a name="PopplerDest.named-dest"></a>named_dest</code></em>;</span></p></td>
 <td>name of the destination (<a class="link" href="poppler-PopplerAction.html#POPPLER-DEST-NAMED:CAPS"><span class="type">POPPLER_DEST_NAMED</span></a> only)</td>
 </tr>
 <tr>
-<td><p><span class="term"><span class="type">guint</span> <em class="structfield"><code><a name="PopplerDest.change-left"></a>change_left</code></em> : 1;</span></p></td>
+<td><p><span class="term"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a> <em class="structfield"><code><a name="PopplerDest.change-left"></a>change_left</code></em> : 1;</span></p></td>
 <td>whether left coordinate should be changed</td>
 </tr>
 <tr>
-<td><p><span class="term"><span class="type">guint</span> <em class="structfield"><code><a name="PopplerDest.change-top"></a>change_top</code></em> : 1;</span></p></td>
+<td><p><span class="term"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a> <em class="structfield"><code><a name="PopplerDest.change-top"></a>change_top</code></em> : 1;</span></p></td>
 <td>whether top coordinate should be changed</td>
 </tr>
 <tr>
-<td><p><span class="term"><span class="type">guint</span> <em class="structfield"><code><a name="PopplerDest.change-zoom"></a>change_zoom</code></em> : 1;</span></p></td>
+<td><p><span class="term"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a> <em class="structfield"><code><a name="PopplerDest.change-zoom"></a>change_zoom</code></em> : 1;</span></p></td>
 <td>whether scale factor should be changed</td>
 </tr>
 </tbody>
@@ -248,9 +252,19 @@ Data structure for holding a destination
 </div>
 <hr>
 <div class="refsect2">
+<a name="PopplerActionJavascript"></a><h3>struct PopplerActionJavascript</h3>
+<pre class="programlisting">struct PopplerActionJavascript {
+	PopplerActionType  type;
+	gchar 		  *title;
+
+	gchar		  *script;
+};
+</pre>
+</div>
+<hr>
+<div class="refsect2">
 <a name="PopplerActionType"></a><h3>enum PopplerActionType</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
 	POPPLER_ACTION_UNKNOWN,		/* unknown action */
 	POPPLER_ACTION_NONE,            /* no action specified */
 	POPPLER_ACTION_GOTO_DEST, /* go to destination */
@@ -260,14 +274,18 @@ Data structure for holding a destination
 	POPPLER_ACTION_NAMED,		/* named action*/
 	POPPLER_ACTION_MOVIE,		/* movie action */
 	POPPLER_ACTION_RENDITION,       /* rendition action */
-	POPPLER_ACTION_OCG_STATE        /* Set-OCG-State action */
+	POPPLER_ACTION_OCG_STATE,       /* Set-OCG-State action */
+	POPPLER_ACTION_JAVASCRIPT /* Javascript action */
 } PopplerActionType;
 </pre>
 <p>
 Action types
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-ACTION-UNKNOWN:CAPS"></a><span class="term"><code class="literal">POPPLER_ACTION_UNKNOWN</code></span></p></td>
@@ -319,14 +337,18 @@ Action types
 <td>state of layer. Since 0.14
 </td>
 </tr>
+<tr>
+<td><p><a name="POPPLER-ACTION-JAVASCRIPT:CAPS"></a><span class="term"><code class="literal">POPPLER_ACTION_JAVASCRIPT</code></span></p></td>
+<td>Javascript. Since 0.18
+</td>
+</tr>
 </tbody>
 </table></div>
 </div>
 <hr>
 <div class="refsect2">
 <a name="PopplerDestType"></a><h3>enum PopplerDestType</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
 	POPPLER_DEST_UNKNOWN,
 	POPPLER_DEST_XYZ,
 	POPPLER_DEST_FIT,
@@ -342,8 +364,11 @@ Action types
 <p>
 Destination types
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-DEST-UNKNOWN:CAPS"></a><span class="term"><code class="literal">POPPLER_DEST_UNKNOWN</code></span></p></td>
@@ -418,8 +443,7 @@ bounding box within the window
 <hr>
 <div class="refsect2">
 <a name="PopplerActionMovieOperation"></a><h3>enum PopplerActionMovieOperation</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
         POPPLER_ACTION_MOVIE_PLAY,
 	POPPLER_ACTION_MOVIE_PAUSE,
 	POPPLER_ACTION_MOVIE_RESUME,
@@ -429,8 +453,11 @@ bounding box within the window
 <p>
 Movie operations
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-ACTION-MOVIE-PLAY:CAPS"></a><span class="term"><code class="literal">POPPLER_ACTION_MOVIE_PLAY</code></span></p></td>
@@ -467,8 +494,11 @@ Movie operations
 <p>
 Action to perform over a list of layers
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><a class="link" href="poppler-PopplerAction.html#PopplerActionLayerAction" title="enum PopplerActionLayerAction"><span class="type">PopplerActionLayerAction</span></a> <em class="structfield"><code><a name="PopplerActionLayer.action"></a>action</code></em>;</span></p></td>
@@ -476,7 +506,7 @@ Action to perform over a list of layers
 </td>
 </tr>
 <tr>
-<td><p><span class="term"><span class="type">GList</span> *<em class="structfield"><code><a name="PopplerActionLayer.layers"></a>layers</code></em>;</span></p></td>
+<td><p><span class="term"><a href="http://library.gnome.org/devel/glib/unstable/glib-Doubly-Linked-Lists.html#GList"><span class="type">GList</span></a> *<em class="structfield"><code><a name="PopplerActionLayer.layers"></a>layers</code></em>;</span></p></td>
 <td>list of <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="type">PopplerLayer</span></a>s</td>
 </tr>
 </tbody>
@@ -485,8 +515,7 @@ Action to perform over a list of layers
 <hr>
 <div class="refsect2">
 <a name="PopplerActionLayerAction"></a><h3>enum PopplerActionLayerAction</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
 	POPPLER_ACTION_LAYER_ON,
 	POPPLER_ACTION_LAYER_OFF,
 	POPPLER_ACTION_LAYER_TOGGLE
@@ -495,8 +524,11 @@ Action to perform over a list of layers
 <p>
 Layer actions
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-ACTION-LAYER-ON:CAPS"></a><span class="term"><code class="literal">POPPLER_ACTION_LAYER_ON</code></span></p></td>
@@ -524,8 +556,11 @@ Layer actions
 <p>
 Copies <em class="parameter"><code>action</code></em>, creating an identical <a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="type">PopplerAction</span></a>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>action</code></em> :</span></p></td>
@@ -547,8 +582,11 @@ Copies <em class="parameter"><code>action</code></em>, creating an identical <a 
 <p>
 Frees <em class="parameter"><code>action</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>action</code></em> :</span></p></td>
 <td>a <a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="type">PopplerAction</span></a>
@@ -563,8 +601,11 @@ Frees <em class="parameter"><code>action</code></em>
 <p>
 Copies <em class="parameter"><code>dest</code></em>, creating an identical <a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="type">PopplerDest</span></a>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>dest</code></em> :</span></p></td>
@@ -586,8 +627,11 @@ Copies <em class="parameter"><code>dest</code></em>, creating an identical <a cl
 <p>
 Frees <em class="parameter"><code>dest</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>dest</code></em> :</span></p></td>
 <td>a <a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="type">PopplerDest</span></a>
@@ -599,6 +643,6 @@ Frees <em class="parameter"><code>dest</code></em>
 </div>
 <div class="footer">
 <hr>
-          Generated by GTK-Doc V1.17</div>
+          Generated by GTK-Doc V1.19</div>
 </body>
 </html>

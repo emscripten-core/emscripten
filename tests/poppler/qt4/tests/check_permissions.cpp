@@ -12,7 +12,7 @@ private slots:
 void TestPermissions::permissions1()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/orientation.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/orientation.pdf");
     QVERIFY( doc );
   
     // we are allowed to print

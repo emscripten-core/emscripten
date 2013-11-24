@@ -155,12 +155,18 @@ pgd_fonts_fill_model (PgdFontsDemo *demo)
 			const gchar *name;
 			const gchar *type;
 			const gchar *embedded;
+			const gchar *substitute;
 			const gchar *filename;
+			const gchar *encoding;
 			gchar       *details;
 
 			name = poppler_fonts_iter_get_name (fonts_iter);
 			if (!name)
 				name = "No name";
+
+			encoding = poppler_fonts_iter_get_encoding (fonts_iter);
+			if (!encoding)
+				encoding = "None";
 
 			type = font_type_to_string (poppler_fonts_iter_get_font_type (fonts_iter));
 			
@@ -173,12 +179,13 @@ pgd_fonts_fill_model (PgdFontsDemo *demo)
 				embedded = "Not embedded";
 			}
 
+			substitute = poppler_fonts_iter_get_substitute_name (fonts_iter);
 			filename = poppler_fonts_iter_get_file_name (fonts_iter);
 
-			if (filename)
-				details = g_markup_printf_escaped ("%s\n%s (%s)", type, embedded, filename);
+			if (substitute && filename)
+				details = g_markup_printf_escaped ("%s\nEncoding: %s\n%s, substituting with <b>%s</b>\n(%s)", type, encoding, embedded, substitute, filename);
 			else
-				details = g_markup_printf_escaped ("%s\n%s", type, embedded);
+				details = g_markup_printf_escaped ("%s\nEncoding: %s\n%s", type, encoding, embedded);
 
 			gtk_list_store_append (GTK_LIST_STORE (model), &iter);
 			gtk_list_store_set (GTK_LIST_STORE (model), &iter,
@@ -221,9 +228,9 @@ pgd_fonts_create_widget (PopplerDocument *document)
 
 	demo->doc = g_object_ref (document);
 	
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 	
 	demo->progress = gtk_progress_bar_new ();
 	gtk_progress_bar_set_ellipsize (GTK_PROGRESS_BAR (demo->progress),

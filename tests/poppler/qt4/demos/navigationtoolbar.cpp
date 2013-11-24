@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008-2009, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2013, Fabio D'Urso <fabiodurso@hotmail.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,6 +54,15 @@ NavigationToolBar::NavigationToolBar(QWidget *parent)
     m_zoomCombo->setCurrentIndex(6); // "100%"
     connect(m_zoomCombo, SIGNAL(currentIndexChanged(QString)), this, SLOT(slotZoomComboChanged(QString)));
     addWidget(m_zoomCombo);
+
+    m_rotationCombo = new QComboBox(this);
+    // NOTE: \302\260 = degree symbol
+    m_rotationCombo->addItem(trUtf8("0\302\260"));
+    m_rotationCombo->addItem(trUtf8("90\302\260"));
+    m_rotationCombo->addItem(trUtf8("180\302\260"));
+    m_rotationCombo->addItem(trUtf8("270\302\260"));
+    connect(m_rotationCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(slotRotationComboChanged(int)));
+    addWidget(m_rotationCombo);
 
     documentClosed();
 }
@@ -124,6 +134,11 @@ void NavigationToolBar::slotZoomComboChanged(const QString &_text)
     if (ok && value >= 10) {
         emit zoomChanged(qreal(value) / 100);
     }
+}
+
+void NavigationToolBar::slotRotationComboChanged(int idx)
+{
+    emit rotationChanged(idx * 90);
 }
 
 #include "navigationtoolbar.moc"

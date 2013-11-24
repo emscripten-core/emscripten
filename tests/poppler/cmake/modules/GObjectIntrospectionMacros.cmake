@@ -45,6 +45,7 @@ macro(gir_add_introspections introspections_girs)
     _gir_list_prefix(_gir_libraries ${_gir_name}_LIBS "--library=")
     _gir_list_prefix(_gir_packages ${_gir_name}_PACKAGES "--pkg=")
     _gir_list_prefix(_gir_includes ${_gir_name}_INCLUDES "--include=")
+    _gir_list_prefix(_gir_export_packages ${_gir_name}_EXPORT_PACKAGES "--pkg-export=")
 
     # Reuse the LIBTOOL variable from by automake if it's set
     set(_gir_libtool "--no-libtool")
@@ -59,6 +60,7 @@ macro(gir_add_introspections introspections_girs)
               ${_gir_libraries}
               ${_gir_packages}
               ${_gir_includes}
+              ${_gir_export_packages}
               ${${_gir_name}_SCANNERFLAGS}
               ${${_gir_name}_CFLAGS}
               ${${_gir_name}_FILES}

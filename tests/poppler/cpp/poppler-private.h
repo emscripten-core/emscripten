@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +23,7 @@
 #include "poppler-global.h"
 #include "poppler-rectangle.h"
 
+#include "Error.h"
 #include "CharTypes.h"
 
 #include <stdarg.h>
@@ -37,7 +39,7 @@ namespace poppler
 namespace detail
 {
 
-void error_function(int pos, char *msg, va_list args);
+void error_function(void *data, ErrorCategory category, Goffset pos, char *msg);
 
 rectf pdfrectangle_to_rectf(const PDFRectangle &pdfrect);
 

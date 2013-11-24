@@ -1,17 +1,17 @@
 Xpdf
 ====
 
-version 3.00
-2004-jan-22
+version 3.03
+2011-aug-15
 
 The Xpdf software and documentation are
-copyright 1996-2004 Glyph & Cog, LLC.
+copyright 1996-2011 Glyph & Cog, LLC.
 
 Email: derekn@foolabs.com
 WWW: http://www.foolabs.com/xpdf/
 
 The PDF data structures, operators, and specification are
-copyright 1985-2003 Adobe Systems Inc.
+copyright 1985-2006 Adobe Systems Inc.
 
 
 What is Xpdf?
@@ -24,35 +24,36 @@ PDF text extractor, PDF-to-PostScript converter, and various other
 utilities.
 
 Xpdf runs under the X Window System on UNIX, VMS, and OS/2.  The non-X
-components (pdftops, pdftotext, etc.) also run on Win32 systems and
-should run on pretty much any system with a decent C++ compiler.
-
-Xpdf is designed to be small and efficient.  It can use Type 1 or
-TrueType fonts.
+components (pdftops, pdftotext, etc.) also run on Windows and Mac OSX
+systems and should run on pretty much any system with a decent C++
+compiler.  Xpdf will run on 32-bit and 64-bit machines.
 
 
-Distribution
-------------
+License & Distribution
+----------------------
 
-Xpdf is licensed under the GNU General Public License (GPL), version
-2.  In my opinion, the GPL is a convoluted, confusing, ambiguous mess.
-But it's also pervasive, and I'm sick of arguing.  And even if it is
-confusing, the basic idea is good.
+Xpdf is licensed under the GNU General Pulbic License (GPL), version 2
+or 3.  This means that you can distribute derivatives of Xpdf under
+any of the following:
+  - GPL v2 only
+  - GPL v3 only
+  - GPL v2 or v3
 
-In order to cut down on the confusion a little bit, here are some
-informal clarifications:
+The Xpdf source package includes the text of both GPL versions:
+COPYING for GPL v2, COPYING3 for GPL v3.
 
-- I don't mind if you redistribute Xpdf in source and/or binary form,
-  as long as you include all of the documentation: README, man pages
-  (or help files), and COPYING.  (Note that the README file contains a
-  pointer to a web page with the source code.)
+Please note that Xpdf is NOT licensed under "any later version" of the
+GPL, as I have no idea what those versions will look like.
 
-- Selling a CD-ROM that contains Xpdf is fine with me, as long as it
-  includes the documentation.  I wouldn't mind receiving a sample
-  copy, but it's not necessary.
+If you are redistributing unmodified copies of Xpdf (or any of the
+Xpdf tools) in binary form, you need to include all of the
+documentation: README, man pages (or help files), COPYING, and
+COPYING3.
 
-- If you make useful changes to Xpdf, please make the source code
-  available -- post it on a web site, email it to me, whatever.
+If you want to incorporate the Xpdf source code into another program
+(or create a modified version of Xpdf), and you are distributing that
+program, you have two options: release your program under the GPL (v2
+and/or v3), or purchase a commercial Xpdf source license.
 
 If you're interested in commercial licensing, please see the Glyph &
 Cog web site:
@@ -63,7 +64,7 @@ Cog web site:
 Compatibility
 -------------
 
-Xpdf is developed and tested on a Linux 2.4 x86 system.
+Xpdf is developed and tested on Linux.
 
 In addition, it has been compiled by others on Solaris, AIX, HP-UX,
 Digital Unix, Irix, and numerous other Unix implementations, as well
@@ -72,8 +73,8 @@ X11 and has Unix-like libraries.  You'll need ANSI C++ and C compilers
 to compile it.
 
 The non-X components of Xpdf (pdftops, pdftotext, pdfinfo, pdffonts,
-pdftoppm, and pdfimages) can also be compiled on Win32 systems.  See
-the Xpdf web page for details.
+pdfdetach, pdftoppm, and pdfimages) can also be compiled on Windows
+and Mac OSX systems.  See the Xpdf web page for details.
 
 If you compile Xpdf for a system not listed on the web page, please
 let me know.  If you're willing to make your binary available by ftp
@@ -101,10 +102,9 @@ or:
 
 Source code and several precompiled executables are available.
 
-Announcements of new versions are posted to several newsgroups
-(comp.text.pdf, comp.os.linux.announce, and others) and emailed to a
-list of people.  If you'd like to receive email notification of new
-versions, just let me know.
+Announcements of new versions are posted to comp.text.pdf and emailed
+to a list of people.  If you'd like to receive email notification of
+new versions, just let me know.
 
 
 Running Xpdf
@@ -123,30 +123,48 @@ To generate a plain text file, run pdftotext:
 
   pdftotext file.pdf
 
-There are four additional utilities (which are fully described in
+There are five additional utilities (which are fully described in
 their man pages):
 
   pdfinfo -- dumps a PDF file's Info dictionary (plus some other
              useful information)
   pdffonts -- lists the fonts used in a PDF file along with various
               information for each font
+  pdfdetach -- lists or extracts embedded files (attachments) from a
+               PDF file
   pdftoppm -- converts a PDF file to a series of PPM/PGM/PBM-format
               bitmaps
   pdfimages -- extracts the images from a PDF file
 
 Command line options and many other details are described in the man
-pages (xpdf.1, etc.) and the VMS help files (xpdf.hlp, etc.).
+pages (xpdf(1), etc.) and the VMS help files (xpdf.hlp, etc.).
+
+All of these utilities read an optional configuration file: see the
+xpdfrc(5) man page.
 
 
-Upgrading from Xpdf 2.xx
-------------------------
+Upgrading from Xpdf 3.02 (and earlier)
+--------------------------------------
 
-WARNING: Xpdf 3.00 switched to a new PDF rasterizer, which no longer
-uses X fonts.  You'll need a set of Base-14 fonts -- the URW fonts
-distributed with ghostscript can be used for this.  Xpdf will search
-for the URW fonts, but if you have them installed in a non-standard
-directory, you'll need to set up an xpdfrc config file to point to
-them.  For full details, please see the xpdfrc(5) man page.
+The font configuration system has been changed.  Previous versions
+used mostly separate commands to configure fonts for display and for
+PostScript output.  As of 3.03, configuration options that make sense
+for both display and PS output have been unified.
+
+The following xpdfrc commands have been removed:
+* displayFontT1, displayFontTT: replaced with fontFile
+* displayNamedCIDFontT1, displayNamedCIDFontTT: replaced with fontFile
+* displayCIDFontT1, displayCIDFontTT: replaced with fontFileCC
+* psFont: replaced with psResidentFont
+* psNamedFont16: replaced with psResidentFont16
+* psFont16: replaced with psResidentFontCC
+
+See the xpdfrc(5) man page for more information on the new commands.
+
+Pdftops will now embed external 16-bit fonts (configured with the
+fontFileCC command) when the PDF file refers to a non-embedded font.
+It does not do any subsetting (yet), so the resulting PS files will be
+large.
 
 
 Compiling Xpdf
@@ -184,7 +202,8 @@ Thanks to:
   xpdf.
 * Pine Tree Systems A/S for funding the OPI and EPS support in
   pdftops.
-* Easy Software Products for funding the "sh" operator support.
+* Easy Software Products for funding several improvements to the
+  PostScript output code.
 * Tom Kacvinsky for help with FreeType and for being my interface to
   the FreeType team.
 * Theppitak Karoonboonyanan for help with Thai support.
@@ -203,10 +222,15 @@ pdftex project:
 References
 ----------
 
-Adobe Systems Inc., _PDF Reference: Adobe Portable Document Format
-Version 1.5_.
-http://partners.adobe.com/asn/tech/pdf/specifications.jsp
-[The manual for PDF version 1.5.]
+Adobe Systems Inc., _PDF Reference, sixth edition: Adobe Portable
+Document Format version 1.7_.
+http://www.adobe.com/devnet/pdf/pdf_reference.html
+[The manual for PDF version 1.7.]
+
+Adobe Systems Inc., "Errata for the PDF Reference, sixth edition,
+version 1.7", October 16, 2006.
+http://www.adobe.com/devnet/pdf/pdf_reference.html
+[The errata for the PDF 1.7 spec.]
 
 Adobe Systems Inc., _PostScript Language Reference_, 3rd ed.
 Addison-Wesley, 1999, ISBN 0-201-37922-8.
@@ -261,6 +285,10 @@ http://partners.adobe.com/asn/developer/type/corporateuse.txt
 http://partners.adobe.com/asn/developer/type/zapfdingbats.txt
 [Mappings between character names to Unicode.]
 
+Adobe Systems Inc., OpenType Specification v. 1.4.
+http://partners.adobe.com/public/developer/opentype/index_spec.html
+[The OpenType font format spec.]
+
 Aldus Corp., _OPI: Open Prepress Interface Specification 1.3_.  1993.
 http://partners.adobe.com/asn/developer/PDFS/TN/OPI_13.pdf
 
@@ -270,7 +298,7 @@ ftp://idea.sec.dsi.unimi.it/pub/crypt/code/rc4.tar.gz
 [This is the algorithm used to encrypt PDF files.]
 
 T. Boutell, et al., "PNG (Portable Network Graphics) Specification,
-Version 1.0.  RFC 2083.
+Version 1.0".  RFC 2083.
 [PDF uses the PNG filter algorithms.]
 
 CCITT, "Information Technology - Digital Compression and Coding of
@@ -294,6 +322,15 @@ L. Peter Deutsch, "DEFLATE Compressed Data Format Specification
 version 1.3".  RFC 1951.
 [The definition of the compression algorithm used in FlateDecode
 streams.]
+
+Morris Dworkin, "Recommendation for Block Cipher Modes of Operation",
+National Institute of Standards, NIST Special Publication 800-38A,
+2001.
+[The cipher block chaining (CBC) mode used with AES in PDF files.]
+
+Federal Information Processing Standards Publication 197 (FIPS PUBS
+197), "Advanced Encryption Standard (AES)", November 26, 2001.
+[AES encryption, used in PDF 1.6.]
 
 Jim Flowers, "X Logical Font Description Conventions", Version 1.5, X
 Consortium Standard, X Version 11, Release 6.1.
@@ -332,6 +369,10 @@ http://www.itu.int/
 [The official Group 3 and 4 fax standards - used by the CCITTFaxDecode
 stream, as well as the JBIG2Decode stream.]
 
+B. Kaliski, "PKCS #5: Password-Based Cryptography Specification,
+Version 2.0".  RFC 2898.
+[Defines the padding scheme used with AES encryption in PDF files.]
+
 Christoph Loeffler, Adriaan Ligtenberg, George S. Moschytz, "Practical
 Fast 1-D DCT Algorithms with 11 Multiplications".  IEEE Intl. Conf. on
 Acoustics, Speech & Signal Processing, 1989, 988-991.
@@ -341,10 +382,11 @@ Microsoft, _TrueType 1.0 Font Files_, rev. 1.66.  1995.
 http://www.microsoft.com/typography/tt/tt.htm
 [The TrueType font spec (in MS Word format, naturally).]
 
-Thai Industrial Standard, "Standard for Thai Character Codes for
-Computers", TIS-620-2533 (1990).
-http://www.nectec.or.th/it-standards/std620/std620.htm
-[The TIS-620 Thai encoding.]
+V. Ostromoukhov, R.D. Hersch, "Stochastic Clustered-Dot Dithering",
+Conf. Color Imaging: Device-Independent Color, Color Hardcopy, and
+Graphic Arts IV, 1999, SPIE Vol. 3648, 496-505.
+http://diwww.epfl.ch/w3lsp/publications/colour/scd.html
+[The stochastic dithering algorithm used in Xpdf.]
 
 P. Peterlin, "ISO 8859-2 (Latin 2) Resources".
 http://sizif.mf.uni-lj.si/linux/cee/iso8859-2.html
@@ -357,6 +399,11 @@ http://www.inforamp.net/~poynton/ColorFAQ.html
 
 R. Rivest, "The MD5 Message-Digest Algorithm".  RFC 1321.
 [MD5 is used in PDF document encryption.]
+
+Thai Industrial Standard, "Standard for Thai Character Codes for
+Computers", TIS-620-2533 (1990).
+http://www.nectec.or.th/it-standards/std620/std620.htm
+[The TIS-620 Thai encoding.]
 
 Unicode Consortium, "Unicode Home Page".
 http://www.unicode.org/

@@ -208,24 +208,24 @@ bool page::search(const ustring &text, rectf &r, search_direction_enum direction
     double rect_right = r.right();
     double rect_bottom = r.bottom();
 
-    TextOutputDev td(NULL, gTrue, gFalse, gFalse);
+    TextOutputDev td(NULL, gTrue, 0, gFalse, gFalse);
     d->doc->doc->displayPage(&td, d->index + 1, 72, 72, rotation_value, false, true, false);
     TextPage *text_page = td.takeText();
 
     switch (direction) {
     case search_from_top:
         found = text_page->findText(&u[0], len,
-                    gTrue, gTrue, gFalse, gFalse, sCase, gFalse,
+                    gTrue, gTrue, gFalse, gFalse, sCase, gFalse, gFalse,
                     &rect_left, &rect_top, &rect_right, &rect_bottom);
         break;
     case search_next_result:
         found = text_page->findText(&u[0], len,
-                    gFalse, gTrue, gTrue, gFalse, sCase, gFalse,
+                    gFalse, gTrue, gTrue, gFalse, sCase, gFalse, gFalse,
                     &rect_left, &rect_top, &rect_right, &rect_bottom);
         break;
     case search_previous_result:
         found = text_page->findText(&u[0], len,
-                    gFalse, gTrue, gTrue, gFalse, sCase, gTrue,
+                    gFalse, gTrue, gTrue, gFalse, sCase, gTrue, gFalse,
                     &rect_left, &rect_top, &rect_right, &rect_bottom);
         break;
     }
@@ -267,7 +267,7 @@ ustring page::text(const rectf &r, text_layout_enum layout_mode) const
 {
     std::auto_ptr<GooString> s;
     const GBool use_raw_order = (layout_mode == raw_order_layout);
-    TextOutputDev td(0, gFalse, use_raw_order, gFalse);
+    TextOutputDev td(0, gFalse, 0, use_raw_order, gFalse);
     d->doc->doc->displayPage(&td, d->index + 1, 72, 72, 0, false, true, false);
     if (r.is_empty()) {
         const PDFRectangle *rect = d->page->getCropBox();

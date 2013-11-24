@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008-2009, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2013, Fabio D'Urso <fabiodurso@hotmail.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,10 +40,12 @@ public:
 
 private Q_SLOTS:
     void slotZoomChanged(qreal value);
+    void slotRotationChanged(int value);
 
 private:
     QLabel *m_imageLabel;
     qreal m_zoom;
+    int m_rotation;
     int m_dpiX;
     int m_dpiY;
 };

@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "config.h"
 #include <string.h>
 
 #ifndef __GI_SCANNER__
@@ -37,6 +38,8 @@
 #include "poppler.h"
 #include "poppler-private.h"
 #include "poppler-enums.h"
+#include "poppler-input-stream.h"
+#include "poppler-cached-file-loader.h"
 
 /**
  * SECTION:poppler-document
@@ -83,8 +86,6 @@ _poppler_document_new_from_pdfdoc (PDFDoc  *newDoc,
 {
   PopplerDocument *document;
 
-  document = (PopplerDocument *) g_object_new (POPPLER_TYPE_DOCUMENT, NULL, NULL);
-
   if (!newDoc->isOk()) {
     int fopen_errno;
     switch (newDoc->getErrorCode())
@@ -124,12 +125,30 @@ _poppler_document_new_from_pdfdoc (PDFDoc  *newDoc,
     return NULL;
   }
 
+  document = (PopplerDocument *) g_object_new (POPPLER_TYPE_DOCUMENT, NULL);
   document->doc = newDoc;
 
   document->output_dev = new CairoOutputDev ();
-  document->output_dev->startDoc(document->doc->getXRef (), document->doc->getCatalog ());
+  document->output_dev->startDoc(document->doc);
 
   return document;
+}
+
+static GooString *
+poppler_password_to_latin1 (const gchar *password)
+{
+  gchar *password_latin;
+  GooString *password_g;
+
+  if (!password)
+    return NULL;
+
+  password_latin = g_convert(password, -1, "ISO-8859-1", "UTF-8",
+                             NULL, NULL, NULL);
+  password_g = new GooString (password_latin);
+  g_free (password_latin);
+
+  return password_g;
 }
 
 /**
@@ -150,7 +169,6 @@ poppler_document_new_from_file (const char  *uri,
 				GError     **error)
 {
   PDFDoc *newDoc;
-  GooString *filename_g;
   GooString *password_g;
   char *filename;
 
@@ -162,21 +180,7 @@ poppler_document_new_from_file (const char  *uri,
   if (!filename)
     return NULL;
 
-  password_g = NULL;
-  if (password != NULL) {
-    if (g_utf8_validate (password, -1, NULL)) {
-      gchar *password_latin;
-      
-      password_latin = g_convert (password, -1,
-				  "ISO-8859-1",
-				  "UTF-8",
-				  NULL, NULL, NULL);
-      password_g = new GooString (password_latin);
-      g_free (password_latin);
-    } else {
-      password_g = new GooString (password);
-    }
-  }
+  password_g = poppler_password_to_latin1(password);
 
 #ifdef G_OS_WIN32
   wchar_t *filenameW;
@@ -191,8 +195,9 @@ poppler_document_new_from_file (const char  *uri,
   length = MultiByteToWideChar(CP_UTF8, 0, filename, -1, filenameW, length);
 
   newDoc = new PDFDoc(filenameW, length, password_g, password_g);
-  delete filenameW;
+  delete [] filenameW;
 #else
+  GooString *filename_g;
   filename_g = new GooString (filename);
   newDoc = new PDFDoc(filename_g, password_g, password_g);
 #endif
@@ -235,14 +240,122 @@ poppler_document_new_from_data (char        *data,
   obj.initNull();
   str = new MemStream(data, 0, length, &obj);
 
-  password_g = NULL;
-  if (password != NULL)
-    password_g = new GooString (password);
-
+  password_g = poppler_password_to_latin1(password);
   newDoc = new PDFDoc(str, password_g, password_g);
   delete password_g;
 
   return _poppler_document_new_from_pdfdoc (newDoc, error);
+}
+
+static inline gboolean
+stream_is_memory_buffer_or_local_file (GInputStream *stream)
+{
+  return G_IS_MEMORY_INPUT_STREAM(stream) ||
+    (G_IS_FILE_INPUT_STREAM(stream) && strcmp(g_type_name_from_instance((GTypeInstance*)stream), "GLocalFileInputStream") == 0);
+}
+
+/**
+ * poppler_document_new_from_stream:
+ * @stream: a #GInputStream to read from
+ * @length: the stream length, or -1 if not known
+ * @password: (allow-none): password to unlock the file with, or %NULL
+ * @cancellable: (allow-none): a #GCancellable, or %NULL
+ * @error: (allow-none): Return location for an error, or %NULL
+ *
+ * Creates a new #PopplerDocument reading the PDF contents from @stream.
+ * Note that the given #GInputStream must be seekable or %G_IO_ERROR_NOT_SUPPORTED
+ * will be returned.
+ * Possible errors include those in the #POPPLER_ERROR and #G_FILE_ERROR
+ * domains.
+ *
+ * Returns: (transfer full): a new #PopplerDocument, or %NULL
+ *
+ * Since: 0.22
+ */
+PopplerDocument *
+poppler_document_new_from_stream (GInputStream *stream,
+                                  goffset       length,
+                                  const char   *password,
+                                  GCancellable *cancellable,
+                                  GError      **error)
+{
+  Object obj;
+  PDFDoc *newDoc;
+  BaseStream *str;
+  GooString *password_g;
+
+  g_return_val_if_fail(G_IS_INPUT_STREAM(stream), NULL);
+  g_return_val_if_fail(length == (goffset)-1 || length > 0, NULL);
+
+  if (!globalParams) {
+    globalParams = new GlobalParams();
+  }
+
+  if (!G_IS_SEEKABLE(stream) || !g_seekable_can_seek(G_SEEKABLE(stream))) {
+    g_set_error_literal(error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                        "Stream is not seekable");
+    return NULL;
+  }
+
+  obj.initNull();
+  if (stream_is_memory_buffer_or_local_file(stream)) {
+    str = new PopplerInputStream(stream, cancellable, 0, gFalse, 0, &obj);
+  } else {
+    CachedFile *cachedFile = new CachedFile(new PopplerCachedFileLoader(stream, cancellable, length), new GooString());
+    str = new CachedFileStream(cachedFile, 0, gFalse, cachedFile->getLength(), &obj);
+  }
+
+  password_g = poppler_password_to_latin1(password);
+  newDoc = new PDFDoc(str, password_g, password_g);
+  delete password_g;
+
+  return _poppler_document_new_from_pdfdoc (newDoc, error);
+}
+
+/**
+ * poppler_document_new_from_gfile:
+ * @file: a #GFile to load
+ * @password: (allow-none): password to unlock the file with, or %NULL
+ * @cancellable: (allow-none): a #GCancellable, or %NULL
+ * @error: (allow-none): Return location for an error, or %NULL
+ *
+ * Creates a new #PopplerDocument reading the PDF contents from @file.
+ * Possible errors include those in the #POPPLER_ERROR and #G_FILE_ERROR
+ * domains.
+ *
+ * Returns: (transfer full): a new #PopplerDocument, or %NULL
+ *
+ * Since: 0.22
+ */
+PopplerDocument *
+poppler_document_new_from_gfile (GFile        *file,
+                                 const char   *password,
+                                 GCancellable *cancellable,
+                                 GError      **error)
+{
+  PopplerDocument *document;
+  GFileInputStream *stream;
+
+  g_return_val_if_fail(G_IS_FILE(file), NULL);
+
+  if (g_file_is_native(file)) {
+    gchar *uri;
+
+    uri = g_file_get_uri(file);
+    document = poppler_document_new_from_file(uri, password, error);
+    g_free(uri);
+
+    return document;
+  }
+
+  stream = g_file_read(file, cancellable, error);
+  if (!stream)
+    return NULL;
+
+  document = poppler_document_new_from_stream(G_INPUT_STREAM(stream), -1, password, cancellable, error);
+  g_object_unref(stream);
+
+  return document;
 }
 
 static gboolean
@@ -356,6 +469,8 @@ poppler_document_finalize (GObject *object)
   poppler_document_layers_free (document);
   delete document->output_dev;
   delete document->doc;
+
+  G_OBJECT_CLASS (poppler_document_parent_class)->finalize (object);
 }
 
 /**
@@ -476,6 +591,29 @@ poppler_document_get_page_by_label (PopplerDocument  *document,
 }
 
 /**
+ * poppler_document_get_n_attachments:
+ * @document: A #PopplerDocument
+ *
+ * Returns the number of attachments in a loaded document.
+ * See also poppler_document_get_attachments()
+ *
+ * Return value: Number of attachments
+ *
+ * Since: 0.18
+ */
+guint
+poppler_document_get_n_attachments (PopplerDocument *document)
+{
+  Catalog *catalog;
+
+  g_return_val_if_fail (POPPLER_IS_DOCUMENT (document), 0);
+
+  catalog = document->doc->getCatalog ();
+
+  return catalog && catalog->isOk () ? catalog->numEmbeddedFiles () : 0;
+}
+
+/**
  * poppler_document_has_attachments:
  * @document: A #PopplerDocument
  * 
@@ -486,18 +624,9 @@ poppler_document_get_page_by_label (PopplerDocument  *document,
 gboolean
 poppler_document_has_attachments (PopplerDocument *document)
 {
-  Catalog *catalog;
-  int n_files = 0;
-
   g_return_val_if_fail (POPPLER_IS_DOCUMENT (document), FALSE);
 
-  catalog = document->doc->getCatalog ();
-  if (catalog && catalog->isOk ())
-    {
-      n_files = catalog->numEmbeddedFiles ();
-    }
-
-  return (n_files != 0);
+  return (poppler_document_get_n_attachments (document) != 0);
 }
 
 /**
@@ -527,13 +656,14 @@ poppler_document_get_attachments (PopplerDocument *document)
   for (i = 0; i < n_files; i++)
     {
       PopplerAttachment *attachment;
-      EmbFile *emb_file;
+      FileSpec *emb_file;
 
       emb_file = catalog->embeddedFile (i);
-      if (!emb_file->isOk ()) {
+      if (!emb_file->isOk () || !emb_file->getEmbeddedFile()->isOk()) {
         delete emb_file;
 	continue;
       }
+
       attachment = _poppler_attachment_new (emb_file);
       delete emb_file;
 
@@ -718,7 +848,7 @@ poppler_document_get_pdf_version_string (PopplerDocument *document)
  * @major_version: (out) (allow-none): return location for the PDF major version number
  * @minor_version: (out) (allow-none): return location for the PDF minor version number
  *
- * Returns the major and minor PDF version numbers.
+ * Returns: the major and minor PDF version numbers
  *
  * Since: 0.16
  **/
@@ -1048,6 +1178,12 @@ poppler_document_get_permissions (PopplerDocument *document)
     flag |= POPPLER_PERMISSIONS_OK_TO_ADD_NOTES;
   if (document->doc->okToFillForm ())
     flag |= POPPLER_PERMISSIONS_OK_TO_FILL_FORM;
+  if (document->doc->okToAccessibility())
+    flag |= POPPLER_PERMISSIONS_OK_TO_EXTRACT_CONTENTS;
+  if (document->doc->okToAssemble())
+    flag |= POPPLER_PERMISSIONS_OK_TO_ASSEMBLE;
+  if (document->doc->okToPrintHighRes())
+    flag |= POPPLER_PERMISSIONS_OK_TO_PRINT_HIGH_RESOLUTION;
 
   return (PopplerPermissions)flag;
 }
@@ -1694,13 +1830,40 @@ poppler_fonts_iter_get_name (PopplerFontsIter *iter)
 }
 
 /**
+ * poppler_fonts_iter_get_substitute_name:
+ * @iter: a #PopplerFontsIter
+ *
+ * The name of the substitute font of the font associated with @iter or %NULL if
+ * the font is embedded
+ *
+ * Returns: the name of the substitute font or %NULL if font is embedded
+ *
+ * Since: 0.20
+ */
+const char *
+poppler_fonts_iter_get_substitute_name (PopplerFontsIter *iter)
+{
+	GooString *name;
+	FontInfo *info;
+
+	info = (FontInfo *)iter->items->get (iter->index);
+
+	name = info->getSubstituteName();
+	if (name != NULL) {
+		return name->getCString();
+	} else {
+		return NULL;
+	}
+}
+
+/**
  * poppler_fonts_iter_get_file_name:
  * @iter: a #PopplerFontsIter
  *
  * The filename of the font associated with @iter or %NULL if
  * the font is embedded
  *
- * Returns: the filename of the font or %NULL y font is emebedded
+ * Returns: the filename of the font or %NULL if font is embedded
  */
 const char *
 poppler_fonts_iter_get_file_name (PopplerFontsIter *iter)
@@ -1736,6 +1899,32 @@ poppler_fonts_iter_get_font_type (PopplerFontsIter *iter)
 	info = (FontInfo *)iter->items->get (iter->index);
 
 	return (PopplerFontType)info->getType ();
+}
+
+/**
+ * poppler_fonts_iter_get_encoding:
+ * @iter: a #PopplerFontsIter
+ *
+ * Returns the encoding of the font associated with @iter
+ *
+ * Returns: the font encoding
+ *
+ * Since: 0.20
+ */
+const char *
+poppler_fonts_iter_get_encoding (PopplerFontsIter *iter)
+{
+	GooString *encoding;
+	FontInfo *info;
+
+	info = (FontInfo *)iter->items->get (iter->index);
+
+	encoding = info->getEncoding();
+	if (encoding != NULL) {
+		return encoding->getCString();
+	} else {
+		return NULL;
+	}
 }
 
 /**
@@ -1883,6 +2072,8 @@ poppler_font_info_finalize (GObject *object)
 
         delete font_info->scanner;
         g_object_unref (font_info->document);
+
+        G_OBJECT_CLASS (poppler_font_info_parent_class)->finalize (object);
 }
 
 /**
@@ -2298,11 +2489,11 @@ poppler_layers_iter_get_title (PopplerLayersIter *iter)
 /**
  * poppler_layers_iter_get_layer:
  * @iter: a #PopplerLayersIter
- * 
- * Returns the #PopplerLayer associated with @iter.  It must be freed with
- * poppler_layer_free().
- * 
- * Return value: a new #PopplerLayer, or %NULL if there isn't any layer associated with @iter
+ *
+ * Returns the #PopplerLayer associated with @iter.
+ *
+ * Return value: (transfer full): a new #PopplerLayer, or %NULL if
+ * there isn't any layer associated with @iter
  *
  * Since: 0.12
  **/
@@ -2384,6 +2575,8 @@ poppler_ps_file_finalize (GObject *object)
         delete ps_file->out;
         g_object_unref (ps_file->document);
         g_free (ps_file->filename);
+
+        G_OBJECT_CLASS (poppler_ps_file_parent_class)->finalize (object);
 }
 
 /**
@@ -2475,7 +2668,8 @@ poppler_ps_file_free (PopplerPSFile *ps_file)
  * Returns the #PopplerFormField for the given @id. It must be freed with
  * g_object_unref()
  *
- * Return value: a new #PopplerFormField or NULL if not found
+ * Return value: (transfer full): a new #PopplerFormField or %NULL if
+ * not found
  **/
 PopplerFormField *
 poppler_document_get_form_field (PopplerDocument *document,
@@ -2493,7 +2687,7 @@ poppler_document_get_form_field (PopplerDocument *document,
   if (!page)
     return NULL;
 
-  widgets = page->getPageWidgets ();
+  widgets = page->getFormWidgets ();
   if (!widgets)
     return NULL;
 

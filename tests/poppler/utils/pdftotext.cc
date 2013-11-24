@@ -18,8 +18,11 @@
 // Copyright (C) 2006 Dominic Lachowicz <cinamod@hotmail.com>
 // Copyright (C) 2007-2008, 2010, 2011 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2009 Jan Jockusch <jan@jockusch.de>
-// Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
+// Copyright (C) 2010, 2013 Hib Eris <hib@hiberis.nl>
 // Copyright (C) 2010 Kenneth Berland <ken@hero.com>
+// Copyright (C) 2011 Tom Gleason <tom@buildadam.com>
+// Copyright (C) 2011 Steven Murdoch <Steven.Murdoch@cl.cam.ac.uk>
+// Copyright (C) 2013 Yury G. Kudryashov <urkud.urkud@gmail.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -49,12 +52,13 @@
 #include "TextOutputDev.h"
 #include "CharTypes.h"
 #include "UnicodeMap.h"
+#include "PDFDocEncoding.h"
 #include "Error.h"
 #include <string>
 
-static void printInfoString(FILE *f, Dict *infoDict, char *key,
-			    char *text1, char *text2, UnicodeMap *uMap);
-static void printInfoDate(FILE *f, Dict *infoDict, char *key, char *fmt);
+static void printInfoString(FILE *f, Dict *infoDict, const char *key,
+			    const char *text1, const char *text2, UnicodeMap *uMap);
+static void printInfoDate(FILE *f, Dict *infoDict, const char *key, const char *fmt);
 
 static int firstPage = 1;
 static int lastPage = 0;
@@ -65,6 +69,7 @@ static int w = 0;
 static int h = 0;
 static GBool bbox = gFalse;
 static GBool physLayout = gFalse;
+static double fixedPitch = 0;
 static GBool rawOrder = gFalse;
 static GBool htmlMeta = gFalse;
 static char textEncName[128] = "";
@@ -94,6 +99,8 @@ static const ArgDesc argDesc[] = {
    "height of crop area in pixels (default is 0)"},
   {"-layout",  argFlag,     &physLayout,    0,
    "maintain original physical layout"},
+  {"-fixed",   argFP,       &fixedPitch,    0,
+   "assume fixed-pitch (or tabular) text"},
   {"-raw",     argFlag,     &rawOrder,      0,
    "keep strings in content stream order"},
   {"-htmlmeta", argFlag,   &htmlMeta,       0,
@@ -194,6 +201,9 @@ int main(int argc, char *argv[]) {
   }
 
   fileName = new GooString(argv[1]);
+  if (fixedPitch) {
+    physLayout = gTrue;
+  }
 
   if (textEncName[0]) {
     globalParams->setTextEncoding(textEncName);
@@ -212,7 +222,7 @@ int main(int argc, char *argv[]) {
 
   // get mapping to output encoding
   if (!(uMap = globalParams->getTextEncoding())) {
-    error(-1, "Couldn't get text encoding");
+    error(errCommandLine, -1, "Couldn't get text encoding");
     delete fileName;
     goto err1;
   }
@@ -250,7 +260,7 @@ int main(int argc, char *argv[]) {
 #ifdef ENFORCE_PERMISSIONS
   // check for copy permission
   if (!doc->okToCopy()) {
-    error(-1, "Copying of text from this document is not allowed.");
+    error(errNotAllowed, -1, "Copying of text from this document is not allowed.");
     exitCode = 3;
     goto err2;
   }
@@ -260,7 +270,7 @@ int main(int argc, char *argv[]) {
   if (argc == 3) {
     textFileName = new GooString(argv[2]);
   } else if (fileName->cmp("fd://0") == 0) {
-     error(-1, "You have to provide an output filename when reading form stdin.");
+     error(errCommandLine, -1, "You have to provide an output filename when reading form stdin.");
      goto err2;
   } else {
     p = fileName->getCString() + fileName->getLength() - 4;
@@ -287,7 +297,7 @@ int main(int argc, char *argv[]) {
       f = stdout;
     } else {
       if (!(f = fopen(textFileName->getCString(), "wb"))) {
-	error(-1, "Couldn't open text file '%s'", textFileName->getCString());
+	error(errIO, -1, "Couldn't open text file '{0:t}'", textFileName);
 	exitCode = 2;
 	goto err3;
       }
@@ -322,26 +332,22 @@ int main(int argc, char *argv[]) {
     info.free();
     fputs("</head>\n", f);
     fputs("<body>\n", f);
-    if (!bbox) fputs("<pre>\n", f);
-    if (f != stdout) {
-      fclose(f);
+    if (!bbox) {
+      fputs("<pre>\n", f);
+      if (f != stdout) {
+	fclose(f);
+      }
     }
   }
 
   // write text file
-  if (bbox) {
-    textOut = new TextOutputDev(NULL, physLayout, rawOrder, htmlMeta);
-    if (!(f = fopen(textFileName->getCString(), "ab"))) {
-      error(-1, "Couldn't open text file '%s' for append", textFileName->getCString());
-      exitCode = 2;
-      delete textOut;
-      goto err3;
-    }
+  if (htmlMeta && bbox) { // htmlMeta && is superfluous but makes gcc happier
+    textOut = new TextOutputDev(NULL, physLayout, fixedPitch, rawOrder, htmlMeta);
 
     if (textOut->isOk()) {
       fprintf(f, "<doc>\n");
       for (int page = firstPage; page <= lastPage; ++page) {
-        fprintf(f, "  <page width=\"%f\" height=\"%f\">\n",doc->getPageCropWidth(page), doc->getPageCropHeight(page));
+        fprintf(f, "  <page width=\"%f\" height=\"%f\">\n",doc->getPageMediaWidth(page), doc->getPageMediaHeight(page));
         doc->displayPage(textOut, page, resolution, resolution, 0, gTrue, gFalse, gFalse);
         TextWordList *wordlist = textOut->makeWordList();
         const int word_length = wordlist != NULL ? wordlist->getLength() : 0;
@@ -361,10 +367,12 @@ int main(int argc, char *argv[]) {
       }
       fprintf(f, "</doc>\n");
     }
-    fclose(f);
+    if (f != stdout) {
+      fclose(f);
+    }
   } else {
     textOut = new TextOutputDev(textFileName->getCString(),
-				physLayout, rawOrder, htmlMeta);
+				physLayout, fixedPitch, rawOrder, htmlMeta);
     if (textOut->isOk()) {
       if ((w==0) && (h==0) && (x==0) && (y==0)) {
 	doc->displayPages(textOut, firstPage, lastPage, resolution, resolution, 0,
@@ -379,9 +387,9 @@ int main(int argc, char *argv[]) {
       }
 
     } else {
-    delete textOut;
-    exitCode = 2;
-    goto err3;
+      delete textOut;
+      exitCode = 2;
+      goto err3;
     }
   }
   delete textOut;
@@ -392,7 +400,7 @@ int main(int argc, char *argv[]) {
       f = stdout;
     } else {
       if (!(f = fopen(textFileName->getCString(), "ab"))) {
-	error(-1, "Couldn't open text file '%s'", textFileName->getCString());
+	error(errIO, -1, "Couldn't open text file '{0:t}'", textFileName);
 	exitCode = 2;
 	goto err3;
       }
@@ -425,13 +433,13 @@ int main(int argc, char *argv[]) {
   return exitCode;
 }
 
-static void printInfoString(FILE *f, Dict *infoDict, char *key,
-			    char *text1, char *text2, UnicodeMap *uMap) {
+static void printInfoString(FILE *f, Dict *infoDict, const char *key,
+			    const char *text1, const char *text2, UnicodeMap *uMap) {
   Object obj;
   GooString *s1;
   GBool isUnicode;
   Unicode u;
-  char buf[8];
+  char buf[9];
   int i, n;
 
   if (infoDict->lookup(key, &obj)->isString()) {
@@ -451,18 +459,20 @@ static void printInfoString(FILE *f, Dict *infoDict, char *key,
 	    (s1->getChar(i+1) & 0xff);
 	i += 2;
       } else {
-	u = s1->getChar(i) & 0xff;
+	u = pdfDocEncoding[s1->getChar(i) & 0xff];
 	++i;
       }
       n = uMap->mapUnicode(u, buf, sizeof(buf));
-      fwrite(buf, 1, n, f);
+      buf[n] = '\0';
+      const std::string myString = myXmlTokenReplace(buf);
+      fputs(myString.c_str(), f);
     }
     fputs(text2, f);
   }
   obj.free();
 }
 
-static void printInfoDate(FILE *f, Dict *infoDict, char *key, char *fmt) {
+static void printInfoDate(FILE *f, Dict *infoDict, const char *key, const char *fmt) {
   Object obj;
   char *s;
 

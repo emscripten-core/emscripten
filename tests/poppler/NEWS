@@ -1,24 +1,788 @@
-Release 0.16.2
-	core:
-	 * Increase precision in PS output device
-	 * Workaround bug when converting pdf to ps with level1 (Bug #31926)
-	 * Fix crash in Splash output device in some broken pdf
-	 * Fix infinite loop in some broken files
-	 * Fix rendering of some substituted fonts (Bug #34522)
-	 * Do not ask Freetype for 0x0 fonts in Splash output device (Bug #34602)
-	 * Don't assume y1 > y3 for points of a highlight annotation (Gnome Bug #643028)
-	 * Handle fontCIDType2OT when creating freetype font in Cairo output device (Gnome Bug #643273)
-	 * Fix crash in some pdf that use ICC color space (Bug #34357)
+Release 0.24.3
+        core:
+         * PSOutputDev: Fix PFB font embedding. Bug #69717
+         * CairoOutputDev: Do not set an invalid matrix in drawImage(). Bug #70085 
 
-	glib:
-	 * Don't use an uninitialized local variable in demo
-	 * Add some introspection markers
+        qt4:
+         * Don't crash if getXRef()->copy() fails
 
-	qt4:
-	 * Fix crash regression in unicodeToQString (again)
+        qt5:
+         * Don't crash if getXRef()->copy() fails
 
-	utils:
-	 * Do not crash when using -bbox
+        utils:
+         * pdfseparate: Allow only one %d in the filename. Bug #69434
+        
+Release 0.24.2
+        core:
+         * Windows: Fix CreateFile fails with ERROR_SHARING_VIOLATION. Bug #69597
+
+        utils:
+         * pdfseparate: improve the path building
+         * pdftocairo: check file opening failure in beginDocument()
+        
+Release 0.24.1
+        core:
+         * SplashOutputDev: use getRGBLine images if available. Bug #66928
+         * SplashOutputDev: Don't copy bitmap if we don't need to.
+         * PSOutputDev: Fix regression in -eps -level1sep rendering. Bug #68321
+         * Fix crash in malformed file 1026.asan.0.42.pdf
+         * use copyString instead of strdup where memory is freed with gfree. Bug #67666
+
+        utils:
+         * pdfdetach: don't mention xpdfrc
+         * pdftotext: Fix -bbox with stdin as input. Bug #45163
+         * pdftohtml: Fix jpeg image export. Bug #48270
+         * pdfimages: Fix typos in man page
+
+        glib:
+         * demo: Remove GTK_DISABLE_DEPRECATED compilation flag
+
+        qt4:
+         * Fix small typo in documentation
+
+        qt5:
+         * Fix small typo in documentation
+
+Release 0.24.0
+        core:
+         * TextOutputDev: Do not draw ligatures more than once when selected. Bug #9001
+         * PSOutputDev: Make some pdftops conversions much faster
+         * PSOutputDev: Initialize t3FillColorOnly
+         * SplashOutputDev: Fallback to 1x1 bitmap if we fail to create the real size
+
+Release 0.23.4
+        core:
+         * TextOutputDev: clip the selected text rendering to the selection box. Bug #66983
+         * CairoImageOutputDev: Fix the bounding box of saved images
+
+        build system:
+         * Improve linking against pthreads
+
+Release 0.23.3
+        core:
+         * Annotation improvements
+         * Fix crashes on malformed files
+         * TextSelectionPainter: Draw glyphs after selection background
+         * TextOutputDev: add a method to TextPage to get the selection as a list of words
+
+        qt5:
+         * Initial Qt5 port
+
+        qt4:
+         * Windows compile fixes
+         * Demo: Allow the choose the page rotation
+
+        build system:
+         * Fix mingw build
+         * Minor autotools fixes
+
+Release 0.23.2
+        core:
+         * SplashOutputDev: Speed-up some tiling on a 10x factor
+         * Improve caching of lcms2 ICC color profiles
+         * Put some private classes in an anonymous namespace
+
+        qt4:
+         * Add a thread stresser tool
+
+        build system:
+         * Fix mingw build
+
+Release 0.23.1
+        core:
+         * XRef stream writing: Write 32-bit offsets when possible
+         * Fix splashModeBGR8 rendering (Bug #64381)
+
+        glib:
+         * Do not use deprecated gtk_scrolled_window_add_with_viewport() (Bug #64683)
+
+        build system:
+         * Fix Large file support when using cmake
+
+Release 0.23.0
+        core:
+         * Make rendering thread safe
+         * Large file support
+         * Implement Crypt filter (Bug #62800)
+         * Fix endstream detection (Bug #62985)
+         * CairoOutputDev: support uncolored tiling patterns (Bug #59179)
+         * SplashOutputDev: Introduce Thin Line mode support (Bug #37347)
+
+        qt4:
+         * Expose Thin Line mode support
+
+Release 0.22.4
+        core:
+         * Always consider a softmask transfer function (Bug #63587)
+         * Fix crash on malformed files (Bug #63190)
+         * Splash: Fix compilation with fixed point mode enabled
+
+        utils:
+         * Fix crash on some files (Bug #63909)
+
+        qt4:
+         * Fix name decoding of some attachments (KDE Bug #307786)
+
+        build system:
+         * Fix compilation with mingw-w64 compiler
+
+Release 0.22.3
+        core:
+         * Check order bounding box values in tiling pattern (Bug #62369)
+         * CairoImageOutputDev: Don't change image interpolation when printing (Bug #62418)
+         * TextOutputDev: Set text matrix when painting selection (Bug #61042)
+         * Only write the file once when saving (Bug #62739)
+         * Fix for complete rewrites in repaired files
+         * Fixlet regarding spec interpretation for Link Zoom value
+         * Fix typos in man pages
+         * Fix compile when not using libjpeg
+
+        glib:
+         * Always start from the beginning when starting a new search on a page (Bug #59972)
+
+        qt4:
+         * Fix crash in files with LinkRendition (KDE Bug #317710)
+
+        build system:
+         * Small cmake improvements
+
+Release 0.22.2
+        core:
+         * Correct rendering of underline and strike out annotations (Bug #61518)
+         * Workaround broken jpeg stream definitions (Bug #61994)
+         * SplashOutputDev: Restore CTM on early exits (Bug #61413)
+         * SplashOutputDev: Make sure we don't try to paint in x < 0 (KDE Bug #315432)
+         * Fix latin page labels. (Bug #61034)
+         * Fix compilation with jpeglib9
+         * Fix minor valgrind warning
+
+        utils:
+         * pdfimages: Fix extraction of some images (Bug #61168)
+
+        build system:
+         * Fix the build with automake-1.13
+
+Release 0.22.1
+        core:
+         * Fix crash in some pdf files when extracting text (Bug #59561)
+         * Fix crashes in wrongly formed files
+         * Fix wrong warning when opening some files (Bug #58966)
+
+        build system:
+         * Improve autoconf jpeglib.h detection (Bug #59186)
+
+Release 0.22.0
+        core:
+         * Fix crash in invalid files that define a <= 0 bits per image value
+         * Fix a few issues in JPX decoding when not using OpenJPEG
+         * TextOutputDev: Use page size for max value in TextPage::visitSelection
+         * Fix typo in error message
+
+        utils:
+         * Fix pdfunite regression (Bug #58569)
+         * Demo fixes and improvements
+
+        misc:
+         * pdf-inspector improvements
+
+Release 0.21.4
+        core:
+         * SplashOutputDev: Fix crash when rendering in monochrome mode
+         * SplashOutputDev: Fix line widths in monochrome mode (Bug #57294)
+         * PSOutputDev: Fix crop on EPS conversion (Bug #30692)
+         * TextOutputDev: Fix minor logic mistake
+         * Fix assert on some malformed files (Bug #58257)
+         * Move #include "jpeglib.h" into .cc file (Bug #57687)
+         * Filter text that may end up being written to the shell
+         * Fix windows compile warnings
+
+        glib:
+         * Add poppler_annot_set_flags (Bug #58015)
+         * Demo fixes and improvements
+
+        qt4:
+         * Fix check_lexer on 32-bit systems
+
+Release 0.21.3
+        core:
+         * Splash: Implement bilinear image scaling (Bug #22138)
+         * CairoOutputDev: Update fill and stroke color in startPage (Bug #54526)
+         * Fix GooString::insert()
+         * Allow large chars in TextPage
+         * Fix crash on ActualText::end
+         * Don't use memcpy to copy classes
+         * Fix warnings
+
+        glib:
+         * Check if words end with spaces (Bug #54504)
+         * Ensure text is only computed on first render
+         * Fix warnings while generating introspection file
+         * Fix returns tag in PopplerAttachmentSaveFunc api doc
+         * Minor demo fixes
+
+Release 0.21.2
+        core:
+         * CairoOutputDev: make drawImage work with images > 32767 in width/height (Bug #56858)
+         * CairoOutputDev: Fix soft mask when image resolution != smask resolution (Bug #57070)
+         * CairoOutputDev: Fix crash in CairoImageOutputDev with setSoftMaskFromImageMask (Bug #57067)
+         * Remove a check on fonts that we don't need (Bug #56753)
+         * Misc code cleanups
+
+        utils:
+         * pdftocairo: Add tiff output support (Bug #57006)
+         * pdfunite: Fix -v (Bug #56817)
+         * Misc code cleanups
+
+Release 0.21.1
+        core:
+         * Annotation improvements
+         * Form improvements
+         * CairoImageOutputDev: Support parameterized Gouraud shading (Bug #56463)
+         * UTF validation fixes
+         * Do not call drawing routines if we don't need non text (Bug #54617)
+         * Fix Memory leak in CharCodeToUnicode (Bug #54702)
+
+        qt4:
+         * Make LinkRendition properties available (Bug #55378)
+         * Accessors for FormWidgetChoice::editChoice
+         * Implement overprint
+
+Release 0.21.0
+        core:
+         * Support the modification of files with Encrypt
+         * Annotation improvements
+         * Form improvements
+         * Splash: Implement DeviceN support
+         * Splash: Avoid bogus memory error for tilingPattern
+         * TextOutputDev: Allow multiple fonts in a TextWord
+         * Kill the concept of base dir
+         * PSOutputDev: Always write HiResBoundingBox (Bug #53159)
+         * Convert UTF-16 to UCS-4 when reading toUnicode cmap
+         * GooString formatting: add support for uppercase hexadecimal
+         * Use error() instead of fprintf(stderr, ...) in Annot::layoutText
+         * poppler-config.h: remove WITH_FONTCONFIGURATION_* macros
+
+        glib:
+         * Annotation improvements
+         * Add poppler_page_remove_annot()
+         * Add poppler_document_new_from_stream
+         * Add poppler_document_new_from_gfile
+         * Add poppler_page_find_text_with_options (Bug #2951)
+         * Demo improvements
+         * Port tests and demo to GTK+3
+
+        qt4:
+         * Add accessor methods for movie poster information
+         * Make 'additional actions' available in Annotation API (Bug #53589)
+         * Add whole-page search method to Poppler::Page
+         * Small changes in tests
+
+        utils:
+         * pdftohtml: Make the output more xhtml compliant
+         * pdftohtml: Add -fontfullname. (Bug #49872)
+         * pdftohtml: Do not invoke gs anymore
+
+        build system:
+         * Add the possibility of using lcms1 even if lcms2 is installed
+         * Remove extra fontconfig CFLAGS and LIBS
+
+Release 0.20.5
+        core:
+         * Fix crashes in malformed documents
+         * Fix parsing of very big numbers
+         * Splash: Do not render invalid font outlines (Bug #55573)
+         * Check for NaN in TextPage::addChar
+
+        build system:
+         * Fix build using mingw64 with winpthread
+         * autotools: Fix compilation when lcms is on non standard locations (Bug #55326)
+         * Support automake-1.12 (Bug #55541)
+
+        glib:
+         * Chain up finalize to the parent class (Bug #55521)
+
+Release 0.20.4
+        core:
+         * Improvements regarding embedded file handling. (KDE Bug #306008)
+         * Fix opening some broken files (Bug #14303)
+         * Fix memory leaks
+         * Fix crashes in various broken files
+         * Refine warning to only complain when really needed
+         * Remove function declared but not implemented
+         * Remove execution permissions from a header file
+
+        qt4:
+         * Improvements regarding embedded file handling. (KDE Bug #306008)
+
+Release 0.20.3
+        core:
+         * If NULL, NULL fails as password try EMPTY, EMPTY before failing (Bug #3498)
+         * SplashOutputDev: Fix bogus memory allocation size in Splash::arbitraryTransformImage (Bug #49523)
+         * SplashOutputDev: Fix segfault when scaleImage returns NULL (Bug #52488)
+         * SplashOutputDev: Blend mode enhancements for CMYK
+         * PSOutputDev: Fix conversion when creating multiple strips (Bug #51982)
+         * PSOutputDev: Fix Bitmaps in level2sep or level3sep (Bug #52384)
+         * PSOutputDev: Fix DeviceN images with alternate Lab colorspace in level 3 PostScript (Bug #51822)
+         * PSOutputDev: Make sure xScale and yScale are always initialized (Bug #52215)
+         * Unify poppler-config.h includes in core "installed" headers (Bug #52193)
+         * Replace c++ style includes with c style ones (Bug #52426)
+
+        utils:
+         * pdfseparate: Return 0 on success
+        
+Release 0.20.2
+        core:
+         * Fix compilation on Windows
+         * Copy resources content defined in the pages dict on save (Bug #51369)
+         * PSOutputDev: Correct %%DocumentCustomColors (Bug #51479)
+         * PSOutputDev: Fix handling of DeviceN images in level 3 PostScript (Bug #51548)
+         * Fix crash in malformed documents
+        
+        qt4:
+         * Do not hang on malformed /Annots objects (Bug #51361)
+
+Release 0.20.1
+        core:
+         * Remove unnecesary transparency group handling in splash (Bug #13487)
+         * Include substitute font name in system font cache (Bug #49826)
+         * Fix logic on SplashBitmap::writeImgFile
+         * PSOutputDev: use setoverprintmode only if rip knows it
+         * Fix crash in malformed documents
+        
+        qt4:
+         * Make TextAnnotation constructor public
+         * Fix saving of default TextAnnotation to xml
+         * Keep page rotation into account when normalizing annotation coords
+        
+        glib:
+         * Fix memory leak when document fails to load
+         * Make sure password is always converted to latin1
+         * Fix typo in documentation
+
+        build system:
+         * Distribute cmake/modules/FindLCMS2.cmake (Bug #49818)
+
+        utils:
+         * pdftohtml: Determine if font is bold or italic based on FontDescriptor (Bug #49758)
+         * pdfseparate: Syntax fixes in the man page
+
+Release 0.20.0
+        core:
+         * Reconstruct xref table if xref needed but missing (Bug #40719)
+         * Fix getFullyQualifiedName with unicode field names (Bug #49256)
+         * SplashOutputDev: Fix rendering of knockout groups (Bug #12185)
+         * SplashOutputDev: Fix cmyk transfer bug (Bug #49341)
+         * Fix crashes in broken documents
+         * Bring back the Outputdev::begin/endMarkedContent virtuals
+         * Build fixes
+        
+        qt4:
+         * Convert propertly unicode encoded field qualified names
+        
+        glib:
+         * glib: Use delete[] to free array allocated with new[] (Bug #48447)
+
+Release 0.19.4
+        core:
+         * Annotation improvements
+         * More compatible file writing
+         * SplashOutputDev: Fix slow rendering of pdf with a lot of image masks in pattern colorspace
+         * Fix crashes in broken documents
+         * Fix spurious warning messages
+        
+        utils:
+         * pdftotext: Add missing section heading to man page
+         * pdftohtml: Fix crash when the destination file does not exist
+        
+        build system:
+         * autoconf: Do not append "-ansi" to CXXFLAG, if "-std=XXX" is already specified.
+         * autoconf: Do not clear FREETYPE_CFLAGS, FREETYPE_LIBS before PKG_CHECK_MODULES()
+         * autoconf: Copying graphics library CFLAGS to cpp frontend Makefile.am
+
+Release 0.19.3
+        core:
+         * Annotation improvements
+         * CairoOutputDev: Fix regression caused by mesh gradients
+         * CairoOutputDev: Use correct userfont font bbox (Bug #48399)
+         * CairoOutputDev: Fix paintTransparencyGroup when both mask and fill opacity are required (Bug #48453)
+         * CairoOutputDev: Ensure 0 width lines with stroke_adjust are aligned
+         * CairoOutputDev: Only align stroke coords for horizontal and vertical lines (Bug #48318)
+         * CairoOutputDev: Fix stroke pattern with transparency group (Bug #48468)
+         * Fix crash in JBIG2Stream decoding
+         * Fix memory leak when looking for a substitute font
+         * Fix page labels to not have a null character at the end
+         * Fix Splash CMYK merge error
+         * ttc<->ttf fallback is expected for CJK font list in for Windows (Bug #48046)
+        
+        qt4:
+         * Annotations can now be modified
+         * Annotations can now be added
+         * Annotations can now be removed
+
+        utils:
+         * pdftohtml: Add producer and version to xml output
+         * pdftohtml: Fix the mask inversion for PNG
+         
+Release 0.19.2
+        core:
+         * Annotation improvements
+         * CairoOutputDev: update cairo mesh pattern to 1.12 api
+         * CairoOutputDev: fix some transparency issues (Bug #47739)
+         * CairoOutputDev: Fix regression in some shadings
+         * TextOutputDev: Don't add newline to last line extracted by TextSelectionDumper (Bug #45955)
+         * CJK font improvements
+         * Improve font matching for non embedded fonts
+         * Fix regression regarding forceRasterize in PSOutputDev
+         * Fix typos glyph names in truetype 'post' table standard mac ordering
+        
+        build system:
+         * minor cmake fixes
+         * misc autoconf fixes
+         * POPPLER_VERSION is now wrapped in quotes
+
+        utils:
+         * pdftohtml: extract mask images even if they are not JPEG (Bug #47186)
+         * pdftohtml: Flip images if they need to (Bug #32340)
+         
+Release 0.19.1
+        core:
+         * Improve CJK suport in PSOutputDev
+         * CJK substitute implementation on WIndows platforms
+         * Do not crash on malformed files with 0 bits in the color map of an image
+         * Fix regression in some PSOutputDev array sizing
+         * Improvements to Annotation editing
+         * Fix logic error in Rendition parsing code (Bug #47063)
+         * Minor API changes to SplashOutputDev (Bug #46622)
+         * Fix mismatch in some functions declarations
+         * Update poppler copyright year
+        
+        utils:
+         * pdftops: Fix -passfonts regression. (Bug #46744)
+         * pdffonts: List the encoding of each font. (Bug #46888)
+         * pdftohtml: Add possibilty of controlling word breaks percentage. (Bug #47022)
+         
+        qt4:
+         * Support for LinkMovie object (Bug #40561)
+         * Support for Media Rendition
+         
+        glib:
+         * Add poppler_fonts_iter_get_encoding
+         * Improvements to the demo
+
+Release 0.19.0
+        core:
+         * Merge Xpdf 3.03
+         * Add support for lcms2
+         * SplashOutputDev: Implement Overprint
+         * PSOutputDev: Implement Overprint
+         * Expand glyph name ligatures such as "ff", "ffi" etc to normal form (Bug #7002)
+         * Use an Identity CharCodeToUnicode for Adobe-Identity and Adobe-UCS collections (Bug #35468)
+         * CairoOutputDev: Avoid setting huge clip area when printing (Bug #44002)
+         * CairoOutputDev: Fix test for rotation (Bug #14619)
+         * CairoOutputDev: Don't read inline image streams twice (Bug #45668)
+         * CairoOutputDev: set mask matrix before drawing an image with a mask (Bug #40828)
+         * Update glyph names to Unicode values mapping (Bug #13131)
+         * Only use Hints table when there are no parse errors (Bug #46459)
+         * Expose POPPLER_VERSION in poppler-config.h
+        
+        utils:
+         * pdftohtml: Output images in -xml mode if no -i option is specified
+         * pdftohtml: Get rid of static data members; merge duplicated jpeg dumping code
+         * pdftohtml: Be more consistent generating the outlines
+         * pdftohtml: Generate outlines in pdftohtml in -xml mode (Bug #56993)
+         * pdftohtml: Combine UTF16 surrogate pairs (Bug #46521)
+         * pdfinfo: Report page rotation
+         * pdfinfo: Decode utf-16 surrogate pairs
+         * pdftoppm: Allow one of -scale-to-[xy] = -1 to mean the aspect ratio is to be preserved (Bug #43393)
+         * pdftocairo: Allow one of -scale-to-[xy] = -1 to mean the aspect ratio is to be preserved
+         * pdffonts: Add -subst option to list the substitute font name and filename
+         * pdfseparate: Produce PDF/X conformant pdf pages if the original PDF was PDF/X conformant
+         * pdfimages: Add -list option to list all images (Bug #46066)
+         * Improve various manpages
+         
+        glib:
+         * Add poppler_fonts_iter_get_substitute_name
+         * Demo improvements
+         * Update gtk-doc makefile and m4 file
+         * Fix typos in documentation
+        
+        qt4:
+         * Add the option of PSConverter creating EPS
+         * Form support improvements
+        
+        build system:
+         * autotools: Print the cairo version required if not found (Bug #44619)
+         * autotools: Print the glib version required if not found
+         * autotools: Use pkgconfig to check for libopenjpeg (Bug #21789)
+         * autotools: Replace openjpeg compile test with a version test
+         * Add a configuration option for the test data dir
+
+Release 0.18.4
+        core:
+         * CairoOutputDev: Restore temporary clip used in CairoOutputDev::fill when painting a mask
+         * CairoOutputDev: Ensure paintTransparencyGroup uses same ctm as beginTransparencyGroup. Bug #29968
+         * CairoOutputDev: Use fabs when comparing the transformed line width. Bug #43441
+         * CairoOutputDev: Remove unused variable in CairoFontEngine.cc. Bug #45442
+         * SplashOutputDev: Do not use 50Kb of stack in SplashXPath::addCurve. Bug #44905
+         * JpegWriter: set image parameters after jpeg_set_defaults(). Bug #45224
+         * OpenJPEG decoder: Set OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG if you have it. Bug #43414
+         * Lexer: convert integer to real when overflow occurs. Bug #45605
+
+        glib:
+         * Various minor introspection and documentation improvements. Bug #44790
+         * Fix return values. Bug #45440. Bug #45441
+         * gtk-doc improvements. Bug #45549
+         * Introspection improvements. Bug #45455
+        
+        utils:
+         * HtmlOutputDev: Proper unicode support when dumping PDF outline. Bug #45572
+         * HtmlOutputDev: Fix leaks. Bug #45805
+         * HtmlOutputDev: Close li tags in generated outlines. Bug #45807
+         * man pages: fix minor issues with hypens and %
+
+        build system:
+         * automake: Link to lcms if needed
+         * automake: Fix build for builddir != srcdir. Bug #45434
+         * automake: Improve moc detection when cross compiling
+         * Fix build with latest mingw-w64 headers. Bug #45407
+        
+        qt4:
+         * remove non-existing 'qt' include dirs
+        
+Release 0.18.3
+        core:
+         * Do not fail if we are trying to save a file with Encrypt that has not been modified. KDE Bug #288045
+         * Include .otf fonts when finding substitute fonts. Bug #44412
+         * Fix stack overflow in PDFDoc::markObject(). Bug #44660
+         * Include strings.h as we use memcpy. Bug #43558
+
+        utils:
+         * pdfunite: Properly initialize globalParams. Bug #44659
+         * pdfseparate: Properly initialize globalParams
+         * Fix iniliazialization of GooString arguments
+
+        build system:
+         * autoconf: Check for cairo-ft and other cairo backends. Bug #43969
+        
+Release 0.18.2
+        core:
+         * Fix leak in GooString when resizing to a smaller string
+         * Fix crash if failing to parse the colorspace. Bug #42793
+         * Make GfxColorSpace::parse accept dicts
+
+        qt4:
+         * Use PDFDoc(wchar_t *, ...) on Windows. Bug #35378
+         * Add missing include
+         * Minor fixes in documentation
+
+        utils:
+         * pdftocairo: Fix crash when rendering only odd/even pages in a printing format
+        
+        build system:
+         * Fix pkg-config files
+        
+Release 0.18.1
+        core:
+         * PSOutputDev: Output PS that does not confuse libspectre
+         * PSOutputDev: Fix tiling pattern fill matrix. Bug #41374
+         * PSOutputDev: Emit non repeating patterns just once
+         * PSOutputDev: Fix uncolored tiling patterns. Bug #41462
+         * CairoOutputDev: Fix crash when using poppler_page_get_image()
+         * CairoOutputDev: Fix various setSoftMask bugs. Bug #41005
+        
+        utils:
+         * pdftocairo: Flush/close files one we are done using them
+         * pdftocairo: Compile in Windows
+        
+        build system:
+         * CMake: Fix typo in option description
+         * CMake: Correctly include fontconfig include dir
+         * Remove poppler-cairo dependency from poppler-glib pkg-config file
+        
+        qt4:
+         * Minor fixes in documentation
+
+Release 0.18.0
+        core:
+         * Fix small memory leak when dealing with marked content
+         * Remove DCTStream::getRawStream since Stream::getNextStream does the same
+        
+        utils:
+         * Rename pdfmerge to pdfunite
+         * Rename pdfextract to pdfseparate
+         * pdfseparate: Complain if %d is not present and it should
+         * Add pdfseparate and pdfunite man pages
+        
+        build system:
+         * Minor cleanup in regarding removed qt code
+
+Release 0.17.4 (0.18 RC)
+        core:
+         * SplashOutputDev: Compile when defining USE_FIXEDPOINT
+         * PNGWriter: Compile with libpng >= 1.5.0
+        
+Release 0.17.3 (0.18 Beta 3)
+        core:
+         * PSOutputDev: Use Patterns for tiling fill when PS level >= 2
+         * PSOutputDev: Avoid using /PatternType if only one instance of the pattern is used
+         * PSOutputDev: Add poppler version as comment in the file
+         * CairoOutputDev: Set mime data for soft masked images (Bug #40192)
+         * CairoOutputDev: Assume printer pixel size is 1/600" when stroking 0 width lines (Bug #39067)
+         * CairoOutputDev: Use cairo_show_text_glyphs() when printing
+         * CairoOutputDev: Fix stroke patterns (Bug #11719)
+         * CairoOutputDev: Fix unique id mime data
+         * CairoOutputDev: fix stroking of very thin lines
+         * CairoOutputDev: align strokes when Stroke Adjust is true and line width <= 1 (Bug #4536)
+         * TextOutputDev: Add TextFontInfo::matches()
+         * Improve PNGWriter
+         * Rework writing of PDF files
+
+        utils:
+         * Introduce pdftocairo - utility for creating png/jpeg/ps/eps/pdf/svg using CairoOutputDev
+         * Introduce pdfextract - utility to extract PDF pages
+         * Introduce pdfmerge - utility to merge PDF files
+         * Fix compilation warning
+         * pdftohtml: Support text rotation (Bug #38586)
+         * Update SEE ALSO section of man pages
+
+        glib:
+         * Add poppler_page_get_text_attributes()
+         * Add text attributes information to text demo
+
+        qt4:
+         * Add a way to get the fully qualified name of a FormField
+         * Minor documentation improvements
+        
+Release 0.17.2 (0.18 Beta 2)
+        core:
+         * EmbeddedFile improvements
+         * don't gmalloc(-1) upon ftell failure
+         * Fix missing content in some pages (Bug #39637)
+         * Improve selection of CJK fonts (Bug #36474)
+         * SplashOutputDev: Implement overprint
+         * SplashOutputDev: Render dots for 0 length dashed lines (Bug #34150)
+         * SplashOutputDev: Fix bad memory access when not using antialias (Bug #37189)
+         * PSOutputDev: Make level2sep and level3sep write cmyk instead of rgb
+         * PSOutputDev: Make level1sep, level2sep and level3sep write gray instead of rgb for gray images
+         * Fix numerical overflow in libopenjpeg JPXStream (Bug #39361)
+         * Fix crash on truncated JPEG/DCT stream (Bug #36693)
+         * Make sure the dict is a page dict (Bugs #35925 #39072)
+         * Fix calculation of startXRefPos
+         * Handle missing startxref properly (Bug #38209)
+         * Parse the "Medium" modifier when asking fontconfig for a font
+         * Header cleanup
+         * Include cleanup
+         * Define cleanup
+
+        glib:
+         * Add missing permissions flags to PopplerPermissions
+         * Add missing permission flags to info demo
+         * Update gtk-doc.make
+         * Add poppler_document_get_n_attachments()
+        
+        utils:
+         * pdftohtml: Fix encoding of PDF document metadata (Bug #37900)
+         * pdftohtml: Fix vertical spacing issues  (Bug #38019)
+         * pdftotext: Fix -htmlmeta to correctly output U+2019 in PDF metadata (Bug #37900)
+         * pdftoppm: Implement overprint
+
+        qt4:
+         * Rework EmbeddedFile internals
+         * Fix possible crash in test
+        
+Release 0.17.1 (0.18 Beta 1)
+        core:
+         * Rework the way form fields tree is built
+         * Cleanup unused parameters/variables
+
+        glib:
+         * Add JavaScript actions
+         * demo: Show javascript actions in actions view
+        
+        qt4:
+         * tests: Turn some assignments to bool into QVERIFY checks
+
+Release 0.17.0 (0.18 Alpha)
+        core:
+         * Splash: Implement tiling patterns
+         * Splash: Support slight hinting
+         * Splash: Radial shading improvements
+         * Splash: General speed improvements
+         * Arthur: Add Hinting API
+         * Cairo: Implement Type 4,5,6,7 shadings using cairo mesh gradients
+         * Cairo: Use the new cairo unique id to set the surface id when printing
+         * PS: Add PS level1 non standard binary output option
+         * PS: Allow setting the rasterization resolution
+         * Form support improvements
+         * Annotation support improvements
+         * General speed improvements
+         * Add support for handling ViewerPreferences
+         * Remove abiword output device
+
+        utils:
+         * pdftoppm: Add -singlefile option (Bug #32025)
+         * pdftoppm: Add TIFF output format support (Bug #32027)
+         * pdftops: Add PS level1 non standard binary output option
+         * pdftops: Allow setting the rasterization resolution
+         * pdftoabw has been removed
+        
+        glib:
+         * Add poppler_form_field_get_action() (Bug 33174)
+         * Remove GDK API
+         * Remove test-poppler-glib
+         * demo: Add a tooltip with current selected character in text demo
+         * demo: show the activation action of form fields if there's one
+
+        cpp:
+         * Add TIFF output possibility
+         * Add PNM output possibility
+
+        qt4:
+         * Support slight hinting
+         * Form support improvements
+        
+        qt3:
+         * The Qt3 frontend has been removed
+        
+        tests:
+         * Merge splash and cairo tests into a single gtk-test tool
+
+Release 0.16.4
+        core:
+         * Small improvements in Annot parsing
+
+        glib:
+         * Add g_return macros to make sure index is correct in form field choice methods
+         * Fix a crash when a choice form field has no items selected in glib-demo
+
+        utils:
+         * Small fixes to the pdftohtml manpage
+         * Fix copyright years
+
+        qt4:
+         * Fix caption of push button fields
+
+Release 0.16.3
+        core:
+         * Increase precision in PS output device
+         * Workaround bug when converting pdf to ps with level1 (Bug #31926)
+         * Fix crash in Splash output device in some broken pdf
+         * Fix infinite loop in some broken files
+         * Fix rendering of some substituted fonts (Bug #34522)
+         * Do not ask Freetype for 0x0 fonts in Splash output device (Bug #34602)
+         * Don't assume y1 > y3 for points of a highlight annotation (Gnome Bug #643028)
+         * Handle fontCIDType2OT when creating freetype font in Cairo output device (Gnome Bug #643273)
+         * Fix crash in some pdf that use ICC color space (Bug #34357)
+
+        glib:
+         * Don't use an uninitialized local variable in demo
+         * Add some introspection markers
+
+        qt4:
+         * Fix crash regression in unicodeToQString (again)
+
+        utils:
+         * pdftotext: Do not crash when using -bbox
 
 Release 0.16.2
 	core:

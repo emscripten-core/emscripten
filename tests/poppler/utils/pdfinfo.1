@@ -1,8 +1,8 @@
-.\" Copyright 1999-2004 Glyph & Cog, LLC
-.TH pdfinfo 1 "22 January 2004"
+.\" Copyright 1999-2011 Glyph & Cog, LLC
+.TH pdfinfo 1 "15 August 2011"
 .SH NAME
 pdfinfo \- Portable Document Format (PDF) document information
-extractor (version 3.00)
+extractor (version 3.03)
 .SH SYNOPSIS
 .B pdfinfo
 [options]
@@ -43,6 +43,12 @@ In addition, the following information is printed:
 .PP
 .RS
 tagged (yes/no)
+.RE
+.RS
+form (AcroForm / XFA / none)
+.RE
+.RS
+javascript (yes/no)
 .RE
 .RS
 page count
@@ -87,6 +93,12 @@ TrimBox, and ArtBox.
 Prints document-level metadata.  (This is the "Metadata" stream from
 the PDF file's Catalog object.)
 .TP
++.B \-js
++Prints all JavaScript in the PDF.
++.TP
+.B \-rawdates
+Prints the raw (undecoded) date strings, directly from the PDF file.
+.TP
 .BI \-enc " encoding-name"
 Sets the encoding to use for text output. This defaults to "UTF-8".
 .TP
@@ -127,11 +139,14 @@ Error related to PDF permissions.
 99
 Other error.
 .SH AUTHOR
-The pdfinfo software and documentation are copyright 1996-2004 Glyph &
+The pdfinfo software and documentation are copyright 1996-2011 Glyph &
 Cog, LLC.
 .SH "SEE ALSO"
-.BR pdftops (1),
-.BR pdftotext (1),
+.BR pdfdetach (1),
 .BR pdffonts (1),
-.BR pdftoppm (1),
 .BR pdfimages (1),
+.BR pdftocairo (1),
+.BR pdftohtml (1),
+.BR pdftoppm (1),
+.BR pdftops (1),
+.BR pdftotext (1)

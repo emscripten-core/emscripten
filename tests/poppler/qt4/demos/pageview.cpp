@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008-2009, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2013, Fabio D'Urso <fabiodurso@hotmail.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +30,7 @@
 PageView::PageView(QWidget *parent)
     : QScrollArea(parent)
     , m_zoom(1.0)
+    , m_rotation(0)
     , m_dpiX(QApplication::desktop()->physicalDpiX())
     , m_dpiY(QApplication::desktop()->physicalDpiY())
 {
@@ -56,7 +58,18 @@ void PageView::pageChanged(int page)
     Poppler::Page *popplerPage = document()->page(page);
     const double resX = m_dpiX * m_zoom;
     const double resY = m_dpiY * m_zoom;
-    QImage image = popplerPage->renderToImage(resX, resY);
+
+    Poppler::Page::Rotation rot;
+    if (m_rotation == 0)
+        rot = Poppler::Page::Rotate0;
+    else if (m_rotation == 90)
+        rot = Poppler::Page::Rotate90;
+    else if (m_rotation == 180)
+        rot = Poppler::Page::Rotate180;
+    else // m_rotation == 270
+        rot = Poppler::Page::Rotate270;
+
+    QImage image = popplerPage->renderToImage(resX, resY, -1, -1, -1, -1, rot);
     if (!image.isNull()) {
         m_imageLabel->resize(image.size());
         m_imageLabel->setPixmap(QPixmap::fromImage(image));
@@ -70,6 +83,15 @@ void PageView::pageChanged(int page)
 void PageView::slotZoomChanged(qreal value)
 {
     m_zoom = value;
+    if (!document()) {
+        return;
+    }
+    reloadPage();
+}
+
+void PageView::slotRotationChanged(int value)
+{
+    m_rotation = value;
     if (!document()) {
         return;
     }

@@ -2,6 +2,7 @@
  *
  * Copyright (C) 2007 Inigo Martinez <inigomartinez@gmail.com>
  * Copyright (C) 2009 Carlos Garcia Campos <carlosgc@gnome.org>
+ * Copyright (C) 2013 German Poo-Caamano <gpoo@gnome.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "config.h"
 #include "poppler.h"
 #include "poppler-private.h"
 
@@ -34,6 +36,7 @@ typedef struct _PopplerAnnotTextClass           PopplerAnnotTextClass;
 typedef struct _PopplerAnnotFileAttachmentClass PopplerAnnotFileAttachmentClass;
 typedef struct _PopplerAnnotMovieClass          PopplerAnnotMovieClass;
 typedef struct _PopplerAnnotScreenClass         PopplerAnnotScreenClass;
+typedef struct _PopplerAnnotLineClass           PopplerAnnotLineClass;
 
 struct _PopplerAnnotClass
 {
@@ -104,6 +107,15 @@ struct _PopplerAnnotScreenClass
   PopplerAnnotClass parent_class;
 };
 
+struct _PopplerAnnotLine
+{
+  PopplerAnnotMarkup parent_instance;
+};
+
+struct _PopplerAnnotLineClass
+{
+  PopplerAnnotMarkupClass parent_class;
+};
 
 G_DEFINE_TYPE (PopplerAnnot, poppler_annot, G_TYPE_OBJECT)
 G_DEFINE_TYPE (PopplerAnnotMarkup, poppler_annot_markup, POPPLER_TYPE_ANNOT)
@@ -112,13 +124,29 @@ G_DEFINE_TYPE (PopplerAnnotFreeText, poppler_annot_free_text, POPPLER_TYPE_ANNOT
 G_DEFINE_TYPE (PopplerAnnotFileAttachment, poppler_annot_file_attachment, POPPLER_TYPE_ANNOT_MARKUP)
 G_DEFINE_TYPE (PopplerAnnotMovie, poppler_annot_movie, POPPLER_TYPE_ANNOT)
 G_DEFINE_TYPE (PopplerAnnotScreen, poppler_annot_screen, POPPLER_TYPE_ANNOT)
+G_DEFINE_TYPE (PopplerAnnotLine, poppler_annot_line, POPPLER_TYPE_ANNOT_MARKUP)
+
+static PopplerAnnot *
+_poppler_create_annot (GType annot_type, Annot *annot)
+{
+  PopplerAnnot *poppler_annot;
+
+  poppler_annot = POPPLER_ANNOT (g_object_new (annot_type, NULL));
+  poppler_annot->annot = annot;
+  annot->incRefCnt();
+
+  return poppler_annot;
+}
 
 static void
 poppler_annot_finalize (GObject *object)
 {
   PopplerAnnot *poppler_annot = POPPLER_ANNOT (object);
 
-  poppler_annot->annot = NULL;
+  if (poppler_annot->annot) {
+    poppler_annot->annot->decRefCnt();
+    poppler_annot->annot = NULL;
+  }
 
   G_OBJECT_CLASS (poppler_annot_parent_class)->finalize (object);
 }
@@ -139,12 +167,7 @@ poppler_annot_class_init (PopplerAnnotClass *klass)
 PopplerAnnot *
 _poppler_annot_new (Annot *annot)
 {
-  PopplerAnnot *poppler_annot;
-
-  poppler_annot = POPPLER_ANNOT (g_object_new (POPPLER_TYPE_ANNOT, NULL));
-  poppler_annot->annot = annot;
-
-  return poppler_annot;
+  return _poppler_create_annot (POPPLER_TYPE_ANNOT, annot);
 }
 
 static void
@@ -170,12 +193,7 @@ poppler_annot_text_class_init (PopplerAnnotTextClass *klass)
 PopplerAnnot *
 _poppler_annot_text_new (Annot *annot)
 {
-  PopplerAnnot *poppler_annot;
-
-  poppler_annot = POPPLER_ANNOT (g_object_new (POPPLER_TYPE_ANNOT_TEXT, NULL));
-  poppler_annot->annot = annot;
-
-  return poppler_annot;
+  return _poppler_create_annot (POPPLER_TYPE_ANNOT_TEXT, annot);
 }
 
 /**
@@ -199,7 +217,7 @@ poppler_annot_text_new (PopplerDocument  *doc,
   PDFRectangle pdf_rect(rect->x1, rect->y1,
 			rect->x2, rect->y2);
 
-  annot = new AnnotText (doc->doc->getXRef(), &pdf_rect, doc->doc->getCatalog());
+  annot = new AnnotText (doc->doc, &pdf_rect);
 
   return _poppler_annot_text_new (annot);
 }
@@ -217,12 +235,7 @@ poppler_annot_free_text_class_init (PopplerAnnotFreeTextClass *klass)
 PopplerAnnot *
 _poppler_annot_free_text_new (Annot *annot)
 {
-  PopplerAnnot *poppler_annot;
-
-  poppler_annot = POPPLER_ANNOT (g_object_new (POPPLER_TYPE_ANNOT_FREE_TEXT, NULL));
-  poppler_annot->annot = annot;
-
-  return poppler_annot;
+  return _poppler_create_annot (POPPLER_TYPE_ANNOT_FREE_TEXT, annot);
 }
 
 static void
@@ -238,12 +251,7 @@ poppler_annot_file_attachment_class_init (PopplerAnnotFileAttachmentClass *klass
 PopplerAnnot *
 _poppler_annot_file_attachment_new (Annot *annot)
 {
-  PopplerAnnot *poppler_annot;
-
-  poppler_annot = POPPLER_ANNOT (g_object_new (POPPLER_TYPE_ANNOT_FILE_ATTACHMENT, NULL));
-  poppler_annot->annot = annot;
-
-  return poppler_annot;
+  return _poppler_create_annot (POPPLER_TYPE_ANNOT_FILE_ATTACHMENT, annot);
 }
 
 
@@ -279,9 +287,7 @@ _poppler_annot_movie_new (Annot *annot)
   PopplerAnnot *poppler_annot;
   AnnotMovie   *annot_movie;
 
-  poppler_annot = POPPLER_ANNOT (g_object_new (POPPLER_TYPE_ANNOT_MOVIE, NULL));
-  poppler_annot->annot = annot;
-
+  poppler_annot = _poppler_create_annot (POPPLER_TYPE_ANNOT_MOVIE, annot);
   annot_movie = static_cast<AnnotMovie *>(poppler_annot->annot);
   POPPLER_ANNOT_MOVIE (poppler_annot)->movie = _poppler_movie_new (annot_movie->getMovie());
 
@@ -321,15 +327,55 @@ _poppler_annot_screen_new (Annot *annot)
   AnnotScreen  *annot_screen;
   LinkAction   *action;
 
-  poppler_annot = POPPLER_ANNOT (g_object_new (POPPLER_TYPE_ANNOT_SCREEN, NULL));
-  poppler_annot->annot = annot;
-
+  poppler_annot = _poppler_create_annot (POPPLER_TYPE_ANNOT_SCREEN, annot);
   annot_screen = static_cast<AnnotScreen *>(poppler_annot->annot);
   action = annot_screen->getAction();
   if (action)
     POPPLER_ANNOT_SCREEN (poppler_annot)->action = _poppler_action_new (NULL, action, NULL);
 
   return poppler_annot;
+}
+
+PopplerAnnot *
+_poppler_annot_line_new (Annot *annot)
+{
+  return _poppler_create_annot (POPPLER_TYPE_ANNOT_LINE, annot);
+}
+
+static void
+poppler_annot_line_init (PopplerAnnotLine *poppler_annot)
+{
+}
+
+static void
+poppler_annot_line_class_init (PopplerAnnotLineClass *klass)
+{
+}
+
+/**
+ * poppler_annot_line_new:
+ * @doc: a #PopplerDocument
+ * @rect: a #PopplerRectangle
+ *
+ * Creates a new Line annotation that will be
+ * located on @rect when added to a page. See
+ * poppler_page_add_annot()
+ *
+ * Return value: A newly created #PopplerAnnotLine annotation
+ *
+ * Since: 0.26
+ */
+PopplerAnnot *
+poppler_annot_line_new (PopplerDocument  *doc,
+			PopplerRectangle *rect)
+{
+  Annot *annot;
+  PDFRectangle pdf_rect(rect->x1, rect->y1,
+			rect->x2, rect->y2);
+
+  annot = new AnnotLine (doc->doc, &pdf_rect);
+
+  return _poppler_annot_line_new (annot);
 }
 
 
@@ -499,7 +545,7 @@ poppler_annot_get_modified (PopplerAnnot *poppler_annot)
 }
 
 /**
- * poppler_annot_get_flags
+ * poppler_annot_get_flags:
  * @poppler_annot: a #PopplerAnnot
  *
  * Retrieves the flag field specifying various characteristics of the
@@ -514,6 +560,28 @@ poppler_annot_get_flags (PopplerAnnot *poppler_annot)
 
   return (PopplerAnnotFlag) poppler_annot->annot->getFlags ();
 }
+
+/**
+ * poppler_annot_set_flags:
+ * @poppler_annot: a #PopplerAnnot
+ * @flags: a #PopplerAnnotFlag
+ *
+ * Sets the flag field specifying various characteristics of the
+ * @poppler_annot.
+ *
+ * Since: 0.22
+ **/
+void
+poppler_annot_set_flags (PopplerAnnot *poppler_annot, PopplerAnnotFlag flags)
+{
+  g_return_if_fail (POPPLER_IS_ANNOT (poppler_annot));
+
+  if (poppler_annot_get_flags (poppler_annot) == flags)
+    return;
+
+  poppler_annot->annot->setFlags ((guint) flags);
+}
+
 
 /**
  * poppler_annot_get_color:
@@ -609,6 +677,53 @@ poppler_annot_get_page_index (PopplerAnnot *poppler_annot)
 
   page_num = poppler_annot->annot->getPageNum();
   return page_num <= 0 ? -1 : page_num - 1;
+}
+
+/**
+ * poppler_annot_get_rectangle:
+ * @poppler_annot: a #PopplerAnnot
+ * @poppler_rect: (out): a #PopplerRectangle to store the annotation's coordinates
+ *
+ * Retrieves the rectangle representing the page coordinates where the
+ * annotation @poppler_annot is placed.
+ *
+ * Since: 0.26
+ */
+void
+poppler_annot_get_rectangle (PopplerAnnot     *poppler_annot,
+                             PopplerRectangle *poppler_rect)
+{
+  PDFRectangle *annot_rect;
+
+  g_return_if_fail (POPPLER_IS_ANNOT (poppler_annot));
+  g_return_if_fail (poppler_rect != NULL);
+
+  annot_rect = poppler_annot->annot->getRect ();
+  poppler_rect->x1 = annot_rect->x1;
+  poppler_rect->x2 = annot_rect->x2;
+  poppler_rect->y1 = annot_rect->y1;
+  poppler_rect->y2 = annot_rect->y2;
+}
+
+/**
+ * poppler_annot_set_rectangle:
+ * @poppler_annot: a #PopplerAnnot
+ * @poppler_rect: a #PopplerRectangle with the new annotation's coordinates
+ *
+ * Move the annotation to the rectangle representing the page coordinates
+ * where the annotation @poppler_annot should be placed.
+ *
+ * Since: 0.26
+ */
+void
+poppler_annot_set_rectangle (PopplerAnnot     *poppler_annot,
+                             PopplerRectangle *poppler_rect)
+{
+  g_return_if_fail (POPPLER_IS_ANNOT (poppler_annot));
+  g_return_if_fail (poppler_rect != NULL);
+
+  poppler_annot->annot->setRect (poppler_rect->x1, poppler_rect->y1,
+                                 poppler_rect->x2, poppler_rect->y2);
 }
 
 /* PopplerAnnotMarkup */
@@ -708,7 +823,7 @@ poppler_annot_markup_set_popup (PopplerAnnotMarkup *poppler_annot,
   g_return_if_fail (POPPLER_IS_ANNOT_MARKUP (poppler_annot));
 
   annot = static_cast<AnnotMarkup *>(POPPLER_ANNOT (poppler_annot)->annot);
-  popup = new AnnotPopup (annot->getXRef(), &pdf_rect, (Catalog *)NULL);
+  popup = new AnnotPopup (annot->getDoc(), &pdf_rect);
   annot->setPopup (popup);
 }
 
@@ -1163,11 +1278,11 @@ poppler_annot_free_text_get_quadding (PopplerAnnotFreeText *poppler_annot)
  * poppler_annot_free_text_get_callout_line:
  * @poppler_annot: a #PopplerAnnotFreeText
  *
- * Retrieves a #PopplerCalloutLine of four or six numbers specifying a callout
+ * Retrieves a #PopplerAnnotCalloutLine of four or six numbers specifying a callout
  * line attached to the @poppler_annot.
  *
- * Return value: a new allocated #PopplerCalloutLine if the annot has a callout
- *               line, NULL in other case. It must be freed with g_free() when
+ * Return value: a new allocated #PopplerAnnotCalloutLine if the annot has a callout
+ *               line, %NULL in other case. It must be freed with g_free() when
  *               done.
  **/
 PopplerAnnotCalloutLine *
@@ -1211,7 +1326,7 @@ poppler_annot_free_text_get_callout_line (PopplerAnnotFreeText *poppler_annot)
  * Creates a #PopplerAttachment for the file of the file attachment annotation @annot.
  * The #PopplerAttachment must be unrefed with g_object_unref by the caller.
  *
- * Return value: @PopplerAttachment
+ * Return value: (transfer full): @PopplerAttachment
  *
  * Since: 0.14
  **/
@@ -1225,9 +1340,9 @@ poppler_annot_file_attachment_get_attachment (PopplerAnnotFileAttachment *popple
 
   annot = static_cast<AnnotFileAttachment *>(POPPLER_ANNOT (poppler_annot)->annot);
 
-  EmbFile *emb_file = new EmbFile (annot->getFile(), annot->getContents());
-  attachment = _poppler_attachment_new (emb_file);
-  delete emb_file;
+  FileSpec *file = new FileSpec (annot->getFile());
+  attachment = _poppler_attachment_new (file);
+  delete file;
 
   return attachment;
 }
@@ -1266,7 +1381,7 @@ POPPLER_DEFINE_BOXED_TYPE (PopplerAnnotCalloutLine, poppler_annot_callout_line,
  *
  * Creates a new empty #PopplerAnnotCalloutLine.
  *
- * Return value: a new allocated #PopplerAnnotCalloutLine, NULL in other case.
+ * Return value: a new allocated #PopplerAnnotCalloutLine, %NULL in other case.
  *               It must be freed when done.
  **/
 PopplerAnnotCalloutLine *
@@ -1277,12 +1392,12 @@ poppler_annot_callout_line_new (void)
 
 /**
  * poppler_annot_callout_line_copy:
- * @callout: the #PopplerAnnotCalloutline to be copied.
+ * @callout: the #PopplerAnnotCalloutLine to be copied.
  *
  * It does copy @callout to a new #PopplerAnnotCalloutLine.
  *
  * Return value: a new allocated #PopplerAnnotCalloutLine as exact copy of
- *               @callout, NULL in other case. It must be freed when done.
+ *               @callout, %NULL in other case. It must be freed when done.
  **/
 PopplerAnnotCalloutLine *
 poppler_annot_callout_line_copy (PopplerAnnotCalloutLine *callout)
@@ -1369,4 +1484,30 @@ PopplerAction *
 poppler_annot_screen_get_action (PopplerAnnotScreen *poppler_annot)
 {
   return poppler_annot->action;
+}
+
+/* PopplerAnnotLine */
+/**
+ * poppler_annot_line_set_vertices:
+ * @poppler_annot: a #PopplerAnnotLine
+ * @start: a #PopplerPoint of the starting vertice
+ * @end: a #PopplerPoint of the ending vertice
+ *
+ * Set the coordinate points where the @poppler_annot starts and ends.
+ *
+ * Since: 0.26
+ */
+void
+poppler_annot_line_set_vertices (PopplerAnnotLine *poppler_annot,
+				 PopplerPoint     *start,
+				 PopplerPoint     *end)
+{
+  AnnotLine *annot;
+
+  g_return_if_fail (POPPLER_IS_ANNOT_LINE (poppler_annot));
+  g_return_if_fail (start != NULL);
+  g_return_if_fail (end != NULL);
+
+  annot = static_cast<AnnotLine *>(POPPLER_ANNOT (poppler_annot)->annot);
+  annot->setVertices (start->x, start->y, end->x, end->y);
 }

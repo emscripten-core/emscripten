@@ -26,7 +26,7 @@
 #define GMEM_H
 
 #include <stdio.h>
-#include "poppler/poppler-config.h"
+#include "poppler-config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,7 +78,7 @@ extern void gMemReport(FILE *f);
 /*
  * Allocate memory and copy a string into it.
  */
-extern char *copyString(char *s);
+extern char *copyString(const char *s);
 
 /*
  * Allocate memory and copy a limited-length string to it.

@@ -2,6 +2,7 @@
  * Copyright (C) 2008, 2010, Pino Toscano <pino@kde.org>
  * Copyright (C) 2008, Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2010, Carlos Garcia Campos <carlosgc@gnome.org>
+ * Copyright (C) 2012, Tobias Koenig <tobias.koenig@kdab.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +25,8 @@
 #include "Annot.h"
 #include "Movie.h"
 
+#include <QtGui/QImage>
+
 namespace Poppler
 {
 
@@ -43,6 +46,7 @@ public:
 	Movie *m_movieObj;
 	QSize m_size;
 	int m_rotation;
+	QImage m_posterImage;
 	MovieObject::PlayMode m_playMode : 3;
 	bool m_showControls : 1;
 };
@@ -51,6 +55,7 @@ MovieObject::MovieObject( AnnotMovie *ann )
 {
 	m_movieData = new MovieData();
 	m_movieData->m_movieObj = ann->getMovie()->copy();
+	//TODO: copy poster image
 
 	MovieActivationParameters *mp = m_movieData->m_movieObj->getActivationParameters();
 	int width, height;
@@ -90,6 +95,16 @@ bool MovieObject::showControls() const
 MovieObject::PlayMode MovieObject::playMode() const
 {
 	return m_movieData->m_playMode;
+}
+
+bool MovieObject::showPosterImage() const
+{
+	return (m_movieData->m_movieObj->getShowPoster() == gTrue);
+}
+
+QImage MovieObject::posterImage() const
+{
+	return m_movieData->m_posterImage;
 }
 
 }

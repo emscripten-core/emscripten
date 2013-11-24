@@ -24,6 +24,7 @@ poppler_action_type_get_type (void)
       { POPPLER_ACTION_MOVIE, "POPPLER_ACTION_MOVIE", "movie" },
       { POPPLER_ACTION_RENDITION, "POPPLER_ACTION_RENDITION", "rendition" },
       { POPPLER_ACTION_OCG_STATE, "POPPLER_ACTION_OCG_STATE", "ocg-state" },
+      { POPPLER_ACTION_JAVASCRIPT, "POPPLER_ACTION_JAVASCRIPT", "javascript" },
       { 0, NULL, NULL }
     };
     GType g_define_type_id = 
@@ -226,6 +227,9 @@ poppler_permissions_get_type (void)
       { POPPLER_PERMISSIONS_OK_TO_COPY, "POPPLER_PERMISSIONS_OK_TO_COPY", "ok-to-copy" },
       { POPPLER_PERMISSIONS_OK_TO_ADD_NOTES, "POPPLER_PERMISSIONS_OK_TO_ADD_NOTES", "ok-to-add-notes" },
       { POPPLER_PERMISSIONS_OK_TO_FILL_FORM, "POPPLER_PERMISSIONS_OK_TO_FILL_FORM", "ok-to-fill-form" },
+      { POPPLER_PERMISSIONS_OK_TO_EXTRACT_CONTENTS, "POPPLER_PERMISSIONS_OK_TO_EXTRACT_CONTENTS", "ok-to-extract-contents" },
+      { POPPLER_PERMISSIONS_OK_TO_ASSEMBLE, "POPPLER_PERMISSIONS_OK_TO_ASSEMBLE", "ok-to-assemble" },
+      { POPPLER_PERMISSIONS_OK_TO_PRINT_HIGH_RESOLUTION, "POPPLER_PERMISSIONS_OK_TO_PRINT_HIGH_RESOLUTION", "ok-to-print-high-resolution" },
       { POPPLER_PERMISSIONS_FULL, "POPPLER_PERMISSIONS_FULL", "full" },
       { 0, NULL, NULL }
     };
@@ -640,6 +644,28 @@ poppler_print_flags_get_type (void)
     };
     GType g_define_type_id = 
        g_flags_register_static (g_intern_static_string ("PopplerPrintFlags"), values);
+      
+    g_once_init_leave (&g_define_type_id__volatile, g_define_type_id);
+  }
+    
+  return g_define_type_id__volatile;
+}
+
+GType
+poppler_find_flags_get_type (void)
+{
+  static volatile gsize g_define_type_id__volatile = 0;
+ 
+  if (g_once_init_enter (&g_define_type_id__volatile)) {
+    static const GFlagsValue values[] = {
+      { POPPLER_FIND_DEFAULT, "POPPLER_FIND_DEFAULT", "default" },
+      { POPPLER_FIND_CASE_SENSITIVE, "POPPLER_FIND_CASE_SENSITIVE", "case-sensitive" },
+      { POPPLER_FIND_BACKWARDS, "POPPLER_FIND_BACKWARDS", "backwards" },
+      { POPPLER_FIND_WHOLE_WORDS_ONLY, "POPPLER_FIND_WHOLE_WORDS_ONLY", "whole-words-only" },
+      { 0, NULL, NULL }
+    };
+    GType g_define_type_id = 
+       g_flags_register_static (g_intern_static_string ("PopplerFindFlags"), values);
       
     g_once_init_leave (&g_define_type_id__volatile, g_define_type_id);
   }

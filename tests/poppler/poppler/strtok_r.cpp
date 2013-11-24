@@ -40,7 +40,22 @@
    Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307 USA.  */
 
-#ifdef __MINGW32__
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2012 Alexey Pavlov <alexpux@gmail.com>
+// Copyright (C) 2012 Albert Astals Cid <aacid@kde.org>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
+#if defined(__MINGW32__) && !defined(__WINPTHREADS_VERSION)
 #include <string.h>
 
 #define __rawmemchr strchr

@@ -19,7 +19,7 @@ private slots:
 void TestPassword::password1()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load(QString::fromUtf8("../../../test/unittestcases/Gday garçon - open.pdf"), "", QString::fromUtf8("garçon").toLatin1() );
+    doc = Poppler::Document::load(QString::fromUtf8(TESTDATADIR "/unittestcases/Gday garçon - open.pdf"), "", QString::fromUtf8("garçon").toLatin1() );
     QVERIFY( doc );
     QVERIFY( !doc->isLocked() );
 
@@ -30,7 +30,7 @@ void TestPassword::password1()
 void TestPassword::password1a()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load(QString::fromUtf8("../../../test/unittestcases/Gday garçon - open.pdf") );
+    doc = Poppler::Document::load(QString::fromUtf8(TESTDATADIR "/unittestcases/Gday garçon - open.pdf") );
     QVERIFY( doc );
     QVERIFY( doc->isLocked() );
     QVERIFY( !doc->unlock( "", QString::fromUtf8("garçon").toLatin1() ) );
@@ -42,7 +42,7 @@ void TestPassword::password1a()
 void TestPassword::password2()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load(QString::fromUtf8("../../../test/unittestcases/Gday garçon - owner.pdf"), QString::fromUtf8("garçon").toLatin1(), "" );
+    doc = Poppler::Document::load(QString::fromUtf8(TESTDATADIR "/unittestcases/Gday garçon - owner.pdf"), QString::fromUtf8("garçon").toLatin1(), "" );
     QVERIFY( doc );
     QVERIFY( !doc->isLocked() );
 
@@ -52,7 +52,7 @@ void TestPassword::password2()
 void TestPassword::password2a()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load(QString::fromUtf8("../../../test/unittestcases/Gday garçon - owner.pdf"), QString::fromUtf8("garçon").toLatin1() );
+    doc = Poppler::Document::load(QString::fromUtf8(TESTDATADIR "/unittestcases/Gday garçon - owner.pdf"), QString::fromUtf8("garçon").toLatin1() );
     QVERIFY( doc );
     QVERIFY( !doc->isLocked() );
 
@@ -62,7 +62,7 @@ void TestPassword::password2a()
 void TestPassword::password2b()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load(QString::fromUtf8("../../../test/unittestcases/Gday garçon - owner.pdf") );
+    doc = Poppler::Document::load(QString::fromUtf8(TESTDATADIR "/unittestcases/Gday garçon - owner.pdf") );
     QVERIFY( doc );
     QVERIFY( !doc->isLocked() );
     QVERIFY( !doc->unlock( QString::fromUtf8("garçon").toLatin1(), "" ) );
@@ -74,7 +74,7 @@ void TestPassword::password2b()
 void TestPassword::password3()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load( QString::fromUtf8("../../../test/unittestcases/PasswordEncrypted.pdf") );
+    doc = Poppler::Document::load( QString::fromUtf8(TESTDATADIR "/unittestcases/PasswordEncrypted.pdf") );
     QVERIFY( doc );
     QVERIFY( doc->isLocked() );
     QVERIFY( !doc->unlock( "", "password" ) );

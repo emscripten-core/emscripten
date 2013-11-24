@@ -3,12 +3,12 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>PopplerDocument</title>
-<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
 <link rel="home" href="index.html" title="Poppler Reference Manual">
 <link rel="up" href="ch01.html" title="Poppler">
 <link rel="prev" href="poppler-poppler.html" title="poppler">
 <link rel="next" href="PopplerPage.html" title="PopplerPage">
-<meta name="generator" content="GTK-Doc V1.17 (XML mode)">
+<meta name="generator" content="GTK-Doc V1.19 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -57,59 +57,69 @@ enum                <a class="link" href="PopplerDocument.html#PopplerViewerPref
 enum                <a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions">PopplerPermissions</a>;
 <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   <a class="link" href="PopplerDocument.html#poppler-document-new-from-file" title="poppler_document_new_from_file ()">poppler_document_new_from_file</a>      (<em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
 <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   <a class="link" href="PopplerDocument.html#poppler-document-new-from-data" title="poppler_document_new_from_data ()">poppler_document_new_from_data</a>      (<em class="parameter"><code><span class="type">char</span> *data</code></em>,
                                                          <em class="parameter"><code><span class="type">int</span> length</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-save" title="poppler_document_save ()">poppler_document_save</a>               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
+<a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   <a class="link" href="PopplerDocument.html#poppler-document-new-from-stream" title="poppler_document_new_from_stream ()">poppler_document_new_from_stream</a>    (<em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GInputStream.html"><span class="type">GInputStream</span></a> *stream</code></em>,
+                                                         <em class="parameter"><code><span class="type">goffset</span> length</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GCancellable.html"><span class="type">GCancellable</span></a> *cancellable</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
+<a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   <a class="link" href="PopplerDocument.html#poppler-document-new-from-gfile" title="poppler_document_new_from_gfile ()">poppler_document_new_from_gfile</a>     (<em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GFile.html"><span class="type">GFile</span></a> *file</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GCancellable.html"><span class="type">GCancellable</span></a> *cancellable</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-document-save" title="poppler_document_save ()">poppler_document_save</a>               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-save-a-copy" title="poppler_document_save_a_copy ()">poppler_document_save_a_copy</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-document-save-a-copy" title="poppler_document_save_a_copy ()">poppler_document_save_a_copy</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-get-id" title="poppler_document_get_id ()">poppler_document_get_id</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code><span class="type">gchar</span> **permanent_id</code></em>,
-                                                         <em class="parameter"><code><span class="type">gchar</span> **update_id</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version-string" title="poppler_document_get_pdf_version_string ()">poppler_document_get_pdf_version_string</a>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-document-get-id" title="poppler_document_get_id ()">poppler_document_get_id</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> **permanent_id</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> **update_id</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version-string" title="poppler_document_get_pdf_version_string ()">poppler_document_get_pdf_version_string</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version" title="poppler_document_get_pdf_version ()">poppler_document_get_pdf_version</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code><span class="type">guint</span> *major_version</code></em>,
-                                                         <em class="parameter"><code><span class="type">guint</span> *minor_version</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-title" title="poppler_document_get_title ()">poppler_document_get_title</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-author" title="poppler_document_get_author ()">poppler_document_get_author</a>         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-subject" title="poppler_document_get_subject ()">poppler_document_get_subject</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-keywords" title="poppler_document_get_keywords ()">poppler_document_get_keywords</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-creator" title="poppler_document_get_creator ()">poppler_document_get_creator</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-producer" title="poppler_document_get_producer ()">poppler_document_get_producer</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a> *major_version</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a> *minor_version</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-title" title="poppler_document_get_title ()">poppler_document_get_title</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-author" title="poppler_document_get_author ()">poppler_document_get_author</a>         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-subject" title="poppler_document_get_subject ()">poppler_document_get_subject</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-keywords" title="poppler_document_get_keywords ()">poppler_document_get_keywords</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-creator" title="poppler_document_get_creator ()">poppler_document_get_creator</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-producer" title="poppler_document_get_producer ()">poppler_document_get_producer</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <span class="returnvalue">time_t</span>              <a class="link" href="PopplerDocument.html#poppler-document-get-creation-date" title="poppler_document_get_creation_date ()">poppler_document_get_creation_date</a>  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <span class="returnvalue">time_t</span>              <a class="link" href="PopplerDocument.html#poppler-document-get-modification-date" title="poppler_document_get_modification_date ()">poppler_document_get_modification_date</a>
                                                         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout"><span class="returnvalue">PopplerPageLayout</span></a>   <a class="link" href="PopplerDocument.html#poppler-document-get-page-layout" title="poppler_document_get_page_layout ()">poppler_document_get_page_layout</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="returnvalue">PopplerPageMode</span></a>     <a class="link" href="PopplerDocument.html#poppler-document-get-page-mode" title="poppler_document_get_page_mode ()">poppler_document_get_page_mode</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions"><span class="returnvalue">PopplerPermissions</span></a>  <a class="link" href="PopplerDocument.html#poppler-document-get-permissions" title="poppler_document_get_permissions ()">poppler_document_get_permissions</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-metadata" title="poppler_document_get_metadata ()">poppler_document_get_metadata</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-is-linearized" title="poppler_document_is_linearized ()">poppler_document_is_linearized</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-metadata" title="poppler_document_get_metadata ()">poppler_document_get_metadata</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-document-is-linearized" title="poppler_document_is_linearized ()">poppler_document_is_linearized</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <span class="returnvalue">int</span>                 <a class="link" href="PopplerDocument.html#poppler-document-get-n-pages" title="poppler_document_get_n_pages ()">poppler_document_get_n_pages</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <a class="link" href="PopplerPage.html" title="PopplerPage"><span class="returnvalue">PopplerPage</span></a> *       <a class="link" href="PopplerDocument.html#poppler-document-get-page" title="poppler_document_get_page ()">poppler_document_get_page</a>           (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
                                                          <em class="parameter"><code><span class="type">int</span> index</code></em>);
 <a class="link" href="PopplerPage.html" title="PopplerPage"><span class="returnvalue">PopplerPage</span></a> *       <a class="link" href="PopplerDocument.html#poppler-document-get-page-by-label" title="poppler_document_get_page_by_label ()">poppler_document_get_page_by_label</a>  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *label</code></em>);
 <a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="returnvalue">PopplerDest</span></a> *       <a class="link" href="PopplerDocument.html#poppler-document-find-dest" title="poppler_document_find_dest ()">poppler_document_find_dest</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code>const <span class="type">gchar</span> *link_name</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-document-has-attachments" title="poppler_document_has_attachments ()">poppler_document_has_attachments</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">GList</span> *             <a class="link" href="PopplerDocument.html#poppler-document-get-attachments" title="poppler_document_get_attachments ()">poppler_document_get_attachments</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+                                                         <em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *link_name</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="returnvalue">guint</span></a>               <a class="link" href="PopplerDocument.html#poppler-document-get-n-attachments" title="poppler_document_get_n_attachments ()">poppler_document_get_n_attachments</a>  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-document-has-attachments" title="poppler_document_has_attachments ()">poppler_document_has_attachments</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Doubly-Linked-Lists.html#GList"><span class="returnvalue">GList</span></a> *             <a class="link" href="PopplerDocument.html#poppler-document-get-attachments" title="poppler_document_get_attachments ()">poppler_document_get_attachments</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="returnvalue">PopplerFormField</span></a> *  <a class="link" href="PopplerDocument.html#poppler-document-get-form-field" title="poppler_document_get_form_field ()">poppler_document_get_form_field</a>     (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> id</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> id</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  <a class="link" href="PopplerDocument.html#poppler-index-iter-new" title="poppler_index_iter_new ()">poppler_index_iter_new</a>              (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  <a class="link" href="PopplerDocument.html#poppler-index-iter-copy" title="poppler_index_iter_copy ()">poppler_index_iter_copy</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-index-iter-free" title="poppler_index_iter_free ()">poppler_index_iter_free</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  <a class="link" href="PopplerDocument.html#poppler-index-iter-get-child" title="poppler_index_iter_get_child ()">poppler_index_iter_get_child</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *parent</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-index-iter-is-open" title="poppler_index_iter_is_open ()">poppler_index_iter_is_open</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-index-iter-is-open" title="poppler_index_iter_is_open ()">poppler_index_iter_is_open</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
 <a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="returnvalue">PopplerAction</span></a> *     <a class="link" href="PopplerDocument.html#poppler-index-iter-get-action" title="poppler_index_iter_get_action ()">poppler_index_iter_get_action</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-index-iter-next" title="poppler_index_iter_next ()">poppler_index_iter_next</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-index-iter-next" title="poppler_index_iter_next ()">poppler_index_iter_next</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="returnvalue">PopplerFontInfo</span></a> *   <a class="link" href="PopplerDocument.html#poppler-font-info-new" title="poppler_font_info_new ()">poppler_font_info_new</a>               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-font-info-scan" title="poppler_font_info_scan ()">poppler_font_info_scan</a>              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>,
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-font-info-scan" title="poppler_font_info_scan ()">poppler_font_info_scan</a>              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>,
                                                          <em class="parameter"><code><span class="type">int</span> n_pages</code></em>,
                                                          <em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> **iter</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-font-info-free" title="poppler_font_info_free ()">poppler_font_info_free</a>              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>);
@@ -118,17 +128,20 @@ enum                <a class="link" href="PopplerDocument.html#PopplerPermission
 const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-name" title="poppler_fonts_iter_get_name ()">poppler_fonts_iter_get_name</a>         (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
 const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-full-name" title="poppler_fonts_iter_get_full_name ()">poppler_fonts_iter_get_full_name</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerFontType" title="enum PopplerFontType"><span class="returnvalue">PopplerFontType</span></a>     <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-font-type" title="poppler_fonts_iter_get_font_type ()">poppler_fonts_iter_get_font_type</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-substitute-name" title="poppler_fonts_iter_get_substitute_name ()">poppler_fonts_iter_get_substitute_name</a>
+                                                        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
 const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-file-name" title="poppler_fonts_iter_get_file_name ()">poppler_fonts_iter_get_file_name</a>    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-is-embedded" title="poppler_fonts_iter_is_embedded ()">poppler_fonts_iter_is_embedded</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-is-subset" title="poppler_fonts_iter_is_subset ()">poppler_fonts_iter_is_subset</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-next" title="poppler_fonts_iter_next ()">poppler_fonts_iter_next</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+const <span class="returnvalue">char</span> *        <a class="link" href="PopplerDocument.html#poppler-fonts-iter-get-encoding" title="poppler_fonts_iter_get_encoding ()">poppler_fonts_iter_get_encoding</a>     (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-is-embedded" title="poppler_fonts_iter_is_embedded ()">poppler_fonts_iter_is_embedded</a>      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-is-subset" title="poppler_fonts_iter_is_subset ()">poppler_fonts_iter_is_subset</a>        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-fonts-iter-next" title="poppler_fonts_iter_next ()">poppler_fonts_iter_next</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * <a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="poppler_layers_iter_new ()">poppler_layers_iter_new</a>             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * <a class="link" href="PopplerDocument.html#poppler-layers-iter-copy" title="poppler_layers_iter_copy ()">poppler_layers_iter_copy</a>            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-layers-iter-free" title="poppler_layers_iter_free ()">poppler_layers_iter_free</a>            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * <a class="link" href="PopplerDocument.html#poppler-layers-iter-get-child" title="poppler_layers_iter_get_child ()">poppler_layers_iter_get_child</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *parent</code></em>);
 <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="returnvalue">PopplerLayer</span></a> *      <a class="link" href="PopplerDocument.html#poppler-layers-iter-get-layer" title="poppler_layers_iter_get_layer ()">poppler_layers_iter_get_layer</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
-<span class="returnvalue">gchar</span> *             <a class="link" href="PopplerDocument.html#poppler-layers-iter-get-title" title="poppler_layers_iter_get_title ()">poppler_layers_iter_get_title</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
-<span class="returnvalue">gboolean</span>            <a class="link" href="PopplerDocument.html#poppler-layers-iter-next" title="poppler_layers_iter_next ()">poppler_layers_iter_next</a>            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             <a class="link" href="PopplerDocument.html#poppler-layers-iter-get-title" title="poppler_layers_iter_get_title ()">poppler_layers_iter_get_title</a>       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            <a class="link" href="PopplerDocument.html#poppler-layers-iter-next" title="poppler_layers_iter_next ()">poppler_layers_iter_next</a>            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);
 <a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="returnvalue">PopplerPSFile</span></a> *     <a class="link" href="PopplerDocument.html#poppler-ps-file-new" title="poppler_ps_file_new ()">poppler_ps_file_new</a>                 (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *filename</code></em>,
                                                          <em class="parameter"><code><span class="type">int</span> first_page</code></em>,
@@ -138,35 +151,35 @@ const <span class="returnvalue">char</span> *        <a class="link" href="Poppl
                                                          <em class="parameter"><code><span class="type">double</span> width</code></em>,
                                                          <em class="parameter"><code><span class="type">double</span> height</code></em>);
 <span class="returnvalue">void</span>                <a class="link" href="PopplerDocument.html#poppler-ps-file-set-duplex" title="poppler_ps_file_set_duplex ()">poppler_ps_file_set_duplex</a>          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>,
-                                                         <em class="parameter"><code><span class="type">gboolean</span> duplex</code></em>);
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a> duplex</code></em>);
 </pre>
 </div>
 <div class="refsect1">
 <a name="PopplerDocument.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
-  GObject
+  <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
    +----PopplerDocument
 </pre>
 </div>
 <div class="refsect1">
 <a name="PopplerDocument.properties"></a><h2>Properties</h2>
 <pre class="synopsis">
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--author" title='The "author" property'>author</a>"                   <span class="type">gchar</span>*                : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--creation-date" title='The "creation-date" property'>creation-date</a>"            <span class="type">gint</span>                  : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--creator" title='The "creator" property'>creator</a>"                  <span class="type">gchar</span>*                : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--format" title='The "format" property'>format</a>"                   <span class="type">gchar</span>*                : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--format-major" title='The "format-major" property'>format-major</a>"             <span class="type">guint</span>                 : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--format-minor" title='The "format-minor" property'>format-minor</a>"             <span class="type">guint</span>                 : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--keywords" title='The "keywords" property'>keywords</a>"                 <span class="type">gchar</span>*                : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--linearized" title='The "linearized" property'>linearized</a>"               <span class="type">gboolean</span>              : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--metadata" title='The "metadata" property'>metadata</a>"                 <span class="type">gchar</span>*                : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--mod-date" title='The "mod-date" property'>mod-date</a>"                 <span class="type">gint</span>                  : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--author" title='The "author" property'>author</a>"                   <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--creation-date" title='The "creation-date" property'>creation-date</a>"            <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>                  : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--creator" title='The "creator" property'>creator</a>"                  <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--format" title='The "format" property'>format</a>"                   <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--format-major" title='The "format-major" property'>format-major</a>"             <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--format-minor" title='The "format-minor" property'>format-minor</a>"             <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--keywords" title='The "keywords" property'>keywords</a>"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--linearized" title='The "linearized" property'>linearized</a>"               <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--metadata" title='The "metadata" property'>metadata</a>"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--mod-date" title='The "mod-date" property'>mod-date</a>"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>                  : Read
   "<a class="link" href="PopplerDocument.html#PopplerDocument--page-layout" title='The "page-layout" property'>page-layout</a>"              <a class="link" href="PopplerDocument.html#PopplerPageLayout" title="enum PopplerPageLayout"><span class="type">PopplerPageLayout</span></a>     : Read
   "<a class="link" href="PopplerDocument.html#PopplerDocument--page-mode" title='The "page-mode" property'>page-mode</a>"                <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="type">PopplerPageMode</span></a>       : Read
   "<a class="link" href="PopplerDocument.html#PopplerDocument--permissions" title='The "permissions" property'>permissions</a>"              <a class="link" href="PopplerDocument.html#PopplerPermissions" title="enum PopplerPermissions"><span class="type">PopplerPermissions</span></a>    : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--producer" title='The "producer" property'>producer</a>"                 <span class="type">gchar</span>*                : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--subject" title='The "subject" property'>subject</a>"                  <span class="type">gchar</span>*                : Read
-  "<a class="link" href="PopplerDocument.html#PopplerDocument--title" title='The "title" property'>title</a>"                    <span class="type">gchar</span>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--producer" title='The "producer" property'>producer</a>"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--subject" title='The "subject" property'>subject</a>"                  <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
+  "<a class="link" href="PopplerDocument.html#PopplerDocument--title" title='The "title" property'>title</a>"                    <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read
   "<a class="link" href="PopplerDocument.html#PopplerDocument--viewer-preferences" title='The "viewer-preferences" property'>viewer-preferences</a>"       <a class="link" href="PopplerDocument.html#PopplerViewerPreferences" title="enum PopplerViewerPreferences"><span class="type">PopplerViewerPreferences</span></a>  : Read
 </pre>
 </div>
@@ -200,8 +213,7 @@ The <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span cl
 <hr>
 <div class="refsect2">
 <a name="PopplerPageLayout"></a><h3>enum PopplerPageLayout</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
   POPPLER_PAGE_LAYOUT_UNSET,
   POPPLER_PAGE_LAYOUT_SINGLE_PAGE,
   POPPLER_PAGE_LAYOUT_ONE_COLUMN,
@@ -214,8 +226,11 @@ The <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span cl
 <p>
 Page layout types
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-PAGE-LAYOUT-UNSET:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_LAYOUT_UNSET</code></span></p></td>
@@ -258,8 +273,7 @@ Page layout types
 <hr>
 <div class="refsect2">
 <a name="PopplerPageMode"></a><h3>enum PopplerPageMode</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
   POPPLER_PAGE_MODE_UNSET,
   POPPLER_PAGE_MODE_NONE,
   POPPLER_PAGE_MODE_USE_OUTLINES,
@@ -272,8 +286,11 @@ Page layout types
 <p>
 Page modes
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-PAGE-MODE-UNSET:CAPS"></a><span class="term"><code class="literal">POPPLER_PAGE_MODE_UNSET</code></span></p></td>
@@ -323,8 +340,7 @@ Page modes
 <hr>
 <div class="refsect2">
 <a name="PopplerFontType"></a><h3>enum PopplerFontType</h3>
-<pre class="programlisting">typedef enum
-{
+<pre class="programlisting">typedef enum {
   POPPLER_FONT_TYPE_UNKNOWN,
   POPPLER_FONT_TYPE_TYPE1,
   POPPLER_FONT_TYPE_TYPE1C,
@@ -342,8 +358,11 @@ Page modes
 <p>
 Font types
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-UNKNOWN:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_UNKNOWN</code></span></p></td>
@@ -352,47 +371,58 @@ Font types
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-TYPE1:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE1</code></span></p></td>
-<td></td>
+<td>Type 1 font type
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-TYPE1C:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE1C</code></span></p></td>
-<td></td>
+<td>Type 1 font type embedded in Compact Font Format (CFF) font program
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-TYPE1COT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE1COT</code></span></p></td>
-<td></td>
+<td>Type 1 font type embedded in OpenType font program
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-TYPE3:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TYPE3</code></span></p></td>
-<td></td>
+<td>A font type that is defined with PDF graphics operators
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-TRUETYPE:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TRUETYPE</code></span></p></td>
-<td></td>
+<td>TrueType font type
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-TRUETYPEOT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_TRUETYPEOT</code></span></p></td>
-<td></td>
+<td>TrueType font type embedded in OpenType font program
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-CID-TYPE0:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE0</code></span></p></td>
-<td></td>
+<td>CIDFont type based on Type 1 font technology
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-CID-TYPE0C:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE0C</code></span></p></td>
-<td></td>
+<td>CIDFont type based on Type 1 font technology embedded in CFF font program
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-CID-TYPE0COT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE0COT</code></span></p></td>
-<td></td>
+<td>CIDFont type based on Type 1 font technology embedded in OpenType font program
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-CID-TYPE2:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE2</code></span></p></td>
-<td></td>
+<td>CIDFont type based on TrueType font technology
+</td>
 </tr>
 <tr>
 <td><p><a name="POPPLER-FONT-TYPE-CID-TYPE2OT:CAPS"></a><span class="term"><code class="literal">POPPLER_FONT_TYPE_CID_TYPE2OT</code></span></p></td>
-<td></td>
+<td>CIDFont type based on TrueType font technology embedded in OpenType font program
+</td>
 </tr>
 </tbody>
 </table></div>
@@ -407,8 +437,7 @@ Font types
 <hr>
 <div class="refsect2">
 <a name="PopplerViewerPreferences"></a><h3>enum PopplerViewerPreferences</h3>
-<pre class="programlisting">typedef enum /*&lt; flags &gt;*/
-{
+<pre class="programlisting">typedef enum {
   POPPLER_VIEWER_PREFERENCES_UNSET = 0,
   POPPLER_VIEWER_PREFERENCES_HIDE_TOOLBAR = 1 &lt;&lt; 0,
   POPPLER_VIEWER_PREFERENCES_HIDE_MENUBAR = 1 &lt;&lt; 1,
@@ -422,8 +451,11 @@ Font types
 <p>
 Viewer preferences
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-VIEWER-PREFERENCES-UNSET:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_UNSET</code></span></p></td>
@@ -462,7 +494,8 @@ Viewer preferences
 </tr>
 <tr>
 <td><p><a name="POPPLER-VIEWER-PREFERENCES-DIRECTION-RTL:CAPS"></a><span class="term"><code class="literal">POPPLER_VIEWER_PREFERENCES_DIRECTION_RTL</code></span></p></td>
-<td></td>
+<td>the predominant reading order for text is right to left
+</td>
 </tr>
 </tbody>
 </table></div>
@@ -470,22 +503,26 @@ Viewer preferences
 <hr>
 <div class="refsect2">
 <a name="PopplerPermissions"></a><h3>enum PopplerPermissions</h3>
-<pre class="programlisting">typedef enum /*&lt; flags &gt;*/
-{
+<pre class="programlisting">typedef enum {
   POPPLER_PERMISSIONS_OK_TO_PRINT = 1 &lt;&lt; 0,
   POPPLER_PERMISSIONS_OK_TO_MODIFY = 1 &lt;&lt; 1,
   POPPLER_PERMISSIONS_OK_TO_COPY = 1 &lt;&lt; 2,
   POPPLER_PERMISSIONS_OK_TO_ADD_NOTES = 1 &lt;&lt; 3,
   POPPLER_PERMISSIONS_OK_TO_FILL_FORM = 1 &lt;&lt; 4,
-  POPPLER_PERMISSIONS_FULL = (POPPLER_PERMISSIONS_OK_TO_PRINT | POPPLER_PERMISSIONS_OK_TO_MODIFY | POPPLER_PERMISSIONS_OK_TO_COPY | POPPLER_PERMISSIONS_OK_TO_ADD_NOTES | POPPLER_PERMISSIONS_OK_TO_FILL_FORM)
-
+  POPPLER_PERMISSIONS_OK_TO_EXTRACT_CONTENTS = 1 &lt;&lt; 5,
+  POPPLER_PERMISSIONS_OK_TO_ASSEMBLE = 1 &lt;&lt; 6,
+  POPPLER_PERMISSIONS_OK_TO_PRINT_HIGH_RESOLUTION = 1 &lt;&lt; 7,
+  POPPLER_PERMISSIONS_FULL = (POPPLER_PERMISSIONS_OK_TO_PRINT | POPPLER_PERMISSIONS_OK_TO_MODIFY | POPPLER_PERMISSIONS_OK_TO_COPY | POPPLER_PERMISSIONS_OK_TO_ADD_NOTES | POPPLER_PERMISSIONS_OK_TO_FILL_FORM | POPPLER_PERMISSIONS_OK_TO_EXTRACT_CONTENTS | POPPLER_PERMISSIONS_OK_TO_ASSEMBLE | POPPLER_PERMISSIONS_OK_TO_PRINT_HIGH_RESOLUTION)
 } PopplerPermissions;
 </pre>
 <p>
 Permissions
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><a name="POPPLER-PERMISSIONS-OK-TO-PRINT:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_PRINT</code></span></p></td>
@@ -513,8 +550,26 @@ Permissions
 </td>
 </tr>
 <tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-EXTRACT-CONTENTS:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_EXTRACT_CONTENTS</code></span></p></td>
+<td>extract text and graphics
+(in support of accessibility to users with disabilities or for other purposes). Since 0.18
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-ASSEMBLE:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_ASSEMBLE</code></span></p></td>
+<td>assemble the document (insert, rotate, or delete pages and create
+bookmarks or thumbnail images). Since 0.18
+</td>
+</tr>
+<tr>
+<td><p><a name="POPPLER-PERMISSIONS-OK-TO-PRINT-HIGH-RESOLUTION:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_OK_TO_PRINT_HIGH_RESOLUTION</code></span></p></td>
+<td>document can be printer at high resolution. Since 0.18
+</td>
+</tr>
+<tr>
 <td><p><a name="POPPLER-PERMISSIONS-FULL:CAPS"></a><span class="term"><code class="literal">POPPLER_PERMISSIONS_FULL</code></span></p></td>
-<td></td>
+<td>document permits all operations
+</td>
 </tr>
 </tbody>
 </table></div>
@@ -524,14 +579,17 @@ Permissions
 <a name="poppler-document-new-from-file"></a><h3>poppler_document_new_from_file ()</h3>
 <pre class="programlisting"><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   poppler_document_new_from_file      (<em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
 <p>
-Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>.  If <code class="literal">NULL</code> is returned, then <em class="parameter"><code>error</code></em> will be
-set. Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <span class="type">G_FILE_ERROR</span>
+Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>.  If <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> is returned, then <em class="parameter"><code>error</code></em> will be
+set. Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a>
 domains.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>uri</code></em> :</span></p></td>
@@ -539,17 +597,17 @@ domains.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>password</code></em> :</span></p></td>
-<td>password to unlock the file with, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>password to unlock the file with, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
-<td>Return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>Return location for an error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>A newly created <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <code class="literal">NULL</code>
+<td>A newly created <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -561,14 +619,17 @@ domains.
 <pre class="programlisting"><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   poppler_document_new_from_data      (<em class="parameter"><code><span class="type">char</span> *data</code></em>,
                                                          <em class="parameter"><code><span class="type">int</span> length</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
 <p>
-Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>.  If <code class="literal">NULL</code> is returned, then <em class="parameter"><code>error</code></em> will be
-set. Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <span class="type">G_FILE_ERROR</span>
+Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>.  If <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> is returned, then <em class="parameter"><code>error</code></em> will be
+set. Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a>
 domains.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>data</code></em> :</span></p></td>
@@ -581,17 +642,17 @@ domains.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>password</code></em> :</span></p></td>
-<td>password to unlock the file with, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>password to unlock the file with, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
-<td>Return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>Return location for an error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>A newly created <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <code class="literal">NULL</code>
+<td>A newly created <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -599,19 +660,121 @@ domains.
 </div>
 <hr>
 <div class="refsect2">
+<a name="poppler-document-new-from-stream"></a><h3>poppler_document_new_from_stream ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   poppler_document_new_from_stream    (<em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GInputStream.html"><span class="type">GInputStream</span></a> *stream</code></em>,
+                                                         <em class="parameter"><code><span class="type">goffset</span> length</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GCancellable.html"><span class="type">GCancellable</span></a> *cancellable</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
+<p>
+Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> reading the PDF contents from <em class="parameter"><code>stream</code></em>.
+Note that the given <a href="http://library.gnome.org/devel/gio/unstable/GInputStream.html"><span class="type">GInputStream</span></a> must be seekable or <a href="http://library.gnome.org/devel/gio/unstable/gio-GIOError.html#G-IO-ERROR-NOT-SUPPORTED:CAPS"><code class="literal">G_IO_ERROR_NOT_SUPPORTED</code></a>
+will be returned.
+Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a>
+domains.
+</p>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>stream</code></em> :</span></p></td>
+<td>a <a href="http://library.gnome.org/devel/gio/unstable/GInputStream.html"><span class="type">GInputStream</span></a> to read from</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>length</code></em> :</span></p></td>
+<td>the stream length, or -1 if not known</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>password</code></em> :</span></p></td>
+<td>password to unlock the file with, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>cancellable</code></em> :</span></p></td>
+<td>a <a href="http://library.gnome.org/devel/gio/unstable/GCancellable.html"><span class="type">GCancellable</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>Return location for an error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.22</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-new-from-gfile"></a><h3>poppler_document_new_from_gfile ()</h3>
+<pre class="programlisting"><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="returnvalue">PopplerDocument</span></a> *   poppler_document_new_from_gfile     (<em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GFile.html"><span class="type">GFile</span></a> *file</code></em>,
+                                                         <em class="parameter"><code>const <span class="type">char</span> *password</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/gio/unstable/GCancellable.html"><span class="type">GCancellable</span></a> *cancellable</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
+<p>
+Creates a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> reading the PDF contents from <em class="parameter"><code>file</code></em>.
+Possible errors include those in the <a class="link" href="poppler-poppler.html#POPPLER-ERROR:CAPS" title="POPPLER_ERROR"><span class="type">POPPLER_ERROR</span></a> and <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a>
+domains.
+</p>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>file</code></em> :</span></p></td>
+<td>a <a href="http://library.gnome.org/devel/gio/unstable/GFile.html"><span class="type">GFile</span></a> to load</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>password</code></em> :</span></p></td>
+<td>password to unlock the file with, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>cancellable</code></em> :</span></p></td>
+<td>a <a href="http://library.gnome.org/devel/gio/unstable/GCancellable.html"><span class="type">GCancellable</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
+<td>Return location for an error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>a new <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.22</p>
+</div>
+<hr>
+<div class="refsect2">
 <a name="poppler-document-save"></a><h3>poppler_document_save ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_save               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_document_save               (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
 <p>
 Saves <em class="parameter"><code>document</code></em>. Any change made in the document such as
 form fields filled, annotations added or modified
 will be saved.
-If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code> will be returned. Possible errors
-include those in the <span class="type">G_FILE_ERROR</span> domain.
+If <em class="parameter"><code>error</code></em> is set, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> will be returned. Possible errors
+include those in the <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a> domain.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -624,13 +787,13 @@ include those in the <span class="type">G_FILE_ERROR</span> domain.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
-<td>return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>return location for an error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if the document was successfully saved</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if the document was successfully saved</td>
 </tr>
 </tbody>
 </table></div>
@@ -638,18 +801,21 @@ include those in the <span class="type">G_FILE_ERROR</span> domain.
 <hr>
 <div class="refsect2">
 <a name="poppler-document-save-a-copy"></a><h3>poppler_document_save_a_copy ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_save_a_copy        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_document_save_a_copy        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
                                                          <em class="parameter"><code>const <span class="type">char</span> *uri</code></em>,
-                                                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Error-Reporting.html#GError"><span class="type">GError</span></a> **error</code></em>);</pre>
 <p>
 Saves a copy of the original <em class="parameter"><code>document</code></em>.
 Any change made in the document such as 
 form fields filled by the user will not be saved. 
-If <em class="parameter"><code>error</code></em> is set, <code class="literal">FALSE</code> will be returned. Possible errors
-include those in the <span class="type">G_FILE_ERROR</span> domain.
+If <em class="parameter"><code>error</code></em> is set, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> will be returned. Possible errors
+include those in the <a href="http://library.gnome.org/devel/glib/unstable/glib-File-Utilities.html#G-FILE-ERROR:CAPS"><span class="type">G_FILE_ERROR</span></a> domain.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -662,13 +828,13 @@ include those in the <span class="type">G_FILE_ERROR</span> domain.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>error</code></em> :</span></p></td>
-<td>return location for an error, or <code class="literal">NULL</code>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>return location for an error, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. <span class="annotation">[<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if the document was successfully saved</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if the document was successfully saved</td>
 </tr>
 </tbody>
 </table></div>
@@ -676,9 +842,9 @@ include those in the <span class="type">G_FILE_ERROR</span> domain.
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-id"></a><h3>poppler_document_get_id ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_get_id             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code><span class="type">gchar</span> **permanent_id</code></em>,
-                                                         <em class="parameter"><code><span class="type">gchar</span> **update_id</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_document_get_id             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> **permanent_id</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> **update_id</code></em>);</pre>
 <p>
 Returns the PDF file identifier represented as two byte string arrays of size 32.
 <em class="parameter"><code>permanent_id</code></em> is the permanent identifier that is built based on the file
@@ -690,8 +856,11 @@ the file contents at the time it was last updated.
 Note that returned strings are not null-terminated, they have a fixed
 size of 32 bytes.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -700,18 +869,18 @@ size of 32 bytes.
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>permanent_id</code></em> :</span></p></td>
-<td>location to store an allocated string, use <code class="function">g_free()</code> to free the returned string. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>location to store an allocated string, use <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> to free the returned string. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>update_id</code></em> :</span></p></td>
-<td>location to store an allocated string, use <code class="function">g_free()</code> to free the returned string. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
+<td>location to store an allocated string, use <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> to free the returned string. <span class="annotation">[<acronym title="Parameter for returning results. Default is transfer full."><span class="acronym">out</span></acronym>][<acronym title="NULL is ok, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span>
 </td>
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if the <em class="parameter"><code>document</code></em> contains an id, <code class="literal">FALSE</code> otherwise</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if the <em class="parameter"><code>document</code></em> contains an id, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> otherwise</td>
 </tr>
 </tbody>
 </table></div>
@@ -720,13 +889,16 @@ size of 32 bytes.
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-pdf-version-string"></a><h3>poppler_document_get_pdf_version_string ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_pdf_version_string
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_pdf_version_string
                                                         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the PDF version of <em class="parameter"><code>document</code></em> as a string (e.g. PDF-1.6)
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -736,7 +908,7 @@ Returns the PDF version of <em class="parameter"><code>document</code></em> as a
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing the PDF version
-of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+of <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -747,10 +919,13 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <div class="refsect2">
 <a name="poppler-document-get-pdf-version"></a><h3>poppler_document_get_pdf_version ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>                poppler_document_get_pdf_version    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code><span class="type">guint</span> *major_version</code></em>,
-                                                         <em class="parameter"><code><span class="type">guint</span> *minor_version</code></em>);</pre>
-<div class="variablelist"><table border="0">
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a> *major_version</code></em>,
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a> *minor_version</code></em>);</pre>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -769,7 +944,7 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>the major and minor PDF version numbers.</td>
+<td>the major and minor PDF version numbers</td>
 </tr>
 </tbody>
 </table></div>
@@ -778,12 +953,15 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-title"></a><h3>poppler_document_get_title ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_title          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_title          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the document's title
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -793,7 +971,7 @@ Returns the document's title
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing the title
-of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+of <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -803,12 +981,15 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-author"></a><h3>poppler_document_get_author ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_author         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_author         (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the author of the document
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -818,7 +999,7 @@ Returns the author of the document
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing the author
-of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+of <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -828,12 +1009,15 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-subject"></a><h3>poppler_document_get_subject ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_subject        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_subject        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the subject of the document
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -843,7 +1027,7 @@ Returns the subject of the document
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing the subject
-of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+of <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -853,12 +1037,15 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-keywords"></a><h3>poppler_document_get_keywords ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_keywords       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_keywords       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the keywords associated to the document
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -868,7 +1055,7 @@ Returns the keywords associated to the document
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing keywords associated
-to <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+to <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -878,14 +1065,17 @@ to <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-creator"></a><h3>poppler_document_get_creator ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_creator        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_creator        (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the creator of the document. If the document was converted
 from another format, the creator is the name of the product
 that created the original document from which it was converted.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -895,7 +1085,7 @@ that created the original document from which it was converted.
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing the creator
-of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+of <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -905,14 +1095,17 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-producer"></a><h3>poppler_document_get_producer ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_producer       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_producer       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the producer of the document. If the document was converted
 from another format, the producer is the name of the product
 that converted it to PDF
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -922,7 +1115,7 @@ that converted it to PDF
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing the producer
-of <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>
+of <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -936,8 +1129,11 @@ of <em class="parameter"><code>document</code></em>, or <code class="literal">NU
 <p>
 Returns the date the document was created as seconds since the Epoch
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -960,8 +1156,11 @@ Returns the date the document was created as seconds since the Epoch
 <p>
 Returns the date the document was most recently modified as seconds since the Epoch
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -983,8 +1182,11 @@ Returns the date the document was most recently modified as seconds since the Ep
 <p>
 Returns the page layout that should be used when the document is opened
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1007,8 +1209,11 @@ Returns the page layout that should be used when the document is opened
 Returns a <a class="link" href="PopplerDocument.html#PopplerPageMode" title="enum PopplerPageMode"><span class="type">PopplerPageMode</span></a> representing how the document should
 be initially displayed when opened.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1030,8 +1235,11 @@ be initially displayed when opened.
 <p>
 Returns the flags specifying which operations are permitted when the document is opened.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1049,12 +1257,15 @@ Returns the flags specifying which operations are permitted when the document is
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-metadata"></a><h3>poppler_document_get_metadata ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_document_get_metadata       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_document_get_metadata       (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns the XML metadata string of the document
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1064,7 +1275,7 @@ Returns the XML metadata string of the document
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>a new allocated string containing the XML
-metadata, or <code class="literal">NULL</code>
+metadata, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -1074,13 +1285,16 @@ metadata, or <code class="literal">NULL</code>
 <hr>
 <div class="refsect2">
 <a name="poppler-document-is-linearized"></a><h3>poppler_document_is_linearized ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_is_linearized      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_document_is_linearized      (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
 Returns whether <em class="parameter"><code>document</code></em> is linearized or not. Linearization of PDF
 enables efficient incremental access of the PDF file in a network environment.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1090,7 +1304,7 @@ enables efficient incremental access of the PDF file in a network environment.
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if <em class="parameter"><code>document</code></em> is linearized, <code class="literal">FALSE</code> otherwhise</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if <em class="parameter"><code>document</code></em> is linearized, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> otherwhise</td>
 </tr>
 </tbody>
 </table></div>
@@ -1103,8 +1317,11 @@ enables efficient incremental access of the PDF file in a network environment.
 <p>
 Returns the number of pages in a loaded document.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1127,8 +1344,11 @@ Returns the number of pages in a loaded document.
 Returns the <a class="link" href="PopplerPage.html" title="PopplerPage"><span class="type">PopplerPage</span></a> indexed at <em class="parameter"><code>index</code></em>.  This object is owned by the
 caller.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1160,8 +1380,11 @@ and can be document specific.  Typically, it is a value such as "iii" or "3".
 <p>
 By default, "1" refers to the first page.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1184,12 +1407,15 @@ By default, "1" refers to the first page.
 <div class="refsect2">
 <a name="poppler-document-find-dest"></a><h3>poppler_document_find_dest ()</h3>
 <pre class="programlisting"><a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="returnvalue">PopplerDest</span></a> *       poppler_document_find_dest          (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code>const <span class="type">gchar</span> *link_name</code></em>);</pre>
+                                                         <em class="parameter"><code>const <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a> *link_name</code></em>);</pre>
 <p>
 Finds named destination <em class="parameter"><code>link_name</code></em> in <em class="parameter"><code>document</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1202,7 +1428,7 @@ Finds named destination <em class="parameter"><code>link_name</code></em> in <em
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>The <a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="type">PopplerDest</span></a> destination or <code class="literal">NULL</code> if
+<td>The <a class="link" href="poppler-PopplerAction.html#PopplerDest" title="PopplerDest"><span class="type">PopplerDest</span></a> destination or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if
 <em class="parameter"><code>link_name</code></em> is not a destination. Returned value must
 be freed with <a class="link" href="poppler-PopplerAction.html#poppler-dest-free" title="poppler_dest_free ()"><span class="type">poppler_dest_free</span></a>
 </td>
@@ -1212,13 +1438,43 @@ be freed with <a class="link" href="poppler-PopplerAction.html#poppler-dest-free
 </div>
 <hr>
 <div class="refsect2">
-<a name="poppler-document-has-attachments"></a><h3>poppler_document_has_attachments ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_document_has_attachments    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<a name="poppler-document-get-n-attachments"></a><h3>poppler_document_get_n_attachments ()</h3>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="returnvalue">guint</span></a>               poppler_document_get_n_attachments  (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
-Returns <code class="literal">TRUE</code> of <em class="parameter"><code>document</code></em> has any attachments.
+Returns the number of attachments in a loaded document.
+See also <a class="link" href="PopplerDocument.html#poppler-document-get-attachments" title="poppler_document_get_attachments ()"><code class="function">poppler_document_get_attachments()</code></a>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
+<td>A <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>Number of attachments</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.18</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-document-has-attachments"></a><h3>poppler_document_has_attachments ()</h3>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_document_has_attachments    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<p>
+Returns <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> of <em class="parameter"><code>document</code></em> has any attachments.
+</p>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1228,7 +1484,7 @@ Returns <code class="literal">TRUE</code> of <em class="parameter"><code>documen
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if <em class="parameter"><code>document</code></em> has attachments.</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if <em class="parameter"><code>document</code></em> has attachments.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1236,14 +1492,17 @@ Returns <code class="literal">TRUE</code> of <em class="parameter"><code>documen
 <hr>
 <div class="refsect2">
 <a name="poppler-document-get-attachments"></a><h3>poppler_document_get_attachments ()</h3>
-<pre class="programlisting"><span class="returnvalue">GList</span> *             poppler_document_get_attachments    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Doubly-Linked-Lists.html#GList"><span class="returnvalue">GList</span></a> *             poppler_document_get_attachments    (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
-Returns a <span class="type">GList</span> containing <a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a>s.  These attachments
+Returns a <a href="http://library.gnome.org/devel/glib/unstable/glib-Doubly-Linked-Lists.html#GList"><span class="type">GList</span></a> containing <a class="link" href="PopplerAttachment.html" title="PopplerAttachment"><span class="type">PopplerAttachment</span></a>s.  These attachments
 are unowned, and must be unreffed, and the list must be freed with
-<code class="function">g_list_free()</code>.
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Doubly-Linked-Lists.html#g-list-free"><code class="function">g_list_free()</code></a>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1262,13 +1521,16 @@ are unowned, and must be unreffed, and the list must be freed with
 <div class="refsect2">
 <a name="poppler-document-get-form-field"></a><h3>poppler_document_get_form_field ()</h3>
 <pre class="programlisting"><a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="returnvalue">PopplerFormField</span></a> *  poppler_document_get_form_field     (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>,
-                                                         <em class="parameter"><code><span class="type">gint</span> id</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a> id</code></em>);</pre>
 <p>
 Returns the <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> for the given <em class="parameter"><code>id</code></em>. It must be freed with
-<code class="function">g_object_unref()</code>
+<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1282,7 +1544,9 @@ Returns the <a class="link" href="PopplerFormField.html" title="PoppplerFormFiel
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> or NULL if not found</td>
+<td>a new <a class="link" href="PopplerFormField.html" title="PoppplerFormField"><span class="type">PopplerFormField</span></a> or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if
+not found. <span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span>
+</td>
 </tr>
 </tbody>
 </table></div>
@@ -1292,7 +1556,7 @@ Returns the <a class="link" href="PopplerFormField.html" title="PoppplerFormFiel
 <a name="poppler-index-iter-new"></a><h3>poppler_index_iter_new ()</h3>
 <pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  poppler_index_iter_new              (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
 <p>
-Returns the root <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> for <em class="parameter"><code>document</code></em>, or <code class="literal">NULL</code>.  This must be
+Returns the root <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> for <em class="parameter"><code>document</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>.  This must be
 freed with <a class="link" href="PopplerDocument.html#poppler-index-iter-free" title="poppler_index_iter_free ()"><code class="function">poppler_index_iter_free()</code></a>.
 </p>
 <p>
@@ -1330,8 +1594,11 @@ walk_index (PopplerIndexIter *iter)
 </pre></div>
 <p>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1354,8 +1621,11 @@ walk_index (PopplerIndexIter *iter)
 Creates a new <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> as a copy of <em class="parameter"><code>iter</code></em>.  This must be freed with
 <a class="link" href="PopplerDocument.html#poppler-index-iter-free" title="poppler_index_iter_free ()"><code class="function">poppler_index_iter_free()</code></a>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1377,8 +1647,11 @@ Creates a new <a class="link" href="PopplerDocument.html#PopplerIndexIter" title
 <p>
 Frees <em class="parameter"><code>iter</code></em>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
 <td>a <a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a>
@@ -1391,11 +1664,14 @@ Frees <em class="parameter"><code>iter</code></em>.
 <a name="poppler-index-iter-get-child"></a><h3>poppler_index_iter_get_child ()</h3>
 <pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="returnvalue">PopplerIndexIter</span></a> *  poppler_index_iter_get_child        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *parent</code></em>);</pre>
 <p>
-Returns a newly created child of <em class="parameter"><code>parent</code></em>, or <code class="literal">NULL</code> if the iter has no child.
+Returns a newly created child of <em class="parameter"><code>parent</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if the iter has no child.
 See <a class="link" href="PopplerDocument.html#poppler-index-iter-new" title="poppler_index_iter_new ()"><code class="function">poppler_index_iter_new()</code></a> for more information on this function.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>parent</code></em> :</span></p></td>
@@ -1413,14 +1689,17 @@ See <a class="link" href="PopplerDocument.html#poppler-index-iter-new" title="po
 <hr>
 <div class="refsect2">
 <a name="poppler-index-iter-is-open"></a><h3>poppler_index_iter_is_open ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_index_iter_is_open          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_index_iter_is_open          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
 <p>
 Returns whether this node should be expanded by default to the user.  The
 document can provide a hint as to how the document's index should be expanded
 initially.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1430,7 +1709,7 @@ initially.
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if the document wants <em class="parameter"><code>iter</code></em> to be expanded</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if the document wants <em class="parameter"><code>iter</code></em> to be expanded</td>
 </tr>
 </tbody>
 </table></div>
@@ -1443,8 +1722,11 @@ initially.
 Returns the <a class="link" href="poppler-PopplerAction.html#PopplerAction" title="union PopplerAction"><span class="type">PopplerAction</span></a> associated with <em class="parameter"><code>iter</code></em>.  It must be freed with
 <a class="link" href="poppler-PopplerAction.html#poppler-action-free" title="poppler_action_free ()"><code class="function">poppler_action_free()</code></a>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1462,13 +1744,16 @@ Returns the <a class="link" href="poppler-PopplerAction.html#PopplerAction" titl
 <hr>
 <div class="refsect2">
 <a name="poppler-index-iter-next"></a><h3>poppler_index_iter_next ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_index_iter_next             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_index_iter_next             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerIndexIter" title="PopplerIndexIter"><span class="type">PopplerIndexIter</span></a> *iter</code></em>);</pre>
 <p>
 Sets <em class="parameter"><code>iter</code></em> to point to the next action at the current level, if valid.  See
 <a class="link" href="PopplerDocument.html#poppler-index-iter-new" title="poppler_index_iter_new ()"><code class="function">poppler_index_iter_new()</code></a> for more information.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1478,7 +1763,7 @@ Sets <em class="parameter"><code>iter</code></em> to point to the next action at
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if <em class="parameter"><code>iter</code></em> was set to the next action</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if <em class="parameter"><code>iter</code></em> was set to the next action</td>
 </tr>
 </tbody>
 </table></div>
@@ -1490,8 +1775,11 @@ Sets <em class="parameter"><code>iter</code></em> to point to the next action at
 <p>
 Creates a new <a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> object
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1508,7 +1796,7 @@ Creates a new <a class="link" href="PopplerDocument.html#PopplerFontInfo" title=
 <hr>
 <div class="refsect2">
 <a name="poppler-font-info-scan"></a><h3>poppler_font_info_scan ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_font_info_scan              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>,
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_font_info_scan              (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontInfo" title="PopplerFontInfo"><span class="type">PopplerFontInfo</span></a> *font_info</code></em>,
                                                          <em class="parameter"><code><span class="type">int</span> n_pages</code></em>,
                                                          <em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> **iter</code></em>);</pre>
 <p>
@@ -1535,8 +1823,11 @@ while (poppler_font_info_scan (font_info, 20, &amp;fonts_iter)) {
 </pre></div>
 <p>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>font_info</code></em> :</span></p></td>
@@ -1555,7 +1846,7 @@ while (poppler_font_info_scan (font_info, 20, &amp;fonts_iter)) {
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if there are more fonts left to scan</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if there are more fonts left to scan</td>
 </tr>
 </tbody>
 </table></div>
@@ -1572,8 +1863,11 @@ while (poppler_font_info_scan (font_info, 20, &amp;fonts_iter)) {
 <p>
 Creates a copy of <em class="parameter"><code>iter</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1594,8 +1888,11 @@ Creates a copy of <em class="parameter"><code>iter</code></em>
 <p>
 Frees the given <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
 <td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
@@ -1610,8 +1907,11 @@ Frees the given <a class="link" href="PopplerDocument.html#PopplerFontsIter" tit
 <p>
 Returns the name of the font associated with <em class="parameter"><code>iter</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1632,8 +1932,11 @@ Returns the name of the font associated with <em class="parameter"><code>iter</c
 <p>
 Returns the full name of the font associated with <em class="parameter"><code>iter</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1654,8 +1957,11 @@ Returns the full name of the font associated with <em class="parameter"><code>it
 <p>
 Returns the type of the font associated with <em class="parameter"><code>iter</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1671,14 +1977,18 @@ Returns the type of the font associated with <em class="parameter"><code>iter</c
 </div>
 <hr>
 <div class="refsect2">
-<a name="poppler-fonts-iter-get-file-name"></a><h3>poppler_fonts_iter_get_file_name ()</h3>
-<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_fonts_iter_get_file_name    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<a name="poppler-fonts-iter-get-substitute-name"></a><h3>poppler_fonts_iter_get_substitute_name ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_fonts_iter_get_substitute_name
+                                                        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
 <p>
-The filename of the font associated with <em class="parameter"><code>iter</code></em> or <code class="literal">NULL</code> if
+The name of the substitute font of the font associated with <em class="parameter"><code>iter</code></em> or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if
 the font is embedded
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1687,20 +1997,76 @@ the font is embedded
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>the filename of the font or <code class="literal">NULL</code> y font is emebedded</td>
+<td>the name of the substitute font or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if font is embedded</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.20</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="poppler-fonts-iter-get-file-name"></a><h3>poppler_fonts_iter_get_file_name ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_fonts_iter_get_file_name    (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+The filename of the font associated with <em class="parameter"><code>iter</code></em> or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if
+the font is embedded
+</p>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the filename of the font or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if font is embedded</td>
 </tr>
 </tbody>
 </table></div>
 </div>
 <hr>
 <div class="refsect2">
+<a name="poppler-fonts-iter-get-encoding"></a><h3>poppler_fonts_iter_get_encoding ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *        poppler_fonts_iter_get_encoding     (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<p>
+Returns the encoding of the font associated with <em class="parameter"><code>iter</code></em>
+</p>
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
+<td>a <a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a>
+</td>
+</tr>
+<tr>
+<td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
+<td>the font encoding</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since 0.20</p>
+</div>
+<hr>
+<div class="refsect2">
 <a name="poppler-fonts-iter-is-embedded"></a><h3>poppler_fonts_iter_is_embedded ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_fonts_iter_is_embedded      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_fonts_iter_is_embedded      (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
 <p>
 Returns whether the font associated with <em class="parameter"><code>iter</code></em> is embedded in the document
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1710,7 +2076,7 @@ Returns whether the font associated with <em class="parameter"><code>iter</code>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if font is emebdded, <code class="literal">FALSE</code> otherwise</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if font is emebdded, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> otherwise</td>
 </tr>
 </tbody>
 </table></div>
@@ -1718,12 +2084,15 @@ Returns whether the font associated with <em class="parameter"><code>iter</code>
 <hr>
 <div class="refsect2">
 <a name="poppler-fonts-iter-is-subset"></a><h3>poppler_fonts_iter_is_subset ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_fonts_iter_is_subset        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_fonts_iter_is_subset        (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
 <p>
 Returns whether the font associated with <em class="parameter"><code>iter</code></em> is a subset of another font
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1733,7 +2102,7 @@ Returns whether the font associated with <em class="parameter"><code>iter</code>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code> if font is a subset, <code class="literal">FALSE</code> otherwise</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> if font is a subset, <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#FALSE:CAPS"><code class="literal">FALSE</code></a> otherwise</td>
 </tr>
 </tbody>
 </table></div>
@@ -1741,12 +2110,15 @@ Returns whether the font associated with <em class="parameter"><code>iter</code>
 <hr>
 <div class="refsect2">
 <a name="poppler-fonts-iter-next"></a><h3>poppler_fonts_iter_next ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_fonts_iter_next             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_fonts_iter_next             (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerFontsIter" title="PopplerFontsIter"><span class="type">PopplerFontsIter</span></a> *iter</code></em>);</pre>
 <p>
 Sets <em class="parameter"><code>iter</code></em> to point to the next font
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1756,7 +2128,7 @@ Sets <em class="parameter"><code>iter</code></em> to point to the next font
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if <em class="parameter"><code>iter</code></em> was set to the next font</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if <em class="parameter"><code>iter</code></em> was set to the next font</td>
 </tr>
 </tbody>
 </table></div>
@@ -1765,8 +2137,11 @@ Sets <em class="parameter"><code>iter</code></em> to point to the next font
 <div class="refsect2">
 <a name="poppler-layers-iter-new"></a><h3>poppler_layers_iter_new ()</h3>
 <pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * poppler_layers_iter_new             (<em class="parameter"><code><a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a> *document</code></em>);</pre>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
 <td>a <a class="link" href="PopplerDocument.html" title="PopplerDocument"><span class="type">PopplerDocument</span></a>
@@ -1783,8 +2158,11 @@ Sets <em class="parameter"><code>iter</code></em> to point to the next font
 Creates a new <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> as a copy of <em class="parameter"><code>iter</code></em>.  This must be freed with
 <a class="link" href="PopplerDocument.html#poppler-layers-iter-free" title="poppler_layers_iter_free ()"><code class="function">poppler_layers_iter_free()</code></a>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1806,8 +2184,11 @@ Since 0.12</td>
 <p>
 Frees <em class="parameter"><code>iter</code></em>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
 <td>a <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>
@@ -1821,11 +2202,14 @@ Frees <em class="parameter"><code>iter</code></em>.
 <a name="poppler-layers-iter-get-child"></a><h3>poppler_layers_iter_get_child ()</h3>
 <pre class="programlisting"><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="returnvalue">PopplerLayersIter</span></a> * poppler_layers_iter_get_child       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *parent</code></em>);</pre>
 <p>
-Returns a newly created child of <em class="parameter"><code>parent</code></em>, or <code class="literal">NULL</code> if the iter has no child.
+Returns a newly created child of <em class="parameter"><code>parent</code></em>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if the iter has no child.
 See <a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="poppler_layers_iter_new ()"><code class="function">poppler_layers_iter_new()</code></a> for more information on this function.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>parent</code></em> :</span></p></td>
@@ -1834,7 +2218,7 @@ See <a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="p
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>, or <code class="literal">NULL</code>
+<td>a new <a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </td>
 </tr>
 </tbody>
@@ -1846,11 +2230,13 @@ See <a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="p
 <a name="poppler-layers-iter-get-layer"></a><h3>poppler_layers_iter_get_layer ()</h3>
 <pre class="programlisting"><a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="returnvalue">PopplerLayer</span></a> *      poppler_layers_iter_get_layer       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
 <p>
-Returns the <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="type">PopplerLayer</span></a> associated with <em class="parameter"><code>iter</code></em>.  It must be freed with
-<code class="function">poppler_layer_free()</code>.
+Returns the <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="type">PopplerLayer</span></a> associated with <em class="parameter"><code>iter</code></em>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1859,7 +2245,8 @@ Returns the <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span 
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="type">PopplerLayer</span></a>, or <code class="literal">NULL</code> if there isn't any layer associated with <em class="parameter"><code>iter</code></em>
+<td>a new <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span class="type">PopplerLayer</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if
+there isn't any layer associated with <em class="parameter"><code>iter</code></em>. <span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span>
 </td>
 </tr>
 </tbody>
@@ -1869,13 +2256,16 @@ Returns the <a class="link" href="PopplerLayer.html" title="PopplerLayer"><span 
 <hr>
 <div class="refsect2">
 <a name="poppler-layers-iter-get-title"></a><h3>poppler_layers_iter_get_title ()</h3>
-<pre class="programlisting"><span class="returnvalue">gchar</span> *             poppler_layers_iter_get_title       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="returnvalue">gchar</span></a> *             poppler_layers_iter_get_title       (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
 <p>
 Returns the title associated with <em class="parameter"><code>iter</code></em>.  It must be freed with
-<code class="function">g_free()</code>.
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a>.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1884,8 +2274,8 @@ Returns the title associated with <em class="parameter"><code>iter</code></em>. 
 </tr>
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
-<td>a new string containing the <em class="parameter"><code>iter</code></em>'s title or <code class="literal">NULL</code> if <em class="parameter"><code>iter</code></em> doesn't have a title.
-The returned string should be freed with <code class="function">g_free()</code> when no longer needed.</td>
+<td>a new string containing the <em class="parameter"><code>iter</code></em>'s title or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if <em class="parameter"><code>iter</code></em> doesn't have a title.
+The returned string should be freed with <a href="http://library.gnome.org/devel/glib/unstable/glib-Memory-Allocation.html#g-free"><code class="function">g_free()</code></a> when no longer needed.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1894,13 +2284,16 @@ The returned string should be freed with <code class="function">g_free()</code> 
 <hr>
 <div class="refsect2">
 <a name="poppler-layers-iter-next"></a><h3>poppler_layers_iter_next ()</h3>
-<pre class="programlisting"><span class="returnvalue">gboolean</span>            poppler_layers_iter_next            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
+<pre class="programlisting"><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="returnvalue">gboolean</span></a>            poppler_layers_iter_next            (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerLayersIter" title="PopplerLayersIter"><span class="type">PopplerLayersIter</span></a> *iter</code></em>);</pre>
 <p>
 Sets <em class="parameter"><code>iter</code></em> to point to the next action at the current level, if valid.  See
 <a class="link" href="PopplerDocument.html#poppler-layers-iter-new" title="poppler_layers_iter_new ()"><code class="function">poppler_layers_iter_new()</code></a> for more information.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>iter</code></em> :</span></p></td>
@@ -1910,7 +2303,7 @@ Sets <em class="parameter"><code>iter</code></em> to point to the next action at
 <tr>
 <td><p><span class="term"><span class="emphasis"><em>Returns</em></span> :</span></p></td>
 <td>
-<code class="literal">TRUE</code>, if <em class="parameter"><code>iter</code></em> was set to the next action</td>
+<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a>, if <em class="parameter"><code>iter</code></em> was set to the next action</td>
 </tr>
 </tbody>
 </table></div>
@@ -1926,8 +2319,11 @@ Sets <em class="parameter"><code>iter</code></em> to point to the next action at
 <p>
 Create a new postscript file to render to
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>document</code></em> :</span></p></td>
@@ -1960,8 +2356,11 @@ Create a new postscript file to render to
 <p>
 Frees <em class="parameter"><code>ps_file</code></em>
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody><tr>
 <td><p><span class="term"><em class="parameter"><code>ps_file</code></em> :</span></p></td>
 <td>a PopplerPSFile</td>
@@ -1979,8 +2378,11 @@ Set the output paper size. These values will end up in the
 DocumentMedia, the BoundingBox DSC comments and other places in the
 generated PostScript.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>ps_file</code></em> :</span></p></td>
@@ -2001,12 +2403,15 @@ generated PostScript.
 <div class="refsect2">
 <a name="poppler-ps-file-set-duplex"></a><h3>poppler_ps_file_set_duplex ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>                poppler_ps_file_set_duplex          (<em class="parameter"><code><a class="link" href="PopplerDocument.html#PopplerPSFile" title="PopplerPSFile"><span class="type">PopplerPSFile</span></a> *ps_file</code></em>,
-                                                         <em class="parameter"><code><span class="type">gboolean</span> duplex</code></em>);</pre>
+                                                         <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a> duplex</code></em>);</pre>
 <p>
 Enable or disable Duplex printing.
 </p>
-<div class="variablelist"><table border="0">
+<div class="variablelist"><table border="0" class="variablelist">
+<colgroup>
 <col align="left" valign="top">
+<col>
+</colgroup>
 <tbody>
 <tr>
 <td><p><span class="term"><em class="parameter"><code>ps_file</code></em> :</span></p></td>
@@ -2024,7 +2429,7 @@ Enable or disable Duplex printing.
 <a name="PopplerDocument.property-details"></a><h2>Property Details</h2>
 <div class="refsect2">
 <a name="PopplerDocument--author"></a><h3>The <code class="literal">"author"</code> property</h3>
-<pre class="programlisting">  "author"                   <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "author"                   <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
 The author of the document
 </p>
@@ -2033,17 +2438,17 @@ The author of the document
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--creation-date"></a><h3>The <code class="literal">"creation-date"</code> property</h3>
-<pre class="programlisting">  "creation-date"            <span class="type">gint</span>                  : Read</pre>
+<pre class="programlisting">  "creation-date"            <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>                  : Read</pre>
 <p>
 The date the document was created as seconds since the Epoch, or -1
 </p>
-<p>Allowed values: &gt;= G_MAXULONG</p>
+<p>Allowed values: &gt;= -1</p>
 <p>Default value: -1</p>
 </div>
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--creator"></a><h3>The <code class="literal">"creator"</code> property</h3>
-<pre class="programlisting">  "creator"                  <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "creator"                  <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
 The creator of the document. See also <a class="link" href="PopplerDocument.html#poppler-document-get-creator" title="poppler_document_get_creator ()"><code class="function">poppler_document_get_creator()</code></a>
 </p>
@@ -2052,7 +2457,7 @@ The creator of the document. See also <a class="link" href="PopplerDocument.html
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--format"></a><h3>The <code class="literal">"format"</code> property</h3>
-<pre class="programlisting">  "format"                   <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "format"                   <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
 The PDF version as string. See also <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version-string" title="poppler_document_get_pdf_version_string ()"><code class="function">poppler_document_get_pdf_version_string()</code></a>
 </p>
@@ -2061,7 +2466,7 @@ The PDF version as string. See also <a class="link" href="PopplerDocument.html#p
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--format-major"></a><h3>The <code class="literal">"format-major"</code> property</h3>
-<pre class="programlisting">  "format-major"             <span class="type">guint</span>                 : Read</pre>
+<pre class="programlisting">  "format-major"             <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read</pre>
 <p>
 The PDF major version number. See also <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version" title="poppler_document_get_pdf_version ()"><code class="function">poppler_document_get_pdf_version()</code></a>
 </p>
@@ -2070,7 +2475,7 @@ The PDF major version number. See also <a class="link" href="PopplerDocument.htm
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--format-minor"></a><h3>The <code class="literal">"format-minor"</code> property</h3>
-<pre class="programlisting">  "format-minor"             <span class="type">guint</span>                 : Read</pre>
+<pre class="programlisting">  "format-minor"             <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read</pre>
 <p>
 The PDF minor version number. See also <a class="link" href="PopplerDocument.html#poppler-document-get-pdf-version" title="poppler_document_get_pdf_version ()"><code class="function">poppler_document_get_pdf_version()</code></a>
 </p>
@@ -2079,7 +2484,7 @@ The PDF minor version number. See also <a class="link" href="PopplerDocument.htm
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--keywords"></a><h3>The <code class="literal">"keywords"</code> property</h3>
-<pre class="programlisting">  "keywords"                 <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "keywords"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
 The keywords associated to the document
 </p>
@@ -2088,7 +2493,7 @@ The keywords associated to the document
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--linearized"></a><h3>The <code class="literal">"linearized"</code> property</h3>
-<pre class="programlisting">  "linearized"               <span class="type">gboolean</span>              : Read</pre>
+<pre class="programlisting">  "linearized"               <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read</pre>
 <p>
 Whether document is linearized. See also <a class="link" href="PopplerDocument.html#poppler-document-is-linearized" title="poppler_document_is_linearized ()"><code class="function">poppler_document_is_linearized()</code></a>
 </p>
@@ -2097,20 +2502,20 @@ Whether document is linearized. See also <a class="link" href="PopplerDocument.h
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--metadata"></a><h3>The <code class="literal">"metadata"</code> property</h3>
-<pre class="programlisting">  "metadata"                 <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "metadata"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
-Document metadata in XML format, or <code class="literal">NULL</code>
+Document metadata in XML format, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </p>
 <p>Default value: NULL</p>
 </div>
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--mod-date"></a><h3>The <code class="literal">"mod-date"</code> property</h3>
-<pre class="programlisting">  "mod-date"                 <span class="type">gint</span>                  : Read</pre>
+<pre class="programlisting">  "mod-date"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>                  : Read</pre>
 <p>
 The date the document was most recently modified as seconds since the Epoch, or -1
 </p>
-<p>Allowed values: &gt;= G_MAXULONG</p>
+<p>Allowed values: &gt;= -1</p>
 <p>Default value: -1</p>
 </div>
 <hr>
@@ -2138,12 +2543,12 @@ The mode that should be used when the document is opened
 <p>
 Flags specifying which operations are permitted when the document is opened
 </p>
-<p>Default value: POPPLER_PERMISSIONS_OK_TO_PRINT|POPPLER_PERMISSIONS_OK_TO_MODIFY|POPPLER_PERMISSIONS_OK_TO_COPY|POPPLER_PERMISSIONS_OK_TO_ADD_NOTES|POPPLER_PERMISSIONS_OK_TO_FILL_FORM</p>
+<p>Default value: POPPLER_PERMISSIONS_OK_TO_PRINT|POPPLER_PERMISSIONS_OK_TO_MODIFY|POPPLER_PERMISSIONS_OK_TO_COPY|POPPLER_PERMISSIONS_OK_TO_ADD_NOTES|POPPLER_PERMISSIONS_OK_TO_FILL_FORM|POPPLER_PERMISSIONS_OK_TO_EXTRACT_CONTENTS|POPPLER_PERMISSIONS_OK_TO_ASSEMBLE|POPPLER_PERMISSIONS_OK_TO_PRINT_HIGH_RESOLUTION</p>
 </div>
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--producer"></a><h3>The <code class="literal">"producer"</code> property</h3>
-<pre class="programlisting">  "producer"                 <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "producer"                 <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
 The producer of the document. See also <a class="link" href="PopplerDocument.html#poppler-document-get-producer" title="poppler_document_get_producer ()"><code class="function">poppler_document_get_producer()</code></a>
 </p>
@@ -2152,7 +2557,7 @@ The producer of the document. See also <a class="link" href="PopplerDocument.htm
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--subject"></a><h3>The <code class="literal">"subject"</code> property</h3>
-<pre class="programlisting">  "subject"                  <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "subject"                  <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
 The subject of the document
 </p>
@@ -2161,9 +2566,9 @@ The subject of the document
 <hr>
 <div class="refsect2">
 <a name="PopplerDocument--title"></a><h3>The <code class="literal">"title"</code> property</h3>
-<pre class="programlisting">  "title"                    <span class="type">gchar</span>*                : Read</pre>
+<pre class="programlisting">  "title"                    <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read</pre>
 <p>
-The document's title or <code class="literal">NULL</code>
+The document's title or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
 </p>
 <p>Default value: NULL</p>
 </div>
@@ -2177,6 +2582,6 @@ The document's title or <code class="literal">NULL</code>
 </div>
 <div class="footer">
 <hr>
-          Generated by GTK-Doc V1.17</div>
+          Generated by GTK-Doc V1.19</div>
 </body>
 </html>

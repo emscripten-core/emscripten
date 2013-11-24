@@ -6,6 +6,20 @@
 //
 //========================================================================
 
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2012 Albert Astals Cid <aacid@kde.org>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
 #ifndef GLIST_H
 #define GLIST_H
 
@@ -36,11 +50,18 @@ public:
   // Get the number of elements.
   int getLength() { return length; }
 
+  // Returns a (shallow) copy of this list.
+  GooList *copy();
+
   //----- ordered list support
 
   // Return the <i>th element.
   // Assumes 0 <= i < length.
   void *get(int i) { return data[i]; }
+
+  // Replace the <i>th element.
+  // Assumes 0 <= i < length.
+  void put(int i, void *p) { data[i] = p; }
 
   // Append an element to the end of the list.
   void append(void *p);
@@ -61,6 +82,9 @@ public:
   // be double-dereferenced.
   void sort(int (*cmp)(const void *ptr1, const void *ptr2));
 
+  // Reverse the list.
+  void reverse();
+
   //----- control
 
   // Set allocation increment to <inc>.  If inc > 0, that many
@@ -69,6 +93,8 @@ public:
   void setAllocIncr(int incA) { inc = incA; }
 
 private:
+  GooList(const GooList &other);
+  GooList& operator=(const GooList &other);
 
   void expand();
   void shrink();

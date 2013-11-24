@@ -38,8 +38,11 @@ public:
   // be NULL).
   char **getEncoding();
 
+  // Return the font matrix as an array of six numbers.
+  void getFontMatrix(double *mat);
+
   // Write a version of the Type 1 font file with a new encoding.
-  void writeEncoded(char **newEncoding,
+  void writeEncoded(const char **newEncoding,
 		    FoFiOutputFunc outputFunc, void *outputStream);
 
 private:
@@ -48,9 +51,11 @@ private:
 
   char *getNextLine(char *line);
   void parse();
+  void undoPFB();
 
   char *name;
   char **encoding;
+  double fontMatrix[6];
   GBool parsed;
 };
 

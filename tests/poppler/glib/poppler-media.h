@@ -33,10 +33,11 @@ G_BEGIN_DECLS
 
 /**
  * PopplerMediaSaveFunc:
- * @buf: buffer containing bytes to be written.
+ * @buf: (array length=count) (element-type guint8): buffer containing
+ *   bytes to be written.
  * @count: number of bytes in @buf.
- * @data: user data passed to poppler_media_save_to_callback()
- * @error: GError to set on error, or NULL
+ * @data: (closure): user data passed to poppler_media_save_to_callback()
+ * @error: GError to set on error, or %NULL
  *
  * Specifies the type of the function passed to
  * poppler_media_save_to_callback().  It is called once for each block of
