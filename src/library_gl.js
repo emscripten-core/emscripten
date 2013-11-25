@@ -2689,32 +2689,82 @@ var LibraryGL = {
           GL_SRC_ALPHA
         ];
 
-        this.traverseState = function CTexEnv_traverseState(keyView) {
-          keyView.next(this.mode);
-          keyView.next(this.colorCombiner);
-          keyView.next(this.alphaCombiner);
-          keyView.next(this.colorCombiner);
-          keyView.next(this.alphaScale);
-          keyView.next(this.envColor[0]);
-          keyView.next(this.envColor[1]);
-          keyView.next(this.envColor[2]);
-          keyView.next(this.envColor[3]);
+        // Map GLenums to small values to efficiently pack the enums to bits for tighter access.
+        this.traverseKey = {
+          // mode
+          0x1E01/*GL_REPLACE*/: 0,
+          0x2100/*GL_MODULATE*/: 1,
+          0x0104/*GL_ADD*/: 2,
+          0x0BE2/*GL_BLEND*/: 3,
+          0x2101/*GL_DECAL*/: 4,
+          0x8570/*GL_COMBINE*/: 5,
 
-          keyView.next(this.colorSrc[0]);
-          keyView.next(this.colorSrc[1]);
-          keyView.next(this.colorSrc[2]);
+          // additional color and alpha combiners
+          0x84E7/*GL_SUBTRACT*/: 3,
+          0x8575/*GL_INTERPOLATE*/: 4,
 
-          keyView.next(this.alphaSrc[0]);
-          keyView.next(this.alphaSrc[1]);
-          keyView.next(this.alphaSrc[2]);
+          // color and alpha src
+          0x1702/*GL_TEXTURE*/: 0,
+          0x8576/*GL_CONSTANT*/: 1,
+          0x8577/*GL_PRIMARY_COLOR*/: 2,
+          0x8578/*GL_PREVIOUS*/: 3,
 
-          keyView.next(this.colorOp[0]);
-          keyView.next(this.colorOp[1]);
-          keyView.next(this.colorOp[2]);
+          // color and alpha op
+          0x0300/*GL_SRC_COLOR*/: 0,
+          0x0301/*GL_ONE_MINUS_SRC_COLOR*/: 1,
+          0x0302/*GL_SRC_ALPHA*/: 2,
+          0x0300/*GL_ONE_MINUS_SRC_ALPHA*/: 3
+        };
 
-          keyView.next(this.alphaOp[0]);
-          keyView.next(this.alphaOp[1]);
-          keyView.next(this.alphaOp[2]);
+        // The tuple (key0,key1,key2) uniquely identifies the state of the variables in CTexEnv.
+        // -1 on key0 denotes 'the whole cached key is dirty'
+        this.key0 = -1;
+        this.key1 = 0;
+        this.key2 = 0;
+
+        this.computeKey0 = function() {
+          var k = this.traverseKey;
+          var key = k[this.mode] * 1638400; // 6 distinct values.
+          key += k[this.colorCombiner] * 327680; // 5 distinct values.
+          key += k[this.alphaCombiner] * 65536; // 5 distinct values.
+          // The above three fields have 6*5*5=150 distinct values -> 8 bits.
+          key += (this.colorScale-1) * 16384; // 10 bits used.
+          key += (this.alphaScale-1) * 4096; // 12 bits used.
+          key += k[this.colorSrc[0]] * 1024; // 14
+          key += k[this.colorSrc[1]] * 256; // 16
+          key += k[this.colorSrc[2]] * 64; // 18
+          key += k[this.alphaSrc[0]] * 16; // 20
+          key += k[this.alphaSrc[1]] * 4; // 22
+          key += k[this.alphaSrc[2]]; // 24 bits used total.
+          return key;
+        }
+        this.computeKey1 = function() {
+          var k = this.traverseKey;
+          key = k[this.colorOp[0]] * 4096;
+          key += k[this.colorOp[1]] * 1024;             
+          key += k[this.colorOp[2]] * 256;
+          key += k[this.alphaOp[0]] * 16;
+          key += k[this.alphaOp[1]] * 4;
+          key += k[this.alphaOp[2]];
+          return key;            
+        }
+        // TODO: remove this. The color should not be part of the key!
+        this.computeKey2 = function() {
+          return this.envColor[0] * 16777216 + this.envColor[1] * 65536 + this.envColor[2] * 256 + 1 + this.envColor[3];
+        }
+        this.recomputeKey = function() {
+          this.key0 = this.computeKey0();
+          this.key1 = this.computeKey1();
+          this.key2 = this.computeKey2();
+        }
+
+        this.traverseState = function(keyView) {
+          if (this.key0 == -1) {
+            this.recomputeKey();
+          }
+          keyView.next(this.key0);
+          keyView.next(this.key1);
+          keyView.next(this.key2);
         };
       }
 
@@ -3115,10 +3165,16 @@ var LibraryGL = {
           var env = getCurTexUnit().env;
           switch (pname) {
             case GL_RGB_SCALE:
-              env.colorScale = param;
+              if (env.colorScale != param) {
+                env.key0 = -1; // Invalidate the cached key for this texture unit.
+                env.colorScale = param;
+              }
               break;
             case GL_ALPHA_SCALE:
-              env.alphaScale = param;
+              if (env.alphaScale != param) {
+                env.key0 = -1;
+                env.alphaScale = param;
+              }
               break;
 
             default:
@@ -3133,61 +3189,112 @@ var LibraryGL = {
           var env = getCurTexUnit().env;
           switch (pname) {
             case GL_TEXTURE_ENV_MODE:
-              env.mode = param;
+              if (env.mode != param) {
+                env.key0 = -1; // Invalidate the cached key for this texture unit.
+                env.mode = param;
+              }
               break;
 
             case GL_COMBINE_RGB:
-              env.colorCombiner = param;
+              if (env.colorCombiner != param) {
+                env.key0 = -1;
+                env.colorCombiner = param;
+              }
               break;
             case GL_COMBINE_ALPHA:
-              env.alphaCombiner = param;
+              if (env.alphaCombiner != param) {
+                env.key0 = -1;
+                env.alphaCombiner = param;
+              }
               break;
 
             case GL_SRC0_RGB:
-              env.colorSrc[0] = param;
+              if (env.colorSrc[0] != param) {
+                env.key0 = -1;
+                env.colorSrc[0] = param;
+              }
               break;
             case GL_SRC1_RGB:
-              env.colorSrc[1] = param;
+              if (env.colorSrc[1] != param) {
+                env.key0 = -1;
+                env.colorSrc[1] = param;
+              }
               break;
             case GL_SRC2_RGB:
-              env.colorSrc[2] = param;
+              if (env.colorSrc[2] != param) {
+                env.key0 = -1;
+                env.colorSrc[2] = param;
+              }
               break;
 
             case GL_SRC0_ALPHA:
-              env.alphaSrc[0] = param;
+              if (env.alphaSrc[0] != param) {
+                env.key0 = -1;
+                env.alphaSrc[0] = param;
+              }
               break;
             case GL_SRC1_ALPHA:
-              env.alphaSrc[1] = param;
+              if (env.alphaSrc[1] != param) {
+                env.key0 = -1;
+                env.alphaSrc[1] = param;
+              }
               break;
             case GL_SRC2_ALPHA:
-              env.alphaSrc[2] = param;
+              if (env.alphaSrc[2] != param) {
+                env.key0 = -1;
+                env.alphaSrc[2] = param;
+              }
               break;
 
             case GL_OPERAND0_RGB:
-              env.colorOp[0] = param;
+              if (env.colorOp[0] != param) {
+                env.key0 = -1;
+                env.colorOp[0] = param;
+              }
               break;
             case GL_OPERAND1_RGB:
-              env.colorOp[1] = param;
+              if (env.colorOp[1] != param) {
+                env.key0 = -1;
+                env.colorOp[1] = param;
+              }
               break;
             case GL_OPERAND2_RGB:
-              env.colorOp[2] = param;
+              if (env.colorOp[2] != param) {
+                env.key0 = -1;
+                env.colorOp[2] = param;
+              }
               break;
 
             case GL_OPERAND0_ALPHA:
-              env.alphaOp[0] = param;
+              if (env.alphaOp[0] != param) {
+                env.key0 = -1;
+                env.alphaOp[0] = param;
+              }
               break;
             case GL_OPERAND1_ALPHA:
-              env.alphaOp[1] = param;
+              if (env.alphaOp[1] != param) {
+                env.key0 = -1;
+                env.alphaOp[1] = param;
+              }
               break;
             case GL_OPERAND2_ALPHA:
-              env.alphaOp[2] = param;
+              if (env.alphaOp[2] != param) {
+                env.key0 = -1;
+                env.alphaOp[2] = param;
+              }
               break;
 
             case GL_RGB_SCALE:
-              env.colorScale = param;
+              if (env.colorScale != param) {
+                env.key0 = -1;
+                env.colorScale = param;
+              }
               break;
             case GL_ALPHA_SCALE:
-              env.alphaScale = param;
+              if (env.alphaScale != param) {
+                env.key0 = -1;
+                env.alphaScale = param;
+              }
               break;
 
             default:
@@ -3203,7 +3310,10 @@ var LibraryGL = {
             case GL_TEXTURE_ENV_COLOR: {
               for (var i = 0; i < 4; i++) {
                 var param = {{{ makeGetValue('params', 'i*4', 'float') }}};
-                env.envColor[i] = param;
+                if (env.envColor[i] != param) {
+                  env.key0 = -1; // Invalidate the cached key for this texture unit.
+                  env.envColor[i] = param;
+                }
               }
               break
             }
