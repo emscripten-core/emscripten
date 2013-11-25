@@ -4665,6 +4665,10 @@ LibraryManager.library = {
 
   llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
 
+  // llvm-nacl
+
+  llvm_nacl_atomic_store_i32__inline: true,
+
   // ==========================================================================
   // llvm-mono integration
   // ==========================================================================

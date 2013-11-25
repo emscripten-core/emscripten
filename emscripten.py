@@ -796,7 +796,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: logging.debug('emscript: js compiler glue')
 
   # Integrate info from backend
-  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + metadata['declares']
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])
 
   # Settings changes
   assert settings['TARGET_LE32'] == 1

@@ -1509,7 +1509,7 @@ class JS:
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
-    return ident.replace('%', '$').replace('@', '_')
+    return ident.replace('%', '$').replace('@', '_').replace('.', '_')
 
   @staticmethod
   def make_initializer(sig, settings=None):
