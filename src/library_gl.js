@@ -3793,11 +3793,8 @@ var LibraryGL = {
           Module.ctx.vertexAttribPointer(this.positionLocation, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
-            //for (var i = 0; i < this.usedTexUnitList.length; i++) {
-            //  var texUnitID = this.usedTexUnitList[i];
             for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-              var texUnitID = i;
-              var attribLoc = this.texCoordLocations[texUnitID];
+              var attribLoc = this.texCoordLocations[i];
               if (attribLoc === undefined || attribLoc < 0) continue;
               var texAttr = clientAttributes[GL.immediate.TEXTURE0+i];
 
@@ -3812,8 +3809,7 @@ var LibraryGL = {
                 Module.ctx.vertexAttrib4f(attribLoc, 0, 0, 0, 1);
                 Module.ctx.disableVertexAttribArray(attribLoc);
               }
-            }
-            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+
               var t = 't'+i;
               if (this.textureMatrixLocations[i] && this.textureMatrixVersion[t] != GL.immediate.matrixVersion[t]) { // XXX might we need this even without the condition we are currently in?
                 this.textureMatrixVersion[t] = GL.immediate.matrixVersion[t];
