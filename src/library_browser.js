@@ -252,7 +252,7 @@ mergeInto(LibraryManager.library, {
 
           var errorInfo = '?';
           function onContextCreationError(event) {
-            errorInfo = e.statusMessage || errorInfo;
+            errorInfo = event.statusMessage || errorInfo;
           }
           canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
           try {
