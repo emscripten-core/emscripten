@@ -1411,6 +1411,10 @@ class Building:
   @staticmethod
   def ensure_relooper(relooper):
     if os.path.exists(relooper): return
+    if os.environ.get('EMCC_FAST_COMPILER'):
+      logging.debug('not building relooper to js, using it in c++ backend')
+      return
+
     Cache.ensure()
     curr = os.getcwd()
     try:
