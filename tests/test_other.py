@@ -371,6 +371,11 @@ f.close()
       process.communicate()
       assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
 
+  def test_cap_suffixes(self):
+    shutil.copyfile(path_from_root('tests', 'hello_world.cpp'), 'test.CPP')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.CPP')]).communicate()
+    self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
   def test_catch_undef(self):
     open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
       #include <vector>

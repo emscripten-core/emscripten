@@ -53,8 +53,9 @@ from tools import shared, jsrun
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS
 from tools.response_file import read_response_file
 
-CXX_SUFFIXES = ('.cpp', '.cxx', '.cc')
-SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
+C_SUFFIXES = ('.c', '.C')
+CXX_SUFFIXES = ('.cpp', '.cxx', '.cc', '.CPP', '.CXX', '.CC')
+SOURCE_SUFFIXES = C_SUFFIXES + CXX_SUFFIXES + ('.m', '.mm')
 BITCODE_SUFFIXES = ('.bc', '.o', '.obj')
 DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 STATICLIB_SUFFIXES = ('.a',)
