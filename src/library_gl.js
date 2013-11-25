@@ -3314,10 +3314,11 @@ var LibraryGL = {
       var keyView = cacheMap.getStaticKeyView().reset();
 
       // By attrib state:
+      var enabledAttributesKey = 0;
       for (var i = 0; i < attributes.length; i++) {
-        var attribute = attributes[i];
-        keyView.next(attribute.name);
+        enabledAttributesKey |= 1 << attributes[i].name;
       }
+      keyView.next(enabledAttributesKey);
 
       // By fog state:
       var fogParam = 0;
