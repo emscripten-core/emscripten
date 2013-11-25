@@ -16,6 +16,7 @@
  under GPL version 2 or later
 
  Copyright (C) 2008, 2009 Albert Astals Cid <aacid@kde.org>
+ Copyright (C) 2011, 2012 Adrian Johnson <ajohnson@redneon.com>
 
  To see a description of the changes please see the Changelog file that
  came with your tarball or type make ChangeLog if you are building from git
@@ -30,6 +31,7 @@
 #include "parseargs.h"
 
 #include "goo/gstrtod.h"
+#include "goo/GooString.h"
 
 static const ArgDesc *findArg(const ArgDesc *args, char *arg);
 static GBool grabArg(const ArgDesc *arg, int i, int *argc, char *argv[]);
@@ -57,9 +59,9 @@ GBool parseArgs(const ArgDesc *args, int *argc, char *argv[]) {
   return ok;
 }
 
-void printUsage(char *program, char *otherArgs, const ArgDesc *args) {
+void printUsage(const char *program, const char *otherArgs, const ArgDesc *args) {
   const ArgDesc *arg;
-  char *typ;
+  const char *typ;
   int w, w1;
 
   w = 0;
@@ -87,6 +89,7 @@ void printUsage(char *program, char *otherArgs, const ArgDesc *args) {
       break;
     case argString:
     case argStringDummy:
+    case argGooString:
       typ = " <string>";
       break;
     case argFlag:
@@ -146,6 +149,15 @@ static GBool grabArg(const ArgDesc *arg, int i, int *argc, char *argv[]) {
     if (i + 1 < *argc) {
       strncpy((char *)arg->val, argv[i+1], arg->size - 1);
       ((char *)arg->val)[arg->size - 1] = '\0';
+      n = 2;
+    } else {
+      ok = gFalse;
+      n = 1;
+    }
+    break;
+  case argGooString:
+    if (i + 1 < *argc) {
+      ((GooString*)arg->val)->Set(argv[i+1]);
       n = 2;
     } else {
       ok = gFalse;

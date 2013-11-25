@@ -138,7 +138,7 @@ typedef enum
  * PopplerPrintFlags:
  * @POPPLER_PRINT_DOCUMENT: print main document contents
  * @POPPLER_PRINT_MARKUP_ANNOTS: print document and markup annotations
- * @POPPLER_PRINT_STAMP_ANNOTS_ONLY: print doucment and only stamp annotations
+ * @POPPLER_PRINT_STAMP_ANNOTS_ONLY: print document and only stamp annotations
  * @POPPLER_PRINT_ALL: print main document contents and all markup annotations
  *
  * Printing flags
@@ -153,11 +153,31 @@ typedef enum /*< flags >*/
   POPPLER_PRINT_ALL               = POPPLER_PRINT_MARKUP_ANNOTS
 } PopplerPrintFlags;
 
+/**
+ * PopplerFindFlags:
+ * @POPPLER_FIND_CASE_SENSITIVE: do case sensitive search
+ * @POPPLER_FIND_BACKWARDS: search backwards
+ * @POPPLER_FIND_WHOLE_WORDS_ONLY: search only whole words
+ *
+ * Flags using while searching text in a page
+ *
+ * Since: 0.22
+ */
+typedef enum /*< flags >*/
+{
+  POPPLER_FIND_DEFAULT          = 0,
+  POPPLER_FIND_CASE_SENSITIVE   = 1 << 0,
+  POPPLER_FIND_BACKWARDS        = 1 << 1,
+  POPPLER_FIND_WHOLE_WORDS_ONLY = 1 << 2
+} PopplerFindFlags;
+
 typedef struct _PopplerDocument            PopplerDocument;
 typedef struct _PopplerIndexIter           PopplerIndexIter;
 typedef struct _PopplerFontsIter           PopplerFontsIter;
 typedef struct _PopplerLayersIter          PopplerLayersIter;
+typedef struct _PopplerPoint               PopplerPoint;
 typedef struct _PopplerRectangle           PopplerRectangle;
+typedef struct _PopplerTextAttributes      PopplerTextAttributes;
 typedef struct _PopplerColor               PopplerColor;
 typedef struct _PopplerLinkMapping         PopplerLinkMapping;
 typedef struct _PopplerPageTransition      PopplerPageTransition;
@@ -183,6 +203,7 @@ typedef struct _PopplerAnnotFileAttachment PopplerAnnotFileAttachment;
 typedef struct _PopplerAnnotMovie          PopplerAnnotMovie;
 typedef struct _PopplerAnnotScreen         PopplerAnnotScreen;
 typedef struct _PopplerAnnotCalloutLine    PopplerAnnotCalloutLine;
+typedef struct _PopplerAnnotLine           PopplerAnnotLine;
 
 typedef enum
 {

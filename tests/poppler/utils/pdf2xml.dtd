@@ -1,6 +1,10 @@
-<?xml version="1.0"?>
-<!ELEMENT pdf2xml (page+)>
-<!ELEMENT page (fontspec*, text*)>
+<?xml version="1.0" encoding="UTF-8"?>
+<!ELEMENT pdf2xml (page+, outline?)>
+<!ATTLIST pdf2xml
+	producer CDATA #REQUIRED
+	version CDATA #REQUIRED
+>
+<!ELEMENT page (fontspec*, image*, text*)>
 <!ATTLIST page
 	number CDATA #REQUIRED
 	position CDATA #REQUIRED
@@ -16,7 +20,7 @@
 	family CDATA #REQUIRED
 	color CDATA #REQUIRED
 >
-<!ELEMENT text (#PCDATA | b | i)*>
+<!ELEMENT text (#PCDATA | b | i | a)*>
 <!ATTLIST text
 	top CDATA #REQUIRED
 	left CDATA #REQUIRED
@@ -24,5 +28,22 @@
 	height CDATA #REQUIRED
 	font CDATA #REQUIRED
 >
-<!ELEMENT b (#PCDATA)>
-<!ELEMENT i (#PCDATA)>
+<!ELEMENT b (#PCDATA | i)*>
+<!ELEMENT i (#PCDATA | b)*>
+<!ELEMENT a (#PCDATA)>
+<!ATTLIST a
+    href CDATA #REQUIRED
+>
+<!ELEMENT image EMPTY>
+<!ATTLIST image
+	top CDATA #REQUIRED
+	left CDATA #REQUIRED
+	width CDATA #REQUIRED
+	height CDATA #REQUIRED
+	src CDATA #REQUIRED
+>
+<!ELEMENT outline (item | outline)*>
+<!ELEMENT item (#PCDATA)>
+<!ATTLIST item
+	page CDATA #IMPLIED
+>

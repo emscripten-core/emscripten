@@ -13,7 +13,7 @@ private slots:
 void TestSearch::bug7063()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/bug7063.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/bug7063.pdf");
     QVERIFY( doc );
    
     Poppler::Page *page = doc->page(0);
@@ -39,7 +39,7 @@ void TestSearch::bug7063()
 void TestSearch::testNextAndPrevious()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/xr01.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/xr01.pdf");
     QVERIFY( doc );
   
     Poppler::Page *page = doc->page(0);

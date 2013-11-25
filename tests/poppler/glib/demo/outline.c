@@ -161,7 +161,7 @@ pgd_outline_create_widget (PopplerDocument *document)
 	GtkTreeSelection *selection;
 	GtkWidget        *hpaned, *action;
 
-	hpaned = gtk_hpaned_new ();
+	hpaned = gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);
 
 	action = pgd_action_view_new (document);
 	

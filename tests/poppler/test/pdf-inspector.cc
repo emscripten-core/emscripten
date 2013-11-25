@@ -1,9 +1,8 @@
 //========================================================================
 //
-// GDKSplashOutputDev.cc
+// pdf-inspector.cc
 //
-// Copyright 2003 Glyph & Cog, LLC
-// Copyright 2004 Red Hat, Inc. (GDK port)
+// Copyright 2005 Jonathan Blandford <jrb@redhat.com>
 //
 //========================================================================
 
@@ -287,7 +286,6 @@ PdfInspector::load(const char *file_name)
 
       filename_g = new GooString (file_name);
       doc = new PDFDoc(filename_g, 0, 0);
-      delete filename_g;
     }
   
   if (doc && !doc->isOk())
@@ -310,7 +308,7 @@ PdfInspector::load(const char *file_name)
       gtk_spin_button_set_range (GTK_SPIN_BUTTON (spin), 0, doc->getNumPages()-1);
       gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin), 0);
 
-      output->startDoc (doc->getXRef(), doc->getCatalog());
+      output->startDoc (doc);
     }
   else
     {      

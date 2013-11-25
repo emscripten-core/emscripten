@@ -15,6 +15,7 @@
 //
 // Copyright (C) 2008 Koji Otani <sho@bbr.jp>
 // Copyright (C) 2009 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2012 Adrian Johnson <ajohnson@redneon.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -37,6 +38,7 @@
 #endif
 
 class GooString;
+class Object;
 struct CMapVectorEntry;
 class CMapCache;
 class Stream;
@@ -45,6 +47,19 @@ class Stream;
 
 class CMap {
 public:
+
+  // Parse a CMap from <obj>, which can be a name or a stream.  Sets
+  // the initial reference count to 1.  Returns NULL on failure.
+  static CMap *parse(CMapCache *cache, GooString *collectionA, Object *obj);
+
+  // Create the CMap specified by <collection> and <cMapName>.  Sets
+  // the initial reference count to 1.  Returns NULL on failure.
+  static CMap *parse(CMapCache *cache, GooString *collectionA,
+		     GooString *cMapNameA);
+
+  // Parse a CMap from <str>.  Sets the initial reference count to 1.
+  // Returns NULL on failure.
+  static CMap *parse(CMapCache *cache, GooString *collectionA, Stream *str);
 
   // Create the CMap specified by <collection> and <cMapName>.  Sets
   // the initial reference count to 1.
@@ -62,14 +77,16 @@ public:
   // Return collection name (<registry>-<ordering>).
   GooString *getCollection() { return collection; }
 
+  GooString *getCMapName() { return cMapName; }
+
   // Return true if this CMap matches the specified <collectionA>, and
   // <cMapNameA>.
   GBool match(GooString *collectionA, GooString *cMapNameA);
 
   // Return the CID corresponding to the character code starting at
-  // <s>, which contains <len> bytes.  Sets *<nUsed> to the number of
-  // bytes used by the char code.
-  CID getCID(char *s, int len, int *nUsed);
+  // <s>, which contains <len> bytes.  Sets *<c> to the char code, and
+  // *<nUsed> to the number of bytes used by the char code.
+  CID getCID(char *s, int len, CharCode *c, int *nUsed);
 
   // Return the writing mode (0=horizontal, 1=vertical).
   int getWMode() { return wMode; }
@@ -78,12 +95,12 @@ public:
 
 private:
 
+  void parse2(CMapCache *cache, int (*getCharFunc)(void *), void *data);
   CMap(GooString *collectionA, GooString *cMapNameA);
   CMap(GooString *collectionA, GooString *cMapNameA, int wModeA);
   void useCMap(CMapCache *cache, char *useName);
+  void useCMap(CMapCache *cache, Object *obj);
   void copyVector(CMapVectorEntry *dest, CMapVectorEntry *src);
-  void addCodeSpace(CMapVectorEntry *vec, Guint start, Guint end,
-		    Guint nBytes);
   void addCIDs(Guint start, Guint end, Guint nBytes, CID firstCID);
   void freeCMapVector(CMapVectorEntry *vec);
   void setReverseMapVector(Guint startCode, CMapVectorEntry *vec,
@@ -91,6 +108,8 @@ private:
 
   GooString *collection;
   GooString *cMapName;
+  GBool isIdent;		// true if this CMap is an identity mapping,
+				//   or is based on one (via usecmap)
   int wMode;			// writing mode (0=horizontal, 1=vertical)
   CMapVectorEntry *vector;	// vector for first byte (NULL for
 				//   identity CMap)

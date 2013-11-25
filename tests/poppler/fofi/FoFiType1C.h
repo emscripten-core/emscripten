@@ -14,6 +14,7 @@
 // under GPL version 2 or later
 //
 // Copyright (C) 2006 Takashi Iwai <tiwai@suse.de>
+// Copyright (C) 2012 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -161,9 +162,16 @@ public:
   // be NULL).  This is only useful with 8-bit fonts.
   char **getEncoding();
 
+  // Get the glyph names.
+  int getNumGlyphs() { return nGlyphs; }
+  GooString *getGlyphName(int gid);
+
   // Return the mapping from CIDs to GIDs, and return the number of
   // CIDs in *<nCIDs>.  This is only useful for CID fonts.
-  Gushort *getCIDToGIDMap(int *nCIDs);
+  int *getCIDToGIDMap(int *nCIDs);
+
+  // Return the font matrix as an array of six numbers.
+  void getFontMatrix(double *mat);
 
   // Convert to a Type 1 font, suitable for embedding in a PostScript
   // file.  This is only useful with 8-bit fonts.  If <newEncoding> is
@@ -171,25 +179,36 @@ public:
   // font.  If <ascii> is true the eexec section will be hex-encoded,
   // otherwise it will be left as binary data.  If <psName> is non-NULL,
   // it will be used as the PostScript font name.
-  void convertToType1(char *psName, char **newEncoding, GBool ascii,
+  void convertToType1(char *psName, const char **newEncoding, GBool ascii,
 		      FoFiOutputFunc outputFunc, void *outputStream);
 
   // Convert to a Type 0 CIDFont, suitable for embedding in a
   // PostScript file.  <psName> will be used as the PostScript font
-  // name.
-  void convertToCIDType0(char *psName,
+  // name.  There are three cases for the CID-to-GID mapping:
+  // (1) if <codeMap> is non-NULL, then it is the CID-to-GID mapping
+  // (2) if <codeMap> is NULL and this is a CID CFF font, then the
+  //     font's internal CID-to-GID mapping is used
+  // (3) is <codeMap> is NULL and this is an 8-bit CFF font, then
+  //     the identity CID-to-GID mapping is used
+  void convertToCIDType0(char *psName, int *codeMap, int nCodes,
 			 FoFiOutputFunc outputFunc, void *outputStream);
 
   // Convert to a Type 0 (but non-CID) composite font, suitable for
   // embedding in a PostScript file.  <psName> will be used as the
-  // PostScript font name.
-  void convertToType0(char *psName,
+  // PostScript font name.  There are three cases for the CID-to-GID
+  // mapping:
+  // (1) if <codeMap> is non-NULL, then it is the CID-to-GID mapping
+  // (2) if <codeMap> is NULL and this is a CID CFF font, then the
+  //     font's internal CID-to-GID mapping is used
+  // (3) is <codeMap> is NULL and this is an 8-bit CFF font, then
+  //     the identity CID-to-GID mapping is used
+  void convertToType0(char *psName, int *codeMap, int nCodes,
 		      FoFiOutputFunc outputFunc, void *outputStream);
 
 private:
 
   FoFiType1C(char *fileA, int lenA, GBool freeFileDataA);
-  void eexecCvtGlyph(Type1CEexecBuf *eb, char *glyphName,
+  void eexecCvtGlyph(Type1CEexecBuf *eb, const char *glyphName,
 		     int offset, int nBytes,
 		     Type1CIndex *subrIdx,
 		     Type1CPrivateDict *pDict);
@@ -199,8 +218,9 @@ private:
   void cvtGlyphWidth(GBool useOp, GooString *charBuf,
 		     Type1CPrivateDict *pDict);
   void cvtNum(double x, GBool isFP, GooString *charBuf);
-  void eexecWrite(Type1CEexecBuf *eb, char *s);
+  void eexecWrite(Type1CEexecBuf *eb, const char *s);
   void eexecWriteCharstring(Type1CEexecBuf *eb, Guchar *s, int n);
+  void writePSString(char *s, FoFiOutputFunc outputFunc, void *outputStream);
   GBool parse();
   void readTopDict();
   void readFD(int offset, int length, Type1CPrivateDict *pDict);
@@ -231,6 +251,7 @@ private:
   int nFDs;
   Guchar *fdSelect;
   Gushort *charset;
+  Gushort charsetLength;
   int gsubrBias;
 
   GBool parsedOk;

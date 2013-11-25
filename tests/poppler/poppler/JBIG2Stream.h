@@ -14,6 +14,7 @@
 // under GPL version 2 or later
 //
 // Copyright (C) 2009 David Benjamin <davidben@mit.edu>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -50,13 +51,16 @@ public:
   virtual StreamKind getKind() { return strJBIG2; }
   virtual void reset();
   virtual void close();
-  virtual int getPos();
+  virtual Goffset getPos();
   virtual int getChar();
   virtual int lookChar();
-  virtual GooString *getPSFilter(int psLevel, char *indent);
+  virtual GooString *getPSFilter(int psLevel, const char *indent);
   virtual GBool isBinary(GBool last = gTrue);
+  virtual Object *getGlobalsStream() { return &globalsStream; }
 
 private:
+  virtual GBool hasGetChars() { return true; }
+  virtual int getChars(int nChars, Guchar *buffer);
 
   void readSegments();
   GBool readSymbolDictSeg(Guint segNum, Guint length,

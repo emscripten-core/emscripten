@@ -16,6 +16,7 @@
 #include <Catalog.h>
 #include <OptionalContent.h>
 #include <CairoOutputDev.h>
+#include <FileSpec.h>
 #endif
 
 struct _PopplerDocument
@@ -60,7 +61,6 @@ struct _PopplerPage
   Page *page;
   int index;
   TextPage *text;
-  Annots *annots;
 };
 
 struct _PopplerFormField
@@ -69,6 +69,7 @@ struct _PopplerFormField
   GObject parent_instance;
   PopplerDocument *document;
   FormWidget *widget;
+  PopplerAction *action;
 };
 
 struct _PopplerAnnot
@@ -110,7 +111,7 @@ PopplerDest   *_poppler_dest_new_goto (PopplerDocument *document,
 				       LinkDest        *link_dest);
 PopplerFormField *_poppler_form_field_new (PopplerDocument *document,
 					   FormWidget      *field);
-PopplerAttachment *_poppler_attachment_new (EmbFile *file);
+PopplerAttachment *_poppler_attachment_new (FileSpec *file);
 PopplerMovie      *_poppler_movie_new (Movie *movie);
 PopplerMedia      *_poppler_media_new (MediaRendition *media);
 PopplerAnnot      *_poppler_annot_new           (Annot *annot);
@@ -119,6 +120,7 @@ PopplerAnnot      *_poppler_annot_free_text_new (Annot *annot);
 PopplerAnnot      *_poppler_annot_file_attachment_new (Annot *annot);
 PopplerAnnot      *_poppler_annot_movie_new (Annot *annot);
 PopplerAnnot      *_poppler_annot_screen_new (Annot *annot);
+PopplerAnnot      *_poppler_annot_line_new (Annot *annot);
 
 char *_poppler_goo_string_to_utf8(GooString *s);
 gboolean _poppler_convert_pdf_date_to_gtime (GooString *date,

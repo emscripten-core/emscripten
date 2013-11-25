@@ -2,7 +2,7 @@
 //
 // UnicodeMapTables.h
 //
-// Copyright 2001-2003 Glyph & Cog, LLC
+// Copyright 2001-2009 Glyph & Cog, LLC
 //
 //========================================================================
 
@@ -64,7 +64,9 @@ static UnicodeMapRange latin1UnicodeMapRanges[] = {
   { 0xfb01, 0xfb01, 0x6669, 2 },
   { 0xfb02, 0xfb02, 0x666c, 2 },
   { 0xfb03, 0xfb03, 0x666669, 3 },
-  { 0xfb04, 0xfb04, 0x66666c, 3 }
+  { 0xfb04, 0xfb04, 0x66666c, 3 },
+  { 0xfb05, 0xfb05, 0x7374, 2 },
+  { 0xfb06, 0xfb06, 0x7374, 2 }
 };
 #define latin1UnicodeMapLen (sizeof(latin1UnicodeMapRanges) / sizeof(UnicodeMapRange))
 
@@ -197,7 +199,9 @@ static UnicodeMapRange ascii7UnicodeMapRanges[] = {
   { 0xfb01, 0xfb01, 0x6669, 2 },
   { 0xfb02, 0xfb02, 0x666c, 2 },
   { 0xfb03, 0xfb03, 0x666669, 3 },
-  { 0xfb04, 0xfb04, 0x66666c, 3 }
+  { 0xfb04, 0xfb04, 0x66666c, 3 },
+  { 0xfb05, 0xfb05, 0x7374, 2 },
+  { 0xfb06, 0xfb06, 0x7374, 2 }
 };
 #define ascii7UnicodeMapLen (sizeof(ascii7UnicodeMapRanges) / sizeof(UnicodeMapRange))
 

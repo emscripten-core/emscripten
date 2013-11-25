@@ -9087,17 +9087,36 @@ def process(filename):
   )
   src.close()
 '''
-
-    #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
-
     freetype = self.get_freetype()
 
     poppler = self.get_library('poppler',
                                [os.path.join('utils', 'pdftoppm.o'),
                                 os.path.join('utils', 'parseargs.o'),
                                 os.path.join('poppler', '.libs', 'libpoppler.a')],
-                               env_init={ 'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' ' },
-                               configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
+
+                               env_init={ 'FONTCONFIG_CFLAGS': ' ', 
+                                          'FONTCONFIG_LIBS': ' ',
+                                          'FREETYPE_CFLAGS': ' ',
+                                          'FREETYPE_LIBS': ' '
+                                        },
+                               configure_args=['--enable-shared=no',
+                                               '--disable-libopenjpeg',
+                                               '--disable-libtiff',
+                                               '--disable-largefile',
+                                               '--disable-libjpeg',
+                                               '--disable-libpng',
+                                               '--disable-cairo-output',
+                                               '--disable-poppler-glib',
+                                               '--disable-gtk-doc',
+                                               '--disable-gtk-doc-html',
+                                               '--disable-gtk-doc-pdf',
+                                               '--disable-poppler-qt4',
+                                               '--disable-poppler-qt5',
+                                               '--disable-poppler-cpp',
+                                               '--disable-gtk-test',
+                                               '--enable-cms=none',
+                                               '--without-x',
+                                               ])
 
     # Combine libraries
 

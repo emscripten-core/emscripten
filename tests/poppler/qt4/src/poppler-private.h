@@ -1,8 +1,12 @@
 /* poppler-private.h: qt interface to poppler
  * Copyright (C) 2005, Net Integration Technologies, Inc.
  * Copyright (C) 2005, 2008, Brad Hards <bradh@frogmouth.net>
- * Copyright (C) 2006-2009, 2011 by Albert Astals Cid <aacid@kde.org>
- * Copyright (C) 2007-2009 by Pino Toscano <pino@kde.org>
+ * Copyright (C) 2006-2009, 2011, 2012 by Albert Astals Cid <aacid@kde.org>
+ * Copyright (C) 2007-2009, 2011 by Pino Toscano <pino@kde.org>
+ * Copyright (C) 2011 Andreas Hartmetz <ahartmetz@gmail.com>
+ * Copyright (C) 2011 Hib Eris <hib@hiberis.nl>
+ * Copyright (C) 2012, 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
+ * Copyright (C) 2013 Julien Nabet <serval2412@yahoo.fr>
  * Inspired on code by
  * Copyright (C) 2004 by Albert Astals Cid <tsdgeos@terra.es>
  * Copyright (C) 2004 by Enrico Ros <eros.kde@email.it>
@@ -25,6 +29,7 @@
 #ifndef _POPPLER_PRIVATE_H_
 #define _POPPLER_PRIVATE_H_
 
+#include <QtCore/QFile>
 #include <QtCore/QPointer>
 #include <QtCore/QVector>
 
@@ -40,6 +45,7 @@
 #endif
 
 #include "poppler-qt4.h"
+#include "poppler-embeddedfile-private.h"
 
 class LinkDest;
 class FormWidget;
@@ -73,10 +79,23 @@ namespace Poppler {
 
     class DocumentData {
     public:
-	DocumentData(GooString *filePath, GooString *ownerPassword, GooString *userPassword)
+	DocumentData(const QString &filePath, GooString *ownerPassword, GooString *userPassword)
 	    {
-		doc = new PDFDoc(filePath, ownerPassword, userPassword);
-		init(ownerPassword, userPassword);
+		init();
+		m_filePath = filePath;	
+
+#if defined(_WIN32)
+		wchar_t *fileName = new WCHAR[filePath.length()];
+		int length = filePath.toWCharArray(fileName); 
+		doc = new PDFDoc(fileName, length, ownerPassword, userPassword);
+		delete[] fileName;
+#else
+		GooString *fileName = new GooString(QFile::encodeName(filePath));
+		doc = new PDFDoc(fileName, ownerPassword, userPassword);
+#endif
+
+		delete ownerPassword;
+		delete userPassword;
 	    }
 	
 	DocumentData(const QByteArray &data, GooString *ownerPassword, GooString *userPassword)
@@ -85,70 +104,21 @@ namespace Poppler {
 		fileContents = data;
 		obj.initNull();
 		MemStream *str = new MemStream((char*)fileContents.data(), 0, fileContents.length(), &obj);
-	        doc = new PDFDoc(str, ownerPassword, userPassword);
-		init(ownerPassword, userPassword);
+		init();
+		doc = new PDFDoc(str, ownerPassword, userPassword);
+		delete ownerPassword;
+		delete userPassword;
 	    }
 	
-	void init(GooString *ownerPassword, GooString *userPassword);
+	void init();
 	
 	~DocumentData();
-	
-	OutputDev *getOutputDev()
-	{
-		if (!m_outputDev)
-		{
-			switch (m_backend)
-			{
-			case Document::ArthurBackend:
-			// create a splash backend even in case of the Arthur Backend
-			case Document::SplashBackend:
-			{
-#if defined(HAVE_SPLASH)
-			SplashColor bgColor;
-			bgColor[0] = paperColor.blue();
-			bgColor[1] = paperColor.green();
-			bgColor[2] = paperColor.red();
-			GBool AA = m_hints & Document::TextAntialiasing ? gTrue : gFalse;
-			SplashOutputDev * splashOutputDev = new SplashOutputDev(splashModeXBGR8, 4, gFalse, bgColor, gTrue, AA);
-			splashOutputDev->setVectorAntialias(m_hints & Document::Antialiasing ? gTrue : gFalse);
-			splashOutputDev->setFreeTypeHinting(m_hints & Document::TextHinting ? gTrue : gFalse);
-			splashOutputDev->startDoc(doc->getXRef());
-			m_outputDev = splashOutputDev;
-#endif
-			break;
-			}
-			}
-		}
-		return m_outputDev;
-	}
 	
 	void addTocChildren( QDomDocument * docSyn, QDomNode * parent, GooList * items );
 	
 	void setPaperColor(const QColor &color)
 	{
-		if (color == paperColor)
-			return;
-
 		paperColor = color;
-		if ( m_outputDev == NULL )
-			return;
-
-		switch ( m_backend )
-		{
-			case Document::SplashBackend:
-			{
-#if defined(HAVE_SPLASH)
-				SplashOutputDev *splash_output = static_cast<SplashOutputDev *>( m_outputDev );
-				SplashColor bgColor;
-				bgColor[0] = paperColor.blue();
-				bgColor[1] = paperColor.green();
-				bgColor[2] = paperColor.red();
-				splash_output->setPaperColor(bgColor);
-#endif
-				break;
-			}
-			default: ;
-		}
 	}
 	
 	void fillMembers()
@@ -158,8 +128,8 @@ namespace Poppler {
 		if (!(0 == numEmb)) {
 			// we have some embedded documents, build the list
 			for (int yalv = 0; yalv < numEmb; ++yalv) {
-				EmbFile *ef = doc->getCatalog()->embeddedFile(yalv);
-				m_embeddedFiles.append(new EmbeddedFile(ef));
+				FileSpec *fs = doc->getCatalog()->embeddedFile(yalv);
+				m_embeddedFiles.append(new EmbeddedFile(*new EmbeddedFileData(fs)));
 			}
 		}
 	}
@@ -167,11 +137,11 @@ namespace Poppler {
 	static Document *checkDocument(DocumentData *doc);
 
 	PDFDoc *doc;
+	QString m_filePath;
 	QByteArray fileContents;
 	bool locked;
 	FontIterator *m_fontInfoIterator;
 	Document::RenderBackend m_backend;
-	OutputDev *m_outputDev;
 	QList<EmbeddedFile*> m_embeddedFiles;
 	QPointer<OptContentModel> m_optContentModel;
 	QColor paperColor;
@@ -255,41 +225,14 @@ namespace Poppler {
     {
 	public:
 		FormFieldData(DocumentData *_doc, ::Page *p, ::FormWidget *w) :
-		doc(_doc), page(p), fm(w), flags(0), annoflags(0)
+		doc(_doc), page(p), fm(w)
 		{
-		}
-
-		Qt::Alignment textAlignment(Object *obj) const
-		{
-			Object tmp;
-			int align = 0;
-			if (obj->dictLookup("Q", &tmp)->isInt())
-			{
-				align = tmp.getInt();
-			}
-			tmp.free();
-			Qt::Alignment qtalign;
-			switch ( align )
-			{
-				case 1:
-					qtalign = Qt::AlignHCenter;
-					break;
-				case 2:
-					qtalign = Qt::AlignRight;
-					break;
-				case 0:
-				default:
-					qtalign = Qt::AlignLeft;
-			}
-			return qtalign;
 		}
 
 		DocumentData *doc;
 		::Page *page;
 		::FormWidget *fm;
 		QRectF box;
-		int flags;
-		int annoflags;
     };
 
 }

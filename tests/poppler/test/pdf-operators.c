@@ -1,7 +1,7 @@
 typedef struct
 {
-  char *op;
-  char *description;
+  const char *op;
+  const char *description;
 } OperatorMapping;
 
 OperatorMapping op_mapping[] = {

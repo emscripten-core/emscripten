@@ -194,7 +194,7 @@ void Movie::parseMovie (Object *movieDict) {
     fileName = obj2.getString()->copy();
     obj2.free();
   } else {
-    error (-1, "Invalid Movie");
+    error (errSyntaxError, -1, "Invalid Movie");
     ok = gFalse;
     obj1.free();
     return;

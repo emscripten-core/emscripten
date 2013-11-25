@@ -41,7 +41,7 @@ public:
   static SplashFontFile *loadType1Font(SplashT1FontEngine *engineA,
 				       SplashFontFileID *idA,
 				       SplashFontSrc *src,
-				       char **encA);
+				       const char **encA);
 
   virtual ~SplashT1FontFile();
 
@@ -55,11 +55,11 @@ private:
   SplashT1FontFile(SplashT1FontEngine *engineA,
 		   SplashFontFileID *idA,
 		   SplashFontSrc *src,
-		   int t1libIDA, char **encA, char *encStrA);
+		   int t1libIDA, const char **encA, char *encStrA);
 
   SplashT1FontEngine *engine;
   int t1libID;			// t1lib font ID
-  char **enc;
+  const char **enc;
   char *encStr;
 
   friend class SplashT1Font;

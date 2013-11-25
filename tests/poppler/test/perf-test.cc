@@ -1,5 +1,5 @@
 /* Copyright Krzysztof Kowalczyk 2006-2007
-   Copyright Hib Eris <hib@hiberis.nl> 2008
+   Copyright Hib Eris <hib@hiberis.nl> 2008, 2013
    License: GPLv2 */
 /*
   A tool to stress-test poppler rendering and measure rendering times for
@@ -325,7 +325,7 @@ void sleep_milliseconds(int milliseconds)
 #endif
 }
 
-#ifndef _MSC_VER
+#ifndef HAVE_STRCPY_S
 void strcpy_s(char* dst, size_t dst_size, const char* src)
 {
     size_t src_size = strlen(src) + 1;
@@ -338,7 +338,9 @@ void strcpy_s(char* dst, size_t dst_size, const char* src)
         }
     }
 }
+#endif
 
+#ifndef HAVE_STRCAT_S
 void strcat_s(char *dst, size_t dst_size, const char* src)
 {
     size_t dst_len = strlen(dst);
@@ -431,7 +433,7 @@ SplashOutputDev * PdfEnginePoppler::outputDevice() {
         GBool bitmapTopDown = gTrue;
         _outputDev = new SplashOutputDev(gSplashColorMode, 4, gFalse, gBgColor, bitmapTopDown);
         if (_outputDev)
-            _outputDev->startDoc(_pdfDoc->getXRef());
+            _outputDev->startDoc(_pdfDoc);
     }
     return _outputDev;
 }
@@ -742,7 +744,7 @@ void OutputDebugString(const char *txt)
 #define _vsnprintf vsnprintf
 #endif
 
-void my_error(int pos, char *msg, va_list args) {
+void my_error(void *, ErrorCategory, Goffset pos, char *msg) {
 #if 0
     char        buf[4096], *p = buf;
 
@@ -752,7 +754,7 @@ void my_error(int pos, char *msg, va_list args) {
     }
 
     if (pos >= 0) {
-        p += _snprintf(p, sizeof(buf)-1, "Error (%d): ", pos);
+      p += _snprintf(p, sizeof(buf)-1, "Error (%lld): ", (long long)pos);
         *p   = '\0';
         OutputDebugString(p);
     } else {
@@ -769,7 +771,7 @@ void my_error(int pos, char *msg, va_list args) {
     OutputDebugString(buf);
 
     if (pos >= 0) {
-        p += _snprintf(p, sizeof(buf)-1, "Error (%d): ", pos);
+        p += _snprintf(p, sizeof(buf)-1, "Error (%lld): ", (long long)pos);
         *p   = '\0';
         OutputDebugString(buf);
         if (gErrFile)
@@ -796,7 +798,7 @@ void my_error(int pos, char *msg, va_list args) {
 #endif
 }
 
-void LogInfo(char *fmt, ...)
+void LogInfo(const char *fmt, ...)
 {
     va_list args;
     char        buf[4096], *p = buf;
@@ -840,7 +842,7 @@ static void RenderPdfAsText(const char *fileName)
 
     LogInfo("started: %s\n", fileName);
 
-    TextOutputDev * textOut = new TextOutputDev(NULL, gTrue, gFalse, gFalse);
+    TextOutputDev * textOut = new TextOutputDev(NULL, gTrue, 0, gFalse, gFalse);
     if (!textOut->isOk()) {
         delete textOut;
         return;
@@ -854,7 +856,7 @@ static void RenderPdfAsText(const char *fileName)
 
     pdfDoc = new PDFDoc(fileNameStr, NULL, NULL, NULL);
     if (!pdfDoc->isOk()) {
-        error(-1, "RenderPdfFile(): failed to open PDF file %s\n", fileName);
+        error(errIO, -1, "RenderPdfFile(): failed to open PDF file {0:s}\n", fileName);
         goto Exit;
     }
 
@@ -1225,13 +1227,13 @@ static void RenderCmdLineArg(char *cmdLineArg)
             RenderFileList(cmdLineArg);
 #endif
     } else {
-        error(-1, "unexpected argument '%s'", cmdLineArg);
+        error(errCommandLine, -1, "unexpected argument '{0:s}'", cmdLineArg);
     }
 }
 
 int main(int argc, char **argv)
 {
-    setErrorFunction(my_error);
+    setErrorCallback(my_error, NULL);
     ParseCommandLine(argc, argv);
     if (0 == StrList_Len(&gArgsListRoot))
         PrintUsageAndExit(argc, argv);
@@ -1242,7 +1244,6 @@ int main(int argc, char **argv)
     if (!globalParams)
         return 1;
     globalParams->setErrQuiet(gFalse);
-    globalParams->setBaseDir("");
 
     FILE * outFile = NULL;
     if (gOutFileName) {

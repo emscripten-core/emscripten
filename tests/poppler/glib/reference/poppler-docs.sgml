@@ -46,6 +46,18 @@
     <title>Index of new symbols in 0.16</title>
     <xi:include href="xml/api-index-0.16.xml"><xi:fallback /></xi:include>
   </index>
+  <index id="api-index-0-18">
+    <title>Index of new symbols in 0.18</title>
+    <xi:include href="xml/api-index-0.18.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-0-20">
+    <title>Index of new symbols in 0.20</title>
+    <xi:include href="xml/api-index-0.20.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-0-22">
+    <title>Index of new symbols in 0.22</title>
+    <xi:include href="xml/api-index-0.22.xml"><xi:fallback /></xi:include>
+  </index>
 
   <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
 </book>

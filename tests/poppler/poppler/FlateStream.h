@@ -3,7 +3,7 @@
 // FlateStream.h
 //
 // Copyright (C) 2005, Jeff Muizelaar <jeff@infidigm.net>
-// Copyright (C) 2010, Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2010, 2011, Albert Astals Cid <aacid@kde.org>
 //
 // This file is under the GPLv2 or later license
 //
@@ -11,7 +11,6 @@
 
 #ifndef FLATESTREAM_H
 #define FLATESTREAM_H
-#include <config.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
@@ -22,6 +21,7 @@
 #pragma implementation
 #endif
 
+#include "poppler-config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -32,7 +32,6 @@
 #include <ctype.h>
 #include "goo/gmem.h"
 #include "goo/gfile.h"
-#include "poppler-config.h"
 #include "Error.h"
 #include "Object.h"
 #include "Decrypt.h"
@@ -53,7 +52,7 @@ public:
   virtual int lookChar();
   virtual int getRawChar();
   virtual void getRawChars(int nChars, int *buffer);
-  virtual GooString *getPSFilter(int psLevel, char *indent);
+  virtual GooString *getPSFilter(int psLevel, const char *indent);
   virtual GBool isBinary(GBool last = gTrue);
 
 private:

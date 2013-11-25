@@ -13,6 +13,7 @@
 //
 // Copyright (C) 2008, 2010 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2010 Paweł Wiejacha <pawel.wiejacha@gmail.com>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -37,25 +38,30 @@
 //------------------------------------------------------------------------
 
 struct SplashIntersect {
+  int y;
   int x0, x1;			// intersection of segment with [y, y+1)
   int count;			// EO/NZWN counter increment
 };
 
-static bool cmpIntersect(const SplashIntersect &p0, const SplashIntersect &p1) {
-  return p0.x0 < p1.x0;
-}
+struct cmpIntersectFunctor {
+  bool operator()(const SplashIntersect &i0, const SplashIntersect &i1) {
+    return (i0.y != i1.y) ? (i0.y < i1.y) : (i0.x0 < i1.x0);
+  }
+};
 
 //------------------------------------------------------------------------
 // SplashXPathScanner
 //------------------------------------------------------------------------
 
-SplashXPathScanner::SplashXPathScanner(SplashXPath *xPathA, GBool eoA) {
+SplashXPathScanner::SplashXPathScanner(SplashXPath *xPathA, GBool eoA,
+				       int clipYMin, int clipYMax) {
   SplashXPathSeg *seg;
   SplashCoord xMinFP, yMinFP, xMaxFP, yMaxFP;
   int i;
 
   xPath = xPathA;
   eo = eoA;
+  partialClip = gFalse;
 
   // compute the bbox
   if (xPath->length == 0) {
@@ -103,16 +109,25 @@ SplashXPathScanner::SplashXPathScanner(SplashXPath *xPathA, GBool eoA) {
     xMax = splashFloor(xMaxFP);
     yMin = splashFloor(yMinFP);
     yMax = splashFloor(yMaxFP);
+    if (clipYMin > yMin) {
+      yMin = clipYMin;
+      partialClip = gTrue;
+    }
+    if (clipYMax < yMax) {
+      yMax = clipYMax;
+      partialClip = gTrue;
+    }
   }
 
-  interY = yMin - 1;
-  xPathIdx = 0;
+  allInter = NULL;
   inter = NULL;
-  interLen = interSize = 0;
+  computeIntersections();
+  interY = yMin - 1;
 }
 
 SplashXPathScanner::~SplashXPathScanner() {
   gfree(inter);
+  gfree(allInter);
 }
 
 void SplashXPathScanner::getBBoxAA(int *xMinA, int *yMinA,
@@ -124,12 +139,23 @@ void SplashXPathScanner::getBBoxAA(int *xMinA, int *yMinA,
 }
 
 void SplashXPathScanner::getSpanBounds(int y, int *spanXMin, int *spanXMax) {
-  if (interY != y) {
-    computeIntersections(y);
+  int interBegin, interEnd, xx, i;
+
+  if (y < yMin || y > yMax) {
+    interBegin = interEnd = 0;
+  } else {
+    interBegin = inter[y - yMin];
+    interEnd = inter[y - yMin + 1];
   }
-  if (interLen > 0) {
-    *spanXMin = inter[0].x0;
-    *spanXMax = inter[interLen - 1].x1;
+  if (interBegin < interEnd) {
+    *spanXMin = allInter[interBegin].x0;
+    xx = allInter[interBegin].x1;
+    for (i = interBegin + 1; i < interEnd; ++i) {
+      if (allInter[i].x1 > xx) {
+	xx = allInter[i].x1;
+      }
+    }
+    *spanXMax = xx;
   } else {
     *spanXMin = xMax + 1;
     *spanXMax = xMax;
@@ -137,47 +163,50 @@ void SplashXPathScanner::getSpanBounds(int y, int *spanXMin, int *spanXMax) {
 }
 
 GBool SplashXPathScanner::test(int x, int y) {
-  int count, i;
+  int interBegin, interEnd, count, i;
 
-  if (interY != y) {
-    computeIntersections(y);
+  if (y < yMin || y > yMax) {
+    return gFalse;
   }
+  interBegin = inter[y - yMin];
+  interEnd = inter[y - yMin + 1];
   count = 0;
-  for (i = 0; i < interLen && inter[i].x0 <= x; ++i) {
-    if (x <= inter[i].x1) {
+  for (i = interBegin; i < interEnd && allInter[i].x0 <= x; ++i) {
+    if (x <= allInter[i].x1) {
       return gTrue;
     }
-    count += inter[i].count;
+    count += allInter[i].count;
   }
   return eo ? (count & 1) : (count != 0);
 }
 
 GBool SplashXPathScanner::testSpan(int x0, int x1, int y) {
-  int count, xx1, i;
+  int interBegin, interEnd, count, xx1, i;
 
-  if (interY != y) {
-    computeIntersections(y);
+  if (y < yMin || y > yMax) {
+    return gFalse;
   }
-
+  interBegin = inter[y - yMin];
+  interEnd = inter[y - yMin + 1];
   count = 0;
-  for (i = 0; i < interLen && inter[i].x1 < x0; ++i) {
-    count += inter[i].count;
+  for (i = interBegin; i < interEnd && allInter[i].x1 < x0; ++i) {
+    count += allInter[i].count;
   }
 
   // invariant: the subspan [x0,xx1] is inside the path
   xx1 = x0 - 1;
   while (xx1 < x1) {
-    if (i >= interLen) {
+    if (i >= interEnd) {
       return gFalse;
     }
-    if (inter[i].x0 > xx1 + 1 &&
+    if (allInter[i].x0 > xx1 + 1 &&
 	!(eo ? (count & 1) : (count != 0))) {
       return gFalse;
     }
-    if (inter[i].x1 > xx1) {
-      xx1 = inter[i].x1;
+    if (allInter[i].x1 > xx1) {
+      xx1 = allInter[i].x1;
     }
-    count += inter[i].count;
+    count += allInter[i].count;
     ++i;
   }
 
@@ -185,25 +214,31 @@ GBool SplashXPathScanner::testSpan(int x0, int x1, int y) {
 }
 
 GBool SplashXPathScanner::getNextSpan(int y, int *x0, int *x1) {
-  int xx0, xx1;
+  int interEnd, xx0, xx1;
 
-  if (interY != y) {
-    computeIntersections(y);
-  }
-  if (interIdx >= interLen) {
+  if (y < yMin || y > yMax) {
     return gFalse;
   }
-  xx0 = inter[interIdx].x0;
-  xx1 = inter[interIdx].x1;
-  interCount += inter[interIdx].count;
+  if (interY != y) {
+    interY = y;
+    interIdx = inter[y - yMin];
+    interCount = 0;
+  }
+  interEnd = inter[y - yMin + 1];
+  if (interIdx >= interEnd) {
+    return gFalse;
+  }
+  xx0 = allInter[interIdx].x0;
+  xx1 = allInter[interIdx].x1;
+  interCount += allInter[interIdx].count;
   ++interIdx;
-  while (interIdx < interLen &&
-	 (inter[interIdx].x0 <= xx1 ||
+  while (interIdx < interEnd &&
+	 (allInter[interIdx].x0 <= xx1 ||
 	  (eo ? (interCount & 1) : (interCount != 0)))) {
-    if (inter[interIdx].x1 > xx1) {
-      xx1 = inter[interIdx].x1;
+    if (allInter[interIdx].x1 > xx1) {
+      xx1 = allInter[interIdx].x1;
     }
-    interCount += inter[interIdx].count;
+    interCount += allInter[interIdx].count;
     ++interIdx;
   }
   *x0 = xx0;
@@ -211,163 +246,204 @@ GBool SplashXPathScanner::getNextSpan(int y, int *x0, int *x1) {
   return gTrue;
 }
 
-void SplashXPathScanner::computeIntersections(int y) {
-  SplashCoord xSegMin, xSegMax, ySegMin, ySegMax, xx0, xx1;
+void SplashXPathScanner::computeIntersections() {
   SplashXPathSeg *seg;
-  int i, j;
+  SplashCoord segXMin, segXMax, segYMin, segYMax, xx0, xx1;
+  int x, y, y0, y1, i;
 
-  // find the first segment that intersects [y, y+1)
-  i = (y >= interY) ? xPathIdx : 0;
-  while (i < xPath->length &&
-	 xPath->segs[i].y0 < y && xPath->segs[i].y1 < y) {
-    ++i;
+  if (yMin > yMax) {
+    return;
   }
-  xPathIdx = i;
 
-  // find all of the segments that intersect [y, y+1) and create an
-  // Intersect element for each one
-  interLen = 0;
-  for (j = i; j < xPath->length; ++j) {
-    seg = &xPath->segs[j];
+  // build the list of all intersections
+  allInterLen = 0;
+  allInterSize = 16;
+  allInter = (SplashIntersect *)gmallocn(allInterSize,
+					 sizeof(SplashIntersect));
+  for (i = 0; i < xPath->length; ++i) {
+    seg = &xPath->segs[i];
     if (seg->flags & splashXPathFlip) {
-      ySegMin = seg->y1;
-      ySegMax = seg->y0;
+      segYMin = seg->y1;
+      segYMax = seg->y0;
     } else {
-      ySegMin = seg->y0;
-      ySegMax = seg->y1;
+      segYMin = seg->y0;
+      segYMax = seg->y1;
     }
-
-    // ensure that:      ySegMin < y+1
-    //              y <= ySegMax
-    if (ySegMin >= y + 1) {
-      break;
-    }
-    if (ySegMax < y) {
-      continue;
-    }
-
-    if (interLen == interSize) {
-      if (interSize == 0) {
-	interSize = 16;
-      } else {
-	interSize *= 2;
-      }
-      inter = (SplashIntersect *)greallocn(inter, interSize,
-					   sizeof(SplashIntersect));
-    }
-
     if (seg->flags & splashXPathHoriz) {
-      xx0 = seg->x0;
-      xx1 = seg->x1;
+      y = splashFloor(seg->y0);
+      if (y >= yMin && y <= yMax) {
+	addIntersection(segYMin, segYMax, seg->flags,
+			y, splashFloor(seg->x0), splashFloor(seg->x1));
+      }
     } else if (seg->flags & splashXPathVert) {
-      xx0 = xx1 = seg->x0;
+      y0 = splashFloor(segYMin);
+      if (y0 < yMin) {
+	y0 = yMin;
+      }
+      y1 = splashFloor(segYMax);
+      if (y1 > yMax) {
+	y1 = yMax;
+      }
+      x = splashFloor(seg->x0);
+      for (y = y0; y <= y1; ++y) {
+	addIntersection(segYMin, segYMax, seg->flags, y, x, x);
+      }
     } else {
       if (seg->x0 < seg->x1) {
-	xSegMin = seg->x0;
-	xSegMax = seg->x1;
+	segXMin = seg->x0;
+	segXMax = seg->x1;
       } else {
-	xSegMin = seg->x1;
-	xSegMax = seg->x0;
+	segXMin = seg->x1;
+	segXMax = seg->x0;
       }
-      // intersection with top edge
-      xx0 = seg->x0 + ((SplashCoord)y - seg->y0) * seg->dxdy;
-      // intersection with bottom edge
-      xx1 = seg->x0 + ((SplashCoord)y + 1 - seg->y0) * seg->dxdy;
-      // the segment may not actually extend to the top and/or bottom edges
-      if (xx0 < xSegMin) {
-	xx0 = xSegMin;
-      } else if (xx0 > xSegMax) {
-	xx0 = xSegMax;
+      y0 = splashFloor(segYMin);
+      if (y0 < yMin) {
+	y0 = yMin;
       }
-      if (xx1 < xSegMin) {
-	xx1 = xSegMin;
-      } else if (xx1 > xSegMax) {
-	xx1 = xSegMax;
+      y1 = splashFloor(segYMax);
+      if (y1 > yMax) {
+	y1 = yMax;
+      }
+      // this loop could just add seg->dxdy to xx1 on each iteration,
+      // but that introduces numerical accuracy problems
+      xx1 = seg->x0 + ((SplashCoord)y0 - seg->y0) * seg->dxdy;
+      for (y = y0; y <= y1; ++y) {
+	xx0 = xx1;
+	xx1 = seg->x0 + ((SplashCoord)(y + 1) - seg->y0) * seg->dxdy;
+	// the segment may not actually extend to the top and/or bottom edges
+	if (xx0 < segXMin) {
+	  xx0 = segXMin;
+	} else if (xx0 > segXMax) {
+	  xx0 = segXMax;
+	}
+	if (xx1 < segXMin) {
+	  xx1 = segXMin;
+	} else if (xx1 > segXMax) {
+	  xx1 = segXMax;
+	}
+	addIntersection(segYMin, segYMax, seg->flags, y,
+			splashFloor(xx0), splashFloor(xx1));
       }
     }
-    if (xx0 < xx1) {
-      inter[interLen].x0 = splashFloor(xx0);
-      inter[interLen].x1 = splashFloor(xx1);
-    } else {
-      inter[interLen].x0 = splashFloor(xx1);
-      inter[interLen].x1 = splashFloor(xx0);
-    }
-    if (ySegMin <= y &&
-	(SplashCoord)y < ySegMax &&
-	!(seg->flags & splashXPathHoriz)) {
-      inter[interLen].count = eo ? 1
-	                         : (seg->flags & splashXPathFlip) ? 1 : -1;
-    } else {
-      inter[interLen].count = 0;
-    }
-    ++interLen;
   }
+  std::sort(allInter, allInter + allInterLen, cmpIntersectFunctor());
 
-  std::sort(inter, inter + interLen, cmpIntersect);
+  // build the list of y pointers
+  inter = (int *)gmallocn(yMax - yMin + 2, sizeof(int));
+  i = 0;
+  for (y = yMin; y <= yMax; ++y) {
+    inter[y - yMin] = i;
+    while (i < allInterLen && allInter[i].y <= y) {
+      ++i;
+    }
+  }
+  inter[yMax - yMin + 1] = i;
+}
 
-  interY = y;
-  interIdx = 0;
-  interCount = 0;
+void SplashXPathScanner::addIntersection(double segYMin, double segYMax,
+					 Guint segFlags,
+					 int y, int x0, int x1) {
+  if (allInterLen == allInterSize) {
+    allInterSize *= 2;
+    allInter = (SplashIntersect *)greallocn(allInter, allInterSize,
+					    sizeof(SplashIntersect));
+  }
+  allInter[allInterLen].y = y;
+  if (x0 < x1) {
+    allInter[allInterLen].x0 = x0;
+    allInter[allInterLen].x1 = x1;
+  } else {
+    allInter[allInterLen].x0 = x1;
+    allInter[allInterLen].x1 = x0;
+  }
+  if (segYMin <= y &&
+      (SplashCoord)y < segYMax &&
+      !(segFlags & splashXPathHoriz)) {
+    allInter[allInterLen].count = eo ? 1
+                                     : (segFlags & splashXPathFlip) ? 1 : -1;
+  } else {
+    allInter[allInterLen].count = 0;
+  }
+  ++allInterLen;
 }
 
 void SplashXPathScanner::renderAALine(SplashBitmap *aaBuf,
-				      int *x0, int *x1, int y) {
-  int xx0, xx1, xx, xxMin, xxMax, yy;
+				      int *x0, int *x1, int y, GBool adjustVertLine) {
+  int xx0, xx1, xx, xxMin, xxMax, yy, interEnd;
   Guchar mask;
   SplashColorPtr p;
 
   memset(aaBuf->getDataPtr(), 0, aaBuf->getRowSize() * aaBuf->getHeight());
   xxMin = aaBuf->getWidth();
   xxMax = -1;
-  for (yy = 0; yy < splashAASize; ++yy) {
-    computeIntersections(splashAASize * y + yy);
-    while (interIdx < interLen) {
-      xx0 = inter[interIdx].x0;
-      xx1 = inter[interIdx].x1;
-      interCount += inter[interIdx].count;
-      ++interIdx;
-      while (interIdx < interLen &&
-	     (inter[interIdx].x0 <= xx1 ||
-	      (eo ? (interCount & 1) : (interCount != 0)))) {
-	if (inter[interIdx].x1 > xx1) {
-	  xx1 = inter[interIdx].x1;
-	}
-	interCount += inter[interIdx].count;
+  if (yMin <= yMax) {
+    if (splashAASize * y < yMin) {
+      interIdx = inter[0];
+    } else if (splashAASize * y > yMax) {
+      interIdx = inter[yMax - yMin + 1];
+    } else {
+      interIdx = inter[splashAASize * y - yMin];
+    }
+    for (yy = 0; yy < splashAASize; ++yy) {
+      if (splashAASize * y + yy < yMin) {
+	interEnd = inter[0];
+      } else if (splashAASize * y + yy > yMax) {
+	interEnd = inter[yMax - yMin + 1];
+      } else {
+	interEnd = inter[splashAASize * y + yy - yMin + 1];
+      }
+      interCount = 0;
+      while (interIdx < interEnd) {
+	xx0 = allInter[interIdx].x0;
+	xx1 = allInter[interIdx].x1;
+	interCount += allInter[interIdx].count;
 	++interIdx;
-      }
-      if (xx0 < 0) {
-	xx0 = 0;
-      }
-      ++xx1;
-      if (xx1 > aaBuf->getWidth()) {
-	xx1 = aaBuf->getWidth();
-      }
-      // set [xx0, xx1) to 1
-      if (xx0 < xx1) {
-	xx = xx0;
-	p = aaBuf->getDataPtr() + yy * aaBuf->getRowSize() + (xx >> 3);
-	if (xx & 7) {
-	  mask = 0xff >> (xx & 7);
-	  if ((xx & ~7) == (xx1 & ~7)) {
-	    mask &= (Guchar)(0xff00 >> (xx1 & 7));
+	while (interIdx < interEnd &&
+	       (allInter[interIdx].x0 <= xx1 ||
+		(eo ? (interCount & 1) : (interCount != 0)))) {
+	  if (allInter[interIdx].x1 > xx1) {
+	    xx1 = allInter[interIdx].x1;
 	  }
-	  *p++ |= mask;
-	  xx = (xx & ~7) + 8;
+	  interCount += allInter[interIdx].count;
+	  ++interIdx;
 	}
-	for (; xx + 7 < xx1; xx += 8) {
-	  *p++ |= 0xff;
+	if (xx0 < 0) {
+	  xx0 = 0;
 	}
-	if (xx < xx1) {
-	  *p |= (Guchar)(0xff00 >> (xx1 & 7));
+	++xx1;
+	if (xx1 > aaBuf->getWidth()) {
+	  xx1 = aaBuf->getWidth();
 	}
-      }
-      if (xx0 < xxMin) {
-	xxMin = xx0;
-      }
-      if (xx1 > xxMax) {
-	xxMax = xx1;
+	// set [xx0, xx1) to 1
+	if (xx0 < xx1) {
+	  xx = xx0;
+	  p = aaBuf->getDataPtr() + yy * aaBuf->getRowSize() + (xx >> 3);
+	  if (xx & 7) {
+	    mask = adjustVertLine ? 0xff : 0xff >> (xx & 7);
+	    if (!adjustVertLine && (xx & ~7) == (xx1 & ~7)) {
+	      mask &= (Guchar)(0xff00 >> (xx1 & 7));
+	    }
+	    *p++ |= mask;
+	    xx = (xx & ~7) + 8;
+	  }
+	  for (; xx + 7 < xx1; xx += 8) {
+	    *p++ |= 0xff;
+	  }
+	  if (xx < xx1) {
+	    *p |= adjustVertLine ? 0xff : (Guchar)(0xff00 >> (xx1 & 7));
+	  }
+	}
+	if (xx0 < xxMin) {
+	  xxMin = xx0;
+	}
+	if (xx1 > xxMax) {
+	  xxMax = xx1;
+	}
       }
     }
+  }
+  if (xxMin > xxMax) {
+    xxMin = xxMax;
   }
   *x0 = xxMin / splashAASize;
   *x1 = (xxMax - 1) / splashAASize;
@@ -375,50 +451,64 @@ void SplashXPathScanner::renderAALine(SplashBitmap *aaBuf,
 
 void SplashXPathScanner::clipAALine(SplashBitmap *aaBuf,
 				    int *x0, int *x1, int y) {
-  int xx0, xx1, xx, yy;
+  int xx0, xx1, xx, yy, interEnd;
   Guchar mask;
   SplashColorPtr p;
 
   for (yy = 0; yy < splashAASize; ++yy) {
     xx = *x0 * splashAASize;
-    computeIntersections(splashAASize * y + yy);
-    while (interIdx < interLen && xx < (*x1 + 1) * splashAASize) {
-      xx0 = inter[interIdx].x0;
-      xx1 = inter[interIdx].x1;
-      interCount += inter[interIdx].count;
-      ++interIdx;
-      while (interIdx < interLen &&
-	     (inter[interIdx].x0 <= xx1 ||
-	      (eo ? (interCount & 1) : (interCount != 0)))) {
-	if (inter[interIdx].x1 > xx1) {
-	  xx1 = inter[interIdx].x1;
+    if (yMin <= yMax) {
+      if (splashAASize * y + yy < yMin) {
+	interIdx = interEnd = inter[0];
+      } else if (splashAASize * y + yy > yMax) {
+	interIdx = interEnd = inter[yMax - yMin + 1];
+      } else {
+	interIdx = inter[splashAASize * y + yy - yMin];
+	if (splashAASize * y + yy > yMax) {
+	  interEnd = inter[yMax - yMin + 1];
+	} else {
+	  interEnd = inter[splashAASize * y + yy - yMin + 1];
 	}
-	interCount += inter[interIdx].count;
+      }
+      interCount = 0;
+      while (interIdx < interEnd && xx < (*x1 + 1) * splashAASize) {
+	xx0 = allInter[interIdx].x0;
+	xx1 = allInter[interIdx].x1;
+	interCount += allInter[interIdx].count;
 	++interIdx;
-      }
-      if (xx0 > aaBuf->getWidth()) {
-	xx0 = aaBuf->getWidth();
-      }
-      // set [xx, xx0) to 0
-      if (xx < xx0) {
-	p = aaBuf->getDataPtr() + yy * aaBuf->getRowSize() + (xx >> 3);
-	if (xx & 7) {
-	  mask = (Guchar)(0xff00 >> (xx & 7));
-	  if ((xx & ~7) == (xx0 & ~7)) {
-	    mask |= 0xff >> (xx0 & 7);
+	while (interIdx < interEnd &&
+	       (allInter[interIdx].x0 <= xx1 ||
+		(eo ? (interCount & 1) : (interCount != 0)))) {
+	  if (allInter[interIdx].x1 > xx1) {
+	    xx1 = allInter[interIdx].x1;
 	  }
-	  *p++ &= mask;
-	  xx = (xx & ~7) + 8;
+	  interCount += allInter[interIdx].count;
+	  ++interIdx;
 	}
-	for (; xx + 7 <= xx0; xx += 8) {
-	  *p++ = 0x00;
+	if (xx0 > aaBuf->getWidth()) {
+	  xx0 = aaBuf->getWidth();
 	}
+	// set [xx, xx0) to 0
 	if (xx < xx0) {
-	  *p &= 0xff >> (xx0 & 7);
+	  p = aaBuf->getDataPtr() + yy * aaBuf->getRowSize() + (xx >> 3);
+	  if (xx & 7) {
+	    mask = (Guchar)(0xff00 >> (xx & 7));
+	    if ((xx & ~7) == (xx0 & ~7)) {
+	      mask |= 0xff >> (xx0 & 7);
+	    }
+	    *p++ &= mask;
+	    xx = (xx & ~7) + 8;
+	  }
+	  for (; xx + 7 < xx0; xx += 8) {
+	    *p++ = 0x00;
+	  }
+	  if (xx < xx0) {
+	    *p &= 0xff >> (xx0 & 7);
+	  }
 	}
-      }
-      if (xx1 >= xx) {
-	xx = xx1 + 1;
+	if (xx1 >= xx) {
+	  xx = xx1 + 1;
+	}
       }
     }
     xx0 = (*x1 + 1) * splashAASize;
@@ -434,7 +524,7 @@ void SplashXPathScanner::clipAALine(SplashBitmap *aaBuf,
 	*p++ &= mask;
 	xx = (xx & ~7) + 8;
       }
-      for (; xx + 7 <= xx0; xx += 8) {
+      for (; xx + 7 < xx0; xx += 8) {
 	*p++ = 0x00;
       }
       if (xx < xx0) {

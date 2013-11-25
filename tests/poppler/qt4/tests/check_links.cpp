@@ -27,7 +27,7 @@ bool isDestinationValid_name( const Poppler::LinkDestination *dest )
 void TestLinks::checkDocumentWithNoDests()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/WithAttachments.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/WithAttachments.pdf");
     QVERIFY( doc );
 
     std::auto_ptr< Poppler::LinkDestination > dest;
@@ -41,7 +41,7 @@ void TestLinks::checkDocumentWithNoDests()
 void TestLinks::checkDests_xr01()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/xr01.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/xr01.pdf");
     QVERIFY( doc );
 
     Poppler::Page *page = doc->page(0);
@@ -74,7 +74,7 @@ void TestLinks::checkDests_xr01()
 void TestLinks::checkDests_xr02()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/xr02.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/xr02.pdf");
     QVERIFY( doc );
 
     std::auto_ptr< Poppler::LinkDestination > dest;

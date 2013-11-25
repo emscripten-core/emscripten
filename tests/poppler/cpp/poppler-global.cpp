@@ -236,9 +236,7 @@ byte_array ustring::to_utf8() const
             return byte_array();
         }
     }
-    if (str_len_left >= 0) {
-        str.resize(str.size() - str_len_left);
-    }
+    str.resize(str.size() - str_len_left);
     return str;
 }
 
@@ -287,9 +285,7 @@ ustring ustring::from_utf8(const char *str, int len)
             return ustring();
         }
     }
-    if (ret_len_left >= 0) {
-        ret.resize(ret.size() - ret_len_left);
-    }
+    ret.resize(ret.size() - ret_len_left);
 
     return ret;
 }

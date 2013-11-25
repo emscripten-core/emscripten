@@ -16,6 +16,8 @@
 // Copyright (C) 2009 Carlos Garcia Campos <carlosgc@gnome.org>
 // Copyright (C) 2010 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2011 William Bader <williambader@hotmail.com>
+// Copyright (C) 2011, 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
+// Copyright (C) 2011 Adrian Johnson <ajohnson@redneon.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -30,7 +32,9 @@
 #endif
 
 #include "goo/gtypes.h"
+#include "Object.h"
 #include "GfxState.h"
+#include "GlobalParams.h"
 #include "OutputDev.h"
 
 //------------------------------------------------------------------------
@@ -41,7 +45,7 @@ class PreScanOutputDev: public OutputDev {
 public:
 
   // Constructor.
-  PreScanOutputDev();
+  PreScanOutputDev(PDFDoc *docA);
 
   // Destructor.
   virtual ~PreScanOutputDev();
@@ -55,6 +59,16 @@ public:
   // Does this device use drawChar() or drawString()?
   virtual GBool useDrawChar() { return gTrue; }
 
+  // Does this device use tilingPatternFill()?  If this returns false,
+  // tiling pattern fills will be reduced to a series of other drawing
+  // operations.
+  virtual GBool useTilingPatternFill() { return gTrue; }
+
+  // Does this device use functionShadedFill(), axialShadedFill(), and
+  // radialShadedFill()?  If this returns false, these shaded fills
+  // will be reduced to a series of other drawing operations.
+  virtual GBool useShadedFills(int type) { return gTrue; }
+
   // Does this device use beginType3Char/endType3Char?  Otherwise,
   // text in Type 3 fonts will be drawn with drawChar/drawString.
   virtual GBool interpretType3Chars() { return gTrue; }
@@ -62,7 +76,7 @@ public:
   //----- initialization and control
 
   // Start a page.
-  virtual void startPage(int pageNum, GfxState *state);
+  virtual void startPage(int pageNum, GfxState *state, XRef *xref);
 
   // End a page.
   virtual void endPage();
@@ -71,6 +85,15 @@ public:
   virtual void stroke(GfxState *state);
   virtual void fill(GfxState *state);
   virtual void eoFill(GfxState *state);
+  virtual GBool tilingPatternFill(GfxState *state, Gfx *gfx, Catalog *cat, Object *str,
+				  double *pmat, int paintType, int tilingType, Dict *resDict,
+				  double *mat, double *bbox,
+				  int x0, int y0, int x1, int y1,
+				  double xStep, double yStep);
+  virtual GBool functionShadedFill(GfxState *state,
+				   GfxFunctionShading *shading);
+  virtual GBool axialShadedFill(GfxState *state, GfxAxialShading *shading, double tMin, double tMax);
+  virtual GBool radialShadedFill(GfxState *state, GfxRadialShading *shading, double tMin, double tMax);
 
   //----- path clipping
   virtual void clip(GfxState *state);
@@ -134,8 +157,9 @@ public:
   GBool isAllGDI() { return gdi; }
 
   // Returns true if the operations performed since the last call to
-  // clearStats() processed a feature that PSOutputDev does not implement.
-  GBool hasLevel1PSBug() { return level1PSBug; }
+  // clearStats() included any image mask fills with a pattern color
+  // space. (only level1!)
+  GBool usesPatternImageMask() { return patternImgMask; }
 
   // Clear the stats used by the above functions.
   void clearStats();
@@ -145,12 +169,13 @@ private:
   void check(GfxColorSpace *colorSpace, GfxColor *color,
 	     double opacity, GfxBlendMode blendMode);
 
+  PDFDoc *doc;
   GBool mono;
   GBool gray;
   GBool transparency;
   GBool gdi;
   PSLevel level;		// PostScript level (1, 2, separation)
-  GBool level1PSBug;		// gTrue if it uses a feature not supported in PSOutputDev
+  GBool patternImgMask;		
 };
 
 #endif

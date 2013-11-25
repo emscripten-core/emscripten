@@ -67,6 +67,7 @@ gboolean              poppler_form_field_is_read_only            (PopplerFormFie
 gchar                *poppler_form_field_get_partial_name        (PopplerFormField *field);
 gchar                *poppler_form_field_get_mapping_name        (PopplerFormField *field);
 gchar                *poppler_form_field_get_name                (PopplerFormField *field);
+PopplerAction        *poppler_form_field_get_action              (PopplerFormField *field);
 
 /* Button Field */
 PopplerFormButtonType poppler_form_field_button_get_button_type  (PopplerFormField *field);

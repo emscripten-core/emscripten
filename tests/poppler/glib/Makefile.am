@@ -6,9 +6,7 @@ INCLUDES =					\
 	-I$(top_srcdir)				\
 	-I$(top_srcdir)/poppler			\
 	$(POPPLER_GLIB_CFLAGS)			\
-	$(GDK_CFLAGS)				\
 	$(FREETYPE_CFLAGS)			\
-	$(FONTCONFIG_CFLAGS)                    \
 	$(POPPLER_GLIB_DISABLE_DEPRECATED)	\
 	$(POPPLER_GLIB_DISABLE_SINGLE_INCLUDES)
 
@@ -65,6 +63,10 @@ libpoppler_glib_la_SOURCES =			\
 	poppler-layer.cc			\
 	poppler-media.cc			\
 	poppler-movie.cc			\
+	poppler-cached-file-loader.cc		\
+	poppler-cached-file-loader.h		\
+	poppler-input-stream.cc			\
+	poppler-input-stream.h			\
 	poppler.cc				\
 	poppler-private.h
 
@@ -72,25 +74,9 @@ libpoppler_glib_la_LIBADD =				\
 	$(top_builddir)/poppler/libpoppler.la		\
 	$(top_builddir)/poppler/libpoppler-cairo.la	\
 	$(POPPLER_GLIB_LIBS)				\
-	$(GDK_LIBS)					\
-	$(FREETYPE_LIBS)				\
-	$(FONTCONFIG_LIBS)
-
-libpoppler_glib_la_LDFLAGS = -version-info 6:0:0 @create_shared_lib@ @auto_import_flags@
-
-if BUILD_WITH_GDK
-noinst_PROGRAMS = test-poppler-glib
-
-test_poppler_glib_SOURCES =			\
-       test-poppler-glib.cc
-
-test_poppler_glib_LDADD =			\
-	$(top_builddir)/poppler/libpoppler.la	\
-	libpoppler-glib.la			\
-	$(POPPLER_GLIB_LIBS)			\
-	$(GDK_LIBS)				\
 	$(FREETYPE_LIBS)
-endif
+
+libpoppler_glib_la_LDFLAGS = -version-info 14:0:6 @create_shared_lib@ @auto_import_flags@
 
 BUILT_SOURCES =					\
 	poppler-enums.c				\
@@ -104,21 +90,19 @@ MAINTAINERCLEANFILES = $(BUILT_SOURCES) $(stamp_files)
 if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
-INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir)
+INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir) --warn-all
 INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)
 
-introspection_files = $(libpoppler_glib_la_SOURCES) $(poppler_glib_include_HEADERS)
-Poppler-0.16.gir: libpoppler-glib.la
-Poppler_0_16_gir_INCLUDES = GObject-2.0 cairo-1.0
-Poppler_0_16_gir_CFLAGS = $(INCLUDES) -I$(top_builddir)
-Poppler_0_16_gir_LIBS = libpoppler-glib.la
-Poppler_0_16_gir_FILES = $(addprefix $(srcdir)/, $(introspection_files))
+introspection_files = $(filter-out poppler-private.h poppler-input-stream.h, $(libpoppler_glib_la_SOURCES)) $(poppler_glib_include_HEADERS) $(nodist_poppler_glib_include_HEADERS)
+Poppler-0.18.gir: libpoppler-glib.la
+Poppler_0_18_gir_INCLUDES = GObject-2.0 Gio-2.0 cairo-1.0
+Poppler_0_18_gir_CFLAGS = $(INCLUDES) -I$(top_builddir)
+Poppler_0_18_gir_LIBS = libpoppler-glib.la
+Poppler_0_18_gir_FILES = $(introspection_files)
+Poppler_0_18_gir_SCANNERFLAGS = --c-include poppler.h
+Poppler_0_18_gir_EXPORT_PACKAGES = poppler-glib
 
-if BUILD_WITH_GDK
-Poppler_0_16_gir_INCLUDES += Gdk-2.0
-endif
-
-INTROSPECTION_GIRS += Poppler-0.16.gir
+INTROSPECTION_GIRS += Poppler-0.18.gir
 
 girdir = $(datadir)/gir-1.0
 dist_gir_DATA = $(INTROSPECTION_GIRS)

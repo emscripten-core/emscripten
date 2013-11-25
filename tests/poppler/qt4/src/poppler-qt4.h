@@ -1,12 +1,19 @@
 /* poppler-qt.h: qt interface to poppler
  * Copyright (C) 2005, Net Integration Technologies, Inc.
  * Copyright (C) 2005, 2007, Brad Hards <bradh@frogmouth.net>
- * Copyright (C) 2005-2010, Albert Astals Cid <aacid@kde.org>
+ * Copyright (C) 2005-2012, Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2005, Stefan Kebekus <stefan.kebekus@math.uni-koeln.de>
- * Copyright (C) 2006-2010, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2006-2011, Pino Toscano <pino@kde.org>
  * Copyright (C) 2009 Shawn Rutledge <shawn.t.rutledge@gmail.com>
  * Copyright (C) 2010 Suzuki Toshiya <mpsuzuki@hiroshima-u.ac.jp>
  * Copyright (C) 2010 Matthias Fauconneau <matthias.fauconneau@gmail.com>
+ * Copyright (C) 2011 Andreas Hartmetz <ahartmetz@gmail.com>
+ * Copyright (C) 2011 Glad Deschrijver <glad.deschrijver@gmail.com>
+ * Copyright (C) 2012, Guillermo A. Amaral B. <gamaral@kde.org>
+ * Copyright (C) 2012, Fabio D'Urso <fabiodurso@hotmail.it>
+ * Copyright (C) 2012, Tobias Koenig <tobias.koenig@kdab.com>
+ * Copyright (C) 2012 Adam Reichold <adamreichold@myopera.com>
+ * Copyright (C) 2012, 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -96,7 +103,7 @@ namespace Poppler {
     public:
       /**
 	 The default constructor sets the \p text and the rectangle that
-	 contains the text. Coordinated for the \p bBox are in points =
+	 contains the text. Coordinates for the \p bBox are in points =
 	 1/72 of an inch.
       */
       TextBox(const QString& text, const QRectF &bBox);
@@ -304,6 +311,8 @@ delete it;
        Container class for an embedded file with a PDF document
     */
     class POPPLER_QT4_EXPORT EmbeddedFile {
+	friend class DocumentData;
+	friend class AnnotationPrivate;
     public:
 	/// \cond PRIVATE
 	EmbeddedFile(EmbFile *embfile);
@@ -376,6 +385,7 @@ delete it;
 
     private:
 	Q_DISABLE_COPY(EmbeddedFile)
+	EmbeddedFile(EmbeddedFileData &dd);
 
 	EmbeddedFileData *m_embeddedFile;
     };
@@ -594,6 +604,19 @@ delete it;
 	   \since 0.14
 	**/
 	bool search(const QString &text, double &rectLeft, double &rectTop, double &rectRight, double &rectBottom, SearchDirection direction, SearchMode caseSensitive, Rotation rotate = Rotate0) const;
+	
+	/**
+	   Returns a list of all occurrences of the specified text on the page.
+	   
+	   \param text the text to search
+	   \param caseSensitive whether to be case sensitive
+	   \param rotate the rotation to apply for the search order
+	   
+	   \warning Do not use the returned QRectF as arguments of another search call because of truncation issues if qreal is defined as float.
+	   
+	   \since 0.22
+	**/
+	QList<QRectF> search(const QString &text, SearchMode caseSensitive, Rotation rotate = Rotate0) const;
 
 	/**
 	   Returns a list of text of the page
@@ -614,12 +637,12 @@ delete it;
 	QList<TextBox*> textList(Rotation rotate = Rotate0) const;
 
 	/**
-	   \return The dimensions (cropbox) of the page, in points (i.e. 1/72th on an inch)
+	   \return The dimensions (cropbox) of the page, in points (i.e. 1/72th of an inch)
 	*/
 	QSizeF pageSizeF() const;
 
 	/**
-	   \return The dimensions (cropbox) of the page, in points (i.e. 1/72th on an inch)
+	   \return The dimensions (cropbox) of the page, in points (i.e. 1/72th of an inch)
 	*/
 	QSize pageSize() const;
 
@@ -669,11 +692,34 @@ delete it;
 	
 	/**
 	 Returns the annotations of the page
+
+	 \note If you call this method twice, you get different objects
+	       pointing to the same annotations (see Annotation).
+	       The caller owns the returned objects and they should be deleted
+	       when no longer required.
 	*/
 	QList<Annotation*> annotations() const;
 
 	/**
+	 Adds an annotation to the page
+
+	 \note Ownership of the annotation object stays with the caller, who can
+	       delete it at any time.
+	 \since 0.20
+	*/
+	void addAnnotation( const Annotation *ann );
+
+	/**
+	 Removes an annotation from the page and destroys the annotation object
+
+	 \note There mustn't be other Annotation objects pointing this annotation
+	 \since 0.20
+	*/
+	void removeAnnotation( const Annotation *ann );
+
+	/**
 	 Returns the form fields on the page
+	 The caller gets the ownership of the returned objects.
 
 	 \since 0.6
 	*/
@@ -800,9 +846,24 @@ delete it;
 	enum RenderHint {
 	    Antialiasing = 0x00000001,      ///< Antialiasing for graphics
 	    TextAntialiasing = 0x00000002,  ///< Antialiasing for text
-	    TextHinting = 0x00000004        ///< Hinting for text \since 0.12.1
+	    TextHinting = 0x00000004,       ///< Hinting for text \since 0.12.1
+	    TextSlightHinting = 0x00000008, ///< Lighter hinting for text when combined with TextHinting \since 0.18
+	    OverprintPreview = 0x00000010,  ///< Overprint preview \since 0.22
+	    ThinLineSolid = 0x00000020,     ///< Enhance thin lines solid \since 0.24
+	    ThinLineShape = 0x00000040      ///< Enhance thin lines shape. Wins over ThinLineSolid \since 0.24
 	};
 	Q_DECLARE_FLAGS( RenderHints, RenderHint )
+
+	/**
+	   Form types
+
+	   \since 0.22
+	*/
+	enum FormType {
+	    NoForm,    ///< Document doesn't contain forms
+	    AcroForm,  ///< AcroForm
+	    XfaForm    ///< Adobe XML Forms Architecture (XFA), currently unsupported
+	};
 
 	/**
 	  Set a color display profile for the current document.
@@ -1316,6 +1377,13 @@ QString subject = m_doc->info("Subject");
 	bool getPdfId(QByteArray *permanentId, QByteArray *updateId) const;
 
 	/**
+	   Returns the type of forms contained in the document
+
+	   \since 0.22
+	*/
+	FormType formType() const;
+
+	/**
 	   Destructor.
 	*/
 	~Document();
@@ -1415,9 +1483,11 @@ height = dummy.height();
               \since 0.10
              */
             enum PSOption {
-                Printing = 0x00000001,              ///< The PS is generated for priting purpouses
+                Printing = 0x00000001,              ///< The PS is generated for printing purposes
                 StrictMargins = 0x00000002,
-                ForceRasterization = 0x00000004
+                ForceRasterization = 0x00000004,
+                PrintToEPS = 0x00000008,            ///< Output EPS instead of PS \since 0.20
+                HideAnnotations = 0x00000010        ///< Don't print annotations \since 0.20
             };
             Q_DECLARE_FLAGS( PSOptions, PSOption )
 
@@ -1576,6 +1646,13 @@ height = dummy.height();
        \since 0.12
     */
     POPPLER_QT4_EXPORT bool isCmsAvailable();
+    
+    /**
+       Whether the overprint preview functionality is available.
+
+       \since 0.22
+    */
+    POPPLER_QT4_EXPORT bool isOverprintPreviewAvailable();
 
     class SoundData;
     /**
@@ -1661,7 +1738,7 @@ height = dummy.height();
        \since 0.10
     */
     class POPPLER_QT4_EXPORT MovieObject {
-    friend class Page;
+    friend class AnnotationPrivate;
     public:
 	/**
 	   The play mode for playing the movie
@@ -1699,6 +1776,20 @@ height = dummy.height();
 	   How to play the movie
 	*/
 	PlayMode playMode() const;
+
+	/**
+	   Returns whether a poster image should be shown if the movie is not playing.
+	   \since 0.22
+	*/
+	bool showPosterImage() const;
+
+	/**
+	   Returns the poster image that should be shown if the movie is not playing.
+	   If the image is null but showImagePoster() returns @c true, the first frame of the movie
+	   should be used as poster image.
+	   \since 0.22
+	*/
+	QImage posterImage() const;
 
     private:
 	/// \cond PRIVATE

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2009, 2011, Pino Toscano <pino@kde.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #ifndef POPPLER_EMBEDDED_FILE_PRIVATE_H
 #define POPPLER_EMBEDDED_FILE_PRIVATE_H
 
-class EmbFile;
+class FileSpec;
 
 namespace poppler
 {
@@ -27,12 +27,12 @@ namespace poppler
 class embedded_file_private
 {
 public:
-    embedded_file_private(EmbFile *ef);
+    embedded_file_private(FileSpec *fs);
     ~embedded_file_private();
 
-    static embedded_file* create(EmbFile *ef);
+    static embedded_file* create(FileSpec *fs);
 
-    EmbFile *emb_file;
+    FileSpec *file_spec;
 };
 
 }

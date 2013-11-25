@@ -15,6 +15,9 @@
 /* Build against libpng. */
 #undef ENABLE_LIBPNG
 
+/* Build against libtiff. */
+#undef ENABLE_LIBTIFF
+
 /* Do not hardcode the library location */
 #undef ENABLE_RELOCATABLE
 
@@ -58,14 +61,17 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the `openjpeg' library (-lopenjpeg). */
-#undef HAVE_LIBOPENJPEG
+/* Define to 1 if you have the `tiff' library (-ltiff). */
+#undef HAVE_LIBTIFF
 
 /* Define to 1 if you have the `z' library (-lz). */
 #undef HAVE_LIBZ
 
 /* Defines if localtime_r is available on your system */
 #undef HAVE_LOCALTIME_R
+
+/* Define to 1 if you have the `lseek64' function. */
+#undef HAVE_LSEEK64
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -85,8 +91,17 @@
 /* Define to 1 if you have the `popen' function. */
 #undef HAVE_POPEN
 
+/* Define to 1 if you have the `pread64' function. */
+#undef HAVE_PREAD64
+
 /* Define if you have POSIX threads libraries and header files. */
 #undef HAVE_PTHREAD
+
+/* Have PTHREAD_PRIO_INHERIT. */
+#undef HAVE_PTHREAD_PRIO_INHERIT
+
+/* Defines if rand_r is available on your system */
+#undef HAVE_RAND_R
 
 /* Use splash for rendering. */
 #undef HAVE_SPLASH
@@ -96,6 +111,12 @@
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the `strcat_s' function. */
+#undef HAVE_STRCAT_S
+
+/* Define to 1 if you have the `strcpy_s' function. */
+#undef HAVE_STRCPY_S
 
 /* Define to 1 if you have the <strings.h> header file. */
 #undef HAVE_STRINGS_H
@@ -119,6 +140,9 @@
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <tiffio.h> header file. */
+#undef HAVE_TIFFIO_H
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
@@ -166,8 +190,8 @@
 /* Support for curl based doc builder is compiled in. */
 #undef POPPLER_HAS_CURL_SUPPORT
 
-/* Have GDK */
-#undef POPPLER_WITH_GDK
+/* Defines the poppler version */
+#undef POPPLER_VERSION
 
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */
@@ -188,6 +212,9 @@
 /* Use single precision arithmetic in the Splash backend */
 #undef USE_FLOAT
 
+/* Defines if use lcms1 */
+#undef USE_LCMS1
+
 /* Version number of package */
 #undef VERSION
 
@@ -196,6 +223,9 @@
 
 /* Use win32 font configuration backend */
 #undef WITH_FONTCONFIGURATION_WIN32
+
+/* OpenJPEG with the OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG flag. */
+#undef WITH_OPENJPEG_IGNORE_PCLR_CMAP_CDEF_FLAG
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
@@ -221,6 +251,11 @@
 #define HAVE_BOOLEAN
 #endif
 
+
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
+#endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 #undef _FILE_OFFSET_BITS

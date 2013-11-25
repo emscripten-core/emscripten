@@ -26,7 +26,6 @@
     <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
     <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
     <property name="focus_on_map">True</property>
-    <property name="has_separator">False</property>
     <child internal-child="vbox">
       <object class="GtkVBox" id="dialog-vbox1">
         <property name="visible">True</property>
@@ -218,11 +217,10 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="table2">
+                          <object class="GtkGrid" id="grid">
                             <property name="visible">True</property>
-                            <property name="n_rows">2</property>
-                            <property name="n_columns">3</property>
-                            <property name="homogeneous">False</property>
+                            <property name="row-homogeneous">False</property>
+                            <property name="column-homogeneous">False</property>
                             <property name="row_spacing">6</property>
                             <property name="column_spacing">12</property>
                             <child>
@@ -244,12 +242,10 @@
                                 <property name="angle">0</property>
                               </object>
                               <packing>
+                                <property name="height">1</property>
                                 <property name="left_attach">0</property>
-                                <property name="right_attach">1</property>
                                 <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options">fill</property>
-                                <property name="y_options"/>
+                                <property name="width">1</property>
                               </packing>
                             </child>
                             <child>
@@ -271,12 +267,10 @@
                                 <property name="angle">0</property>
                               </object>
                               <packing>
+                                <property name="height">1</property>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">3</property>
                                 <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options">fill</property>
-                                <property name="y_options"/>
+                                <property name="width">2</property>
                               </packing>
                             </child>
                             <child>
@@ -298,12 +292,10 @@
                                 <property name="angle">0</property>
                               </object>
                               <packing>
+                                <property name="height">1</property>
                                 <property name="left_attach">0</property>
-                                <property name="right_attach">1</property>
                                 <property name="top_attach">0</property>
-                                <property name="bottom_attach">1</property>
-                                <property name="x_options">fill</property>
-                                <property name="y_options">fill</property>
+                                <property name="width">1</property>
                               </packing>
                             </child>
                             <child>
@@ -325,17 +317,16 @@
                                 <property name="angle">0</property>
                               </object>
                               <packing>
+                                <property name="height">1</property>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
                                 <property name="top_attach">0</property>
-                                <property name="bottom_attach">1</property>
-                                <property name="y_options">fill</property>
+                                <property name="width">1</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkAlignment" id="alignment2">
                                 <property name="visible">True</property>
-                                <property name="xalign">0.5</property>
+                                <property name="xalign">1</property>
                                 <property name="yalign">0</property>
                                 <property name="xscale">0.0</property>
                                 <property name="yscale">0.0</property>
@@ -343,6 +334,7 @@
                                 <property name="bottom_padding">0</property>
                                 <property name="left_padding">0</property>
                                 <property name="right_padding">0</property>
+                                <property name="hexpand">True</property>
                                 <child>
                                   <object class="GtkButton" id="analyze_button">
                                     <property name="visible">True</property>
@@ -355,12 +347,10 @@
                                 </child>
                               </object>
                               <packing>
+                                <property name="height">1</property>
                                 <property name="left_attach">2</property>
-                                <property name="right_attach">3</property>
                                 <property name="top_attach">0</property>
-                                <property name="bottom_attach">1</property>
-                                <property name="x_options">fill</property>
-                                <property name="y_options">fill</property>
+                                <property name="width">1</property>
                               </packing>
                             </child>
                           </object>

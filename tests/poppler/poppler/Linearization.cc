@@ -4,7 +4,7 @@
 //
 // This file is licensed under the GPLv2 or later
 //
-// Copyright 2010 Hib Eris <hib@hiberis.nl>
+// Copyright 2010, 2012 Hib Eris <hib@hiberis.nl>
 //
 //========================================================================
 
@@ -60,7 +60,7 @@ Guint Linearization::getLength()
       length > 0) {
     return length;
   } else {
-    error(-1, "Length in linearization table is invalid");
+    error(errSyntaxWarning, -1, "Length in linearization table is invalid");
     return 0;
   }
 }
@@ -77,7 +77,7 @@ Guint Linearization::getHintsOffset()
       obj2.getInt() > 0) {
     hintsOffset = obj2.getInt();
   } else {
-    error(-1, "Hints table offset in linearization table is invalid");
+    error(errSyntaxWarning, -1, "Hints table offset in linearization table is invalid");
     hintsOffset = 0;
   }
   obj2.free();
@@ -98,7 +98,7 @@ Guint Linearization::getHintsLength()
       obj2.getInt() > 0) {
     hintsLength = obj2.getInt();
   } else {
-    error(-1, "Hints table length in linearization table is invalid");
+    error(errSyntaxWarning, -1, "Hints table length in linearization table is invalid");
     hintsLength = 0;
   }
   obj2.free();
@@ -119,7 +119,7 @@ Guint Linearization::getHintsOffset2()
         obj2.getInt() > 0) {
       hintsOffset2 = obj2.getInt();
     } else {
-      error(-1, "Second hints table offset in linearization table is invalid");
+      error(errSyntaxWarning, -1, "Second hints table offset in linearization table is invalid");
       hintsOffset2 = 0;
     }
   }
@@ -141,7 +141,7 @@ Guint Linearization::getHintsLength2()
         obj2.getInt() > 0) {
       hintsLength2 = obj2.getInt();
     } else {
-      error(-1, "Second hints table length in linearization table is invalid");
+      error(errSyntaxWarning, -1, "Second hints table length in linearization table is invalid");
       hintsLength2 = 0;
     }
   }
@@ -159,7 +159,7 @@ int Linearization::getObjectNumberFirst()
       objectNumberFirst > 0) {
     return objectNumberFirst;
   } else {
-    error(-1, "Object number of first page in linearization table is invalid");
+    error(errSyntaxWarning, -1, "Object number of first page in linearization table is invalid");
     return 0;
   }
 }
@@ -172,7 +172,7 @@ Guint Linearization::getEndFirst()
       pageEndFirst > 0) {
     return pageEndFirst;
   } else {
-    error(-1, "First page end offset in linearization table is invalid");
+    error(errSyntaxWarning, -1, "First page end offset in linearization table is invalid");
     return 0;
   }
 }
@@ -185,7 +185,7 @@ int Linearization::getNumPages()
       numPages > 0) {
     return numPages;
   } else {
-    error(-1, "Page count in linearization table is invalid");
+    error(errSyntaxWarning, -1, "Page count in linearization table is invalid");
     return 0;
   }
 }
@@ -198,7 +198,7 @@ Guint Linearization::getMainXRefEntriesOffset()
       mainXRefEntriesOffset > 0) {
     return mainXRefEntriesOffset;
   } else {
-    error(-1, "Main Xref offset in linearization table is invalid");
+    error(errSyntaxWarning, -1, "Main Xref offset in linearization table is invalid");
     return 0;
   }
 }
@@ -211,8 +211,8 @@ int Linearization::getPageFirst()
     linDict.getDict()->lookupInt("P", NULL, &pageFirst);
   }
 
-  if (pageFirst < 0) {
-    error(-1, "First page in linearization table is invalid");
+  if ((pageFirst < 0) || (pageFirst > getNumPages())) {
+    error(errSyntaxWarning, -1, "First page in linearization table is invalid");
     return 0;
   }
 

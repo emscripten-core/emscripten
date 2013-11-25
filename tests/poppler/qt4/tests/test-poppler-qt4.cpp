@@ -148,7 +148,7 @@ int main( int argc, char **argv )
         argc > 3)
     {
 	// use argument as file name
-	qWarning() << "usage: test-poppler-qt filename [-extract|-arthur|-textRects]";
+	qWarning() << "usage: test-poppler-qt4 filename [-extract|-arthur|-textRects]";
 	exit(1);
     }
   
@@ -186,10 +186,6 @@ int main( int argc, char **argv )
     qDebug() << "OK to add notes: " << doc->okToAddNotes();
     qDebug() << "      Page mode: " << doc->pageMode();
     qDebug() << "       Metadata: " << doc->metadata();
-    QStringList fontNameList;
-    foreach( const Poppler::FontInfo &font, doc->fonts() )
-	fontNameList += font.name();
-    qDebug() << "          Fonts: " << fontNameList.join( ", " );
 
     if ( doc->hasEmbeddedFiles() ) {
         qDebug() << "Embedded files:";
@@ -209,8 +205,11 @@ int main( int argc, char **argv )
     }
 
     Poppler::Page *page = doc->page(0);
-    qDebug() << "Page 1 size: " << page->pageSize().width()/72 << "inches x " << page->pageSize().height()/72 << "inches";
-    delete page;
+    if (page)
+    {
+        qDebug() << "Page 1 size: " << page->pageSize().width()/72 << "inches x " << page->pageSize().height()/72 << "inches";
+        delete page;
+    }
 
     if (argc == 2 || (argc == 3 && strcmp(argv[2], "-arthur") == 0) || (argc == 3 && strcmp(argv[2], "-textRects") == 0))
     {

@@ -14,7 +14,7 @@ private slots:
 void TestPageLayout::checkNone()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/UseNone.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/UseNone.pdf");
     QVERIFY( doc );
   
     QCOMPARE( doc->pageLayout(), Poppler::Document::NoLayout );
@@ -25,7 +25,7 @@ void TestPageLayout::checkNone()
 void TestPageLayout::checkSingle()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/FullScreen.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/FullScreen.pdf");
     QVERIFY( doc );
   
     QCOMPARE( doc->pageLayout(), Poppler::Document::SinglePage );
@@ -36,7 +36,7 @@ void TestPageLayout::checkSingle()
 void TestPageLayout::checkFacing()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/doublepage.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/doublepage.pdf");
     QVERIFY( doc );
 
     QCOMPARE( doc->pageLayout(), Poppler::Document::TwoPageRight );

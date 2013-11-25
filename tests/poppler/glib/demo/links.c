@@ -178,9 +178,9 @@ pgd_links_create_widget (PopplerDocument *document)
 	
 	n_pages = poppler_document_get_n_pages (document);
 
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 
 	label = gtk_label_new ("Page:");
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, TRUE, 0);
@@ -215,7 +215,7 @@ pgd_links_create_widget (PopplerDocument *document)
 	gtk_box_pack_start (GTK_BOX (vbox), demo->timer_label, FALSE, TRUE, 0);
 	gtk_widget_show (demo->timer_label);
 
-	hpaned = gtk_hpaned_new ();
+	hpaned = gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);
 
 	demo->action_view = pgd_action_view_new (document);
 

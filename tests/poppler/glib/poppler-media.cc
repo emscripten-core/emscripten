@@ -136,7 +136,7 @@ poppler_media_get_filename (PopplerMedia *poppler_media)
  * Whether the media clip is embedded in the PDF. If the result is %TRUE, the embedded stream
  * can be saved with poppler_media_save() or poppler_media_save_to_callback() function.
  * If the result is %FALSE, the media clip filename can be retrieved with
- * poppler_media_get_file_name() function.
+ * poppler_media_get_filename() function.
  *
  * Return value: %TRUE if media clip is embedded, %FALSE otherwise
  *

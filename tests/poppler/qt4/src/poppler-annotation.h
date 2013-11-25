@@ -1,8 +1,11 @@
 /* poppler-annotation.h: qt interface to poppler
- * Copyright (C) 2006-2008, Albert Astals Cid <aacid@kde.org>
+ * Copyright (C) 2006-2008, 2012 Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2006, 2008 Pino Toscano <pino@kde.org>
  * Copyright (C) 2007, Brad Hards <bradh@frogmouth.net>
  * Copyright (C) 2010, Philip Lorenz <lorenzph+freedesktop@gmail.com>
+ * Copyright (C) 2012, Tobias Koenig <tokoe@kdab.com>
+ * Copyright (C) 2012, Guillermo A. Amaral B. <gamaral@kde.org>
+ * Copyright (C) 2012, 2013 Fabio D'Urso <fabiodurso@hotmail.it>
  * Adapting code from
  *   Copyright (C) 2004 by Enrico Ros <eros.kde@email.it>
  *
@@ -25,10 +28,12 @@
 #define _POPPLER_ANNOTATION_H_
 
 #include <QtCore/QDateTime>
+#include <QtCore/QSharedDataPointer>
 #include <QtCore/QLinkedList>
 #include <QtCore/QList>
 #include <QtCore/QPointF>
 #include <QtCore/QRectF>
+#include <QtCore/QVector>
 #include <QtGui/QColor>
 #include <QtGui/QFont>
 #include <QtXml/QDomDocument>
@@ -49,10 +54,14 @@ class CaretAnnotationPrivate;
 class FileAttachmentAnnotationPrivate;
 class SoundAnnotationPrivate;
 class MovieAnnotationPrivate;
+class ScreenAnnotationPrivate;
+class WidgetAnnotationPrivate;
 class EmbeddedFile;
 class Link;
 class SoundObject;
 class MovieObject;
+class LinkRendition;
+class Page;
 
 /**
  * \short Helper class for (recursive) Annotation retrieval/storage.
@@ -90,20 +99,129 @@ class POPPLER_QT4_EXPORT AnnotationUtils
  *
  * An Annotation is an object (text note, highlight, sound, popup window, ..)
  * contained by a Page in the document.
+ *
+ * \warning Different Annotation objects might point to the same annotation.
+ *
+ * \section annotCreation How to add annotations
+ *
+ * Create an Annotation object of the desired subclass (for example
+ * TextAnnotation) and set its properties:
+ * @code
+ * Poppler::TextAnnotation* myann = new Poppler::TextAnnotation(Poppler::TextAnnotation::InPlace);
+ * myann->setBoundary(QRectF(0.1, 0.1, 0.2, 0.2)); // normalized coordinates: (0,0) is top-left, (1,1) is bottom-right
+ * myann->setContents("Hello, world!");
+ * @endcode
+ * \note Always set a boundary rectangle, or nothing will be shown!
+ *
+ * Obtain a pointer to the Page where you want to add the annotation (refer to
+ * \ref req for instructions) and add the annotation:
+ * @code
+ * Poppler::Page* mypage = ...;
+ * mypage->addAnnotation(myann);
+ * @endcode
+ *
+ * You can keep on editing the annotation after it has been added to the page:
+ * @code
+ * myann->setContents("World, hello!"); // Let's change text...
+ * myann->setAuthor("Your name here");  // ...and set an author too
+ * @endcode
+ *
+ * When you're done with editing the annotation, you must destroy the Annotation
+ * object:
+ * @code
+ * delete myann;
+ * @endcode
+ *
+ * Use the PDFConverter class to save the modified document.
+ *
+ * \section annotFixedRotation FixedRotation flag specifics
+ *
+ * According to the PDF specification, annotations whose
+ * Annotation::FixedRotation flag is set must always be shown in their original
+ * orientation, no matter what the current rendering rotation or the page's
+ * Page::orientation() values are. In comparison with regular annotations, such
+ * annotations should therefore be transformed by an extra rotation at rendering
+ * time to "undo" such context-related rotations, which is equal to
+ * <code>-(rendering_rotation + page_orientation)</code>. The rotation pivot
+ * is the top-left corner of the boundary rectangle.
+ *
+ * In practice, %Poppler's \ref Page::renderToImage only "unrotates" the
+ * page orientation, and does <b>not</b> unrotate the rendering rotation.
+ * This ensures consistent renderings at different Page::Rotation values:
+ * annotations are always positioned as if they were being positioned at the
+ * default page orientation.
+ *
+ * Just like regular annotations, %Poppler Qt4 exposes normalized coordinates
+ * relative to the page's default orientation. However, behind the scenes, the
+ * coordinate system is different and %Poppler transparently transforms each
+ * shape. If you never call either Annotation::setFlags or
+ * Annotation::setBoundary, you don't need to worry about this; but if you do
+ * call them, then you need to adhere to the following rules:
+ *  - Whenever you toggle the Annotation::FixedRotation flag, you <b>must</b>
+ *    set again the boundary rectangle first, and then you <b>must</b> set
+ *    again any other geometry-related property.
+ *  - Whenever you modify the boundary rectangle of an annotation whose
+ *    Annotation::FixedRotation flag is set, you <b>must</b> set again any other
+ *    geometry-related property.
+ *
+ * These two rules are necessary to make %Poppler's transparent coordinate
+ * conversion work properly.
  */
 class POPPLER_QT4_EXPORT Annotation
 {
+  friend class AnnotationUtils;
+  friend class LinkMovie;
+  friend class LinkRendition;
+
   public:
     // enum definitions
+    /**
+     * Annotation subclasses
+     *
+     * \sa subType()
+     */
     // WARNING!!! oKular uses that very same values so if you change them notify the author!
-    enum SubType { AText = 1, ALine = 2, AGeom = 3, AHighlight = 4, AStamp = 5,
-                   AInk = 6, ALink = 7, ACaret = 8, AFileAttachment = 9, ASound = 10,
-                   AMovie = 11, A_BASE = 0 };
-    enum Flag { Hidden = 1, FixedSize = 2, FixedRotation = 4, DenyPrint = 8,
-                DenyWrite = 16, DenyDelete = 32, ToggleHidingOnMouse = 64, External = 128 };
+    enum SubType
+    {
+        AText = 1,            ///< TextAnnotation
+        ALine = 2,            ///< LineAnnotation
+        AGeom = 3,            ///< GeomAnnotation
+        AHighlight = 4,       ///< HighlightAnnotation
+        AStamp = 5,           ///< StampAnnotation
+        AInk = 6,             ///< InkAnnotation
+        ALink = 7,            ///< LinkAnnotation
+        ACaret = 8,           ///< CaretAnnotation
+        AFileAttachment = 9,  ///< FileAttachmentAnnotation
+        ASound = 10,          ///< SoundAnnotation
+        AMovie = 11,          ///< MovieAnnotation
+        AScreen = 12,         ///< ScreenAnnotation \since 0.20
+        AWidget = 13,         ///< WidgetAnnotation \since 0.22
+        A_BASE = 0
+    };
+
+    /**
+     * Annotation flags
+     *
+     * They can be OR'd together (e.g. Annotation::FixedRotation | Annotation::DenyPrint).
+     *
+     * \sa flags(), setFlags(int)
+     */
+    // NOTE: Only flags that are known to work are documented
+    enum Flag
+    {
+        Hidden = 1,                ///< Do not display or print the annotation
+        FixedSize = 2,
+        FixedRotation = 4,         ///< Do not rotate the annotation according to page orientation and rendering rotation \warning Extra care is needed with this flag: see \ref annotFixedRotation
+        DenyPrint = 8,             ///< Do not print the annotation
+        DenyWrite = 16,
+        DenyDelete = 32,
+        ToggleHidingOnMouse = 64,
+        External = 128
+    };
+
     enum LineStyle { Solid = 1, Dashed = 2, Beveled = 4, Inset = 8, Underline = 16 };
     enum LineEffect { NoEffect = 1, Cloudy = 2};
-    enum RevScope { Reply = 1, Group = 2, Delete = 4 };
+    enum RevScope { Root = 0 /** \since 0.20 */, Reply = 1, Group = 2, Delete = 4 };
     enum RevType { None = 1,  Marked = 2, Unmarked = 4,  Accepted = 8, Rejected = 16, Cancelled = 32, Completed = 64 };
 
     /**
@@ -135,88 +253,187 @@ class POPPLER_QT4_EXPORT Annotation
     QDateTime creationDate() const;
     void setCreationDate( const QDateTime &date );
 
+    /**
+     * Returns this annotation's flags
+     *
+     * \sa Flag, setFlags(int)
+     */
     int flags() const;
+    /**
+     * Sets this annotation's flags
+     *
+     * \sa Flag, flags(), \ref annotFixedRotation
+     */
     void setFlags( int flags );
 
+    /**
+     * Returns this annotation's boundary rectangle in normalized coordinates
+     *
+     * \sa setBoundary(const QRectF&)
+     */
     QRectF boundary() const;
+    /**
+     * Sets this annotation's boundary rectangle
+     *
+     * The boundary rectangle is the smallest rectangle that contains the
+     * annotation.
+     *
+     * \warning This property is mandatory: you must always set this.
+     *
+     * \sa boundary(), \ref annotFixedRotation
+     */
     void setBoundary( const QRectF &boundary );
 
-    struct POPPLER_QT4_EXPORT Style
+    /**
+     * \short Container class for Annotation style information
+     *
+     * \since 0.20
+     */
+    class POPPLER_QT4_EXPORT Style
     {
-        // appearance properties
-        QColor          color;              // black
-        double          opacity;            // 1.0
-        // pen properties
-        double          width;              // 1.0
-        LineStyle       style;              // LineStyle::Solid
-        double          xCorners;           // 0.0
-        double          yCorners;           // 0.0
-        int             marks;              // 3
-        int             spaces;             // 0
-        // pen effects
-        LineEffect      effect;             // LineEffect::NoEffect
-        double          effectIntensity;    // 1.0
-        // default initializer
+      public:
         Style();
-    }               style;
+        Style( const Style &other );
+        Style& operator=( const Style &other );
+        ~Style();
 
-    /* properties: popup window */
-    struct POPPLER_QT4_EXPORT Window
-    {
-        // window state (Hidden, FixedRotation, Deny* flags allowed)
-        int             flags;              // -1 (never initialized) -> 0 (if inited and shown)
-        // geometric properties
-        QPointF         topLeft;            // no default, inited to boundary.topLeft
-        int             width;              // no default
-        int             height;             // no default
-        // window contens/override properties
-        QString         title;              // '' text in the titlebar (overrides author)
-        QString         summary;            // '' short description (displayed if not empty)
-        QString         text;               // '' text for the window (overrides annot->contents)
-        // default initializer
-        Window();
-    }               window;
+        // appearance properties
+        QColor color() const;                     // black
+        void setColor(const QColor &color);
+        double opacity() const;                   // 1.0
+        void setOpacity(double opacity);
 
-    /* properties: versioning */
-    struct POPPLER_QT4_EXPORT Revision
-    {
-        // child revision
-        Annotation *    annotation;         // not null
-        // scope and type of revision
-        RevScope        scope;              // Reply
-        RevType         type;               // None
-        // default initializer
-        Revision();
+        // pen properties
+        double width() const;                     // 1.0
+        void setWidth(double width);
+        LineStyle lineStyle() const;              // LineStyle::Solid
+        void setLineStyle(LineStyle style);
+        double xCorners() const;                  // 0.0
+        void setXCorners(double radius);
+        double yCorners() const;                  // 0.0
+        void setYCorners(double radius);
+        const QVector<double>& dashArray() const; // [ 3 ]
+        void setDashArray(const QVector<double> &array);
+
+        // pen effects
+        LineEffect lineEffect() const;            // LineEffect::NoEffect
+        void setLineEffect(LineEffect effect);
+        double effectIntensity() const;           // 1.0
+        void setEffectIntensity(double intens);
+
+      private:
+        class Private;
+        QSharedDataPointer<Private> d;
     };
 
-    QLinkedList< Revision >& revisions();
-    const QLinkedList< Revision >& revisions() const;
+    /// \since 0.20
+    Style style() const;
+    /// \since 0.20
+    void setStyle( const Style& style );
 
-    // methods: query annotation's type for runtime type identification
+    /**
+     * \short Container class for Annotation pop-up window information
+     *
+     * \since 0.20
+     */
+    class POPPLER_QT4_EXPORT Popup
+    {
+      public:
+        Popup();
+        Popup( const Popup &other );
+        Popup& operator=( const Popup &other );
+        ~Popup();
+
+        // window state (Hidden, FixedRotation, Deny* flags allowed)
+        int flags() const;       // -1 (never initialized) -> 0 (if inited and shown)
+        void setFlags( int flags );
+
+        // geometric properties
+        QRectF geometry() const; // no default
+        void setGeometry( const QRectF &geom );
+
+        // window contens/override properties
+        QString title() const;   // '' text in the titlebar (overrides author)
+        void setTitle( const QString &title );
+        QString summary() const; // '' short description (displayed if not empty)
+        void setSummary( const QString &summary );
+        QString text() const;    // '' text for the window (overrides annot->contents)
+        void setText( const QString &text );
+
+      private:
+        class Private;
+        QSharedDataPointer<Private> d;
+    };
+
+    /// \since 0.20
+    Popup popup() const;
+    /// \warning Currently does nothing \since 0.20
+    void setPopup( const Popup& popup );
+
+    /// \cond PRIVATE
+    // This field is deprecated and not used any more. Use popup
+    Q_DECL_DEPRECATED struct { int width, height; } window; // Always set to zero
+    /// \endcond
+
+    /// \since 0.20
+    RevScope revisionScope() const; // Root
+
+    /// \since 0.20
+    RevType revisionType() const;   // None
+
+    /**
+     * Returns the revisions of this annotation
+     *
+     * \note The caller owns the returned annotations and they should
+     *       be deleted when no longer required.
+     *
+     * \since 0.20
+     */
+    QList<Annotation*> revisions() const;
+
     /**
      * The type of the annotation.
      */
     virtual SubType subType() const = 0;
 
     /**
-     * Save this annotation as a child of \p parentNode.
-     */
-    virtual void store( QDomNode & parentNode, QDomDocument & document ) const;
-
-    /**
      * Destructor.
      */
     virtual ~Annotation();
+
+    /**
+     * Describes the flags from an annotations 'AA' dictionary.
+     *
+     * This flag is used by the additionalAction() method for ScreenAnnotation
+     * and WidgetAnnotation.
+     *
+     * \since 0.22
+     */
+    enum AdditionalActionType
+    {
+        CursorEnteringAction, ///< Performed when the cursor enters the annotation's active area
+        CursorLeavingAction,  ///< Performed when the cursor exists the annotation's active area
+        MousePressedAction,   ///< Performed when the mouse button is pressed inside the annotation's active area
+        MouseReleasedAction,  ///< Performed when the mouse button is released inside the annotation's active area
+        FocusInAction,        ///< Performed when the annotation receives the input focus
+        FocusOutAction,       ///< Performed when the annotation loses the input focus
+        PageOpeningAction,    ///< Performed when the page containing the annotation is opened
+        PageClosingAction,    ///< Performed when the page containing the annotation is closed
+        PageVisibleAction,    ///< Performed when the page containing the annotation becomes visible
+        PageInvisibleAction   ///< Performed when the page containing the annotation becomes invisible
+    };
 
   protected:
     /// \cond PRIVATE
     Annotation( AnnotationPrivate &dd );
     Annotation( AnnotationPrivate &dd, const QDomNode &description );
+    void storeBaseAnnotationProperties( QDomNode & parentNode, QDomDocument & document ) const;
     Q_DECLARE_PRIVATE( Annotation )
-    AnnotationPrivate *d_ptr;
+    QExplicitlySharedDataPointer<AnnotationPrivate> d_ptr;
     /// \endcond
 
   private:
+    virtual void store( QDomNode & parentNode, QDomDocument & document ) const = 0;
     Q_DISABLE_COPY( Annotation )
 };
 
@@ -228,26 +445,22 @@ class POPPLER_QT4_EXPORT Annotation
  */
 class POPPLER_QT4_EXPORT TextAnnotation : public Annotation
 {
-  public:
-    TextAnnotation();
-    TextAnnotation( const QDomNode &node );
-    virtual ~TextAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
-    virtual SubType subType() const;
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
 
+  public:
     // local enums
     enum TextType { Linked, InPlace };
     enum InplaceIntent { Unknown, Callout, TypeWriter };
+
+    TextAnnotation( TextType type );
+    virtual ~TextAnnotation();
+    virtual SubType subType() const;
 
     /**
        The type of text annotation represented by this object
     */
     TextType textType() const;
-
-    /**
-       Set the type of text annotation represented by this object
-    */
-    void setTextType( TextType type );
 
     /**
        The name of the icon for this text annotation.
@@ -276,16 +489,33 @@ class POPPLER_QT4_EXPORT TextAnnotation : public Annotation
     int inplaceAlign() const;
     void setInplaceAlign( int align );
 
+    /**
+       Synonym for contents()
+
+       \deprecated Use contents() instead
+    */
     QString inplaceText() const;
+    /**
+       Synonym for setContents()
+
+       \deprecated Use setContents() instead
+    */
     void setInplaceText( const QString &text );
 
     QPointF calloutPoint( int id ) const;
-    void setCalloutPoint( int id, const QPointF &point );
+    /// \since 0.20
+    QVector<QPointF> calloutPoints() const;
+    /// \since 0.20
+    void setCalloutPoints( const QVector<QPointF> &points );
 
     InplaceIntent inplaceIntent() const;
     void setInplaceIntent( InplaceIntent intent );
 
   private:
+    TextAnnotation( const QDomNode &node );
+    TextAnnotation( TextAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
+    void setTextType( TextType type );
     Q_DECLARE_PRIVATE( TextAnnotation )
     Q_DISABLE_COPY( TextAnnotation )
 };
@@ -297,17 +527,24 @@ class POPPLER_QT4_EXPORT TextAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT LineAnnotation : public Annotation
 {
-  public:
-    LineAnnotation();
-    LineAnnotation( const QDomNode &node );
-    virtual ~LineAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
-    virtual SubType subType() const;
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
 
+  public:
     // local enums
+    /// \since 0.20
+    enum LineType { StraightLine, Polyline };
     enum TermStyle { Square, Circle, Diamond, OpenArrow, ClosedArrow, None,
                      Butt, ROpenArrow, RClosedArrow, Slash };
     enum LineIntent { Unknown, Arrow, Dimension, PolygonCloud };
+
+    /// \since 0.20
+    LineAnnotation( LineType type );
+    virtual ~LineAnnotation();
+    virtual SubType subType() const;
+
+    /// \since 0.20
+    LineType lineType() const;
 
     QLinkedList<QPointF> linePoints() const;
     void setLinePoints( const QLinkedList<QPointF> &points );
@@ -337,6 +574,10 @@ class POPPLER_QT4_EXPORT LineAnnotation : public Annotation
     void setLineIntent( LineIntent intent );
 
   private:
+    LineAnnotation( const QDomNode &node );
+    LineAnnotation( LineAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
+    void setLineType( LineType type );
     Q_DECLARE_PRIVATE( LineAnnotation )
     Q_DISABLE_COPY( LineAnnotation )
 };
@@ -349,11 +590,12 @@ class POPPLER_QT4_EXPORT LineAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT GeomAnnotation : public Annotation
 {
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
+
   public:
     GeomAnnotation();
-    GeomAnnotation( const QDomNode &node );
     virtual ~GeomAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     // common enums
@@ -365,10 +607,10 @@ class POPPLER_QT4_EXPORT GeomAnnotation : public Annotation
     QColor geomInnerColor() const;
     void setGeomInnerColor( const QColor &color );
 
-    int geomPointWidth() const;
-    void setGeomPointWidth( int width );
-
   private:
+    GeomAnnotation( const QDomNode &node );
+    GeomAnnotation( GeomAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( GeomAnnotation )
     Q_DISABLE_COPY( GeomAnnotation )
 };
@@ -380,11 +622,12 @@ class POPPLER_QT4_EXPORT GeomAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT HighlightAnnotation : public Annotation
 {
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
+
   public:
     HighlightAnnotation();
-    HighlightAnnotation( const QDomNode &node );
     virtual ~HighlightAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     /**
@@ -432,6 +675,9 @@ class POPPLER_QT4_EXPORT HighlightAnnotation : public Annotation
     void setHighlightQuads( const QList< Quad > &quads );
 
   private:
+    HighlightAnnotation( const QDomNode &node );
+    HighlightAnnotation( HighlightAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( HighlightAnnotation )
     Q_DISABLE_COPY( HighlightAnnotation )
 };
@@ -443,11 +689,12 @@ class POPPLER_QT4_EXPORT HighlightAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT StampAnnotation : public Annotation
 {
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
+
   public:
     StampAnnotation();
-    StampAnnotation( const QDomNode &node );
     virtual ~StampAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     /**
@@ -479,6 +726,9 @@ class POPPLER_QT4_EXPORT StampAnnotation : public Annotation
     void setStampIconName( const QString &name );
 
   private:
+    StampAnnotation( const QDomNode &node );
+    StampAnnotation( StampAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( StampAnnotation )
     Q_DISABLE_COPY( StampAnnotation )
 };
@@ -490,34 +740,39 @@ class POPPLER_QT4_EXPORT StampAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT InkAnnotation : public Annotation
 {
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
+
   public:
     InkAnnotation();
-    InkAnnotation( const QDomNode &node );
     virtual ~InkAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     QList< QLinkedList<QPointF> > inkPaths() const;
     void setInkPaths( const QList< QLinkedList<QPointF> > &paths );
 
   private:
+    InkAnnotation( const QDomNode &node );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
+    InkAnnotation(InkAnnotationPrivate &dd);
     Q_DECLARE_PRIVATE( InkAnnotation )
     Q_DISABLE_COPY( InkAnnotation )
 };
 
 class POPPLER_QT4_EXPORT LinkAnnotation : public Annotation
 {
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
+
   public:
-    LinkAnnotation();
-    LinkAnnotation( const QDomNode &node );
     virtual ~LinkAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     // local enums
     enum HighlightMode { None, Invert, Outline, Push };
 
-    Link* linkDestionation() const;
+    /** \since 0.20 */
+    Link* linkDestination() const;
     void setLinkDestination( Link *link );
 
     HighlightMode linkHighlightMode() const;
@@ -527,6 +782,10 @@ class POPPLER_QT4_EXPORT LinkAnnotation : public Annotation
     void setLinkRegionPoint( int id, const QPointF &point );
 
   private:
+    LinkAnnotation();
+    LinkAnnotation( const QDomNode &node );
+    LinkAnnotation( LinkAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( LinkAnnotation )
     Q_DISABLE_COPY( LinkAnnotation )
 };
@@ -538,11 +797,12 @@ class POPPLER_QT4_EXPORT LinkAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT CaretAnnotation : public Annotation
 {
+  friend class AnnotationUtils;
+  friend class AnnotationPrivate;
+
   public:
     CaretAnnotation();
-    CaretAnnotation( const QDomNode &node );
     virtual ~CaretAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     /**
@@ -554,6 +814,9 @@ class POPPLER_QT4_EXPORT CaretAnnotation : public Annotation
     void setCaretSymbol( CaretSymbol symbol );
 
   private:
+    CaretAnnotation( const QDomNode &node );
+    CaretAnnotation( CaretAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( CaretAnnotation )
     Q_DISABLE_COPY( CaretAnnotation )
 };
@@ -567,11 +830,10 @@ class POPPLER_QT4_EXPORT CaretAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT FileAttachmentAnnotation : public Annotation
 {
+  friend class AnnotationPrivate;
+
   public:
-    FileAttachmentAnnotation();
-    FileAttachmentAnnotation( const QDomNode &node );
     virtual ~FileAttachmentAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     /**
@@ -595,6 +857,10 @@ class POPPLER_QT4_EXPORT FileAttachmentAnnotation : public Annotation
     void setEmbeddedFile( EmbeddedFile *ef );
 
   private:
+    FileAttachmentAnnotation();
+    FileAttachmentAnnotation( const QDomNode &node );
+    FileAttachmentAnnotation( FileAttachmentAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( FileAttachmentAnnotation )
     Q_DISABLE_COPY( FileAttachmentAnnotation )
 };
@@ -608,11 +874,10 @@ class POPPLER_QT4_EXPORT FileAttachmentAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT SoundAnnotation : public Annotation
 {
+  friend class AnnotationPrivate;
+
   public:
-    SoundAnnotation();
-    SoundAnnotation( const QDomNode &node );
     virtual ~SoundAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     /**
@@ -636,6 +901,10 @@ class POPPLER_QT4_EXPORT SoundAnnotation : public Annotation
     void setSound( SoundObject *ef );
 
   private:
+    SoundAnnotation();
+    SoundAnnotation( const QDomNode &node );
+    SoundAnnotation( SoundAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( SoundAnnotation )
     Q_DISABLE_COPY( SoundAnnotation )
 };
@@ -649,11 +918,10 @@ class POPPLER_QT4_EXPORT SoundAnnotation : public Annotation
  */
 class POPPLER_QT4_EXPORT MovieAnnotation : public Annotation
 {
+  friend class AnnotationPrivate;
+
   public:
-    MovieAnnotation();
-    MovieAnnotation( const QDomNode &node );
     virtual ~MovieAnnotation();
-    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     virtual SubType subType() const;
 
     /**
@@ -677,8 +945,101 @@ class POPPLER_QT4_EXPORT MovieAnnotation : public Annotation
     void setMovieTitle( const QString &title );
 
   private:
+    MovieAnnotation();
+    MovieAnnotation( const QDomNode &node );
+    MovieAnnotation( MovieAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const;
     Q_DECLARE_PRIVATE( MovieAnnotation )
     Q_DISABLE_COPY( MovieAnnotation )
+};
+
+/**
+ * \short Screen annotation.
+ *
+ * The screen annotation represents a screen to be played when activated.
+ *
+ * \since 0.20
+ */
+class POPPLER_QT4_EXPORT ScreenAnnotation : public Annotation
+{
+  friend class AnnotationPrivate;
+
+  public:
+    virtual ~ScreenAnnotation();
+
+    virtual SubType subType() const;
+
+    /**
+     * Returns the LinkRendition of this annotation.
+     */
+    LinkRendition* action() const;
+
+    /**
+     * Sets a new LinkRendition for this annotation.
+     *
+     * \note ScreenAnnotation takes ownership of the object
+     */
+    void setAction( LinkRendition *action );
+
+    /**
+     * Returns the title of the screen of this annotation.
+     */
+    QString screenTitle() const;
+
+    /**
+     * Sets a new title for the screen of this annotation.
+     */
+    void setScreenTitle( const QString &title );
+
+    /**
+     * Returns the additional action of the given @p type fo the annotation or
+     * @c 0 if no action has been defined.
+     *
+     * \since 0.22
+     */
+    Link* additionalAction( AdditionalActionType type ) const;
+
+  private:
+    ScreenAnnotation();
+    ScreenAnnotation( ScreenAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const; // stub
+    Q_DECLARE_PRIVATE( ScreenAnnotation )
+    Q_DISABLE_COPY( ScreenAnnotation )
+};
+
+/**
+ * \short Widget annotation.
+ *
+ * The widget annotation represents a widget (form field) on a page.
+ *
+ * \note This class is just provided for consistency of the annotation API,
+ *       use the FormField classes to get all the form-related information.
+ *
+ * \since 0.22
+ */
+class POPPLER_QT4_EXPORT WidgetAnnotation : public Annotation
+{
+  friend class AnnotationPrivate;
+
+  public:
+    virtual ~WidgetAnnotation();
+
+    virtual SubType subType() const;
+
+    /**
+     * Returns the additional action of the given @p type fo the annotation or
+     * @c 0 if no action has been defined.
+     *
+     * \since 0.22
+     */
+    Link* additionalAction( AdditionalActionType type ) const;
+
+  private:
+    WidgetAnnotation();
+    WidgetAnnotation( WidgetAnnotationPrivate &dd );
+    virtual void store( QDomNode &parentNode, QDomDocument &document ) const; // stub
+    Q_DECLARE_PRIVATE( WidgetAnnotation )
+    Q_DISABLE_COPY( WidgetAnnotation )
 };
 
 }

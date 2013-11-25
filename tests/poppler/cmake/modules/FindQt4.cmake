@@ -250,19 +250,7 @@ MACRO(QT_QUERY_QMAKE outvar invar)
 
 ENDMACRO(QT_QUERY_QMAKE)
 
-GET_FILENAME_COMPONENT(qt_install_version "[HKEY_CURRENT_USER\\Software\\trolltech\\Versions;DefaultQtVersion]" NAME)
-# check for qmake
-FIND_PROGRAM(QT_QMAKE_EXECUTABLE NAMES qmake qmake4 qmake-qt4 PATHS
-  "[HKEY_CURRENT_USER\\Software\\Trolltech\\Qt3Versions\\4.0.0;InstallDir]/bin"
-  "[HKEY_CURRENT_USER\\Software\\Trolltech\\Versions\\4.0.0;InstallDir]/bin"
-  "[HKEY_CURRENT_USER\\Software\\Trolltech\\Versions\\${qt_install_version};InstallDir]/bin"
-  $ENV{QTDIR}/bin
-)
-
-IF (QT_QMAKE_EXECUTABLE)
-
-  SET(QT4_QMAKE_FOUND FALSE)
-  
+MACRO(VERIFY_QMAKE_QT4)
   EXEC_PROGRAM(${QT_QMAKE_EXECUTABLE} ARGS "-query QT_VERSION" OUTPUT_VARIABLE QTVERSION)
 
   # check for qt3 qmake and then try and find qmake4 or qmake-qt4 in the path
@@ -307,19 +295,47 @@ IF (QT_QMAKE_EXECUTABLE)
     STRING(REGEX REPLACE "^([0-9]+)\\.[0-9]+\\.[0-9]+.*" "\\1" found_qt_major_vers "${QTVERSION}")
     STRING(REGEX REPLACE "^[0-9]+\\.([0-9])+\\.[0-9]+.*" "\\1" found_qt_minor_vers "${QTVERSION}")
     STRING(REGEX REPLACE "^[0-9]+\\.[0-9]+\\.([0-9]+).*" "\\1" found_qt_patch_vers "${QTVERSION}")
+    IF (${found_qt_major_vers} EQUAL 4)
+      # compute an overall version number which can be compared at once
+      MATH(EXPR req_vers "${req_qt_major_vers}*10000 + ${req_qt_minor_vers}*100 + ${req_qt_patch_vers}")
+      MATH(EXPR found_vers "${found_qt_major_vers}*10000 + ${found_qt_minor_vers}*100 + ${found_qt_patch_vers}")
 
-    # compute an overall version number which can be compared at once
-    MATH(EXPR req_vers "${req_qt_major_vers}*10000 + ${req_qt_minor_vers}*100 + ${req_qt_patch_vers}")
-    MATH(EXPR found_vers "${found_qt_major_vers}*10000 + ${found_qt_minor_vers}*100 + ${found_qt_patch_vers}")
 
-    IF (found_vers LESS req_vers)
-      SET(QT4_QMAKE_FOUND FALSE)
-      SET(QT4_INSTALLED_VERSION_TOO_OLD TRUE)
-    ELSE (found_vers LESS req_vers)
-      SET(QT4_QMAKE_FOUND TRUE)
-    ENDIF (found_vers LESS req_vers)
+      IF (found_vers LESS req_vers)
+        SET(QT4_QMAKE_FOUND FALSE)
+        SET(QT4_INSTALLED_VERSION_TOO_OLD TRUE)
+      ELSE (found_vers LESS req_vers)
+        SET(QT4_QMAKE_FOUND TRUE)
+      ENDIF (found_vers LESS req_vers)
+    ENDIF ()
   ENDIF (qt_version_tmp)
+ENDMACRO()
 
+GET_FILENAME_COMPONENT(qt_install_version "[HKEY_CURRENT_USER\\Software\\trolltech\\Versions;DefaultQtVersion]" NAME)
+# check for qmake
+FIND_PROGRAM(QT_QMAKE_EXECUTABLE NAMES qmake qmake4 qmake-qt4 PATHS
+  "[HKEY_CURRENT_USER\\Software\\Trolltech\\Qt3Versions\\4.0.0;InstallDir]/bin"
+  "[HKEY_CURRENT_USER\\Software\\Trolltech\\Versions\\4.0.0;InstallDir]/bin"
+  "[HKEY_CURRENT_USER\\Software\\Trolltech\\Versions\\${qt_install_version};InstallDir]/bin"
+  $ENV{QTDIR}/bin
+)
+
+IF (QT_QMAKE_EXECUTABLE)
+
+  SET(QT4_QMAKE_FOUND FALSE)
+  VERIFY_QMAKE_QT4()
+
+  IF (NOT QT4_QMAKE_FOUND)
+    FIND_PROGRAM(QT_QMAKE_EXECUTABLE2 NAMES qmake4 qmake-qt4 PATHS
+      "[HKEY_CURRENT_USER\\Software\\Trolltech\\Qt3Versions\\4.0.0;InstallDir]/bin"
+      "[HKEY_CURRENT_USER\\Software\\Trolltech\\Versions\\4.0.0;InstallDir]/bin"
+      "[HKEY_CURRENT_USER\\Software\\Trolltech\\Versions\\${qt_install_version};InstallDir]/bin"
+      $ENV{QTDIR}/bin
+    )
+    SET(QT_QMAKE_EXECUTABLE ${QT_QMAKE_EXECUTABLE2})
+    VERIFY_QMAKE_QT4()
+  ENDIF()
+  
 ENDIF (QT_QMAKE_EXECUTABLE)
 
 IF (QT4_QMAKE_FOUND)

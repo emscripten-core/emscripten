@@ -23,6 +23,22 @@
  * Author: Jeff Muizelaar, Mozilla Corp.
  */
 
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2012 Hib Eris <hib@hiberis.nl>
+// Copyright (C) 2012 Adrian Johnson <ajohnson@redneon.com>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
+
 /* This implements a box filter that supports non-integer box sizes */
 
 #ifdef HAVE_CONFIG_H
@@ -35,13 +51,13 @@
 #include <stdlib.h>
 #include <math.h>
 #include "goo/gmem.h"
+#include "goo/gtypes_p.h"
 #include "CairoRescaleBox.h"
 
-typedef unsigned short int      uint16_t;
-typedef unsigned int            uint32_t;
 
 /* we work in fixed point where 1. == 1 << 24 */
 #define FIXED_SHIFT 24
+
 
 static void downsample_row_box_filter (
         int start, int width,
@@ -247,106 +263,116 @@ static int compute_coverage (int coverage[], int src_length, int dest_length)
     return ratio;
 }
 
-GBool downscale_box_filter(uint32_t *orig, int orig_stride, unsigned orig_width, unsigned orig_height,
-			   signed scaled_width, signed scaled_height,
-			   uint16_t start_column, uint16_t start_row,
-			   uint16_t width, uint16_t height,
-			   uint32_t *dest, int dst_stride)
-{
-    int pixel_coverage_x, pixel_coverage_y;
-    int dest_y;
-    int src_y = 0;
-    uint32_t *scanline = orig;
-    int *x_coverage = NULL;
-    int *y_coverage = NULL;
-    uint32_t *temp_buf = NULL;
-    GBool retval = gFalse;
 
-    x_coverage = (int *)gmallocn3 (orig_width, 1, sizeof(int));
-    y_coverage = (int *)gmallocn3 (orig_height, 1, sizeof(int));
+GBool CairoRescaleBox::downScaleImage(unsigned orig_width, unsigned orig_height,
+                                      signed scaled_width, signed scaled_height,
+                                      unsigned short int start_column, unsigned short int start_row,
+                                      unsigned short int width, unsigned short int height,
+                                      cairo_surface_t *dest_surface) {
+  int pixel_coverage_x, pixel_coverage_y;
+  int dest_y;
+  int src_y = 0;
+  uint32_t *scanline;
+  int *x_coverage = NULL;
+  int *y_coverage = NULL;
+  uint32_t *temp_buf = NULL;
+  GBool retval = gFalse;
+  unsigned int *dest;
+  int dst_stride;
 
-    /* we need to allocate enough room for ceil(src_height/dest_height)+1
-      Example:
-      src_height = 140
-      dest_height = 50
-      src_height/dest_height = 2.8
+  dest = (unsigned int *)cairo_image_surface_get_data (dest_surface);
+  dst_stride = cairo_image_surface_get_stride (dest_surface);
 
-      |-------------|       2.8 pixels
-      |----|----|----|----| 4 pixels
-      need to sample 3 pixels
+  scanline = (uint32_t*)gmallocn3 (orig_width, 1, sizeof(int));
 
-         |-------------|       2.8 pixels
-      |----|----|----|----| 4 pixels
-      need to sample 4 pixels
-    */
+  x_coverage = (int *)gmallocn3 (orig_width, 1, sizeof(int));
+  y_coverage = (int *)gmallocn3 (orig_height, 1, sizeof(int));
 
-    temp_buf = (uint32_t *)gmallocn3 ((orig_height + scaled_height-1)/scaled_height+1, scaled_width, sizeof(uint32_t));
+  /* we need to allocate enough room for ceil(src_height/dest_height)+1
+     Example:
+     src_height = 140
+     dest_height = 50
+     src_height/dest_height = 2.8
 
-    if (!x_coverage || !y_coverage || !scanline || !temp_buf)
-	goto cleanup;
+     |-------------|       2.8 pixels
+     |----|----|----|----| 4 pixels
+     need to sample 3 pixels
 
-    pixel_coverage_x = compute_coverage (x_coverage, orig_width, scaled_width);
-    pixel_coverage_y = compute_coverage (y_coverage, orig_height, scaled_height);
+     |-------------|       2.8 pixels
+     |----|----|----|----| 4 pixels
+     need to sample 4 pixels
+  */
 
-    assert (width + start_column <= scaled_width);
+  temp_buf = (uint32_t *)gmallocn3 ((orig_height + scaled_height-1)/scaled_height+1, scaled_width, sizeof(uint32_t));
 
-    /* skip the rows at the beginning */
-    for (dest_y = 0; dest_y < start_row; dest_y++)
+  if (!x_coverage || !y_coverage || !scanline || !temp_buf)
+    goto cleanup;
+
+  pixel_coverage_x = compute_coverage (x_coverage, orig_width, scaled_width);
+  pixel_coverage_y = compute_coverage (y_coverage, orig_height, scaled_height);
+
+  assert (width + start_column <= scaled_width);
+
+
+
+  /* skip the rows at the beginning */
+  for (dest_y = 0; dest_y < start_row; dest_y++)
+  {
+    int box = 1 << FIXED_SHIFT;
+    int start_coverage_y = y_coverage[dest_y];
+    box -= start_coverage_y;
+    src_y++;
+    while (box >= pixel_coverage_y)
     {
-        int box = 1 << FIXED_SHIFT;
-        int start_coverage_y = y_coverage[dest_y];
-        box -= start_coverage_y;
-        src_y++;
-        while (box >= pixel_coverage_y)
-        {
-            box -= pixel_coverage_y;
-            src_y++;
-        }
+      box -= pixel_coverage_y;
+      src_y++;
+    }
+  }
+
+  for (; dest_y < start_row + height; dest_y++)
+  {
+    int columns = 0;
+    int box = 1 << FIXED_SHIFT;
+    int start_coverage_y = y_coverage[dest_y];
+
+    getRow(src_y, scanline);
+    downsample_row_box_filter (start_column, width, scanline, temp_buf + width * columns, x_coverage, pixel_coverage_x);
+    columns++;
+    src_y++;
+    box -= start_coverage_y;
+
+    while (box >= pixel_coverage_y)
+    {
+      getRow(src_y, scanline);
+      downsample_row_box_filter (start_column, width, scanline, temp_buf + width * columns, x_coverage, pixel_coverage_x);
+      columns++;
+      src_y++;
+      box -= pixel_coverage_y;
     }
 
-    for (; dest_y < start_row + height; dest_y++)
+    /* downsample any leftovers */
+    if (box > 0)
     {
-        int columns = 0;
-        int box = 1 << FIXED_SHIFT;
-        int start_coverage_y = y_coverage[dest_y];
+      getRow(src_y, scanline);
+      downsample_row_box_filter (start_column, width, scanline, temp_buf + width * columns, x_coverage, pixel_coverage_x);
+      columns++;
+    }
 
-	scanline = orig + src_y * orig_stride / 4;
-        downsample_row_box_filter (start_column, width, scanline, temp_buf + width * columns, x_coverage, pixel_coverage_x);
-        columns++;
-        src_y++;
-        box -= start_coverage_y;
-
-        while (box >= pixel_coverage_y)
-        {
-	    scanline = orig + src_y * orig_stride / 4;
-            downsample_row_box_filter (start_column, width, scanline, temp_buf + width * columns, x_coverage, pixel_coverage_x);
-            columns++;
-            src_y++;
-            box -= pixel_coverage_y;
-        }
-
-        /* downsample any leftovers */
-        if (box > 0)
-        {
-	    scanline = orig + src_y * orig_stride / 4;
-            downsample_row_box_filter (start_column, width, scanline, temp_buf + width * columns, x_coverage, pixel_coverage_x);
-            columns++;
-        }
-
-        /* now scale the rows we just downsampled in the y direction */
-        downsample_columns_box_filter (width, start_coverage_y, pixel_coverage_y, temp_buf, dest);
-        dest += dst_stride / 4;
+    /* now scale the rows we just downsampled in the y direction */
+    downsample_columns_box_filter (width, start_coverage_y, pixel_coverage_y, temp_buf, dest);
+    dest += dst_stride / 4;
 
 //        assert(width*columns <= ((orig_height + scaled_height-1)/scaled_height+1) * width);
-    }
+  }
 //    assert (src_y<=orig_height);
 
-    retval = gTrue;
+  retval = gTrue;
 
 cleanup:
-    free (x_coverage);
-    free (y_coverage);
-    free (temp_buf);
+  free (x_coverage);
+  free (y_coverage);
+  free (temp_buf);
+  free (scanline);
 
-    return gTrue;
+  return retval;
 }

@@ -2,6 +2,7 @@
  * Copyright (C) 2008-2009, Pino Toscano <pino@kde.org>
  * Copyright (C) 2008, Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2009, Shawn Rutledge <shawn.t.rutledge@gmail.com>
+ * Copyright (C) 2013, Fabio D'Urso <fabiodurso@hotmail.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -148,6 +149,7 @@ PdfViewer::PdfViewer()
     }
 
     connect(navbar, SIGNAL(zoomChanged(qreal)), view, SLOT(slotZoomChanged(qreal)));
+    connect(navbar, SIGNAL(rotationChanged(int)), view, SLOT(slotRotationChanged(int)));
 
     // activate AA by default
     m_settingsTextAAAct->setChecked(true);

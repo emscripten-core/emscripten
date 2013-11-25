@@ -1,5 +1,6 @@
 /* poppler-qiodevicestream-private.h: Qt4 interface to poppler
  * Copyright (C) 2008, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +34,7 @@ class QIODeviceOutStream : public OutStream
     virtual ~QIODeviceOutStream();
 
     virtual void close();
-    virtual int getPos();
+    virtual Goffset getPos();
     virtual void put(char c);
     virtual void printf(const char *format, ...);
 

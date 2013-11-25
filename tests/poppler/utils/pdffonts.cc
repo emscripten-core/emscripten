@@ -16,6 +16,7 @@
 // Copyright (C) 2006 Dominic Lachowicz <cinamod@hotmail.com>
 // Copyright (C) 2007-2008, 2010 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
+// Copyright (C) 2012 Adrian Johnson <ajohnson@redneon.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -38,7 +39,7 @@
 #include "PDFDocFactory.h"
 #include "FontInfo.h"
 
-static char *fontTypeNames[] = {
+static const char *fontTypeNames[] = {
   "unknown",
   "Type 1",
   "Type 1C",
@@ -55,6 +56,7 @@ static char *fontTypeNames[] = {
 
 static int firstPage = 1;
 static int lastPage = 0;
+static GBool showSubst = gFalse;
 static char ownerPassword[33] = "\001";
 static char userPassword[33] = "\001";
 static GBool printVersion = gFalse;
@@ -65,6 +67,8 @@ static const ArgDesc argDesc[] = {
    "first page to examine"},
   {"-l",      argInt,      &lastPage,      0,
    "last page to examine"},
+  {"-subst",      argFlag,     &showSubst,  0,
+   "show font substitutions"},
   {"-opw",    argString,   ownerPassword,  sizeof(ownerPassword),
    "owner password (for encrypted files)"},
   {"-upw",    argString,   userPassword,   sizeof(userPassword),
@@ -152,27 +156,54 @@ int main(int argc, char *argv[]) {
     FontInfoScanner scanner(doc, firstPage - 1);
     GooList *fonts = scanner.scan(lastPage - firstPage + 1);
 
-    // print the font info
-    printf("name                                 type              emb sub uni object ID\n");
-    printf("------------------------------------ ----------------- --- --- --- ---------\n");
-    if (fonts) {
-      for (int i = 0; i < fonts->getLength(); ++i) {
-        FontInfo *font = (FontInfo *)fonts->get(i);
-        printf("%-36s %-17s %-3s %-3s %-3s",
-              font->getName() ? font->getName()->getCString() : "[none]",
-              fontTypeNames[font->getType()],
-              font->getEmbedded() ? "yes" : "no",
-              font->getSubset() ? "yes" : "no",
-              font->getToUnicode() ? "yes" : "no");
-        const Ref fontRef = font->getRef();
-        if (fontRef.gen >= 100000) {
-          printf(" [none]\n");
-        } else {
-          printf(" %6d %2d\n", fontRef.num, fontRef.gen);
+    if (showSubst) {
+      // print the font substitutions
+      printf("name                                 object ID substitute font                      substitute font file\n");
+      printf("------------------------------------ --------- ------------------------------------ ------------------------------------\n");
+      if (fonts) {
+        for (int i = 0; i < fonts->getLength(); ++i) {
+          FontInfo *font = (FontInfo *)fonts->get(i);
+          if (font->getFile()) {
+            printf("%-36s",
+                   font->getName() ? font->getName()->getCString() : "[none]");
+            const Ref fontRef = font->getRef();
+            if (fontRef.gen >= 100000) {
+              printf(" [none]");
+            } else {
+              printf(" %6d %2d", fontRef.num, fontRef.gen);
+            }
+            printf(" %-36s %s\n",
+                   font->getSubstituteName() ? font->getSubstituteName()->getCString() : "[none]",
+                   font->getFile()->getCString());
+          }
+          delete font;
         }
-        delete font;
+        delete fonts;
       }
-      delete fonts;
+    } else {
+      // print the font info
+      printf("name                                 type              encoding         emb sub uni object ID\n");
+      printf("------------------------------------ ----------------- ---------------- --- --- --- ---------\n");
+      if (fonts) {
+        for (int i = 0; i < fonts->getLength(); ++i) {
+          FontInfo *font = (FontInfo *)fonts->get(i);
+          printf("%-36s %-17s %-16s %-3s %-3s %-3s",
+                 font->getName() ? font->getName()->getCString() : "[none]",
+                 fontTypeNames[font->getType()],
+                 font->getEncoding()->getCString(),
+                 font->getEmbedded() ? "yes" : "no",
+                 font->getSubset() ? "yes" : "no",
+                 font->getToUnicode() ? "yes" : "no");
+          const Ref fontRef = font->getRef();
+          if (fontRef.gen >= 100000) {
+            printf(" [none]\n");
+          } else {
+            printf(" %6d %2d\n", fontRef.num, fontRef.gen);
+          }
+          delete font;
+        }
+        delete fonts;
+      }
     }
   }
 

@@ -36,12 +36,6 @@
  * Defined if poppler was compiled with cairo support.
  */
 @CAIRO_FEATURE@
-/**
- * POPPLER_WITH_GDK:
- *
- * Defined if poppler was compiled with GDK support.
- */
-@GDK_FEATURE@
 
 /**
  * POPPLER_MAJOR_VERSION:

@@ -45,6 +45,11 @@ poppler_form_field_finalize (GObject *object)
       g_object_unref (field->document);
       field->document = NULL;
     }
+  if (field->action)
+    {
+      poppler_action_free (field->action);
+      field->action = NULL;
+    }
   field->widget = NULL;
 
   G_OBJECT_CLASS (poppler_form_field_parent_class)->finalize (object);
@@ -128,7 +133,7 @@ poppler_form_field_get_id (PopplerFormField *field)
 }
 
 /**
- * poppler_form_field_get_font_size
+ * poppler_form_field_get_font_size:
  * @field: a #PopplerFormField
  *
  * Gets the font size of @field
@@ -144,7 +149,7 @@ poppler_form_field_get_font_size (PopplerFormField *field)
 }
 
 /**
- * poppler_form_field_is_read_only
+ * poppler_form_field_is_read_only:
  * @field: a #PopplerFormField
  *
  * Checks whether @field is read only
@@ -159,9 +164,38 @@ poppler_form_field_is_read_only (PopplerFormField *field)
   return field->widget->isReadOnly ();
 }
 
+/**
+ * poppler_form_field_get_action:
+ * @field: a #PopplerFormField
+ *
+ * Retrieves the action (#PopplerAction) that shall be
+ * performed when @field is activated, or %NULL
+ *
+ * Return value: (transfer none): the action to perform. The returned
+ *               object is owned by @field and should not be freed
+ *
+ * Since: 0.18
+ */
+PopplerAction *
+poppler_form_field_get_action (PopplerFormField *field)
+{
+  LinkAction *action;
+
+  if (field->action)
+    return field->action;
+
+  action = field->widget->getActivationAction();
+  if (!action)
+    return NULL;
+
+  field->action = _poppler_action_new (NULL, action, NULL);
+
+  return field->action;
+}
+
 /* Button Field */
 /**
- * poppler_form_field_button_get_button_type
+ * poppler_form_field_button_get_button_type:
  * @field: a #PopplerFormField
  *
  * Gets the button type of @field
@@ -187,7 +221,7 @@ poppler_form_field_button_get_button_type (PopplerFormField *field)
 }
 
 /**
- * poppler_form_field_button_get_state
+ * poppler_form_field_button_get_state:
  * @field: a #PopplerFormField
  *
  * Queries a #PopplerFormField and returns its current state. Returns %TRUE if
@@ -204,7 +238,7 @@ poppler_form_field_button_get_state (PopplerFormField *field)
 }
 
 /**
- * poppler_form_field_button_set_state
+ * poppler_form_field_button_set_state:
  * @field: a #PopplerFormField
  * @state: %TRUE or %FALSE
  *
@@ -540,6 +574,7 @@ poppler_form_field_choice_get_item (PopplerFormField *field,
   GooString *tmp;
   
   g_return_val_if_fail (field->widget->getType () == formChoice, NULL);
+  g_return_val_if_fail (index >= 0 && index < poppler_form_field_choice_get_n_items (field), NULL);
 
   tmp = static_cast<FormWidgetChoice*>(field->widget)->getChoice (index);
   return tmp ? _poppler_goo_string_to_utf8 (tmp) : NULL;
@@ -559,6 +594,7 @@ poppler_form_field_choice_is_item_selected (PopplerFormField *field,
 					    gint              index)
 {
   g_return_val_if_fail (field->widget->getType () == formChoice, FALSE);
+  g_return_val_if_fail (index >= 0 && index < poppler_form_field_choice_get_n_items (field), FALSE);
 
   return static_cast<FormWidgetChoice*>(field->widget)->isSelected (index);
 }
@@ -575,6 +611,7 @@ poppler_form_field_choice_select_item (PopplerFormField *field,
 				       gint              index)
 {
   g_return_if_fail (field->widget->getType () == formChoice);
+  g_return_if_fail (index >= 0 && index < poppler_form_field_choice_get_n_items (field));
 
   static_cast<FormWidgetChoice*>(field->widget)->select (index);
 }
@@ -605,6 +642,7 @@ poppler_form_field_choice_toggle_item (PopplerFormField *field,
 				       gint              index)
 {
   g_return_if_fail (field->widget->getType () == formChoice);
+  g_return_if_fail (index >= 0 && index < poppler_form_field_choice_get_n_items (field));
 
   static_cast<FormWidgetChoice*>(field->widget)->toggle (index);
 }

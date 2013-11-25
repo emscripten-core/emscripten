@@ -29,7 +29,7 @@ GooList::GooList() {
 }
 
 GooList::GooList(int sizeA) {
-  size = sizeA;
+  size = sizeA ? sizeA : 8;
   data = (void **)gmallocn(size, sizeof(void*));
   length = 0;
   inc = 0;
@@ -37,6 +37,16 @@ GooList::GooList(int sizeA) {
 
 GooList::~GooList() {
   gfree(data);
+}
+
+GooList *GooList::copy() {
+  GooList *ret;
+
+  ret = new GooList(length);
+  ret->length = length;
+  memcpy(ret->data, data, length * sizeof(void *));
+  ret->inc = inc;
+  return ret;
 }
 
 void GooList::append(void *p) {
@@ -61,6 +71,9 @@ void GooList::insert(int i, void *p) {
   if (length >= size) {
     expand();
   }
+  if (i < 0) {
+    i = 0;
+  }
   if (i < length) {
     memmove(data+i+1, data+i, (length - i) * sizeof(void *));
   }
@@ -84,6 +97,18 @@ void *GooList::del(int i) {
 
 void GooList::sort(int (*cmp)(const void *obj1, const void *obj2)) {
   qsort(data, length, sizeof(void *), cmp);
+}
+
+void GooList::reverse() {
+  void *t;
+  int n, i;
+
+  n = length / 2;
+  for (i = 0; i < n; ++i) {
+    t = data[i];
+    data[i] = data[length - 1 - i];
+    data[length - 1 - i] = t;
+  }
 }
 
 void GooList::expand() {

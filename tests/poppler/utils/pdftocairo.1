@@ -1,0 +1,266 @@
+.TH pdftoppm 1
+.SH NAME
+pdftocairo \- Portable Document Format (PDF) to PNG/JPEG/TIFF/PDF/PS/EPS/SVG using cairo
+.SH SYNOPSIS
+.B pdftocairo
+[options]
+.IR PDF-file
+.RI [ output-file ]
+.SH DESCRIPTION
+.B pdftocairo
+converts Portable Document Format (PDF) files, using the cairo output device of the poppler PDF library, to any of the following output formats:
+.IP \(bu
+Portable Network Graphics (PNG)
+.IP \(bu
+JPEG Interchange Format (JPEG)
+.IP \(bu
+Tagged Image File Format (TIFF)
+.IP \(bu
+Portable Document Format (PDF)
+.IP \(bu
+PostScript (PS)
+.IP \(bu
+Encapsulated PostScript (EPS)
+.IP \(bu
+Scalable Vector Graphics (SVG)
+.PP
+.B pdftocairo
+reads the PDF file,
+.IR PDF-file ,
+and writes to
+.IR output-file .
+The image formats (PNG, JPEG, and TIFF) generate one file per page with the page number and file type appended to
+.IR output-file
+(except when \-singlefile is used).
+When the output format is a vector format (PDF, PS, EPS, and SVG) or when \-singlefile is used,
+.IR output-file
+is the full filename.
+
+If the
+.IR PDF-file
+is \*(lq\-\*(rq , the PDF is read from stdin.
+If the
+.IR output-file
+is \*(lq\-\*(rq , the output file will be written to stdout. Using stdout is not valid with image formats unless \-singlefile is used.
+If
+.IR output-file
+is not used, the output filename will be derived from the
+.IR PDF-file
+filename.
+.PP
+Not all options are valid with all output formats. One (and only one) of the output format options (\-png, \-jpeg, \-tiff, \-pdf, \-ps, \-eps, or \-svg) must be used.
+.PP
+The resolution options (\-r, \-rx, \-ry) set the resolution of the
+image output formats. The image dimensions will depend on the PDF page
+size and the resolution. For the vector outputs, regions of the page
+that can not be represented natively in the output format (eg
+translucency in PS) will be rasterized at the resolution specified by
+the resolution options.
+.PP
+The \-scale-to options may be used to set a fixed image size. The
+image resolution will vary with the page size.
+.PP
+The cropping options (\-x, \-y, \-W, and \-H) use units of pixels with
+the image formats and PostScript points (1/72 inch) with the vector
+formats. When cropping is used with vector output the cropped region is
+centered unless \-nocenter is used in which case the cropped region is
+at the top left (SVG) or bottom left (PDF, PS, EPS).
+.PP
+.SH OPTIONS
+.TP
+.BI \-png
+Generates a PNG file(s)
+.TP
+.BI \-jpeg
+Generates a JPEG file(s)
+.TP
+.BI \-tiff
+Generates a TIFF file(s)
+.TP
+.BI \-pdf
+Generates a PDF file
+.TP
+.BI \-ps
+Generate a PS file
+.TP
+.BI \-eps
+Generate an EPS file. An EPS file contains a single image, so if you
+use this option with a multi-page PDF file, you must use \-f and \-l
+to specify a single page.  The page size options (\-origpagesizes,
+\-paper, \-paperw, \-paperh) can not be used with this option.
+.TP
+.BI \-svg
+Generate a SVG (Scalable Vector Graphics) file
+.TP
+.BI \-f " number"
+Specifies the first page to convert.
+.TP
+.BI \-l " number"
+Specifies the last page to convert.
+.TP
+.B \-o
+Generates only the odd numbered pages.
+.TP
+.B \-e
+Generates only the even numbered pages.
+.TP
+.BI \-singlefile
+Writes only the first page and does not add digits.
+.TP
+.BI \-r " number"
+Specifies the X and Y resolution, in pixels per inch of image files (or rasterized regions in vector output). The default is 150 PPI.
+.TP
+.BI \-rx " number"
+Specifies the X resolution, in pixels per inch of image files (or rasterized regions in vector output). The default is 150 PPI.
+.TP
+.BI \-ry " number"
+Specifies the Y resolution, in pixels per inch of image files (or rasterized regions in vector output). The default is 150 PPI.
+.TP
+.BI \-scale-to " number"
+Scales the long side of each page (width for landscape pages, height
+for portrait pages) to fit in scale-to pixels. The size of the short
+side will be determined by the aspect ratio of the page (PNG/JPEG/TIFF only).
+.TP
+.BI \-scale-to-x " number"
+Scales each page horizontally to fit in scale-to-x pixels. If
+scale-to-y is set to -1, the vertical size will determined by the
+aspect ratio of the page (PNG/JPEG/TIFF only).
+.TP
+.BI \-scale-to-y " number"
+Scales each page vertically to fit in scale-to-y pixels. If scale-to-x
+is set to -1, the horizontal size will determined by the aspect ratio
+of the page (PNG/JPEG/TIFF only).
+.TP
+.BI \-x " number"
+Specifies the x-coordinate of the crop area top left corner in pixels (image output) or points (vector output)
+.TP
+.BI \-y " number"
+Specifies the y-coordinate of the crop area top left corner in pixels (image output) or points (vector output)
+.TP
+.BI \-W " number"
+Specifies the width of crop area in pixels (image output) or points (vector output)  (default is 0)
+.TP
+.BI \-H " number"
+Specifies the height of crop area in pixels (image output) or points (vector output)  (default is 0)
+.TP
+.BI \-sz " number"
+Specifies the size of crop square in pixels (image output) or points (vector output)  (sets \-W and \-H)
+.TP
+.B \-cropbox
+Uses the crop box rather than media box when generating the files
+.TP
+.B \-mono
+Generate a monochrome file (PNG and TIFF only).
+.TP
+.B \-gray
+Generate a grayscale file (PNG, JPEG, and TIFF only).
+.TP
+.B \-transp
+Use a transparent page color instead of white (PNG and TIFF only).
+.TP
+.BI \-icc " icc-file"
+Use the specified ICC file as the output profile (PNG only). The profile will be embedded in the PNG file.
+.TP
+.B \-level2
+Generate Level 2 PostScript (PS only).
+.TP
+.B \-level3
+Generate Level 3 PostScript (PS only). This enables all Level 2 features plus
+shading patterns and masked images. This is the default setting.
+.TP
+.B \-origpagesizes
+Generate a file with variable page sizes and orientations (PS and PDF
+only). The size of each page will be the original page in the PDF
+file.  If the output is PS the file will contain %%DocumentMedia and
+%%PageMedia DSC comments specifying the size of each page.  Any
+specification of the page size via \-paper, \-paperw, or \-paperh will
+get overridden as long as each page of the PDF file has a defined
+paper size.
+.TP
+.BI \-paper " size"
+Set the paper size to one of "letter", "legal", "A4", or "A3"
+(PS,PDF,SVG only).  This can also be set to "match", which will set
+the paper size to match the size specified in the PDF
+file. \-origpagesizes overrides this setting if the PDF file has
+defined page sizes.
+.TP
+.BI \-paperw " size"
+Set the paper width, in points (PS,PDF,SVG only). \-origpagesizes overrides this setting
+if the PDF file has defined page sizes.
+.TP
+.BI \-paperh " size"
+Set the paper height, in points (PS,PDF,SVG only). \-origpagesizes overrides this setting
+if the PDF file has defined page sizes.
+.TP
+.B \-nocrop
+By default, output is cropped to the CropBox specified in the PDF
+file.  This option disables cropping.
+.TP
+.B \-expand
+Expand PDF pages smaller than the paper to fill the paper (PS,PDF,SVG only).  By
+default, these pages are not scaled.
+.TP
+.B \-noshrink
+Don't scale PDF pages which are larger than the paper (PS,PDF,SVG only).  By default,
+pages larger than the paper are shrunk to fit.
+.TP
+.B \-nocenter
+By default, PDF pages smaller than the paper (after any scaling) are
+centered on the paper.  This option causes them to be aligned to the
+lower-left corner of the paper instead (PS,PDF,SVG only).
+.TP
+.B \-duplex
+Adds the %%IncludeFeature: *Duplex DuplexNoTumble DSC comment to the
+PostScript file (PS only).  This tells the print manager to enable duplexing.
+.TP
+.BI \-opw " password"
+Specify the owner password for the PDF file.  Providing this will
+bypass all security restrictions.
+.TP
+.BI \-upw " password"
+Specify the user password for the PDF file.
+.TP
+.B \-q
+Don't print any messages or errors.
+.TP
+.B \-v
+Print copyright and version information.
+.TP
+.B \-h
+Print usage information.
+.RB ( \-help
+and
+.B \-\-help
+are equivalent.)
+.SH EXIT CODES
+The poppler tools use the following exit codes:
+.TP
+0
+No error.
+.TP
+1
+Error opening a PDF file.
+.TP
+2
+Error opening an output file.
+.TP
+3
+Error related to PDF permissions.
+.TP
+4
+Error related to ICC profile.
+.TP
+99
+Other error.
+.SH AUTHOR
+The pdftocairo software and documentation are copyright 1996-2004 Glyph
+& Cog, LLC and copyright 2005-2011 The Poppler Developers.
+.SH "SEE ALSO"
+.BR pdfdetach (1),
+.BR pdffonts (1),
+.BR pdfimages (1),
+.BR pdfinfo (1),
+.BR pdftohtml (1),
+.BR pdftoppm (1),
+.BR pdftops (1),
+.BR pdftotext (1)

@@ -275,9 +275,9 @@ pgd_transitions_create_widget (PopplerDocument *document)
 
 	demo->doc = g_object_ref (document);
 
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 
 	demo->progress = gtk_progress_bar_new ();
 	gtk_progress_bar_set_ellipsize (GTK_PROGRESS_BAR (demo->progress),

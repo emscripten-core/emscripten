@@ -24,7 +24,7 @@
 #include "utils.h"
 
 void
-pgd_table_add_property_with_custom_widget (GtkTable    *table,
+pgd_table_add_property_with_custom_widget (GtkGrid     *table,
 					   const gchar *markup,
 					   GtkWidget   *widget,
 					   gint        *row)
@@ -34,19 +34,18 @@ pgd_table_add_property_with_custom_widget (GtkTable    *table,
 	label = gtk_label_new (NULL);
 	g_object_set (G_OBJECT (label), "xalign", 0.0, NULL);
 	gtk_label_set_markup (GTK_LABEL (label), markup);
-	gtk_table_attach (GTK_TABLE (table), label, 0, 1, *row, *row + 1,
-			  GTK_FILL, GTK_FILL, 0, 0);
+	gtk_grid_attach (GTK_GRID (table), label, 0, *row, 1, 1);
 	gtk_widget_show (label);
 
-	gtk_table_attach (GTK_TABLE (table), widget, 1, 2, *row, *row + 1,
-			  GTK_FILL | GTK_EXPAND, GTK_FILL, 0, 0);
+	gtk_grid_attach (GTK_GRID (table), widget, 1, *row, 1, 1);
+        gtk_widget_set_hexpand (widget, TRUE);
 	gtk_widget_show (widget);
 
 	*row += 1;
 }
 
 void
-pgd_table_add_property_with_value_widget (GtkTable    *table,
+pgd_table_add_property_with_value_widget (GtkGrid     *table,
 					  const gchar *markup,
 					  GtkWidget  **value_widget,
 					  const gchar *value,
@@ -64,7 +63,7 @@ pgd_table_add_property_with_value_widget (GtkTable    *table,
 }
 
 void
-pgd_table_add_property (GtkTable    *table,
+pgd_table_add_property (GtkGrid     *table,
 			const gchar *markup,
 			const gchar *value,
 			gint        *row)
@@ -93,7 +92,7 @@ pgd_action_view_new (PopplerDocument *document)
 
 static void
 pgd_action_view_add_destination (GtkWidget   *action_view,
-				 GtkTable    *table,
+				 GtkGrid     *table,
 				 PopplerDest *dest,
 				 gboolean     remote,
 				 gint        *row)
@@ -165,13 +164,13 @@ pgd_action_view_add_destination (GtkWidget   *action_view,
 				alignment = gtk_alignment_new (0.5, 0.5, 1, 1);
 				gtk_alignment_set_padding (GTK_ALIGNMENT (alignment), 5, 5, 12, 5);
 				
-				new_table = gtk_table_new (8, 2, FALSE);
-				gtk_table_set_col_spacings (GTK_TABLE (new_table), 6);
-				gtk_table_set_row_spacings (GTK_TABLE (new_table), 6);
-				gtk_table_attach_defaults (table, alignment, 0, 2, *row, *row + 1);
+				new_table = gtk_grid_new ();
+				gtk_grid_set_column_spacing (GTK_GRID (new_table), 6);
+				gtk_grid_set_row_spacing (GTK_GRID (new_table), 6);
+				gtk_grid_attach (GTK_GRID(table), alignment, 0, *row, 1, 1);
 				gtk_widget_show (alignment);
 				
-				pgd_action_view_add_destination (action_view, GTK_TABLE (new_table),
+				pgd_action_view_add_destination (action_view, GTK_GRID (new_table),
 								 new_dest, FALSE, &new_row);
 				poppler_dest_free (new_dest);
 
@@ -329,68 +328,68 @@ pgd_action_view_set_action (GtkWidget     *action_view,
 	if (!action)
 		return;
 
-	table = gtk_table_new (10, 2, FALSE);
-	gtk_table_set_col_spacings (GTK_TABLE (table), 6);
-	gtk_table_set_row_spacings (GTK_TABLE (table), 6);
+	table = gtk_grid_new ();
+	gtk_grid_set_column_spacing (GTK_GRID (table), 6);
+	gtk_grid_set_row_spacing (GTK_GRID (table), 6);
 
-	pgd_table_add_property (GTK_TABLE (table), "<b>Title:</b>", action->any.title, &row);
+	pgd_table_add_property (GTK_GRID (table), "<b>Title:</b>", action->any.title, &row);
 	
 	switch (action->type) {
 	case POPPLER_ACTION_UNKNOWN:
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "Unknown", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "Unknown", &row);
 		break;
 	case POPPLER_ACTION_NONE:
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "None", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "None", &row);
 		break;
 	case POPPLER_ACTION_GOTO_DEST:
-		pgd_action_view_add_destination (action_view, GTK_TABLE (table), action->goto_dest.dest, FALSE, &row);
+		pgd_action_view_add_destination (action_view, GTK_GRID (table), action->goto_dest.dest, FALSE, &row);
 		break;
 	case POPPLER_ACTION_GOTO_REMOTE:
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "Remote Destination", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Filename:</b>", action->goto_remote.file_name, &row);
-		pgd_action_view_add_destination (action_view, GTK_TABLE (table), action->goto_remote.dest, TRUE, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "Remote Destination", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Filename:</b>", action->goto_remote.file_name, &row);
+		pgd_action_view_add_destination (action_view, GTK_GRID (table), action->goto_remote.dest, TRUE, &row);
 		break;
 	case POPPLER_ACTION_LAUNCH:
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "Launch", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Filename:</b>", action->launch.file_name, &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Params:</b>", action->launch.params, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "Launch", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Filename:</b>", action->launch.file_name, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Params:</b>", action->launch.params, &row);
 		break;
 	case POPPLER_ACTION_URI:
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "External URI", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>URI</b>", action->uri.uri, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "External URI", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>URI</b>", action->uri.uri, &row);
 		break;
 	case POPPLER_ACTION_NAMED:
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "Named Action", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Name:</b>", action->named.named_dest, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "Named Action", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Name:</b>", action->named.named_dest, &row);
 		break;
 	case POPPLER_ACTION_MOVIE: {
 		GtkWidget *movie_view = pgd_movie_view_new ();
 
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "Movie", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Operation:</b>", get_movie_op (action->movie.operation), &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "Movie", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Operation:</b>", get_movie_op (action->movie.operation), &row);
 		pgd_movie_view_set_movie (movie_view, action->movie.movie);
-		pgd_table_add_property_with_custom_widget (GTK_TABLE (table), "<b>Movie:</b>", movie_view, &row);
+		pgd_table_add_property_with_custom_widget (GTK_GRID (table), "<b>Movie:</b>", movie_view, &row);
 	}
 		break;
 	case POPPLER_ACTION_RENDITION: {
 		gchar *text;
 
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "Rendition", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "Rendition", &row);
 		text = g_strdup_printf ("%d", action->rendition.op);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Operation:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Operation:</b>", text, &row);
 		g_free (text);
 		if (action->rendition.media) {
 			gboolean   embedded = poppler_media_is_embedded (action->rendition.media);
 			GtkWidget *button;
 
-			pgd_table_add_property (GTK_TABLE (table), "<b>Embedded:</b>", embedded ? "Yes": "No", &row);
+			pgd_table_add_property (GTK_GRID (table), "<b>Embedded:</b>", embedded ? "Yes": "No", &row);
 			if (embedded) {
 				const gchar *mime_type = poppler_media_get_mime_type (action->rendition.media);
-				pgd_table_add_property (GTK_TABLE (table), "<b>Mime type:</b>",
+				pgd_table_add_property (GTK_GRID (table), "<b>Mime type:</b>",
 							mime_type ? mime_type : "",
 							&row);
 			} else {
-				pgd_table_add_property (GTK_TABLE (table), "<b>Filename:</b>",
+				pgd_table_add_property (GTK_GRID (table), "<b>Filename:</b>",
 							poppler_media_get_filename (action->rendition.media),
 							&row);
 			}
@@ -399,7 +398,7 @@ pgd_action_view_set_action (GtkWidget     *action_view,
 			g_signal_connect (button, "clicked",
 					  G_CALLBACK (pgd_action_view_play_rendition),
 					  action->rendition.media);
-			pgd_table_add_property_with_custom_widget (GTK_TABLE (table), NULL, button, &row);
+			pgd_table_add_property_with_custom_widget (GTK_GRID (table), NULL, button, &row);
 			gtk_widget_show (button);
 		}
 	}
@@ -408,11 +407,11 @@ pgd_action_view_set_action (GtkWidget     *action_view,
 		GList     *l;
 		GtkWidget *button;
 
-		pgd_table_add_property (GTK_TABLE (table), "<b>Type:</b>", "OCGState", &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "OCGState", &row);
 
 		for (l = action->ocg_state.state_list; l; l = g_list_next (l)) {
 			PopplerActionLayer *action_layer = (PopplerActionLayer *)l->data;
-			gchar *text;
+			gchar *text = NULL;
 			gint   n_layers = g_list_length (action_layer->layers);
 
 			switch (action_layer->action) {
@@ -426,7 +425,7 @@ pgd_action_view_set_action (GtkWidget     *action_view,
 				text = g_strdup_printf ("%d layers Toggle", n_layers);
 				break;
 			}
-			pgd_table_add_property (GTK_TABLE (table), "<b>Action:</b>", text, &row);
+			pgd_table_add_property (GTK_GRID (table), "<b>Action:</b>", text, &row);
 			g_free (text);
 		}
 
@@ -434,10 +433,35 @@ pgd_action_view_set_action (GtkWidget     *action_view,
 		g_signal_connect (button, "clicked",
 				  G_CALLBACK (pgd_action_view_do_action_layer),
 				  action->ocg_state.state_list);
-		pgd_table_add_property_with_custom_widget (GTK_TABLE (table), NULL, button, &row);
+		pgd_table_add_property_with_custom_widget (GTK_GRID (table), NULL, button, &row);
 		gtk_widget_show (button);
 	}
 		break;
+        case POPPLER_ACTION_JAVASCRIPT: {
+                GtkTextBuffer *buffer;
+                GtkWidget     *textview;
+                GtkWidget     *swindow;
+
+                pgd_table_add_property (GTK_GRID (table), "<b>Type:</b>", "JavaScript", &row);
+
+                buffer = gtk_text_buffer_new (NULL);
+                if (action->javascript.script)
+                        gtk_text_buffer_set_text (buffer, action->javascript.script, -1);
+
+                textview = gtk_text_view_new_with_buffer (buffer);
+                gtk_text_view_set_editable (GTK_TEXT_VIEW (textview), FALSE);
+                g_object_unref (buffer);
+
+                swindow = gtk_scrolled_window_new (NULL, NULL);
+                gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (swindow),
+                                                GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+                gtk_container_add (GTK_CONTAINER (swindow), textview);
+                gtk_widget_show (textview);
+
+                pgd_table_add_property_with_custom_widget (GTK_GRID (table), NULL, swindow, &row);
+                gtk_widget_show (swindow);
+        }
+                break;
 	default:
 		g_assert_not_reached ();
 	}
@@ -540,21 +564,48 @@ pgd_movie_view_set_movie (GtkWidget    *movie_view,
 	if (!movie)
 		return;
 
-	table = gtk_table_new (10, 2, FALSE);
-	gtk_table_set_col_spacings (GTK_TABLE (table), 6);
-	gtk_table_set_row_spacings (GTK_TABLE (table), 6);
+	table = gtk_grid_new ();
+	gtk_grid_set_column_spacing (GTK_GRID (table), 6);
+	gtk_grid_set_row_spacing (GTK_GRID (table), 6);
 
-	pgd_table_add_property (GTK_TABLE (table), "<b>Filename:</b>", poppler_movie_get_filename (movie), &row);
-	pgd_table_add_property (GTK_TABLE (table), "<b>Need Poster:</b>", poppler_movie_need_poster (movie) ? "Yes" : "No", &row);
-	pgd_table_add_property (GTK_TABLE (table), "<b>Show Controls:</b>", poppler_movie_show_controls (movie) ? "Yes" : "No", &row);
+	pgd_table_add_property (GTK_GRID (table), "<b>Filename:</b>", poppler_movie_get_filename (movie), &row);
+	pgd_table_add_property (GTK_GRID (table), "<b>Need Poster:</b>", poppler_movie_need_poster (movie) ? "Yes" : "No", &row);
+	pgd_table_add_property (GTK_GRID (table), "<b>Show Controls:</b>", poppler_movie_show_controls (movie) ? "Yes" : "No", &row);
 
 	button = gtk_button_new_from_stock (GTK_STOCK_MEDIA_PLAY);
 	g_signal_connect (button, "clicked",
 			  G_CALLBACK (pgd_movie_view_play_movie),
 			  movie);
-	pgd_table_add_property_with_custom_widget (GTK_TABLE (table), NULL, button, &row);
+	pgd_table_add_property_with_custom_widget (GTK_GRID (table), NULL, button, &row);
 	gtk_widget_show (button);
 
 	gtk_container_add (GTK_CONTAINER (alignment), table);
 	gtk_widget_show (table);
+}
+
+GdkPixbuf *
+pgd_pixbuf_new_for_color (PopplerColor *poppler_color)
+{
+        GdkPixbuf *pixbuf;
+	gint num, x;
+	guchar *pixels;
+
+        if (!poppler_color)
+                return NULL;
+
+        pixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB,
+                                 FALSE, 8,
+                                 64, 16);
+
+	pixels = gdk_pixbuf_get_pixels (pixbuf);
+	num = gdk_pixbuf_get_width (pixbuf) * gdk_pixbuf_get_height (pixbuf);
+
+	for (x = 0; x < num; x++) {
+                pixels[0] = poppler_color->red;
+                pixels[1] = poppler_color->green;
+                pixels[2] = poppler_color->blue;
+                pixels += 3;
+	}
+
+        return pixbuf;
 }

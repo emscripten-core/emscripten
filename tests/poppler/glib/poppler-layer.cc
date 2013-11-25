@@ -92,7 +92,7 @@ _poppler_layer_new (PopplerDocument *document,
 }
 
 /**
- * poppler_layer_get_title
+ * poppler_layer_get_title:
  * @layer: a #PopplerLayer
  *
  * Returns the name of the layer suitable for
@@ -111,7 +111,7 @@ poppler_layer_get_title (PopplerLayer *poppler_layer)
 }
 
 /**
- * poppler_layer_is_visible
+ * poppler_layer_is_visible:
  * @layer: a #PopplerLayer
  *
  * Returns whether @layer is visible
@@ -129,7 +129,7 @@ poppler_layer_is_visible (PopplerLayer *poppler_layer)
 }
 
 /**
- * poppler_layer_show
+ * poppler_layer_show:
  * @layer: a #PopplerLayer
  *
  * Shows @layer
@@ -160,7 +160,7 @@ poppler_layer_show (PopplerLayer *poppler_layer)
 }
 
 /**
- * poppler_layer_hide
+ * poppler_layer_hide:
  * @layer: a #PopplerLayer
  *
  * Hides @layer. If @layer is the parent of other nested layers,
@@ -186,7 +186,7 @@ poppler_layer_hide (PopplerLayer *poppler_layer)
 
 
 /**
- * poppler_layer_is_parent
+ * poppler_layer_is_parent:
  * @layer: a #PopplerLayer
  *
  * Returns whether @layer is parent of other nested layers.
@@ -204,7 +204,7 @@ poppler_layer_is_parent (PopplerLayer *poppler_layer)
 }
 
 /**
- * poppler_layer_get_radio_button_group_id
+ * poppler_layer_get_radio_button_group_id:
  * @layer: a #PopplerLayer
  *
  * Returns the numeric ID the radio button group associated with @layer.

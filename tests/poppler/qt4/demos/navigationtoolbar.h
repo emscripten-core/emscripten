@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008-2009, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2013, Fabio D'Urso <fabiodurso@hotmail.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +41,7 @@ public:
 
 Q_SIGNALS:
     void zoomChanged(qreal value);
+    void rotationChanged(int rotation);
 
 private Q_SLOTS:
     void slotGoFirst();
@@ -48,6 +50,7 @@ private Q_SLOTS:
     void slotGoLast();
     void slotComboActivated(int index);
     void slotZoomComboChanged(const QString &text);
+    void slotRotationComboChanged(int idx);
 
 private:
     QAction *m_firstAct;
@@ -56,6 +59,7 @@ private:
     QAction *m_nextAct;
     QAction *m_lastAct;
     QComboBox *m_zoomCombo;
+    QComboBox *m_rotationCombo;
 };
 
 #endif

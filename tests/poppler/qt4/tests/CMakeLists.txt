@@ -1,4 +1,5 @@
 add_definitions(${QT4_DEFINITIONS})
+add_definitions(-DTESTDATADIR=\"${TESTDATADIR}\")
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -37,10 +38,12 @@ endmacro(QT4_ADD_QTEST)
 
 qt4_add_simpletest(test-poppler-qt4 test-poppler-qt4.cpp)
 qt4_add_simpletest(test-password-qt4 test-password-qt4.cpp)
+qt4_add_simpletest(poppler-forms poppler-forms.cpp)
 qt4_add_simpletest(poppler-fonts poppler-fonts.cpp)
 qt4_add_simpletest(poppler_attachments poppler-attachments.cpp)
 qt4_add_simpletest(stress-poppler-qt4 stress-poppler-qt4.cpp)
 qt4_add_simpletest(stress-poppler-dir stress-poppler-dir.cpp)
+qt4_add_simpletest(stress-threads-qt4 stress-threads-qt4.cpp)
 qt4_add_simpletest(poppler-texts poppler-texts.cpp)
 
 qt4_add_qtest(check_attachments check_attachments.cpp)
@@ -55,6 +58,9 @@ qt4_add_qtest(check_password check_password.cpp)
 qt4_add_qtest(check_permissions check_permissions.cpp)
 qt4_add_qtest(check_search check_search.cpp)
 qt4_add_qtest(check_actualtext check_actualtext.cpp)
+qt4_add_qtest(check_lexer check_lexer.cpp)
+qt4_add_qtest(check_pagelabelinfo check_pagelabelinfo.cpp)
+qt4_add_qtest(check_goostring check_goostring.cpp)
 if (NOT WIN32)
   qt4_add_qtest(check_strings check_strings.cpp)
 endif (NOT WIN32)

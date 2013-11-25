@@ -24,16 +24,16 @@
 
 G_BEGIN_DECLS
 
-void       pgd_table_add_property                    (GtkTable        *table,
+void       pgd_table_add_property                    (GtkGrid         *table,
 						      const gchar     *markup,
 						      const gchar     *value,
 						      gint            *row);
-void       pgd_table_add_property_with_value_widget  (GtkTable        *table,
+void       pgd_table_add_property_with_value_widget  (GtkGrid         *table,
 						      const gchar     *markup,
 						      GtkWidget      **value_widget,
 						      const gchar     *value,
 						      gint            *row);
-void       pgd_table_add_property_with_custom_widget (GtkTable       *table,
+void       pgd_table_add_property_with_custom_widget (GtkGrid        *table,
 						      const gchar    *markup,
 						      GtkWidget      *widget,
 						      gint           *row);
@@ -44,6 +44,7 @@ gchar     *pgd_format_date                           (time_t           utime);
 GtkWidget *pgd_movie_view_new                        (void);
 void       pgd_movie_view_set_movie                  (GtkWidget       *movie_view,
 						      PopplerMovie    *movie);
+GdkPixbuf *pgd_pixbuf_new_for_color                  (PopplerColor    *poppler_color);
 
 G_END_DECLS
 

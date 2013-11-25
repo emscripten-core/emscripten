@@ -10,7 +10,11 @@
 //
 // Modified under the Poppler project - http://poppler.freedesktop.org
 //
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
 // Copyright (C) 2009 Kovid Goyal <kovid@kovidgoyal.net>
+// Copyright (C) 2012 Albert Astals Cid <aacid@kde.org>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -25,11 +29,6 @@
 #include "GlobalParams.h"
 #include "Object.h"
 #include "PDFDoc.h"
-#ifdef _WIN32
-#include "WinPDFCore.h"
-#else
-#include "XPDFCore.h"
-#endif
 #include "XpdfPluginAPI.h"
 
 //------------------------------------------------------------------------
@@ -56,30 +55,6 @@ XpdfObject _xpdfGetCatalog(XpdfDoc doc) {
   obj = allocObj();
   return (XpdfObject)((PDFDoc *)doc)->getXRef()->getCatalog(obj);
 }
-
-#ifdef _WIN32
-
-HWND _xpdfWin32GetWindow(XpdfDoc doc) {
-  WinPDFCore *core;
-
-  if (!(core = (WinPDFCore *)((PDFDoc *)doc)->getGUIData())) {
-    return NULL;
-  }
-  return core->getDrawFrame();
-}
-
-#else
-
-Widget _xpdfXGetWindow(XpdfDoc doc) {
-  XPDFCore *core;
-
-  if (!(core = (XPDFCore *)((PDFDoc *)doc)->getGUIData())) {
-    return NULL;
-  }
-  return core->getWidget();
-}
-
-#endif
 
 //------------------------------------------------------------------------
 // Object access functions.
@@ -239,11 +214,6 @@ XpdfPluginVecTable xpdfPluginVecTable = {
   xpdfPluginAPIVersion,
   &_xpdfGetInfoDict,
   &_xpdfGetCatalog,
-#ifdef _WIN32
-  &_xpdfWin32GetWindow,
-#else
-  &_xpdfXGetWindow,
-#endif
   &_xpdfObjIsBool,
   &_xpdfObjIsInt,
   &_xpdfObjIsReal,

@@ -2,18 +2,12 @@ if BUILD_GTK_TEST
 
 if BUILD_SPLASH_OUTPUT
 
-gtk_splash_test =				\
-	gtk-splash-test
-
 splash_includes =				\
 	-I$(top_srcdir)/splash
 
 endif
 
 if BUILD_CAIRO_OUTPUT
-
-gtk_cairo_test =				\
-	gtk-cairo-test
 
 pdf_inspector =				\
 	pdf_inspector
@@ -23,6 +17,9 @@ cairo_includes =				\
 	$(FREETYPE_CFLAGS)
 
 endif
+
+gtk_test = \
+	gtk-test
 
 endif
 
@@ -42,29 +39,22 @@ INCLUDES =					\
 	-I$(top_srcdir)/glib			\
 	-I$(top_builddir)/glib			\
 	$(cairo_includes)			\
-	$(GTK_TEST_CFLAGS)			\
-	$(FONTCONFIG_CFLAGS)
+	$(GTK_TEST_CFLAGS)
 
-noinst_PROGRAMS = $(gtk_splash_test) $(gtk_cairo_test) $(pdf_inspector) $(perf_test) $(pdf_fullrewrite)
+noinst_PROGRAMS = $(pdf_inspector) $(perf_test) $(pdf_fullrewrite) $(gtk_test)
 
 AM_LDFLAGS = @auto_import_flags@
 
-gtk_splash_test_SOURCES =			\
-       gtk-splash-test.cc
+gtk_test_SOURCES =					\
+	gtk-test.cc
 
-gtk_splash_test_LDADD =				\
-	$(top_builddir)/poppler/libpoppler.la	\
-	$(GTK_TEST_LIBS)
-
-gtk_cairo_test_SOURCES =			\
-       gtk-cairo-test.cc
-
-gtk_cairo_test_LDADD =					\
-	$(top_builddir)/poppler/libpoppler.la		\
-	$(top_builddir)/glib/libpoppler-glib.la		\
+gtk_test_LDADD =					\
+	$(top_builddir)/poppler/libpoppler.la           \
+	$(top_builddir)/glib/libpoppler-glib.la         \
 	$(CAIRO_LIBS)					\
 	$(GTK_TEST_LIBS)				\
-	$(FONTCONFIG_LIBS)
+	$(PTHREAD_LIBS)
+
 
 pdf_inspector_SOURCES =			\
        pdf-inspector.cc
@@ -75,7 +65,8 @@ pdf_inspector_LDADD =					\
 	$(CAIRO_LIBS)					\
 	$(FREETYPE_LIBS)				\
 	$(GTK_TEST_LIBS)				\
-	$(X_EXTRA_LIBS)
+	$(X_EXTRA_LIBS)					\
+	$(PTHREAD_LIBS)
 
 perf_test_SOURCES =			\
        perf-test.cc                     \
@@ -87,7 +78,8 @@ perf_test_LDADD =				\
 	$(X_EXTRA_LIBS)
 
 pdf_fullrewrite_SOURCES = \
-	pdf-fullrewrite.cc
+	pdf-fullrewrite.cc		\
+	../utils/parseargs.cc
 
 pdf_fullrewrite_LDADD = \
 	$(top_builddir)/poppler/libpoppler.la

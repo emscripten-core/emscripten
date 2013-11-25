@@ -13,8 +13,10 @@
 // All changes made under the Poppler project to this file are licensed
 // under GPL version 2 or later
 //
-// Copyright (C) 2006, 2007, 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2006, 2007, 2010, 2013 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2006 Krzysztof Kowalczyk <kkowalczyk@gmail.com>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -55,6 +57,7 @@ public:
 
   // Get the next object from the input stream.
   Object *getObj(Object *obj, int objNum = -1);
+  Object *getObj(Object *obj, const char *cmdA, int objNum);
 
   // Skip to the beginning of the next line in the input stream.
   void skipToNextLine();
@@ -67,12 +70,12 @@ public:
     { return curStr.isStream() ? curStr.getStream() : (Stream *)NULL; }
 
   // Get current position in file.  This is only used for error
-  // messages, so it returns an int instead of a Guint.
-  int getPos()
-    { return curStr.isStream() ? (int)curStr.streamGetPos() : -1; }
+  // messages.
+  Goffset getPos()
+    { return curStr.isStream() ? curStr.streamGetPos() : -1; }
 
   // Set position in file.
-  void setPos(Guint pos, int dir = 0)
+  void setPos(Goffset pos, int dir = 0)
     { if (curStr.isStream()) curStr.streamSetPos(pos, dir); }
 
   // Returns true if <c> is a whitespace character.

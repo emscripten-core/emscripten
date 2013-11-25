@@ -7,6 +7,7 @@
 // Copyright 2005 Jonathan Blandford <jrb@redhat.com>
 // Copyright 2007 Krzysztof Kowalczyk <kkowalczyk@gmail.com>
 // Copyright 2010 Hib Eris <hib@hiberis.nl>
+// Copyright 2011 Albert Astals cid <aacid@kde.org>
 // Inspired by gtimer.c in glib, which is Copyright 2000 by the GLib Team
 //
 //========================================================================
@@ -18,6 +19,7 @@
 #pragma interface
 #endif
 
+#include "poppler-config.h"
 #include "gtypes.h"
 #ifdef HAVE_GETTIMEOFDAY
 #include <sys/time.h>

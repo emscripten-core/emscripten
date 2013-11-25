@@ -229,9 +229,9 @@ pgd_page_create_widget (PopplerDocument *document)
 
 	n_pages = poppler_document_get_n_pages (document);
 
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 
 	label = gtk_label_new ("Page:");
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, TRUE, 0);
@@ -260,7 +260,7 @@ pgd_page_create_widget (PopplerDocument *document)
 	gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, TRUE, 0);
 	gtk_widget_show (hbox);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 
 	frame = gtk_frame_new (NULL);
 	gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_NONE);
@@ -274,18 +274,17 @@ pgd_page_create_widget (PopplerDocument *document)
 	gtk_container_add (GTK_CONTAINER (frame), alignment);
 	gtk_widget_show (alignment);
 
-	table = gtk_table_new (3, 2, FALSE);
+	table = gtk_grid_new ();
+	gtk_grid_set_column_spacing (GTK_GRID (table), 6);
+	gtk_grid_set_row_spacing (GTK_GRID (table), 6);
 
-	gtk_table_set_col_spacings (GTK_TABLE (table), 6);
-	gtk_table_set_row_spacings (GTK_TABLE (table), 6);
-
-	pgd_table_add_property_with_value_widget (GTK_TABLE (table), "<b>Page Index:</b>",
+	pgd_table_add_property_with_value_widget (GTK_GRID (table), "<b>Page Index:</b>",
 						  &(demo->index), NULL, &row);
-	pgd_table_add_property_with_value_widget (GTK_TABLE (table), "<b>Page Label:</b>",
+	pgd_table_add_property_with_value_widget (GTK_GRID (table), "<b>Page Label:</b>",
 						  &(demo->label), NULL, &row);
-	pgd_table_add_property_with_value_widget (GTK_TABLE (table), "<b>Page Size:</b>",
+	pgd_table_add_property_with_value_widget (GTK_GRID (table), "<b>Page Size:</b>",
 						  &(demo->size), NULL, &row);
-	pgd_table_add_property_with_value_widget (GTK_TABLE (table), "<b>Page Duration:</b>",
+	pgd_table_add_property_with_value_widget (GTK_GRID (table), "<b>Page Duration:</b>",
 						  &(demo->duration), NULL, &row);
 
 	gtk_container_add (GTK_CONTAINER (alignment), table);
@@ -307,7 +306,7 @@ pgd_page_create_widget (PopplerDocument *document)
 	gtk_container_add (GTK_CONTAINER (frame), alignment);
 	gtk_widget_show (alignment);
 	
-	thumnail_box = gtk_vbox_new (FALSE, 6);
+	thumnail_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
 	
 	demo->thumbnail = gtk_image_new ();
 	gtk_box_pack_start (GTK_BOX (thumnail_box), demo->thumbnail, TRUE, TRUE, 0);

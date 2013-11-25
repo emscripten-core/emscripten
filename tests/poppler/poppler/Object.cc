@@ -13,7 +13,8 @@
 // All changes made under the Poppler project to this file are licensed
 // under GPL version 2 or later
 //
-// Copyright (C) 2008, 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2008, 2010, 2012 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -38,7 +39,7 @@
 // Object
 //------------------------------------------------------------------------
 
-static char *objTypeNames[numObjTypes] = {
+static const char *objTypeNames[numObjTypes] = {
   "boolean",
   "integer",
   "real",
@@ -52,7 +53,8 @@ static char *objTypeNames[numObjTypes] = {
   "cmd",
   "error",
   "eof",
-  "none"
+  "none",
+  "integer64"
 };
 
 #ifdef DEBUG_MEM
@@ -115,9 +117,9 @@ Object *Object::copy(Object *obj) {
   return obj;
 }
 
-Object *Object::fetch(XRef *xref, Object *obj, std::set<int> *fetchOriginatorNums) {
+Object *Object::fetch(XRef *xref, Object *obj, int recursion) {
   return (type == objRef && xref) ?
-         xref->fetch(ref.num, ref.gen, obj, fetchOriginatorNums) : copy(obj);
+         xref->fetch(ref.num, ref.gen, obj, recursion) : copy(obj);
 }
 
 void Object::free() {
@@ -155,7 +157,7 @@ void Object::free() {
   type = objNone;
 }
 
-char *Object::getTypeName() {
+const char *Object::getTypeName() {
   return objTypeNames[type];
 }
 
@@ -223,8 +225,8 @@ void Object::print(FILE *f) {
   case objNone:
     fprintf(f, "<none>");
     break;
-  case objUint:
-    fprintf(f, "%u", uintg);
+  case objInt64:
+    fprintf(f, "%lld", int64g);
     break;
   }
 }

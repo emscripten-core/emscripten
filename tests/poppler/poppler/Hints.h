@@ -5,7 +5,8 @@
 // This file is licensed under the GPLv2 or later
 //
 // Copyright 2010 Hib Eris <hib@hiberis.nl>
-// Copyright 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright 2010, 2013 Albert Astals Cid <aacid@kde.org>
+// Copyright 2013 Adrian Johnson <ajohnson@redneon.com>
 //
 //========================================================================
 
@@ -33,7 +34,7 @@ public:
   ~Hints();
 
   int getPageObjectNum(int page);
-  Guint getPageOffset(int page);
+  Goffset getPageOffset(int page);
   std::vector<ByteRange>* getPageRanges(int page);
 
 private:
@@ -54,9 +55,8 @@ private:
   int nPages;
   int pageFirst;
   int pageObjectFirst;
-  Guint pageOffsetFirst;
+  Goffset pageOffsetFirst;
   Guint pageEndFirst;
-  int objectNumberFirst;
 
   Guint nObjectLeast;
   Guint objectOffsetFirst;
@@ -76,7 +76,7 @@ private:
   int *pageObjectNum;
   Guint *xRefOffset;
   Guint *pageLength;
-  Guint *pageOffset;
+  Goffset *pageOffset;
   Guint *numSharedObject;
   Guint **sharedObjectId;
 

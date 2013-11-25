@@ -90,7 +90,7 @@ SplashT1Font::SplashT1Font(SplashT1FontFile *fontFileA, SplashCoord *matA,
   outlineID = -1;
 
   // compute font size
-  size = (float)splashSqrt(mat[2]*mat[2] + mat[3]*mat[3]);
+  size = (float)splashDist(0, 0, mat[2], mat[3]);
 
   // transform the four corners of the font bounding box -- the min
   // and max values form the bounding box of the transformed font
@@ -239,13 +239,12 @@ SplashPath *SplashT1Font::getGlyphPath(int c) {
   T1_OUTLINE *outline;
   T1_PATHSEGMENT *seg;
   T1_BEZIERSEGMENT *bez;
-  SplashCoord x, y, x1, y1;
+  int x, y, x1, y1;
   GBool needClose;
 
   if (outlineID < 0) {
     outlineID = T1_CopyFont(((SplashT1FontFile *)fontFile)->t1libID);
-    outlineSize = (float)splashSqrt(textMat[2]*textMat[2] +
-				    textMat[3]*textMat[3]);
+    outlineSize = (float)splashDist(0, 0, textMat[2], textMat[3]);
     matrix.cxx = (double)textMat[0] / outlineSize;
     matrix.cxy = (double)textMat[1] / outlineSize;
     matrix.cyx = (double)textMat[2] / outlineSize;
@@ -259,8 +258,11 @@ SplashPath *SplashT1Font::getGlyphPath(int c) {
 
   path = new SplashPath();
   if ((outline = T1_GetCharOutline(outlineID, c, outlineSize, NULL))) {
-    x = 0;
-    y = 0;
+    // NB: t1lib uses integer coordinates here; we keep a running
+    // (x,y) total as integers, so that the final point in the path is
+    // exactly the same as the first point, thus avoiding weird
+    // mitered join glitches
+    x = y = 0;
     needClose = gFalse;
     for (seg = outline; seg; seg = seg->link) {
       switch (seg->type) {
@@ -269,25 +271,26 @@ SplashPath *SplashT1Font::getGlyphPath(int c) {
 	  path->close();
 	  needClose = gFalse;
 	}
-	x += seg->dest.x * outlineMul;
-	y += seg->dest.y * outlineMul;
-	path->moveTo(x, -y);
+	x += seg->dest.x;
+	y += seg->dest.y;
+	path->moveTo(outlineMul * x, -outlineMul * y);
 	break;
       case T1_PATHTYPE_LINE:
-	x += seg->dest.x * outlineMul;
-	y += seg->dest.y * outlineMul;
-	path->lineTo(x, -y);
+	x += seg->dest.x;
+	y += seg->dest.y;
+	path->lineTo(outlineMul * x, -outlineMul * y);
 	needClose = gTrue;
 	break;
       case T1_PATHTYPE_BEZIER:
 	bez = (T1_BEZIERSEGMENT *)seg;
-	x1 = x + (SplashCoord)(bez->dest.x * outlineMul);
-	y1 = y + (SplashCoord)(bez->dest.y * outlineMul);
-	path->curveTo(x + (SplashCoord)(bez->B.x * outlineMul),
-		      -(y + (SplashCoord)(bez->B.y * outlineMul)),
-		      x + (SplashCoord)(bez->C.x * outlineMul),
-		      -(y + (SplashCoord)(bez->C.y * outlineMul)),
-		      x1, -y1);
+	x1 = x + bez->dest.x;
+	y1 = y + bez->dest.y;
+	path->curveTo(outlineMul * (x + bez->B.x),
+		      -outlineMul * (y + bez->B.y),
+		      outlineMul * (x + bez->C.x),
+		      -outlineMul * (y + bez->C.y),
+		      outlineMul * x1,
+		      -outlineMul * y1);
 	x = x1;
 	y = y1;
 	needClose = gTrue;

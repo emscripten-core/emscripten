@@ -61,11 +61,10 @@ pgd_images_free (PgdImagesDemo *demo)
 }
 
 static gboolean
-pgd_image_view_drawing_area_expose (GtkWidget      *area,
-				    GdkEventExpose *event,
-				    GtkWidget      *image_view)
+pgd_image_view_drawing_area_draw (GtkWidget *area,
+                                  cairo_t   *cr,
+                                  GtkWidget *image_view)
 {
-	cairo_t         *cr;
 	cairo_surface_t *image;
 
 	image = g_object_get_data (G_OBJECT (image_view), "image-surface");
@@ -75,11 +74,9 @@ pgd_image_view_drawing_area_expose (GtkWidget      *area,
 	gtk_widget_set_size_request (area,
 				     cairo_image_surface_get_width (image),
 				     cairo_image_surface_get_height (image));
-	
-	cr = gdk_cairo_create (gtk_widget_get_window (area));
+
 	cairo_set_source_surface (cr, image, 0, 0);
 	cairo_paint (cr);
-	cairo_destroy (cr);
 
 	return TRUE;
 }
@@ -93,13 +90,17 @@ pgd_image_view_new ()
 	swindow = gtk_scrolled_window_new (NULL, NULL);
 	
 	darea = gtk_drawing_area_new ();
-	g_signal_connect (G_OBJECT (darea), "expose_event",
-			  G_CALLBACK (pgd_image_view_drawing_area_expose),
+	g_signal_connect (G_OBJECT (darea), "draw",
+			  G_CALLBACK (pgd_image_view_drawing_area_draw),
 			  (gpointer)swindow);
 	gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (swindow),
 					GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+#if GTK_CHECK_VERSION(3, 7, 8)
+	gtk_container_add(GTK_CONTAINER(swindow), darea);
+#else
 	gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW (swindow),
 					       darea);
+#endif
 	gtk_widget_show (darea);
 
 	return swindow;
@@ -229,9 +230,9 @@ pgd_images_create_widget (PopplerDocument *document)
 	
 	n_pages = poppler_document_get_n_pages (document);
 
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 
 	label = gtk_label_new ("Page:");
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, TRUE, 0);
@@ -266,7 +267,7 @@ pgd_images_create_widget (PopplerDocument *document)
 	gtk_box_pack_start (GTK_BOX (vbox), demo->timer_label, FALSE, TRUE, 0);
 	gtk_widget_show (demo->timer_label);
 
-	hpaned = gtk_hpaned_new ();
+	hpaned = gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);
 
 	demo->image_view = pgd_image_view_new ();
 

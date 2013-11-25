@@ -15,9 +15,12 @@
 //
 // Copyright (C) 2006 Raj Kumar <rkumar@archive.org>
 // Copyright (C) 2006 Paul Walmsley <paul@booyaka.com>
-// Copyright (C) 2006-2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2006-2010, 2012 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2009 David Benjamin <davidben@mit.edu>
 // Copyright (C) 2011 Edward Jiang <ejiang@google.com>
+// Copyright (C) 2012 William Bader <williambader@hotmail.com>
+// Copyright (C) 2012 Thomas Freitag <Thomas.Freitag@alfa.de>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -510,7 +513,7 @@ int JBIG2MMRDecoder::get2DCode() {
     }
   }
   if (p->bits < 0) {
-    error(str->getPos(), "Bad two dim code in JBIG2 MMR stream");
+    error(errSyntaxError, str->getPos(), "Bad two dim code in JBIG2 MMR stream");
     return EOF;
   }
   bufLen -= p->bits;
@@ -553,7 +556,7 @@ int JBIG2MMRDecoder::getWhiteCode() {
     bufLen += 8;
     ++nBytesRead;
   }
-  error(str->getPos(), "Bad white code in JBIG2 MMR stream");
+  error(errSyntaxError, str->getPos(), "Bad white code in JBIG2 MMR stream");
   // eat a bit and return a positive number so that the caller doesn't
   // go into an infinite loop
   --bufLen;
@@ -584,6 +587,9 @@ int JBIG2MMRDecoder::getBlackCode() {
       } else {
 	code = buf >> (bufLen - 12);
       }
+      if (unlikely((code & 0xff) < 64)) {
+        break;
+      }
       p = &blackTab2[(code & 0xff) - 64];
     } else {
       if (bufLen <= 6) {
@@ -604,7 +610,7 @@ int JBIG2MMRDecoder::getBlackCode() {
     bufLen += 8;
     ++nBytesRead;
   }
-  error(str->getPos(), "Bad black code in JBIG2 MMR stream");
+  error(errSyntaxError, str->getPos(), "Bad black code in JBIG2 MMR stream");
   // eat a bit and return a positive number so that the caller doesn't
   // go into an infinite loop
   --bufLen;
@@ -675,6 +681,7 @@ public:
   void clearToOne();
   int getWidth() { return w; }
   int getHeight() { return h; }
+  int getLineSize() { return line; }
   int getPixel(int x, int y)
     { return (x < 0 || x >= w || y < 0 || y >= h) ? 0 :
              (data[y * line + (x >> 3)] >> (7 - (x & 7))) & 1; }
@@ -706,24 +713,33 @@ JBIG2Bitmap::JBIG2Bitmap(Guint segNumA, int wA, int hA):
   line = (wA + 7) >> 3;
 
   if (w <= 0 || h <= 0 || line <= 0 || h >= (INT_MAX - 1) / line) {
-    error(-1, "invalid width/height");
+    error(errSyntaxError, -1, "invalid width/height");
     data = NULL;
     return;
   }
   // need to allocate one extra guard byte for use in combine()
-  data = (Guchar *)gmalloc(h * line + 1);
-  data[h * line] = 0;
+  data = (Guchar *)gmalloc_checkoverflow(h * line + 1);
+  if (data != NULL) {
+    data[h * line] = 0;
+  }
 }
 
 JBIG2Bitmap::JBIG2Bitmap(Guint segNumA, JBIG2Bitmap *bitmap):
   JBIG2Segment(segNumA)
 {
+  if (unlikely(bitmap == NULL)) {
+    error(errSyntaxError, -1, "NULL bitmap in JBIG2Bitmap");
+    w = h = line = 0;
+    data = NULL;
+    return;
+  }
+
   w = bitmap->w;
   h = bitmap->h;
   line = bitmap->line;
 
   if (w <= 0 || h <= 0 || line <= 0 || h >= (INT_MAX - 1) / line) {
-    error(-1, "invalid width/height");
+    error(errSyntaxError, -1, "invalid width/height");
     data = NULL;
     return;
   }
@@ -761,7 +777,7 @@ JBIG2Bitmap *JBIG2Bitmap::getSlice(Guint x, Guint y, Guint wA, Guint hA) {
 
 void JBIG2Bitmap::expand(int newH, Guint pixel) {
   if (newH <= h || line <= 0 || newH >= (INT_MAX - 1) / line) {
-    error(-1, "invalid width/height");
+    error(errSyntaxError, -1, "invalid width/height");
     gfree(data);
     data = NULL;
     return;
@@ -1052,9 +1068,14 @@ private:
 JBIG2SymbolDict::JBIG2SymbolDict(Guint segNumA, Guint sizeA):
   JBIG2Segment(segNumA)
 {
+  Guint i;
+
   size = sizeA;
   bitmaps = (JBIG2Bitmap **)gmallocn_checkoverflow(size, sizeof(JBIG2Bitmap *));
   if (!bitmaps) size = 0;
+  for (i = 0; i < size; ++i) {
+    bitmaps[i] = NULL;
+  }
   genericRegionStats = NULL;
   refinementRegionStats = NULL;
 }
@@ -1085,8 +1106,8 @@ public:
   virtual ~JBIG2PatternDict();
   virtual JBIG2SegmentType getType() { return jbig2SegPatternDict; }
   Guint getSize() { return size; }
-  void setBitmap(Guint idx, JBIG2Bitmap *bitmap) { bitmaps[idx] = bitmap; }
-  JBIG2Bitmap *getBitmap(Guint idx) { return bitmaps[idx]; }
+  void setBitmap(Guint idx, JBIG2Bitmap *bitmap) { if (likely(idx < size)) bitmaps[idx] = bitmap; }
+  JBIG2Bitmap *getBitmap(Guint idx) { return (idx < size) ? bitmaps[idx] : NULL; }
 
 private:
 
@@ -1097,8 +1118,13 @@ private:
 JBIG2PatternDict::JBIG2PatternDict(Guint segNumA, Guint sizeA):
   JBIG2Segment(segNumA)
 {
-  size = sizeA;
-  bitmaps = (JBIG2Bitmap **)gmallocn(size, sizeof(JBIG2Bitmap *));
+  bitmaps = (JBIG2Bitmap **)gmallocn_checkoverflow(sizeA, sizeof(JBIG2Bitmap *));
+  if (bitmaps) {
+    size = sizeA;
+  } else {
+    size = 0;
+    error(errSyntaxError, -1, "JBIG2PatternDict: can't allocate bitmaps");
+  }
 }
 
 JBIG2PatternDict::~JBIG2PatternDict() {
@@ -1259,14 +1285,31 @@ int JBIG2Stream::lookChar() {
   return EOF;
 }
 
-int JBIG2Stream::getPos() {
+Goffset JBIG2Stream::getPos() {
   if (pageBitmap == NULL) {
     return 0;
   }
   return dataPtr - pageBitmap->getDataPtr();
 }
 
-GooString *JBIG2Stream::getPSFilter(int psLevel, char *indent) {
+int JBIG2Stream::getChars(int nChars, Guchar *buffer) {
+  int n, i;
+
+  if (nChars <= 0) {
+    return 0;
+  }
+  if (dataEnd - dataPtr < nChars) {
+    n = (int)(dataEnd - dataPtr);
+  } else {
+    n = nChars;
+  }
+  for (i = 0; i < n; ++i) {
+    buffer[i] = *dataPtr++ ^ 0xff;
+  }
+  return n;
+}
+
+GooString *JBIG2Stream::getPSFilter(int psLevel, const char *indent) {
   return NULL;
 }
 
@@ -1278,7 +1321,7 @@ void JBIG2Stream::readSegments() {
   Guint segNum, segFlags, segType, page, segLength;
   Guint refFlags, nRefSegs;
   Guint *refSegs;
-  int segDataPos;
+  Goffset segDataPos;
   int c1, c2, c3;
   Guint i;
 
@@ -1304,7 +1347,9 @@ void JBIG2Stream::readSegments() {
       refFlags = (refFlags << 24) | (c1 << 16) | (c2 << 8) | c3;
       nRefSegs = refFlags & 0x1fffffff;
       for (i = 0; i < (nRefSegs + 9) >> 3; ++i) {
-	c1 = curStr->getChar();
+	if ((c1 = curStr->getChar()) == EOF) {
+	  goto eofError1;
+	}
       }
     }
 
@@ -1352,7 +1397,7 @@ void JBIG2Stream::readSegments() {
     // check for missing page information segment
     if (!pageBitmap && ((segType >= 4 && segType <= 7) ||
 			(segType >= 20 && segType <= 43))) {
-      error(curStr->getPos(), "First JBIG2 segment associated with a page must be a page information segment");
+      error(errSyntaxError, curStr->getPos(), "First JBIG2 segment associated with a page must be a page information segment");
       goto syntaxError;
     }
 
@@ -1424,7 +1469,7 @@ void JBIG2Stream::readSegments() {
       readExtensionSeg(segLength);
       break;
     default:
-      error(curStr->getPos(), "Unknown segment type in JBIG2 stream");
+      error(errSyntaxError, curStr->getPos(), "Unknown segment type in JBIG2 stream");
       for (i = 0; i < segLength; ++i) {
 	if ((c1 = curStr->getChar()) == EOF) {
 	  goto eofError2;
@@ -1439,7 +1484,7 @@ void JBIG2Stream::readSegments() {
 
     if (segLength != 0xffffffff) {
 
-      int segExtraBytes = segDataPos + segLength - curStr->getPos();
+      Goffset segExtraBytes = segDataPos + segLength - curStr->getPos();
       if (segExtraBytes > 0) {
 
 	// If we didn't read all of the bytes in the segment data,
@@ -1450,14 +1495,14 @@ void JBIG2Stream::readSegments() {
 	// arithmetic-coded symbol dictionary segments when numNewSyms
 	// == 0.  Segments like this often occur for blank pages.
 	
-	error(curStr->getPos(), "%d extraneous byte%s after segment",
+	error(errSyntaxError, curStr->getPos(), "{0:d} extraneous byte{1:s} after segment",
 	      segExtraBytes, (segExtraBytes > 1) ? "s" : "");
 	
 	// Burn through the remaining bytes -- inefficient, but
 	// hopefully we're not doing this much
 	
 	int trash;
-	for (int i = segExtraBytes; i > 0; i--) {
+	for (Goffset i = segExtraBytes; i > 0; i--) {
 	  readByte(&trash);
 	}
 	
@@ -1466,7 +1511,7 @@ void JBIG2Stream::readSegments() {
 	// If we read more bytes than we should have, according to the 
 	// segment length field, note an error.
 	
-	error(curStr->getPos(), "Previous segment handler read too many bytes");
+	error(errSyntaxError, curStr->getPos(), "Previous segment handler read too many bytes");
 	
       }
 
@@ -1484,7 +1529,7 @@ void JBIG2Stream::readSegments() {
  eofError2:
   gfree(refSegs);
  eofError1:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
 }
 
 GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
@@ -1506,7 +1551,7 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
   Guint symHeight, symWidth, totalWidth, x, symID;
   int dh, dw, refAggNum, refDX, refDY, bmSize;
   GBool ex;
-  int run, cnt;
+  int run, cnt, c;
   Guint i, j, k;
   Guchar *p;
 
@@ -1574,7 +1619,7 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
       if (seg->getType() == jbig2SegSymbolDict) {
 	j = ((JBIG2SymbolDict *)seg)->getSize();
 	if (numInputSyms > UINT_MAX - j) {
-	  error(curStr->getPos(), "Too many input symbols in JBIG2 symbol dictionary");
+	  error(errSyntaxError, curStr->getPos(), "Too many input symbols in JBIG2 symbol dictionary");
 	  delete codeTables;
 	  goto eofError;
 	}
@@ -1588,25 +1633,34 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
     }
   }
   if (numInputSyms > UINT_MAX - numNewSyms) {
-    error(curStr->getPos(), "Too many input symbols in JBIG2 symbol dictionary");
+    error(errSyntaxError, curStr->getPos(), "Too many input symbols in JBIG2 symbol dictionary");
     delete codeTables;
     goto eofError;
   }
 
   // compute symbol code length, per 6.5.8.2.3
   //  symCodeLen = ceil( log2( numInputSyms + numNewSyms ) )
-  symCodeLen = 1;
-  if (likely(numInputSyms + numNewSyms > 0)) { // don't fail too badly if the sum is 0
-    i = (numInputSyms + numNewSyms - 1) >> 1;
-    while (i) {
+  i = numInputSyms + numNewSyms;
+  if (i <= 1) {
+    symCodeLen = huff ? 1 : 0;
+  } else {
+    --i;
+    symCodeLen = 0;
+    // i = floor((numSyms-1) / 2^symCodeLen)
+    while (i > 0) {
       ++symCodeLen;
       i >>= 1;
     }
   }
 
   // get the input symbol bitmaps
-  bitmaps = (JBIG2Bitmap **)gmallocn(numInputSyms + numNewSyms,
+  bitmaps = (JBIG2Bitmap **)gmallocn_checkoverflow(numInputSyms + numNewSyms,
 				     sizeof(JBIG2Bitmap *));
+  if (!bitmaps && (numInputSyms + numNewSyms > 0)) {
+    error(errSyntaxError, curStr->getPos(), "Too many input symbols in JBIG2 symbol dictionary");
+    delete codeTables;
+    goto eofError;
+  }
   for (i = 0; i < numInputSyms + numNewSyms; ++i) {
     bitmaps[i] = NULL;
   }
@@ -1709,10 +1763,14 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
       arithDecoder->decodeInt(&dh, iadhStats);
     }
     if (dh < 0 && (Guint)-dh >= symHeight) {
-      error(curStr->getPos(), "Bad delta-height value in JBIG2 symbol dictionary");
+      error(errSyntaxError, curStr->getPos(), "Bad delta-height value in JBIG2 symbol dictionary");
       goto syntaxError;
     }
     symHeight += dh;
+    if (unlikely(symHeight > 0x40000000)) {
+      error(errSyntaxError, curStr->getPos(), "Bad height value in JBIG2 symbol dictionary");
+      goto syntaxError;
+    }
     symWidth = 0;
     totalWidth = 0;
     j = i;
@@ -1731,12 +1789,12 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
 	}
       }
       if (dw < 0 && (Guint)-dw >= symWidth) {
-	error(curStr->getPos(), "Bad delta-height value in JBIG2 symbol dictionary");
+	error(errSyntaxError, curStr->getPos(), "Bad delta-height value in JBIG2 symbol dictionary");
 	goto syntaxError;
       }
       symWidth += dw;
       if (i >= numNewSyms) {
-	error(curStr->getPos(), "Too many symbols in JBIG2 symbol dictionary");
+	error(errSyntaxError, curStr->getPos(), "Too many symbols in JBIG2 symbol dictionary");
 	goto syntaxError;
       }
 
@@ -1776,10 +1834,14 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
 	    arithDecoder->decodeInt(&refDY, iardyStats);
 	  }
 	  if (symID >= numInputSyms + i) {
-	    error(curStr->getPos(), "Invalid symbol ID in JBIG2 symbol dictionary");
+	    error(errSyntaxError, curStr->getPos(), "Invalid symbol ID in JBIG2 symbol dictionary");
 	    goto syntaxError;
 	  }
 	  refBitmap = bitmaps[symID];
+	  if (unlikely(refBitmap == NULL)) {
+	    error(errSyntaxError, curStr->getPos(), "Invalid ref bitmap for symbol ID {0:d} in JBIG2 symbol dictionary", symID);
+	    goto syntaxError;
+	  }
 	  bitmaps[numInputSyms + i] =
 	      readGenericRefinementRegion(symWidth, symHeight,
 					  sdrTemplate, gFalse,
@@ -1815,21 +1877,33 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
 	collBitmap = new JBIG2Bitmap(0, totalWidth, symHeight);
 	bmSize = symHeight * ((totalWidth + 7) >> 3);
 	p = collBitmap->getDataPtr();
+	if (unlikely(p == NULL)) {
+	  delete collBitmap;
+	  goto syntaxError;
+	}
 	for (k = 0; k < (Guint)bmSize; ++k) {
-	  *p++ = curStr->getChar();
+	  if ((c = curStr->getChar()) == EOF) {
+	    break;
+	  }
+	  *p++ = (Guchar)c;
 	}
       } else {
 	collBitmap = readGenericBitmap(gTrue, totalWidth, symHeight,
 				       0, gFalse, gFalse, NULL, NULL, NULL,
 				       bmSize);
       }
-      x = 0;
-      for (; j < i; ++j) {
-	bitmaps[numInputSyms + j] =
-	    collBitmap->getSlice(x, 0, symWidths[j], symHeight);
-	x += symWidths[j];
+      if (likely(collBitmap != NULL)) {
+	x = 0;
+	for (; j < i; ++j) {
+	  bitmaps[numInputSyms + j] =
+	      collBitmap->getSlice(x, 0, symWidths[j], symHeight);
+	  x += symWidths[j];
+	}
+	delete collBitmap;
+      } else {
+	error(errSyntaxError, curStr->getPos(), "collBitmap was null");
+	goto syntaxError;
       }
-      delete collBitmap;
     }
   }
 
@@ -1851,7 +1925,7 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
     }
     if (i + run > numInputSyms + numNewSyms ||
 	(ex && j + run > numExSyms)) {
-      error(curStr->getPos(), "Too many exported symbols in JBIG2 symbol dictionary");
+      error(errSyntaxError, curStr->getPos(), "Too many exported symbols in JBIG2 symbol dictionary");
       for ( ; j < numExSyms; ++j) symbolDict->setBitmap(j, NULL);
       delete symbolDict;
       goto syntaxError;
@@ -1866,7 +1940,7 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
     ex = !ex;
   }
   if (j != numExSyms) {
-    error(curStr->getPos(), "Too few symbols in JBIG2 symbol dictionary");
+    error(errSyntaxError, curStr->getPos(), "Too few symbols in JBIG2 symbol dictionary");
     for ( ; j < numExSyms; ++j) symbolDict->setBitmap(j, NULL);
     delete symbolDict;
     goto syntaxError;
@@ -1894,7 +1968,7 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
   return gTrue;
 
  codeTableError:
-  error(curStr->getPos(), "Missing code table in JBIG2 symbol dictionary");
+  error(errSyntaxError, curStr->getPos(), "Missing code table in JBIG2 symbol dictionary");
   delete codeTables;
 
  syntaxError:
@@ -1910,7 +1984,7 @@ GBool JBIG2Stream::readSymbolDictSeg(Guint segNum, Guint length,
   return gFalse;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
   return gFalse;
 }
 
@@ -1998,16 +2072,22 @@ void JBIG2Stream::readTextRegionSeg(Guint segNum, GBool imm,
 	codeTables->append(seg);
       }
     } else {
-      error(curStr->getPos(), "Invalid segment reference in JBIG2 text region");
+      error(errSyntaxError, curStr->getPos(), "Invalid segment reference in JBIG2 text region");
       delete codeTables;
       return;
     }
   }
-  symCodeLen = 0;
-  i = 1;
-  while (i < numSyms) {
-    ++symCodeLen;
-    i <<= 1;
+  i = numSyms;
+  if (i <= 1) {
+    symCodeLen = huff ? 1 : 0;
+  } else {
+    --i;
+    symCodeLen = 0;
+    // i = floor((numSyms-1) / 2^symCodeLen)
+    while (i > 0) {
+      ++symCodeLen;
+      i >>= 1;
+    }
   }
 
   // get the symbol bitmaps
@@ -2150,6 +2230,7 @@ void JBIG2Stream::readTextRegionSeg(Guint segNum, GBool imm,
 	  symCodeTab[i++].prefixLen = 0;
 	}
       } else if (j > 0x100) {
+	if (unlikely(i == 0)) ++i;
 	for (j -= 0x100; j && i < numSyms; --j) {
 	  symCodeTab[i].prefixLen = symCodeTab[i-1].prefixLen;
 	  ++i;
@@ -2207,13 +2288,13 @@ void JBIG2Stream::readTextRegionSeg(Guint segNum, GBool imm,
   return;
 
  codeTableError:
-  error(curStr->getPos(), "Missing code table in JBIG2 text region");
+  error(errSyntaxError, curStr->getPos(), "Missing code table in JBIG2 text region");
   gfree(codeTables);
   delete syms;
   return;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
   return;
 }
 
@@ -2289,6 +2370,8 @@ JBIG2Bitmap *JBIG2Stream::readTextRegion(GBool huff, GBool refine,
     s = sFirst;
 
     // read the instances
+    // (this loop test is here to avoid an infinite loop with damaged
+    // JBIG2 streams where the normal loop exit doesn't get triggered)
     while (inst < numInstances) {
 
       // T value
@@ -2314,7 +2397,12 @@ JBIG2Bitmap *JBIG2Stream::readTextRegion(GBool huff, GBool refine,
       }
 
       if (symID >= (Guint)numSyms) {
-	error(curStr->getPos(), "Invalid symbol number in JBIG2 text region");
+	error(errSyntaxError, curStr->getPos(), "Invalid symbol number in JBIG2 text region");
+	if (unlikely(numInstances - inst > 0x800)) {
+	  // don't loop too often with damaged JBIg2 streams
+	  delete bitmap;
+	  return NULL;
+	}
       } else {
 
 	// get the symbol bitmap
@@ -2366,8 +2454,24 @@ JBIG2Bitmap *JBIG2Stream::readTextRegion(GBool huff, GBool refine,
 	  //~ something is wrong here - refCorner shouldn't degenerate into
 	  //~   two cases
 	  bw = symbolBitmap->getWidth() - 1;
+	  if (unlikely(symbolBitmap->getHeight() == 0)) {
+	    error(errSyntaxError, curStr->getPos(), "Invalid symbol bitmap height");
+	    if (ri) {
+	      delete symbolBitmap;
+	    }
+	    delete bitmap;
+	    return NULL;
+	  }
 	  bh = symbolBitmap->getHeight() - 1;
 	  if (transposed) {
+	    if (unlikely(s > 2 * bitmap->getHeight())) {
+	      error(errSyntaxError, curStr->getPos(), "Invalid JBIG2 combine");
+	      if (ri) {
+	        delete symbolBitmap;
+	      }
+	      delete bitmap;
+	      return NULL;
+	    }
 	    switch (refCorner) {
 	    case 0: // bottom left
 	      bitmap->combine(symbolBitmap, tt, s, combOp);
@@ -2386,15 +2490,47 @@ JBIG2Bitmap *JBIG2Stream::readTextRegion(GBool huff, GBool refine,
 	  } else {
 	    switch (refCorner) {
 	    case 0: // bottom left
+	      if (unlikely(tt - (int) bh > 2 * bitmap->getHeight())) {
+		error(errSyntaxError, curStr->getPos(), "Invalid JBIG2 combine");
+		if (ri) {
+		  delete symbolBitmap;
+		}
+		delete bitmap;
+		return NULL;
+	      }
 	      bitmap->combine(symbolBitmap, s, tt - bh, combOp);
 	      break;
 	    case 1: // top left
+	      if (unlikely(tt > 2 * bitmap->getHeight())) {
+		error(errSyntaxError, curStr->getPos(), "Invalid JBIG2 combine");
+		if (ri) {
+		  delete symbolBitmap;
+		}
+		delete bitmap;
+		return NULL;
+	      }
 	      bitmap->combine(symbolBitmap, s, tt, combOp);
 	      break;
 	    case 2: // bottom right
+	      if (unlikely(tt - (int) bh > 2 * bitmap->getHeight())) {
+		error(errSyntaxError, curStr->getPos(), "Invalid JBIG2 combine");
+		if (ri) {
+		  delete symbolBitmap;
+		}
+		delete bitmap;
+		return NULL;
+	      }
 	      bitmap->combine(symbolBitmap, s, tt - bh, combOp);
 	      break;
 	    case 3: // top right
+	      if (unlikely(tt > 2 * bitmap->getHeight())) {
+		error(errSyntaxError, curStr->getPos(), "Invalid JBIG2 combine");
+		if (ri) {
+		  delete symbolBitmap;
+		}
+		delete bitmap;
+		return NULL;
+	      }
 	      bitmap->combine(symbolBitmap, s, tt, combOp);
 	      break;
 	    }
@@ -2470,7 +2606,7 @@ void JBIG2Stream::readPatternDictSeg(Guint segNum, Guint length) {
 
   // split up the bitmap
   x = 0;
-  for (i = 0; i <= grayMax; ++i) {
+  for (i = 0; i <= grayMax && i < patternDict->getSize(); ++i) {
     patternDict->setBitmap(i, bitmap->getSlice(x, 0, patternW, patternH));
     x += patternW;
   }
@@ -2484,7 +2620,7 @@ void JBIG2Stream::readPatternDictSeg(Guint segNum, Guint length) {
   return;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
 }
 
 void JBIG2Stream::readHalftoneRegionSeg(Guint segNum, GBool imm,
@@ -2526,31 +2662,37 @@ void JBIG2Stream::readHalftoneRegionSeg(Guint segNum, GBool imm,
     goto eofError;
   }
   if (w == 0 || h == 0 || w >= INT_MAX / h) {
-    error(curStr->getPos(), "Bad bitmap size in JBIG2 halftone segment");
+    error(errSyntaxError, curStr->getPos(), "Bad bitmap size in JBIG2 halftone segment");
     return;
   }
   if (gridH == 0 || gridW >= INT_MAX / gridH) {
-    error(curStr->getPos(), "Bad grid size in JBIG2 halftone segment");
+    error(errSyntaxError, curStr->getPos(), "Bad grid size in JBIG2 halftone segment");
     return;
   }
 
   // get pattern dictionary
   if (nRefSegs != 1) {
-    error(curStr->getPos(), "Bad symbol dictionary reference in JBIG2 halftone segment");
+    error(errSyntaxError, curStr->getPos(), "Bad symbol dictionary reference in JBIG2 halftone segment");
     return;
   }
   seg = findSegment(refSegs[0]);
   if (seg == NULL || seg->getType() != jbig2SegPatternDict) {
-    error(curStr->getPos(), "Bad symbol dictionary reference in JBIG2 halftone segment");
+    error(errSyntaxError, curStr->getPos(), "Bad symbol dictionary reference in JBIG2 halftone segment");
     return;
   }
 
   patternDict = (JBIG2PatternDict *)seg;
-  bpp = 0;
-  i = 1;
-  while (i < patternDict->getSize()) {
-    ++bpp;
-    i <<= 1;
+  i = patternDict->getSize();
+  if (i <= 1) {
+    bpp = 0;
+  } else {
+    --i;
+    bpp = 0;
+    // i = floor((size-1) / 2^bpp)
+    while (i > 0) {
+      ++bpp;
+      i >>= 1;
+    }
   }
   patW = patternDict->getBitmap(0)->getWidth();
   patH = patternDict->getBitmap(0)->getHeight();
@@ -2615,6 +2757,10 @@ void JBIG2Stream::readHalftoneRegionSeg(Guint segNum, GBool imm,
     for (n = 0; n < gridW; ++n) {
       if (!(enableSkip && skipBitmap->getPixel(n, m))) {
 	patternBitmap = patternDict->getBitmap(grayImg[i]);
+	if (unlikely(patternBitmap == NULL)) {
+	  error(errSyntaxError, curStr->getPos(), "Bad pattern bitmap");
+	  return;
+	}
 	bitmap->combine(patternBitmap, xx >> 8, yy >> 8, combOp);
       }
       xx += stepX;
@@ -2644,13 +2790,13 @@ void JBIG2Stream::readHalftoneRegionSeg(Guint segNum, GBool imm,
   return;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
 }
 
 void JBIG2Stream::readGenericRegionSeg(Guint segNum, GBool imm,
 				       GBool lossless, Guint length) {
   JBIG2Bitmap *bitmap;
-  Guint w, h, x, y, segInfoFlags, extCombOp;
+  Guint w, h, x, y, segInfoFlags, extCombOp, rowCount;
   Guint flags, mmr, templ, tpgdOn;
   int atx[4], aty[4];
 
@@ -2717,17 +2863,23 @@ void JBIG2Stream::readGenericRegionSeg(Guint segNum, GBool imm,
     segments->append(bitmap);
   }
 
+  // immediate generic segments can have an unspecified length, in
+  // which case, a row count is stored at the end of the segment
+  if (imm && length == 0xffffffff) {
+    readULong(&rowCount);
+  }
+
   return;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
 }
 
 inline void JBIG2Stream::mmrAddPixels(int a1, int blackPixels,
 				      int *codingLine, int *a0i, int w) {
   if (a1 > codingLine[*a0i]) {
     if (a1 > w) {
-      error(curStr->getPos(), "JBIG2 MMR row is wrong length (%d)", a1);
+      error(errSyntaxError, curStr->getPos(), "JBIG2 MMR row is wrong length ({0:d})", a1);
       a1 = w;
     }
     if ((*a0i & 1) ^ blackPixels) {
@@ -2741,7 +2893,7 @@ inline void JBIG2Stream::mmrAddPixelsNeg(int a1, int blackPixels,
 					 int *codingLine, int *a0i, int w) {
   if (a1 > codingLine[*a0i]) {
     if (a1 > w) {
-      error(curStr->getPos(), "JBIG2 MMR row is wrong length (%d)", a1);
+      error(errSyntaxError, curStr->getPos(), "JBIG2 MMR row is wrong length ({0:d})", a1);
       a1 = w;
     }
     if ((*a0i & 1) ^ blackPixels) {
@@ -2750,7 +2902,7 @@ inline void JBIG2Stream::mmrAddPixelsNeg(int a1, int blackPixels,
     codingLine[*a0i] = a1;
   } else if (a1 < codingLine[*a0i]) {
     if (a1 < 0) {
-      error(curStr->getPos(), "Invalid JBIG2 MMR code");
+      error(errSyntaxError, curStr->getPos(), "Invalid JBIG2 MMR code");
       a1 = 0;
     }
     while (*a0i > 0 && a1 <= codingLine[*a0i - 1]) {
@@ -2768,11 +2920,15 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
   JBIG2Bitmap *bitmap;
   GBool ltp;
   Guint ltpCX, cx, cx0, cx1, cx2;
-  JBIG2BitmapPtr cxPtr0 = {0}, cxPtr1 = {0};
-  JBIG2BitmapPtr atPtr0 = {0}, atPtr1 = {0}, atPtr2 = {0}, atPtr3 = {0};
   int *refLine, *codingLine;
   int code1, code2, code3;
-  int x, y, a0i, b1i, blackPixels, pix, i;
+  Guchar *p0, *p1, *p2, *pp;
+  Guchar *atP0, *atP1, *atP2, *atP3;
+  Guint buf0, buf1, buf2;
+  Guint atBuf0, atBuf1, atBuf2, atBuf3;
+  int atShift0, atShift1, atShift2, atShift3;
+  Guchar mask;
+  int x, y, x0, x1, a0i, b1i, blackPixels, pix, i;
 
   bitmap = new JBIG2Bitmap(0, w, h);
   if (!bitmap->isOk()) {
@@ -2787,7 +2943,7 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
 
     mmrDecoder->reset();
     if (w > INT_MAX - 2) {
-      error(curStr->getPos(), "Bad width in JBIG2 generic bitmap");
+      error(errSyntaxError, curStr->getPos(), "Bad width in JBIG2 generic bitmap");
       // force a call to gmalloc(-1), which will throw an exception
       w = -3;
     }
@@ -2797,6 +2953,7 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
     // ---> max refLine size = w + 2
     codingLine = (int *)gmallocn(w + 1, sizeof(int));
     refLine = (int *)gmallocn(w + 2, sizeof(int));
+    memset(refLine, 0, (w + 2) * sizeof(int));
     for (i = 0; i < w + 1; ++i) codingLine[i] = w;
 
     for (y = 0; y < h; ++y) {
@@ -2823,6 +2980,9 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
 	code1 = mmrDecoder->get2DCode();
 	switch (code1) {
 	case twoDimPass:
+          if (unlikely(b1i + 1 >= w + 2)) {
+            break;
+          }
           mmrAddPixels(refLine[b1i + 1], blackPixels, codingLine, &a0i, w);
           if (refLine[b1i + 1] < w) {
             b1i += 2;
@@ -2851,51 +3011,66 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
             mmrAddPixels(codingLine[a0i] + code2, blackPixels ^ 1,
 			 codingLine, &a0i, w);
           }
-          while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+          while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
             b1i += 2;
           }
           break;
 	case twoDimVertR3:
+          if (unlikely(b1i >= w + 2)) {
+            break;
+          }
           mmrAddPixels(refLine[b1i] + 3, blackPixels, codingLine, &a0i, w);
           blackPixels ^= 1;
           if (codingLine[a0i] < w) {
             ++b1i;
-            while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+            while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
               b1i += 2;
             }
           }
           break;
 	case twoDimVertR2:
+          if (unlikely(b1i >= w + 2)) {
+            break;
+          }
           mmrAddPixels(refLine[b1i] + 2, blackPixels, codingLine, &a0i, w);
           blackPixels ^= 1;
           if (codingLine[a0i] < w) {
             ++b1i;
-            while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+            while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
               b1i += 2;
             }
           }
           break;
 	case twoDimVertR1:
+          if (unlikely(b1i >= w + 2)) {
+            break;
+          }
           mmrAddPixels(refLine[b1i] + 1, blackPixels, codingLine, &a0i, w);
           blackPixels ^= 1;
           if (codingLine[a0i] < w) {
             ++b1i;
-            while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+            while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
               b1i += 2;
             }
           }
           break;
 	case twoDimVert0:
+          if (unlikely(b1i >= w + 2)) {
+            break;
+          }
           mmrAddPixels(refLine[b1i], blackPixels, codingLine, &a0i, w);
           blackPixels ^= 1;
           if (codingLine[a0i] < w) {
             ++b1i;
-            while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+            while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
               b1i += 2;
             }
           }
           break;
 	case twoDimVertL3:
+          if (unlikely(b1i >= w + 2)) {
+            break;
+          }
           mmrAddPixelsNeg(refLine[b1i] - 3, blackPixels, codingLine, &a0i, w);
           blackPixels ^= 1;
           if (codingLine[a0i] < w) {
@@ -2904,12 +3079,15 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
             } else {
               ++b1i;
             }
-            while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+            while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
               b1i += 2;
             }
           }
           break;
 	case twoDimVertL2:
+          if (unlikely(b1i >= w + 2)) {
+            break;
+          }
           mmrAddPixelsNeg(refLine[b1i] - 2, blackPixels, codingLine, &a0i, w);
           blackPixels ^= 1;
           if (codingLine[a0i] < w) {
@@ -2918,12 +3096,15 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
             } else {
               ++b1i;
             }
-            while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+            while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
               b1i += 2;
             }
           }
           break;
 	case twoDimVertL1:
+          if (unlikely(b1i >= w + 2)) {
+            break;
+          }
           mmrAddPixelsNeg(refLine[b1i] - 1, blackPixels, codingLine, &a0i, w);
           blackPixels ^= 1;
           if (codingLine[a0i] < w) {
@@ -2932,7 +3113,7 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
             } else {
               ++b1i;
             }
-            while (refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
+            while (likely(b1i < w + 2) && refLine[b1i] <= codingLine[a0i] && refLine[b1i] < w) {
               b1i += 2;
             }
           }
@@ -2941,7 +3122,7 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
           mmrAddPixels(w, 0, codingLine, &a0i, w);
           break;
 	default:
-	  error(curStr->getPos(), "Illegal code in JBIG2 MMR bitmap data");
+	  error(errSyntaxError, curStr->getPos(), "Illegal code in JBIG2 MMR bitmap data");
           mmrAddPixels(w, 0, codingLine, &a0i, w);
 	  break;
 	}
@@ -2964,7 +3145,7 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
       mmrDecoder->skipTo(mmrDataLength);
     } else {
       if (mmrDecoder->get24Bits() != 0x001001) {
-	error(curStr->getPos(), "Missing EOFB in JBIG2 MMR bitmap data");
+	error(errSyntaxError, curStr->getPos(), "Missing EOFB in JBIG2 MMR bitmap data");
       }
     }
 
@@ -3014,145 +3195,497 @@ JBIG2Bitmap *JBIG2Stream::readGenericBitmap(GBool mmr, int w, int h,
       case 0:
 
 	// set up the context
-	bitmap->getPixelPtr(0, y-2, &cxPtr0);
-	cx0 = bitmap->nextPixel(&cxPtr0);
-	cx0 = (cx0 << 1) | bitmap->nextPixel(&cxPtr0);
-	bitmap->getPixelPtr(0, y-1, &cxPtr1);
-	cx1 = bitmap->nextPixel(&cxPtr1);
-	cx1 = (cx1 << 1) | bitmap->nextPixel(&cxPtr1);
-	cx1 = (cx1 << 1) | bitmap->nextPixel(&cxPtr1);
-	cx2 = 0;
-	bitmap->getPixelPtr(atx[0], y + aty[0], &atPtr0);
-	bitmap->getPixelPtr(atx[1], y + aty[1], &atPtr1);
-	bitmap->getPixelPtr(atx[2], y + aty[2], &atPtr2);
-	bitmap->getPixelPtr(atx[3], y + aty[3], &atPtr3);
+	p2 = pp = bitmap->getDataPtr() + y * bitmap->getLineSize();
+	buf2 = *p2++ << 8;
+	if (y >= 1) {
+	  p1 = bitmap->getDataPtr() + (y - 1) * bitmap->getLineSize();
+	  buf1 = *p1++ << 8;
+	  if (y >= 2) {
+	    p0 = bitmap->getDataPtr() + (y - 2) * bitmap->getLineSize();
+	    buf0 = *p0++ << 8;
+	  } else {
+	    p0 = NULL;
+	    buf0 = 0;
+	  }
+	} else {
+	  p1 = p0 = NULL;
+	  buf1 = buf0 = 0;
+	}
 
-	// decode the row
-	for (x = 0; x < w; ++x) {
+	if (atx[0] >= -8 && atx[0] <= 8 &&
+	    atx[1] >= -8 && atx[1] <= 8 &&
+	    atx[2] >= -8 && atx[2] <= 8 &&
+	    atx[3] >= -8 && atx[3] <= 8) {
+	  // set up the adaptive context
+	  if (y + aty[0] >= 0 && y + aty[0] < bitmap->getHeight()) {
+	    atP0 = bitmap->getDataPtr() + (y + aty[0]) * bitmap->getLineSize();
+	    atBuf0 = *atP0++ << 8;
+	  } else {
+	    atP0 = NULL;
+	    atBuf0 = 0;
+	  }
+	  atShift0 = 15 - atx[0];
+	  if (y + aty[1] >= 0 && y + aty[1] < bitmap->getHeight()) {
+	    atP1 = bitmap->getDataPtr() + (y + aty[1]) * bitmap->getLineSize();
+	    atBuf1 = *atP1++ << 8;
+	  } else {
+	    atP1 = NULL;
+	    atBuf1 = 0;
+	  }
+	  atShift1 = 15 - atx[1];
+	  if (y + aty[2] >= 0 && y + aty[2] < bitmap->getHeight()) {
+	    atP2 = bitmap->getDataPtr() + (y + aty[2]) * bitmap->getLineSize();
+	    atBuf2 = *atP2++ << 8;
+	  } else {
+	    atP2 = NULL;
+	    atBuf2 = 0;
+	  }
+	  atShift2 = 15 - atx[2];
+	  if (y + aty[3] >= 0 && y + aty[3] < bitmap->getHeight()) {
+	    atP3 = bitmap->getDataPtr() + (y + aty[3]) * bitmap->getLineSize();
+	    atBuf3 = *atP3++ << 8;
+	  } else {
+	    atP3 = NULL;
+	    atBuf3 = 0;
+	  }
+	  atShift3 = 15 - atx[3];
 
-	  // build the context
-	  cx = (cx0 << 13) | (cx1 << 8) | (cx2 << 4) |
-	       (bitmap->nextPixel(&atPtr0) << 3) |
-	       (bitmap->nextPixel(&atPtr1) << 2) |
-	       (bitmap->nextPixel(&atPtr2) << 1) |
-	       bitmap->nextPixel(&atPtr3);
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p0) {
+		buf0 |= *p0++;
+	      }
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	      if (atP0) {
+		atBuf0 |= *atP0++;
+	      }
+	      if (atP1) {
+		atBuf1 |= *atP1++;
+	      }
+	      if (atP2) {
+		atBuf2 |= *atP2++;
+	      }
+	      if (atP3) {
+		atBuf3 |= *atP3++;
+	      }
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
 
-	  // check for a skipped pixel
-	  if (useSkip && skip->getPixel(x, y)) {
-	    pix = 0;
+	      // build the context
+	      cx0 = (buf0 >> 14) & 0x07;
+	      cx1 = (buf1 >> 13) & 0x1f;
+	      cx2 = (buf2 >> 16) & 0x0f;
+	      cx = (cx0 << 13) | (cx1 << 8) | (cx2 << 4) |
+		   (((atBuf0 >> atShift0) & 1) << 3) |
+		   (((atBuf1 >> atShift1) & 1) << 2) |
+		   (((atBuf2 >> atShift2) & 1) << 1) |
+		   ((atBuf3 >> atShift3) & 1);
 
-	  // decode the pixel
-	  } else if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
-	    bitmap->setPixel(x, y);
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		  if (aty[0] == 0) {
+		    atBuf0 |= 0x8000;
+		  }
+		  if (aty[1] == 0) {
+		    atBuf1 |= 0x8000;
+		  }
+		  if (aty[2] == 0) {
+		    atBuf2 |= 0x8000;
+		  }
+		  if (aty[3] == 0) {
+		    atBuf3 |= 0x8000;
+		  }
+		}
+	      }
+
+	      // update the context
+	      buf0 <<= 1;
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	      atBuf0 <<= 1;
+	      atBuf1 <<= 1;
+	      atBuf2 <<= 1;
+	      atBuf3 <<= 1;
+	    }
 	  }
 
-	  // update the context
-	  cx0 = ((cx0 << 1) | bitmap->nextPixel(&cxPtr0)) & 0x07;
-	  cx1 = ((cx1 << 1) | bitmap->nextPixel(&cxPtr1)) & 0x1f;
-	  cx2 = ((cx2 << 1) | pix) & 0x0f;
+	} else {
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p0) {
+		buf0 |= *p0++;
+	      }
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
+
+	      // build the context
+	      cx0 = (buf0 >> 14) & 0x07;
+	      cx1 = (buf1 >> 13) & 0x1f;
+	      cx2 = (buf2 >> 16) & 0x0f;
+	      cx = (cx0 << 13) | (cx1 << 8) | (cx2 << 4) |
+		   (bitmap->getPixel(x + atx[0], y + aty[0]) << 3) |
+		   (bitmap->getPixel(x + atx[1], y + aty[1]) << 2) |
+		   (bitmap->getPixel(x + atx[2], y + aty[2]) << 1) |
+		   bitmap->getPixel(x + atx[3], y + aty[3]);
+
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		}
+	      }
+
+	      // update the context
+	      buf0 <<= 1;
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	    }
+	  }
 	}
 	break;
 
       case 1:
 
 	// set up the context
-	bitmap->getPixelPtr(0, y-2, &cxPtr0);
-	cx0 = bitmap->nextPixel(&cxPtr0);
-	cx0 = (cx0 << 1) | bitmap->nextPixel(&cxPtr0);
-	cx0 = (cx0 << 1) | bitmap->nextPixel(&cxPtr0);
-	bitmap->getPixelPtr(0, y-1, &cxPtr1);
-	cx1 = bitmap->nextPixel(&cxPtr1);
-	cx1 = (cx1 << 1) | bitmap->nextPixel(&cxPtr1);
-	cx1 = (cx1 << 1) | bitmap->nextPixel(&cxPtr1);
-	cx2 = 0;
-	bitmap->getPixelPtr(atx[0], y + aty[0], &atPtr0);
+	p2 = pp = bitmap->getDataPtr() + y * bitmap->getLineSize();
+	buf2 = *p2++ << 8;
+	if (y >= 1) {
+	  p1 = bitmap->getDataPtr() + (y - 1) * bitmap->getLineSize();
+	  buf1 = *p1++ << 8;
+	  if (y >= 2) {
+	    p0 = bitmap->getDataPtr() + (y - 2) * bitmap->getLineSize();
+	    buf0 = *p0++ << 8;
+	  } else {
+	    p0 = NULL;
+	    buf0 = 0;
+	  }
+	} else {
+	  p1 = p0 = NULL;
+	  buf1 = buf0 = 0;
+	}
 
-	// decode the row
-	for (x = 0; x < w; ++x) {
+	if (atx[0] >= -8 && atx[0] <= 8) {
+	  // set up the adaptive context
+	  if (y + aty[0] >= 0) {
+	    atP0 = bitmap->getDataPtr() + (y + aty[0]) * bitmap->getLineSize();
+	    atBuf0 = *atP0++ << 8;
+	  } else {
+	    atP0 = NULL;
+	    atBuf0 = 0;
+	  }
+	  atShift0 = 15 - atx[0];
 
-	  // build the context
-	  cx = (cx0 << 9) | (cx1 << 4) | (cx2 << 1) |
-	       bitmap->nextPixel(&atPtr0);
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p0) {
+		buf0 |= *p0++;
+	      }
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	      if (atP0) {
+		atBuf0 |= *atP0++;
+	      }
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
 
-	  // check for a skipped pixel
-	  if (useSkip && skip->getPixel(x, y)) {
-	    pix = 0;
+	      // build the context
+	      cx0 = (buf0 >> 13) & 0x0f;
+	      cx1 = (buf1 >> 13) & 0x1f;
+	      cx2 = (buf2 >> 16) & 0x07;
+	      cx = (cx0 << 9) | (cx1 << 4) | (cx2 << 1) |
+		   ((atBuf0 >> atShift0) & 1);
 
-	  // decode the pixel
-	  } else if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
-	    bitmap->setPixel(x, y);
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		  if (aty[0] == 0) {
+		    atBuf0 |= 0x8000;
+		  }
+		}
+	      }
+
+	      // update the context
+	      buf0 <<= 1;
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	      atBuf0 <<= 1;
+	    }
 	  }
 
-	  // update the context
-	  cx0 = ((cx0 << 1) | bitmap->nextPixel(&cxPtr0)) & 0x0f;
-	  cx1 = ((cx1 << 1) | bitmap->nextPixel(&cxPtr1)) & 0x1f;
-	  cx2 = ((cx2 << 1) | pix) & 0x07;
+	} else {
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p0) {
+		buf0 |= *p0++;
+	      }
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
+
+	      // build the context
+	      cx0 = (buf0 >> 13) & 0x0f;
+	      cx1 = (buf1 >> 13) & 0x1f;
+	      cx2 = (buf2 >> 16) & 0x07;
+	      cx = (cx0 << 9) | (cx1 << 4) | (cx2 << 1) |
+		   bitmap->getPixel(x + atx[0], y + aty[0]);
+
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		}
+	      }
+
+	      // update the context
+	      buf0 <<= 1;
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	    }
+	  }
 	}
 	break;
 
       case 2:
 
 	// set up the context
-	bitmap->getPixelPtr(0, y-2, &cxPtr0);
-	cx0 = bitmap->nextPixel(&cxPtr0);
-	cx0 = (cx0 << 1) | bitmap->nextPixel(&cxPtr0);
-	bitmap->getPixelPtr(0, y-1, &cxPtr1);
-	cx1 = bitmap->nextPixel(&cxPtr1);
-	cx1 = (cx1 << 1) | bitmap->nextPixel(&cxPtr1);
-	cx2 = 0;
-	bitmap->getPixelPtr(atx[0], y + aty[0], &atPtr0);
+	p2 = pp = bitmap->getDataPtr() + y * bitmap->getLineSize();
+	buf2 = *p2++ << 8;
+	if (y >= 1) {
+	  p1 = bitmap->getDataPtr() + (y - 1) * bitmap->getLineSize();
+	  buf1 = *p1++ << 8;
+	  if (y >= 2) {
+	    p0 = bitmap->getDataPtr() + (y - 2) * bitmap->getLineSize();
+	    buf0 = *p0++ << 8;
+	  } else {
+	    p0 = NULL;
+	    buf0 = 0;
+	  }
+	} else {
+	  p1 = p0 = NULL;
+	  buf1 = buf0 = 0;
+	}
 
-	// decode the row
-	for (x = 0; x < w; ++x) {
+	if (atx[0] >= -8 && atx[0] <= 8) {
+	  // set up the adaptive context
+	  if (y + aty[0] >= 0) {
+	    atP0 = bitmap->getDataPtr() + (y + aty[0]) * bitmap->getLineSize();
+	    atBuf0 = *atP0++ << 8;
+	  } else {
+	    atP0 = NULL;
+	    atBuf0 = 0;
+	  }
+	  atShift0 = 15 - atx[0];
 
-	  // build the context
-	  cx = (cx0 << 7) | (cx1 << 3) | (cx2 << 1) |
-	       bitmap->nextPixel(&atPtr0);
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p0) {
+		buf0 |= *p0++;
+	      }
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	      if (atP0) {
+		atBuf0 |= *atP0++;
+	      }
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
 
-	  // check for a skipped pixel
-	  if (useSkip && skip->getPixel(x, y)) {
-	    pix = 0;
+	      // build the context
+	      cx0 = (buf0 >> 14) & 0x07;
+	      cx1 = (buf1 >> 14) & 0x0f;
+	      cx2 = (buf2 >> 16) & 0x03;
+	      cx = (cx0 << 7) | (cx1 << 3) | (cx2 << 1) |
+		   ((atBuf0 >> atShift0) & 1);
 
-	  // decode the pixel
-	  } else if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
-	    bitmap->setPixel(x, y);
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		  if (aty[0] == 0) {
+		    atBuf0 |= 0x8000;
+		  }
+		}
+	      }
+
+	      // update the context
+	      buf0 <<= 1;
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	      atBuf0 <<= 1;
+	    }
 	  }
 
-	  // update the context
-	  cx0 = ((cx0 << 1) | bitmap->nextPixel(&cxPtr0)) & 0x07;
-	  cx1 = ((cx1 << 1) | bitmap->nextPixel(&cxPtr1)) & 0x0f;
-	  cx2 = ((cx2 << 1) | pix) & 0x03;
+	} else {
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p0) {
+		buf0 |= *p0++;
+	      }
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
+
+	      // build the context
+	      cx0 = (buf0 >> 14) & 0x07;
+	      cx1 = (buf1 >> 14) & 0x0f;
+	      cx2 = (buf2 >> 16) & 0x03;
+	      cx = (cx0 << 7) | (cx1 << 3) | (cx2 << 1) |
+		   bitmap->getPixel(x + atx[0], y + aty[0]);
+
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		}
+	      }
+
+	      // update the context
+	      buf0 <<= 1;
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	    }
+	  }
 	}
 	break;
 
       case 3:
 
 	// set up the context
-	bitmap->getPixelPtr(0, y-1, &cxPtr1);
-	cx1 = bitmap->nextPixel(&cxPtr1);
-	cx1 = (cx1 << 1) | bitmap->nextPixel(&cxPtr1);
-	cx2 = 0;
-	bitmap->getPixelPtr(atx[0], y + aty[0], &atPtr0);
+	p2 = pp = bitmap->getDataPtr() + y * bitmap->getLineSize();
+	buf2 = *p2++ << 8;
+	if (y >= 1) {
+	  p1 = bitmap->getDataPtr() + (y - 1) * bitmap->getLineSize();
+	  buf1 = *p1++ << 8;
+	} else {
+	  p1 = NULL;
+	  buf1 = 0;
+	}
 
-	// decode the row
-	for (x = 0; x < w; ++x) {
+	if (atx[0] >= -8 && atx[0] <= 8) {
+	  // set up the adaptive context
+	  if (y + aty[0] >= 0) {
+	    atP0 = bitmap->getDataPtr() + (y + aty[0]) * bitmap->getLineSize();
+	    atBuf0 = *atP0++ << 8;
+	  } else {
+	    atP0 = NULL;
+	    atBuf0 = 0;
+	  }
+	  atShift0 = 15 - atx[0];
 
-	  // build the context
-	  cx = (cx1 << 5) | (cx2 << 1) |
-	       bitmap->nextPixel(&atPtr0);
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	      if (atP0) {
+		atBuf0 |= *atP0++;
+	      }
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
 
-	  // check for a skipped pixel
-	  if (useSkip && skip->getPixel(x, y)) {
-	    pix = 0;
+	      // build the context
+	      cx1 = (buf1 >> 14) & 0x1f;
+	      cx2 = (buf2 >> 16) & 0x0f;
+	      cx = (cx1 << 5) | (cx2 << 1) |
+		   ((atBuf0 >> atShift0) & 1);
 
-	  // decode the pixel
-	  } else if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
-	    bitmap->setPixel(x, y);
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		  if (aty[0] == 0) {
+		    atBuf0 |= 0x8000;
+		  }
+		}
+	      }
+
+	      // update the context
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	      atBuf0 <<= 1;
+	    }
 	  }
 
-	  // update the context
-	  cx1 = ((cx1 << 1) | bitmap->nextPixel(&cxPtr1)) & 0x1f;
-	  cx2 = ((cx2 << 1) | pix) & 0x0f;
+	} else {
+	  // decode the row
+	  for (x0 = 0, x = 0; x0 < w; x0 += 8, ++pp) {
+	    if (x0 + 8 < w) {
+	      if (p1) {
+		buf1 |= *p1++;
+	      }
+	      buf2 |= *p2++;
+	    }
+	    for (x1 = 0, mask = 0x80; x1 < 8 && x < w; ++x1, ++x, mask >>= 1) {
+
+	      // build the context
+	      cx1 = (buf1 >> 14) & 0x1f;
+	      cx2 = (buf2 >> 16) & 0x0f;
+	      cx = (cx1 << 5) | (cx2 << 1) |
+		   bitmap->getPixel(x + atx[0], y + aty[0]);
+
+	      // check for a skipped pixel
+	      if (!(useSkip && skip->getPixel(x, y))) {
+
+		// decode the pixel
+		if ((pix = arithDecoder->decodeBit(cx, genericRegionStats))) {
+		  *pp |= mask;
+		  buf2 |= 0x8000;
+		}
+	      }
+
+	      // update the context
+	      buf1 <<= 1;
+	      buf2 <<= 1;
+	    }
+	  }
 	}
 	break;
       }
@@ -3204,13 +3737,13 @@ void JBIG2Stream::readGenericRefinementRegionSeg(Guint segNum, GBool imm,
 
   // get referenced bitmap
   if (nRefSegs > 1) {
-    error(curStr->getPos(), "Bad reference in JBIG2 generic refinement segment");
+    error(errSyntaxError, curStr->getPos(), "Bad reference in JBIG2 generic refinement segment");
     return;
   }
   if (nRefSegs == 1) {
     seg = findSegment(refSegs[0]);
     if (seg == NULL || seg->getType() != jbig2SegBitmap) {
-      error(curStr->getPos(), "Bad bitmap reference in JBIG2 generic refinement segment");
+      error(errSyntaxError, curStr->getPos(), "Bad bitmap reference in JBIG2 generic refinement segment");
       return;
     }
     refBitmap = (JBIG2Bitmap *)seg;
@@ -3227,7 +3760,7 @@ void JBIG2Stream::readGenericRefinementRegionSeg(Guint segNum, GBool imm,
 				       refBitmap, 0, 0, atx, aty);
 
   // combine the region bitmap into the page bitmap
-  if (imm) {
+  if (imm && bitmap) {
     pageBitmap->combine(bitmap, x, y, extCombOp);
     delete bitmap;
 
@@ -3237,7 +3770,7 @@ void JBIG2Stream::readGenericRefinementRegionSeg(Guint segNum, GBool imm,
       bitmap->setSegNum(segNum);
       segments->append(bitmap);
     } else {
-      error(curStr->getPos(), "readGenericRefinementRegionSeg with null bitmap");
+      error(errSyntaxError, curStr->getPos(), "readGenericRefinementRegionSeg with null bitmap");
     }
   }
 
@@ -3251,7 +3784,7 @@ void JBIG2Stream::readGenericRefinementRegionSeg(Guint segNum, GBool imm,
   return;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
 }
 
 JBIG2Bitmap *JBIG2Stream::readGenericRefinementRegion(int w, int h,
@@ -3480,7 +4013,7 @@ void JBIG2Stream::readPageInfoSeg(Guint length) {
   return;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
 }
 
 void JBIG2Stream::readEndOfStripeSeg(Guint length) {
@@ -3488,7 +4021,9 @@ void JBIG2Stream::readEndOfStripeSeg(Guint length) {
 
   // skip the segment
   for (i = 0; i < length; ++i) {
-    curStr->getChar();
+    if (curStr->getChar() == EOF) {
+      break;
+    }
   }
 }
 
@@ -3497,7 +4032,9 @@ void JBIG2Stream::readProfilesSeg(Guint length) {
 
   // skip the segment
   for (i = 0; i < length; ++i) {
-    curStr->getChar();
+    if (curStr->getChar() == EOF) {
+      break;
+    }
   }
 }
 
@@ -3562,7 +4099,7 @@ void JBIG2Stream::readCodeTableSeg(Guint segNum, Guint length) {
   return;
 
  eofError:
-  error(curStr->getPos(), "Unexpected EOF in JBIG2 stream");
+  error(errSyntaxError, curStr->getPos(), "Unexpected EOF in JBIG2 stream");
 }
 
 void JBIG2Stream::readExtensionSeg(Guint length) {
@@ -3570,7 +4107,9 @@ void JBIG2Stream::readExtensionSeg(Guint length) {
 
   // skip the segment
   for (i = 0; i < length; ++i) {
-    curStr->getChar();
+    if (curStr->getChar() == EOF) {
+      break;
+    }
   }
 }
 

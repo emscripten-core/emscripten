@@ -36,6 +36,7 @@ G_BEGIN_DECLS
  * @POPPLER_ACTION_MOVIE: play movies. Since 0.14
  * @POPPLER_ACTION_RENDITION: play multimedia content. Since 0.14
  * @POPPLER_ACTION_OCG_STATE: state of layer. Since 0.14
+ * @POPPLER_ACTION_JAVASCRIPT: Javascript. Since 0.18
  *
  * Action types
  */
@@ -50,7 +51,8 @@ typedef enum
 	POPPLER_ACTION_NAMED,		/* named action*/
 	POPPLER_ACTION_MOVIE,		/* movie action */
 	POPPLER_ACTION_RENDITION,       /* rendition action */
-	POPPLER_ACTION_OCG_STATE        /* Set-OCG-State action */
+	POPPLER_ACTION_OCG_STATE,       /* Set-OCG-State action */
+	POPPLER_ACTION_JAVASCRIPT	/* Javascript action */
 } PopplerActionType;
 
 /**
@@ -145,6 +147,7 @@ typedef struct _PopplerActionNamed      PopplerActionNamed;
 typedef struct _PopplerActionMovie      PopplerActionMovie;
 typedef struct _PopplerActionRendition  PopplerActionRendition;
 typedef struct _PopplerActionOCGState   PopplerActionOCGState;
+typedef struct _PopplerActionJavascript PopplerActionJavascript;
 
 /**
  * PopplerDest:
@@ -265,6 +268,14 @@ struct _PopplerActionOCGState
 	GList            *state_list;
 };
 
+struct _PopplerActionJavascript
+{
+	PopplerActionType  type;
+	gchar 		  *title;
+
+	gchar		  *script;
+};
+
 /**
  * PopplerAction:
  *
@@ -282,6 +293,7 @@ union _PopplerAction
 	PopplerActionMovie movie;
 	PopplerActionRendition rendition;
 	PopplerActionOCGState ocg_state;
+	PopplerActionJavascript javascript;
 };
 
 #define POPPLER_TYPE_ACTION             (poppler_action_get_type ())

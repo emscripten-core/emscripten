@@ -13,15 +13,18 @@
 // All changes made under the Poppler project to this file are licensed
 // under GPL version 2 or later
 //
-// Copyright (C) 2005, 2007-2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2005, 2007-2010, 2012 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2005 Jonathan Blandford <jrb@redhat.com>
 // Copyright (C) 2006 Takashi Iwai <tiwai@suse.de>
 // Copyright (C) 2006 Kristian Høgsberg <krh@redhat.com>
 // Copyright (C) 2007 Krzysztof Kowalczyk <kkowalczyk@gmail.com>
 // Copyright (C) 2009 Jonathan Kew <jonathan_kew@sil.org>
 // Copyright (C) 2009 Petr Gajdos <pgajdos@novell.com>
-// Copyright (C) 2009 William Bader <williambader@hotmail.com>
+// Copyright (C) 2009, 2011, 2012 William Bader <williambader@hotmail.com>
 // Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
+// Copyright (C) 2011 Pino Toscano <pino@kde.org>
+// Copyright (C) 2012 Adrian Johnson <ajohnson@redneon.com>
+// Copyright (C) 2012 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -38,9 +41,6 @@
 #include <assert.h>
 #include "poppler-config.h"
 #include <stdio.h>
-#if WITH_FONTCONFIGURATION_FONTCONFIG
-#include <fontconfig/fontconfig.h>
-#endif
 #include "goo/gtypes.h"
 #include "CharTypes.h"
 
@@ -62,9 +62,7 @@ struct XpdfSecurityHandler;
 class GlobalParams;
 class GfxFont;
 class Stream;
-#ifdef _WIN32
-class WinFontList;
-#endif
+class SysFontList;
 
 //------------------------------------------------------------------------
 
@@ -73,60 +71,27 @@ extern GlobalParams *globalParams;
 
 //------------------------------------------------------------------------
 
-enum DisplayFontParamKind {
-  displayFontT1,
-  displayFontTT
-};
-
-struct DisplayFontParamT1 {
-  GooString *fileName;
-};
-
-struct DisplayFontParamTT {
-  GooString *fileName;
-  int faceIndex;
-};
-
-class DisplayFontParam {
-public:
-
-  GooString *name;		// font name for 8-bit fonts and named
-				//   CID fonts; collection name for
-				//   generic CID fonts
-  DisplayFontParamKind kind;
-  union {
-    DisplayFontParamT1 t1;
-    DisplayFontParamTT tt;
-  };
-
-  DisplayFontParam(GooString *nameA, DisplayFontParamKind kindA);
-  void setFileName(GooString *fileNameA) {
-    if (displayFontT1 == kind)
-        t1.fileName = fileNameA;
-    else {
-        assert(displayFontTT == kind);
-        tt.fileName = fileNameA;
-    }
-  }  
-  virtual ~DisplayFontParam();
+enum SysFontType {
+  sysFontPFA,
+  sysFontPFB,
+  sysFontTTF,
+  sysFontTTC
 };
 
 //------------------------------------------------------------------------
 
-class PSFontParam {
+class PSFontParam16 {
 public:
 
-  GooString *pdfFontName;		// PDF font name for 8-bit fonts and
-				//   named 16-bit fonts; char collection
-				//   name for generic 16-bit fonts
-  int wMode;			// writing mode (0=horiz, 1=vert) for
-				//   16-bit fonts
+  GooString *name;		// PDF font name for psResidentFont16;
+				//   char collection name for psResidentFontCC
+  int wMode;			// writing mode (0=horiz, 1=vert)
   GooString *psFontName;		// PostScript font name
-  GooString *encoding;		// encoding, for 16-bit fonts only
+  GooString *encoding;		// encoding
 
-  PSFontParam(GooString *pdfFontNameA, int wModeA,
-	      GooString *psFontNameA, GooString *encodingA);
-  ~PSFontParam();
+  PSFontParam16(GooString *nameA, int wModeA,
+		GooString *psFontNameA, GooString *encodingA);
+  ~PSFontParam16();
 };
 
 //------------------------------------------------------------------------
@@ -168,45 +133,51 @@ public:
 
   ~GlobalParams();
 
-  void setBaseDir(char *dir);
-
-#if WITH_FONTCONFIGURATION_WIN32
   void setupBaseFonts(char *dir);
-#endif
 
   //----- accessors
 
   CharCode getMacRomanCharCode(char *charName);
 
-  GooString *getBaseDir();
-  Unicode mapNameToUnicode(char *charName);
+  Unicode mapNameToUnicode(const char *charName);
   UnicodeMap *getResidentUnicodeMap(GooString *encodingName);
   FILE *getUnicodeMapFile(GooString *encodingName);
   FILE *findCMapFile(GooString *collection, GooString *cMapName);
   FILE *findToUnicodeFile(GooString *name);
-  DisplayFontParam *getDisplayFont(GfxFont *font);
+  GooString *findFontFile(GooString *fontName);
+  GooString *findBase14FontFile(GooString *base14Name, GfxFont *font);
+  GooString *findSystemFontFile(GfxFont *font, SysFontType *type,
+			      int *fontNum, GooString *substituteFontName = NULL, 
+		              GooString *base14Name = NULL);
+  GooString *findCCFontFile(GooString *collection);
   GBool getPSExpandSmaller();
   GBool getPSShrinkLarger();
   GBool getPSCenter();
   PSLevel getPSLevel();
-  PSFontParam *getPSFont(GooString *fontName);
-  PSFontParam *getPSFont16(GooString *fontName, GooString *collection, int wMode);
+  GooString *getPSResidentFont(GooString *fontName);
+  GooList *getPSResidentFonts();
+  PSFontParam16 *getPSResidentFont16(GooString *fontName, int wMode);
+  PSFontParam16 *getPSResidentFontCC(GooString *collection, int wMode);
   GBool getPSEmbedType1();
   GBool getPSEmbedTrueType();
   GBool getPSEmbedCIDPostScript();
   GBool getPSEmbedCIDTrueType();
-  GBool getPSSubstFonts();
+  GBool getPSFontPassthrough();
   GBool getPSPreload();
   GBool getPSOPI();
   GBool getPSASCIIHex();
+  GBool getPSBinary();
+  GBool getPSUncompressPreloadedImages();
+  double getPSRasterResolution();
+  GBool getPSRasterMono();
   GooString *getTextEncodingName();
   EndOfLineKind getTextEOL();
   GBool getTextPageBreaks();
   GBool getTextKeepTinyChars();
-  GooString *findFontFile(GooString *fontName, char **exts);
   GBool getEnableFreeType();
   GBool getAntialias();
   GBool getVectorAntialias();
+  GBool getAntialiasPrinting();
   GBool getStrokeAdjust();
   ScreenType getScreenType();
   int getScreenSize();
@@ -214,11 +185,14 @@ public:
   double getScreenGamma();
   double getScreenBlackThreshold();
   double getScreenWhiteThreshold();
+  double getMinLineWidth();
+  GBool getOverprintPreview() { return overprintPreview; }
   GBool getMapNumericCharNames();
   GBool getMapUnknownCharNames();
   GBool getPrintCommands();
   GBool getProfileCommands();
   GBool getErrQuiet();
+  double getSplashResolution();
 
   CharCodeToUnicode *getCIDToUnicode(GooString *collection);
   CharCodeToUnicode *getUnicodeToUnicode(GooString *fontName);
@@ -232,6 +206,8 @@ public:
   GooList *getEncodingNames();
 
   //----- functions to set parameters
+  void addFontFile(GooString *fontName, GooString *path);
+  void setPSFile(char *file);
   void setPSExpandSmaller(GBool expand);
   void setPSShrinkLarger(GBool shrink);
   void setPSCenter(GBool center);
@@ -240,17 +216,23 @@ public:
   void setPSEmbedTrueType(GBool embed);
   void setPSEmbedCIDPostScript(GBool embed);
   void setPSEmbedCIDTrueType(GBool embed);
-  void setPSSubstFonts(GBool substFonts);
+  void setPSFontPassthrough(GBool passthrough);
   void setPSPreload(GBool preload);
   void setPSOPI(GBool opi);
   void setPSASCIIHex(GBool hex);
+  void setPSBinary(GBool binary);
+  void setPSUncompressPreloadedImages(GBool uncomp);
+  void setPSRasterResolution(double res);
+  void setPSRasterMono(GBool mono);
   void setTextEncoding(char *encodingName);
   GBool setTextEOL(char *s);
   void setTextPageBreaks(GBool pageBreaks);
   void setTextKeepTinyChars(GBool keep);
   GBool setEnableFreeType(char *s);
+  GBool setDisableFreeTypeHinting(char *s);
   GBool setAntialias(char *s);
   GBool setVectorAntialias(char *s);
+  void setAntialiasPrinting(GBool print);
   void setStrokeAdjust(GBool strokeAdjust);
   void setScreenType(ScreenType st);
   void setScreenSize(int size);
@@ -258,6 +240,8 @@ public:
   void setScreenGamma(double gamma);
   void setScreenBlackThreshold(double blackThreshold);
   void setScreenWhiteThreshold(double whiteThreshold);
+  void setMinLineWidth(double minLineWidth);
+  void setOverprintPreview(GBool overprintPreviewA);
   void setMapNumericCharNames(GBool map);
   void setMapUnknownCharNames(GBool map);
   void setPrintCommands(GBool printCommandsA);
@@ -272,7 +256,7 @@ public:
 private:
 
   void parseNameToUnicode(GooString *name);
-  GBool parseYesNo2(char *token, GBool *flag);
+  GBool parseYesNo2(const char *token, GBool *flag);
   UnicodeMap *getUnicodeMap2(GooString *encodingName);
 
   void scanEncodingDirs();
@@ -287,7 +271,6 @@ private:
 
   //----- user-modifiable settings
 
-  GooString *baseDir;		// base directory - for plugins, etc.
   NameToCharCode *		// mapping from char name to Unicode
     nameToUnicode;
   GooHash *cidToUnicodes;		// files for mappings from char collections
@@ -302,39 +285,56 @@ private:
   GooHash *cMapDirs;		// list of CMap dirs, indexed by collection
 				//   name [GooList[GooString]]
   GooList *toUnicodeDirs;		// list of ToUnicode CMap dirs [GooString]
-  GooHash *displayFonts;		// display font info, indexed by font name
-				//   [DisplayFontParam]
-#ifdef _WIN32
   GBool baseFontsInitialized;
-  WinFontList *winFontList;	// system TrueType fonts
+#ifdef _WIN32
+  GooHash *substFiles;	// windows font substitutes (for CID fonts)
 #endif
+  GooHash *fontFiles;		// font files: font name mapped to path
+				//   [GString]
+  GooList *fontDirs;		// list of font dirs [GString]
+  GooHash *ccFontFiles;	// character collection font files:
+				//   collection name  mapped to path [GString]
+  SysFontList *sysFonts;	// system fonts
+  GooString *psFile;		// PostScript file or command (for xpdf)
   GBool psExpandSmaller;	// expand smaller pages to fill paper
   GBool psShrinkLarger;		// shrink larger pages to fit paper
   GBool psCenter;		// center pages on the paper
   PSLevel psLevel;		// PostScript level to generate
-  GooHash *psFonts;		// PostScript font info, indexed by PDF
-				//   font name [PSFontParam]
-  GooList *psNamedFonts16;	// named 16-bit fonts [PSFontParam]
-  GooList *psFonts16;		// generic 16-bit fonts [PSFontParam]
+  GooHash *psResidentFonts;	// 8-bit fonts resident in printer:
+				//   PDF font name mapped to PS font name
+				//   [GString]
+  GooList *psResidentFonts16;	// 16-bit fonts resident in printer:
+				//   PDF font name mapped to font info
+				//   [PSFontParam16]
+  GooList *psResidentFontsCC;	// 16-bit character collection fonts
+				//   resident in printer: collection name
+				//   mapped to font info [PSFontParam16]
   GBool psEmbedType1;		// embed Type 1 fonts?
   GBool psEmbedTrueType;	// embed TrueType fonts?
   GBool psEmbedCIDPostScript;	// embed CID PostScript fonts?
   GBool psEmbedCIDTrueType;	// embed CID TrueType fonts?
-  GBool psSubstFonts;		// substitute missing fonts?
+  GBool psFontPassthrough;	// pass all fonts through as-is?
   GBool psPreload;		// preload PostScript images and forms into
 				//   memory
   GBool psOPI;			// generate PostScript OPI comments?
   GBool psASCIIHex;		// use ASCIIHex instead of ASCII85?
+  GBool psBinary;		// use binary instead of hex
+  GBool psUncompressPreloadedImages;  // uncompress all preloaded images
+  double psRasterResolution;	// PostScript rasterization resolution (dpi)
+  GBool psRasterMono;		// true to do PostScript rasterization
+				//   in monochrome (gray); false to do it
+				//   in color (RGB/CMYK)
   GooString *textEncoding;	// encoding (unicodeMap) to use for text
 				//   output
   EndOfLineKind textEOL;	// type of EOL marker to use for text
 				//   output
   GBool textPageBreaks;		// insert end-of-page markers?
   GBool textKeepTinyChars;	// keep all characters in text output
-  GooList *fontDirs;		// list of font dirs [GooString]
   GBool enableFreeType;		// FreeType enable flag
+  GBool disableFreeTypeHinting;	// FreeType disable hinting flag
   GBool antialias;		// anti-aliasing enable flag
   GBool vectorAntialias;	// vector anti-aliasing enable flag
+  GBool antialiasPrinting;	// allow anti-aliasing when printing
   GBool strokeAdjust;		// stroke adjustment enable flag
   ScreenType screenType;	// halftone screen type
   int screenSize;		// screen matrix size
@@ -342,11 +342,14 @@ private:
   double screenGamma;		// screen gamma correction
   double screenBlackThreshold;	// screen black clamping threshold
   double screenWhiteThreshold;	// screen white clamping threshold
+  double minLineWidth;		// minimum line width
+  GBool overprintPreview;	// enable overprint preview
   GBool mapNumericCharNames;	// map numeric char names (from font subsets)?
   GBool mapUnknownCharNames;	// map unknown char names?
   GBool printCommands;		// print the drawing commands
   GBool profileCommands;	// profile the drawing commands
   GBool errQuiet;		// suppress error messages?
+  double splashResolution;	// resolution when rasterizing images
 
   CharCodeToUnicodeCache *cidToUnicodeCache;
   CharCodeToUnicodeCache *unicodeToUnicodeCache;
@@ -354,8 +357,8 @@ private:
   CMapCache *cMapCache;
   
 #ifdef ENABLE_PLUGINS
-  GList *plugins;		// list of plugins [Plugin]
-  GList *securityHandlers;	// list of loaded security handlers
+  GooList *plugins;		// list of plugins [Plugin]
+  GooList *securityHandlers;	// list of loaded security handlers
 				//   [XpdfSecurityHandler]
 #endif
 

@@ -1,9 +1,12 @@
 /* poppler-document.cc: qt interface to poppler
  * Copyright (C) 2005, Net Integration Technologies, Inc.
  * Copyright (C) 2005, 2008, Brad Hards <bradh@frogmouth.net>
- * Copyright (C) 2005-2010, Albert Astals Cid <aacid@kde.org>
+ * Copyright (C) 2005-2010, 2012, 2013, Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2006-2010, Pino Toscano <pino@kde.org>
- * Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
+ * Copyright (C) 2010, 2011 Hib Eris <hib@hiberis.nl>
+ * Copyright (C) 2012 Koji Otani <sho@bbr.jp>
+ * Copyright (C) 2012, 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
+ * Copyright (C) 2012 Fabio D'Urso <fabiodurso@hotmail.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,7 +43,11 @@
 #include "poppler-page-private.h"
 
 #if defined(USE_CMS)
+#if defined(USE_LCMS1)
 #include <lcms.h>
+#else
+#include <lcms2.h>
+#endif
 #endif
 
 namespace Poppler {
@@ -50,7 +57,7 @@ namespace Poppler {
   Document *Document::load(const QString &filePath, const QByteArray &ownerPassword,
 			   const QByteArray &userPassword)
     {
-	DocumentData *doc = new DocumentData(new GooString(QFile::encodeName(filePath)), 
+	DocumentData *doc = new DocumentData(filePath, 
 					     new GooString(ownerPassword.data()),
 					     new GooString(userPassword.data()));
 	return DocumentData::checkDocument(doc);
@@ -128,7 +135,7 @@ namespace Poppler {
 	    }
 	    else
 	    {
-		doc2 = new DocumentData(new GooString(m_doc->doc->getFileName()),
+		doc2 = new DocumentData(m_doc->m_filePath,
 					new GooString(ownerPassword.data()),
 					new GooString(userPassword.data()));
 	    }
@@ -232,8 +239,10 @@ namespace Poppler {
 	if (fi.isEmbedded())
 	{
 		Object refObj, strObj;
+		XRef *xref = m_doc->doc->getXRef()->copy();
+
 		refObj.initRef(fi.m_data->embRef.num, fi.m_data->embRef.gen);
-		refObj.fetch(m_doc->doc->getXRef(), &strObj);
+		refObj.fetch(xref, &strObj);
 		refObj.free();
 		if (strObj.isStream())
 		{
@@ -246,6 +255,7 @@ namespace Poppler {
 			strObj.streamClose();
 		}
 		strObj.free();
+		delete xref;
 	}
 	return result;
     }
@@ -258,7 +268,10 @@ namespace Poppler {
 	if ( m_doc->locked )
 	    return QString();
 
-	m_doc->doc->getDocInfo( &info );
+	QScopedPointer<XRef> xref(m_doc->doc->getXRef()->copy());
+	if (!xref)
+		return QString();
+	xref->getDocInfo(&info);
 	if ( !info.isDict() )
 	    return QString();
 
@@ -288,7 +301,10 @@ namespace Poppler {
 	if ( m_doc->locked )
 	    return QStringList();
 
-	m_doc->doc->getDocInfo( &info );
+	QScopedPointer<XRef> xref(m_doc->doc->getXRef()->copy());
+	if (!xref)
+		return QStringList();
+	xref->getDocInfo(&info);
 	if ( !info.isDict() )
 	    return QStringList();
 
@@ -310,7 +326,10 @@ namespace Poppler {
 	    return QDateTime();
 
 	Object info;
-	m_doc->doc->getDocInfo( &info );
+	QScopedPointer<XRef> xref(m_doc->doc->getXRef()->copy());
+	if (!xref)
+		return QDateTime();
+	xref->getDocInfo(&info);
 	if ( !info.isDict() ) {
 	    info.free();
 	    return QDateTime();
@@ -514,18 +533,17 @@ namespace Poppler {
 
     void Document::setRenderHint( Document::RenderHint hint, bool on )
     {
-        if ( on )
-            m_doc->m_hints |= hint;
-        else
-            m_doc->m_hints &= ~(int)hint;
+        const bool touchesOverprinting = hint & Document::OverprintPreview;
+        
+        int hintForOperation = hint;
+        if (touchesOverprinting && !isOverprintPreviewAvailable())
+            hintForOperation = hintForOperation & ~(int)Document::OverprintPreview;
 
-        // the only way to set antialiasing for Splash is on creation
-        if ( m_doc->m_backend == Document::SplashBackend &&
-             ( hint & ( Document::Antialiasing || Document::TextAntialiasing || Document::TextHinting ) ) )
-        {
-            delete m_doc->m_outputDev;
-            m_doc->m_outputDev = NULL;
-        }
+        if ( on )
+            m_doc->m_hints |= hintForOperation;
+        else
+            m_doc->m_hints &= ~hintForOperation;
+
     }
 
     Document::RenderHints Document::renderHints() const
@@ -600,6 +618,21 @@ namespace Poppler {
         return true;
     }
 
+    Document::FormType Document::formType() const
+    {
+        switch ( m_doc->doc->getCatalog()->getFormType() )
+        {
+            case Catalog::NoForm:
+                return Document::NoForm;
+            case Catalog::AcroForm:
+                return Document::AcroForm;
+            case Catalog::XfaForm:
+                return Document::XfaForm;
+        }
+
+        return Document::NoForm; // make gcc happy
+    }
+
     QDateTime convertDate( char *dateString )
     {
         int year, mon, day, hour, min, sec, tzHours, tzMins;
@@ -639,5 +672,13 @@ namespace Poppler {
         return false;
 #endif
     }
+
+    bool isOverprintPreviewAvailable() {
+#if defined(SPLASH_CMYK)
+        return true;
+#else
+        return false;
+#endif
+   }
 
 }

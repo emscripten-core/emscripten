@@ -15,24 +15,6 @@ splash_libs =					\
 
 endif
 
-if BUILD_POPPLER_QT4
-
-poppler_arthur = libpoppler-arthur.la
-
-libpoppler_arthur_la_SOURCES =			\
-	ArthurOutputDev.h			\
-	ArthurOutputDev.cc
-
-arthur_includes =				\
-	$(POPPLER_QT4_CFLAGS)
-
-arthur_libs =					\
-	$(POPPLER_QT4_LIBS)
-
-endif
-
-
-
 if BUILD_CAIRO_OUTPUT
 
 poppler_cairo = libpoppler-cairo.la
@@ -61,6 +43,8 @@ libjpeg_sources =				\
 
 libjpeg_libs =					\
 	$(LIBJPEG_LIBS)
+libjpeg_includes =				\
+	$(LIBJPEG_CFLAGS)
 
 endif
 
@@ -73,6 +57,15 @@ libpng_includes =				\
 
 endif
 
+if BUILD_LIBTIFF
+
+libtiff_libs =					\
+	$(LIBTIFF_LIBS)
+libtiff_includes =				\
+	$(LIBTIFF_CFLAGS)
+
+endif
+
 if BUILD_LIBOPENJPEG
 
 libjpeg2000_sources =				\
@@ -81,6 +74,8 @@ libjpeg2000_sources =				\
 
 libjpeg2000_libs =				\
 	$(LIBOPENJPEG_LIBS)
+libjpeg2000_includes =				\
+	$(LIBOPENJPEG_CFLAGS)
 
 else
 
@@ -120,20 +115,6 @@ curl_sources =					\
 
 endif
 
-if BUILD_ABIWORD_OUTPUT
-
-abiword_sources =				\
-	ABWOutputDev.h				\
-	ABWOutputDev.cc
-
-abiword_includes =				\
-	$(ABIWORD_CFLAGS)
-
-abiword_libs =					\
-	$(ABIWORD_LIBS)
-
-endif
-
 if USE_CMS
 cms_includes = $(LCMS_CFLAGS)
 cms_libs = $(LCMS_LIBS)
@@ -145,8 +126,9 @@ INCLUDES =					\
 	$(cms_includes)				\
 	$(splash_includes)			\
 	$(cairo_includes)			\
-	$(arthur_includes)			\
-	$(abiword_includes)			\
+	$(libjpeg_includes)			\
+	$(libtiff_includes)			\
+	$(libjpeg2000_includes)			\
 	$(libpng_includes)			\
 	$(libcurl_includes)			\
 	$(FREETYPE_CFLAGS)			\
@@ -154,8 +136,7 @@ INCLUDES =					\
 
 lib_LTLIBRARIES = libpoppler.la
 
-noinst_LTLIBRARIES = $(poppler_cairo)		\
-	$(poppler_arthur)
+noinst_LTLIBRARIES = $(poppler_cairo)
 
 CFLAGS+=$(PTHREAD_CFLAGS)
 CXXFLAGS+=$(PTHREAD_CFLAGS)
@@ -165,18 +146,18 @@ libpoppler_la_LIBADD =				\
 	$(top_builddir)/fofi/libfofi.la		\
 	$(cms_libs)				\
 	$(splash_libs)				\
+	$(libtiff_libs)				\
 	$(libjpeg_libs)				\
 	$(libpng_libs)				\
 	$(zlib_libs)				\
 	$(libcurl_libs)				\
 	$(libjpeg2000_libs)			\
-	$(abiword_libs)				\
 	$(FREETYPE_LIBS)			\
 	$(FONTCONFIG_LIBS)			\
 	$(PTHREAD_LIBS)				\
 	$(win32_libs)
 
-libpoppler_la_LDFLAGS = -version-info 13:0:0 @create_shared_lib@ @auto_import_flags@
+libpoppler_la_LDFLAGS = -version-info 43:0:0 @create_shared_lib@ @auto_import_flags@
 
 if ENABLE_XPDF_HEADERS
 
@@ -235,12 +216,15 @@ poppler_include_HEADERS =	\
 	StdinPDFDocBuilder.h	\
 	Stream-CCITT.h		\
 	Stream.h		\
+	StructElement.h		\
+	StructTreeRoot.h	\
 	UnicodeMap.h		\
 	UnicodeMapTables.h	\
 	UnicodeTypeTable.h	\
 	UnicodeCClassTables.h	\
 	UnicodeCompTables.h	\
 	UnicodeDecompTables.h	\
+	ViewerPreferences.h	\
 	XRef.h			\
 	CharTypes.h		\
 	CompactFontTables.h	\
@@ -249,6 +233,7 @@ poppler_include_HEADERS =	\
 	PSOutputDev.h		\
 	TextOutputDev.h		\
 	SecurityHandler.h	\
+	UTF.h			\
 	UTF8.h			\
 	XpdfPluginAPI.h		\
 	Sound.h
@@ -259,11 +244,9 @@ endif
 libpoppler_la_SOURCES =		\
 	$(splash_sources)	\
 	$(cairo_sources)	\
-	$(arthur_sources)	\
 	$(libjpeg_sources)	\
 	$(zlib_sources)		\
 	$(libjpeg2000_sources)	\
-	$(abiword_sources)	\
 	$(curl_sources)		\
 	Annot.cc		\
 	Array.cc 		\
@@ -313,9 +296,13 @@ libpoppler_la_SOURCES =		\
 	StdinCachedFile.cc	\
 	StdinPDFDocBuilder.cc	\
 	Stream.cc 		\
+	StructTreeRoot.cc	\
+	StructElement.cc	\
 	strtok_r.cpp		\
 	UnicodeMap.cc		\
 	UnicodeTypeTable.cc	\
+	UTF.cc                  \
+	ViewerPreferences.cc	\
 	XRef.cc			\
 	PSOutputDev.cc		\
 	TextOutputDev.cc	\
@@ -326,4 +313,5 @@ libpoppler_la_SOURCES =		\
 	XpdfPluginAPI.cc
 
 EXTRA_DIST = gen-unicode-tables.py	\
-             GlobalParamsWin.cc
+             GlobalParamsWin.cc         \
+             PageLabelInfo_p.h

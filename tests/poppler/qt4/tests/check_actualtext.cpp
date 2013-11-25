@@ -14,7 +14,7 @@ private slots:
 void TestActualText::checkActualText1()
 {
     Poppler::Document *doc;
-    doc = Poppler::Document::load("../../../test/unittestcases/WithActualText.pdf");
+    doc = Poppler::Document::load(TESTDATADIR "/unittestcases/WithActualText.pdf");
     QVERIFY( doc );
 
     Poppler::Page *page = doc->page(0);

@@ -1,7 +1,23 @@
 INCLUDES =					\
 	-I$(top_srcdir)				\
 	-I$(top_srcdir)/goo			\
+	$(libjpeg_includes)			\
+	$(libtiff_includes)			\
+	$(libpng_includes)			\
 	$(FREETYPE_CFLAGS)
+
+# SplashBitmap includes JpegWriter.h, TiffWriter.h, PNGWriter.h
+if BUILD_LIBJPEG
+libjpeg_includes = $(LIBJPEG_CFLAGS)
+endif
+
+if BUILD_LIBTIFF
+libtiff_includes = $(LIBTIFF_CFLAGS)
+endif
+
+if BUILD_LIBPNG
+libpng_includes = $(LIBPNG_CFLAGS)
+endif
 
 noinst_LTLIBRARIES = libsplash.la
 

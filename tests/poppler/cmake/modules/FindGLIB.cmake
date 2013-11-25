@@ -6,6 +6,7 @@
 #  GLIB2_LIBRARIES - Link these to use GLib
 #
 # Copyright 2008-2010 Pino Toscano, <pino@kde.org>
+# Copyright 2013 Michael Weiser, <michael@weiser.dinsnail.net>
 #
 # Redistribution and use is allowed according to the terms of the BSD license.
 # For details see the accompanying COPYING-CMAKE-SCRIPTS file.
@@ -15,7 +16,7 @@ include(FindPackageHandleStandardArgs)
 if (NOT WIN32)
   find_package(PkgConfig REQUIRED)
 
-  pkg_check_modules(GLIB2 "glib-2.0>=${GLIB_REQUIRED}" "gobject-2.0>=${GLIB_REQUIRED}")
+  pkg_check_modules(GLIB2 "glib-2.0>=${GLIB_REQUIRED}" "gobject-2.0>=${GLIB_REQUIRED}" "gio-2.0>=${GLIB_REQUIRED}")
 
   find_package_handle_standard_args(GLib DEFAULT_MSG GLIB2_LIBRARIES GLIB2_CFLAGS)
 

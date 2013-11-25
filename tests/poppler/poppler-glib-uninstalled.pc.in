@@ -1,7 +1,7 @@
 Name: poppler-glib
 Description: GLib wrapper for poppler - uninstalled
 Version: @VERSION@
-Requires: poppler-cairo = @VERSION@ @GLIB_REQ@ @GDK_REQ@
+Requires: glib-2.0 >= @GLIB_REQUIRED@ gobject-2.0 >= @GLIB_REQUIRED@ gio-2.0 >= @GLIB_REQUIRED@ cairo >= @CAIRO_VERSION@
 
 Libs: ${pc_top_builddir}/${pcfiledir}/glib/libpoppler-glib.la
 Cflags: -I${pc_top_builddir}/${pcfiledir}/glib

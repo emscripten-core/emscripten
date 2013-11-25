@@ -1,5 +1,5 @@
 /* poppler-link-extractor_p.h: qt interface to poppler
- * Copyright (C) 2007-2008, Pino Toscano <pino@kde.org>
+ * Copyright (C) 2007, 2008, 2011, Pino Toscano <pino@kde.org>
  * Copyright (C) 2008, Albert Astals Cid <aacid@kde.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <Link.h>
 #include <Object.h>
 #include <Page.h>
+#include <Annot.h>
 
 #include "poppler-qt4.h"
 #include "poppler-page-private.h"
@@ -48,7 +49,7 @@ LinkExtractorOutputDev::~LinkExtractorOutputDev()
   qDeleteAll(m_links);
 }
 
-void LinkExtractorOutputDev::processLink(::Link *link, Catalog *catalog)
+void LinkExtractorOutputDev::processLink(::AnnotLink *link)
 {
   if (!link->isOk())
     return;
@@ -70,7 +71,7 @@ void LinkExtractorOutputDev::processLink(::Link *link, Catalog *catalog)
   {
     m_links.append(popplerLink);
   }
-  OutputDev::processLink(link, catalog);
+  OutputDev::processLink(link);
 }
 
 QList< Link* > LinkExtractorOutputDev::links()

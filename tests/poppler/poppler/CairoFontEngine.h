@@ -19,6 +19,7 @@
 // Copyright (C) 2006, 2007 Jeff Muizelaar <jeff@infidigm.net>
 // Copyright (C) 2006, 2010 Carlos Garcia Campos <carlosgc@gnome.org>
 // Copyright (C) 2008 Adrian Johnson <ajohnson@redneon.com>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -32,11 +33,12 @@
 #pragma interface
 #endif
 
+#include "poppler-config.h"
 #include "goo/gtypes.h"
 #include <cairo-ft.h>
 
 #include "GfxFont.h"
-#include "Catalog.h"
+#include "PDFDoc.h"
 
 class CairoFontEngine;
 
@@ -44,7 +46,7 @@ class CairoFont {
 public:
   CairoFont(Ref ref,
 	    cairo_font_face_t *face,
-	    Gushort *codeToGID,
+	    int *codeToGID,
 	    Guint codeToGIDLen,
 	    GBool substitute,
 	    GBool printing);
@@ -60,7 +62,7 @@ protected:
   Ref ref;
   cairo_font_face_t *cairo_font_face;
 
-  Gushort *codeToGID;
+  int *codeToGID;
   Guint codeToGIDLen;
 
   GBool substitute;
@@ -76,27 +78,26 @@ public:
 
 private:
   CairoFreeTypeFont(Ref ref, cairo_font_face_t *cairo_font_face,
-	    Gushort *codeToGID, Guint codeToGIDLen, GBool substitute);
+	    int *codeToGID, Guint codeToGIDLen, GBool substitute);
 };
 
 //------------------------------------------------------------------------
 
 class CairoType3Font : public CairoFont {
 public:
-  static CairoType3Font *create(GfxFont *gfxFont, XRef *xref,
-				Catalog *catalog, CairoFontEngine *fontEngine,
-				GBool printing);
+  static CairoType3Font *create(GfxFont *gfxFont, PDFDoc *doc,
+				CairoFontEngine *fontEngine,
+				GBool printing, XRef *xref);
   virtual ~CairoType3Font();
 
   virtual GBool matches(Ref &other, GBool printing);
 
 private:
-  CairoType3Font(Ref ref, XRef *xref, Catalog *catalog,
+  CairoType3Font(Ref ref, PDFDoc *doc,
 		 cairo_font_face_t *cairo_font_face,
-		 Gushort *codeToGID, Guint codeToGIDLen,
-		 GBool printing);
-  XRef *xref;
-  Catalog *catalog;
+		 int *codeToGID, Guint codeToGIDLen,
+		 GBool printing, XRef *xref);
+  PDFDoc *doc;
 };
 
 //------------------------------------------------------------------------
@@ -114,12 +115,15 @@ public:
   CairoFontEngine(FT_Library libA);
   ~CairoFontEngine();
 
-  CairoFont *getFont(GfxFont *gfxFont, XRef *xref, Catalog *catalog, GBool printing);
+  CairoFont *getFont(GfxFont *gfxFont, PDFDoc *doc, GBool printing, XRef *xref);
 
 private:
   CairoFont *fontCache[cairoFontCacheSize];
   FT_Library lib;
   GBool useCIDs;
+#if MULTITHREADED
+  GooMutex mutex;
+#endif
 };
 
 #endif

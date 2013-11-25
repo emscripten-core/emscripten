@@ -16,48 +16,69 @@ INCLUDES =					\
 	-I$(top_srcdir)/utils			\
 	-I$(top_srcdir)/poppler			\
 	$(UTILS_CFLAGS)				\
-	$(FONTCONFIG_CFLAGS)			\
-	$(ABIWORD_CFLAGS)
+	$(PDFTOCAIRO_CFLAGS)
 
 LDADD =						\
 	$(top_builddir)/poppler/libpoppler.la	\
-	$(UTILS_LIBS)				\
-	$(FONTCONFIG_LIBS)
+	$(UTILS_LIBS)
 
-if BUILD_ABIWORD_OUTPUT
+if BUILD_CAIRO_OUTPUT
 
-pdftoabw_SOURCES =				\
-	pdftoabw.cc				\
+pdftocairo_SOURCES =				\
+	pdftocairo.cc				\
 	$(common)
 
-pdftoabw_LDADD = $(LDADD) $(ABIWORD_LIBS)
+if USE_CMS
+PDFTOCAIRO_CFLAGS += $(LCMS_CFLAGS)
+PDFTOCAIRO_LIBS += $(LCMS_LIBS)
+endif
 
-pdftoabw_binary = pdftoabw
+pdftocairo_LDADD =				\
+	$(top_builddir)/poppler/libpoppler-cairo.la \
+	$(LDADD)				\
+	$(PDFTOCAIRO_LIBS)			\
+	$(PTHREAD_LIBS)
+
+
+pdftocairo_binary = pdftocairo
+
+pdftocairo_manpage = pdftocairo.1
 
 endif
 
 AM_LDFLAGS = @auto_import_flags@
 
 bin_PROGRAMS =					\
+	pdfdetach				\
 	pdffonts				\
 	pdfimages				\
 	pdfinfo					\
 	pdftops					\
 	pdftotext				\
 	pdftohtml				\
+	pdfseparate				\
+	pdfunite				\
 	$(pdftoppm_binary)			\
-	$(pdftoabw_binary)
+	$(pdftocairo_binary)
 
 dist_man1_MANS =				\
+	pdfdetach.1				\
 	pdffonts.1				\
 	pdfimages.1				\
 	pdfinfo.1				\
 	pdftops.1				\
 	pdftotext.1				\
 	pdftohtml.1				\
-	$(pdftoppm_manpage)
+	pdfseparate.1				\
+	pdfunite.1				\
+	$(pdftoppm_manpage)			\
+	$(pdftocairo_manpage)
 
 common = parseargs.cc parseargs.h
+
+pdfdetach_SOURCES = 				\
+	pdfdetach.cc				\
+	$(common)
 
 pdffonts_SOURCES =				\
 	pdffonts.cc				\
@@ -67,12 +88,16 @@ pdfimages_SOURCES =				\
 	pdfimages.cc				\
 	ImageOutputDev.cc			\
 	ImageOutputDev.h			\
+	JSInfo.cc				\
+	JSInfo.h				\
 	$(common)
 
 pdfinfo_SOURCES =				\
 	pdfinfo.cc				\
 	printencodings.cc			\
 	printencodings.h			\
+	JSInfo.cc				\
+	JSInfo.h				\
 	$(common)
 
 pdftops_SOURCES =				\
@@ -93,6 +118,21 @@ pdftohtml_SOURCES =				\
 	HtmlLinks.h				\
 	HtmlOutputDev.cc			\
 	HtmlOutputDev.h				\
+	HtmlUtils.h				\
+	$(common)
+
+# HtmlOutputDev uses goo/PNGWriter.h that may depend on libpng header
+pdftohtml_CXXFLAGS = $(AM_CXXFLAGS)
+if BUILD_LIBPNG
+pdftohtml_CXXFLAGS += $(LIBPNG_CFLAGS)
+endif
+
+pdfseparate_SOURCES =				\
+	pdfseparate.cc				\
+	$(common)
+
+pdfunite_SOURCES =				\
+	pdfunite.cc				\
 	$(common)
 
 # Yay, automake!  It should be able to figure out that it has to dist

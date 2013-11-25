@@ -9,6 +9,9 @@
 /* Use libopenjpeg instead of builtin jpeg2000 decoder. */
 #cmakedefine ENABLE_LIBOPENJPEG 1
 
+/* Build against libtiff. */
+#cmakedefine ENABLE_LIBTIFF 1
+
 /* Build against libpng. */
 #cmakedefine ENABLE_LIBPNG 1
 
@@ -43,6 +46,12 @@
 /* Define to 1 if you have the `ftell64' function. */
 #cmakedefine HAVE_FTELL64 1
 
+/* Define to 1 if you have the `pread64' function. */
+#cmakedefine HAVE_PREAD64 1
+
+/* Define to 1 if you have the `lseek64' function. */
+#cmakedefine HAVE_LSEEK64 1
+
 /* Defines if gettimeofday is available on your system */
 #cmakedefine HAVE_GETTIMEOFDAY 1
 
@@ -72,6 +81,9 @@
 
 /* Define to 1 if you have the `mkstemps' function. */
 #cmakedefine HAVE_MKSTEMPS 1
+
+/* Define to 1 if you have the `rand_r' function. */
+#cmakedefine HAVE_RAND_R 1
 
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 #cmakedefine HAVE_NDIR_H 1
@@ -162,9 +174,6 @@
 /* Support for curl based doc builder is compiled in. */
 #cmakedefine POPPLER_HAS_CURL_SUPPORT 1
 
-/* Have GDK */
-#cmakedefine POPPLER_WITH_GDK 1
-
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
@@ -180,6 +189,9 @@
 /* Use single precision arithmetic in the Splash backend */
 #cmakedefine USE_FLOAT 1
 
+/* Defines if use lcms1 */
+#cmakedefine USE_LCMS1 1
+
 /* Version number of package */
 #define VERSION "${POPPLER_VERSION}"
 
@@ -188,6 +200,9 @@
 
 /* Use win32 font configuration backend */
 #cmakedefine WITH_FONTCONFIGURATION_WIN32 1
+
+/* OpenJPEG with the OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG flag */
+#cmakedefine WITH_OPENJPEG_IGNORE_PCLR_CMAP_CDEF_FLAG 1
 
 /* Define to 1 if the X Window System is missing or not being used. */
 /* #undef X_DISPLAY_MISSING */
@@ -207,10 +222,10 @@
 #endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
-/* #undef _FILE_OFFSET_BITS */
+#cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@
 
 /* Define to 1 to make fseeko visible on some hosts (e.g. glibc 2.2). */
-/* #undef _LARGEFILE_SOURCE */
+/* TODO This is wrong, port if needed #undef _LARGEFILE_SOURCE */
 
 /* Define for large files, on AIX-style hosts. */
-/* #undef _LARGE_FILES */
+/* TODO This is wrong, port if needed #undef _LARGE_FILES */

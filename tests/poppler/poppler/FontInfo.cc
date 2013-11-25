@@ -8,8 +8,10 @@
 // Copyright (C) 2006 Kouhei Sutou <kou@cozmixng.org>
 // Copyright (C) 2009 Pino Toscano <pino@kde.org>
 // Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
-// Copyright (C) 2010 Adrian Johnson <ajohnson@redneon.com>
-// Copyright (C) 2010 Thomas Freitag <Thomas.Freitag@alfa.de>
+// Copyright (C) 2010, 2012 Adrian Johnson <ajohnson@redneon.com>
+// Copyright (C) 2010, 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
+// Copyright (C) 2011 Carlos Garcia Campos <carlosgc@gnome.org>
+// Copyright (C) 2012 Fabio D'Urso <fabiodurso@hotmail.it>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -52,7 +54,7 @@ GooList *FontInfoScanner::scan(int nPages) {
   Page *page;
   Dict *resDict;
   Annots *annots;
-  Object obj1, obj2;
+  Object obj1;
   int lastPage;
 
   if (currentPage > doc->getNumPages()) {
@@ -66,34 +68,31 @@ GooList *FontInfoScanner::scan(int nPages) {
     lastPage = doc->getNumPages() + 1;
   }
 
+  XRef *xrefA = doc->getXRef()->copy();
   for (int pg = currentPage; pg < lastPage; ++pg) {
     page = doc->getPage(pg);
     if (!page) continue;
 
-    if ((resDict = page->getResourceDict())) {
-      scanFonts(resDict, result);
+    if ((resDict = page->getResourceDictCopy(xrefA))) {
+      scanFonts(xrefA, resDict, result);
+      delete resDict;
     }
-    annots = new Annots(doc->getXRef(), doc->getCatalog(), page->getAnnots(&obj1));
-    obj1.free();
+    annots = page->getAnnots();
     for (int i = 0; i < annots->getNumAnnots(); ++i) {
-      if (annots->getAnnot(i)->getAppearance(&obj1)->isStream()) {
-	obj1.streamGetDict()->lookup("Resources", &obj2);
-	if (obj2.isDict()) {
-	  scanFonts(obj2.getDict(), result);
-	}
-	obj2.free();
+      if (annots->getAnnot(i)->getAppearanceResDict(&obj1)->isDict()) {
+        scanFonts(xrefA, obj1.getDict(), result);
       }
       obj1.free();
     }
-    delete annots;
   }
 
   currentPage = lastPage;
 
+  delete xrefA;
   return result;
 }
 
-void FontInfoScanner::scanFonts(Dict *resDict, GooList *fontsList) {
+void FontInfoScanner::scanFonts(XRef *xrefA, Dict *resDict, GooList *fontsList) {
   Object obj1, obj2, objDict, resObj;
   Ref r;
   GfxFontDict *gfxFontDict;
@@ -104,14 +103,14 @@ void FontInfoScanner::scanFonts(Dict *resDict, GooList *fontsList) {
   gfxFontDict = NULL;
   resDict->lookupNF("Font", &obj1);
   if (obj1.isRef()) {
-    obj1.fetch(doc->getXRef(), &obj2);
+    obj1.fetch(xrefA, &obj2);
     if (obj2.isDict()) {
       r = obj1.getRef();
-      gfxFontDict = new GfxFontDict(doc->getXRef(), &r, obj2.getDict());
+      gfxFontDict = new GfxFontDict(xrefA, &r, obj2.getDict());
     }
     obj2.free();
   } else if (obj1.isDict()) {
-    gfxFontDict = new GfxFontDict(doc->getXRef(), NULL, obj1.getDict());
+    gfxFontDict = new GfxFontDict(xrefA, NULL, obj1.getDict());
   }
   if (gfxFontDict) {
     for (i = 0; i < gfxFontDict->getNumFonts(); ++i) {
@@ -120,7 +119,7 @@ void FontInfoScanner::scanFonts(Dict *resDict, GooList *fontsList) {
 
         // add this font to the list if not already found
         if (fonts.find(fontRef.num) == fonts.end()) {
-          fontsList->append(new FontInfo(font, doc));
+          fontsList->append(new FontInfo(font, xrefA));
           fonts.insert(fontRef.num);
         }
       }
@@ -131,7 +130,7 @@ void FontInfoScanner::scanFonts(Dict *resDict, GooList *fontsList) {
 
   // recursively scan any resource dictionaries in objects in this
   // resource dictionary
-  char *resTypes[] = { "XObject", "Pattern" };
+  const char *resTypes[] = { "XObject", "Pattern" };
   for (Guint resType = 0; resType < sizeof(resTypes) / sizeof(resTypes[0]); ++resType) {
     resDict->lookup(resTypes[resType], &objDict);
     if (objDict.isDict()) {
@@ -148,12 +147,12 @@ void FontInfoScanner::scanFonts(Dict *resDict, GooList *fontsList) {
           visitedObjects.insert(r.num);
         }
 
-        obj1.fetch(doc->getXRef(), &obj2);
+        obj1.fetch(xrefA, &obj2);
 
         if (obj2.isStream()) {
           obj2.streamGetDict()->lookup("Resources", &resObj);
           if (resObj.isDict() && resObj.getDict() != resDict) {
-            scanFonts(resObj.getDict(), fontsList);
+            scanFonts(xrefA, resObj.getDict(), fontsList);
           }
           resObj.free();
         }
@@ -165,7 +164,7 @@ void FontInfoScanner::scanFonts(Dict *resDict, GooList *fontsList) {
   }
 }
 
-FontInfo::FontInfo(GfxFont *font, PDFDoc *doc) {
+FontInfo::FontInfo(GfxFont *font, XRef *xref) {
   GooString *origName;
   Object fontObj, toUnicodeObj;
   int i;
@@ -173,9 +172,9 @@ FontInfo::FontInfo(GfxFont *font, PDFDoc *doc) {
   fontRef = *font->getID();
 
   // font name
-  origName = font->getOrigName();
+  origName = font->getName();
   if (origName != NULL) {
-    name = font->getOrigName()->copy();
+    name = font->getName()->copy();
   } else {
     name = NULL;
   }
@@ -190,21 +189,22 @@ FontInfo::FontInfo(GfxFont *font, PDFDoc *doc) {
     emb = font->getEmbeddedFontID(&embRef);
   }
 
+  file = NULL;
+  substituteName = NULL;
   if (!emb)
   {
-    DisplayFontParam *dfp = globalParams->getDisplayFont(font);
-    if (dfp)
-    {
-      if (dfp->kind == displayFontT1) file = dfp->t1.fileName->copy();
-      else file = dfp->tt.fileName->copy();
-    }
-    else file = NULL;
+    SysFontType dummy;
+    int dummy2;
+    GooString substituteNameAux;
+    file = globalParams->findSystemFontFile(font, &dummy, &dummy2, &substituteNameAux);
+    if (substituteNameAux.getLength() > 0)
+	substituteName = substituteNameAux.copy();
   }
-  else file = NULL;
+  encoding = font->getEncodingName()->copy();
 
   // look for a ToUnicode map
   hasToUnicode = gFalse;
-  if (doc->getXRef()->fetch(fontRef.num, fontRef.gen, &fontObj)->isDict()) {
+  if (xref->fetch(fontRef.num, fontRef.gen, &fontObj)->isDict()) {
     hasToUnicode = fontObj.dictLookup("ToUnicode", &toUnicodeObj)->isStream();
     toUnicodeObj.free();
   }
@@ -226,6 +226,8 @@ FontInfo::FontInfo(GfxFont *font, PDFDoc *doc) {
 FontInfo::FontInfo(FontInfo& f) {
   name = f.name ? f.name->copy() : NULL;
   file = f.file ? f.file->copy() : NULL;
+  encoding = f.encoding ? f.encoding->copy() : NULL;
+  substituteName = f.substituteName ? f.substituteName->copy() : NULL;
   type = f.type;
   emb = f.emb;
   subset = f.subset;
@@ -237,4 +239,7 @@ FontInfo::FontInfo(FontInfo& f) {
 FontInfo::~FontInfo() {
   delete name;
   delete file;
+  delete encoding;
+  if (substituteName)
+    delete substituteName;
 }

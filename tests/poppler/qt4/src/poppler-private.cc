@@ -2,6 +2,8 @@
  * Copyright (C) 2005, Net Integration Technologies, Inc.
  * Copyright (C) 2006, 2011 by Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2008, 2010, 2011 by Pino Toscano <pino@kde.org>
+ * Copyright (C) 2013 by Thomas Freitag <Thomas.Freitag@alfa.de>
+ * Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
  * Inspired on code by
  * Copyright (C) 2004 by Albert Astals Cid <tsdgeos@terra.es>
  * Copyright (C) 2004 by Enrico Ros <eros.kde@email.it>
@@ -53,10 +55,9 @@ namespace Debug {
         Debug::debugClosure = closure;
     }
 
-    void qt4ErrorFunction(int pos, char *msg, va_list args)
+    void qt4ErrorFunction(void * /*data*/, ErrorCategory /*category*/, Goffset pos, char *msg)
     {
         QString emsg;
-        char buffer[1024]; // should be big enough
 
         if (pos >= 0)
         {
@@ -66,8 +67,7 @@ namespace Debug {
         {
             emsg = QString::fromLatin1("Error: ");
         }
-        qvsnprintf(buffer, sizeof(buffer) - 1, msg, args);
-        emsg += QString::fromAscii(buffer);
+        emsg += QString::fromAscii(msg);
         (*Debug::debugFunction)(emsg, Debug::debugClosure);
     }
 
@@ -228,7 +228,6 @@ namespace Debug {
         qDeleteAll(m_embeddedFiles);
         delete (OptContentModel *)m_optContentModel;
         delete doc;
-        delete m_outputDev;
         delete m_fontInfoIterator;
     
         count --;
@@ -239,23 +238,19 @@ namespace Debug {
         }
       }
     
-    void DocumentData::init(GooString *ownerPassword, GooString *userPassword)
+    void DocumentData::init()
     {
         m_fontInfoIterator = 0;
         m_backend = Document::SplashBackend;
-        m_outputDev = 0;
         paperColor = Qt::white;
         m_hints = 0;
         m_optContentModel = 0;
-        // It might be more appropriate to delete these in PDFDoc
-        delete ownerPassword;
-        delete userPassword;
       
         if ( count == 0 )
         {
             utf8Map = 0;
             globalParams = new GlobalParams();
-            setErrorFunction(qt4ErrorFunction);
+            setErrorCallback(qt4ErrorFunction, NULL);
         }
         count ++;
     }

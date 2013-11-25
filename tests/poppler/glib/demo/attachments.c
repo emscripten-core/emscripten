@@ -187,7 +187,7 @@ attachment_save_callback (const gchar  *buf,
 {
 	GChecksum *cs = (GChecksum *)data;
 
-	g_checksum_update (cs, buf, count);
+	g_checksum_update (cs, (guchar *) buf, count);
 
 	return TRUE;
 }
@@ -280,7 +280,7 @@ pgd_attachments_create_widget (PopplerDocument *document)
 	GtkWidget    *hbox, *button;
 	gboolean      has_attachments;
 
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
 	swindow = gtk_scrolled_window_new (NULL, NULL);
 	gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (swindow),
@@ -327,7 +327,7 @@ pgd_attachments_create_widget (PopplerDocument *document)
 	if (!has_attachments)
 		return vbox;
 	
-	hbox = gtk_hbutton_box_new ();
+	hbox = gtk_button_box_new (GTK_ORIENTATION_HORIZONTAL);
 	gtk_button_box_set_layout (GTK_BUTTON_BOX (hbox), GTK_BUTTONBOX_SPREAD);
 
 	button = gtk_button_new_with_label ("Save");

@@ -79,7 +79,7 @@ pgd_form_field_view_new (void)
 }
 
 static void
-pgd_form_field_view_add_choice_items (GtkTable         *table,
+pgd_form_field_view_add_choice_items (GtkGrid          *table,
 				      PopplerFormField *field,
 				      gint             *selected,
 				      gint             *row)
@@ -92,8 +92,7 @@ pgd_form_field_view_add_choice_items (GtkTable         *table,
 	label = gtk_label_new (NULL);
 	g_object_set (G_OBJECT (label), "xalign", 0.0, NULL);
 	gtk_label_set_markup (GTK_LABEL (label), "<b>Items:</b>");
-	gtk_table_attach (GTK_TABLE (table), label, 0, 1, *row, *row + 1,
-			  GTK_FILL, GTK_FILL, 0, 0);
+	gtk_grid_attach (GTK_GRID (table), label, 0, *row, 1, 1);
 	gtk_widget_show (label);
 
 	swindow = gtk_scrolled_window_new (NULL, NULL);
@@ -120,8 +119,7 @@ pgd_form_field_view_add_choice_items (GtkTable         *table,
 	gtk_container_add (GTK_CONTAINER (swindow), textview);
 	gtk_widget_show (textview);
 	
-	gtk_table_attach (GTK_TABLE (table), swindow, 1, 2, *row, *row + 1,
-			  GTK_FILL, GTK_FILL, 0, 0);
+	gtk_grid_attach (GTK_GRID (table), swindow, 1, *row, 1, 1);
 	gtk_widget_show (swindow); 
 	
 	*row += 1;
@@ -131,11 +129,12 @@ static void
 pgd_form_field_view_set_field (GtkWidget        *field_view,
 			       PopplerFormField *field)
 {
-	GtkWidget  *alignment;
-	GtkWidget  *table;
-	GEnumValue *enum_value;
-	gchar      *text;
-	gint        row = 0;
+	GtkWidget     *alignment;
+	GtkWidget     *table;
+        PopplerAction *action;
+	GEnumValue    *enum_value;
+	gchar         *text;
+	gint           row = 0;
 
 	alignment = gtk_bin_get_child (GTK_BIN (field_view));
 	if (alignment) {
@@ -150,88 +149,98 @@ pgd_form_field_view_set_field (GtkWidget        *field_view,
 	if (!field)
 		return;
 
-	table = gtk_table_new (13, 2, FALSE);
-	gtk_table_set_col_spacings (GTK_TABLE (table), 6);
-	gtk_table_set_row_spacings (GTK_TABLE (table), 6);
+	table = gtk_grid_new ();
+	gtk_grid_set_column_spacing (GTK_GRID (table), 6);
+	gtk_grid_set_row_spacing (GTK_GRID (table), 6);
 
 	text = poppler_form_field_get_name (field);
 	if (text) {
-		pgd_table_add_property (GTK_TABLE (table), "<b>Name:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Name:</b>", text, &row);
 		g_free (text);
 	}
 	text = poppler_form_field_get_partial_name (field);
 	if (text) {
-		pgd_table_add_property (GTK_TABLE (table), "<b>Partial Name:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Partial Name:</b>", text, &row);
 		g_free (text);
 	}
 	text = poppler_form_field_get_mapping_name (field);
 	if (text) {
-		pgd_table_add_property (GTK_TABLE (table), "<b>Mapping Name:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Mapping Name:</b>", text, &row);
 		g_free (text);
 	}
+
+        action = poppler_form_field_get_action (field);
+        if (action) {
+                GtkWidget *action_view;
+
+                action_view = pgd_action_view_new (NULL);
+                pgd_action_view_set_action (action_view, action);
+                pgd_table_add_property_with_custom_widget (GTK_GRID (table), "<b>Action:</b>", action_view, &row);
+                gtk_widget_show (action_view);
+        }
 
 	switch (poppler_form_field_get_field_type (field)) {
 	case POPPLER_FORM_FIELD_BUTTON:
 		enum_value = g_enum_get_value ((GEnumClass *) g_type_class_ref (POPPLER_TYPE_FORM_BUTTON_TYPE),
 					       poppler_form_field_button_get_button_type (field));
-		pgd_table_add_property (GTK_TABLE (table), "<b>Button Type:</b>", enum_value->value_name, &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Button State:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Button Type:</b>", enum_value->value_name, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Button State:</b>",
 					poppler_form_field_button_get_state (field) ? "Active" : "Inactive", &row);
 		break;
 	case POPPLER_FORM_FIELD_TEXT:
 		enum_value = g_enum_get_value ((GEnumClass *) g_type_class_ref (POPPLER_TYPE_FORM_TEXT_TYPE),
 					       poppler_form_field_text_get_text_type (field));
-		pgd_table_add_property (GTK_TABLE (table), "<b>Text Type:</b>", enum_value->value_name, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Text Type:</b>", enum_value->value_name, &row);
 
 		text = poppler_form_field_text_get_text (field);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Contents:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Contents:</b>", text, &row);
 		g_free (text);
 
 		text = g_strdup_printf ("%d", poppler_form_field_text_get_max_len (field));
-		pgd_table_add_property (GTK_TABLE (table), "<b>Max Length:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Max Length:</b>", text, &row);
 		g_free (text);
 
-		pgd_table_add_property (GTK_TABLE (table), "<b>Do spellcheck:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Do spellcheck:</b>",
 					poppler_form_field_text_do_spell_check (field) ? "Yes" : "No", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Do scroll:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Do scroll:</b>",
 					poppler_form_field_text_do_scroll (field) ? "Yes" : "No", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Rich Text:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Rich Text:</b>",
 					poppler_form_field_text_is_rich_text (field) ? "Yes" : "No", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Pasword type:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Pasword type:</b>",
 					poppler_form_field_text_is_password (field) ? "Yes" : "No", &row);
 		break;
 	case POPPLER_FORM_FIELD_CHOICE: {
 		gchar *item;
-		gint   selected;
+		gint   selected = -1;
 		
 		enum_value = g_enum_get_value ((GEnumClass *) g_type_class_ref (POPPLER_TYPE_FORM_CHOICE_TYPE),
 					       poppler_form_field_choice_get_choice_type (field));
-		pgd_table_add_property (GTK_TABLE (table), "<b>Choice Type:</b>", enum_value->value_name, &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Editable:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Choice Type:</b>", enum_value->value_name, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Editable:</b>",
 					poppler_form_field_choice_is_editable (field) ? "Yes" : "No", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Multiple Selection:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Multiple Selection:</b>",
 					poppler_form_field_choice_can_select_multiple (field) ? "Yes" : "No", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Do spellcheck:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Do spellcheck:</b>",
 					poppler_form_field_choice_do_spell_check (field) ? "Yes" : "No", &row);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Commit on Change:</b>",
+		pgd_table_add_property (GTK_GRID (table), "<b>Commit on Change:</b>",
 					poppler_form_field_choice_commit_on_change (field) ? "Yes" : "No", &row);
 
 		text = g_strdup_printf ("%d", poppler_form_field_choice_get_n_items (field));
-		pgd_table_add_property (GTK_TABLE (table), "<b>Number of items:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Number of items:</b>", text, &row);
 		g_free (text);
 
-		pgd_form_field_view_add_choice_items (GTK_TABLE (table), field, &selected, &row);
+		pgd_form_field_view_add_choice_items (GTK_GRID (table), field, &selected, &row);
 
-		if (poppler_form_field_choice_get_n_items (field) > selected) {
+		if (selected >= 0 && poppler_form_field_choice_get_n_items (field) > selected) {
 			item = poppler_form_field_choice_get_item (field, selected);
 			text = g_strdup_printf ("%d (%s)", selected, item);
 			g_free (item);
-			pgd_table_add_property (GTK_TABLE (table), "<b>Selected item:</b>", text, &row);
+			pgd_table_add_property (GTK_GRID (table), "<b>Selected item:</b>", text, &row);
 			g_free (text);
 		}
 
 		text = poppler_form_field_choice_get_text (field);
-		pgd_table_add_property (GTK_TABLE (table), "<b>Contents:</b>", text, &row);
+		pgd_table_add_property (GTK_GRID (table), "<b>Contents:</b>", text, &row);
 		g_free (text);
 	}
 		break;
@@ -379,9 +388,9 @@ pgd_forms_create_widget (PopplerDocument *document)
 	
 	n_pages = poppler_document_get_n_pages (document);
 
-	vbox = gtk_vbox_new (FALSE, 12);
+	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
 
-	hbox = gtk_hbox_new (FALSE, 6);
+	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
 
 	label = gtk_label_new ("Page:");
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, TRUE, 0);
@@ -416,7 +425,7 @@ pgd_forms_create_widget (PopplerDocument *document)
 	gtk_box_pack_start (GTK_BOX (vbox), demo->timer_label, FALSE, TRUE, 0);
 	gtk_widget_show (demo->timer_label);
 
-	hpaned = gtk_hpaned_new ();
+	hpaned = gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);
 
 	demo->field_view = pgd_form_field_view_new ();
 

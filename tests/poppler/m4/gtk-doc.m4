@@ -6,6 +6,7 @@ dnl Usage:
 dnl   GTK_DOC_CHECK([minimum-gtk-doc-version])
 AC_DEFUN([GTK_DOC_CHECK],
 [
+  AC_REQUIRE([PKG_PROG_PKG_CONFIG])
   AC_BEFORE([AC_PROG_LIBTOOL],[$0])dnl setup libtool first
   AC_BEFORE([AM_PROG_LIBTOOL],[$0])dnl setup libtool first
 
@@ -33,6 +34,11 @@ AC_DEFUN([GTK_DOC_CHECK],
                         AC_MSG_ERROR([gtk-doc not installed and --enable-gtk-doc requested]))],
       [PKG_CHECK_EXISTS([gtk-doc >= $1],,
                         AC_MSG_ERROR([You need to have gtk-doc >= $1 installed to build $PACKAGE_NAME]))])
+    dnl don't check for glib if we build glib
+    if test "x$PACKAGE_NAME" != "xglib"; then
+      dnl don't fail if someone does not have glib
+      PKG_CHECK_MODULES(GTKDOC_DEPS, glib-2.0 >= 2.10.0 gobject-2.0  >= 2.10.0,,[:])
+    fi
   fi
 
   AC_MSG_CHECKING([whether to build gtk-doc documentation])
@@ -52,6 +58,10 @@ AC_DEFUN([GTK_DOC_CHECK],
     enable_gtk_doc_pdf=no
   fi
 
+  if test -z "$AM_DEFAULT_VERBOSITY"; then
+    AM_DEFAULT_VERBOSITY=1
+  fi
+  AC_SUBST([AM_DEFAULT_VERBOSITY])
 
   AM_CONDITIONAL([ENABLE_GTK_DOC], [test x$enable_gtk_doc = xyes])
   AM_CONDITIONAL([GTK_DOC_BUILD_HTML], [test x$enable_gtk_doc_html = xyes])

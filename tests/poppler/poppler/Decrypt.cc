@@ -17,6 +17,8 @@
 // Copyright (C) 2008, 2010 Albert Astals Cid <aacid@kde.org>
 // Copyright (C) 2009 Matthias Franz <matthias@ktug.or.kr>
 // Copyright (C) 2009 David Benjamin <davidben@mit.edu>
+// Copyright (C) 2012 Fabio D'Urso <fabiodurso@hotmail.it>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
 //
 // To see a description of the changes please see the Changelog file that
 // came with your tarball or type make ChangeLog if you are building from git
@@ -31,14 +33,24 @@
 
 #include <string.h>
 #include "goo/gmem.h"
+#include "goo/grandom.h"
 #include "Decrypt.h"
 #include "Error.h"
 
 static void rc4InitKey(Guchar *key, int keyLen, Guchar *state);
 static Guchar rc4DecryptByte(Guchar *state, Guchar *x, Guchar *y, Guchar c);
-static void aesKeyExpansion(DecryptAESState *s,
-			    Guchar *objKey, int objKeyLen);
+
+static GBool aesReadBlock(Stream  *str, Guchar *in, GBool addPadding);
+
+static void aesKeyExpansion(DecryptAESState *s, Guchar *objKey, int objKeyLen, GBool decrypt);
+static void aesEncryptBlock(DecryptAESState *s, Guchar *in);
 static void aesDecryptBlock(DecryptAESState *s, Guchar *in, GBool last);
+
+static void aes256KeyExpansion(DecryptAES256State *s, Guchar *objKey, int objKeyLen, GBool decrypt);
+static void aes256EncryptBlock(DecryptAES256State *s, Guchar *in);
+static void aes256DecryptBlock(DecryptAES256State *s, Guchar *in, GBool last);
+
+static void sha256(Guchar *msg, int msgLen, Guchar *hash);
 
 static const Guchar passwordPad[32] = {
   0x28, 0xbf, 0x4e, 0x5e, 0x4e, 0x75, 0x8a, 0x41,
@@ -53,67 +65,139 @@ static const Guchar passwordPad[32] = {
 
 GBool Decrypt::makeFileKey(int encVersion, int encRevision, int keyLength,
 			   GooString *ownerKey, GooString *userKey,
+			   GooString *ownerEnc, GooString *userEnc,
 			   int permissions, GooString *fileID,
 			   GooString *ownerPassword, GooString *userPassword,
 			   Guchar *fileKey, GBool encryptMetadata,
 			   GBool *ownerPasswordOk) {
-  Guchar test[32], test2[32];
+  DecryptAES256State state;
+  Guchar test[127 + 56], test2[32];
   GooString *userPassword2;
   Guchar fState[256];
   Guchar tmpKey[16];
   Guchar fx, fy;
   int len, i, j;
 
-  // try using the supplied owner password to generate the user password
   *ownerPasswordOk = gFalse;
-  if (ownerPassword) {
-    len = ownerPassword->getLength();
-    if (len < 32) {
-      memcpy(test, ownerPassword->getCString(), len);
-      memcpy(test + len, passwordPad, 32 - len);
-    } else {
-      memcpy(test, ownerPassword->getCString(), 32);
-    }
-    md5(test, 32, test);
-    if (encRevision == 3) {
-      for (i = 0; i < 50; ++i) {
-	md5(test, keyLength, test);
-      }
-    }
-    if (encRevision == 2) {
-      rc4InitKey(test, keyLength, fState);
-      fx = fy = 0;
-      for (i = 0; i < 32; ++i) {
-	test2[i] = rc4DecryptByte(fState, &fx, &fy, ownerKey->getChar(i));
-      }
-    } else {
-      memcpy(test2, ownerKey->getCString(), 32);
-      for (i = 19; i >= 0; --i) {
-	for (j = 0; j < keyLength; ++j) {
-	  tmpKey[j] = test[j] ^ i;
-	}
-	rc4InitKey(tmpKey, keyLength, fState);
-	fx = fy = 0;
-	for (j = 0; j < 32; ++j) {
-	  test2[j] = rc4DecryptByte(fState, &fx, &fy, test2[j]);
-	}
-      }
-    }
-    userPassword2 = new GooString((char *)test2, 32);
-    if (makeFileKey2(encVersion, encRevision, keyLength, ownerKey, userKey,
-		     permissions, fileID, userPassword2, fileKey,
-		     encryptMetadata)) {
-      *ownerPasswordOk = gTrue;
-      delete userPassword2;
-      return gTrue;
-    }
-    delete userPassword2;
-  }
 
-  // try using the supplied user password
-  return makeFileKey2(encVersion, encRevision, keyLength, ownerKey, userKey,
-		      permissions, fileID, userPassword, fileKey,
-		      encryptMetadata);
+  if (encRevision == 5) {
+
+    // check the owner password
+    if (ownerPassword) {
+      //~ this is supposed to convert the password to UTF-8 using "SASLprep"
+      len = ownerPassword->getLength();
+      if (len > 127) {
+	len = 127;
+      }
+      memcpy(test, ownerPassword->getCString(), len);
+      memcpy(test + len, ownerKey->getCString() + 32, 8);
+      memcpy(test + len + 8, userKey->getCString(), 48);
+      sha256(test, len + 56, test);
+      if (!memcmp(test, ownerKey->getCString(), 32)) {
+
+	// compute the file key from the owner password
+	memcpy(test, ownerPassword->getCString(), len);
+	memcpy(test + len, ownerKey->getCString() + 40, 8);
+	memcpy(test + len + 8, userKey->getCString(), 48);
+	sha256(test, len + 56, test);
+	aes256KeyExpansion(&state, test, 32, gTrue);
+	for (i = 0; i < 16; ++i) {
+	  state.cbc[i] = 0;
+	}
+	aes256DecryptBlock(&state, (Guchar *)ownerEnc->getCString(), gFalse);
+	memcpy(fileKey, state.buf, 16);
+	aes256DecryptBlock(&state, (Guchar *)ownerEnc->getCString() + 16,
+			   gFalse);
+	memcpy(fileKey + 16, state.buf, 16);
+
+	*ownerPasswordOk = gTrue;
+	return gTrue;
+      }
+    }
+
+    // check the user password
+    if (userPassword) {
+      //~ this is supposed to convert the password to UTF-8 using "SASLprep"
+      len = userPassword->getLength();
+      if (len > 127) {
+	len = 127;
+      }
+      memcpy(test, userPassword->getCString(), len);
+      memcpy(test + len, userKey->getCString() + 32, 8);
+      sha256(test, len + 8, test);
+      if (!memcmp(test, userKey->getCString(), 32)) {
+
+	// compute the file key from the user password
+	memcpy(test, userPassword->getCString(), len);
+	memcpy(test + len, userKey->getCString() + 40, 8);
+	sha256(test, len + 8, test);
+	aes256KeyExpansion(&state, test, 32, gTrue);
+	for (i = 0; i < 16; ++i) {
+	  state.cbc[i] = 0;
+	}
+	aes256DecryptBlock(&state, (Guchar *)userEnc->getCString(), gFalse);
+	memcpy(fileKey, state.buf, 16);
+	aes256DecryptBlock(&state, (Guchar *)userEnc->getCString() + 16,
+			   gFalse);
+	memcpy(fileKey + 16, state.buf, 16);
+
+	return gTrue; 
+      }
+    }
+
+    return gFalse;
+  } else {
+
+    // try using the supplied owner password to generate the user password
+    if (ownerPassword) {
+      len = ownerPassword->getLength();
+      if (len < 32) {
+	memcpy(test, ownerPassword->getCString(), len);
+	memcpy(test + len, passwordPad, 32 - len);
+      } else {
+	memcpy(test, ownerPassword->getCString(), 32);
+      }
+      md5(test, 32, test);
+      if (encRevision == 3) {
+	for (i = 0; i < 50; ++i) {
+	  md5(test, keyLength, test);
+	}
+      }
+      if (encRevision == 2) {
+	rc4InitKey(test, keyLength, fState);
+	fx = fy = 0;
+	for (i = 0; i < 32; ++i) {
+	  test2[i] = rc4DecryptByte(fState, &fx, &fy, ownerKey->getChar(i));
+	}
+      } else {
+	memcpy(test2, ownerKey->getCString(), 32);
+	for (i = 19; i >= 0; --i) {
+	  for (j = 0; j < keyLength; ++j) {
+	    tmpKey[j] = test[j] ^ i;
+	  }
+	  rc4InitKey(tmpKey, keyLength, fState);
+	  fx = fy = 0;
+	  for (j = 0; j < 32; ++j) {
+	    test2[j] = rc4DecryptByte(fState, &fx, &fy, test2[j]);
+	  }
+	}
+      }
+      userPassword2 = new GooString((char *)test2, 32);
+      if (makeFileKey2(encVersion, encRevision, keyLength, ownerKey, userKey,
+		       permissions, fileID, userPassword2, fileKey,
+		       encryptMetadata)) {
+	*ownerPasswordOk = gTrue;
+	delete userPassword2;
+	return gTrue;
+      }
+      delete userPassword2;
+    }
+
+    // try using the supplied user password
+    return makeFileKey2(encVersion, encRevision, keyLength, ownerKey, userKey,
+			permissions, fileID, userPassword, fileKey,
+			encryptMetadata);
+  }
 }
 
 GBool Decrypt::makeFileKey2(int encVersion, int encRevision, int keyLength,
@@ -195,15 +279,14 @@ GBool Decrypt::makeFileKey2(int encVersion, int encRevision, int keyLength,
 }
 
 //------------------------------------------------------------------------
-// DecryptStream
+// BaseCryptStream
 //------------------------------------------------------------------------
 
-DecryptStream::DecryptStream(Stream *strA, Guchar *fileKey,
-			     CryptAlgorithm algoA, int keyLength,
-			     int objNum, int objGen):
+BaseCryptStream::BaseCryptStream(Stream *strA, Guchar *fileKey, CryptAlgorithm algoA,
+				 int keyLength, int objNum, int objGen):
   FilterStream(strA)
 {
-  int n, i;
+  int i;
 
   algo = algoA;
 
@@ -211,83 +294,142 @@ DecryptStream::DecryptStream(Stream *strA, Guchar *fileKey,
   for (i = 0; i < keyLength; ++i) {
     objKey[i] = fileKey[i];
   }
-  objKey[keyLength] = objNum & 0xff;
-  objKey[keyLength + 1] = (objNum >> 8) & 0xff;
-  objKey[keyLength + 2] = (objNum >> 16) & 0xff;
-  objKey[keyLength + 3] = objGen & 0xff;
-  objKey[keyLength + 4] = (objGen >> 8) & 0xff;
-  if (algo == cryptAES) {
+  switch (algo) {
+  case cryptRC4:
+    objKey[keyLength] = objNum & 0xff;
+    objKey[keyLength + 1] = (objNum >> 8) & 0xff;
+    objKey[keyLength + 2] = (objNum >> 16) & 0xff;
+    objKey[keyLength + 3] = objGen & 0xff;
+    objKey[keyLength + 4] = (objGen >> 8) & 0xff;
+    md5(objKey, keyLength + 5, objKey);
+    if ((objKeyLength = keyLength + 5) > 16) {
+      objKeyLength = 16;
+    }
+    break;
+  case cryptAES:
+    objKey[keyLength] = objNum & 0xff;
+    objKey[keyLength + 1] = (objNum >> 8) & 0xff;
+    objKey[keyLength + 2] = (objNum >> 16) & 0xff;
+    objKey[keyLength + 3] = objGen & 0xff;
+    objKey[keyLength + 4] = (objGen >> 8) & 0xff;
     objKey[keyLength + 5] = 0x73; // 's'
     objKey[keyLength + 6] = 0x41; // 'A'
     objKey[keyLength + 7] = 0x6c; // 'l'
     objKey[keyLength + 8] = 0x54; // 'T'
-    n = keyLength + 9;
-  } else {
-    n = keyLength + 5;
-  }
-  Decrypt::md5(objKey, n, objKey);
-  if ((objKeyLength = keyLength + 5) > 16) {
-    objKeyLength = 16;
+    md5(objKey, keyLength + 9, objKey);
+    if ((objKeyLength = keyLength + 5) > 16) {
+      objKeyLength = 16;
+    }
+    break;
+  case cryptAES256:
+    objKeyLength = keyLength;
+    break;
   }
 
   charactersRead = 0;
+  autoDelete = gTrue;
 }
 
-DecryptStream::~DecryptStream() {
-  delete str;
+BaseCryptStream::~BaseCryptStream() {
+  if (autoDelete) {
+    delete str;
+  }
 }
 
-void DecryptStream::reset() {
-  int i;
-
+void BaseCryptStream::reset() {
   charactersRead = 0;
+  nextCharBuff = EOF;
   str->reset();
+}
+
+Goffset BaseCryptStream::getPos() {
+  return charactersRead;
+}
+
+int BaseCryptStream::getChar() {
+  // Read next character and empty the buffer, so that a new character will be read next time
+  int c = lookChar();
+  nextCharBuff = EOF;
+
+  if (c != EOF)
+    charactersRead++;
+  return c;
+}
+
+GBool BaseCryptStream::isBinary(GBool last) {
+  return str->isBinary(last);
+}
+
+void BaseCryptStream::setAutoDelete(GBool val) {
+  autoDelete = val;
+}
+
+//------------------------------------------------------------------------
+// EncryptStream
+//------------------------------------------------------------------------
+
+EncryptStream::EncryptStream(Stream *strA, Guchar *fileKey, CryptAlgorithm algoA,
+			     int keyLength, int objNum, int objGen):
+  BaseCryptStream(strA, fileKey, algoA, keyLength, objNum, objGen)
+{
+  // Fill the CBC initialization vector for AES and AES-256
+  switch (algo) {
+  case cryptAES:
+    grandom_fill(state.aes.cbc, 16);
+    break;
+  case cryptAES256:
+    grandom_fill(state.aes256.cbc, 16);
+    break;
+  default:
+    break;
+  }
+}
+
+EncryptStream::~EncryptStream() {
+}
+
+void EncryptStream::reset() {
+  BaseCryptStream::reset();
+
   switch (algo) {
   case cryptRC4:
     state.rc4.x = state.rc4.y = 0;
     rc4InitKey(objKey, objKeyLength, state.rc4.state);
-    state.rc4.buf = EOF;
     break;
   case cryptAES:
-    aesKeyExpansion(&state.aes, objKey, objKeyLength);
-    for (i = 0; i < 16; ++i) {
-      state.aes.cbc[i] = str->getChar();
-    }
-    state.aes.bufIdx = 16;
+    aesKeyExpansion(&state.aes, objKey, objKeyLength, gFalse);
+    memcpy(state.aes.buf, state.aes.cbc, 16); // Copy CBC IV to buf
+    state.aes.bufIdx = 0;
+    state.aes.paddingReached = gFalse;
+    break;
+  case cryptAES256:
+    aes256KeyExpansion(&state.aes256, objKey, objKeyLength, gFalse);
+    memcpy(state.aes256.buf, state.aes256.cbc, 16); // Copy CBC IV to buf
+    state.aes256.bufIdx = 0;
+    state.aes256.paddingReached = gFalse;
     break;
   }
 }
 
-int DecryptStream::getPos() {
-  return charactersRead;
-}
-
-int DecryptStream::getChar() {
+int EncryptStream::lookChar() {
   Guchar in[16];
-  int c, i;
+  int c;
+
+  if (nextCharBuff != EOF)
+    return nextCharBuff;
 
   c = EOF; // make gcc happy
   switch (algo) {
   case cryptRC4:
-    if (state.rc4.buf == EOF) {
-      c = str->getChar();
-      if (c != EOF) {
-	state.rc4.buf = rc4DecryptByte(state.rc4.state, &state.rc4.x,
-				       &state.rc4.y, (Guchar)c);
-      }
+    if ((c = str->getChar()) != EOF) {
+      // RC4 is XOR-based: the decryption algorithm works for encryption too
+      c = rc4DecryptByte(state.rc4.state, &state.rc4.x, &state.rc4.y, (Guchar)c);
     }
-    c = state.rc4.buf;
-    state.rc4.buf = EOF;
     break;
   case cryptAES:
-    if (state.aes.bufIdx == 16) {
-      for (i = 0; i < 16; ++i) {
-	if ((c = str->getChar()) == EOF) {
-	  return EOF;
-	}
-	in[i] = (Guchar)c;
-      }
-      aesDecryptBlock(&state.aes, in, str->lookChar() == EOF);
+    if (state.aes.bufIdx == 16 && !state.aes.paddingReached) {
+      state.aes.paddingReached = !aesReadBlock(str, in, gTrue);
+      aesEncryptBlock(&state.aes, in);
     }
     if (state.aes.bufIdx == 16) {
       c = EOF;
@@ -295,50 +437,100 @@ int DecryptStream::getChar() {
       c = state.aes.buf[state.aes.bufIdx++];
     }
     break;
+  case cryptAES256:
+    if (state.aes256.bufIdx == 16 && !state.aes256.paddingReached) {
+      state.aes256.paddingReached = !aesReadBlock(str, in, gTrue);
+      aes256EncryptBlock(&state.aes256, in);
+    }
+    if (state.aes256.bufIdx == 16) {
+      c = EOF;
+    } else {
+      c = state.aes256.buf[state.aes256.bufIdx++];
+    }
+    break;
   }
-  if (c != EOF)
-    charactersRead++;
-  return c;
+  return (nextCharBuff = c);
+}
+
+//------------------------------------------------------------------------
+// DecryptStream
+//------------------------------------------------------------------------
+
+DecryptStream::DecryptStream(Stream *strA, Guchar *fileKey, CryptAlgorithm algoA,
+			     int keyLength, int objNum, int objGen):
+  BaseCryptStream(strA, fileKey, algoA, keyLength, objNum, objGen)
+{
+}
+
+DecryptStream::~DecryptStream() {
+}
+
+void DecryptStream::reset() {
+  int i;
+  BaseCryptStream::reset();
+
+  switch (algo) {
+  case cryptRC4:
+    state.rc4.x = state.rc4.y = 0;
+    rc4InitKey(objKey, objKeyLength, state.rc4.state);
+    break;
+  case cryptAES:
+    aesKeyExpansion(&state.aes, objKey, objKeyLength, gTrue);
+    for (i = 0; i < 16; ++i) {
+      state.aes.cbc[i] = str->getChar();
+    }
+    state.aes.bufIdx = 16;
+    break;
+  case cryptAES256:
+    aes256KeyExpansion(&state.aes256, objKey, objKeyLength, gTrue);
+    for (i = 0; i < 16; ++i) {
+      state.aes256.cbc[i] = str->getChar();
+    }
+    state.aes256.bufIdx = 16;
+    break;
+  }
 }
 
 int DecryptStream::lookChar() {
   Guchar in[16];
-  int c, i;
+  int c;
+
+  if (nextCharBuff != EOF)
+    return nextCharBuff;
 
   c = EOF; // make gcc happy
   switch (algo) {
   case cryptRC4:
-    if (state.rc4.buf == EOF) {
-      c = str->getChar();
-      if (c != EOF) {
-	state.rc4.buf = rc4DecryptByte(state.rc4.state, &state.rc4.x,
-				       &state.rc4.y, (Guchar)c);
-      }
+    if ((c = str->getChar()) != EOF) {
+      c = rc4DecryptByte(state.rc4.state, &state.rc4.x, &state.rc4.y, (Guchar)c);
     }
-    c = state.rc4.buf;
     break;
   case cryptAES:
     if (state.aes.bufIdx == 16) {
-      for (i = 0; i < 16; ++i) {
-	if ((c = str->getChar()) == EOF) {
-	  return EOF;
-	}
-	in[i] = c;
+      if (aesReadBlock(str, in, gFalse)) {
+        aesDecryptBlock(&state.aes, in, str->lookChar() == EOF);
       }
-      aesDecryptBlock(&state.aes, in, str->lookChar() == EOF);
     }
     if (state.aes.bufIdx == 16) {
       c = EOF;
     } else {
-      c = state.aes.buf[state.aes.bufIdx];
+      c = state.aes.buf[state.aes.bufIdx++];
+    }
+    break;
+  case cryptAES256:
+    if (state.aes256.bufIdx == 16) {
+      if (aesReadBlock(str, in, gFalse)) {
+        aes256DecryptBlock(&state.aes256, in, str->lookChar() == EOF);
+      }
+    }
+    if (state.aes256.bufIdx == 16) {
+      c = EOF;
+    } else {
+      c = state.aes256.buf[state.aes256.bufIdx++];
     }
     break;
   }
-  return c;
-}
-
-GBool DecryptStream::isBinary(GBool last) {
-  return str->isBinary(last);
+  return (nextCharBuff = c);
 }
 
 //------------------------------------------------------------------------
@@ -381,6 +573,32 @@ static Guchar rc4DecryptByte(Guchar *state, Guchar *x, Guchar *y, Guchar c) {
 //------------------------------------------------------------------------
 // AES decryption
 //------------------------------------------------------------------------
+
+// Returns gFalse if EOF was reached, gTrue otherwise
+static GBool aesReadBlock(Stream *str, Guchar *in, GBool addPadding)
+{
+  int c, i;
+
+  for (i = 0; i < 16; ++i) {
+    if ((c = str->getChar()) != EOF) {
+      in[i] = (Guchar)c;
+    } else {
+      break;
+    }
+  }
+
+  if (i == 16) {
+    return gTrue;
+  } else {
+    if (addPadding) {
+      c = 16 - i;
+      while (i < 16) {
+        in[i++] = (Guchar)c;
+      }
+    }
+    return gFalse;
+  }
+}
 
 static const Guchar sbox[256] = {
   0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -445,12 +663,43 @@ static inline Guint rotWord(Guint x) {
   return ((x << 8) & 0xffffffff) | (x >> 24);
 }
 
+static inline void subBytes(Guchar *state) {
+  int i;
+
+  for (i = 0; i < 16; ++i) {
+    state[i] = sbox[state[i]];
+  }
+}
+
 static inline void invSubBytes(Guchar *state) {
   int i;
 
   for (i = 0; i < 16; ++i) {
     state[i] = invSbox[state[i]];
   }
+}
+
+static inline void shiftRows(Guchar *state) {
+  Guchar t;
+
+  t = state[4];
+  state[4] = state[5];
+  state[5] = state[6];
+  state[6] = state[7];
+  state[7] = t;
+
+  t = state[8];
+  state[8] = state[10];
+  state[10] = t;
+  t = state[9];
+  state[9] = state[11];
+  state[11] = t;
+
+  t = state[15];
+  state[15] = state[14];
+  state[14] = state[13];
+  state[13] = state[12];
+  state[12] = t;
 }
 
 static inline void invShiftRows(Guchar *state) {
@@ -474,6 +723,17 @@ static inline void invShiftRows(Guchar *state) {
   state[13] = state[14];
   state[14] = state[15];
   state[15] = t;
+}
+
+// {02} \cdot s
+static inline Guchar mul02(Guchar s) {
+  return (s & 0x80) ? ((s << 1) ^ 0x1b) : (s << 1);
+}
+
+// {03} \cdot s
+static inline Guchar mul03(Guchar s) {
+  Guchar s2 = (s & 0x80) ? ((s << 1) ^ 0x1b) : (s << 1);
+  return s ^ s2;
 }
 
 // {09} \cdot s
@@ -514,6 +774,22 @@ static inline Guchar mul0e(Guchar s) {
   s4 = (s2 & 0x80) ? ((s2 << 1) ^ 0x1b) : (s2 << 1);
   s8 = (s4 & 0x80) ? ((s4 << 1) ^ 0x1b) : (s4 << 1);
   return s2 ^ s4 ^ s8;
+}
+
+static inline void mixColumns(Guchar *state) {
+  int c;
+  Guchar s0, s1, s2, s3;
+
+  for (c = 0; c < 4; ++c) {
+    s0 = state[c];
+    s1 = state[4+c];
+    s2 = state[8+c];
+    s3 = state[12+c];
+    state[c] =    mul02(s0) ^ mul03(s1) ^ s2 ^ s3;
+    state[4+c] =  s0 ^ mul02(s1) ^ mul03(s2) ^ s3;
+    state[8+c] =  s0 ^ s1 ^ mul02(s2) ^ mul03(s3);
+    state[12+c] = mul03(s0) ^ s1 ^ s2 ^ mul02(s3);
+  }
 }
 
 static inline void invMixColumns(Guchar *state) {
@@ -560,7 +836,7 @@ static inline void addRoundKey(Guchar *state, Guint *w) {
 }
 
 static void aesKeyExpansion(DecryptAESState *s,
-			    Guchar *objKey, int /*objKeyLen*/) {
+			    Guchar *objKey, int /*objKeyLen*/, GBool decrypt) {
   Guint temp;
   int i, round;
 
@@ -577,9 +853,50 @@ static void aesKeyExpansion(DecryptAESState *s,
     }
     s->w[i] = s->w[i-4] ^ temp;
   }
-  for (round = 1; round <= 9; ++round) {
-    invMixColumnsW(&s->w[round * 4]);
+
+  /* In case of decryption, adjust the key schedule for the equivalent inverse cipher */
+  if (decrypt) {
+    for (round = 1; round <= 9; ++round) {
+      invMixColumnsW(&s->w[round * 4]);
+    }
   }
+}
+
+static void aesEncryptBlock(DecryptAESState *s, Guchar *in) {
+  int c, round;
+
+  // initial state (input is xor'd with previous output because of CBC)
+  for (c = 0; c < 4; ++c) {
+    s->state[c] = in[4*c] ^ s->buf[4*c];
+    s->state[4+c] = in[4*c+1] ^ s->buf[4*c+1];
+    s->state[8+c] = in[4*c+2] ^ s->buf[4*c+2];
+    s->state[12+c] = in[4*c+3] ^ s->buf[4*c+3];
+  }
+
+  // round 0
+  addRoundKey(s->state, &s->w[0]);
+
+  // rounds 1-9
+  for (round = 1; round <= 9; ++round) {
+    subBytes(s->state);
+    shiftRows(s->state);
+    mixColumns(s->state);
+    addRoundKey(s->state, &s->w[round * 4]);
+  }
+
+  // round 10
+  subBytes(s->state);
+  shiftRows(s->state);
+  addRoundKey(s->state, &s->w[10 * 4]);
+
+  for (c = 0; c < 4; ++c) {
+    s->buf[4*c] = s->state[c];
+    s->buf[4*c+1] = s->state[4+c];
+    s->buf[4*c+2] = s->state[8+c];
+    s->buf[4*c+3] = s->state[12+c];
+  }
+
+  s->bufIdx = 0;
 }
 
 static void aesDecryptBlock(DecryptAESState *s, Guchar *in, GBool last) {
@@ -626,13 +943,140 @@ static void aesDecryptBlock(DecryptAESState *s, Guchar *in, GBool last) {
   s->bufIdx = 0;
   if (last) {
     n = s->buf[15];
+    if (n < 1 || n > 16) { // this should never happen
+      n = 16;
+    }
+    for (i = 15; i >= n; --i) {
+      s->buf[i] = s->buf[i-n];
+    }
+    s->bufIdx = n;
+  }
+}
+
+//------------------------------------------------------------------------
+// AES-256 decryption
+//------------------------------------------------------------------------
+
+static void aes256KeyExpansion(DecryptAES256State *s,
+			       Guchar *objKey, int objKeyLen, GBool decrypt) {
+  Guint temp;
+  int i, round;
+
+  //~ this assumes objKeyLen == 32
+
+  for (i = 0; i < 8; ++i) {
+    s->w[i] = (objKey[4*i] << 24) + (objKey[4*i+1] << 16) +
+              (objKey[4*i+2] << 8) + objKey[4*i+3];
+  }
+  for (i = 8; i < 60; ++i) {
+    temp = s->w[i-1];
+    if ((i & 7) == 0) {
+      temp = subWord(rotWord(temp)) ^ rcon[i/8];
+    } else if ((i & 7) == 4) {
+      temp = subWord(temp);
+    }
+    s->w[i] = s->w[i-8] ^ temp;
+  }
+
+  /* In case of decryption, adjust the key schedule for the equivalent inverse cipher */
+  if (decrypt) {
+    for (round = 1; round <= 13; ++round) {
+      invMixColumnsW(&s->w[round * 4]);
+    }
+  }
+}
+
+static void aes256EncryptBlock(DecryptAES256State *s, Guchar *in) {
+  int c, round;
+
+  // initial state (input is xor'd with previous output because of CBC)
+  for (c = 0; c < 4; ++c) {
+    s->state[c] = in[4*c] ^ s->buf[4*c];
+    s->state[4+c] = in[4*c+1] ^ s->buf[4*c+1];
+    s->state[8+c] = in[4*c+2] ^ s->buf[4*c+2];
+    s->state[12+c] = in[4*c+3] ^ s->buf[4*c+3];
+  }
+
+  // round 0
+  addRoundKey(s->state, &s->w[0]);
+
+  // rounds 1-13
+  for (round = 1; round <= 13; ++round) {
+    subBytes(s->state);
+    shiftRows(s->state);
+    mixColumns(s->state);
+    addRoundKey(s->state, &s->w[round * 4]);
+  }
+
+  // round 14
+  subBytes(s->state);
+  shiftRows(s->state);
+  addRoundKey(s->state, &s->w[14 * 4]);
+
+  for (c = 0; c < 4; ++c) {
+    s->buf[4*c] = s->state[c];
+    s->buf[4*c+1] = s->state[4+c];
+    s->buf[4*c+2] = s->state[8+c];
+    s->buf[4*c+3] = s->state[12+c];
+  }
+
+  s->bufIdx = 0;
+}
+
+static void aes256DecryptBlock(DecryptAES256State *s, Guchar *in, GBool last) {
+  int c, round, n, i;
+
+  // initial state
+  for (c = 0; c < 4; ++c) {
+    s->state[c] = in[4*c];
+    s->state[4+c] = in[4*c+1];
+    s->state[8+c] = in[4*c+2];
+    s->state[12+c] = in[4*c+3];
+  }
+
+  // round 0
+  addRoundKey(s->state, &s->w[14 * 4]);
+
+  // rounds 13-1
+  for (round = 13; round >= 1; --round) {
+    invSubBytes(s->state);
+    invShiftRows(s->state);
+    invMixColumns(s->state);
+    addRoundKey(s->state, &s->w[round * 4]);
+  }
+
+  // round 14
+  invSubBytes(s->state);
+  invShiftRows(s->state);
+  addRoundKey(s->state, &s->w[0]);
+
+  // CBC
+  for (c = 0; c < 4; ++c) {
+    s->buf[4*c] = s->state[c] ^ s->cbc[4*c];
+    s->buf[4*c+1] = s->state[4+c] ^ s->cbc[4*c+1];
+    s->buf[4*c+2] = s->state[8+c] ^ s->cbc[4*c+2];
+    s->buf[4*c+3] = s->state[12+c] ^ s->cbc[4*c+3];
+  }
+
+  // save the input block for the next CBC
+  for (i = 0; i < 16; ++i) {
+    s->cbc[i] = in[i];
+  }
+
+  // remove padding
+  s->bufIdx = 0;
+  if (last) {
+    n = s->buf[15];
+    if (n < 1 || n > 16) { // this should never happen
+      n = 16;
+    }
     for (i = 15; i >= n; --i) {
       s->buf[i] = s->buf[i-n];
     }
     s->bufIdx = n;
     if (n > 16)
     {
-      error(-1, "Reducing bufIdx from %d to 16 to not crash", n);
+      error(errSyntaxError, -1, "Reducing bufIdx from {0:d} to 16 to not crash", n);
       s->bufIdx = 16;
     }
   }
@@ -668,11 +1112,16 @@ static inline Gulong md5Round4(Gulong a, Gulong b, Gulong c, Gulong d,
   return b + rotateLeft((a + (c ^ (b | ~d)) + Xk + Ti), s);
 }
 
-void Decrypt::md5(Guchar *msg, int msgLen, Guchar *digest) {
+void md5(Guchar *msg, int msgLen, Guchar *digest) {
   Gulong x[16];
   Gulong a, b, c, d, aa, bb, cc, dd;
   int n64;
   int i, j, k;
+
+  // sanity check
+  if (msgLen < 0) {
+    return;
+  }
 
   // compute number of 64-byte blocks
   // (length + pad byte (0x80) + 8 bytes for length)
@@ -808,4 +1257,161 @@ void Decrypt::md5(Guchar *msg, int msgLen, Guchar *digest) {
   digest[13] = (Guchar)((d >>= 8) & 0xff);
   digest[14] = (Guchar)((d >>= 8) & 0xff);
   digest[15] = (Guchar)((d >>= 8) & 0xff);
+}
+
+//------------------------------------------------------------------------
+// SHA-256 hash
+//------------------------------------------------------------------------
+
+static Guint sha256K[64] = {
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
+  0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+  0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+  0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+  0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+  0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
+  0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
+  0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+  0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+};
+
+static inline Guint rotr(Guint x, Guint n) {
+  return (x >> n) | (x << (32 - n));
+}
+
+static inline Guint sha256Ch(Guint x, Guint y, Guint z) {
+  return (x & y) ^ (~x & z);
+}
+
+static inline Guint sha256Maj(Guint x, Guint y, Guint z) {
+  return (x & y) ^ (x & z) ^ (y & z);
+}
+
+static inline Guint sha256Sigma0(Guint x) {
+  return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22);
+}
+
+static inline Guint sha256Sigma1(Guint x) {
+  return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25);
+}
+
+static inline Guint sha256sigma0(Guint x) {
+  return rotr(x, 7) ^ rotr(x, 18) ^ (x >> 3);
+}
+
+static inline Guint sha256sigma1(Guint x) {
+  return rotr(x, 17) ^ rotr(x, 19) ^ (x >> 10);
+}
+
+void sha256HashBlock(Guchar *blk, Guint *H) {
+  Guint W[64];
+  Guint a, b, c, d, e, f, g, h;
+  Guint T1, T2;
+  Guint t;
+
+  // 1. prepare the message schedule
+  for (t = 0; t < 16; ++t) {
+    W[t] = (blk[t*4] << 24) |
+           (blk[t*4 + 1] << 16) |
+           (blk[t*4 + 2] << 8) |
+           blk[t*4 + 3];
+  }
+  for (t = 16; t < 64; ++t) {
+    W[t] = sha256sigma1(W[t-2]) + W[t-7] + sha256sigma0(W[t-15]) + W[t-16];
+  }
+
+  // 2. initialize the eight working variables
+  a = H[0];
+  b = H[1];
+  c = H[2];
+  d = H[3];
+  e = H[4];
+  f = H[5];
+  g = H[6];
+  h = H[7];
+
+  // 3.
+  for (t = 0; t < 64; ++t) {
+    T1 = h + sha256Sigma1(e) + sha256Ch(e,f,g) + sha256K[t] + W[t];
+    T2 = sha256Sigma0(a) + sha256Maj(a,b,c);
+    h = g;
+    g = f;
+    f = e;
+    e = d + T1;
+    d = c;
+    c = b;
+    b = a;
+    a = T1 + T2;
+  }
+
+  // 4. compute the intermediate hash value
+  H[0] += a;
+  H[1] += b;
+  H[2] += c;
+  H[3] += d;
+  H[4] += e;
+  H[5] += f;
+  H[6] += g;
+  H[7] += h;
+}
+
+static void sha256(Guchar *msg, int msgLen, Guchar *hash) {
+  Guchar blk[64];
+  Guint H[8];
+  int blkLen, i;
+
+  H[0] = 0x6a09e667;
+  H[1] = 0xbb67ae85;
+  H[2] = 0x3c6ef372;
+  H[3] = 0xa54ff53a;
+  H[4] = 0x510e527f;
+  H[5] = 0x9b05688c;
+  H[6] = 0x1f83d9ab;
+  H[7] = 0x5be0cd19;
+
+  blkLen = 0;
+  for (i = 0; i + 64 <= msgLen; i += 64) {
+    sha256HashBlock(msg + i, H);
+  }
+  blkLen = msgLen - i;
+  if (blkLen > 0) {
+    memcpy(blk, msg + i, blkLen);
+  }
+
+  // pad the message
+  blk[blkLen++] = 0x80;
+  if (blkLen > 56) {
+    while (blkLen < 64) {
+      blk[blkLen++] = 0;
+    }
+    sha256HashBlock(blk, H);
+    blkLen = 0;
+  }
+  while (blkLen < 56) {
+    blk[blkLen++] = 0;
+  }
+  blk[56] = 0;
+  blk[57] = 0;
+  blk[58] = 0;
+  blk[59] = 0;
+  blk[60] = (Guchar)(msgLen >> 21);
+  blk[61] = (Guchar)(msgLen >> 13);
+  blk[62] = (Guchar)(msgLen >> 5);
+  blk[63] = (Guchar)(msgLen << 3);
+  sha256HashBlock(blk, H);
+
+  // copy the output into the buffer (convert words to bytes)
+  for (i = 0; i < 8; ++i) {
+    hash[i*4]     = (Guchar)(H[i] >> 24);
+    hash[i*4 + 1] = (Guchar)(H[i] >> 16);
+    hash[i*4 + 2] = (Guchar)(H[i] >> 8);
+    hash[i*4 + 3] = (Guchar)H[i];
+  }
 }
