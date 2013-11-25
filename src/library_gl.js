@@ -3661,6 +3661,10 @@ var LibraryGL = {
             Module.ctx.linkProgram(this.program);
           }
 
+          // Stores a map that remembers which matrix uniforms are up-to-date in this FFP renderer, so they don't need to be resubmitted
+          // each time we render with this program.
+          this.textureMatrixVersion = {};
+
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
 
           this.texCoordLocations = [];
@@ -3771,8 +3775,14 @@ var LibraryGL = {
             GL.immediate.fixedFunctionProgram = this.program;
           }
 
-          if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
-          if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
+          if (this.modelViewLocation && this.modelViewMatrixVersion != GL.immediate.matrixVersion['m']) {
+            this.modelViewMatrixVersion = GL.immediate.matrixVersion['m'];
+            Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
+          }
+          if (this.projectionLocation && this.projectionMatrixVersion != GL.immediate.matrixVersion['p']) {
+            this.projectionMatrixVersion = GL.immediate.matrixVersion['p'];
+            Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
+          }
 
           var clientAttributes = GL.immediate.clientAttributes;
           var posAttr = clientAttributes[GL.immediate.VERTEX];
@@ -3804,8 +3814,10 @@ var LibraryGL = {
               }
             }
             for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-              if (this.textureMatrixLocations[i]) { // XXX might we need this even without the condition we are currently in?
-                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix['t' + i]);
+              var t = 't'+i;
+              if (this.textureMatrixLocations[i] && this.textureMatrixVersion[t] != GL.immediate.matrixVersion[t]) { // XXX might we need this even without the condition we are currently in?
+                this.textureMatrixVersion[t] = GL.immediate.matrixVersion[t];
+                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix[t]);
               }
             }
           }
@@ -4007,13 +4019,18 @@ var LibraryGL = {
       }
 
       // Initialize matrix library
-
+      // When user sets a matrix, increment a 'version number' on the new data, and when rendering, submit
+      // the matrices to the shader program only if they have an old version of the data.
+      GL.immediate.matrixVersion = {};
       GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrixVersion['m'] = 0;
       GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['m']);
       GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrixVersion['p'] = 0;
       GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['p']);
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
         GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
+        GL.immediate.matrixVersion['t' + i] = 0;
       }
 
       // Renderer cache
@@ -4561,23 +4578,27 @@ var LibraryGL = {
 
   glPushMatrix: function() {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrixStack[GL.immediate.currentMatrix].push(
         Array.prototype.slice.call(GL.immediate.matrix[GL.immediate.currentMatrix]));
   },
 
   glPopMatrix: function() {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix[GL.immediate.currentMatrix] = GL.immediate.matrixStack[GL.immediate.currentMatrix].pop();
   },
 
   glLoadIdentity__deps: ['$GL', '$GLImmediateSetup'],
   glLoadIdentity: function() {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
@@ -4586,35 +4607,41 @@ var LibraryGL = {
     if (GL.debug) Module.printErr('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
     GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixf: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
     GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glMultMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         {{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}});
   },
 
   glMultMatrixf: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         {{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}});
   },
 
   glMultTransposeMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     var colMajor = GL.immediate.matrix.lib.mat4.create();
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, colMajor);
     GL.immediate.matrix.lib.mat4.transpose(colMajor);
@@ -4623,6 +4650,7 @@ var LibraryGL = {
 
   glMultTransposeMatrixf: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     var colMajor = GL.immediate.matrix.lib.mat4.create();
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, colMajor);
     GL.immediate.matrix.lib.mat4.transpose(colMajor);
@@ -4631,6 +4659,7 @@ var LibraryGL = {
 
   glFrustum: function(left, right, bottom, top_, nearVal, farVal) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
   },
@@ -4638,6 +4667,7 @@ var LibraryGL = {
 
   glOrtho: function(left, right, bottom, top_, nearVal, farVal) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
   },
@@ -4645,18 +4675,21 @@ var LibraryGL = {
 
   glScaled: function(x, y, z) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.scale(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
   },
   glScalef: 'glScaled',
 
   glTranslated: function(x, y, z) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.translate(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
   },
   glTranslatef: 'glTranslated',
 
   glRotated: function(angle, x, y, z) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.rotate(GL.immediate.matrix[GL.immediate.currentMatrix], angle*Math.PI/180, [x, y, z]);
   },
   glRotatef: 'glRotated',
@@ -4739,6 +4772,7 @@ var LibraryGL = {
 
   gluPerspective: function(fov, aspect, near, far) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix[GL.immediate.currentMatrix] =
       GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far,
                                                GL.immediate.matrix[GL.immediate.currentMatrix]);
@@ -4746,6 +4780,7 @@ var LibraryGL = {
 
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix]++;
     GL.immediate.matrix.lib.mat4.lookAt(GL.immediate.matrix[GL.immediate.currentMatrix], [ex, ey, ez],
         [cx, cy, cz], [ux, uy, uz]);
   },
