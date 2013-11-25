@@ -3243,14 +3243,8 @@ var LibraryGL = {
     NORMAL: 1,
     COLOR: 2,
     TEXTURE0: 3,
-    TEXTURE1: 4,
-    TEXTURE2: 5,
-    TEXTURE3: 6,
-    TEXTURE4: 7,
-    TEXTURE5: 8,
-    TEXTURE6: 9,
-    NUM_ATTRIBUTES: 10, // Overwritten in init().
-    MAX_TEXTURES: 7,    // Overwritten in init().
+    NUM_ATTRIBUTES: -1, // Initialized in GL emulation init().
+    MAX_TEXTURES: -1,   // Initialized in GL emulation init().
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
@@ -3858,8 +3852,8 @@ var LibraryGL = {
 
       this.TexEnvJIT.init(Module.ctx);
 
-      GL.immediate.MAX_TEXTURES = Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
-      GL.immediate.NUM_ATTRIBUTES = GL.immediate.TEXTURE0 + GL.immediate.MAX_TEXTURES;
+      GL.immediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
+      GL.immediate.NUM_ATTRIBUTES = 3 /*pos+normal+color attributes*/ + GL.immediate.MAX_TEXTURES;
       GL.immediate.clientAttributes = [];
       for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
         GL.immediate.clientAttributes.push({});
