@@ -3316,7 +3316,7 @@ var LibraryGL = {
       // By attrib state:
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
-        keyView.next(attribute.name).next(attribute.size).next(attribute.type);
+        keyView.next(attribute.name);
       }
 
       // By fog state:
@@ -3354,7 +3354,7 @@ var LibraryGL = {
 
     createRenderer: function(renderer) {
       var useCurrProgram = !!GL.currProgram;
-      var hasTextures = false, textureSizes = [], textureTypes = [];
+      var hasTextures = false;
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
         var texAttribName = GL.immediate.TEXTURE0 + i;
         if (!GL.immediate.enabledClientAttributes[texAttribName])
@@ -3368,22 +3368,9 @@ var LibraryGL = {
         }
 #endif
 
-        textureSizes[i] = GL.immediate.clientAttributes[texAttribName].size;
-        textureTypes[i] = GL.immediate.clientAttributes[texAttribName].type;
         hasTextures = true;
       }
-      var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
-      var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
-      var colorSize = 0, colorType;
-      if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
-        colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
-        colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
-      }
-      var normalSize = 0, normalType;
-      if (GL.immediate.enabledClientAttributes[GL.immediate.NORMAL]) {
-        normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
-        normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
-      }
+
       var ret = {
         init: function() {
           // For fixed-function shader generation.
@@ -3564,7 +3551,9 @@ var LibraryGL = {
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
 
           this.hasTextures = hasTextures;
-          this.hasNormal = normalSize > 0 && this.normalLocation >= 0;
+          this.hasNormal = GL.immediate.enabledClientAttributes[GL.immediate.NORMAL] &&
+                           GL.immediate.clientAttributes[GL.immediate.NORMAL].size > 0 &&
+                           this.normalLocation >= 0;
           this.hasColor = (this.colorLocation === 0) || this.colorLocation > 0;
 
           this.floatType = Module.ctx.FLOAT; // minor optimization
@@ -3634,12 +3623,12 @@ var LibraryGL = {
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
           var clientAttributes = GL.immediate.clientAttributes;
+          var posAttr = clientAttributes[GL.immediate.VERTEX];
 
 #if GL_ASSERTIONS
-          GL.validateVertexAttribPointer(positionSize, positionType, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
+          GL.validateVertexAttribPointer(posAttr.size, posAttr.type, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
 #endif
-          Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
+          Module.ctx.vertexAttribPointer(this.positionLocation, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             //for (var i = 0; i < this.usedTexUnitList.length; i++) {
@@ -3648,13 +3637,13 @@ var LibraryGL = {
               var texUnitID = i;
               var attribLoc = this.texCoordLocations[texUnitID];
               if (attribLoc === undefined || attribLoc < 0) continue;
+              var texAttr = clientAttributes[GL.immediate.TEXTURE0+i];
 
-              if (texUnitID < textureSizes.length && textureSizes[texUnitID]) {
+              if (texAttr.size) {
 #if GL_ASSERTIONS
-                GL.validateVertexAttribPointer(textureSizes[texUnitID], textureTypes[texUnitID], GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
+                GL.validateVertexAttribPointer(texAttr.size, texAttr.type, GL.immediate.stride, texAttr.offset);
 #endif
-                Module.ctx.vertexAttribPointer(attribLoc, textureSizes[texUnitID], textureTypes[texUnitID], false,
-                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
+                Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GL.immediate.stride, texAttr.offset);
                 Module.ctx.enableVertexAttribArray(attribLoc);
               } else {
                 // These two might be dangerous, but let's try them.
@@ -3668,23 +3657,23 @@ var LibraryGL = {
               }
             }
           }
-          if (colorSize) {
+          if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
+            var colorAttr = clientAttributes[GL.immediate.COLOR];
 #if GL_ASSERTIONS
-            GL.validateVertexAttribPointer(colorSize, colorType, GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
+            GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GL.immediate.stride, colorAttr.offset);
 #endif
-            Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
+            Module.ctx.vertexAttribPointer(this.colorLocation, colorAttr.size, colorAttr.type, true, GL.immediate.stride, colorAttr.offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
           } else if (this.hasColor) {
             Module.ctx.disableVertexAttribArray(this.colorLocation);
             Module.ctx.vertexAttrib4fv(this.colorLocation, GL.immediate.clientColor);
           }
           if (this.hasNormal) {
+            var normalAttr = clientAttributes[GL.immediate.NORMAL];
 #if GL_ASSERTIONS
-            GL.validateVertexAttribPointer(normalSize, normalType, GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
+            GL.validateVertexAttribPointer(normalAttr.size, normalAttr.type, GL.immediate.stride, normalAttr.offset);
 #endif
-            Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
+            Module.ctx.vertexAttribPointer(this.normalLocation, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (this.hasFog) {
@@ -3698,8 +3687,8 @@ var LibraryGL = {
         cleanup: function() {
           Module.ctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
-            for (var i = 0; i < textureSizes.length; i++) {
-              if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+              if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0+i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.disableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
