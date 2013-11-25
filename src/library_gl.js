@@ -3397,7 +3397,7 @@ var LibraryGL = {
     usedTexUnitList: [],
     fixedFunctionProgram: null,
 
-    setClientAttribute: function(name, size, type, stride, pointer) {
+    setClientAttribute: function setClientAttribute(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[name];
       if (!attrib) {
         for (var i = 0; i <= name; i++) { // keep flat
@@ -3424,7 +3424,7 @@ var LibraryGL = {
     },
 
     // Renderers
-    addRendererComponent: function(name, size, type) {
+    addRendererComponent: function addRendererComponent(name, size, type) {
       if (!this.rendererComponents[name]) {
         this.rendererComponents[name] = 1;
 #if ASSERTIONS
@@ -3440,13 +3440,13 @@ var LibraryGL = {
       }
     },
 
-    disableBeginEndClientAttributes: function() {
+    disableBeginEndClientAttributes: function disableBeginEndClientAttributes() {
       for (var i = 0; i < this.NUM_ATTRIBUTES; i++) {
         if (this.rendererComponents[i]) this.enabledClientAttributes[i] = false;
       }
     },
 
-    getRenderer: function() {
+    getRenderer: function getRenderer() {
       // If no FFP state has changed that would have forced to re-evaluate which FFP emulation shader to use,
       // we have the currently used renderer in cache, and can immediately return that.
       if (this.currentRenderer) {
@@ -3504,7 +3504,7 @@ var LibraryGL = {
       return renderer;
     },
 
-    createRenderer: function(renderer) {
+    createRenderer: function createRenderer(renderer) {
       var useCurrProgram = !!GL.currProgram;
       var hasTextures = false;
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
@@ -3524,7 +3524,7 @@ var LibraryGL = {
       }
 
       var ret = {
-        init: function() {
+        init: function init() {
           // For fixed-function shader generation.
           var uTexUnitPrefix = 'u_texUnit';
           var aTexCoordPrefix = 'a_texCoord';
@@ -3722,7 +3722,7 @@ var LibraryGL = {
                            this.fogScaleLocation || this.fogDensityLocation);
         },
 
-        prepare: function() {
+        prepare: function prepare() {
           // Calculate the array buffer
           var arrayBuffer;
           if (!GL.currArrayBuffer) {
@@ -3848,7 +3848,7 @@ var LibraryGL = {
           }
         },
 
-        cleanup: function() {
+        cleanup: function cleanup() {
           Module.ctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
@@ -4051,7 +4051,7 @@ var LibraryGL = {
     // Modifies liveClientAttributes, stride, vertexPointer, vertexCounter
     //   count: number of elements we will draw
     //   beginEnd: whether we are drawing the results of a begin/end block
-    prepareClientAttributes: function(count, beginEnd) {
+    prepareClientAttributes: function prepareClientAttributes(count, beginEnd) {
       // If no client attributes were modified since we were last called, do nothing. Note that this
       // does not work for glBegin/End, where we generate renderer components dynamically and then
       // disable them ourselves, but it does help with glDrawElements/Arrays.
@@ -4149,7 +4149,7 @@ var LibraryGL = {
       }
     },
 
-    flush: function(numProvidedIndexes, startIndex, ptr) {
+    flush: function flush(numProvidedIndexes, startIndex, ptr) {
 #if ASSERTIONS
       assert(numProvidedIndexes >= 0 || !numProvidedIndexes);
 #endif
