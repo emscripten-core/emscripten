@@ -3445,13 +3445,31 @@ LibraryManager.library = {
     return limit;
   },
 
-  // Use browser's Math.random(). We can't set a seed, though.
-  srand: function(seed) {}, // XXX ignored
-  rand: function() {
-    return Math.floor(Math.random()*0x80000000);
+  __rand_seed: 'allocate([0x0273459b, 0, 0, 0], "i32", ALLOC_STATIC)',
+  srand__deps: ['__rand_seed'],
+  srand: function(seed) {
+    {{{ makeSetValue('___rand_seed', 0, 'seed', 'i32') }}}
+  }, 
+  rand_r__deps: ['__rand_seed'],
+  rand_r: function(seed) { 
+    var val = {{{ makeGetValue('___rand_seed', 0, 'i32') }}};
+    // calculate val * 31010991 + 0x676e6177
+    // i32 multiplication will be rounded by javascript
+    var valh = val >> 16;
+    var vall = val & 0xffff;
+
+    var c = 31010991;
+    var ch = c >> 16;
+    var cl = c & 0xffff;
+
+    val = (((valh * cl + vall * ch) << 16) + vall * cl + 0x676e6177) & 0x7fffffff;
+
+    {{{ makeSetValue('___rand_seed', 0, 'val', 'i32') }}}
+    return val;
   },
-  rand_r: function(seed) { // XXX ignores the seed
-    return Math.floor(Math.random()*0x80000000);
+  rand__deps: ['rand_r'],
+  rand: function() {
+    return _rand_r(___rand_seed);
   },
 
   drand48: function() {
