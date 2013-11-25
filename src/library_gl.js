@@ -1808,7 +1808,7 @@ var LibraryGL = {
 
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
-#if GL_UNSAFE_OPTS == 0
+#if GL_UNSAFE_OPTS == 1
       Module.printErr('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
 #endif
 
@@ -3733,10 +3733,10 @@ var LibraryGL = {
             arrayBuffer = GL.currArrayBuffer;
           }
 
+#if GL_UNSAFE_OPTS
           // If the array buffer is unchanged and the renderer as well, then we can avoid all the work here
           // XXX We use some heuristics here, and this may not work in all cases. Try disabling GL_UNSAFE_OPTS if you
           // have odd glitches
-#if GL_UNSAFE_OPTS
           var lastRenderer = GL.immediate.lastRenderer;
           var canSkip = this == lastRenderer &&
                         arrayBuffer == GL.immediate.lastArrayBuffer &&
