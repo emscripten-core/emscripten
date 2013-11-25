@@ -183,7 +183,7 @@ If manually bisecting:
                 //text = text.replace(/>/g, "&gt;");
                 //text = text.replace('\\n', '<br>', 'g');
                 element.value += text + "\\n";
-                element.scrollTop = 99999; // focus on bottom
+                element.scrollTop = element.scrollHeight; // focus on bottom
               };
             })(),
             printErr: function(text) {
@@ -274,7 +274,7 @@ If manually bisecting:
                 //text = text.replace(/>/g, "&gt;");
                 //text = text.replace('\\n', '<br>', 'g');
                 element.value += text + "\\n";
-                element.scrollTop = 99999; // focus on bottom
+                element.scrollTop = element.scrollHeight; // focus on bottom
               };
             })(),
             printErr: function(text) {
@@ -898,7 +898,7 @@ keydown(100);keyup(100); // trigger the end
                 return function(text) {
                   text = Array.prototype.slice.call(arguments).join(' ');
                   element.value += text + "\\n";
-                  element.scrollTop = 99999; // focus on bottom
+                  element.scrollTop = element.scrollHeight; // focus on bottom
                 };
               })()
             };

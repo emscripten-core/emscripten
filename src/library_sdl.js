@@ -1247,6 +1247,11 @@ var LibrarySDL = {
     return 0;
   },
 
+  SDL_LowerBlit__deps: ['SDL_UpperBlit'],
+  SDL_LowerBlit: function(src, srcrect, dst, dstrect) {
+    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
+  },
+
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
