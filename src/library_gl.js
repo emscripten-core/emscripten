@@ -288,6 +288,22 @@ var LibraryGL = {
       }
     },
 
+#if GL_FFP_ONLY
+    enabledClientAttribIndices: [],
+    enableVertexAttribArray: function enableVertexAttribArray(index) {
+      if (!GL.enabledClientAttribIndices[index]) {
+        GL.enabledClientAttribIndices[index] = true;
+        Module.ctx.enableVertexAttribArray(index);
+      }
+    },
+    disableVertexAttribArray: function disableVertexAttribArray(index) {
+      if (GL.enabledClientAttribIndices[index]) {
+        GL.enabledClientAttribIndices[index] = false;
+        Module.ctx.disableVertexAttribArray(index);
+      }
+    },
+#endif
+
 #if FULL_ES2
     calcBufLength: function calcBufLength(size, type, stride, count) {
       if (stride > 0) {
@@ -3657,7 +3673,18 @@ var LibraryGL = {
             this.program = Module.ctx.createProgram();
             Module.ctx.attachShader(this.program, this.vertexShader);
             Module.ctx.attachShader(this.program, this.fragmentShader);
-            Module.ctx.bindAttribLocation(this.program, 0, 'a_position');
+
+            // As optimization, bind all attributes to prespecified locations, so that the FFP emulation
+            // code can submit attributes to any generated FFP shader without having to examine each shader in turn.
+            // This optimization is enabled only if GL_FFP_ONLY is specified, since user could also create their
+            // own shaders that didn't have attributes in the same locations.
+            Module.ctx.bindAttribLocation(this.program, GL.immediate.VERTEX, 'a_position');
+            Module.ctx.bindAttribLocation(this.program, GL.immediate.COLOR, 'a_color');
+            Module.ctx.bindAttribLocation(this.program, GL.immediate.NORMAL, 'a_normal');
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+              Module.ctx.bindAttribLocation(this.program, GL.immediate.TEXTURE0 + i, 'a_texCoord'+i);
+              Module.ctx.bindAttribLocation(this.program, GL.immediate.TEXTURE0 + i, aTexCoordPrefix+i);
+            }
             Module.ctx.linkProgram(this.program);
           }
 
@@ -3790,10 +3817,45 @@ var LibraryGL = {
 #if GL_ASSERTIONS
           GL.validateVertexAttribPointer(posAttr.size, posAttr.type, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
 #endif
+
+#if GL_FFP_ONLY
+          if (!GL.currArrayBuffer) {
+            Module.ctx.vertexAttribPointer(GL.immediate.VERTEX, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
+            GL.enableVertexAttribArray(GL.immediate.VERTEX);
+            if (this.hasNormal) {
+              var normalAttr = clientAttributes[GL.immediate.NORMAL];
+              Module.ctx.vertexAttribPointer(GL.immediate.NORMAL, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
+              GL.enableVertexAttribArray(GL.immediate.NORMAL);
+            }
+          }
+#else
           Module.ctx.vertexAttribPointer(this.positionLocation, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
+          if (this.hasNormal) {
+            var normalAttr = clientAttributes[GL.immediate.NORMAL];
+#if GL_ASSERTIONS
+            GL.validateVertexAttribPointer(normalAttr.size, normalAttr.type, GL.immediate.stride, normalAttr.offset);
+#endif
+            Module.ctx.vertexAttribPointer(this.normalLocation, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
+            Module.ctx.enableVertexAttribArray(this.normalLocation);
+          }
+#endif
           if (this.hasTextures) {
             for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+#if GL_FFP_ONLY
+              if (!GL.currArrayBuffer) {
+                var attribLoc = GL.immediate.TEXTURE0+i;
+                var texAttr = clientAttributes[attribLoc];
+                if (texAttr.size) {
+                  Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GL.immediate.stride, texAttr.offset);
+                  GL.enableVertexAttribArray(attribLoc);
+                } else {
+                  // These two might be dangerous, but let's try them.
+                  Module.ctx.vertexAttrib4f(attribLoc, 0, 0, 0, 1);
+                  GL.disableVertexAttribArray(attribLoc);
+                }
+              }
+#else
               var attribLoc = this.texCoordLocations[i];
               if (attribLoc === undefined || attribLoc < 0) continue;
               var texAttr = clientAttributes[GL.immediate.TEXTURE0+i];
@@ -3809,7 +3871,7 @@ var LibraryGL = {
                 Module.ctx.vertexAttrib4f(attribLoc, 0, 0, 0, 1);
                 Module.ctx.disableVertexAttribArray(attribLoc);
               }
-
+#endif
               var t = 't'+i;
               if (this.textureMatrixLocations[i] && this.textureMatrixVersion[t] != GL.immediate.matrixVersion[t]) { // XXX might we need this even without the condition we are currently in?
                 this.textureMatrixVersion[t] = GL.immediate.matrixVersion[t];
@@ -3822,19 +3884,23 @@ var LibraryGL = {
 #if GL_ASSERTIONS
             GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GL.immediate.stride, colorAttr.offset);
 #endif
+#if GL_FFP_ONLY
+            if (!GL.currArrayBuffer) {
+              Module.ctx.vertexAttribPointer(GL.immediate.COLOR, colorAttr.size, colorAttr.type, true, GL.immediate.stride, colorAttr.offset);
+              GL.enableVertexAttribArray(GL.immediate.COLOR);
+            }
+#else
             Module.ctx.vertexAttribPointer(this.colorLocation, colorAttr.size, colorAttr.type, true, GL.immediate.stride, colorAttr.offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
+#endif
           } else if (this.hasColor) {
+#if GL_FFP_ONLY
+            GL.disableVertexAttribArray(GL.immediate.COLOR);
+            Module.ctx.vertexAttrib4fv(GL.immediate.COLOR, GL.immediate.clientColor);
+#else
             Module.ctx.disableVertexAttribArray(this.colorLocation);
             Module.ctx.vertexAttrib4fv(this.colorLocation, GL.immediate.clientColor);
-          }
-          if (this.hasNormal) {
-            var normalAttr = clientAttributes[GL.immediate.NORMAL];
-#if GL_ASSERTIONS
-            GL.validateVertexAttribPointer(normalAttr.size, normalAttr.type, GL.immediate.stride, normalAttr.offset);
 #endif
-            Module.ctx.vertexAttribPointer(this.normalLocation, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
-            Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (this.hasFog) {
             if (this.fogColorLocation) Module.ctx.uniform4fv(this.fogColorLocation, GLEmulation.fogColor);
@@ -3845,6 +3911,7 @@ var LibraryGL = {
         },
 
         cleanup: function cleanup() {
+#if !GL_FFP_ONLY
           Module.ctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
@@ -3872,6 +3939,7 @@ var LibraryGL = {
           GL.immediate.lastProgram = null;
 #endif
           GL.immediate.matricesModified = true;
+#endif
         }
       };
       ret.init();
@@ -4004,8 +4072,10 @@ var LibraryGL = {
       GL.immediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
       GL.immediate.NUM_ATTRIBUTES = 3 /*pos+normal+color attributes*/ + GL.immediate.MAX_TEXTURES;
       GL.immediate.clientAttributes = [];
+      GLEmulation.enabledClientAttribIndices = [];
       for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
         GL.immediate.clientAttributes.push({});
+        GLEmulation.enabledClientAttribIndices.push(false);
       }
 
       this.matrixStack['m'] = [];
@@ -4218,7 +4288,7 @@ var LibraryGL = {
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
 
-#if GL_UNSAFE_OPTS == 0
+#if GL_UNSAFE_OPTS == 0 && !GL_FFP_ONLY
       renderer.cleanup();
 #endif
     }
@@ -4483,15 +4553,40 @@ var LibraryGL = {
   glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.VERTEX, size, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      Module.ctx.vertexAttribPointer(GL.immediate.VERTEX, size, type, false, stride, pointer);
+      GL.enableVertexAttribArray(GL.immediate.VERTEX);
+    }
+#endif
   },
   glTexCoordPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture, size, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      var loc = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture;
+      Module.ctx.vertexAttribPointer(loc, size, type, false, stride, pointer);
+      GL.enableVertexAttribArray(loc);
+    }
+#endif
   },
   glNormalPointer: function(type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.NORMAL, 3, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      Module.ctx.vertexAttribPointer(GL.immediate.NORMAL, size, type, true, stride, pointer);
+      GL.enableVertexAttribArray(GL.immediate.NORMAL);
+    }
+#endif
   },
   glColorPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.COLOR, size, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      Module.ctx.vertexAttribPointer(GL.immediate.COLOR, size, type, true, stride, pointer);
+      GL.enableVertexAttribArray(GL.immediate.COLOR);
+    }
+#endif
   },
 
   glClientActiveTexture__sig: 'vi',
