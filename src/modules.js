@@ -500,9 +500,7 @@ var PassManager = {
     for (var i in data.Functions) {
       Functions[i] = data.Functions[i];
     }
-    for (var i in data.EXPORTED_FUNCTIONS) {
-      EXPORTED_FUNCTIONS[i] = data.EXPORTED_FUNCTIONS[i];
-    }
+    EXPORTED_FUNCTIONS = data.EXPORTED_FUNCTIONS;
     /*
     print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
       Types: Types,
