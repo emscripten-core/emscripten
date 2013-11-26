@@ -3445,25 +3445,27 @@ LibraryManager.library = {
     return limit;
   },
 
-  __rand_seed: 0x0273459b,
+  __rand_seed: 'allocate([0x0273459b, 0, 0, 0], "i32", ALLOC_STATIC)',
   srand__deps: ['__rand_seed'],
   srand: function(seed) {
-    ___rand_seed = seed;
+    {{{ makeSetValue('___rand_seed', 0, 'seed', 'i32') }}}
   }, 
   rand_r__deps: ['__rand_seed'],
   rand_r: function(seed) { 
-    // calculate __rand_seed * 31010991 + 0x676e6177
+    var val = {{{ makeGetValue('___rand_seed', 0, 'i32') }}};
+    // calculate val * 31010991 + 0x676e6177
     // i32 multiplication will be rounded by javascript
-    var seedh = ___rand_seed >> 16;
-    var seedl = ___rand_seed & 0xffff;
+    var valh = val >> 16;
+    var vall = val & 0xffff;
 
     var c = 31010991;
     var ch = c >> 16;
     var cl = c & 0xffff;
 
-    ___rand_seed = (((seedh * cl + seedl * ch) << 16) + seedl * cl + 0x676e6177) & 0x7fffffff;
+    val = (((valh * cl + vall * ch) << 16) + vall * cl + 0x676e6177) & 0x7fffffff;
 
-    return ___rand_seed;
+    {{{ makeSetValue('___rand_seed', 0, 'val', 'i32') }}}
+    return val;
   },
   rand__deps: ['rand_r'],
   rand: function() {
