@@ -7741,7 +7741,7 @@ LibraryManager.library = {
     // struct protoent *getprotoent(void);
     // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
     if (_setprotoent.index === PROTOCOL_LIST.length) {
-      return null; 
+      return 0; 
     } else {
       var result = PROTOCOL_LIST[_setprotoent.index++];
       return result;
