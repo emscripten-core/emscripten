@@ -603,10 +603,11 @@ function parseLLVMSegment(segment) {
     type = segment[0].text;
     if (type[type.length-1] === '>' && segment[1].text[0] === '<') {
       // vector literal
+      var nativeType = getVectorNativeType(type);
       return {
         intertype: 'vector',
         idents: splitTokenList(segment[1].tokens).map(function(pair) {
-          return pair[1].text;
+          return parseNumerical(pair[1].text, nativeType);
         }),
         type: type
       };
