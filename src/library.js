@@ -7684,9 +7684,12 @@ LibraryManager.library = {
 
   // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
   // http://pubs.opengroup.org/onlinepubs/9699919799/functions/getprotobyname.html
-  $PROTOCOL_LIST: [],
-  $PROTOCOL_MAP: {},
-  setprotoent__deps: ['$PROTOCOL_LIST', '$PROTOCOL_MAP'],
+  // The Protocols object holds our 'fake' protocols 'database'.
+  $Protocols: {
+    list: [],
+    map: {}
+  },
+  setprotoent__deps: ['$Protocols'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -7719,13 +7722,15 @@ LibraryManager.library = {
 
     // Populate the protocol 'database'. The entries are limited to tcp and udp, though it is fairly trivial
     // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
-    if (PROTOCOL_LIST.length === 0) {
+    var list = Protocols.list;
+    var map  = Protocols.map;
+    if (list.length === 0) {
         var entry = allocprotoent('tcp', 6, ['TCP']);
-        PROTOCOL_LIST.push(entry);
-        PROTOCOL_MAP['tcp'] = PROTOCOL_MAP['6'] = entry;
+        list.push(entry);
+        map['tcp'] = map['6'] = entry;
         entry = allocprotoent('udp', 17, ['UDP']);
-        PROTOCOL_LIST.push(entry);
-        PROTOCOL_MAP['udp'] = PROTOCOL_MAP['17'] = entry;
+        list.push(entry);
+        map['udp'] = map['17'] = entry;
     }
 
     _setprotoent.index = 0;
@@ -7736,32 +7741,32 @@ LibraryManager.library = {
     // We're not using a real protocol database so we don't do a real close.
   },
 
-  getprotoent__deps: ['setprotoent', '$PROTOCOL_LIST'],
+  getprotoent__deps: ['setprotoent', '$Protocols'],
   getprotoent: function(number) {
     // struct protoent *getprotoent(void);
     // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
-    if (_setprotoent.index === PROTOCOL_LIST.length) {
+    if (_setprotoent.index === Protocols.list.length) {
       return 0; 
     } else {
-      var result = PROTOCOL_LIST[_setprotoent.index++];
+      var result = Protocols.list[_setprotoent.index++];
       return result;
     }
   },
 
-  getprotobyname__deps: ['setprotoent', '$PROTOCOL_MAP'],
+  getprotobyname__deps: ['setprotoent', '$Protocols'],
   getprotobyname: function(name) {
     // struct protoent *getprotobyname(const char *);
     name = Pointer_stringify(name);
     _setprotoent(true);
-    var result = PROTOCOL_MAP[name];
+    var result = Protocols.map[name];
     return result;
   },
 
-  getprotobynumber__deps: ['setprotoent', '$PROTOCOL_MAP'],
+  getprotobynumber__deps: ['setprotoent', '$Protocols'],
   getprotobynumber: function(number) {
     // struct protoent *getprotobynumber(int proto);
     _setprotoent(true);
-    var result = PROTOCOL_MAP[number];
+    var result = Protocols.map[number];
     return result;
   },
 
