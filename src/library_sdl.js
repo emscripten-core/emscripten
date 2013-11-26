@@ -1216,6 +1216,11 @@ var LibrarySDL = {
     return ret;
   },
 
+  SDL_DisplayFormat__deps: ['SDL_DisplayformatAlpha'],
+  SDL_DisplayFormat: function(surf) {
+    return _SDL_DisplayFormat(surf);
+  },
+
   SDL_FreeSurface: function(surf) {
     if (surf) SDL.freeSurface(surf);
   },
