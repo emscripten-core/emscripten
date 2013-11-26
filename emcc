@@ -1432,6 +1432,19 @@ try:
           'wctrans_l.c',
           'wctype_l.c',
          ]],
+         ['math', [
+          '__cosdf.c',
+          '__sindf.c',
+          'lgamma.c',
+          'lgamma_r.c',
+          'lgammaf.c',
+          'lgammaf_r.c',
+          'lgammal.c',
+          'signgam.c',
+          'tgamma.c',
+          'tgammaf.c',
+          'tgammal.c'
+         ]],
          ['multibyte', [
           'btowc.c',
           'mblen.c',
