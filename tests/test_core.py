@@ -6583,6 +6583,11 @@ int main()
     srand(0xdeadbeef);
     for(int i = 0; i < 10; ++i)
         printf("%d\n", rand());
+
+    unsigned int seed = 0xdeadbeef;
+    for(int i = 0; i < 10; ++i)
+        printf("%d\n", rand_r(&seed));
+
     return 0;
 }
 '''
@@ -6595,7 +6600,18 @@ int main()
 983994184
 1982845871
 1210574360
-1479617503'''
+1479617503
+2073540312
+730128159
+1365227432
+1337224527
+792390264
+1952655743
+983994184
+1982845871
+1210574360
+1479617503
+'''
     self.do_run(src, expected)
 
   def test_strtod(self):

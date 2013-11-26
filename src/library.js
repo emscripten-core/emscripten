@@ -3451,8 +3451,8 @@ LibraryManager.library = {
     {{{ makeSetValue('___rand_seed', 0, 'seed', 'i32') }}}
   }, 
   rand_r__deps: ['__rand_seed'],
-  rand_r: function(seed) { 
-    var val = {{{ makeGetValue('___rand_seed', 0, 'i32') }}};
+  rand_r: function(seedp) { 
+    var val = {{{ makeGetValue('seedp', 0, 'i32') }}};
     // calculate val * 31010991 + 0x676e6177
     // i32 multiplication will be rounded by javascript
     var valh = val >> 16;
@@ -3464,7 +3464,7 @@ LibraryManager.library = {
 
     val = (((valh * cl + vall * ch) << 16) + vall * cl + 0x676e6177) & 0x7fffffff;
 
-    {{{ makeSetValue('___rand_seed', 0, 'val', 'i32') }}}
+    {{{ makeSetValue('seedp', 0, 'val', 'i32') }}}
     return val;
   },
   rand__deps: ['rand_r'],
