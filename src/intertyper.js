@@ -524,52 +524,11 @@ function intertyper(lines, sidePass, baseLineNums) {
             }
           });
         }
-      } else if (!external) {
-        if (item.tokens[1] && item.tokens[1].text != ';') {
-          if (item.tokens[1].text == 'c') {
-            item.tokens.splice(1, 1);
-          }
-        } else if (ident == '@llvm.used') {
-          var chunk = item.tokens[3].item.tokens;
-          var funcs = [];
-          var part = [];
-          
-          for (var i = 0; i < chunk.length; i++) {
-            if (chunk[i].text == ',') {
-              var call = parseLLVMFunctionCall(part);
-              EXPORTED_FUNCTIONS[call.ident] = 0;
-              part = [];
-            } else {
-              part.push(chunk[i]);
-            }
-          }
-          if (part.length > 0) {
-            var call = parseLLVMFunctionCall(part);
-            EXPORTED_FUNCTIONS[call.ident] = 0;
-          }
-          
-          ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
-        } else if (!external) {
-          if (item.tokens[3] && item.tokens[3].text != ';') {
-            if (item.tokens[3].text == 'c') {
-              item.tokens.splice(3, 1);
-            }
-            if (item.tokens[3].text in PARSABLE_LLVM_FUNCTIONS) {
-              ret.value = parseLLVMFunctionCall(item.tokens.slice(2));
-            } else {
-              ret.value = scanConst(item.tokens[3], ret.type);
-            }
-          } else {
-            ret.value = scanConst(item.tokens[1], ret.type);
-          }
-        } else {
-          ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
-        }
-      } else if (ident == '@llvm.used') {
-        var chunk = item.tokens[3].item.tokens;
+      } else if (ident == '_llvm_used') {
+        var chunk = item.tokens[1].tokens;
         var funcs = [];
         var part = [];
-        
+
         for (var i = 0; i < chunk.length; i++) {
           if (chunk[i].text == ',') {
             var call = parseLLVMFunctionCall(part);
@@ -583,10 +542,23 @@ function intertyper(lines, sidePass, baseLineNums) {
           var call = parseLLVMFunctionCall(part);
           EXPORTED_FUNCTIONS[call.ident] = 0;
         }
-        
+
         ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
+      } else if (!external) {
+        if (item.tokens[1] && item.tokens[1].text != ';') {
+          if (item.tokens[1].text == 'c') {
+            item.tokens.splice(1, 1);
+          }
+          if (item.tokens[1].text in PARSABLE_LLVM_FUNCTIONS) {
+            ret.value = parseLLVMFunctionCall(item.tokens);
+          } else {
+            ret.value = scanConst(item.tokens[1], ret.type);
+          }
+        } else {
+          ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
+        }
       }
-      
+
       return ret;
     }
   }

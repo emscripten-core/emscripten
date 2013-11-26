@@ -3865,6 +3865,25 @@ Exiting setjmp function, level: 0, prev_jmp: -1
     process.communicate()
     assert process.returncode is 0, 'float.h should agree with our system'
 
+  def test_llvm_used(self):
+    src = r'''
+  #include <stdio.h>
+  #include <emscripten.h>
+  
+  extern "C" {
+    EMSCRIPTEN_KEEPALIVE void foobar(int x) {
+      printf("Worked! %d\n", x);
+    }
+  }
+
+  int main() {
+    emscripten_run_script("Module['_foobar'](10)");
+    return 0;
+  }'''
+    
+    Building.LLVM_OPTS = 3
+    self.do_run(src, 'Worked! 10\n')
+
   def test_emscripten_api(self):
       #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
