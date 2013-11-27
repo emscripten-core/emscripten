@@ -13,8 +13,13 @@ class Cache:
     self.debug = debug
 
   def ensure(self):
-    if not os.path.exists(self.dirname):
+    try:
+      # Use makedirs here, so creating the path is as atomic as possible
       os.makedirs(self.dirname)
+    except os.error, e:
+      # Ignore error for already existing dirname
+      if not os.path.exists(self.dirname):
+        raise e
 
   def erase(self):
     tempfiles.try_delete(self.dirname)
