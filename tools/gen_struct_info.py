@@ -157,7 +157,7 @@ else:
   
   # The first parameter is a structure, the second is a path (a list containing all the keys, needed to reach the destination).
   # The last parameter is an item to look for. This function will try to follow the path into the given object and then look there for this key.
-  # As long as the nested object doesn't have the given key, it will descent into the next higher object till it finds the given key.
+  # As long as the nested object doesn't have the given key, it will descend into the next higher object till it finds the given key.
   # 
   # Example:
   # 
@@ -165,8 +165,8 @@ else:
   #   'la1': {
   #     'lb1': {
   #       'lc1': 99,
-  #       'lc2': { 'ld1': 11 }
-  #       'lc2': 200
+  #       'lc2': { 'ld1': 11 },
+  #       'lc3': 200
   #     },
   #     'nice': 100
   #   },
@@ -194,7 +194,7 @@ else:
     
     return None
   
-  # Use the above function to resolve all DelayedRef() inside a list or dict recursively.
+  # Use the following function to resolve all DelayedRef() inside a list or dict recursively.
   def resolve_delayed(item, root=None, path=[]):
     if root == None:
       root = item
@@ -235,14 +235,14 @@ else:
     }
 
 # The following three functions generate C code. The output of the compiled code will be
-# parsed later on and then put back together into a dict structure by parse_c_output().
+# parsed later on and then put back together into a dict by parse_c_output().
 # 
 # Example:
-#   c_descent('test1', code)
+#   c_descend('test1', code)
 #   c_set('item', 'i%i', '111', code)
 #   c_set('item2', 'i%i', '9', code)
 #   c_set('item3', 's%s', '"Hello"', code)
-#   c_ascent(code)
+#   c_ascend(code)
 #   c_set('outer', 'f%f', '0.999', code)
 #   
 # Will result in:
@@ -258,10 +258,10 @@ def c_set(name, type_, value, code):
   code.append('printf("K' + name + '\\n");')
   code.append('printf("V' + type_ + '\\n", ' + value + ');')
 
-def c_descent(name, code):
+def c_descend(name, code):
   code.append('printf("D' + name + '\\n");')
 
-def c_ascent(code):
+def c_ascend(code):
   code.append('printf("A\\n");')
 
 def parse_c_output(lines):
@@ -305,7 +305,7 @@ def gen_inspect_code(path, struct, code):
   else:
     prefix = 'struct '
   
-  c_descent(path[-1], code)
+  c_descend(path[-1], code)
   
   if len(path) == 1:
     c_set('__size__', 'i%u', 'sizeof (' + prefix + path[0] + ')', code)
@@ -321,7 +321,7 @@ def gen_inspect_code(path, struct, code):
     else:
       c_set(field, 'i%u', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
   
-  c_ascent(code)
+  c_ascend(code)
 
 def inspect_code(headers, cpp_opts, structs, defines):
   show('Generating C code...')
@@ -332,12 +332,12 @@ def inspect_code(headers, cpp_opts, structs, defines):
     code.append('#include "' + path + '"')
   
   code.append('int main() {')
-  c_descent('structs', code)
+  c_descend('structs', code)
   for name, struct in structs.items():
     gen_inspect_code([name], struct, code)
   
-  c_ascent(code)
-  c_descent('defines', code)
+  c_ascend(code)
+  c_descend('defines', code)
   for name, type_ in defines.items():
     # Add the necessary python type, if missing.
     if '%' not in type_:
@@ -353,6 +353,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
     
     c_set(name, type_, name, code)
   
+  c_ascend(code)
   code.append('return 0;')
   code.append('}')
   
@@ -403,8 +404,13 @@ def parse_json(path, header_files, structs, defines):
   if not isinstance(data, list):
     data = [ data ]
   
-  for item in data:
-    header_files.append(item['file'])
+  add_schema(data, header_files, structs, defines)
+
+def add_schema(schema, header_files, structs, defines):
+  for item in schema:
+    if 'file' in item:
+      header_files.append(item['file'])
+    
     for name, data in item['structs'].items():
       if name in structs:
         show('WARN: Description of struct "' + name + '" in file "' + item['file'] + '" replaces an existing description!')
@@ -432,17 +438,8 @@ def output_json(obj, compressed=True, stream=None):
   else:
     json.dump(obj, stream, indent=4, sort_keys=True)
   
-  stream.close()
-
-def filter_opts(opts):
-  # Only apply compiler options regarding syntax, includes and defines.
-  # We have to compile for the current system, we aren't compiling to bitcode after all.
-  out = []
-  for flag in opts:
-    if flag[:2] in ('-f', '-I', '-i', '-D', '-U'):
-      out.append(flag)
-  
-  return out
+  if stream != sys.stdout:
+    stream.close()
 
 def main(args):
   global QUIET
@@ -463,6 +460,9 @@ def main(args):
   # Avoid parsing problems due to gcc specifc syntax.
   cpp_opts = ['-D_GNU_SOURCE'] + shared.COMPILER_OPTS
   
+  # Make life easier for pycparser
+  parser_opts = ['-D DECLSPEC=', '-U__GNUC__']
+  
   # Add the user options to the list as well.
   for path in args.includes:
     cpp_opts.append('-I' + path)
@@ -480,7 +480,7 @@ def main(args):
       if path[-5:] == '.json':
         show('WARN: Skipping "' + path + '" because it\'s already a JSON file!')
       else:
-        data.append(parse_header(path, cpp_opts))
+        data.append(parse_header(path, cpp_opts + parser_opts))
     
     output_json(data, not args.pretty_print, args.output)
     sys.exit(0)
@@ -496,10 +496,8 @@ def main(args):
       parse_json(header, header_files, structs, defines)
     else:
       # If the passed file isn't a JSON file, assume it's a header.
-      header_files.append(header)
-      data = parse_header(header, cpp_opts)
-      structs.update(data['structs'])
-      defines.extend(data['defines'])
+      data = parse_header(header, cpp_opts + parser_opts)
+      add_schema([ data ], header_files, structs, defines)
   
   # Inspect all collected structs.
   struct_info = inspect_code(header_files, cpp_opts, structs, defines)
