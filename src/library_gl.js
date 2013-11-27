@@ -209,6 +209,105 @@ var LibraryGL = {
                ((height - 1) * alignedRowSize + plainRowSize);
     },
 
+    get: function(name_, p, type) {
+      var ret = undefined;
+      switch(name_) { // Handle a few trivial GLES values
+        case 0x8DFA: // GL_SHADER_COMPILER
+          ret = 1;
+          break;
+        case 0x8DF8: // GL_SHADER_BINARY_FORMATS
+          if (type === 'Integer') {
+            // fall through, see gles2_conformance.cpp
+          } else {
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+            Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
+#endif
+            return;
+          }
+        case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
+          ret = 0;
+          break;
+        case 0x86A2: // GL_NUM_COMPRESSED_TEXTURE_FORMATS
+          // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
+          // so implement it ourselves to allow C++ GLES2 code get the length.
+          var formats = Module.ctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
+          ret = formats.length;
+          break;
+        case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
+          ret = 0x1401; // GL_UNSIGNED_BYTE
+          break;
+        case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
+          ret = 0x1908; // GL_RGBA
+          break;
+      }
+
+      if (ret === undefined) {
+        var result = Module.ctx.getParameter(name_);
+        switch (typeof(result)) {
+          case "number":
+            ret = result;
+            break;
+          case "boolean":
+            ret = result ? 1 : 0;
+            break;
+          case "string":
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+            Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') on a name which returns a string!');
+#endif
+            return;
+          case "object":
+            if (result === null) {
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') and it returns null!');
+#endif
+              return;
+            } else if (result instanceof Float32Array ||
+                       result instanceof Uint32Array ||
+                       result instanceof Int32Array ||
+                       result instanceof Array) {
+              for (var i = 0; i < result.length; ++i) {
+                switch (type) {
+                  case 'Integer': {{{ makeSetValue('p', 'i*4', 'result[i]',     'i32') }}};   break;
+                  case 'Float':   {{{ makeSetValue('p', 'i*4', 'result[i]',     'float') }}}; break;
+                  case 'Boolean': {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}};    break;
+                  default: throw 'internal glGet error, bad type: ' + type;
+                }
+              }
+              return;
+            } else if (result instanceof WebGLBuffer ||
+                       result instanceof WebGLProgram ||
+                       result instanceof WebGLFramebuffer ||
+                       result instanceof WebGLRenderbuffer ||
+                       result instanceof WebGLTexture) {
+              ret = result.name | 0;
+            } else {
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v: Unknown object returned from WebGL getParameter(' + name_ + ')!');
+#endif
+              return;
+            }
+            break;
+          default:
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+            Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGet' + type + 'v(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+            return;
+        }
+      }
+
+      switch (type) {
+        case 'Integer': {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
+        case 'Float':   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
+        case 'Boolean': {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+        default: throw 'internal glGet error, bad type: ' + type;
+      }
+    },  
+
     getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
       var sizePerPixel;
       switch (type) {
@@ -570,226 +669,17 @@ var LibraryGL = {
 
   glGetIntegerv__sig: 'vii',
   glGetIntegerv: function(name_, p) {
-    switch(name_) { // Handle a few trivial GLES values
-      case 0x8DFA: // GL_SHADER_COMPILER
-        {{{ makeSetValue('p', '0', '1', 'i32') }}};
-        return;
-      case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-      case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
-        {{{ makeSetValue('p', '0', '0', 'i32') }}};
-        return;
-      case 0x86A2: // GL_NUM_COMPRESSED_TEXTURE_FORMATS
-        // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
-        // so implement it ourselves to allow C++ GLES2 code get the length.
-        var formats = Module.ctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
-        {{{ makeSetValue('p', '0', 'formats.length', 'i32') }}};
-        return;
-      case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
-        {{{ makeSetValue('p', '0', '0x1401', 'i32') }}}; // GL_UNSIGNED_BYTE
-        return;
-      case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
-        {{{ makeSetValue('p', '0', '0x1908', 'i32') }}}; // GL_RGBA
-        return;
-    }
-    var result = Module.ctx.getParameter(name_);
-    switch (typeof(result)) {
-      case "number":
-        {{{ makeSetValue('p', '0', 'result', 'i32') }}};
-        break;
-      case "boolean":
-        {{{ makeSetValue('p', '0', 'result ? 1 : 0', 'i8') }}};
-        break;
-      case "string":
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGetIntegerv(' + name_ + ') on a name which returns a string!');
-#endif
-        return;
-      case "object":
-        if (result === null) {
-          {{{ makeSetValue('p', '0', '0', 'i32') }}};
-        } else if (result instanceof Float32Array ||
-                   result instanceof Uint32Array ||
-                   result instanceof Int32Array ||
-                   result instanceof Array) {
-          for (var i = 0; i < result.length; ++i) {
-            {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}};
-          }
-        } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
-        } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
-        } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
-        } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
-        } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
-        } else {
-          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-          Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Unknown object returned from WebGL getParameter(' + name_ + ')!');
-#endif
-          return;
-        }
-        break;
-      default:
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGetIntegerv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
-        return;
-    }
+    return GL.get(name_, p, 'Integer');
   },
 
   glGetFloatv__sig: 'vii',
   glGetFloatv: function(name_, p) {
-    switch(name_) {
-      case 0x8DFA: // GL_SHADER_COMPILER
-        {{{ makeSetValue('p', '0', '1', 'float') }}};
-        return;
-      case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM in glGetFloatv(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
-#endif
-        return;
-      case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
-        {{{ makeSetValue('p', '0', '0', 'float') }}};
-        return;
-      case 0x86A2: // GL_NUM_COMPRESSED_TEXTURE_FORMATS
-        // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
-        // so implement it ourselves to allow C++ GLES2 code get the length.
-        var formats = Module.ctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
-        {{{ makeSetValue('p', '0', 'formats.length', 'float') }}};
-        return;
-      case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
-        {{{ makeSetValue('p', '0', '0x1401', 'i32') }}}; // GL_UNSIGNED_BYTE
-        return;
-      case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
-        {{{ makeSetValue('p', '0', '0x1908', 'i32') }}}; // GL_RGBA
-        return;
-    }
-    
-    var result = Module.ctx.getParameter(name_);
-    switch (typeof(result)) {
-      case "number":
-        {{{ makeSetValue('p', '0', 'result', 'float') }}};
-        break;
-      case "boolean":
-        {{{ makeSetValue('p', '0', 'result ? 1.0 : 0.0', 'float') }}};
-        break;
-      case "string":
-          {{{ makeSetValue('p', '0', '0', 'float') }}};
-      case "object":
-        if (result === null) {
-          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-          Module.printErr('GL_INVALID_ENUM in glGetFloatv: Native code calling glGetFloatv(' + name_ + ') and it returns null!');
-#endif
-          return;
-        } else if (result instanceof Float32Array ||
-                   result instanceof Uint32Array ||
-                   result instanceof Int32Array ||
-                   result instanceof Array) {
-          for (var i = 0; i < result.length; ++i) {
-            {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}};
-          }
-        } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
-        } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
-        } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
-        } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
-        } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
-        } else {
-          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-          Module.printErr('GL_INVALID_ENUM in glGetFloatv: Native code calling glGetFloatv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
-          return;
-        }
-        break;
-      default:
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM in glGetFloatv: Native code calling glGetFloatv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
-        return;
-    }
+    return GL.get(name_, p, 'Float');
   },
 
   glGetBooleanv__sig: 'vii',
   glGetBooleanv: function(name_, p) {
-    switch(name_) {
-      case 0x8DFA: // GL_SHADER_COMPILER
-        {{{ makeSetValue('p', '0', '1', 'i8') }}};
-        return;
-      case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM in glGetBooleanv(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
-#endif
-        return;
-      case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
-        {{{ makeSetValue('p', '0', '0', 'i8') }}};
-        return;
-      case 0x86A2: // GL_NUM_COMPRESSED_TEXTURE_FORMATS
-        // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
-        // so implement it ourselves to allow C++ GLES2 code get the length.
-        var hasCompressedFormats = Module.ctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/).length > 0 ? 1 : 0;
-        {{{ makeSetValue('p', '0', 'hasCompressedFormats', 'i8') }}};
-        return;
-    }
-
-    var result = Module.ctx.getParameter(name_);
-    switch (typeof(result)) {
-      case "number":
-        {{{ makeSetValue('p', '0', 'result != 0', 'i8') }}};
-        break;
-      case "boolean":
-        {{{ makeSetValue('p', '0', 'result != 0', 'i8') }}};
-        break;
-      case "string":
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM in glGetBooleanv: Native code calling glGetBooleanv(' + name_ + ') on a name which returns a string!');
-#endif
-        return;
-      case "object":
-        if (result === null) {
-          {{{ makeSetValue('p', '0', '0', 'i8') }}};
-        } else if (result instanceof Float32Array ||
-                   result instanceof Uint32Array ||
-                   result instanceof Int32Array ||
-                   result instanceof Array) {
-          for (var i = 0; i < result.length; ++i) {
-            {{{ makeSetValue('p', 'i', 'result[i] != 0', 'i8') }}};
-          }
-        } else if (result instanceof WebGLBuffer ||
-                   result instanceof WebGLProgram ||
-                   result instanceof WebGLFramebuffer ||
-                   result instanceof WebGLRenderbuffer ||
-                   result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', '1', 'i8') }}}; // non-zero ID is always 1!
-        } else {
-          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-          Module.printErr('GL_INVALID_ENUM in glGetBooleanv: Unknown object returned from WebGL getParameter(' + name_ + ')!');
-#endif
-          return;
-        }
-        break;
-      default:
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM in glGetBooleanv: Native code calling glGetBooleanv(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
-        return;
-    }
+    return GL.get(name_, p, 'Boolean');
   },
 
   glGenTextures__sig: 'vii',
