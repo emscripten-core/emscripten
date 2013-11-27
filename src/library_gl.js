@@ -568,6 +568,12 @@ var LibraryGL = {
         var formats = Module.ctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         {{{ makeSetValue('p', '0', 'formats.length', 'i32') }}};
         return;
+      case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
+        {{{ makeSetValue('p', '0', '0x1401', 'i32') }}}; // GL_UNSIGNED_BYTE
+        return;
+      case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
+        {{{ makeSetValue('p', '0', '0x1908', 'i32') }}}; // GL_RGBA
+        return;
     }
     var result = Module.ctx.getParameter(name_);
     switch (typeof(result)) {
@@ -640,6 +646,12 @@ var LibraryGL = {
         // so implement it ourselves to allow C++ GLES2 code get the length.
         var formats = Module.ctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         {{{ makeSetValue('p', '0', 'formats.length', 'float') }}};
+        return;
+      case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
+        {{{ makeSetValue('p', '0', '0x1401', 'i32') }}}; // GL_UNSIGNED_BYTE
+        return;
+      case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
+        {{{ makeSetValue('p', '0', '0x1908', 'i32') }}}; // GL_RGBA
         return;
     }
     
@@ -4237,7 +4249,7 @@ var LibraryGL = {
   glColor4ubv__deps: ['glColor4ub'],
   glColor4ubv: function(p) {
     _glColor4ub({{{ makeGetValue('p', '0', 'i8') }}}, {{{ makeGetValue('p', '1', 'i8') }}}, {{{ makeGetValue('p', '2', 'i8') }}}, {{{ makeGetValue('p', '3', 'i8') }}});
-	},
+  },
 
   glFogf: function(pname, param) { // partial support, TODO
     switch(pname) {
