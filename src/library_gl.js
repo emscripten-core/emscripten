@@ -288,6 +288,22 @@ var LibraryGL = {
       }
     },
 
+#if GL_FFP_ONLY
+    enabledClientAttribIndices: [],
+    enableVertexAttribArray: function enableVertexAttribArray(index) {
+      if (!GL.enabledClientAttribIndices[index]) {
+        GL.enabledClientAttribIndices[index] = true;
+        Module.ctx.enableVertexAttribArray(index);
+      }
+    },
+    disableVertexAttribArray: function disableVertexAttribArray(index) {
+      if (GL.enabledClientAttribIndices[index]) {
+        GL.enabledClientAttribIndices[index] = false;
+        Module.ctx.disableVertexAttribArray(index);
+      }
+    },
+#endif
+
 #if FULL_ES2
     calcBufLength: function calcBufLength(size, type, stride, count) {
       if (stride > 0) {
@@ -1820,7 +1836,7 @@ var LibraryGL = {
 
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
-#if GL_UNSAFE_OPTS == 0
+#if GL_UNSAFE_OPTS == 1
       Module.printErr('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
 #endif
 
@@ -2161,7 +2177,10 @@ var LibraryGL = {
           }
         }
 #endif
-        GL.currProgram = program;
+        if (GL.currProgram != program) {
+          GL.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
+          GL.currProgram = program;
+        }
         glUseProgram(program);
       }
 
@@ -2701,32 +2720,85 @@ var LibraryGL = {
           GL_SRC_ALPHA
         ];
 
-        this.traverseState = function CTexEnv_traverseState(keyView) {
-          keyView.next(this.mode);
-          keyView.next(this.colorCombiner);
-          keyView.next(this.alphaCombiner);
-          keyView.next(this.colorCombiner);
-          keyView.next(this.alphaScale);
-          keyView.next(this.envColor[0]);
-          keyView.next(this.envColor[1]);
-          keyView.next(this.envColor[2]);
-          keyView.next(this.envColor[3]);
+        // Map GLenums to small values to efficiently pack the enums to bits for tighter access.
+        this.traverseKey = {
+          // mode
+          0x1E01 /* GL_REPLACE */: 0,
+          0x2100 /* GL_MODULATE */: 1,
+          0x0104 /* GL_ADD */: 2,
+          0x0BE2 /* GL_BLEND */: 3,
+          0x2101 /* GL_DECAL */: 4,
+          0x8570 /* GL_COMBINE */: 5,
 
-          keyView.next(this.colorSrc[0]);
-          keyView.next(this.colorSrc[1]);
-          keyView.next(this.colorSrc[2]);
+          // additional color and alpha combiners
+          0x84E7 /* GL_SUBTRACT */: 3,
+          0x8575 /* GL_INTERPOLATE */: 4,
 
-          keyView.next(this.alphaSrc[0]);
-          keyView.next(this.alphaSrc[1]);
-          keyView.next(this.alphaSrc[2]);
+          // color and alpha src
+          0x1702 /* GL_TEXTURE */: 0,
+          0x8576 /* GL_CONSTANT */: 1,
+          0x8577 /* GL_PRIMARY_COLOR */: 2,
+          0x8578 /* GL_PREVIOUS */: 3,
 
-          keyView.next(this.colorOp[0]);
-          keyView.next(this.colorOp[1]);
-          keyView.next(this.colorOp[2]);
+          // color and alpha op
+          0x0300 /* GL_SRC_COLOR */: 0,
+          0x0301 /* GL_ONE_MINUS_SRC_COLOR */: 1,
+          0x0302 /* GL_SRC_ALPHA */: 2,
+          0x0300 /* GL_ONE_MINUS_SRC_ALPHA */: 3
+        };
 
-          keyView.next(this.alphaOp[0]);
-          keyView.next(this.alphaOp[1]);
-          keyView.next(this.alphaOp[2]);
+        // The tuple (key0,key1,key2) uniquely identifies the state of the variables in CTexEnv.
+        // -1 on key0 denotes 'the whole cached key is dirty'
+        this.key0 = -1;
+        this.key1 = 0;
+        this.key2 = 0;
+
+        this.computeKey0 = function() {
+          var k = this.traverseKey;
+          var key = k[this.mode] * 1638400; // 6 distinct values.
+          key += k[this.colorCombiner] * 327680; // 5 distinct values.
+          key += k[this.alphaCombiner] * 65536; // 5 distinct values.
+          // The above three fields have 6*5*5=150 distinct values -> 8 bits.
+          key += (this.colorScale-1) * 16384; // 10 bits used.
+          key += (this.alphaScale-1) * 4096; // 12 bits used.
+          key += k[this.colorSrc[0]] * 1024; // 14
+          key += k[this.colorSrc[1]] * 256; // 16
+          key += k[this.colorSrc[2]] * 64; // 18
+          key += k[this.alphaSrc[0]] * 16; // 20
+          key += k[this.alphaSrc[1]] * 4; // 22
+          key += k[this.alphaSrc[2]]; // 24 bits used total.
+          return key;
+        }
+        this.computeKey1 = function() {
+          var k = this.traverseKey;
+          key = k[this.colorOp[0]] * 4096;
+          key += k[this.colorOp[1]] * 1024;             
+          key += k[this.colorOp[2]] * 256;
+          key += k[this.alphaOp[0]] * 16;
+          key += k[this.alphaOp[1]] * 4;
+          key += k[this.alphaOp[2]];
+          return key;            
+        }
+        // TODO: remove this. The color should not be part of the key!
+        this.computeKey2 = function() {
+          return this.envColor[0] * 16777216 + this.envColor[1] * 65536 + this.envColor[2] * 256 + 1 + this.envColor[3];
+        }
+        this.recomputeKey = function() {
+          this.key0 = this.computeKey0();
+          this.key1 = this.computeKey1();
+          this.key2 = this.computeKey2();
+        }
+        this.invalidateKey = function() {
+          this.key0 = -1; // The key of this texture unit must be recomputed when rendering the next time.
+          GL.immediate.currentRenderer = null; // The currently used renderer must be re-evaluated at next render.
+        }
+        this.traverseState = function(keyView) {
+          if (this.key0 == -1) {
+            this.recomputeKey();
+          }
+          keyView.next(this.key0);
+          keyView.next(this.key1);
+          keyView.next(this.key2);
         };
       }
 
@@ -3088,16 +3160,28 @@ var LibraryGL = {
           var cur = getCurTexUnit();
           switch (cap) {
             case GL_TEXTURE_1D:
-              cur.enabled_tex1D = true;
+              if (!cur.enabled_tex1D) {
+                GL.immediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
+                cur.enabled_tex1D = true;
+              }
               break;
             case GL_TEXTURE_2D:
-              cur.enabled_tex2D = true;
+              if (!cur.enabled_tex2D) {
+                GL.immediate.currentRenderer = null;
+                cur.enabled_tex2D = true;
+              }
               break;
             case GL_TEXTURE_3D:
-              cur.enabled_tex3D = true;
+              if (!cur.enabled_tex3D) {
+                GL.immediate.currentRenderer = null;
+                cur.enabled_tex3D = true;
+              }
               break;
             case GL_TEXTURE_CUBE_MAP:
-              cur.enabled_texCube = true;
+              if (!cur.enabled_texCube) {
+                GL.immediate.currentRenderer = null;
+                cur.enabled_texCube = true;
+              }
               break;
           }
         },
@@ -3106,16 +3190,28 @@ var LibraryGL = {
           var cur = getCurTexUnit();
           switch (cap) {
             case GL_TEXTURE_1D:
-              cur.enabled_tex1D = false;
+              if (cur.enabled_tex1D) {
+                GL.immediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
+                cur.enabled_tex1D = false;
+              }
               break;
             case GL_TEXTURE_2D:
-              cur.enabled_tex2D = false;
+              if (cur.enabled_tex2D) {
+                GL.immediate.currentRenderer = null;
+                cur.enabled_tex2D = false;
+              }
               break;
             case GL_TEXTURE_3D:
-              cur.enabled_tex3D = false;
+              if (cur.enabled_tex3D) {
+                GL.immediate.currentRenderer = null;
+                cur.enabled_tex3D = false;
+              }
               break;
             case GL_TEXTURE_CUBE_MAP:
-              cur.enabled_texCube = false;
+              if (cur.enabled_texCube) {
+                GL.immediate.currentRenderer = null;
+                cur.enabled_texCube = false;
+              }
               break;
           }
         },
@@ -3127,10 +3223,16 @@ var LibraryGL = {
           var env = getCurTexUnit().env;
           switch (pname) {
             case GL_RGB_SCALE:
-              env.colorScale = param;
+              if (env.colorScale != param) {
+                env.invalidateKey(); // We changed FFP emulation renderer state.
+                env.colorScale = param;
+              }
               break;
             case GL_ALPHA_SCALE:
-              env.alphaScale = param;
+              if (env.alphaScale != param) {
+                env.invalidateKey();
+                env.alphaScale = param;
+              }
               break;
 
             default:
@@ -3145,61 +3247,112 @@ var LibraryGL = {
           var env = getCurTexUnit().env;
           switch (pname) {
             case GL_TEXTURE_ENV_MODE:
-              env.mode = param;
+              if (env.mode != param) {
+                env.invalidateKey(); // We changed FFP emulation renderer state.
+                env.mode = param;
+              }
               break;
 
             case GL_COMBINE_RGB:
-              env.colorCombiner = param;
+              if (env.colorCombiner != param) {
+                env.invalidateKey();
+                env.colorCombiner = param;
+              }
               break;
             case GL_COMBINE_ALPHA:
-              env.alphaCombiner = param;
+              if (env.alphaCombiner != param) {
+                env.invalidateKey();
+                env.alphaCombiner = param;
+              }
               break;
 
             case GL_SRC0_RGB:
-              env.colorSrc[0] = param;
+              if (env.colorSrc[0] != param) {
+                env.invalidateKey();
+                env.colorSrc[0] = param;
+              }
               break;
             case GL_SRC1_RGB:
-              env.colorSrc[1] = param;
+              if (env.colorSrc[1] != param) {
+                env.invalidateKey();
+                env.colorSrc[1] = param;
+              }
               break;
             case GL_SRC2_RGB:
-              env.colorSrc[2] = param;
+              if (env.colorSrc[2] != param) {
+                env.invalidateKey();
+                env.colorSrc[2] = param;
+              }
               break;
 
             case GL_SRC0_ALPHA:
-              env.alphaSrc[0] = param;
+              if (env.alphaSrc[0] != param) {
+                env.invalidateKey();
+                env.alphaSrc[0] = param;
+              }
               break;
             case GL_SRC1_ALPHA:
-              env.alphaSrc[1] = param;
+              if (env.alphaSrc[1] != param) {
+                env.invalidateKey();
+                env.alphaSrc[1] = param;
+              }
               break;
             case GL_SRC2_ALPHA:
-              env.alphaSrc[2] = param;
+              if (env.alphaSrc[2] != param) {
+                env.invalidateKey();
+                env.alphaSrc[2] = param;
+              }
               break;
 
             case GL_OPERAND0_RGB:
-              env.colorOp[0] = param;
+              if (env.colorOp[0] != param) {
+                env.invalidateKey();
+                env.colorOp[0] = param;
+              }
               break;
             case GL_OPERAND1_RGB:
-              env.colorOp[1] = param;
+              if (env.colorOp[1] != param) {
+                env.invalidateKey();
+                env.colorOp[1] = param;
+              }
               break;
             case GL_OPERAND2_RGB:
-              env.colorOp[2] = param;
+              if (env.colorOp[2] != param) {
+                env.invalidateKey();
+                env.colorOp[2] = param;
+              }
               break;
 
             case GL_OPERAND0_ALPHA:
-              env.alphaOp[0] = param;
+              if (env.alphaOp[0] != param) {
+                env.invalidateKey();
+                env.alphaOp[0] = param;
+              }
               break;
             case GL_OPERAND1_ALPHA:
-              env.alphaOp[1] = param;
+              if (env.alphaOp[1] != param) {
+                env.invalidateKey();
+                env.alphaOp[1] = param;
+              }
               break;
             case GL_OPERAND2_ALPHA:
-              env.alphaOp[2] = param;
+              if (env.alphaOp[2] != param) {
+                env.invalidateKey();
+                env.alphaOp[2] = param;
+              }
               break;
 
             case GL_RGB_SCALE:
-              env.colorScale = param;
+              if (env.colorScale != param) {
+                env.invalidateKey();
+                env.colorScale = param;
+              }
               break;
             case GL_ALPHA_SCALE:
-              env.alphaScale = param;
+              if (env.alphaScale != param) {
+                env.invalidateKey();
+                env.alphaScale = param;
+              }
               break;
 
             default:
@@ -3215,7 +3368,10 @@ var LibraryGL = {
             case GL_TEXTURE_ENV_COLOR: {
               for (var i = 0; i < 4; i++) {
                 var param = {{{ makeGetValue('params', 'i*4', 'float') }}};
-                env.envColor[i] = param;
+                if (env.envColor[i] != param) {
+                  env.invalidateKey(); // We changed FFP emulation renderer state.
+                  env.envColor[i] = param;
+                }
               }
               break
             }
@@ -3255,26 +3411,21 @@ var LibraryGL = {
     NORMAL: 1,
     COLOR: 2,
     TEXTURE0: 3,
-    TEXTURE1: 4,
-    TEXTURE2: 5,
-    TEXTURE3: 6,
-    TEXTURE4: 7,
-    TEXTURE5: 8,
-    TEXTURE6: 9,
-    NUM_ATTRIBUTES: 10, // Overwritten in init().
-    MAX_TEXTURES: 7,    // Overwritten in init().
+    NUM_ATTRIBUTES: -1, // Initialized in GL emulation init().
+    MAX_TEXTURES: -1,   // Initialized in GL emulation init().
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
     clientAttributes: [], // raw data, including possible unneeded ones
     liveClientAttributes: [], // the ones actually alive in the current computation, sorted
+    currentRenderer: null, // Caches the currently active FFP emulation renderer, so that it does not have to be re-looked up unless relevant state changes.
     modifiedClientAttributes: false,
     clientActiveTexture: 0,
     clientColor: null,
     usedTexUnitList: [],
     fixedFunctionProgram: null,
 
-    setClientAttribute: function(name, size, type, stride, pointer) {
+    setClientAttribute: function setClientAttribute(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[name];
       if (!attrib) {
         for (var i = 0; i <= name; i++) { // keep flat
@@ -3301,7 +3452,7 @@ var LibraryGL = {
     },
 
     // Renderers
-    addRendererComponent: function(name, size, type) {
+    addRendererComponent: function addRendererComponent(name, size, type) {
       if (!this.rendererComponents[name]) {
         this.rendererComponents[name] = 1;
 #if ASSERTIONS
@@ -3317,13 +3468,18 @@ var LibraryGL = {
       }
     },
 
-    disableBeginEndClientAttributes: function() {
+    disableBeginEndClientAttributes: function disableBeginEndClientAttributes() {
       for (var i = 0; i < this.NUM_ATTRIBUTES; i++) {
         if (this.rendererComponents[i]) this.enabledClientAttributes[i] = false;
       }
     },
 
-    getRenderer: function() {
+    getRenderer: function getRenderer() {
+      // If no FFP state has changed that would have forced to re-evaluate which FFP emulation shader to use,
+      // we have the currently used renderer in cache, and can immediately return that.
+      if (this.currentRenderer) {
+        return this.currentRenderer;
+      }
       // return a renderer object given the liveClientAttributes
       // we maintain a cache of renderers, optimized to not generate garbage
       var attributes = GL.immediate.liveClientAttributes;
@@ -3332,10 +3488,11 @@ var LibraryGL = {
       var keyView = cacheMap.getStaticKeyView().reset();
 
       // By attrib state:
+      var enabledAttributesKey = 0;
       for (var i = 0; i < attributes.length; i++) {
-        var attribute = attributes[i];
-        keyView.next(attribute.name).next(attribute.size).next(attribute.type);
+        enabledAttributesKey |= 1 << attributes[i].name;
       }
+      keyView.next(enabledAttributesKey);
 
       // By fog state:
       var fogParam = 0;
@@ -3361,18 +3518,23 @@ var LibraryGL = {
       }
 
       // If we don't already have it, create it.
-      if (!keyView.get()) {
+      var renderer = keyView.get();
+      if (!renderer) {
 #if GL_DEBUG
         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
 #endif
-        keyView.set(this.createRenderer());
+        renderer = this.createRenderer();
+        this.currentRenderer = renderer;
+        keyView.set(renderer);
+        return renderer;
       }
-      return keyView.get();
+      this.currentRenderer = renderer; // Cache the currently used renderer, so later lookups without state changes can get this fast.
+      return renderer;
     },
 
-    createRenderer: function(renderer) {
+    createRenderer: function createRenderer(renderer) {
       var useCurrProgram = !!GL.currProgram;
-      var hasTextures = false, textureSizes = [], textureTypes = [];
+      var hasTextures = false;
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
         var texAttribName = GL.immediate.TEXTURE0 + i;
         if (!GL.immediate.enabledClientAttributes[texAttribName])
@@ -3386,24 +3548,11 @@ var LibraryGL = {
         }
 #endif
 
-        textureSizes[i] = GL.immediate.clientAttributes[texAttribName].size;
-        textureTypes[i] = GL.immediate.clientAttributes[texAttribName].type;
         hasTextures = true;
       }
-      var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
-      var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
-      var colorSize = 0, colorType;
-      if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
-        colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
-        colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
-      }
-      var normalSize = 0, normalType;
-      if (GL.immediate.enabledClientAttributes[GL.immediate.NORMAL]) {
-        normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
-        normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
-      }
+
       var ret = {
-        init: function() {
+        init: function init() {
           // For fixed-function shader generation.
           var uTexUnitPrefix = 'u_texUnit';
           var aTexCoordPrefix = 'a_texCoord';
@@ -3536,9 +3685,24 @@ var LibraryGL = {
             this.program = Module.ctx.createProgram();
             Module.ctx.attachShader(this.program, this.vertexShader);
             Module.ctx.attachShader(this.program, this.fragmentShader);
-            Module.ctx.bindAttribLocation(this.program, 0, 'a_position');
+
+            // As optimization, bind all attributes to prespecified locations, so that the FFP emulation
+            // code can submit attributes to any generated FFP shader without having to examine each shader in turn.
+            // These prespecified locations are only assumed if GL_FFP_ONLY is specified, since user could also create their
+            // own shaders that didn't have attributes in the same locations.
+            Module.ctx.bindAttribLocation(this.program, GL.immediate.VERTEX, 'a_position');
+            Module.ctx.bindAttribLocation(this.program, GL.immediate.COLOR, 'a_color');
+            Module.ctx.bindAttribLocation(this.program, GL.immediate.NORMAL, 'a_normal');
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+              Module.ctx.bindAttribLocation(this.program, GL.immediate.TEXTURE0 + i, 'a_texCoord'+i);
+              Module.ctx.bindAttribLocation(this.program, GL.immediate.TEXTURE0 + i, aTexCoordPrefix+i);
+            }
             Module.ctx.linkProgram(this.program);
           }
+
+          // Stores a map that remembers which matrix uniforms are up-to-date in this FFP renderer, so they don't need to be resubmitted
+          // each time we render with this program.
+          this.textureMatrixVersion = {};
 
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
 
@@ -3582,7 +3746,9 @@ var LibraryGL = {
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
 
           this.hasTextures = hasTextures;
-          this.hasNormal = normalSize > 0 && this.normalLocation >= 0;
+          this.hasNormal = GL.immediate.enabledClientAttributes[GL.immediate.NORMAL] &&
+                           GL.immediate.clientAttributes[GL.immediate.NORMAL].size > 0 &&
+                           this.normalLocation >= 0;
           this.hasColor = (this.colorLocation === 0) || this.colorLocation > 0;
 
           this.floatType = Module.ctx.FLOAT; // minor optimization
@@ -3595,7 +3761,7 @@ var LibraryGL = {
                            this.fogScaleLocation || this.fogDensityLocation);
         },
 
-        prepare: function() {
+        prepare: function prepare() {
           // Calculate the array buffer
           var arrayBuffer;
           if (!GL.currArrayBuffer) {
@@ -3610,10 +3776,10 @@ var LibraryGL = {
             arrayBuffer = GL.currArrayBuffer;
           }
 
+#if GL_UNSAFE_OPTS
           // If the array buffer is unchanged and the renderer as well, then we can avoid all the work here
           // XXX We use some heuristics here, and this may not work in all cases. Try disabling GL_UNSAFE_OPTS if you
           // have odd glitches
-#if GL_UNSAFE_OPTS
           var lastRenderer = GL.immediate.lastRenderer;
           var canSkip = this == lastRenderer &&
                         arrayBuffer == GL.immediate.lastArrayBuffer &&
@@ -3648,62 +3814,105 @@ var LibraryGL = {
             GL.immediate.fixedFunctionProgram = this.program;
           }
 
-          if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
-          if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
+          if (this.modelViewLocation && this.modelViewMatrixVersion != GL.immediate.matrixVersion['m']) {
+            this.modelViewMatrixVersion = GL.immediate.matrixVersion['m'];
+            Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
+          }
+          if (this.projectionLocation && this.projectionMatrixVersion != GL.immediate.matrixVersion['p']) {
+            this.projectionMatrixVersion = GL.immediate.matrixVersion['p'];
+            Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
+          }
 
           var clientAttributes = GL.immediate.clientAttributes;
+          var posAttr = clientAttributes[GL.immediate.VERTEX];
 
 #if GL_ASSERTIONS
-          GL.validateVertexAttribPointer(positionSize, positionType, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
+          GL.validateVertexAttribPointer(posAttr.size, posAttr.type, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
 #endif
-          Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
+
+#if GL_FFP_ONLY
+          if (!GL.currArrayBuffer) {
+            Module.ctx.vertexAttribPointer(GL.immediate.VERTEX, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
+            GL.enableVertexAttribArray(GL.immediate.VERTEX);
+            if (this.hasNormal) {
+              var normalAttr = clientAttributes[GL.immediate.NORMAL];
+              Module.ctx.vertexAttribPointer(GL.immediate.NORMAL, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
+              GL.enableVertexAttribArray(GL.immediate.NORMAL);
+            }
+          }
+#else
+          Module.ctx.vertexAttribPointer(this.positionLocation, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
-          if (this.hasTextures) {
-            //for (var i = 0; i < this.usedTexUnitList.length; i++) {
-            //  var texUnitID = this.usedTexUnitList[i];
-            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-              var texUnitID = i;
-              var attribLoc = this.texCoordLocations[texUnitID];
-              if (attribLoc === undefined || attribLoc < 0) continue;
-
-              if (texUnitID < textureSizes.length && textureSizes[texUnitID]) {
+          if (this.hasNormal) {
+            var normalAttr = clientAttributes[GL.immediate.NORMAL];
 #if GL_ASSERTIONS
-                GL.validateVertexAttribPointer(textureSizes[texUnitID], textureTypes[texUnitID], GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
+            GL.validateVertexAttribPointer(normalAttr.size, normalAttr.type, GL.immediate.stride, normalAttr.offset);
 #endif
-                Module.ctx.vertexAttribPointer(attribLoc, textureSizes[texUnitID], textureTypes[texUnitID], false,
-                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
+            Module.ctx.vertexAttribPointer(this.normalLocation, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
+            Module.ctx.enableVertexAttribArray(this.normalLocation);
+          }
+#endif
+          if (this.hasTextures) {
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+#if GL_FFP_ONLY
+              if (!GL.currArrayBuffer) {
+                var attribLoc = GL.immediate.TEXTURE0+i;
+                var texAttr = clientAttributes[attribLoc];
+                if (texAttr.size) {
+                  Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GL.immediate.stride, texAttr.offset);
+                  GL.enableVertexAttribArray(attribLoc);
+                } else {
+                  // These two might be dangerous, but let's try them.
+                  Module.ctx.vertexAttrib4f(attribLoc, 0, 0, 0, 1);
+                  GL.disableVertexAttribArray(attribLoc);
+                }
+              }
+#else
+              var attribLoc = this.texCoordLocations[i];
+              if (attribLoc === undefined || attribLoc < 0) continue;
+              var texAttr = clientAttributes[GL.immediate.TEXTURE0+i];
+
+              if (texAttr.size) {
+#if GL_ASSERTIONS
+                GL.validateVertexAttribPointer(texAttr.size, texAttr.type, GL.immediate.stride, texAttr.offset);
+#endif
+                Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GL.immediate.stride, texAttr.offset);
                 Module.ctx.enableVertexAttribArray(attribLoc);
               } else {
                 // These two might be dangerous, but let's try them.
                 Module.ctx.vertexAttrib4f(attribLoc, 0, 0, 0, 1);
                 Module.ctx.disableVertexAttribArray(attribLoc);
               }
-            }
-            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-              if (this.textureMatrixLocations[i]) { // XXX might we need this even without the condition we are currently in?
-                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix['t' + i]);
+#endif
+              var t = 't'+i;
+              if (this.textureMatrixLocations[i] && this.textureMatrixVersion[t] != GL.immediate.matrixVersion[t]) { // XXX might we need this even without the condition we are currently in?
+                this.textureMatrixVersion[t] = GL.immediate.matrixVersion[t];
+                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix[t]);
               }
             }
           }
-          if (colorSize) {
+          if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
+            var colorAttr = clientAttributes[GL.immediate.COLOR];
 #if GL_ASSERTIONS
-            GL.validateVertexAttribPointer(colorSize, colorType, GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
+            GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GL.immediate.stride, colorAttr.offset);
 #endif
-            Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
+#if GL_FFP_ONLY
+            if (!GL.currArrayBuffer) {
+              Module.ctx.vertexAttribPointer(GL.immediate.COLOR, colorAttr.size, colorAttr.type, true, GL.immediate.stride, colorAttr.offset);
+              GL.enableVertexAttribArray(GL.immediate.COLOR);
+            }
+#else
+            Module.ctx.vertexAttribPointer(this.colorLocation, colorAttr.size, colorAttr.type, true, GL.immediate.stride, colorAttr.offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
+#endif
           } else if (this.hasColor) {
+#if GL_FFP_ONLY
+            GL.disableVertexAttribArray(GL.immediate.COLOR);
+            Module.ctx.vertexAttrib4fv(GL.immediate.COLOR, GL.immediate.clientColor);
+#else
             Module.ctx.disableVertexAttribArray(this.colorLocation);
             Module.ctx.vertexAttrib4fv(this.colorLocation, GL.immediate.clientColor);
-          }
-          if (this.hasNormal) {
-#if GL_ASSERTIONS
-            GL.validateVertexAttribPointer(normalSize, normalType, GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
 #endif
-            Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
-            Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (this.hasFog) {
             if (this.fogColorLocation) Module.ctx.uniform4fv(this.fogColorLocation, GLEmulation.fogColor);
@@ -3713,11 +3922,12 @@ var LibraryGL = {
           }
         },
 
-        cleanup: function() {
+        cleanup: function cleanup() {
+#if !GL_FFP_ONLY
           Module.ctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
-            for (var i = 0; i < textureSizes.length; i++) {
-              if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+              if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0+i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.disableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -3741,6 +3951,7 @@ var LibraryGL = {
           GL.immediate.lastProgram = null;
 #endif
           GL.immediate.matricesModified = true;
+#endif
         }
       };
       ret.init();
@@ -3870,11 +4081,15 @@ var LibraryGL = {
 
       this.TexEnvJIT.init(Module.ctx);
 
-      GL.immediate.MAX_TEXTURES = Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
-      GL.immediate.NUM_ATTRIBUTES = GL.immediate.TEXTURE0 + GL.immediate.MAX_TEXTURES;
+      // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
+      // slightly, so it is advantageous to choose as small value as needed.
+      GL.immediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
+      GL.immediate.NUM_ATTRIBUTES = 3 /*pos+normal+color attributes*/ + GL.immediate.MAX_TEXTURES;
       GL.immediate.clientAttributes = [];
+      GLEmulation.enabledClientAttribIndices = [];
       for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
         GL.immediate.clientAttributes.push({});
+        GLEmulation.enabledClientAttribIndices.push(false);
       }
 
       this.matrixStack['m'] = [];
@@ -3884,13 +4099,18 @@ var LibraryGL = {
       }
 
       // Initialize matrix library
-
+      // When user sets a matrix, increment a 'version number' on the new data, and when rendering, submit
+      // the matrices to the shader program only if they have an old version of the data.
+      GL.immediate.matrixVersion = {};
       GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrixVersion['m'] = 0;
       GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['m']);
       GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrixVersion['p'] = 0;
       GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['p']);
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
         GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
+        GL.immediate.matrixVersion['t' + i] = 0;
       }
 
       // Renderer cache
@@ -3911,7 +4131,7 @@ var LibraryGL = {
     // Modifies liveClientAttributes, stride, vertexPointer, vertexCounter
     //   count: number of elements we will draw
     //   beginEnd: whether we are drawing the results of a begin/end block
-    prepareClientAttributes: function(count, beginEnd) {
+    prepareClientAttributes: function prepareClientAttributes(count, beginEnd) {
       // If no client attributes were modified since we were last called, do nothing. Note that this
       // does not work for glBegin/End, where we generate renderer components dynamically and then
       // disable them ourselves, but it does help with glDrawElements/Arrays.
@@ -4009,7 +4229,7 @@ var LibraryGL = {
       }
     },
 
-    flush: function(numProvidedIndexes, startIndex, ptr) {
+    flush: function flush(numProvidedIndexes, startIndex, ptr) {
 #if ASSERTIONS
       assert(numProvidedIndexes >= 0 || !numProvidedIndexes);
 #endif
@@ -4082,7 +4302,7 @@ var LibraryGL = {
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
 
-#if GL_UNSAFE_OPTS == 0
+#if GL_UNSAFE_OPTS == 0 && !GL_FFP_ONLY
       renderer.cleanup();
 #endif
     }
@@ -4330,10 +4550,12 @@ var LibraryGL = {
     if (disable && GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = false;
       GL.immediate.totalEnabledClientAttributes--;
+      this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
       if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
     } else if (!disable && !GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = true;
       GL.immediate.totalEnabledClientAttributes++;
+      this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
       if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
     }
     GL.immediate.modifiedClientAttributes = true;
@@ -4345,15 +4567,40 @@ var LibraryGL = {
   glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.VERTEX, size, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      Module.ctx.vertexAttribPointer(GL.immediate.VERTEX, size, type, false, stride, pointer);
+      GL.enableVertexAttribArray(GL.immediate.VERTEX);
+    }
+#endif
   },
   glTexCoordPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture, size, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      var loc = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture;
+      Module.ctx.vertexAttribPointer(loc, size, type, false, stride, pointer);
+      GL.enableVertexAttribArray(loc);
+    }
+#endif
   },
   glNormalPointer: function(type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.NORMAL, 3, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      Module.ctx.vertexAttribPointer(GL.immediate.NORMAL, size, type, true, stride, pointer);
+      GL.enableVertexAttribArray(GL.immediate.NORMAL);
+    }
+#endif
   },
   glColorPointer: function(size, type, stride, pointer) {
     GL.immediate.setClientAttribute(GL.immediate.COLOR, size, type, stride, pointer);
+#if GL_FFP_ONLY
+    if (GL.currArrayBuffer) {
+      Module.ctx.vertexAttribPointer(GL.immediate.COLOR, size, type, true, stride, pointer);
+      GL.enableVertexAttribArray(GL.immediate.COLOR);
+    }
+#endif
   },
 
   glClientActiveTexture__sig: 'vi',
@@ -4436,23 +4683,27 @@ var LibraryGL = {
 
   glPushMatrix: function() {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrixStack[GL.immediate.currentMatrix].push(
         Array.prototype.slice.call(GL.immediate.matrix[GL.immediate.currentMatrix]));
   },
 
   glPopMatrix: function() {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix[GL.immediate.currentMatrix] = GL.immediate.matrixStack[GL.immediate.currentMatrix].pop();
   },
 
   glLoadIdentity__deps: ['$GL', '$GLImmediateSetup'],
   glLoadIdentity: function() {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
@@ -4461,35 +4712,41 @@ var LibraryGL = {
     if (GL.debug) Module.printErr('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
     GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixf: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
     GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   glMultMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         {{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}});
   },
 
   glMultMatrixf: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         {{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}});
   },
 
   glMultTransposeMatrixd: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     var colMajor = GL.immediate.matrix.lib.mat4.create();
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, colMajor);
     GL.immediate.matrix.lib.mat4.transpose(colMajor);
@@ -4498,6 +4755,7 @@ var LibraryGL = {
 
   glMultTransposeMatrixf: function(matrix) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     var colMajor = GL.immediate.matrix.lib.mat4.create();
     GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, colMajor);
     GL.immediate.matrix.lib.mat4.transpose(colMajor);
@@ -4506,6 +4764,7 @@ var LibraryGL = {
 
   glFrustum: function(left, right, bottom, top_, nearVal, farVal) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
   },
@@ -4513,6 +4772,7 @@ var LibraryGL = {
 
   glOrtho: function(left, right, bottom, top_, nearVal, farVal) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
   },
@@ -4520,18 +4780,21 @@ var LibraryGL = {
 
   glScaled: function(x, y, z) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.scale(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
   },
   glScalef: 'glScaled',
 
   glTranslated: function(x, y, z) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.translate(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
   },
   glTranslatef: 'glTranslated',
 
   glRotated: function(angle, x, y, z) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.rotate(GL.immediate.matrix[GL.immediate.currentMatrix], angle*Math.PI/180, [x, y, z]);
   },
   glRotatef: 'glRotated',
@@ -4614,6 +4877,7 @@ var LibraryGL = {
 
   gluPerspective: function(fov, aspect, near, far) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix[GL.immediate.currentMatrix] =
       GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far,
                                                GL.immediate.matrix[GL.immediate.currentMatrix]);
@@ -4621,6 +4885,7 @@ var LibraryGL = {
 
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
     GL.immediate.matricesModified = true;
+    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
     GL.immediate.matrix.lib.mat4.lookAt(GL.immediate.matrix[GL.immediate.currentMatrix], [ex, ey, ez],
         [cx, cy, cz], [ux, uy, uz]);
   },
