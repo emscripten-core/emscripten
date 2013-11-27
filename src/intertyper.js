@@ -543,7 +543,7 @@ function intertyper(lines, sidePass, baseLineNums) {
           EXPORTED_FUNCTIONS[call.ident] = 0;
         }
 
-        ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
+        ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type = 'i32' };
       } else if (!external) {
         if (item.tokens[1] && item.tokens[1].text != ';') {
           if (item.tokens[1].text == 'c') {
