@@ -524,6 +524,26 @@ function intertyper(lines, sidePass, baseLineNums) {
             }
           });
         }
+      } else if (ident == '_llvm_used') {
+        var chunk = item.tokens[1].tokens;
+        var funcs = [];
+        var part = [];
+
+        for (var i = 0; i < chunk.length; i++) {
+          if (chunk[i].text == ',') {
+            var call = parseLLVMFunctionCall(part);
+            EXPORTED_FUNCTIONS[call.ident] = 0;
+            part = [];
+          } else {
+            part.push(chunk[i]);
+          }
+        }
+        if (part.length > 0) {
+          var call = parseLLVMFunctionCall(part);
+          EXPORTED_FUNCTIONS[call.ident] = 0;
+        }
+
+        ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
       } else if (!external) {
         if (item.tokens[1] && item.tokens[1].text != ';') {
           if (item.tokens[1].text == 'c') {
@@ -538,6 +558,7 @@ function intertyper(lines, sidePass, baseLineNums) {
           ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
         }
       }
+
       return ret;
     }
   }
