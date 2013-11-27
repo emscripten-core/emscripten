@@ -1466,12 +1466,25 @@ class Building:
   
   @staticmethod
   def ensure_struct_info(info_path):
-    if os.path.exists(info_path): return
+    with open(path_from_root('src/struct_info.json'), 'r') as stream:
+      chksum = hashlib.md5(stream.read()).hexdigest()
+
+    if os.path.exists(info_path):
+      with open(info_path, 'r') as stream:
+        info = json.load(stream)
+
+      if 'md5sum' in info and info['md5sum'] == chksum:
+        return
+
     Cache.ensure()
-    
+
     import gen_struct_info
-    gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
-  
+    struct_info = gen_struct_info.main(['-q', path_from_root('src/struct_info.json')], True)
+    struct_info['md5sum'] = chksum
+
+    with open(info_path, 'w') as stream:
+      json.dump(struct_info, stream)
+
   @staticmethod
   def preprocess(infile, outfile):
     '''

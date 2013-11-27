@@ -441,7 +441,7 @@ def output_json(obj, compressed=True, stream=None):
   if stream != sys.stdout:
     stream.close()
 
-def main(args):
+def main(args, return_json=False):
   global QUIET
   
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
@@ -501,7 +501,11 @@ def main(args):
   
   # Inspect all collected structs.
   struct_info = inspect_code(header_files, cpp_opts, structs, defines)
-  output_json(struct_info, not args.pretty_print, args.output)
+
+  if return_json:
+    return struct_info
+  else:
+    output_json(struct_info, not args.pretty_print, args.output)
 
 if __name__ == '__main__':
   main(sys.argv[1:])
