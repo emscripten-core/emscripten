@@ -548,9 +548,20 @@ var LibraryEGL = {
     return EGL.currentContext ? 62000 /* Magic ID for Emscripten 'default display' */ : 0;
   },
   
+  eglSwapBuffers__deps: ['glFlush', '$GL'],
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
   eglSwapBuffers: function() {
-    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    if (!Module.ctx) {
+      EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
+    } else if (Module.ctx.isContextLost()) {
+      EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
+    } else {
+      // According to documentation this does an implicit flush
+      _glFlush();
+      EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+      return 1; // EGL_TRUE
+    }
+    return 0; // EGL_FALSE
   },
 
   eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
