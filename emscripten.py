@@ -800,7 +800,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
       map(lambda x: x[1:], metadata['implementedFunctions'])
     )
-  )
+  ) + map(lambda x: x[1:], metadata['externs'])
 
   # Settings changes
   assert settings['TARGET_LE32'] == 1
