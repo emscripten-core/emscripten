@@ -551,8 +551,10 @@ var LibraryEGL = {
   eglSwapBuffers__deps: ['glFlush', '$GL'],
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
   eglSwapBuffers: function() {
-    if (!Module.ctx) {
+    if (!EGL.defaultDisplayInitialized) {
       EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
+    } else if (!Module.ctx) {
+      EGL.setErrorCode(0x3002 /* EGL_BAD_ACCESS */);
     } else if (Module.ctx.isContextLost()) {
       EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
     } else {
