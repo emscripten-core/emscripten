@@ -475,8 +475,7 @@ LibraryManager.library = {
   mkdtemp__deps: ['mktemp', 'mkdir'],
   mkdtemp: function(template) {
     template = _mktemp(template);
-    _mkdir(template, 0700);
-    return template;
+    return (_mkdir(template, 0700) === 0) ? template : 0;
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fcntl: function(fildes, cmd, varargs, dup2) {
