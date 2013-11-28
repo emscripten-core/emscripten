@@ -1002,7 +1002,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       pass
     # If no named globals, only need externals
     global_vars = []
-    global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
+    global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2] + metadata['externs']
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
