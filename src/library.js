@@ -23,6 +23,7 @@ LibraryManager.library = {
   stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
   stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
+  __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
 
   // ==========================================================================
   // dirent.h
