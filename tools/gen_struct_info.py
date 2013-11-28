@@ -428,17 +428,20 @@ def add_schema(schema, header_files, structs, defines):
       defines[part[1]] = part[0]
 
 def output_json(obj, compressed=True, stream=None):
+  stream_opened = False
+
   if stream == None:
     stream = sys.stdout
   elif isinstance(stream, str):
     stream = open(stream, 'w')
+    stream_opened = True
   
   if compressed:
     json.dump(obj, stream, separators=(',', ':'))
   else:
     json.dump(obj, stream, indent=4, sort_keys=True)
   
-  if stream != sys.stdout:
+  if stream_opened:
     stream.close()
 
 def main(args, return_json=False):
@@ -481,9 +484,12 @@ def main(args, return_json=False):
         show('WARN: Skipping "' + path + '" because it\'s already a JSON file!')
       else:
         data.append(parse_header(path, cpp_opts + parser_opts))
-    
-    output_json(data, not args.pretty_print, args.output)
-    sys.exit(0)
+
+    if return_json:
+      return data
+    else:
+      output_json(data, not args.pretty_print, args.output)
+      return
   
   # Look for structs in all passed headers.
   header_files = []
