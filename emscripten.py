@@ -838,7 +838,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   # memory initializer
 
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + Runtime.alignMemory(%d);
-// /* global initializers */ __ATINIT__.push({ func: function() { runPostSets() } });
+/* global initializers */ __ATINIT__.push({ func: function() { runPostSets() } });
 %s''' % (mem_init.count(',')+1, mem_init)) # XXX wrong size calculation!
 
   funcs_js = [funcs]
