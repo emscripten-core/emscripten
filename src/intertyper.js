@@ -638,7 +638,8 @@ function intertyper(lines, sidePass, baseLineNums) {
   // 'bitcast'
   function bitcastHandler(item) {
     item.intertype = 'bitcast';
-    item.type = item.tokens[4].text; // The final type
+    var last = getTokenIndexByText(item.tokens, ';');
+    item.type = item.tokens[Math.min(last, item.tokens.length-1)].text; // The final type
     Types.needAnalysis[item.type] = 0;
     var to = getTokenIndexByText(item.tokens, 'to');
     item.params = [parseLLVMSegment(item.tokens.slice(1, to))];
