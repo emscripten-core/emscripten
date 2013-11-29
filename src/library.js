@@ -3570,7 +3570,7 @@ LibraryManager.library = {
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
   },
-  memset__sig: 'viii',
+  memset__sig: 'iiii',
   memset__asm: true,
   memset: function(ptr, value, num) {
 #if USE_TYPED_ARRAYS == 2
@@ -3599,8 +3599,10 @@ LibraryManager.library = {
       {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
       ptr = (ptr+1)|0;
     }
+    return (ptr-num)|0;
 #else
     {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}};
+    return ptr;
 #endif
   },
   llvm_memset_i32: 'memset',
