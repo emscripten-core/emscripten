@@ -1747,11 +1747,13 @@ function JSify(data, functionsOnly, givenFunctions) {
           print('/* no memory initializer */'); // test purposes
         }
 
-        // Define postsets. These will be run in ATINIT, right before global initializers (which might need the postsets). We cannot
-        // run them now because the memory initializer might not have been applied yet.
-        print('function runPostSets() {\n');
-        print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
-        print('}\n');
+        if (phase !== 'glue') {
+          // Define postsets. These will be run in ATINIT, right before global initializers (which might need the postsets). We cannot
+          // run them now because the memory initializer might not have been applied yet.
+          print('function runPostSets() {\n');
+          print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
+          print('}\n');
+        }
 
         if (USE_TYPED_ARRAYS == 2) {
           if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {

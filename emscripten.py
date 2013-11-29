@@ -862,14 +862,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
 
-  if settings.get('ASM_JS'):
-    # move postsets into the asm module
-    class PostSets: js = ''
-    def handle_post_sets(m):
-      PostSets.js = m.group(0)
-      return '\n'
-    pre = re.sub(r'function runPostSets[^}]+}', handle_post_sets, pre)
-
   #if DEBUG: outfile.write('// pre\n')
   outfile.write(pre)
   pre = None
@@ -1105,7 +1097,7 @@ function setTempRet%d(value) {
   value = value|0;
   tempRet%d = value;
 }
-''' % (i, i) for i in range(10)])] + [PostSets.js + '\n'] + funcs_js + ['''
+''' % (i, i) for i in range(10)])] + funcs_js + ['''
   %s
 
   return %s;
