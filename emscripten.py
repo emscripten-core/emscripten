@@ -852,6 +852,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # merge forwarded data
   assert settings.get('ASM_JS'), 'fastcomp is asm.js only'
+  settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
   all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
   for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
     all_exported_functions.add('_' + additional_export)

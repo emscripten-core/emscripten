@@ -485,7 +485,8 @@ var PassManager = {
       }));
     } else if (phase == 'glue') {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Functions: Functions
+        Functions: Functions,
+        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
       }));
     }
   },
