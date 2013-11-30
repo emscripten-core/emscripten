@@ -3536,13 +3536,15 @@ LibraryManager.library = {
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
 
-  memmove__sig: 'viii',
+  memmove__sig: 'iiii',
   memmove__asm: true,
   memmove__deps: ['memcpy'],
   memmove: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
+    var ret = 0;
     if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
       // Unlikely case: Copy backwards in a safe manner
+      ret = dest;
       src = (src + num)|0;
       dest = (dest + num)|0;
       while ((num|0) > 0) {
@@ -3551,9 +3553,11 @@ LibraryManager.library = {
         num = (num - 1)|0;
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       }
+      dest = ret;
     } else {
       _memcpy(dest, src, num) | 0;
     }
+    return dest | 0;
   },
   llvm_memmove_i32: 'memmove',
   llvm_memmove_i64: 'memmove',
