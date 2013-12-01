@@ -1029,7 +1029,26 @@ class Building:
               dirname = os.path.dirname(content)
               if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname)
-            Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+            with tempfile.NamedTemporaryFile() as ar_out:
+              with tempfile.NamedTemporaryFile() as ar_err:
+                ar_args = ['xo', f]
+                # TODO: Change absolute to relative paths
+                # if absolute paths, files will appear there. otherwise, in this directory
+                ar_extracting = subprocess.Popen([LLVM_AR] + ar_args, stdout=ar_out, stderr=ar_err)
+                ar_extracting.communicate()
+
+                if ar_extracting.returncode is not 0:
+                  shutil.copyfileobj(ar_out, sys.stdout)
+                  shutil.copyfileobj(ar_err, sys.stderr)
+
+            # See return codes here: http://llvm.org/docs/CommandGuide/llvm-ar.html
+            if ar_extracting.returncode is 1:
+              raise Exception("%s: Usage error for arguments %s" % (LLVM_AR, ar_args))
+            elif ar_extracting.returncode is 2:
+              raise Exception("%s: Hard (possibly filesystem) error for arguments %s" % (LLVM_AR, ar_args))
+            elif ar_extracting.returncode is 3:
+              raise Exception("%s: Unknown error for arguments %s" % (LLVM_AR, ar_args))
+
             contents = map(lambda content: os.path.join(temp_dir, content), contents)
             contents = filter(os.path.exists, map(os.path.abspath, contents))
             added_contents = set()
