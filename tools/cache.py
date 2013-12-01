@@ -1,6 +1,7 @@
 import os.path, sys, shutil, hashlib, cPickle, zlib, time
 
 import tempfiles
+import shared
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
@@ -13,13 +14,7 @@ class Cache:
     self.debug = debug
 
   def ensure(self):
-    try:
-      # Use makedirs here, so creating the path is as atomic as possible
-      os.makedirs(self.dirname)
-    except os.error, e:
-      # Ignore error for already existing dirname
-      if not os.path.exists(self.dirname):
-        raise e
+    shared.safe_ensure_dirs(self.dirname)
 
   def erase(self):
     tempfiles.try_delete(self.dirname)
@@ -53,11 +48,7 @@ class JCache:
 
   def ensure(self):
     self.cache.ensure()
-    if not os.path.exists(self.dirname):
-      try:
-        os.makedirs(self.dirname)
-      except (IOError, OSError):
-        pass
+    shared.safe_ensure_dirs(self.dirname)
 
   def get_shortkey(self, keys):
     if type(keys) not in [list, tuple]:

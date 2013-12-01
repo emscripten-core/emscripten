@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re, errno
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 from distutils.spawn import find_executable
@@ -480,8 +480,7 @@ class Configuration:
     if self.DEBUG:
       try:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
-        if not os.path.exists(self.EMSCRIPTEN_TEMP_DIR):
-          os.makedirs(self.EMSCRIPTEN_TEMP_DIR)
+        safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception, e:
         logging.debug(e + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
 
@@ -1017,8 +1016,7 @@ class Building:
         try:
           temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
           temp_dirs.append(temp_dir)
-          if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
+          safe_ensure_dirs(temp_dir)
           os.chdir(temp_dir)
           contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
           #print >> sys.stderr, '  considering archive', f, ':', contents
@@ -1027,8 +1025,8 @@ class Building:
           else:
             for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
               dirname = os.path.dirname(content)
-              if dirname and not os.path.exists(dirname):
-                os.makedirs(dirname)
+              if dirname:
+                safe_ensure_dirs(dirname)
             Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
             contents = map(lambda content: os.path.join(temp_dir, content), contents)
             contents = filter(os.path.exists, map(os.path.abspath, contents))
@@ -1636,6 +1634,18 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
+def safe_ensure_dirs(dirname):
+  try:
+    os.makedirs(dirname)
+  except os.error, e:
+    # Ignore error for already existing dirname
+    if e.errno != errno.EEXIST:
+      raise e
+    # FIXME: Notice that this will result in a false positive,
+    # should the dirname be a file! There seems to no way to
+    # handle this atomically in Python 2.x.
+    # There is an additional option for Python 3.x, though.
 
 import js_optimizer
 
