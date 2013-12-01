@@ -863,7 +863,7 @@ mergeInto(LibraryManager.library, {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
     for (var i = 0; i < rules.length; i++) {
-      if (rules[i].cssText.substr(0, 5) == 'canvas') {
+      if (rules[i].cssText.substr(0, 6) == 'canvas') {
         styleSheet.deleteRule(i);
         i--;
       }
