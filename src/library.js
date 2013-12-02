@@ -541,7 +541,7 @@ LibraryManager.library = {
     // Advise as much as you wish. We don't care.
     return 0;
   },
-  posix_madvise: 'posix_fadvise',
+  posix_madvise: function(){ return 0 }, // ditto as fadvise
   posix_fallocate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   posix_fallocate: function(fd, offset, len) {
     // int posix_fallocate(int fd, off_t offset, off_t len);
