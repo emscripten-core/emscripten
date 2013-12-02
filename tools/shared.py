@@ -482,7 +482,7 @@ class Configuration:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception, e:
-        logging.debug(e + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
+        logging.debug(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
