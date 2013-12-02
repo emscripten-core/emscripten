@@ -2519,6 +2519,7 @@ LibraryManager.library = {
     }
     var bytesRead = 0;
     var streamObj = FS.getStream(stream);
+    if (!streamObj) return 0;
     while (streamObj.ungotten.length && bytesToRead > 0) {
       {{{ makeSetValue('ptr++', '0', 'streamObj.ungotten.pop()', 'i8') }}}
       bytesToRead--;
