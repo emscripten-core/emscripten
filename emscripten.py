@@ -800,7 +800,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
       map(lambda x: x[1:], metadata['implementedFunctions'])
     )
-  ) + map(lambda x: x[1:], metadata['externFuncs'])
+  ) + map(lambda x: x[1:], metadata['externs'])
 
   # Settings changes
   assert settings['TARGET_LE32'] == 1
@@ -994,8 +994,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     except:
       pass
     # If no named globals, only need externals
-    global_vars = metadata['externVars'] #+ forwarded_json['Variables']['globals']
-    global_funcs = list(set(['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2] + metadata['externFuncs']))
+    global_vars = metadata['externs'] #+ forwarded_json['Variables']['globals']
+    global_funcs = list(set(['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2])) #  + metadata['externFuncs']/'declares'
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
