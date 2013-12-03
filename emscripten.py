@@ -827,6 +827,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   last_forwarded_json = forwarded_json = json.loads(forwarded_data)
 
+  # merge in information from llvm backend
+
+  last_forwarded_json['Functions']['tables'] = metadata['tables']
+
   '''indexed_functions = set()
   for key in forwarded_json['Functions']['indexedFunctions'].iterkeys():
     indexed_functions.add(key)'''
@@ -887,8 +891,11 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     class Counter:
       i = 0
       j = 0
-    pre_tables = last_forwarded_json['Functions']['tables']['pre']
-    del last_forwarded_json['Functions']['tables']['pre']
+    if 'pre' in last_forwarded_json['Functions']['tables']:
+      pre_tables = last_forwarded_json['Functions']['tables']['pre']
+      del last_forwarded_json['Functions']['tables']['pre']
+    else:
+      pre_tables = ''
 
     def make_table(sig, raw):
       i = Counter.i
