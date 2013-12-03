@@ -1,7 +1,6 @@
 import os.path, sys, shutil, hashlib, cPickle, zlib, time
 
 import tempfiles
-import shared
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
@@ -192,3 +191,6 @@ def chunkify(funcs, chunk_size, chunking_file, DEBUG=False):
     #      if previous_mapping.get(ident) != new_mapping.get(ident):
     #        print >> sys.stderr, 'mapping inconsistency', ident, previous_mapping.get(ident), new_mapping.get(ident)
   return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
+
+import shared
+
