@@ -1915,23 +1915,19 @@ var LibrarySDL = {
     var filename = '';
     var audio;
     var bytes;
-    
+
     if (rwops.filename !== undefined) {
       filename = PATH.resolve(rwops.filename);
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
         if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
         Runtime.warnOnce('Cannot find preloaded audio ' + filename);
-        
+
         // see if we can read the file-contents from the in-memory FS
-        var fileObject = FS.findObject(filename);
-        
-        if (fileObject === null) Module.printErr('Couldn\'t find file for: ' + filename);
-        
-        // We found the file. Load the contents
-        if (fileObject && !fileObject.isFolder && fileObject.read) {
-          bytes = fileObject.contents;
-        } else {
+        try {
+          bytes = FS.readFile(filename);
+        } catch (e) {
+          Module.printErr('Couldn\'t find file for: ' + filename);
           return 0;
         }
       }
@@ -1946,16 +1942,16 @@ var LibrarySDL = {
     else {
       return 0;
     }
-    
+
     // Here, we didn't find a preloaded audio but we either were passed a filepath for
     // which we loaded bytes, or we were passed some bytes
     if (audio === undefined && bytes) {
-      var blob = new Blob([new Uint8Array(bytes)], {type: rwops.mimetype});
+      var blob = new Blob([bytes], {type: rwops.mimetype});
       var url = URL.createObjectURL(blob);
       audio = new Audio();
       audio.src = url;
     }
-    
+
     var id = SDL.audios.length;
     // Keep the loaded audio in the audio arrays, ready for playback
     SDL.audios.push({
