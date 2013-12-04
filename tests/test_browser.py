@@ -1680,3 +1680,20 @@ keydown(100);keyup(100); // trigger the end
     open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
     for extra_args in [[], ['--no-heap-copy']]:
       self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'] + extra_args)
+
+  def test_emrun_info(self):
+    result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--system_info', '--browser_info'])
+    assert 'CPU' in result
+    assert 'Browser' in result
+    assert 'Traceback' not in result
+
+    result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--list_browsers'])
+    assert 'Traceback' not in result
+
+  def test_emrun(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_exit.c'), '--post-js', path_from_root('src', 'emrun_postjs.js'), '-o', 'hello_world.html']).communicate()
+    process = subprocess.Popen([PYTHON, path_from_root('emrun'), '--timeout', '30', 'hello_world.html'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdout, stderr) = process.communicate()
+    assert process.returncode == 100
+    assert 'hello, world!' in stdout
+    assert 'hello, error stream!' in stderr
