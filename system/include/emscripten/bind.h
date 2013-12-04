@@ -689,6 +689,10 @@ namespace emscripten {
         static void* share(void* v) {
             return 0; // no sharing
         }
+
+        static PointerType* operator_new() {
+            return new PointerType;
+        }
     };
 
     // specialize if you have a different pointer type
@@ -718,6 +722,10 @@ namespace emscripten {
             return new std::shared_ptr<PointeeType>(
                 p,
                 val_deleter(val::take_ownership(v)));
+        }
+
+        static PointerType* operator_new() {
+            return new PointerType;
         }
 
     private:
@@ -880,7 +888,7 @@ namespace emscripten {
                 typeid(PointerType).name(),
                 PointerTrait::get_sharing_policy(),
                 reinterpret_cast<GenericFunction>(&PointerTrait::get),
-                reinterpret_cast<GenericFunction>(&operator_new<PointerType>),
+                reinterpret_cast<GenericFunction>(&PointerTrait::operator_new),
                 reinterpret_cast<GenericFunction>(&PointerTrait::share),
                 reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>));
             return *this;

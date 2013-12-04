@@ -1283,6 +1283,7 @@ std::shared_ptr<HeldBySmartPtr> takesHeldBySmartPtrSharedPtr(std::shared_ptr<Hel
 namespace emscripten {
     template<typename T>
     struct smart_ptr_trait<CustomSmartPtr<T>> {
+        typedef CustomSmartPtr<T> pointer_type;
         typedef T element_type;
 
         static sharing_policy get_sharing_policy() {
@@ -1296,6 +1297,10 @@ namespace emscripten {
         static CustomSmartPtr<T> share(const CustomSmartPtr<T>& r, T* ptr) {
             ++ptr->refcount; // implement an adopt API?
             return CustomSmartPtr<T>(ptr);
+        }
+
+        static pointer_type* operator_new() {
+            return new pointer_type();
         }
     };
 }
