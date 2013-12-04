@@ -793,6 +793,15 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   #if DEBUG: print >> sys.stderr, "META", metadata
   #if DEBUG: print >> sys.stderr, "meminit", mem_init
 
+  # function table masks
+
+  table_sizes = {}
+  for k, v in metadata['tables'].iteritems():
+    table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
+  funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
+
+  # js compiler
+
   if DEBUG: logging.debug('emscript: js compiler glue')
 
   # Integrate info from backend
