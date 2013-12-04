@@ -848,11 +848,13 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
 
-  # memory initializer
+  # memory and global initializers
+
+  global_initializers = ', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers']))
 
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + Runtime.alignMemory(%d);
-/* global initializers */ __ATINIT__.push({ func: function() { runPostSets() } });
-%s''' % (mem_init.count(',')+1, mem_init)) # XXX wrong size calculation!
+/* global initializers */ __ATINIT__.push(%s);
+%s''' % (mem_init.count(',')+1, global_initializers, mem_init)) # XXX wrong size calculation!
 
   funcs_js = [funcs]
   if settings.get('ASM_JS'):
@@ -995,7 +997,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         basic_funcs.append('extCall_%s' % sig)
 
     # calculate exports
-    exported_implemented_functions = list(exported_implemented_functions)
+    exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
     exported_implemented_functions.append('runPostSets')
     exports = []
     if not simple:
