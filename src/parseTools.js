@@ -1454,7 +1454,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     // TODO: optimize the case of numeric num but non-numeric value
     if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
-      return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')';
+      return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')|0';
     }
     num = parseInt(num);
     value = parseInt(value);
