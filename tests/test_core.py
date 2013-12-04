@@ -8749,6 +8749,8 @@ void*:16
 
     self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('skipping extra parts in fastcomp')
+
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       results = {}
