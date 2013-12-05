@@ -1604,6 +1604,15 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
+    // we alias llvm memset and such to normal memset. The target has a return value, while the original
+    // does not, so we need to fix that for the actual call target
+    if (ASM_JS) {
+      var sig = LibraryManager.library[simpleIdent + '__sig'];
+      if (sig && sig[0] !== 'v') {
+        returnType = Functions.getSignatureType(sig[0]);
+      }
+    }
+
     if (byPointer) {
       var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
