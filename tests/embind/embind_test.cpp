@@ -1299,8 +1299,8 @@ namespace emscripten {
             return CustomSmartPtr<T>(ptr);
         }
 
-        static pointer_type* operator_new() {
-            return new pointer_type();
+        static pointer_type* construct_null() {
+            return new pointer_type;
         }
     };
 }

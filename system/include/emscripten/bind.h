@@ -690,7 +690,7 @@ namespace emscripten {
             return 0; // no sharing
         }
 
-        static PointerType* operator_new() {
+        static PointerType* construct_null() {
             return new PointerType;
         }
     };
@@ -724,7 +724,7 @@ namespace emscripten {
                 val_deleter(val::take_ownership(v)));
         }
 
-        static PointerType* operator_new() {
+        static PointerType* construct_null() {
             return new PointerType;
         }
 
@@ -888,7 +888,7 @@ namespace emscripten {
                 typeid(PointerType).name(),
                 PointerTrait::get_sharing_policy(),
                 reinterpret_cast<GenericFunction>(&PointerTrait::get),
-                reinterpret_cast<GenericFunction>(&PointerTrait::operator_new),
+                reinterpret_cast<GenericFunction>(&PointerTrait::construct_null),
                 reinterpret_cast<GenericFunction>(&PointerTrait::share),
                 reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>));
             return *this;
