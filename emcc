@@ -604,7 +604,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         continue
       if not use_js and el == '-s' and is_minus_s_for_emcc(argv, idx): # skip -s X=Y if not using js for configure
         skip_next = True
-      else:
+      elif use_js or el.strip() != '--ignore-dynamic-linking':
         yield el
       idx += 1
 
