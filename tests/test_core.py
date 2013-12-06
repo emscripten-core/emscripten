@@ -754,30 +754,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_bitfields(self):
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
-      src = '''
-        #include <stdio.h>
-        struct bitty {
-          unsigned x : 1;
-          unsigned y : 1;
-          unsigned z : 1;
-        };
-        int main()
-        {
-          bitty b;
-          printf("*");
-          for (int i = 0; i <= 1; i++)
-            for (int j = 0; j <= 1; j++)
-              for (int k = 0; k <= 1; k++) {
-                b.x = i;
-                b.y = j;
-                b.z = k;
-                printf("%d,%d,%d,", b.x, b.y, b.z);
-              }
-          printf("*\\n");
-          return 0;
-        }
-      '''
-      self.do_run(src, '*0,0,0,0,0,1,0,1,0,0,1,1,1,0,0,1,0,1,1,1,0,1,1,1,*')
+
+      test_path = path_from_root('tests', 'core', 'test_bitfields')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_floatvars(self):
       src = '''
