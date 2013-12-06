@@ -794,33 +794,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_globaldoubles(self):
-      src = r'''
-        #include <stdlib.h>
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_globaldoubles')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        double      testVu,    testVv,    testWu,    testWv;
-
-        void Test(double _testVu, double _testVv, double _testWu, double _testWv)
-        {
-            testVu = _testVu;
-            testVv = _testVv;
-            testWu = _testWu;
-            testWv = _testWv;
-            printf("BUG?\n");
-            printf("Display: Vu=%f  Vv=%f  Wu=%f  Wv=%f\n", testVu, testVv, testWu, testWv);
-        }
-
-        int main(void)
-        {
-            double v1 = 465.1;
-            double v2 = 465.2;
-            double v3 = 160.3;
-            double v4 = 111.4;
-            Test(v1, v2, v3, v4);
-            return 0;
-        }
-      '''
-      self.do_run(src, 'BUG?\nDisplay: Vu=465.100000  Vv=465.200000  Wu=160.300000  Wv=111.400000')
+    self.do_run_from_file(src, output)
 
   def test_math(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
