@@ -811,8 +811,8 @@ class Building:
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
     env['EMMAKEN_COMPILER'] = Building.COMPILER
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS) + ' ' + env.get('CFLAGS', '')
-    env['EMCC_CFLAGS'] = '--ignore-dynamic-linking ' + env.get('EMCC_CFLAGS', '')
+    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = (' '.join(Building.COMPILER_TEST_OPTS) + ' ' + env.get('CFLAGS', '')).strip()
+    env['EMCC_CFLAGS'] = ('--ignore-dynamic-linking ' + env.get('EMCC_CFLAGS', '')).strip()
     env['HOST_CC'] = CLANG_CC
     env['HOST_CXX'] = CLANG_CPP
     env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
