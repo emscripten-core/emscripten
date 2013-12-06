@@ -411,28 +411,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_qdouble(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdio.h>
-      typedef long long qint64; /* 64 bit signed */
-      typedef double qreal;
+    test_path = path_from_root('tests', 'core', 'test_i64_qdouble')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-
-      int main(int argc, char **argv)
-      {
-        qreal c = 111;
-        qint64 d = -111 + (argc - 1);
-        c += d;
-        if (c < -1 || c > 1)
-        {
-                printf("Failed!\n");
-        }
-        else
-        {
-                printf("Succeeded!\n");
-        }
-      };
-    '''
-    self.do_run(src, 'Succeeded!')
+    self.do_run_from_file(src, output)
 
   def test_i64_varargs(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
