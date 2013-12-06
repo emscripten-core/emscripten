@@ -776,31 +776,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output, ['5', '6', '8'])
 
   def test_zerodiv(self):
-    self.do_run(r'''
-      #include <stdio.h>
-      int main(int argc, const char* argv[])
-      {
-        float f1 = 1.0f;
-        float f2 = 0.0f;
-        float f_zero = 0.0f;
+    test_path = path_from_root('tests', 'core', 'test_zerodiv')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        float f3 = 0.0f / f2;
-        float f4 = f2 / 0.0f;
-        float f5 = f2 / f2;
-        float f6 = f2 / f_zero;
-
-        printf("f3: %f\n", f3);
-        printf("f4: %f\n", f4);
-        printf("f5: %f\n", f5);
-        printf("f6: %f\n", f6);
-
-        return 0;
-      }
-    ''', '''f3: nan
-f4: nan
-f5: nan
-f6: nan
-''')
+    self.do_run_from_file(src, output)
 
   def test_zero_multiplication(self):
     src = '''
