@@ -427,18 +427,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i32_mul_precise(self):
     if self.emcc_args == None: return self.skip('needs ta2')
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i32_mul_precise')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char **argv) {
-        unsigned long d1 = 0x847c9b5d;
-        unsigned long q =  0x549530e1;
-        if (argc > 1000) { q += argc; d1 -= argc; } // confuse optimizer
-        printf("%lu\n", d1*q);
-        return 0;
-      }
-    '''
-    self.do_run(src, '3217489085')
+    self.do_run_from_file(src, output)
 
   def test_i32_mul_semiprecise(self):
     if Settings.ASM_JS: return self.skip('asm is always fully precise')
