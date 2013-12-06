@@ -906,27 +906,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_loop(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          int x = 5;
-          for (int i = 0; i < 6; i++) {
-            x += x*i;
-            if (x > 1000) {
-              if (x % 7 == 0) printf("cheez\\n");
-              x /= 2;
-              break;
-            }
-          }
-          printf("*%d*\\n", x);
-          return 0;
-        }
-      '''
+    test_path = path_from_root('tests', 'core', 'test_loop')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      self.do_run(src, '*1800*')
-
-      generated = open('src.cpp.o.js', 'r').read()
+    self.do_run_from_file(src, output)
 
   def test_stack(self):
       Settings.INLINING_LIMIT = 50
