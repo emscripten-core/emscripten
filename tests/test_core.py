@@ -830,25 +830,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_from_file(src, output)
 
-  # This example borrowed from MSDN documentation
   def test_fcvt(self):
       if self.emcc_args is None: return self.skip('requires emcc')
 
-      src = '''
-        #include <stdlib.h>
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_fcvt')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-           int  decimal, sign;
-           char *buffer;
-           double source = 3.1415926535;
-
-           buffer = fcvt(source, 7, &decimal, &sign);
-           printf("source: %2.10f   buffer: '%s'   decimal: %d   sign: %d\\n",
-                   source, buffer, decimal, sign);
-        }
-        '''
-      self.do_run(src, "source: 3.1415926535   buffer: '31415927'   decimal: 1   sign: 0");
+      self.do_run_from_file(src, output)
 
   def test_llrint(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
