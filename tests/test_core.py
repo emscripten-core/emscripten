@@ -847,25 +847,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_getgep(self):
-      # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
-      src = '''
-        #include <stdio.h>
-        struct {
-          int y[10];
-          int z[10];
-        } commonblock;
+    # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
+    test_path = path_from_root('tests', 'core', 'test_getgep')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main()
-        {
-          for (int i = 0; i < 10; ++i) {
-            commonblock.y[i] = 1;
-            commonblock.z[i] = 2;
-          }
-          printf("*%d %d*\\n", commonblock.y[0], commonblock.z[0]);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*1 2*')
+    self.do_run_from_file(src, output)
 
   def test_multiply_defined_symbols(self):
     a1 = "int f() { return 1; }"
