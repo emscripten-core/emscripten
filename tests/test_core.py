@@ -461,28 +461,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_float32_precise(self):
     Settings.PRECISE_F32 = 1
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_float32_precise')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char **argv) {
-        float x = 1.23456789123456789;
-        float y = 5.20456089123406709;
-        while (argc > 10 || argc % 19 == 15) {
-          // confuse optimizer
-          x /= y;
-          y = 2*y - 1;
-          argc--;
-        }
-        x = x - y;
-        y = 3*y - x/2;
-        x = x*y;
-        y += 0.000000000123123123123;
-        x -= y/7.654;
-        printf("\n%.20f, %.20f\n", x, y);
-        return 0;
-      }
-    '''
-    self.do_run(src, '\n-72.16590881347656250000, 17.59867858886718750000\n')
+    self.do_run_from_file(src, output)
 
   def test_negative_zero(self):
     src = r'''
