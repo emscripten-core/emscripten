@@ -964,29 +964,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_structs(self):
-      src = '''
-        #include <stdio.h>
-        struct S
-        {
-          int x, y;
-        };
-        int main()
-        {
-          S a, b;
-          a.x = 5; a.y = 6;
-          b.x = 101; b.y = 7009;
-          S *c, *d;
-          c = &a;
-          c->x *= 2;
-          c = &b;
-          c->y -= 1;
-          d = c;
-          d->y += 10;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d*\\n", a.x, a.y, b.x, b.y, c->x, c->y, d->x, d->y);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*10,6,101,7018,101,7018,101,7018*')
+    test_path = path_from_root('tests', 'core', 'test_structs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   gen_struct_src = '''
         #include <stdio.h>
