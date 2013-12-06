@@ -770,21 +770,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     if self.emcc_args is None: return self.skip('requires emcc')
     Building.COMPILER_TEST_OPTS += ['-ffast-math']
 
-    self.do_run(r'''
-#include <stdio.h>
-#include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_fast_math')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-int main(int argc, char** argv) {
-  char* endptr;
-  --argc, ++argv;
-  double total = 0.0;
-  for (; argc; argc--, argv++) {
-    total += strtod(*argv, &endptr);
-  }
-  printf("total: %g\n", total);
-  return 0;
-}
-''', 'total: 19', ['5', '6', '8'])
+    self.do_run_from_file(src, output, ['5', '6', '8'])
 
   def test_zerodiv(self):
     self.do_run(r'''
