@@ -825,37 +825,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_rounding(self):
-      src = '''
-        #include <stdio.h>
-        #include <math.h>
+      test_path = path_from_root('tests', 'core', 'test_rounding')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main()
-        {
-          printf("%.1f ", round(1.4));
-          printf("%.1f ", round(1.6));
-          printf("%.1f ", round(-1.4));
-          printf("%.1f ", round(-1.6));
-
-          printf("%.1f ", round(1.5));
-          printf("%.1f ", round(2.5));
-          printf("%.1f ", round(-1.5));
-          printf("%.1f ", round(-2.5));
-
-          printf("%ld ", lrint(1.4));
-          printf("%ld ", lrint(1.6));
-          printf("%ld ", lrint(-1.4));
-          printf("%ld ", lrint(-1.6));
-
-          printf("%ld ", lrint(1.5));
-          printf("%ld ", lrint(2.5));
-          printf("%ld ", lrint(-1.5));
-          printf("%ld ", lrint(-2.5));
-
-          return 0;
-        }
-        '''
-      self.do_run(src, "1.0 2.0 -1.0 -2.0 2.0 3.0 -2.0 -3.0 "
-                       "1 2 -1 -2 2 2 -2 -2")
+      self.do_run_from_file(src, output)
 
   # This example borrowed from MSDN documentation
   def test_fcvt(self):
