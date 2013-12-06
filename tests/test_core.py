@@ -378,15 +378,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_llabs(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
     Settings.PRECISE_I64_MATH = 2
-    self.do_run(r'''
-      #include <stdio.h>
-      #include <stdlib.h>
 
-      int main(int argc, char ** argv) {
-        printf("%lld,%lld\n", llabs(-576460752303423489), llabs(576460752303423489));
-        return 0;
-      }
-    ''', '576460752303423489,576460752303423489')
+    test_path = path_from_root('tests', 'core', 'test_i64_llabs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_i64_zextneg(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
