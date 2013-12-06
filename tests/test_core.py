@@ -445,27 +445,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i16_emcc_intrinsic(self):
     Settings.CORRECT_SIGNS = 1 # Relevant to this test
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i16_emcc_intrinsic')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int test(unsigned short a, unsigned short b) {
-          unsigned short result = a;
-          result += b;
-          if (result < b) printf("C!");
-          return result;
-      }
-
-      int main(void) {
-          printf(",%d,", test(0, 0));
-          printf(",%d,", test(1, 1));
-          printf(",%d,", test(65535, 1));
-          printf(",%d,", test(1, 65535));
-          printf(",%d,", test(32768, 32767));
-          printf(",%d,", test(32768, 32768));
-          return 0;
-      }
-    '''
-    self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
+    self.do_run_from_file(src, output)
 
   def test_double_i64_conversion(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
