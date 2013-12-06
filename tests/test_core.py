@@ -900,20 +900,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_if_else(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          int x = 5;
-          if (x > 10) {
-            printf("*yes*\\n");
-          } else {
-            printf("*no*\\n");
-          }
-          return 0;
-        }
-      '''
-      self.do_run(src, '*no*')
+    test_path = path_from_root('tests', 'core', 'test_if_else')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_loop(self):
       src = '''
