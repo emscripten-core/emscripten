@@ -952,15 +952,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_mainenv(self):
-      src = '''
-        #include <stdio.h>
-        int main(int argc, char **argv, char **envp)
-        {
-          printf("*%p*\\n", envp);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*(nil)*')
+    test_path = path_from_root('tests', 'core', 'test_mainenv')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_funcs(self):
       src = '''
