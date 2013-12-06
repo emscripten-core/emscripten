@@ -801,41 +801,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_math(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
-      src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <cmath>
-        int main(int argc, char **argv)
-        {
-          printf("*%.2f,%.2f,%d", M_PI, -M_PI, (1/0.0) > 1e300); // could end up as infinity, or just a very very big number
-          printf(",%d", isfinite(NAN) != 0);
-          printf(",%d", isfinite(INFINITY) != 0);
-          printf(",%d", isfinite(-INFINITY) != 0);
-          printf(",%d", isfinite(12.3) != 0);
-          printf(",%d", isinf(NAN) != 0);
-          printf(",%d", isinf(INFINITY) != 0);
-          printf(",%d", isinf(-INFINITY) != 0);
-          printf(",%d", isinf(12.3) != 0);
-          div_t div_result = div(23, 10);
-          printf(",%d", div_result.quot);
-          printf(",%d", div_result.rem);
-          double sine = -1.0, cosine = -1.0;
-          sincos(0.0, &sine, &cosine);
-          printf(",%1.1lf", sine);
-          printf(",%1.1lf", cosine);
-          float fsine = -1.0f, fcosine = -1.0f;
-          sincosf(0.0, &fsine, &fcosine);
-          printf(",%1.1f", fsine);
-          printf(",%1.1f", fcosine);
-          fsine = sinf(1.1 + argc - 1);
-          fcosine = cosf(1.1 + argc - 1);
-          printf(",%1.1f", fsine);
-          printf(",%1.1f", fcosine);
-          printf("*\\n");
-          return 0;
-        }
-      '''
-      self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0,2,3,0.0,1.0,0.0,1.0,0.9,0.5*')
+
+      test_path = path_from_root('tests', 'core', 'test_math')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_erf(self):
       src = '''
