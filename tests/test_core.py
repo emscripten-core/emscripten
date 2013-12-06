@@ -264,30 +264,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_b(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-      src = r'''
-        #include <stdio.h>
-        #include <sys/time.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_b')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        typedef long long int64;
-
-        #define PRMJ_USEC_PER_SEC       1000000L
-
-        int main(int argc, char * argv[]) {
-            int64 sec = 1329409675 + argc;
-            int64 usec = 2329509675;
-            int64 mul = int64(sec) * PRMJ_USEC_PER_SEC;
-            int64 add = mul + int64(usec);
-            int add_low = add;
-            int add_high = add >> 32;
-            printf("*%lld,%lld,%u,%u*\n", mul, add, add_low, add_high);
-            int64 x = sec + (usec << 25);
-            x >>= argc*3;
-            printf("*%llu*\n", x);
-            return 0;
-        }
-      '''
-
-      self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n*9770671914067409*\n')
+      self.do_run_from_file(src, output)
 
   def test_i64_cmp(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
