@@ -477,58 +477,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     Settings.PRECISE_I64_MATH = 2 # for bswap64
 
-    src = r'''
-      #include <stdio.h>
-      #include <sys/types.h>
+    test_path = path_from_root('tests', 'core', 'test_llvm_intrinsics')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      extern "C" {
-        extern unsigned short llvm_bswap_i16(unsigned short x);
-        extern unsigned int llvm_bswap_i32(unsigned int x);
-        extern int32_t llvm_ctlz_i32(int32_t x);
-        extern int64_t llvm_ctlz_i64(int64_t x);
-        extern int32_t llvm_cttz_i32(int32_t x);
-        extern int64_t llvm_cttz_i64(int64_t x);
-        extern int32_t llvm_ctpop_i32(int32_t x);
-        extern int64_t llvm_ctpop_i64(int64_t x);
-        extern int llvm_expect_i32(int x, int y);
-      }
-
-      int main(void) {
-          unsigned short x = 0xc8ef;
-          printf("%x,%x\n", x&0xff, x >> 8);
-          x = llvm_bswap_i16(x);
-          printf("%x,%x\n", x&0xff, x >> 8);
-
-          unsigned int y = 0xc5de158a;
-          printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
-          y = llvm_bswap_i32(y);
-          printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
-
-          printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
-          printf("%d,%d\n", (int)llvm_cttz_i64(((int64_t)1) << 40), llvm_cttz_i32(1<<10));
-          printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1), llvm_ctpop_i32(0x3101));
-          printf("%d\n", (int)llvm_ctpop_i32(-594093059));
-
-          printf("%d\n", llvm_expect_i32(x % 27, 3));
-
-          int64_t a = 1;
-          a = __builtin_bswap64(a);
-          printf("%lld\n", a);
-
-          return 0;
-      }
-    '''
-    self.do_run(src, '''ef,c8
-c8,ef
-8a,15,de,c5
-c5,de,15,8a
-23,21
-40,10
-5,4
-22
-13
-72057594037927936
-''')
+    self.do_run_from_file(src, output)
 
   def test_bswap64(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
