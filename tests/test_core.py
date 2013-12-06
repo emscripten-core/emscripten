@@ -958,19 +958,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_funcs(self):
-      src = '''
-        #include <stdio.h>
-        int funcy(int x)
-        {
-          return x*9;
-        }
-        int main()
-        {
-          printf("*%d,%d*\\n", funcy(8), funcy(10));
-          return 0;
-        }
-      '''
-      self.do_run(src, '*72,90*')
+    test_path = path_from_root('tests', 'core', 'test_funcs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_structs(self):
       src = '''
