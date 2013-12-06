@@ -840,15 +840,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_llrint(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
-    src = r'''
-      #include <stdio.h>
-      #include <math.h>
-      int main() {
-        printf("%lld\n%lld\n%lld\n%lld\n", llrint(0.1), llrint(0.6), llrint(1.25), llrint(1099511627776.667));
-        return 0;
-      }
-    '''
-    self.do_run(src, '0\n1\n1\n1099511627777\n')
+
+    test_path = path_from_root('tests', 'core', 'test_llrint')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_getgep(self):
       # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
