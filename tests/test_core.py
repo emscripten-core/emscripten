@@ -10,15 +10,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return not ('i386-pc-linux-gnu' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'i386-pc-linux-gnu')
 
   def test_hello_world(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          printf("hello, world!\\n");
-          return 0;
-        }
-      '''
-      self.do_run(src, 'hello, world!')
+      test_path = path_from_root('tests', 'core', 'test_hello_world')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
       assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in open(self.in_dir('src.cpp.o.js')).read(), 'must not emit this unneeded internal thing'
 
