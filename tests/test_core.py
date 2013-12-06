@@ -946,34 +946,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_errar(self):
-      src = r'''
-        #include <stdio.h>
-        #include <errno.h>
-        #include <string.h>
+    test_path = path_from_root('tests', 'core', 'test_errar')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          char* err;
-          char buffer[200];
-
-          err = strerror(EDOM);
-          strerror_r(EWOULDBLOCK, buffer, 200);
-          printf("<%s>\n", err);
-          printf("<%s>\n", buffer);
-
-          printf("<%d>\n", strerror_r(EWOULDBLOCK, buffer, 0));
-          errno = 123;
-          printf("<%d>\n", errno);
-
-          return 0;
-        }
-        '''
-      expected = '''
-        <Math arg out of domain of func>
-        <No more processes>
-        <34>
-        <123>
-        '''
-      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_mainenv(self):
       src = '''
