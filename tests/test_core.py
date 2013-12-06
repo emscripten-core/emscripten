@@ -934,24 +934,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           assert ('var __str1;' in gen) == named
 
   def test_strcmp_uni(self):
-    src = '''
-      #include <stdio.h>
-      #include <string.h>
-      int main()
-      {
-        #define TEST(func) \
-        { \
-          char *word = "WORD"; \
-          char wordEntry[2] = { -61,-126 }; /* "Â"; */ \
-          int cmp = func(word, wordEntry, 2); \
-          printf("Compare value " #func " is %d\\n", cmp); \
-        }
-        TEST(strncmp);
-        TEST(strncasecmp);
-        TEST(memcmp);
-      }
-    '''
-    self.do_run(src, 'Compare value strncmp is -1\nCompare value strncasecmp is -1\nCompare value memcmp is -1\n')
+    test_path = path_from_root('tests', 'core', 'test_strcmp_uni')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_strndup(self):
       src = '''
