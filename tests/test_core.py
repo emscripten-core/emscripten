@@ -912,28 +912,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_stack(self):
-      Settings.INLINING_LIMIT = 50
+    Settings.INLINING_LIMIT = 50
 
-      src = '''
-        #include <stdio.h>
-        int test(int i) {
-          int x = 10;
-          if (i > 0) {
-            return test(i-1);
-          }
-          return int(&x); // both for the number, and forces x to not be nativized
-        }
-        int main(int argc, char **argv)
-        {
-          // We should get the same value for the first and last - stack has unwound
-          int x1 = test(argc - 2);
-          int x2 = test(100);
-          int x3 = test((argc - 2) / 4);
-          printf("*%d,%d*\\n", x3-x1, x2 != x1);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*0,1*')
+    test_path = path_from_root('tests', 'core', 'test_stack')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_strings(self):
       src = '''
