@@ -387,23 +387,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_zextneg(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i64_zextneg')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char *argv[])
-      {
-          uint8_t byte = 0x80;
-          uint16_t two = byte;
-          uint32_t four = byte;
-          uint64_t eight = byte;
-
-          printf("value: %d,%d,%d,%lld.\n", byte, two, four, eight);
-
-          return 0;
-      }
-    '''
-    self.do_run(src, 'value: 128,128,128,128.')
+    self.do_run_from_file(src, output)
 
   def test_i64_7z(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
