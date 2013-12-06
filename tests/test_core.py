@@ -808,22 +808,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_erf(self):
-      src = '''
-        #include <math.h>
-        #include <stdio.h>
-        int main()
-        {
-          printf("%1.6f, %1.6f, %1.6f, %1.6f, %1.6f, %1.6f\\n",
-                 erf(1.0),
-                 erf(3.0),
-                 erf(-1.0),
-                 erfc(1.0),
-                 erfc(3.0),
-                 erfc(-1.5));
-          return 0;
-        }
-      '''
-      self.do_run(src, '0.842701, 0.999978, -0.842701, 0.157299, 0.000022, 1.966105')
+      test_path = path_from_root('tests', 'core', 'test_erf')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_math_hyperbolic(self):
       src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
