@@ -437,45 +437,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     Settings.PRECISE_I32_MUL = 0 # we want semiprecise here
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i32_mul_semiprecise')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef unsigned int uint;
-
-      // from cube2, zlib licensed
-
-      #define N (624)
-      #define M (397)
-      #define K (0x9908B0DFU)
-
-      static uint state[N];
-      static int next = N;
-
-      void seedMT(uint seed)
-      {
-          state[0] = seed;
-          for(uint i = 1; i < N; i++) // if we do not do this precisely, at least we should coerce to int immediately, not wait
-              state[i] = seed = 1812433253U * (seed ^ (seed >> 30)) + i;
-          next = 0;
-      }
-
-      int main() {
-        seedMT(5497);
-        for (int i = 0; i < 10; i++) printf("%d: %u\n", i, state[i]);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0: 5497
-1: 2916432318
-2: 2502517762
-3: 3151524867
-4: 2323729668
-5: 2053478917
-6: 2409490438
-7: 848473607
-8: 691103752
-9: 3915535113
-''')
+    self.do_run_from_file(src, output)
 
   def test_i16_emcc_intrinsic(self):
     Settings.CORRECT_SIGNS = 1 # Relevant to this test
