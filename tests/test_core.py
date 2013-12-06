@@ -782,21 +782,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_zero_multiplication(self):
-    src = '''
-      #include <stdio.h>
-      int main(int argc, char * argv[]) {
-        int one = argc;
+    test_path = path_from_root('tests', 'core', 'test_zero_multiplication')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        printf("%d ", 0 * one);
-        printf("%d ", 0 * -one);
-        printf("%d ", -one * 0);
-        printf("%g ", 0.0 * one);
-        printf("%g ", 0.0 * -one);
-        printf("%g", -one * 0.0);
-        return 0;
-      }
-    '''
-    self.do_run(src, '0 0 0 0 -0 -0')
+    self.do_run_from_file(src, output)
 
   def test_isnan(self):
     src = r'''
