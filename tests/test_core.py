@@ -761,36 +761,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_floatvars(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_floatvars')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        // headers test, see issue #1013
-        #include<cfloat>
-        #include<cmath>
-
-        int main(int argc, char **argv)
-        {
-          float x = 1.234, y = 3.5, q = 0.00000001;
-          y *= 3;
-          int z = x < y;
-          printf("*%d,%d,%.1f,%d,%.4f,%.2f*\\n", z, int(y), y, (int)x, x, q);
-
-          printf("%.2f, %.2f, %.2f, %.2f\\n", fmin(0.5, 3.3), fmin(NAN, 3.3), fmax(0.5, 3.3), fmax(NAN, 3.3));
-
-          printf("small: %.10f\\n", argc * 0.000001);
-
-          /*
-          // Rounding behavior
-          float fs[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
-          double ds[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
-          for (int i = 0; i < 6; i++)
-            printf("*int(%.2f)=%d,%d*\\n", fs[i], int(fs[i]), int(ds[i]));
-          */
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\nsmall: 0.0000010000\n')
+    self.do_run_from_file(src, output)
 
   def test_fast_math(self):
     if self.emcc_args is None: return self.skip('requires emcc')
