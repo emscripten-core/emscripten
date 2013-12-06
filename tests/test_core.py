@@ -272,26 +272,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_cmp(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-      src = r'''
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_cmp')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        typedef long long int64;
-
-        bool compare(int64 val) {
-          return val == -12;
-        }
-
-        bool compare2(int64 val) {
-          return val < -12;
-        }
-
-        int main(int argc, char * argv[]) {
-            printf("*%d,%d,%d,%d,%d,%d*\n", argc, compare(argc-1-12), compare(1000+argc), compare2(argc-1-10), compare2(argc-1-14), compare2(argc+1000));
-            return 0;
-        }
-      '''
-
-      self.do_run(src, '*1,1,0,0,1,0*\n')
+      self.do_run_from_file(src, output)
 
   def test_i64_cmp2(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
