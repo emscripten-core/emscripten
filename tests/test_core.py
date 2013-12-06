@@ -467,57 +467,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_negative_zero(self):
-    src = r'''
-      #include <stdio.h>
-      #include <math.h>
+    test_path = path_from_root('tests', 'core', 'test_negative_zero')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        #define TEST(x, y) \
-          printf("%.2f, %.2f ==> %.2f\n", x, y, copysign(x, y));
-        TEST( 5.0f,  5.0f);
-        TEST( 5.0f, -5.0f);
-        TEST(-5.0f,  5.0f);
-        TEST(-5.0f, -5.0f);
-        TEST( 5.0f,  4.0f);
-        TEST( 5.0f, -4.0f);
-        TEST(-5.0f,  4.0f);
-        TEST(-5.0f, -4.0f);
-        TEST( 0.0f,  5.0f);
-        TEST( 0.0f, -5.0f);
-        TEST(-0.0f,  5.0f);
-        TEST(-0.0f, -5.0f);
-        TEST( 5.0f,  0.0f);
-        TEST( 5.0f, -0.0f);
-        TEST(-5.0f,  0.0f);
-        TEST(-5.0f, -0.0f);
-        TEST( 0.0f,  0.0f);
-        TEST( 0.0f, -0.0f);
-        TEST(-0.0f,  0.0f);
-        TEST(-0.0f, -0.0f);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''5.00, 5.00 ==> 5.00
-5.00, -5.00 ==> -5.00
--5.00, 5.00 ==> 5.00
--5.00, -5.00 ==> -5.00
-5.00, 4.00 ==> 5.00
-5.00, -4.00 ==> -5.00
--5.00, 4.00 ==> 5.00
--5.00, -4.00 ==> -5.00
-0.00, 5.00 ==> 0.00
-0.00, -5.00 ==> -0.00
--0.00, 5.00 ==> 0.00
--0.00, -5.00 ==> -0.00
-5.00, 0.00 ==> 5.00
-5.00, -0.00 ==> -5.00
--5.00, 0.00 ==> 5.00
--5.00, -0.00 ==> -5.00
-0.00, 0.00 ==> 0.00
-0.00, -0.00 ==> -0.00
--0.00, 0.00 ==> 0.00
--0.00, -0.00 ==> -0.00
-''')
+    self.do_run_from_file(src, output)
 
   def test_llvm_intrinsics(self):
     if self.emcc_args == None: return self.skip('needs ta2')
