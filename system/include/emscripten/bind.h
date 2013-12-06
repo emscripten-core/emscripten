@@ -1206,7 +1206,7 @@ namespace emscripten {
         _embind_register_constant(
             name,
             TypeID<const ConstantType&>::get(),
-            asGenericValue(BindingType<const ConstantType&>::toWireType(v)));
+            asGenericValue(BT::toWireType(v)));
     }
 }
 

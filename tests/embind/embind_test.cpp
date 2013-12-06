@@ -2215,8 +2215,20 @@ EMSCRIPTEN_BINDINGS(read_only_properties) {
         ;
 }
 
+struct StaticConstIntStruct {
+    static const int STATIC_CONST_INTEGER_VALUE_1;
+    static const int STATIC_CONST_INTEGER_VALUE_1000;
+};
+
+const int StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1 = 1;
+const int StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1000 = 1000;
+
 EMSCRIPTEN_BINDINGS(constants) {
     constant("INT_CONSTANT", 10);
+
+    constant("STATIC_CONST_INTEGER_VALUE_1", StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1);
+    constant("STATIC_CONST_INTEGER_VALUE_1000", StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1000);
+
     constant("STRING_CONSTANT", std::string("some string"));
 
     TupleVector tv(1, 2, 3, 4);
