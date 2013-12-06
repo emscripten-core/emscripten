@@ -456,6 +456,18 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
+def safe_ensure_dirs(dirname):
+  try:
+    os.makedirs(dirname)
+  except os.error, e:
+    # Ignore error for already existing dirname
+    if e.errno != errno.EEXIST:
+      raise e
+    # FIXME: Notice that this will result in a false positive,
+    # should the dirname be a file! There seems to no way to
+    # handle this atomically in Python 2.x.
+    # There is an additional option for Python 3.x, though.
+
 class Configuration:
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
@@ -482,7 +494,7 @@ class Configuration:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception, e:
-        logging.debug(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
+        logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -1634,18 +1646,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
-
-def safe_ensure_dirs(dirname):
-  try:
-    os.makedirs(dirname)
-  except os.error, e:
-    # Ignore error for already existing dirname
-    if e.errno != errno.EEXIST:
-      raise e
-    # FIXME: Notice that this will result in a false positive,
-    # should the dirname be a file! There seems to no way to
-    # handle this atomically in Python 2.x.
-    # There is an additional option for Python 3.x, though.
 
 import js_optimizer
 
