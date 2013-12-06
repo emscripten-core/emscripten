@@ -419,49 +419,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_varargs(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdint.h>
-      #include <stdarg.h>
+    test_path = path_from_root('tests', 'core', 'test_i64_varargs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int64_t ccv_cache_generate_signature(char *msg, int len, int64_t sig_start, ...) {
-        if (sig_start < 10123)
-          printf("%s\n", msg+len);
-        va_list v;
-        va_start(v, sig_start);
-        if (sig_start > 1413)
-          printf("%d\n", va_arg(v, int));
-        else
-          printf("nada\n");
-        va_end(v);
-        return len*sig_start*(msg[0]+1);
-      }
-
-      int main(int argc, char **argv)
-      {
-        for (int i = 0; i < argc; i++) {
-          int64_t x;
-          if (i % 123123 == 0)
-            x = ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 54.111);
-          else
-            x = ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 13);
-          printf("%lld\n", x);
-        }
-      };
-    '''
-    self.do_run(src, '''in/this.program
-nada
-1536
-a
-nada
-5760
-fl
-nada
-6592
-sdfasdfasdf
-nada
-7840
-''', 'waka fleefl asdfasdfasdfasdf'.split(' '))
+    self.do_run_from_file(src, output, 'waka fleefl asdfasdfasdfasdf'.split(' '))
 
   def test_i32_mul_precise(self):
     if self.emcc_args == None: return self.skip('needs ta2')
