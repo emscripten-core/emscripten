@@ -296,27 +296,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_umul(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-      src = r'''
-        #include <inttypes.h>
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_umul')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        typedef uint32_t UINT32;
-        typedef uint64_t UINT64;
-
-        int main() {
-        volatile UINT32 testu32a = 2375724032U;
-        UINT32 bigu32 = 0xffffffffU;
-        volatile UINT64 testu64a = 14746250828952703000U;
-
-        while ((UINT64)testu32a * (UINT64)bigu32 < testu64a) {
-          printf("testu64a is %llu\n", testu64a);
-          testu64a /= 2;
-        }
-
-        return 0;
-        }
-      '''
-      self.do_run(src, 'testu64a is 14746250828952703000\n')
+      self.do_run_from_file(src, output)
 
   def test_i64_precise(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
