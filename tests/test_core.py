@@ -403,19 +403,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_i16(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
-      int main(int argc, char ** argv){
-          int y=-133;
-          int64_t x= ((int64_t)((short)(y)))*(100 + argc);
-          if(x>0)
-              printf(">0\n");
-          else
-              printf("<=0\n");
-      }
-    '''
-    self.do_run(src, '<=0')
+    test_path = path_from_root('tests', 'core', 'test_i64_i16')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_i64_qdouble(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
