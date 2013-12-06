@@ -27,34 +27,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_sintvars(self):
       Settings.CORRECT_SIGNS = 1 # Relevant to this test
-      src = '''
-        #include <stdio.h>
-        struct S {
-          char *match_start;
-          char *strstart;
-        };
-        int main()
-        {
-          struct S _s;
-          struct S *s = &_s;
-          unsigned short int sh;
-
-          s->match_start = (char*)32522;
-          s->strstart = (char*)(32780);
-          printf("*%d,%d,%d*\\n", (int)s->strstart, (int)s->match_start, (int)(s->strstart - s->match_start));
-          sh = s->strstart - s->match_start;
-          printf("*%d,%d*\\n", sh, sh>>7);
-
-          s->match_start = (char*)32999;
-          s->strstart = (char*)(32780);
-          printf("*%d,%d,%d*\\n", (int)s->strstart, (int)s->match_start, (int)(s->strstart - s->match_start));
-          sh = s->strstart - s->match_start;
-          printf("*%d,%d*\\n", sh, sh>>7);
-        }
-      '''
-      output = '*32780,32522,258*\n*258,2*\n*32780,32999,-219*\n*65317,510*'
       Settings.CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
-      self.do_run(src, output, force_c=True)
+
+      test_path = path_from_root('tests', 'core', 'test_sintvars')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output, force_c=True)
 
   def test_i64(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
