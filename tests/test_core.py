@@ -819,45 +819,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, expected)
 
   def test_frexp(self):
-      src = '''
-        #include <stdio.h>
-        #include <math.h>
-        #include <assert.h>
+      test_path = path_from_root('tests', 'core', 'test_frexp')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        static const double tol=1e-16;
-
-        void test_value(double value)
-        {
-          int exponent;
-          double x=frexp(value, &exponent);
-          double expected=x*pow(2.0, exponent);
-
-          printf("%f=%f*2^%d\\n", value, x, exponent);
-
-          assert(fabs(expected-value)<tol);
-          assert(x==0 || (fabs(x)>=5e-1 && fabs(x)<1)); // x has a magnitude in the interval [1/2, 1)
-        }
-
-        int main()
-        {
-          test_value(0);
-          test_value(100.1);
-          test_value(-100.1);
-          test_value(.5);
-          test_value(-.5);
-          test_value(1-1e-16);
-          test_value(-(1-1e-16));
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '''0.000000=0.000000*2^0
-100.100000=0.782031*2^7
--100.100000=-0.782031*2^7
-0.500000=0.500000*2^0
--0.500000=-0.500000*2^0
-1.000000=1.000000*2^0
--1.000000=-1.000000*2^0''')
+      self.do_run_from_file(src, output)
 
   def test_rounding(self):
       src = '''
