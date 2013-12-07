@@ -2542,52 +2542,10 @@ The current type of b is: 9
   def test_getopt(self):
       if self.emcc_args is None: return self.skip('needs emcc for libc')
 
-      src = '''
-        #pragma clang diagnostic ignored "-Winvalid-pp-token"
-        #include <unistd.h>
-        #include <stdlib.h>
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_getopt')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int
-        main(int argc, char *argv[])
-        {
-           int flags, opt;
-           int nsecs, tfnd;
-
-           nsecs = 0;
-           tfnd = 0;
-           flags = 0;
-           while ((opt = getopt(argc, argv, "nt:")) != -1) {
-               switch (opt) {
-               case 'n':
-                   flags = 1;
-                   break;
-               case 't':
-                   nsecs = atoi(optarg);
-                   tfnd = 1;
-                   break;
-               default: /* '?' */
-                   fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\\n",
-                           argv[0]);
-                   exit(EXIT_FAILURE);
-               }
-           }
-
-           printf("flags=%d; tfnd=%d; optind=%d\\n", flags, tfnd, optind);
-
-           if (optind >= argc) {
-               fprintf(stderr, "Expected argument after options\\n");
-               exit(EXIT_FAILURE);
-           }
-
-           printf("name argument = %s\\n", argv[optind]);
-
-           /* Other code omitted */
-
-           exit(EXIT_SUCCESS);
-        }
-      '''
-      self.do_run(src, 'flags=1; tfnd=1; optind=4\nname argument = foobar', args=['-t', '12', '-n', 'foobar'])
+      self.do_run_from_file(src, output, args=['-t', '12', '-n', 'foobar'])
 
   def test_getopt_long(self):
       if self.emcc_args is None: return self.skip('needs emcc for libc')
