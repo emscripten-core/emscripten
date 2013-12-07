@@ -4184,31 +4184,10 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_uname(self):
-    src = r'''
-      #include <stdio.h>
-      #include <sys/utsname.h>
+    test_path = path_from_root('tests', 'core', 'test_uname')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        struct utsname u;
-        printf("ret: %d\n", uname(&u));
-        printf("sysname: %s\n", u.sysname);
-        printf("nodename: %s\n", u.nodename);
-        printf("release: %s\n", u.release);
-        printf("version: %s\n", u.version);
-        printf("machine: %s\n", u.machine);
-        printf("invalid: %d\n", uname(0));
-        return 0;
-      }
-      '''
-    expected = '''
-      ret: 0
-      sysname: Emscripten
-      nodename: emscripten
-      release: 1.0
-      version: #1
-      machine: x86-JS
-    '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
