@@ -3759,16 +3759,10 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_hex(self):
-    src = r'''
-      #include "stdio.h"
+    test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(){
-        unsigned int a, b;
-        sscanf("0x12AB 12AB", "%x %x", &a, &b);
-        printf("%d %d\n", a, b);
-      }
-    '''
-    self.do_run(src, '4779 4779')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_float(self):
     src = r'''
