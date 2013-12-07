@@ -3574,20 +3574,10 @@ ok
     self.do_run(src, expected)
 
   def test_transtrcase(self):
-    src = '''
-      #include <stdio.h>
-      #include <string.h>
-      int main()  {
-        char szToupr[] = "hello, ";
-        char szTolwr[] = "EMSCRIPTEN";
-        strupr(szToupr);
-        strlwr(szTolwr);
-        printf(szToupr);
-        printf(szTolwr);
-        return 0;
-      }
-      '''
-    self.do_run(src, 'HELLO, emscripten')
+    test_path = path_from_root('tests', 'core', 'test_transtrcase')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_printf(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
