@@ -3067,30 +3067,6 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
     Settings.DLOPEN_SUPPORT = 1
 
-    src = r'''
-#include <stdio.h>
-#include <dlfcn.h>
-#include <emscripten.h>
-
-int EMSCRIPTEN_KEEPALIVE global = 123;
-
-extern "C" EMSCRIPTEN_KEEPALIVE void foo(int x) {
-printf("%d\n", x);
-}
-
-extern "C" EMSCRIPTEN_KEEPALIVE void repeatable() {
-void* self = dlopen(NULL, RTLD_LAZY);
-int* global_ptr = (int*)dlsym(self, "global");
-void (*foo_ptr)(int) = (void (*)(int))dlsym(self, "foo");
-foo_ptr(*global_ptr);
-dlclose(self);
-}
-
-int main() {
-repeatable();
-repeatable();
-return 0;
-}'''
     def post(filename):
       with open(filename) as f:
         for line in f:
@@ -3102,8 +3078,11 @@ return 0;
       table = table[table.find('{'):table.rfind('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
       assert table.count(',') <= 4
-    self.do_run(src, '123\n123', post_build=(None, post))
 
+    test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output, post_build=(None, post))
 
   def test_dlfcn_unique_sig(self):
     if not self.can_dlfcn(): return
