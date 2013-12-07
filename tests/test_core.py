@@ -4006,20 +4006,10 @@ def process(filename):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
 
-    src = r'''
-      #include <stdio.h>
-      #include <emscripten.h>
+    test_path = path_from_root('tests', 'core', 'test_utf')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char *c = "μ†ℱ ╋ℯ╳╋ 😇";
-        printf("%d %d %d %d %s\n", c[0]&0xff, c[1]&0xff, c[2]&0xff, c[3]&0xff, c);
-        emscripten_run_script(
-          "cheez = _malloc(100);"
-          "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez);"
-          "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, 'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, 'i8')&0xff, ]);");
-      }
-    '''
-    self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋ 😇\nμ†ℱ ╋ℯ╳╋ 😇,206,188,226,128\n');
+    self.do_run_from_file(src, output)
 
   def test_utf32(self):
     if self.emcc_args is None: return self.skip('need libc for wcslen()')
