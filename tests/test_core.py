@@ -1409,14 +1409,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_isdigit_l(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
 
-      src = '''
-        #include <iostream>
-        int main() {
-          using namespace std;
-          use_facet<num_put<char> >(cout.getloc()).put(cout, cout, '0', 3.14159265);
-        }
-      '''
-      self.do_run(src, '3.14159')
+      test_path = path_from_root('tests', 'core', 'test_isdigit_l')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_iswdigit(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
