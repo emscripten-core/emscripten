@@ -804,18 +804,19 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   if DEBUG: logging.debug('emscript: js compiler glue')
 
+  # Settings changes
+  assert settings['TARGET_LE32'] == 1
+  settings['TARGET_LE32'] = 2
+  if 'i64Add' in metadata['declares']: # TODO: others, once we split them up
+    settings['PRECISE_I64_MATH'] = 2
+    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldsi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+
   # Integrate info from backend
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
       map(lambda x: x[1:], metadata['implementedFunctions'])
     )
   ) + map(lambda x: x[1:], metadata['externs'])
-
-  # Settings changes
-  assert settings['TARGET_LE32'] == 1
-  settings['TARGET_LE32'] = 2
-  if '_i64Add' in metadata['declares']: # TODO: others, once we split them up
-    settings['PRECISE_I64_MATH'] = 2
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
@@ -887,18 +888,14 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   #if DEBUG: outfile.write('// funcs\n')
 
   if settings.get('ASM_JS'):
-    #print >> sys.stderr, '<<<<<<', post, '>>>>>>'
-    post_funcs = '' #, post_rest = post.split('// EMSCRIPTEN_END_FUNCS\n')
-    #post = post_rest
-
     # Move preAsms to their right place
     def move_preasm(m):
       contents = m.groups(0)[0]
       outfile.write(contents + '\n')
       return ''
-    post_funcs = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), post_funcs)
+    funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
 
-    funcs_js += ['\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n']
+    funcs_js += ['\n// EMSCRIPTEN_END_FUNCS\n']
 
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
