@@ -3747,23 +3747,10 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_skip(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
 
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_sscanf_skip')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(){
-          int val1;
-          printf("%d\n", sscanf("10 20 30 40", "%*lld %*d %d", &val1));
-          printf("%d\n", val1);
-
-          int64_t large, val2;
-          printf("%d\n", sscanf("1000000 -1125899906842620 -123 -1073741823", "%lld %*lld %ld %*d", &large, &val2));
-          printf("%lld,%d\n", large, val2);
-
-          return 0;
-      }
-    '''
-    self.do_run(src, '1\n30\n2\n1000000,-123\n')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_caps(self):
     src = r'''
