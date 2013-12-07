@@ -1401,32 +1401,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_inherit(self):
-      src = '''
-        #include <stdio.h>
-        struct Parent {
-          int x1, x2;
-        };
-        struct Child : Parent {
-          int y;
-        };
-        int main()
-        {
-          Parent a;
-          a.x1 = 50;
-          a.x2 = 87;
-          Child b;
-          b.x1 = 78;
-          b.x2 = 550;
-          b.y = 101;
-          Child* c = (Child*)&a;
-          c->x1 ++;
-          c = &b;
-          c->y --;
-          printf("*%d,%d,%d,%d,%d,%d,%d*\\n", a.x1, a.x2, b.x1, b.x2, b.y, c->x1, c->x2);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*51,87,78,550,100,78,550*')
+    test_path = path_from_root('tests', 'core', 'test_inherit')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_isdigit_l(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
