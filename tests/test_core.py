@@ -2468,53 +2468,10 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strptime_days(self):
-    src = r'''
-      #include <time.h>
-      #include <stdio.h>
-      #include <string.h>
+    test_path = path_from_root('tests', 'core', 'test_strptime_days')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      static const struct {
-        const char *input;
-        const char *format;
-      } day_tests[] = {
-        { "2000-01-01", "%Y-%m-%d"},
-        { "03/03/00", "%D"},
-        { "9/9/99", "%x"},
-        { "19990502123412", "%Y%m%d%H%M%S"},
-        { "2001 20 Mon", "%Y %U %a"},
-        { "2006 4 Fri", "%Y %U %a"},
-        { "2001 21 Mon", "%Y %W %a"},
-        { "2013 29 Wed", "%Y %W %a"},
-        { "2000-01-01 08:12:21 AM", "%Y-%m-%d %I:%M:%S %p"},
-        { "2000-01-01 08:12:21 PM", "%Y-%m-%d %I:%M:%S %p"},
-        { "2001 17 Tue", "%Y %U %a"},
-        { "2001 8 Thursday", "%Y %W %a"},
-      };
-
-      int main() {  
-        struct tm tm;
-
-        for (int i = 0; i < sizeof (day_tests) / sizeof (day_tests[0]); ++i) {
-          memset (&tm, '\0', sizeof (tm));
-          char *ptr = strptime(day_tests[i].input, day_tests[i].format, &tm);
-
-          printf("%s: %d/%d/%d (%dth DoW, %dth DoY)\n", (ptr != NULL && *ptr=='\0') ? "OK" : "ERR", tm.tm_mon+1, tm.tm_mday, 1900+tm.tm_year, tm.tm_wday, tm.tm_yday);
-        }
-      }
-    '''
-    self.do_run(src, 'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
-                     'OK: 3/3/2000 (5th DoW, 62th DoY)\n'\
-                     'OK: 9/9/1999 (4th DoW, 251th DoY)\n'\
-                     'OK: 5/2/1999 (0th DoW, 121th DoY)\n'\
-                     'OK: 5/21/2001 (1th DoW, 140th DoY)\n'\
-                     'OK: 1/27/2006 (5th DoW, 26th DoY)\n'\
-                     'OK: 5/21/2001 (1th DoW, 140th DoY)\n'\
-                     'OK: 7/24/2013 (3th DoW, 204th DoY)\n'\
-                     'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
-                     'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
-                     'OK: 5/1/2001 (2th DoW, 120th DoY)\n'\
-                     'OK: 2/22/2001 (4th DoW, 52th DoY)\n'\
-    )
+    self.do_run_from_file(src, output)
 
   def test_strptime_reentrant(self):
     src=r'''
