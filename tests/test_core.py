@@ -1713,22 +1713,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 ''', ['2'], force_c=True)
 
   def test_array2(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_array2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        static const double grid[4][2] = {
-         {-3/3.,-1/3.},{+1/3.,-3/3.},
-         {-1/3.,+3/3.},{+3/3.,+1/3.}
-        };
-
-        int main() {
-          for (int i = 0; i < 4; i++)
-            printf("%d:%.2f,%.2f ", i, grid[i][0], grid[i][1]);
-          printf("\\n");
-          return 0;
-        }
-        '''
-      self.do_run(src, '0:-1.00,-0.33 1:0.33,-1.00 2:-0.33,1.00 3:1.00,0.33')
+    self.do_run_from_file(src, output)
 
   def test_array2b(self):
       src = '''
