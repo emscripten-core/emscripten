@@ -2418,24 +2418,10 @@ The current type of b is: 9
 
   def test_atexit(self):
     # Confirms they are called in reverse order
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_atexit')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      static void cleanA() {
-        printf("A");
-      }
-      static void cleanB() {
-        printf("B");
-      }
-
-      int main() {
-        atexit(cleanA);
-        atexit(cleanB);
-        return 0;
-      }
-      '''
-    self.do_run(src, 'BA')
+    self.do_run_from_file(src, output)
 
   def test_pthread_specific(self):
     if self.emcc_args is None: return self.skip('requires emcc')
