@@ -4226,28 +4226,10 @@ PORT: 3979
     self.do_run_from_file(src, output)
 
   def test_atomic(self):
-    src = '''
-      #include <stdio.h>
-      int main() {
-        int x = 10;
-        int y = __sync_add_and_fetch(&x, 5);
-        printf("*%d,%d*\\n", x, y);
-        x = 10;
-        y = __sync_fetch_and_add(&x, 5);
-        printf("*%d,%d*\\n", x, y);
-        x = 10;
-        y = __sync_lock_test_and_set(&x, 6);
-        printf("*%d,%d*\\n", x, y);
-        x = 10;
-        y = __sync_bool_compare_and_swap(&x, 9, 7);
-        printf("*%d,%d*\\n", x, y);
-        y = __sync_bool_compare_and_swap(&x, 10, 7);
-        printf("*%d,%d*\\n", x, y);
-        return 0;
-      }
-    '''
+    test_path = path_from_root('tests', 'core', 'test_atomic')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-    self.do_run(src, '*15,15*\n*15,10*\n*6,10*\n*10,0*\n*7,1*')
+    self.do_run_from_file(src, output)
 
   def test_phiundef(self):
     src = r'''
