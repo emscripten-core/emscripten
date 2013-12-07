@@ -2444,22 +2444,10 @@ The current type of b is: 9
 
   def test_timeb(self):
     # Confirms they are called in reverse order
-    src = r'''
-      #include <stdio.h>
-      #include <assert.h>
-      #include <sys/timeb.h>
+    test_path = path_from_root('tests', 'core', 'test_timeb')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        timeb tb;
-        tb.timezone = 1;
-        printf("*%d\n", ftime(&tb));
-        assert(tb.time > 10000);
-        assert(tb.timezone == 0);
-        assert(tb.dstflag == 0);
-        return 0;
-      }
-      '''
-    self.do_run(src, '*0\n')
+    self.do_run_from_file(src, output)
 
   def test_time_c(self):
     src = r'''
