@@ -1858,23 +1858,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_emscripten_api(self):
       #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
-      src = r'''
-        #include <stdio.h>
-        #include "emscripten.h"
-
-        extern "C" {
-          void save_me_aimee() { printf("mann\n"); }
-        }
-
-        int main() {
-          // EMSCRIPTEN_COMMENT("hello from the source");
-          emscripten_run_script("Module.print('hello world' + '!')");
-          printf("*%d*\n", emscripten_run_script_int("5*20"));
-          printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
-          emscripten_run_script("Module['_save_me_aimee']()");
-          return 0;
-        }
-        '''
+      test_path = path_from_root('tests', 'core', 'test_emscripten_api')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
       check = '''
 def process(filename):
@@ -1882,12 +1867,12 @@ def process(filename):
   # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 '''
       Settings.EXPORTED_FUNCTIONS = ['_main', '_save_me_aimee']
-      self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
+      self.do_run_from_file(src, output, post_build=check)
 
       # test EXPORT_ALL
       Settings.EXPORTED_FUNCTIONS = []
       Settings.EXPORT_ALL = 1
-      self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
+      self.do_run_from_file(src, output, post_build=check)
 
   def test_emscripten_get_now(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
