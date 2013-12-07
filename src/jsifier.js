@@ -28,7 +28,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   if (mainPass) {
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
-    if (phase == 'pre') {
+    if (phase == 'pre' || phase == 'glue') {
       // We will start to print out the data, but must do so carefully - we are
       // dealing with potentially *huge* strings. Convenient replacements and
       // manipulations may create in-memory copies, and we may OOM.
@@ -72,7 +72,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     LibraryManager.load();
     //B.stop('jsifier-libload');
 
-    if (phase == 'pre') {
+    if (phase == 'pre' || phase == 'glue') {
       var libFuncsToInclude;
       if (INCLUDE_FULL_LIBRARY) {
         assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
@@ -474,7 +474,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
       if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
-      if ((!ASM_JS || phase == 'pre') &&
+      if ((!ASM_JS || phase == 'pre' || phase == 'glue') &&
           (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
         contentText += '\nModule["' + ident + '"] = ' + ident + ';';
       }
@@ -1373,8 +1373,9 @@ function JSify(data, functionsOnly, givenFunctions) {
   function insertelementHandler(item) {
     var base = getVectorBaseType(item.type);
     var ident = ensureVector(item.ident, base);
+    var laneOp = ((base == 'float') ? 'SIMD.float32x4.with' : 'SIMD.int32x4.with');
     //return ident + '.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + finalizeLLVMParameter(item.value) + ')';
-    return 'SIMD.with' + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + ident + ',' + finalizeLLVMParameter(item.value) + ')';
+    return laneOp + SIMDLane[finalizeLLVMParameter(item.index)] + '(' + ident + ',' + finalizeLLVMParameter(item.value) + ')';
   }
   function extractelementHandler(item) {
     var base = getVectorBaseType(item.type);
@@ -1603,6 +1604,15 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
+    // we alias llvm memset and such to normal memset. The target has a return value, while the original
+    // does not, so we need to fix that for the actual call target
+    if (ASM_JS) {
+      var sig = LibraryManager.library[simpleIdent + '__sig'];
+      if (sig && sig[0] !== 'v') {
+        returnType = Functions.getSignatureType(sig[0]);
+      }
+    }
+
     if (byPointer) {
       var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
@@ -1704,7 +1714,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     //
 
     if (!mainPass) {
-      if (phase == 'pre' && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
+      if ((phase == 'pre' || phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
@@ -1719,7 +1729,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
 
-      if (phase == 'pre') {
+      if (phase == 'pre' || phase == 'glue') {
         if (memoryInitialization.length > 0) {
           // apply postsets directly into the big memory initialization
           itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
@@ -1742,15 +1752,17 @@ function JSify(data, functionsOnly, givenFunctions) {
           });
           // write out the singleton big memory initialization value
           print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
-        } else {
+        } else if (phase !== 'glue') {
           print('/* no memory initializer */'); // test purposes
         }
 
-        // Define postsets. These will be run in ATINIT, right before global initializers (which might need the postsets). We cannot
-        // run them now because the memory initializer might not have been applied yet.
-        print('function runPostSets() {\n');
-        print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
-        print('}\n');
+        if (phase !== 'glue') {
+          // Define postsets. These will be run in ATINIT, right before global initializers (which might need the postsets). We cannot
+          // run them now because the memory initializer might not have been applied yet.
+          print('function runPostSets() {\n');
+          print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
+          print('}\n');
+        }
 
         if (USE_TYPED_ARRAYS == 2) {
           if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
@@ -1780,7 +1792,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     // Print out global variables and postsets TODO: batching
-    if (phase == 'pre') {
+    if (phase == 'pre' || phase == 'glue') {
       var legalizedI64sDefault = legalizedI64s;
       legalizedI64s = false;
 

@@ -524,6 +524,27 @@ function intertyper(lines, sidePass, baseLineNums) {
             }
           });
         }
+      } else if (ident == '_llvm_used') {
+        var chunk = item.tokens[1].tokens;
+        var funcs = [];
+        var part = [];
+
+        for (var i = 0; i < chunk.length; i++) {
+          if (chunk[i].text == ',') {
+            var call = parseLLVMFunctionCall(part);
+            EXPORTED_FUNCTIONS[call.ident] = 0;
+            part = [];
+          } else {
+            part.push(chunk[i]);
+          }
+        }
+        if (part.length > 0) {
+          var call = parseLLVMFunctionCall(part);
+          EXPORTED_FUNCTIONS[call.ident] = 0;
+        }
+
+        ret.type = 'i32';
+        ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
       } else if (!external) {
         if (item.tokens[1] && item.tokens[1].text != ';') {
           if (item.tokens[1].text == 'c') {
@@ -538,6 +559,7 @@ function intertyper(lines, sidePass, baseLineNums) {
           ret.value = { intertype: 'value', ident: '0', value: '0', type: ret.type };
         }
       }
+
       return ret;
     }
   }
@@ -616,7 +638,8 @@ function intertyper(lines, sidePass, baseLineNums) {
   // 'bitcast'
   function bitcastHandler(item) {
     item.intertype = 'bitcast';
-    item.type = item.tokens[4].text; // The final type
+    var last = getTokenIndexByText(item.tokens, ';');
+    item.type = item.tokens[Math.min(last, item.tokens.length-1)].text; // The final type
     Types.needAnalysis[item.type] = 0;
     var to = getTokenIndexByText(item.tokens, 'to');
     item.params = [parseLLVMSegment(item.tokens.slice(1, to))];

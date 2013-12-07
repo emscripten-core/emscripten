@@ -33,6 +33,14 @@ int main(void)
     printf("pthread_getspecific = %d\n", *data2);
     assert(*data2 == 123);
 
+    rv = pthread_setspecific(key, NULL);
+    printf("valid pthread_setspecific for value NULL = %d\n", rv);
+    assert(rv == 0);
+
+    data2 = pthread_getspecific(key);
+    assert(data2 == NULL);
+    printf("pthread_getspecific = %p\n", data2);
+
     rv = pthread_key_create(&key, &destr_function);
     data2 = pthread_getspecific(key);
     printf("pthread_getspecific after key recreate = %p\n", data2);

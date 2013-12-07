@@ -453,7 +453,13 @@ if has_preloaded:
   package_uuid = uuid.uuid4();
   remote_package_name = os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
   code += r'''
-    var PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
+    var PACKAGE_PATH;
+    if (typeof window === 'object') {
+      PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
+    } else {
+      // worker
+      PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
+    }
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = '%s';
     var PACKAGE_UUID = '%s';

@@ -23,7 +23,8 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // Changing this from the default of 4 is deprecated.
 
 var TARGET_X86 = 0;  // For i386-pc-linux-gnu
-var TARGET_LE32 = 1; // For le32-unknown-nacl
+var TARGET_LE32 = 1; // For le32-unknown-nacl. 1 is normal, 2 is for the fastcomp llvm
+                     // backend using pnacl abi simplification
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
@@ -223,6 +224,10 @@ var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL e
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL features. Incomplete but useful
                              // in some cases, see https://github.com/kripken/emscripten/wiki/OpenGL-support
+var GL_FFP_ONLY = 0; // If you specified LEGACY_GL_EMULATION = 1 and only use fixed function pipeline in your code,
+                     // you can also set this to 1 to signal the GL emulation layer that it can perform extra
+                     // optimizations by knowing that the user code does not use shaders at all. If 
+                     // LEGACY_GL_EMULATION = 0, this setting has no effect.
 
 var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain library for decoding images, allowing
                    // decoding of images without using the browser's built-in decoders. The benefit is that this

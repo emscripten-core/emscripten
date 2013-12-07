@@ -9,8 +9,32 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current trunk code
 ------------------
- - To see a list of commits that in the active development branch 'incoming', which have not yet been packaged in a release, see
-    https://github.com/kripken/emscripten/compare/1.7.5...incoming
+ - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
+    https://github.com/kripken/emscripten/compare/1.7.8...incoming
+
+v1.7.8: 11/19/2013
+------------------
+ - Fixed an issue with -MMD compilation parameter.
+ - Added EM_ASM_INT() and EM_ASM_DOUBLE() macros. For more information, read https://groups.google.com/forum/#!topic/emscripten-discuss/BFGTJPCgO6Y .
+ - Fixed --split parameter to also work on Windows.
+ - Fixed issues with BSD sockets accept() call.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.7...1.7.8
+
+v1.7.7: 11/16/2013
+------------------
+ - Improve SDL audio buffer queue timing support.
+ - Improved default precision of clock_gettime even when not using CLOCK_REALTIME.
+ - Optimize and fix issues with LLVM IR processing.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.6...1.7.7
+
+v1.7.6: 11/15/2013
+------------------
+ - Added regex implementation from musl libc.
+ - The command line parameter -s DEAD_FUNCTIONS=[] can now be used to explicitly kill functions coming from built-in library_xx.js.
+ - Improved EGL support and GLES2 spec conformance.
+ - Reverted -s TOTAL_MEMORY=x to require pow2 values, instead of the relaxed 'multiples of 16MB'. This is because the relaxed rule is released only in Firefox 26 which which is currently in Beta and ships on the week of December 10th (currently in Beta). As of writing, current stable Firefox 25 does not yet support these.
+ - Adjusted the default linker behavior to warn about all missing symbols, instead of silently ignoring them. Use -s WARN_ON_UNDEFINED_SYMBOLS=0 to suppress these warnings if necessary.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.5...1.7.6
 
 v1.7.5: 11/13/2013
 ------------------

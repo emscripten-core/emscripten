@@ -715,7 +715,7 @@ var LibrarySDL = {
 
     // Joystick helper methods and state
 
-    joystickEventState: 0,
+    joystickEventState: 1, // SDL_ENABLE
     lastJoystickState: {}, // Map from SDL_Joystick* to their last known state. Required to determine if a change has occurred.
     // Maps Joystick names to pointers. Allows us to avoid reallocating memory for
     // joystick names each time this function is called.
@@ -1245,6 +1245,11 @@ var LibrarySDL = {
       dstData.locked--; // The surface is not actually locked in this hack
     }
     return 0;
+  },
+
+  SDL_LowerBlit__deps: ['SDL_UpperBlit'],
+  SDL_LowerBlit: function(src, srcrect, dst, dstrect) {
+    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
   },
 
   SDL_FillRect: function(surf, rect, color) {
@@ -1910,23 +1915,19 @@ var LibrarySDL = {
     var filename = '';
     var audio;
     var bytes;
-    
+
     if (rwops.filename !== undefined) {
       filename = PATH.resolve(rwops.filename);
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
         if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
         Runtime.warnOnce('Cannot find preloaded audio ' + filename);
-        
+
         // see if we can read the file-contents from the in-memory FS
-        var fileObject = FS.findObject(filename);
-        
-        if (fileObject === null) Module.printErr('Couldn\'t find file for: ' + filename);
-        
-        // We found the file. Load the contents
-        if (fileObject && !fileObject.isFolder && fileObject.read) {
-          bytes = fileObject.contents;
-        } else {
+        try {
+          bytes = FS.readFile(filename);
+        } catch (e) {
+          Module.printErr('Couldn\'t find file for: ' + filename);
           return 0;
         }
       }
@@ -1941,16 +1942,16 @@ var LibrarySDL = {
     else {
       return 0;
     }
-    
+
     // Here, we didn't find a preloaded audio but we either were passed a filepath for
     // which we loaded bytes, or we were passed some bytes
     if (audio === undefined && bytes) {
-      var blob = new Blob([new Uint8Array(bytes)], {type: rwops.mimetype});
+      var blob = new Blob([bytes], {type: rwops.mimetype});
       var url = URL.createObjectURL(blob);
       audio = new Audio();
       audio.src = url;
     }
-    
+
     var id = SDL.audios.length;
     // Keep the loaded audio in the audio arrays, ready for playback
     SDL.audios.push({

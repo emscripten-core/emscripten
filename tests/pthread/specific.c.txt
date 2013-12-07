@@ -1,6 +1,8 @@
 pthread_key_create = 0
 pthread_setspecific = 0
 pthread_getspecific = 123
+valid pthread_setspecific for value NULL = 0
+pthread_getspecific = (nil)
 pthread_getspecific after key recreate = (nil)
 pthread_key_delete = 0
 pthread_key_delete repeated = 22

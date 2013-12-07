@@ -6,7 +6,12 @@
 #include <list>
 #include <stack>
 
+#if EMSCRIPTEN
 #include "ministring.h"
+#else
+#include <string>
+typedef std::string ministring;
+#endif
 
 template <class T, class U> bool contains(const T& container, const U& contained) {
   return container.find(contained) != container.end();
@@ -66,11 +71,7 @@ static int AsmJS = 0;
 
 // Indenter
 
-#if EMSCRIPTEN
 int Indenter::CurrIndent = 1;
-#else
-int Indenter::CurrIndent = 0;
-#endif
 
 // Branch
 

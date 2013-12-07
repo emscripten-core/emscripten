@@ -23,6 +23,7 @@ LibraryManager.library = {
   stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
   stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
+  __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
 
   // ==========================================================================
   // dirent.h
@@ -471,6 +472,11 @@ LibraryManager.library = {
   mkstemp: function(template) {
     return _creat(_mktemp(template), 0600);
   },
+  mkdtemp__deps: ['mktemp', 'mkdir'],
+  mkdtemp: function(template) {
+    template = _mktemp(template);
+    return (_mkdir(template, 0700) === 0) ? template : 0;
+  },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fcntl: function(fildes, cmd, varargs, dup2) {
     // int fcntl(int fildes, int cmd, ...);
@@ -535,7 +541,7 @@ LibraryManager.library = {
     // Advise as much as you wish. We don't care.
     return 0;
   },
-  posix_madvise: 'posix_fadvise',
+  posix_madvise: function(){ return 0 }, // ditto as fadvise
   posix_fallocate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   posix_fallocate: function(fd, offset, len) {
     // int posix_fallocate(int fd, off_t offset, off_t len);
@@ -1855,7 +1861,11 @@ LibraryManager.library = {
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
       if (type === 'double') {
+#if TARGET_LE32 == 2
+        ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true, 4) }}};
+#else
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
+#endif
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
 
@@ -1876,7 +1886,11 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
+#if TARGET_LE32 == 2
+      argIndex += Runtime.getNativeFieldSize(type);
+#else
       argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
+#endif
       return ret;
     }
 
@@ -2505,6 +2519,10 @@ LibraryManager.library = {
     }
     var bytesRead = 0;
     var streamObj = FS.getStream(stream);
+    if (!streamObj) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return 0;
+    }
     while (streamObj.ungotten.length && bytesToRead > 0) {
       {{{ makeSetValue('ptr++', '0', 'streamObj.ungotten.pop()', 'i8') }}}
       bytesToRead--;
@@ -3522,13 +3540,15 @@ LibraryManager.library = {
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
 
-  memmove__sig: 'viii',
+  memmove__sig: 'iiii',
   memmove__asm: true,
   memmove__deps: ['memcpy'],
   memmove: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
+    var ret = 0;
     if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
       // Unlikely case: Copy backwards in a safe manner
+      ret = dest;
       src = (src + num)|0;
       dest = (dest + num)|0;
       while ((num|0) > 0) {
@@ -3537,9 +3557,11 @@ LibraryManager.library = {
         num = (num - 1)|0;
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       }
+      dest = ret;
     } else {
       _memcpy(dest, src, num) | 0;
     }
+    return dest | 0;
   },
   llvm_memmove_i32: 'memmove',
   llvm_memmove_i64: 'memmove',
@@ -3556,7 +3578,7 @@ LibraryManager.library = {
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
   },
-  memset__sig: 'viii',
+  memset__sig: 'iiii',
   memset__asm: true,
   memset: function(ptr, value, num) {
 #if USE_TYPED_ARRAYS == 2
@@ -3585,8 +3607,10 @@ LibraryManager.library = {
       {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
       ptr = (ptr+1)|0;
     }
+    return (ptr-num)|0;
 #else
     {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}};
+    return ptr;
 #endif
   },
   llvm_memset_i32: 'memset',
@@ -4656,6 +4680,10 @@ LibraryManager.library = {
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
   llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
+
+  // llvm-nacl
+
+  llvm_nacl_atomic_store_i32__inline: true,
 
   // ==========================================================================
   // llvm-mono integration
@@ -6955,7 +6983,7 @@ LibraryManager.library = {
 
   pthread_setspecific__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
   pthread_setspecific: function(key, value) {
-    if (value == 0) {
+    if (!(key in PTHREAD_SPECIFIC)) {
       return ERRNO_CODES.EINVAL;
     }
     PTHREAD_SPECIFIC[key] = value;
@@ -8724,8 +8752,72 @@ LibraryManager.library = {
   // emscripten vector ops
   //============================
 
-  emscripten_float32x4_signmask__inline: function(x) {
-    return x + '.signMask()';
+  emscripten_float32x4_signmask__inline: function(a) {
+    return 'SIMD.float32x4.bitsToInt32x4(' + a + ').signMask';
+  },
+  
+  emscripten_float32x4_min__inline: function(a, b) {
+    return 'SIMD.float32x4.min(' + a + ', ' + b + ')';
+  },
+  
+  emscripten_float32x4_max__inline: function(a, b) {
+    return 'SIMD.float32x4.max(' + a + ', ' + b + ')';
+  },
+  
+  emscripten_float32x4_sqrt__inline: function(a) {
+    return 'SIMD.float32x4.sqrt(' + a + ')';
+  },
+  
+  emscripten_float32x4_lessThan__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.lessThan(' + a + ', ' + b + '))';
+  },
+  
+  emscripten_float32x4_lessThanOrEqual__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.lessThanOrEqual(' + a + ', ' + b + '))';
+  },
+  
+  emscripten_float32x4_equal__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.equal(' + a + ', ' + b + '))';
+  },
+  
+  emscripten_float32x4_greaterThanOrEqual__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.greaterThanOrEqual(' + a + ', ' + b + '))';
+  },
+  
+  emscripten_float32x4_greaterThan__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.greaterThan(' + a + ', ' + b + '))';
+  },
+  
+  emscripten_float32x4_and__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.and(SIMD.float32x4.bitsToInt32x4(' + a + '), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+  },
+  
+  emscripten_float32x4_andNot__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.and(SIMD.int32x4.not(SIMD.float32x4.bitsToInt32x4(' + a + ')), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+  },
+  
+  emscripten_float32x4_or__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.or(SIMD.float32x4.bitsToInt32x4(' + a + '), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+  },
+  
+  emscripten_float32x4_xor__inline: function(a, b) {
+    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.xor(SIMD.float32x4.bitsToInt32x4(' + a + '), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+  },
+  
+  emscripten_int32x4_bitsToFloat32x4__inline: function(a) {
+      return 'SIMD.int32x4.bitsToFloat32x4(' + a + ')';
+  },
+  
+  emscripten_int32x4_toFloat32x4__inline: function(a) {
+      return 'SIMD.int32x4.toFloat32x4(' + a + ')';
+  },
+  
+  emscripten_float32x4_bitsToInt32x4__inline: function(a) {
+      return 'SIMD.float32x4.bitsToInt32x4(' + a + ')';
+  },
+  
+  emscripten_float32x4_toInt32x4__inline: function(a) {
+      return 'SIMD.float32x4.toInt32x4(' + a + ')';
   },
 
   //============================

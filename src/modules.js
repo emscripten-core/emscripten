@@ -483,6 +483,11 @@ var PassManager = {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Functions: { tables: Functions.tables }
       }));
+    } else if (phase == 'glue') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Functions: Functions,
+        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
+      }));
     }
   },
   load: function(json) {
@@ -496,6 +501,7 @@ var PassManager = {
     for (var i in data.Functions) {
       Functions[i] = data.Functions[i];
     }
+    EXPORTED_FUNCTIONS = data.EXPORTED_FUNCTIONS;
     /*
     print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
       Types: Types,

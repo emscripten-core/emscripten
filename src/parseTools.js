@@ -362,7 +362,7 @@ function getVectorNativeType(type) {
 
 function getSIMDName(type) {
   switch (type) {
-    case 'i32': return 'uint';
+    case 'i32': return 'int';
     case 'float': return 'float';
     default: throw 'getSIMDName ' + type;
   }
@@ -603,10 +603,11 @@ function parseLLVMSegment(segment) {
     type = segment[0].text;
     if (type[type.length-1] === '>' && segment[1].text[0] === '<') {
       // vector literal
+      var nativeType = getVectorNativeType(type);
       return {
         intertype: 'vector',
         idents: splitTokenList(segment[1].tokens).map(function(pair) {
-          return pair[1].text;
+          return parseNumerical(pair[1].text, nativeType);
         }),
         type: type
       };
@@ -1453,7 +1454,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     // TODO: optimize the case of numeric num but non-numeric value
     if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
-      return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')';
+      return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')|0';
     }
     num = parseInt(num);
     value = parseInt(value);
@@ -2371,29 +2372,28 @@ function processMathop(item) {
     // vector/SIMD operation
     Types.usesSIMD = true;
     switch (op) {
-      case 'fadd': return 'SIMD.add(' + idents[0] + ',' + idents[1] + ')';
-      case 'fsub': return 'SIMD.sub(' + idents[0] + ',' + idents[1] + ')';
-      case 'fmul': return 'SIMD.mul(' + idents[0] + ',' + idents[1] + ')';
-      case 'fdiv': return 'SIMD.div(' + idents[0] + ',' + idents[1] + ')';
-      case 'add' : return 'SIMD.addu32(' + idents[0] + ',' + idents[1] + ')';
-      case 'sub' : return 'SIMD.subu32(' + idents[0] + ',' + idents[1] + ')';
-      case 'mul' : return 'SIMD.mulu32(' + idents[0] + ',' + idents[1] + ')';
-      case 'udiv': return 'SIMD.divu32(' + idents[0] + ',' + idents[1] + ')';
+      case 'fadd': return 'SIMD.float32x4.add(' + idents[0] + ',' + idents[1] + ')';
+      case 'fsub': return 'SIMD.float32x4.sub(' + idents[0] + ',' + idents[1] + ')';
+      case 'fmul': return 'SIMD.float32x4.mul(' + idents[0] + ',' + idents[1] + ')';
+      case 'fdiv': return 'SIMD.float32x4.div(' + idents[0] + ',' + idents[1] + ')';
+      case 'add' : return 'SIMD.int32x4.add(' + idents[0] + ',' + idents[1] + ')';
+      case 'sub' : return 'SIMD.int32x4.sub(' + idents[0] + ',' + idents[1] + ')';
+      case 'mul' : return 'SIMD.int32x4.mul(' + idents[0] + ',' + idents[1] + ')';
       case 'bitcast': {
         var inType = item.params[0].type;
         var outType = item.type;
         if (inType === '<4 x float>') {
           assert(outType === '<4 x i32>');
-          return 'SIMD.float32x4BitsToUint32x4(' + idents[0] + ')';
+          return 'SIMD.float32x4.bitsToInt32x4(' + idents[0] + ')';
         } else {
           assert(inType === '<4 x i32>');
           assert(outType === '<4 x float>');
-          return 'SIMD.uint32x4BitsToFloat32x4(' + idents[0] + ')';
+          return 'SIMD.int32x4.bitsToFloat32x4(' + idents[0] + ')';
         }
       }
-      case 'and': return 'SIMD.and(' + idents[0] + ',' + idents[1] + ')';
-      case 'or': return 'SIMD.or(' + idents[0] + ',' + idents[1] + ')';
-      case 'xor': return 'SIMD.xor(' + idents[0] + ',' + idents[1] + ')';
+      case 'and': return 'SIMD.int32x4.and(' + idents[0] + ',' + idents[1] + ')';
+      case 'or': return 'SIMD.int32x4.or(' + idents[0] + ',' + idents[1] + ')';
+      case 'xor': return 'SIMD.int32x4.xor(' + idents[0] + ',' + idents[1] + ')';
       default: throw 'vector op todo: ' + dump(item);
     }
   }
@@ -2697,7 +2697,7 @@ var simdLane = ['x', 'y', 'z', 'w'];
 
 function ensureVector(ident, base) {
   Types.usesSIMD = true;
-  return ident == 0 ? base + '32x4.zero()' : ident;
+  return ident == 0 ? base + '32x4.splat(0)' : ident;
 }
 
 function ensureValidFFIType(type) {

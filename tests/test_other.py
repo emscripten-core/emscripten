@@ -371,6 +371,11 @@ f.close()
       process.communicate()
       assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
 
+  def test_cap_suffixes(self):
+    shutil.copyfile(path_from_root('tests', 'hello_world.cpp'), 'test.CPP')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.CPP')]).communicate()
+    self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
   def test_catch_undef(self):
     open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
       #include <vector>
@@ -685,6 +690,38 @@ f.close()
         return ret;
       }
     ''', ['hello through side\n'])
+
+    # js library call
+    open('lib.js', 'w').write(r'''
+      mergeInto(LibraryManager.library, {
+        test_lib_func: function(x) {
+          return x + 17.2;
+        }
+      });
+    ''')
+    test('js-lib', 'extern "C" { extern double test_lib_func(int input); }', r'''
+      #include <stdio.h>
+      #include "header.h"
+      extern double sidey();
+      int main2() { return 11; }
+      int main() {
+        int input = sidey();
+        double temp = test_lib_func(input);
+        printf("other says %.2f\n", temp);
+        printf("more: %.5f, %d\n", temp, input);
+        return 0;
+      }
+    ''', r'''
+      #include <stdio.h>
+      #include "header.h"
+      extern int main2();
+      double sidey() {
+        int temp = main2();
+        printf("main2 sed: %d\n", temp);
+        printf("main2 sed: %u, %c\n", temp, temp/2);
+        return test_lib_func(temp);
+      }
+    ''', 'other says 45.2', ['--js-library', 'lib.js'])
 
     # libc usage in one modules. must force libc inclusion in the main module if that isn't the one using mallinfo()
     try:
@@ -2073,4 +2110,29 @@ int main()
     self.clear()
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-DSP', '--llvm-opts', '''['-O3', '-vectorize', '-vectorize-loops', '-bb-vectorize-vector-bits=128', '-force-vector-width=4']''']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
+
+  def test_dependency_file(self):
+    # Issue 1732: -MMD (and friends) create dependency files that need to be
+    # copied from the temporary directory.
+
+    open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+      #include "test.hpp"
+
+      void my_function()
+      {
+      }
+    ''')
+    open(os.path.join(self.get_dir(), 'test.hpp'), 'w').write(r'''
+      void my_function();
+    ''')
+
+    Popen([PYTHON, EMCC, '-MMD', '-c', os.path.join(self.get_dir(), 'test.cpp'), '-o',
+      os.path.join(self.get_dir(), 'test.o')]).communicate()
+
+    assert os.path.exists(os.path.join(self.get_dir(), 'test.d')), 'No dependency file generated'
+    deps = open(os.path.join(self.get_dir(), 'test.d')).read()
+    # Look for ': ' instead of just ':' to not confuse C:\path\ notation with make "target: deps" rule. Not perfect, but good enough for this test.
+    head, tail = deps.split(': ', 2)
+    assert 'test.o' in head, 'Invalid dependency target'
+    assert 'test.cpp' in tail and 'test.hpp' in tail, 'Invalid dependencies generated'
 
