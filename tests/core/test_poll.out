@@ -1,0 +1,7 @@
+ret: 4
+errno: 0
+multi[0].revents: 1
+multi[1].revents: 1
+multi[2].revents: 1
+multi[3].revents: 1
+multi[4].revents: 1
