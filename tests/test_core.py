@@ -4020,20 +4020,10 @@ def process(filename):
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 
-    src = '''
-      #include <iostream>
-      template<int i>
-      void printText( const char (&text)[ i ] )
-      {
-         std::cout << text;
-      }
-      int main()
-      {
-        printText( "some string constant" );
-        return 0;
-      }
-    '''
-    self.do_run(src, "some string constant")
+    test_path = path_from_root('tests', 'core', 'test_direct_string_constant_usage')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_std_cout_new(self):
     if self.emcc_args is None: return self.skip('requires emcc')
