@@ -2397,29 +2397,10 @@ The current type of b is: 9
 
   def test_strtol_dec(self):
     # tests strtoll for decimal strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtol_dec')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "4 -38 +4711";
-        char *end_char;
-
-        // undefined base
-        long l1 = strtol(STRING, &end_char, 0);
-        long l2 = strtol(end_char, &end_char, 0);
-        long l3 = strtol(end_char, NULL, 0);
-
-        // defined base
-        long l4 = strtol(STRING, &end_char, 10);
-        long l5 = strtol(end_char, &end_char, 10);
-        long l6 = strtol(end_char, NULL, 10);
-
-        printf("%d%d%d%d%d%d\n", l1==4, l2==-38, l3==4711, l4==4, l5==-38, l6==4711);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
+    self.do_run_from_file(src, output)
 
   def test_strtol_bin(self):
     # tests strtoll for binary strings (0x...) 
