@@ -3614,20 +3614,10 @@ ok
     self.do_run_from_file(src, output)
 
   def test_perrar(self):
-    src = r'''
-      #include <sys/types.h>
-      #include <sys/stat.h>
-      #include <fcntl.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_perrar')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main( int argc, char** argv ){
-        int retval = open( "NonExistingFile", O_RDONLY );
-        if( retval == -1 )
-        perror( "Cannot open NonExistingFile" );
-        return 0;
-      }
-      '''
-    self.do_run(src, 'Cannot open NonExistingFile: No such file or directory\n')
+    self.do_run_from_file(src, output)
 
   def test_atoX(self):
     if self.emcc_args is None: return self.skip('requires ta2')
