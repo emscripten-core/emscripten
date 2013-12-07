@@ -3847,28 +3847,10 @@ def process(filename):
     self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), post_build=post)
 
   def test_fwrite_0(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_fwrite_0')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main ()
-      {
-          FILE *fh;
-
-          fh = fopen("a.txt", "wb");
-          if (!fh) exit(1);
-          fclose(fh);
-
-          fh = fopen("a.txt", "rb");
-          if (!fh) exit(1);
-
-          char data[] = "foobar";
-          size_t written = fwrite(data, 1, sizeof(data), fh);
-
-          printf("written=%zu\n", written);
-      }
-      '''
-    self.do_run(src, 'written=0')
+    self.do_run_from_file(src, output)
 
   def test_fgetc_ungetc(self):
     src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
