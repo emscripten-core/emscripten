@@ -4267,49 +4267,10 @@ PORT: 3979
   def test_reinterpreted_ptrs(self):
     if self.emcc_args is None: return self.skip('needs emcc and libc')
 
-    src = r'''
-#include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_reinterpreted_ptrs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-class Foo {
-private:
-  float bar;
-public:
-  int baz;
-
-  Foo(): bar(0), baz(4711) {};
-
-  int getBar() const;
-};
-
-int Foo::getBar() const {
-  return this->bar;
-};
-
-const Foo *magic1 = reinterpret_cast<Foo*>(0xDEAD111F);
-const Foo *magic2 = reinterpret_cast<Foo*>(0xDEAD888F);
-
-static void runTest() {
-
-  const Foo *a = new Foo();
-  const Foo *b = a;
-
-  if (a->getBar() == 0) {
-      if (a->baz == 4712)
-          b = magic1;
-      else
-          b = magic2;
-  }
-
-  printf("%s\n", (b == magic1 ? "magic1" : (b == magic2 ? "magic2" : "neither")));
-};
-
-extern "C" {
-  int main(int argc, char **argv) {
-      runTest();
-  }
-}
-'''
-    self.do_run(src, 'magic2')
+    self.do_run_from_file(src, output)
 
   def test_jansson(self):
       return self.skip('currently broken')
