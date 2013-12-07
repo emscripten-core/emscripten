@@ -2383,30 +2383,11 @@ The current type of b is: 9
     if self.emcc_args is None: return self.skip('requires emcc')
 
     # tests strtoll for decimal strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtoll_oct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "0 -035 +04711";
-        char *end_char;
+    self.do_run_from_file(src, output)
 
-        // undefined base
-        long long int l1 = strtoll(STRING, &end_char, 0);
-        long long int l2 = strtoll(end_char, &end_char, 0);
-        long long int l3 = strtoll(end_char, NULL, 0);
-
-        // defined base
-        long long int l4 = strtoll(STRING, &end_char, 8);
-        long long int l5 = strtoll(end_char, &end_char, 8);
-        long long int l6 = strtoll(end_char, NULL, 8);
-
-        printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
-  
   def test_strtol_hex(self):
     # tests strtoll for hex strings (0x...) 
     src = r'''
