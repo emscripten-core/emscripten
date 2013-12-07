@@ -814,6 +814,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   # Settings changes
   assert settings['TARGET_LE32'] == 1
   settings['TARGET_LE32'] = 2
+  if '_i64Add' in metadata['declares']: # TODO: others, once we split them up
+    settings['PRECISE_I64_MATH'] = 2
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
