@@ -1110,39 +1110,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_longjmp_funcptr(self):
-      src = r'''
-        #include <stdio.h>
-        #include <setjmp.h>
+    test_path = path_from_root('tests', 'core', 'test_longjmp_funcptr')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        static jmp_buf buf;
-
-        void (*fp)() = NULL;
-
-        void second(void) {
-            printf("second\n");         // prints
-            longjmp(buf,1);             // jumps back to where setjmp was called - making setjmp now return 1
-        }
-
-        void first(void) {
-            fp();
-            printf("first\n");          // does not print
-        }
-
-        int main(int argc, char **argv) {
-            fp = argc == 200 ? NULL : second;
-
-            volatile int x = 0;
-            if ( ! setjmp(buf) ) {
-                x++;
-                first();                // when executed, setjmp returns 0
-            } else {                    // when longjmp jumps back, setjmp returns 1
-                printf("main: %d\n", x);       // prints
-            }
-
-            return 0;
-        }
-      '''
-      self.do_run(src, 'second\nmain: 1\n')
+    self.do_run_from_file(src, output)
 
   def test_longjmp_repeat(self):
       Settings.MAX_SETJMPS = 1
