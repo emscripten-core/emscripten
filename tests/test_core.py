@@ -2450,16 +2450,10 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_time_c(self):
-    src = r'''
-      #include <time.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_time_c')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        time_t t = time(0);
-        printf("time: %s\n", ctime(&t));
-      }
-    '''
-    self.do_run(src, 'time: ') # compilation check, mainly
+    self.do_run_from_file(src, output)
 
   def test_gmtime(self):
     src = r'''
