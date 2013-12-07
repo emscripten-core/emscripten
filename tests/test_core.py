@@ -1064,16 +1064,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
   def test_assert(self):
-      src = '''
-        #include <stdio.h>
-        #include <assert.h>
-        int main() {
-          assert(1 == true); // pass
-          assert(1 == false); // fail
-          return 0;
-        }
-      '''
-      self.do_run(src, 'Assertion failed: 1 == false')
+    test_path = path_from_root('tests', 'core', 'test_assert')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_libcextra(self):
       if self.emcc_args is None: return self.skip('needs emcc for libcextra')
