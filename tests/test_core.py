@@ -1118,30 +1118,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_longjmp_repeat(self):
       Settings.MAX_SETJMPS = 1
 
-      src = r'''
-        #include <stdio.h>
-        #include <setjmp.h>
+      test_path = path_from_root('tests', 'core', 'test_longjmp_repeat')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        static jmp_buf buf;
-
-        int main() {
-          volatile int x = 0;
-          printf("setjmp:%d\n", setjmp(buf));
-          x++;
-          printf("x:%d\n", x);
-          if (x < 4) longjmp(buf, x*2);
-          return 0;
-        }
-      '''
-      self.do_run(src, '''setjmp:0
-x:1
-setjmp:2
-x:2
-setjmp:4
-x:3
-setjmp:6
-x:4
-''')
+      self.do_run_from_file(src, output)
 
   def test_longjmp_stacked(self):
       src = r'''
