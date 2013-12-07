@@ -1532,24 +1532,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_funcptrfunc(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_funcptrfunc')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef void (*funcptr)(int, int);
-      typedef funcptr (*funcptrfunc)(int);
-
-      funcptr __attribute__ ((noinline)) getIt(int x) {
-        return (funcptr)x;
-      }
-
-      int main(int argc, char **argv)
-      {
-        funcptrfunc fpf = argc < 100 ? getIt : NULL;
-        printf("*%p*\n", fpf(argc));
-        return 0;
-      }
-    '''
-    self.do_run(src, '*0x1*')
+    self.do_run_from_file(src, output)
 
   def test_funcptr_namecollide(self):
     src = r'''
