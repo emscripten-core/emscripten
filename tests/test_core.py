@@ -1514,19 +1514,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_dynamic_cast_2(self):
     if self.emcc_args is None: return self.skip('need libcxxabi')
 
-    src = r'''
-      #include <stdio.h>
-      #include <typeinfo>
+    test_path = path_from_root('tests', 'core', 'test_dynamic_cast_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      class Class {};
-
-      int main() {
-          const Class* dp = dynamic_cast<const Class*>(&typeid(Class));
-          // should return dp == NULL,
-          printf("pointer: %p\n", dp);
-      }
-      '''
-    self.do_run(src, "pointer: (nil)")
+    self.do_run_from_file(src, output)
 
   def test_funcptr(self):
       src = '''
