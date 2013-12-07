@@ -1244,33 +1244,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_exception_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    src = r'''
-      #include <stdexcept>
-      #include <stdio.h>
 
-      typedef void (*FuncPtr)();
+    test_path = path_from_root('tests', 'core', 'test_exception_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void ThrowException()
-      {
-        throw std::runtime_error("catch me!");
-      }
-
-      FuncPtr ptr = ThrowException;
-
-      int main()
-      {
-        try
-        {
-	        ptr();
-        }
-        catch(...)
-        {
-	        printf("Exception caught successfully!\n");
-        }
-        return 0;
-      }
-    '''
-    self.do_run(src, 'Exception caught successfully!')
+    self.do_run_from_file(src, output)
 
   def test_white_list_exception(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
