@@ -1999,20 +1999,11 @@ def process(filename):
 
   def test_tinyfuncstr(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-        #include <stdio.h>
 
-        struct Class {
-          static char *name1() { return "nameA"; }
-                 char *name2() { return "nameB"; }
-        };
+      test_path = path_from_root('tests', 'core', 'test_tinyfuncstr')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          printf("*%s,%s*\\n", Class::name1(), (new Class())->name2());
-          return 0;
-        }
-        '''
-      self.do_run(src, '*nameA,nameB*')
+      self.do_run_from_file(src, output)
 
   def test_llvmswitch(self):
       Settings.CORRECT_SIGNS = 1
