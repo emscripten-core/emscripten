@@ -5360,28 +5360,10 @@ def process(filename):
   def test_demangle_stacks(self):
     if Settings.ASM_JS: return self.skip('spidermonkey has stack trace issues')
 
-    src = r'''
-      #include<stdio.h>
-      #include<stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_demangle_stacks')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      namespace NameSpace {
-        class Class {
-        public:
-          int Aborter(double x, char y, int *z) {
-            int addr = x+y+(int)z;
-            void *p = (void*)addr;
-            for (int i = 0; i < 100; i++) free(p); // will abort, should show proper stack trace
-          }
-        };
-      }
-
-      int main(int argc, char **argv) {
-        NameSpace::Class c;
-        c.Aborter(1.234, 'a', NULL);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'NameSpace::Class::Aborter(double, char, int*)');
+    self.do_run_from_file(src, output)
 
   def test_embind(self):
     if self.emcc_args is None: return self.skip('requires emcc')
