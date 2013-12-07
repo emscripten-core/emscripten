@@ -1883,34 +1883,12 @@ def process(filename):
 
   def test_inlinejs(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
-      src = r'''
-        #include <stdio.h>
 
-        double get() {
-          double ret = 0;
-          __asm __volatile__("Math.abs(-12/3.3)":"=r"(ret)); // write to a variable
-          asm("#comment1");
-          asm volatile("#comment2");
-          asm volatile("#comment3\n"
-                       "#comment4\n");
-          return ret;
-        }
+      test_path = path_from_root('tests', 'core', 'test_inlinejs')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          asm("Module.print('Inline JS is very cool')");
-          printf("%.2f\n", get());
+      self.do_run_from_file(src, output)
 
-          // Test that passing multiple input and output variables works.
-          int src1 = 1, src2 = 2, src3 = 3;
-          int dst1 = 0, dst2 = 0, dst3 = 0;
-          // TODO asm("Module.print(%3); Module.print(%4); Module.print(%5); %0 = %3; %1 = %4; %2 = %5;" : "=r"(dst1),"=r"(dst2),"=r"(dst3): "r"(src1),"r"(src2),"r"(src3));
-          // TODO printf("%d\n%d\n%d\n", dst1, dst2, dst3);
-
-          return 0;
-        }
-        '''
-
-      self.do_run(src, 'Inline JS is very cool\n3.64\n') # TODO 1\n2\n3\n1\n2\n3\n')
       if self.emcc_args == []: # opts will eliminate the comments
         out = open('src.cpp.o.js').read()
         for i in range(1, 5): assert ('comment%d' % i) in out
