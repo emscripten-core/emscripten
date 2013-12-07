@@ -2404,24 +2404,10 @@ The current type of b is: 9
 
   def test_strtol_bin(self):
     # tests strtoll for binary strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtol_bin')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "1 -101 +1011";
-        char *end_char;
-
-        // defined base
-        long l4 = strtol(STRING, &end_char, 2);
-        long l5 = strtol(end_char, &end_char, 2);
-        long l6 = strtol(end_char, NULL, 2);
-
-        printf("%d%d%d\n", l4==1, l5==-5, l6==11);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111')
+    self.do_run_from_file(src, output)
 
   def test_strtol_oct(self):
     # tests strtoll for decimal strings (0x...) 
