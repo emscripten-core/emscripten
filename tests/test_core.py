@@ -2043,21 +2043,10 @@ def process(filename):
   def test_indirectbr_many(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('blockaddr > 255 requires ta2')
 
-      blocks = range(1500)
-      init = ', '.join(['&&B%d' % b for b in blocks])
-      defs = '\n'.join(['B%d: printf("%d\\n"); return 0;' % (b,b) for b in blocks])
-      src = '''
-        #include <stdio.h>
-        int main(int argc, char **argv) {
-          printf("\\n");
-          const void *addrs[] = { %s };
-          goto *addrs[argc*argc + 1000];
+      test_path = path_from_root('tests', 'core', 'test_indirectbr_many')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-%s
-          return 0;
-        }
-        ''' % (init, defs)
-      self.do_run(src, '\n1001\n')
+      self.do_run_from_file(src, output)
 
   def test_pack(self):
       src = '''
