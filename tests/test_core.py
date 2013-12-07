@@ -4036,26 +4036,13 @@ def process(filename):
   def test_istream(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 
-    src = '''
-      #include <string>
-      #include <sstream>
-      #include <iostream>
+    test_path = path_from_root('tests', 'core', 'test_istream')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main()
-      {
-          std::string mystring("1 2 3");
-          std::istringstream is(mystring);
-          int one, two, three;
-
-          is >> one >> two >> three;
-
-          printf( "%i %i %i", one, two, three );
-      }
-    '''
     for linkable in [0]:#, 1]:
       print linkable
       Settings.LINKABLE = linkable # regression check for issue #273
-      self.do_run(src, "1 2 3")
+      self.do_run_from_file(src, output)
 
   def test_fs_base(self):
     Settings.INCLUDE_FULL_LIBRARY = 1
