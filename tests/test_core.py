@@ -4469,33 +4469,11 @@ return malloc(size);
 
   def test_static_variable(self):
     if self.emcc_args is None: Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
-    src = '''
-      #include <stdio.h>
 
-      struct DATA
-      {
-          int value;
+    test_path = path_from_root('tests', 'core', 'test_static_variable')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-          DATA()
-          {
-              value = 0;
-          }
-      };
-
-      DATA & GetData()
-      {
-          static DATA data;
-
-          return data;
-      }
-
-      int main()
-      {
-          GetData().value = 10;
-          printf( "value:%i", GetData().value );
-      }
-    '''
-    self.do_run(src, 'value:10')
+    self.do_run_from_file(src, output)
 
   def test_fakestat(self):
     src = r'''
