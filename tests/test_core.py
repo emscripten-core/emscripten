@@ -1895,28 +1895,11 @@ def process(filename):
 
   def test_inlinejs2(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
-      src = r'''
-        #include <stdio.h>
 
-        int mix(int x, int y) {
-          int ret;
-          asm("Math.pow(2, %0+%1+1)" : "=r"(ret) : "r"(x), "r"(y)); // read and write
-          return ret;
-        }
+      test_path = path_from_root('tests', 'core', 'test_inlinejs2')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        void mult() {
-          asm("var $_$1 = Math.abs(-100); $_$1 *= 2; Module.print($_$1)"); // multiline
-          asm __volatile__("Module.print('done')");
-        }
-
-        int main(int argc, char **argv) {
-          printf("%d\n", mix(argc, argc/2));
-          mult();
-          return 0;
-        }
-        '''
-
-      self.do_run(src, '4\n200\ndone\n')
+      self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
     src = r'''
