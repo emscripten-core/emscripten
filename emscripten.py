@@ -809,7 +809,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   settings['TARGET_LE32'] = 2
   if 'i64Add' in metadata['declares']: # TODO: others, once we split them up
     settings['PRECISE_I64_MATH'] = 2
-    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldsi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
   # Integrate info from backend
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
