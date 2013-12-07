@@ -1822,26 +1822,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_ptrtoint(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-        #include <stdio.h>
 
-        int main( int argc, const char *argv[] ) {
-          char *a = new char[10];
-          char *a0 = a+0;
-          char *a5 = a+5;
-          int *b = new int[10];
-          int *b0 = b+0;
-          int *b5 = b+5;
-          int c = (int)b5-(int)b0; // Emscripten should warn!
-          int d = (int)b5-(int)b0; // Emscripten should warn!
-          printf("*%d*\\n", (int)a5-(int)a0);
-          return 0;
-        }
-        '''
       runner = self
       def check_warnings(output):
           runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
-      self.do_run(src, '*5*', output_processor=check_warnings)
+
+      test_path = path_from_root('tests', 'core', 'test_ptrtoint')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output, output_processor=check_warnings)
 
   def test_sizeof(self):
       if self.emcc_args is None: return self.skip('requires emcc')
