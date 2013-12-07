@@ -2507,46 +2507,10 @@ The current type of b is: 9
         Settings.SAFE_HEAP = 3
         Settings.SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26', 'src.cpp:28']
 
-      src = '''
-        #include <stdio.h>
-        #include <string.h>
+      test_path = path_from_root('tests', 'core', 'test_statics')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        #define CONSTRLEN 32
-
-        char * (*func)(char *, const char *) = NULL;
-
-        void conoutfv(const char *fmt)
-        {
-            static char buf[CONSTRLEN];
-            func(buf, fmt); // call by function pointer to make sure we test strcpy here
-            puts(buf);
-        }
-
-        struct XYZ {
-          float x, y, z;
-          XYZ(float a, float b, float c) : x(a), y(b), z(c) { }
-          static const XYZ& getIdentity()
-          {
-            static XYZ iT(1,2,3);
-            return iT;
-          }
-        };
-        struct S {
-          static const XYZ& getIdentity()
-          {
-            static const XYZ iT(XYZ::getIdentity());
-            return iT;
-          }
-        };
-
-        int main() {
-          func = &strcpy;
-          conoutfv("*staticccz*");
-          printf("*%.2f,%.2f,%.2f*\\n", S::getIdentity().x, S::getIdentity().y, S::getIdentity().z);
-          return 0;
-        }
-        '''
-      self.do_run(src, '*staticccz*\n*1.00,2.00,3.00*')
+      self.do_run_from_file(src, output)
 
   def test_copyop(self):
       if self.emcc_args is None: return self.skip('requires emcc')
