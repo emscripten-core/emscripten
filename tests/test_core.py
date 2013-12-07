@@ -1311,65 +1311,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_multiexception(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    src = r'''
-#include <stdio.h>
 
-static int current_exception_id = 0;
+    test_path = path_from_root('tests', 'core', 'test_multiexception')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-typedef struct {
-int jmp;
-} jmp_state;
-
-void setjmp_func(jmp_state* s, int level) {
-int prev_jmp = s->jmp;
-int c_jmp;
-
-if (level == 2) {
-  printf("level is 2, perform longjmp!\n");
-  throw 1;
-}
-
-c_jmp = current_exception_id++;
-try {
-  printf("setjmp normal execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
-  s->jmp = c_jmp;
-  setjmp_func(s, level + 1);
-} catch (int catched_eid) {
-  printf("caught %d\n", catched_eid);
-  if (catched_eid == c_jmp) {
-    printf("setjmp exception execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
-    if (prev_jmp != -1) {
-      printf("prev_jmp is not empty, continue with longjmp!\n");
-      s->jmp = prev_jmp;
-      throw s->jmp;
-    }
-  } else {
-    throw;
-  }
-}
-
-printf("Exiting setjmp function, level: %d, prev_jmp: %d\n", level, prev_jmp);
-}
-
-int main(int argc, char *argv[]) {
-jmp_state s;
-s.jmp = -1;
-
-setjmp_func(&s, 0);
-
-return 0;
-}
-'''
-    self.do_run(src, '''setjmp normal execution path, level: 0, prev_jmp: -1
-setjmp normal execution path, level: 1, prev_jmp: 0
-level is 2, perform longjmp!
-caught 1
-setjmp exception execution path, level: 1, prev_jmp: 0
-prev_jmp is not empty, continue with longjmp!
-caught 0
-setjmp exception execution path, level: 0, prev_jmp: -1
-Exiting setjmp function, level: 0, prev_jmp: -1
-''')
+    self.do_run_from_file(src, output)
 
   def test_std_exception(self):
     if self.emcc_args is None: return self.skip('requires emcc')
