@@ -2556,17 +2556,10 @@ The current type of b is: 9
       self.do_run_from_file(src, output, args=['--file', 'foobar', '-b'])
 
   def test_memmove(self):
-    src = '''
-      #include <stdio.h>
-      #include <string.h>
-      int main() {
-        char str[] = "memmove can be very useful....!";
-        memmove (str+20, str+15, 11);
-        puts(str);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'memmove can be very very useful')
+    test_path = path_from_root('tests', 'core', 'test_memmove')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_memmove2(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
