@@ -996,21 +996,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
   def test_addr_of_stacked(self):
-      src = '''
-        #include <stdio.h>
-        void alter(int *y)
-        {
-          *y += 5;
-        }
-        int main()
-        {
-          int x = 2;
-          alter(&x);
-          printf("*%d*\\n", x);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*7*')
+    test_path = path_from_root('tests', 'core', 'test_addr_of_stacked')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_globals(self):
       src = '''
