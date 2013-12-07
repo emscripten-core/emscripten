@@ -1395,33 +1395,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
 
   def test_class(self):
-      src = '''
-        #include <stdio.h>
-        struct Random {
-           enum { IM = 139968, IA = 3877, IC = 29573 };
-           Random() : last(42) {}
-           float get( float max = 1.0f ) {
-              last = ( last * IA + IC ) % IM;
-              return max * last / IM;
-           }
-        protected:
-           unsigned int last;
-        } rng1;
-        int main()
-        {
-          Random rng2;
-          int count = 0;
-          for (int i = 0; i < 100; i++) {
-            float x1 = rng1.get();
-            float x2 = rng2.get();
-            printf("%f, %f\\n", x1, x2);
-            if (x1 != x2) count += 1;
-          }
-          printf("*%d*\\n", count);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*0*')
+    test_path = path_from_root('tests', 'core', 'test_class')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_inherit(self):
       src = '''
