@@ -3704,30 +3704,10 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_whitespace(self):
-    src = r'''
-      #include<stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_sscanf_whitespace')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        short int x;
-        short int y;
-
-        const char* buffer[] = {
-          "173,16",
-          "    16,173",
-          "183,   173",
-          "  17,   287",
-          " 98,  123,   "
-        };
-
-        for (int i=0; i<5; ++i) {
-          sscanf(buffer[i], "%hd,%hd", &x, &y);
-          printf("%d:%d,%d ", i, x, y);
-        }
-
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
