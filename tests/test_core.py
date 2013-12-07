@@ -5132,26 +5132,6 @@ def process(filename):
     if self.emcc_args is not None and '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      extern "C" {
-        int get_int() { return 5; }
-        float get_float() { return 3.14; }
-        char * get_string() { return "hello world"; }
-        void print_int(int x) { printf("%d\n", x); }
-        void print_float(float x) { printf("%.2f\n", x); }
-        void print_string(char *x) { printf("%s\n", x); }
-        int multi(int x, float y, int z, char *str) { if (x) puts(str); return (x+y)*z; }
-        int * pointer(int *in) { printf("%d\n", *in); static int ret = 21; return &ret; }
-      }
-
-      int main(int argc, char **argv) {
-        return 0;
-      }
-    '''
-
     post = '''
 def process(filename):
   src = \'\'\'
@@ -5190,7 +5170,10 @@ def process(filename):
 
     Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
 
-    self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
+    test_path = path_from_root('tests', 'core', 'test_ccall')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output, post_build=post)
 
   def test_pgo(self):
     if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
