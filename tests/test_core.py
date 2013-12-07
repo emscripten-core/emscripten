@@ -1902,34 +1902,10 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
-    src = r'''
-      #include <stdio.h>
-      #include <emscripten.h>
+      test_path = path_from_root('tests', 'core', 'test_inlinejs3')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char **argv) {
-        EM_ASM(Module.print('hello dere1'));
-        EM_ASM(
-          Module.print('hello dere2');
-        );
-        for (int i = 0; i < 3; i++) {
-          EM_ASM(
-            Module.print('hello dere3');
-            Module.print('hello dere' + 4);
-          );
-        }
-        int sum = 0;
-        for (int i = 0; i < argc*3; i++) {
-          sum += EM_ASM_INT({
-            Module.print('i: ' + [$0, ($1).toFixed(2)]);
-            return $0*2;
-          }, i, double(i)/12);
-        }
-        printf("sum: %d\n", sum);
-        return 0;
-      }
-      '''
-
-    self.do_run(src, 'hello dere1\nhello dere2\nhello dere3\nhello dere4\nhello dere3\nhello dere4\nhello dere3\nhello dere4\ni: 0,0.00\ni: 1,0.08\ni: 2,0.17\nsum: 6\n')
+      self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
     if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
