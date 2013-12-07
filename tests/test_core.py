@@ -1506,35 +1506,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_dynamic_cast_b(self):
       if self.emcc_args is None: return self.skip('need libcxxabi')
 
-      src = '''
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_dynamic_cast_b')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        class CBase { virtual void dummy() {} };
-        class CDerived : public CBase { int a; };
-        class CDerivedest : public CDerived { float b; };
-
-        int main ()
-        {
-          CBase *pa = new CBase;
-          CBase *pb = new CDerived;
-          CBase *pc = new CDerivedest;
-
-          printf("a1: %d\\n", dynamic_cast<CDerivedest*>(pa) != NULL);
-          printf("a2: %d\\n", dynamic_cast<CDerived*>(pa) != NULL);
-          printf("a3: %d\\n", dynamic_cast<CBase*>(pa) != NULL);
-
-          printf("b1: %d\\n", dynamic_cast<CDerivedest*>(pb) != NULL);
-          printf("b2: %d\\n", dynamic_cast<CDerived*>(pb) != NULL);
-          printf("b3: %d\\n", dynamic_cast<CBase*>(pb) != NULL);
-
-          printf("c1: %d\\n", dynamic_cast<CDerivedest*>(pc) != NULL);
-          printf("c2: %d\\n", dynamic_cast<CDerived*>(pc) != NULL);
-          printf("c3: %d\\n", dynamic_cast<CBase*>(pc) != NULL);
-
-          return 0;
-        }
-      '''
-      self.do_run(src, 'a1: 0\na2: 0\na3: 1\nb1: 0\nb2: 1\nb3: 1\nc1: 1\nc2: 1\nc3: 1\n')
+      self.do_run_from_file(src, output)
 
   def test_dynamic_cast_2(self):
     if self.emcc_args is None: return self.skip('need libcxxabi')
