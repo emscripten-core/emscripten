@@ -1104,55 +1104,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_longjmp4(self):
-    src = r'''
-      #include <setjmp.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_longjmp4')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef struct {
-        jmp_buf* jmp;
-      } jmp_state;
-
-      void second_func(jmp_state* s);
-
-      void first_func(jmp_state* s) {
-        jmp_buf* prev_jmp = s->jmp;
-        jmp_buf c_jmp;
-        volatile int once = 0;
-
-        if (setjmp(c_jmp) == 0) {
-          printf("Normal execution path of first function!\n");
-
-          s->jmp = &c_jmp;
-          second_func(s);
-        } else {
-          printf("Exception execution path of first function! %d\n", once);
-
-          if (!once) {
-            printf("Calling longjmp the second time!\n");
-            once = 1;
-            longjmp(*(s->jmp), 1);
-          }
-        }
-      }
-
-      void second_func(jmp_state* s) {
-        longjmp(*(s->jmp), 1);
-      }
-
-      int main(int argc, char *argv[]) {
-        jmp_state s;
-        s.jmp = NULL;
-
-        first_func(&s);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '''Normal execution path of first function!
-Exception execution path of first function! 0
-Calling longjmp the second time!
-Exception execution path of first function! 1
-''')
+    self.do_run_from_file(src, output)
 
   def test_longjmp_funcptr(self):
       src = r'''
