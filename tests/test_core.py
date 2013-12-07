@@ -1071,20 +1071,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_libcextra(self):
       if self.emcc_args is None: return self.skip('needs emcc for libcextra')
-      src = r'''
-        #include <stdio.h>
-        #include <wchar.h>
 
-        int main()
-        {
-            const wchar_t* wstr = L"Hello";
+      test_path = path_from_root('tests', 'core', 'test_libcextra')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-            printf("wcslen: %d\n", wcslen(wstr));
-
-            return 0;
-        }
-      '''
-      self.do_run(src, 'wcslen: 5')
+      self.do_run_from_file(src, output)
 
   def test_regex(self):
       # This is from http://pic.dhe.ibm.com/infocenter/iseries/v7r1m0/index.jsp?topic=%2Frtref%2Fregexec.htm
