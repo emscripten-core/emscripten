@@ -2576,32 +2576,10 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_flexarray_struct(self):
-    src = r'''
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_flexarray_struct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-typedef struct
-{
-  uint16_t length;
-  struct 
-  {
-    int32_t int32;
-  } value[];
-} Tuple;
-
-int main() {
-  Tuple T[10];
-  Tuple *t = &T[0];
-
-  t->length = 4;
-  t->value->int32 = 100;
-
-  printf("(%d, %d)\n", t->length, t->value->int32);
-  return 0;
-}
-'''
-    self.do_run(src, '(4, 100)')
+    self.do_run_from_file(src, output)
 
   def test_bsearch(self):
     if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
