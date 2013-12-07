@@ -3561,61 +3561,10 @@ ok
     self.do_run(src.replace('strtod', 'strtold'), re.sub(r'\n\s+', '\n', expected)) # XXX add real support for long double
 
   def test_strtok(self):
-    src = r'''
-      #include<stdio.h>
-      #include<string.h>
+    test_path = path_from_root('tests', 'core', 'test_strtok')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char test[80], blah[80];
-        char *sep = "\\/:;=-";
-        char *word, *phrase, *brkt, *brkb;
-
-        strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
-
-        for (word = strtok_r(test, sep, &brkt); word; word = strtok_r(NULL, sep, &brkt)) {
-          strcpy(blah, "blah:blat:blab:blag");
-          for (phrase = strtok_r(blah, sep, &brkb); phrase; phrase = strtok_r(NULL, sep, &brkb)) {
-            printf("at %s:%s\n", word, phrase);
-          }
-        }
-        return 0;
-      }
-    '''
-
-    expected = '''at This:blah
-at This:blat
-at This:blab
-at This:blag
-at is.a:blah
-at is.a:blat
-at is.a:blab
-at is.a:blag
-at test:blah
-at test:blat
-at test:blab
-at test:blag
-at of:blah
-at of:blat
-at of:blab
-at of:blag
-at the:blah
-at the:blat
-at the:blab
-at the:blag
-at string:blah
-at string:blat
-at string:blab
-at string:blag
-at tokenizer:blah
-at tokenizer:blat
-at tokenizer:blab
-at tokenizer:blag
-at function.:blah
-at function.:blat
-at function.:blab
-at function.:blag
-'''
-    self.do_run(src, expected)
+    self.do_run_from_file(src, output)
 
   def test_parseInt(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
