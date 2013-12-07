@@ -4258,39 +4258,11 @@ PORT: 3979
 
   def test_stdvec(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    src = '''
-      #include <vector>
-      #include <stdio.h>
 
-      struct S {
-          int a;
-          float b;
-      };
+    test_path = path_from_root('tests', 'core', 'test_stdvec')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void foo(int a, float b)
-      {
-        printf("%d:%.2f\\n", a, b);
-      }
-
-      int main ( int argc, char *argv[] )
-      {
-        std::vector<S> ar;
-        S s;
-
-        s.a = 789;
-        s.b = 123.456f;
-        ar.push_back(s);
-
-        s.a = 0;
-        s.b = 100.1f;
-        ar.push_back(s);
-
-        foo(ar[0].a, ar[0].b);
-        foo(ar[1].a, ar[1].b);
-      }
-    '''
-
-    self.do_run(src, '789:123.46\n0:100.1')
+    self.do_run_from_file(src, output)
 
   def test_reinterpreted_ptrs(self):
     if self.emcc_args is None: return self.skip('needs emcc and libc')
