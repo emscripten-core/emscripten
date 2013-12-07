@@ -2008,31 +2008,10 @@ def process(filename):
   def test_llvmswitch(self):
       Settings.CORRECT_SIGNS = 1
 
-      src = '''
-        #include <stdio.h>
-        #include <string.h>
+      test_path = path_from_root('tests', 'core', 'test_llvmswitch')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int switcher(int p)
-        {
-          switch(p) {
-            case 'a':
-            case 'b':
-            case 'c':
-                return p-1;
-            case -15:
-                return p+1;
-          }
-          return p;
-        }
-
-        int main( int argc, const char *argv[] ) {
-          unsigned int x = 0xfffffff1;
-          x >>= (argc-1); // force it to be unsigned for purpose of checking our switch comparison in signed/unsigned
-          printf("*%d,%d,%d,%d,%d,%d*\\n", switcher('a'), switcher('b'), switcher('c'), switcher(x), switcher(-15), switcher('e'));
-          return 0;
-        }
-        '''
-      self.do_run(src, '*96,97,98,-14,-14,101*')
+      self.do_run_from_file(src, output)
 
   # By default, when user has not specified a -std flag, Emscripten should always build .cpp files using the C++03 standard,
   # i.e. as if "-std=c++03" had been passed on the command line. On Linux with Clang 3.2 this is the case, but on Windows
