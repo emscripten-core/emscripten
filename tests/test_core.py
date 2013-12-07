@@ -3753,17 +3753,10 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_caps(self):
-    src = r'''
-      #include "stdio.h"
+    test_path = path_from_root('tests', 'core', 'test_sscanf_caps')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(){
-        unsigned int a;
-        float e, f, g;
-        sscanf("a 1.1 1.1 1.1", "%X %E %F %G", &a, &e, &f, &g);
-        printf("%d %.1F %.1F %.1F\n", a, e, f, g);
-      }
-    '''
-    self.do_run(src, '10 1.1 1.1 1.1');
+    self.do_run_from_file(src, output)
 
   def test_sscanf_hex(self):
     src = r'''
