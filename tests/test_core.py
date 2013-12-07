@@ -1564,26 +1564,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_alloca_stack(self):
     if self.emcc_args is None: return # too slow in other modes
 
-    # We should not blow up the stack with numerous allocas
-    src = '''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_alloca_stack')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      func(int i) {
-        char *pc = (char *)alloca(100);
-        *pc = i;
-        (*pc)++;
-        return (*pc) % 10;
-      }
-      int main() {
-        int total = 0;
-        for (int i = 0; i < 1024*1024; i++)
-          total += func(i);
-        printf("ok:%d*\\n", total);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok:-32768*', force_c=True)
+    self.do_run_from_file(src, output, force_c=True)
 
   def test_stack_byval(self):
     if self.emcc_args is None: return # too slow in other modes
