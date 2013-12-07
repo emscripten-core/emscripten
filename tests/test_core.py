@@ -4476,17 +4476,10 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_fakestat(self):
-    src = r'''
-      #include <stdio.h>
-      struct stat { int x, y; };
-      int main() {
-        stat s;
-        s.x = 10;
-        s.y = 22;
-        printf("*%d,%d*\n", s.x, s.y);
-      }
-    '''
-    self.do_run(src, '*10,22*')
+    test_path = path_from_root('tests', 'core', 'test_fakestat')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_mmap(self):
     if self.emcc_args is None: return self.skip('requires emcc')
