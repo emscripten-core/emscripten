@@ -4200,30 +4200,10 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_getloadavg(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_getloadavg')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        double load[5] = {42.13, 42.13, 42.13, 42.13, 42.13};
-        printf("ret: %d\n", getloadavg(load, 5));
-        printf("load[0]: %.3lf\n", load[0]);
-        printf("load[1]: %.3lf\n", load[1]);
-        printf("load[2]: %.3lf\n", load[2]);
-        printf("load[3]: %.3lf\n", load[3]);
-        printf("load[4]: %.3lf\n", load[4]);
-        return 0;
-      }
-      '''
-    expected = '''
-      ret: 3
-      load[0]: 0.100
-      load[1]: 0.100
-      load[2]: 0.100
-      load[3]: 42.130
-      load[4]: 42.130
-    '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_799(self):
     src = open(path_from_root('tests', '799.cpp'), 'r').read()
