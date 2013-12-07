@@ -1002,20 +1002,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_globals(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_globals')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        char cache[256], *next = cache;
-
-        int main()
-        {
-          cache[10] = 25;
-          next[20] = 51;
-          printf("*%d,%d*\\n", next[10], cache[20]);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*25,51*')
+    self.do_run_from_file(src, output)
 
   def test_linked_list(self):
       src = '''
