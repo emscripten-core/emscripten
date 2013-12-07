@@ -1581,25 +1581,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     if self.emcc_args is None: return # too slow in other modes
 
     Settings.INLINING_LIMIT = 50
-
-    # We should not blow up the stack with numerous varargs
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      void func(int i) {
-        printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-                 i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-      }
-      int main() {
-        for (int i = 0; i < 1024; i++)
-          func(i);
-        printf("ok!\n");
-        return 0;
-      }
-    '''
     Settings.TOTAL_STACK = 1024
-    self.do_run(src, 'ok!')
+
+    test_path = path_from_root('tests', 'core', 'test_stack_varargs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_stack_varargs2(self):
     if self.emcc_args is None: return # too slow in other modes
