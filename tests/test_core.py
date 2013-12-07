@@ -1498,24 +1498,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_dynamic_cast(self):
       if self.emcc_args is None: return self.skip('need libcxxabi')
 
-      src = r'''
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_dynamic_cast')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        struct Support {
-          virtual void f() {
-            printf("f()\n");
-          }
-        };
-
-        struct Derived : Support {
-        };
-
-        int main() {
-          Support * p = new Derived;
-          dynamic_cast<Derived*>(p)->f();
-        }
-      '''
-      self.do_run(src, 'f()\n')
+      self.do_run_from_file(src, output)
 
   def test_dynamic_cast_b(self):
       if self.emcc_args is None: return self.skip('need libcxxabi')
