@@ -3594,29 +3594,10 @@ ok
     self.do_run_from_file(src, output)
 
   def test_vprintf(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdarg.h>
+    test_path = path_from_root('tests', 'core', 'test_vprintf')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void print(char* format, ...) {
-        va_list args;
-        va_start (args, format);
-        vprintf (format, args);
-        va_end (args);
-      }
-
-      int main () {
-         print("Call with %d variable argument.\n", 1);
-         print("Call with %d variable %s.\n", 2, "arguments");
-
-         return 0;
-      }
-      '''
-    expected = '''
-      Call with 1 variable argument.
-      Call with 2 variable arguments.
-      '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_vsnprintf(self):
     if self.emcc_args is None: return self.skip('needs i64 math')
