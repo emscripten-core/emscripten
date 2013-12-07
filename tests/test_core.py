@@ -2564,31 +2564,10 @@ The current type of b is: 9
   def test_memmove2(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
 
-    src = r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <assert.h>
-      int main() {
-        int sum = 0;
-        char buffer[256];
-        for (int i = 0; i < 10; i++) {
-          for (int j = 0; j < 10; j++) {
-            for (int k = 0; k < 35; k++) {
-              for (int t = 0; t < 256; t++) buffer[t] = t;
-              char *dest = buffer + i;
-              char *src = buffer + j;
-              if (dest == src) continue;
-              //printf("%d, %d, %d\n", i, j, k);
-              assert(memmove(dest, src, k) == dest);
-              for (int t = 0; t < 256; t++) sum += buffer[t];
-            }
-          }
-        }
-        printf("final: %d.\n", sum);
-        return 1;
-      }
-    '''
-    self.do_run(src, 'final: -403200.');
+    test_path = path_from_root('tests', 'core', 'test_memmove2')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_memmove3(self):
     src = '''
