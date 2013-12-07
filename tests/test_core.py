@@ -1092,50 +1092,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_longjmp2(self):
-    src = r'''
-      #include <setjmp.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_longjmp2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef struct {
-        jmp_buf* jmp;
-      } jmp_state;
-
-      void stack_manipulate_func(jmp_state* s, int level) {
-        jmp_buf buf;
-
-        printf("Entering stack_manipulate_func, level: %d\n", level);
-
-        if (level == 0) {
-          s->jmp = &buf;
-          if (setjmp(*(s->jmp)) == 0) {
-            printf("Setjmp normal execution path, level: %d\n", level);
-            stack_manipulate_func(s, level + 1);
-          } else {
-            printf("Setjmp error execution path, level: %d\n", level);
-          }
-        } else {
-          printf("Perform longjmp at level %d\n", level);
-          longjmp(*(s->jmp), 1);
-        }
-
-        printf("Exiting stack_manipulate_func, level: %d\n", level);
-      }
-
-      int main(int argc, char *argv[]) {
-        jmp_state s;
-        s.jmp = NULL;
-        stack_manipulate_func(&s, 0);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '''Entering stack_manipulate_func, level: 0
-Setjmp normal execution path, level: 0
-Entering stack_manipulate_func, level: 1
-Perform longjmp at level 1
-Setjmp error execution path, level: 0
-Exiting stack_manipulate_func, level: 0
-''')
+    self.do_run_from_file(src, output)
 
   def test_longjmp3(self):
     src = r'''
