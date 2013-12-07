@@ -3588,24 +3588,10 @@ ok
     self.do_run(src, expected)
 
   def test_printf_2(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_printf_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char c = '1';
-        short s = 2;
-        int i = 3;
-        long long l = 4;
-        float f = 5.5;
-        double d = 6.6;
-
-        printf("%c,%hd,%d,%lld,%.1f,%.1llf\n", c, s, i, l, f, d);
-        printf("%#x,%#x\n", 1, 0);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '1,2,3,4,5.5,6.6\n0x1,0\n')
+    self.do_run_from_file(src, output)
 
   def test_vprintf(self):
     src = r'''
