@@ -1008,49 +1008,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_linked_list(self):
-      src = '''
-        #include <stdio.h>
-        struct worker_args {
-          int value;
-          struct worker_args *next;
-        };
-        int main()
-        {
-          worker_args a;
-          worker_args b;
-          a.value = 60;
-          a.next = &b;
-          b.value = 900;
-          b.next = NULL;
-          worker_args* c = &a;
-          int total = 0;
-          while (c) {
-            total += c->value;
-            c = c->next;
-          }
+    test_path = path_from_root('tests', 'core', 'test_linked_list')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-          // Chunk of em
-          worker_args chunk[10];
-          for (int i = 0; i < 9; i++) {
-            chunk[i].value = i*10;
-            chunk[i].next = &chunk[i+1];
-          }
-          chunk[9].value = 90;
-          chunk[9].next = &chunk[0];
-
-          c = chunk;
-          do {
-            total += c->value;
-            c = c->next;
-          } while (c != chunk);
-
-          printf("*%d,%d*\\n", total, b.next);
-          // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*1410,0*')
+    self.do_run_from_file(src, output)
 
   def test_sup(self):
       src = '''
