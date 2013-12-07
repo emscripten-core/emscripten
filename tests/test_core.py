@@ -1255,29 +1255,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
 
-    src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_white_list_exception')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        void thrower() {
-          printf("infunc...");
-          throw(99);
-          printf("FAIL");
-        }
-
-        void somefunction() {
-          try {
-            thrower();
-          } catch(...) {
-            printf("done!*\\n");
-          }
-        }
-
-        int main() {
-          somefunction();
-          return 0;
-        }
-      '''
-    self.do_run(src, 'infunc...done!*')
+    self.do_run_from_file(src, output)
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.EXCEPTION_CATCHING_WHITELIST = []
