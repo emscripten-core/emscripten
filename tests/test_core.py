@@ -5109,33 +5109,10 @@ def process(filename):
     Settings.CORRUPTION_CHECK = 1
 
     # test for free(0), malloc(0), etc.
-    src = r'''
-      #include <iostream>
-      #include <fstream>
-      #include <stdlib.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_corruption_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void bye() {
-        printf("all ok\n");
-      }
-
-      int main() {
-        atexit(bye);
-
-        std::string testPath = "/Script/WA-KA.txt";
-        std::fstream str(testPath.c_str(), std::ios::in | std::ios::binary);
-
-        if (str.is_open())
-        {
-          std::cout << "open!" << std::endl;
-        } else {
-          std::cout << "missing!" << std::endl;
-        }
-
-        return 1;
-      }
-      '''
-    self.do_run(src, 'missing!\nall ok\n')
+    self.do_run_from_file(src, output)
 
   def test_corruption_3(self):
     if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
