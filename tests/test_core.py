@@ -1545,22 +1545,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_emptyclass(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-      #include <stdio.h>
 
-      struct Randomized {
-        Randomized(int x) {
-          printf("*zzcheezzz*\\n");
-        }
-      };
+      test_path = path_from_root('tests', 'core', 'test_emptyclass')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main( int argc, const char *argv[] ) {
-        new Randomized(55);
-
-        return 0;
-      }
-      '''
-      self.do_run(src, '*zzcheezzz*')
+      self.do_run_from_file(src, output)
 
   def test_alloca(self):
     src = '''
