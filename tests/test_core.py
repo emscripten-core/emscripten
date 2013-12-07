@@ -5121,29 +5121,10 @@ def process(filename):
     Settings.CORRUPTION_CHECK = 1
 
     # realloc
-    src = r'''
-      #include <stdlib.h>
-      #include <stdio.h>
-      #include <assert.h>
+    test_path = path_from_root('tests', 'core', 'test_corruption_3')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void bye() {
-        printf("all ok\n");
-      }
-
-      int main(int argc, char **argv) {
-        atexit(bye);
-
-        char *buffer = (char*)malloc(100);
-        for (int i = 0; i < 100; i++) buffer[i] = (i*i)%256;
-        buffer = (char*)realloc(buffer, argc + 50);
-        for (int i = 0; i < argc + 50; i++) {
-          //printf("%d : %d : %d : %d\n", i, (int)(buffer + i), buffer[i], (char)((i*i)%256));
-          assert(buffer[i] == (char)((i*i)%256));
-        }
-        return 1;
-      }
-      '''
-    self.do_run(src, 'all ok\n')
+    self.do_run_from_file(src, output)
 
   ### Integration tests
 
