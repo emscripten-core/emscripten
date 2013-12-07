@@ -2273,3 +2273,34 @@ EMSCRIPTEN_BINDINGS(return_values) {
     function("return_StringHolder_copy", &return_StringHolder_copy);
     function("call_StringHolder_func", &call_StringHolder_func);
 }
+
+
+struct Mixin {
+    int get10() const {
+        return 10;
+    }
+};
+
+template<typename ClassBinding>
+const ClassBinding& registerMixin(const ClassBinding& binding) {
+    // need a wrapper for implicit conversion from DerivedWithMixin to Mixin
+    struct Local {
+        static int get10(const typename ClassBinding::class_type& self) {
+            return self.get10();
+        }
+    };
+
+    return binding
+        .function("get10", &Local::get10)
+        ;
+}
+
+class DerivedWithMixin : public Base, public Mixin {
+};
+
+EMSCRIPTEN_BINDINGS(mixins) {
+    registerMixin(
+        class_<DerivedWithMixin, base<Base>>("DerivedWithMixin")
+            .constructor<>()
+    );
+}

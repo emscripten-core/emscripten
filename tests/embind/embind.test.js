@@ -1916,6 +1916,15 @@ module({
             sh1.delete();
         });
     });
+
+    BaseFixture.extend("mixin", function() {
+        test("can call mixin method", function() {
+            var a = new cm.DerivedWithMixin();
+            assert.instanceof(a, cm.Base);
+            assert.equal(10, a.get10());
+            a.delete();
+        });
+    });
 });
 
 /* global run_all_tests */
