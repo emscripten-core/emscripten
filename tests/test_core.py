@@ -2411,29 +2411,10 @@ The current type of b is: 9
 
   def test_strtol_oct(self):
     # tests strtoll for decimal strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtol_oct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "0 -035 +04711";
-        char *end_char;
-
-        // undefined base
-        long l1 = strtol(STRING, &end_char, 0);
-        long l2 = strtol(end_char, &end_char, 0);
-        long l3 = strtol(end_char, NULL, 0);
-
-        // defined base
-        long l4 = strtol(STRING, &end_char, 8);
-        long l5 = strtol(end_char, &end_char, 8);
-        long l6 = strtol(end_char, NULL, 8);
-
-        printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
+    self.do_run_from_file(src, output)
 
   def test_atexit(self):
     # Confirms they are called in reverse order
