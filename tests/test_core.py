@@ -3622,49 +3622,10 @@ ok
   def test_atoX(self):
     if self.emcc_args is None: return self.skip('requires ta2')
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_atoX')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main () {
-        printf("%d*", atoi(""));
-        printf("%d*", atoi("a"));
-        printf("%d*", atoi(" b"));
-        printf("%d*", atoi(" c "));
-        printf("%d*", atoi("6"));
-        printf("%d*", atoi(" 5"));
-        printf("%d*", atoi("4 "));
-        printf("%d*", atoi("3 6"));
-        printf("%d*", atoi(" 3 7"));
-        printf("%d*", atoi("9 d"));
-        printf("%d\n", atoi(" 8 e"));
-        printf("%d*", atol(""));
-        printf("%d*", atol("a"));
-        printf("%d*", atol(" b"));
-        printf("%d*", atol(" c "));
-        printf("%d*", atol("6"));
-        printf("%d*", atol(" 5"));
-        printf("%d*", atol("4 "));
-        printf("%d*", atol("3 6"));
-        printf("%d*", atol(" 3 7"));
-        printf("%d*", atol("9 d"));
-        printf("%d\n", atol(" 8 e"));
-        printf("%lld*", atoll("6294967296"));
-        printf("%lld*", atoll(""));
-        printf("%lld*", atoll("a"));
-        printf("%lld*", atoll(" b"));
-        printf("%lld*", atoll(" c "));
-        printf("%lld*", atoll("6"));
-        printf("%lld*", atoll(" 5"));
-        printf("%lld*", atoll("4 "));
-        printf("%lld*", atoll("3 6"));
-        printf("%lld*", atoll(" 3 7"));
-        printf("%lld*", atoll("9 d"));
-        printf("%lld\n", atoll(" 8 e"));
-        return 0;
-      }
-      '''
-    self.do_run(src, '0*0*0*0*6*5*4*3*3*9*8\n0*0*0*0*6*5*4*3*3*9*8\n6294967296*0*0*0*0*6*5*4*3*3*9*8\n')
+    self.do_run_from_file(src, output)
 
   def test_strstr(self):
     src = r'''
