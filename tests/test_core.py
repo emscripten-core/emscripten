@@ -1424,41 +1424,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_polymorph(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-        #include <stdio.h>
-        struct Pure {
-          virtual int implme() = 0;
-        };
-        struct Parent : Pure {
-          virtual int getit() { return 11; };
-          int implme() { return 32; }
-        };
-        struct Child : Parent {
-          int getit() { return 74; }
-          int implme() { return 1012; }
-        };
 
-        struct Other {
-          int one() { return 11; }
-          int two() { return 22; }
-        };
+      test_path = path_from_root('tests', 'core', 'test_polymorph')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main()
-        {
-          Parent *x = new Parent();
-          Parent *y = new Child();
-          printf("*%d,%d,%d,%d*\\n", x->getit(), y->getit(), x->implme(), y->implme());
-
-          Other *o = new Other;
-          int (Other::*Ls)() = &Other::one;
-          printf("*%d*\\n", (o->*(Ls))());
-          Ls = &Other::two;
-          printf("*%d*\\n", (o->*(Ls))());
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
+      self.do_run_from_file(src, output)
 
   def test_segfault(self):
     if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
