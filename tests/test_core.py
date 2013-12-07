@@ -2534,29 +2534,10 @@ The current type of b is: 9
       self.do_run_from_file(src, output, output_nicerizer = check)
 
   def test_memcpy2(self):
-    src = r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <assert.h>
-      int main() {
-        char buffer[256];
-        for (int i = 0; i < 10; i++) {
-          for (int j = 0; j < 10; j++) {
-            for (int k = 0; k < 35; k++) {
-              for (int t = 0; t < 256; t++) buffer[t] = t;
-              char *dest = buffer + i + 128;
-              char *src = buffer+j;
-              //printf("%d, %d, %d\n", i, j, k);
-              assert(memcpy(dest, src, k) == dest);
-              assert(memcmp(dest, src, k) == 0);
-            }
-          }
-        }
-        printf("ok.\n");
-        return 1;
-      }
-    '''
-    self.do_run(src, 'ok.');
+      test_path = path_from_root('tests', 'core', 'test_memcpy2')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_getopt(self):
       if self.emcc_args is None: return self.skip('needs emcc for libc')
