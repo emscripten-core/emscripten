@@ -1131,35 +1131,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
 
   def test_longjmp_exc(self):
-    src = r'''
-      #include <stdlib.h>
-      #include <stdio.h>
-      #include <setjmp.h>
-      #include <emscripten.h>
+    test_path = path_from_root('tests', 'core', 'test_longjmp_exc')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      jmp_buf abortframe;
-
-      void dostuff(int a) {
-        printf("pre\n");
-        if (a != 42) emscripten_run_script("waka_waka()"); // this should fail, and never reach "never"
-        printf("never\n");
-
-        if (a == 100) {
-          longjmp (abortframe, -1);
-        }
-
-        if (setjmp(abortframe)) {
-          printf("got 100");
-        }
-      }
-
-      int main(int argc, char **argv) {
-        dostuff(argc);
-        exit(1);
-        return 1;
-      }
-      '''
-    self.do_run(src, 'waka_waka');
+    self.do_run_from_file(src, output)
 
   def test_setjmp_many(self):
     src = r'''
