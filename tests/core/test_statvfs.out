@@ -1,0 +1,13 @@
+result: 0
+errno: 0
+f_bsize: 4096
+f_frsize: 4096
+f_blocks: 1000000
+f_bfree: 500000
+f_bavail: 500000
+f_files: 1
+f_ffree: 1000000
+f_favail: 1000000
+f_fsid: 42
+f_flag: 2
+f_namemax: 255

@@ -3987,48 +3987,10 @@ def process(filename):
     self.do_run_from_file(src, output, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
 
   def test_statvfs(self):
-    src = r'''
-      #include <stdio.h>
-      #include <errno.h>
-      #include <sys/statvfs.h>
+    test_path = path_from_root('tests', 'core', 'test_statvfs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        struct statvfs s;
-
-        printf("result: %d\n", statvfs("/test", &s));
-        printf("errno: %d\n", errno);
-
-        printf("f_bsize: %lu\n", s.f_bsize);
-        printf("f_frsize: %lu\n", s.f_frsize);
-        printf("f_blocks: %lu\n", s.f_blocks);
-        printf("f_bfree: %lu\n", s.f_bfree);
-        printf("f_bavail: %lu\n", s.f_bavail);
-        printf("f_files: %d\n", s.f_files > 5);
-        printf("f_ffree: %lu\n", s.f_ffree);
-        printf("f_favail: %lu\n", s.f_favail);
-        printf("f_fsid: %lu\n", s.f_fsid);
-        printf("f_flag: %lu\n", s.f_flag);
-        printf("f_namemax: %lu\n", s.f_namemax);
-
-        return 0;
-      }
-      '''
-    expected = r'''
-      result: 0
-      errno: 0
-      f_bsize: 4096
-      f_frsize: 4096
-      f_blocks: 1000000
-      f_bfree: 500000
-      f_bavail: 500000
-      f_files: 1
-      f_ffree: 1000000
-      f_favail: 1000000
-      f_fsid: 42
-      f_flag: 2
-      f_namemax: 255
-      '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_libgen(self):
     src = r'''
