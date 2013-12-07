@@ -1,0 +1,7 @@
+setjmp normal execution path, level: 0
+setjmp normal execution path, level: 1
+level is 2, perform longjmp!
+setjmp exception execution path, level: 1
+prev_jmp is not empty, continue with longjmp!
+setjmp exception execution path, level: 0
+Exiting setjmp function, level: 0

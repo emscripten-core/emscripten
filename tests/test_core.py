@@ -1098,56 +1098,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_longjmp3(self):
-    src = r'''
-      #include <setjmp.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_longjmp3')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef struct {
-        jmp_buf* jmp;
-      } jmp_state;
-
-      void setjmp_func(jmp_state* s, int level) {
-        jmp_buf* prev_jmp = s->jmp;
-        jmp_buf c_jmp;
-
-        if (level == 2) {
-          printf("level is 2, perform longjmp!\n");
-          longjmp(*(s->jmp), 1);
-        }
-
-        if (setjmp(c_jmp) == 0) {
-          printf("setjmp normal execution path, level: %d\n", level);
-          s->jmp = &c_jmp;
-          setjmp_func(s, level + 1);
-        } else {
-          printf("setjmp exception execution path, level: %d\n", level);
-          if (prev_jmp) {
-            printf("prev_jmp is not empty, continue with longjmp!\n");
-            s->jmp = prev_jmp;
-            longjmp(*(s->jmp), 1);
-          }
-        }
-
-        printf("Exiting setjmp function, level: %d\n", level);
-      }
-
-      int main(int argc, char *argv[]) {
-        jmp_state s;
-        s.jmp = NULL;
-
-        setjmp_func(&s, 0);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '''setjmp normal execution path, level: 0
-setjmp normal execution path, level: 1
-level is 2, perform longjmp!
-setjmp exception execution path, level: 1
-prev_jmp is not empty, continue with longjmp!
-setjmp exception execution path, level: 0
-Exiting setjmp function, level: 0
-''')
+    self.do_run_from_file(src, output)
 
   def test_longjmp4(self):
     src = r'''
