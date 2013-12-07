@@ -4232,41 +4232,10 @@ PORT: 3979
     self.do_run_from_file(src, output)
 
   def test_phiundef(self):
-    src = r'''
-#include <stdlib.h>
-#include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_phiundef')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-static int state;
-
-struct my_struct {
-union {
-  struct {
-    unsigned char a;
-    unsigned char b;
-  } c;
-  unsigned int d;
-} e;
-unsigned int f;
-};
-
-int main(int argc, char **argv) {
-  struct my_struct r;
-
-  state = 0;
-
-  for (int i=0;i<argc+10;i++)
-  {
-      if (state % 2 == 0)
-          r.e.c.a = 3;
-      else
-          printf("%d\n", r.e.c.a);
-      state++;
-  }
-  return 0;
-}
-    '''
-
-    self.do_run(src, '3\n3\n3\n3\n3\n')
+    self.do_run_from_file(src, output)
 
   # libc++ tests
 
