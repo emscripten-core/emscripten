@@ -1417,19 +1417,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_iswdigit(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
 
-      src = '''
-        #include <stdio.h>
-        #include <cctype>
-        #include <cwctype>
+      test_path = path_from_root('tests', 'core', 'test_iswdigit')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          using namespace std;
-          printf("%d ", isdigit('0'));
-          printf("%d ", iswdigit(L'0'));
-          return 0;
-        }
-      '''
-      self.do_run(src, '1 1')
+      self.do_run_from_file(src, output)
 
   def test_polymorph(self):
       if self.emcc_args is None: return self.skip('requires emcc')
