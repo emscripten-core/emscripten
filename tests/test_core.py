@@ -4028,32 +4028,10 @@ def process(filename):
   def test_std_cout_new(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
-    src = '''
-      #include <iostream>
+    test_path = path_from_root('tests', 'core', 'test_std_cout_new')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      struct NodeInfo { //structure that we want to transmit to our shaders
-          float x;
-          float y;
-          float s;
-          float c;
-      };
-      const int nbNodes = 100;
-      NodeInfo * data = new NodeInfo[nbNodes]; //our data that will be transmitted using float texture.
-
-      template<int i>
-      void printText( const char (&text)[ i ] )
-      {
-         std::cout << text << std::endl;
-      }
-
-      int main()
-      {
-        printText( "some string constant" );
-        return 0;
-      }
-    '''
-
-    self.do_run(src, "some string constant")
+    self.do_run_from_file(src, output)
 
   def test_istream(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
