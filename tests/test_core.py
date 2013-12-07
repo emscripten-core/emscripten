@@ -2035,28 +2035,10 @@ def process(filename):
   def test_indirectbr(self):
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
-      src = '''
-        #include <stdio.h>
-        int main(void) {
-          const void *addrs[2] = { &&FOO, &&BAR };
+      test_path = path_from_root('tests', 'core', 'test_indirectbr')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-          // confuse the optimizer so it doesn't hardcode the jump and avoid generating an |indirectbr| instruction
-          int which = 0;
-          for (int x = 0; x < 1000; x++) which = (which + x*x) % 7;
-          which = (which % 2) + 1;
-
-          goto *addrs[which];
-
-        FOO:
-          printf("bad\\n");
-          return 0;
-        BAR:
-          printf("good\\n");
-          const void *addr = &&FOO;
-          goto *addr;
-        }
-        '''
-      self.do_run(src, 'good\nbad')
+      self.do_run_from_file(src, output)
 
   def test_indirectbr_many(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('blockaddr > 255 requires ta2')
