@@ -1719,24 +1719,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_array2b(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_array2b')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        static const struct {
-          unsigned char left;
-          unsigned char right;
-        } prioritah[] = {
-           {6, 6}, {6, 6}, {7, 95}, {7, 7}
-        };
-
-        int main() {
-          printf("*%d,%d\\n", prioritah[1].left, prioritah[1].right);
-          printf("%d,%d*\\n", prioritah[2].left, prioritah[2].right);
-          return 0;
-        }
-        '''
-      self.do_run(src, '*6,6\n7,95*')
-
+    self.do_run_from_file(src, output)
 
   def test_constglobalstructs(self):
       src = '''
