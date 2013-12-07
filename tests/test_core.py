@@ -3698,28 +3698,10 @@ Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
   def test_sscanf_n(self):
-    src = r'''
-      #include<stdio.h>
-      int main() {
-        char *line = "version 1.0";
-        int i, l, lineno;
-        char word[80];
-        if (sscanf(line, "%s%n", word, &l) != 1) {
-            printf("Header format error, line %d\n", lineno);
-        }
-        printf("[DEBUG] word 1: %s, l: %d\n", word, l);
+    test_path = path_from_root('tests', 'core', 'test_sscanf_n')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int x = sscanf("one %n two", "%s %n", word, &l);
-        printf("%d,%s,%d\n", x, word, l);
-        {
-          int a, b, c, count;
-          count = sscanf("12345 6789", "%d %n%d", &a, &b, &c);
-          printf("%i %i %i %i\n", count, a, b, c);
-        }
-        return 0;
-      }
-    '''
-    self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4\n2 12345 6 6789\n''')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_whitespace(self):
     src = r'''
