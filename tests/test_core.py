@@ -2462,28 +2462,10 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strptime_tm(self):
-    src=r'''
-      #include <time.h>
-      #include <stdio.h>
-      #include <string.h>
+    test_path = path_from_root('tests', 'core', 'test_strptime_tm')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        struct tm tm;
-        char *ptr = strptime("17410105012000", "%H%M%S%d%m%Y", &tm);
-
-        printf("%s: %s, %d/%d/%d %d:%d:%d", 
-          (ptr != NULL && *ptr=='\0') ? "OK" : "ERR", 
-          tm.tm_wday == 0 ? "Sun" : (tm.tm_wday == 1 ? "Mon" : (tm.tm_wday == 2 ? "Tue" : (tm.tm_wday == 3 ? "Wed" : (tm.tm_wday == 4 ? "Thu" : (tm.tm_wday == 5 ? "Fri" : (tm.tm_wday == 6 ? "Sat" : "ERR")))))),
-          tm.tm_mon+1,
-          tm.tm_mday,
-          tm.tm_year+1900,
-          tm.tm_hour,
-          tm.tm_min,
-          tm.tm_sec            
-        );
-      }
-    ''' 
-    self.do_run(src, 'OK: Wed, 1/5/2000 17:41:1')
+    self.do_run_from_file(src, output)
 
   def test_strptime_days(self):
     src = r'''
