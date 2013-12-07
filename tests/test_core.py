@@ -1552,18 +1552,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_alloca(self):
-    src = '''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_alloca')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char *pc;
-        pc = (char *)alloca(5);
-        printf("z:%d*%d*\\n", pc > 0, (int)pc);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'z:1*', force_c=True)
+    self.do_run_from_file(src, output, force_c=True)
 
   def test_rename(self):
     src = open(path_from_root('tests', 'stdio', 'test_rename.c'), 'r').read()
