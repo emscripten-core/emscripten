@@ -11,6 +11,7 @@ namespace emscripten {
             void _emval_register_symbol(const char*);
 
             typedef struct _EM_VAL* EM_VAL;
+            typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
 
             // TODO: functions returning this are reinterpret_cast
             // into the correct return type.  this needs some thought
@@ -19,6 +20,8 @@ namespace emscripten {
         
             void _emval_incref(EM_VAL value);
             void _emval_decref(EM_VAL value);
+
+            void _emval_run_destructors(EM_DESTRUCTORS handle);
 
             EM_VAL _emval_new_array();
             EM_VAL _emval_new_object();
@@ -37,7 +40,7 @@ namespace emscripten {
             EM_VAL _emval_get_module_property(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
-            _POLYMORPHIC_RESULT _emval_as(EM_VAL value, TYPEID returnType, EM_VAL* runDestructors);
+            _POLYMORPHIC_RESULT _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* runDestructors);
 
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -63,7 +66,11 @@ namespace emscripten {
 
         template<typename ReturnType, typename... Args>
         struct Signature {
-            typedef typename BindingType<ReturnType>::WireType (*MethodCaller)(EM_VAL value, const char* methodName, typename BindingType<Args>::WireType...);
+            typedef typename BindingType<ReturnType>::WireType (*MethodCaller)(
+                EM_VAL value,
+                const char* methodName,
+                EM_DESTRUCTORS* destructors,
+                typename BindingType<Args>::WireType...);
 
             static MethodCaller get_method_caller() {
                 static MethodCaller fp = reinterpret_cast<MethodCaller>(init_method_caller());
@@ -77,15 +84,34 @@ namespace emscripten {
             }
         };
 
+        struct DestructorsRunner {
+        public:
+            explicit DestructorsRunner(EM_DESTRUCTORS d)
+                : destructors(d)
+            {}
+            ~DestructorsRunner() {
+                _emval_run_destructors(destructors);
+            }
+
+            DestructorsRunner(const DestructorsRunner&) = delete;
+            void operator=(const DestructorsRunner&) = delete;
+
+        private:
+            EM_DESTRUCTORS destructors;
+        };
+
         template<typename ReturnType, typename... Args>
         struct MethodCaller {
             static ReturnType call(EM_VAL handle, const char* methodName, Args&&... args) {
                 auto caller = Signature<ReturnType, Args...>::get_method_caller();
+
+                EM_DESTRUCTORS destructors;
                 auto wireType = caller(
                     handle,
                     methodName,
+                    &destructors,
                     toWireType(std::forward<Args>(args))...);
-                WireDeleter<ReturnType> deleter(wireType);
+                DestructorsRunner rd(destructors);
                 return BindingType<ReturnType>::fromWireType(wireType);
             }
         };
@@ -94,27 +120,16 @@ namespace emscripten {
         struct MethodCaller<void, Args...> {
             static void call(EM_VAL handle, const char* methodName, Args&&... args) {
                 auto caller = Signature<void, Args...>::get_method_caller();
-                return caller(
+
+                EM_DESTRUCTORS destructors;
+                caller(
                     handle,
                     methodName,
+                    &destructors,
                     toWireType(std::forward<Args>(args))...);
+                DestructorsRunner rd(destructors);
+                // void requires no translation
             }
-        };
-
-        struct DestructorsRunner {
-        public:
-            DestructorsRunner(EM_VAL v)
-                : dr(v)
-            {}
-            DestructorsRunner(const DestructorsRunner&) = delete;
-            void operator=(const DestructorsRunner&) = delete;
-            ~DestructorsRunner() {
-                EM_VAL rv = _emval_call(dr, 0, 0);
-                _emval_decref(rv); // TODO: if we had an _emval_call_void we wouldn't need this
-                _emval_decref(dr);
-            }
-        private:
-            EM_VAL dr;
         };
     }
 
@@ -285,12 +300,12 @@ namespace emscripten {
             typedef typename BT::WireType (*TypedAs)(
                 EM_VAL value,
                 TYPEID returnType,
-                EM_VAL* runDestructors);
+                EM_DESTRUCTORS* runDestructors);
             TypedAs typedAs = reinterpret_cast<TypedAs>(&_emval_as);
 
-            EM_VAL runDestructors;
-            typename BT::WireType wt = typedAs(handle, TypeID<T>::get(), &runDestructors);
-            DestructorsRunner dr(runDestructors);
+            EM_DESTRUCTORS destructors;
+            typename BT::WireType wt = typedAs(handle, TypeID<T>::get(), &destructors);
+            DestructorsRunner dr(destructors);
             return BT::fromWireType(wt);
         }
 
@@ -315,8 +330,6 @@ namespace emscripten {
             }
             static val fromWireType(WireType v) {
                 return val::take_ownership(v);
-            }
-            static void destroy(WireType v) {
             }
         };
     }

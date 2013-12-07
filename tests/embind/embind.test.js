@@ -1591,7 +1591,7 @@ module({
         test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
             var impl = cm.AbstractClass.implement({
                 returnsSharedPtr: function() {
-                    return cm.embind_test_return_smart_derived_ptr();
+                    return cm.embind_test_return_smart_derived_ptr().deleteLater();
                 }
             });
             cm.callReturnsSharedPtrMethod(impl);
@@ -1924,6 +1924,19 @@ module({
             assert.equal(10, a.get10());
             a.delete();
         });
+    });
+
+    test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
+        var derived = cm.embind_test_return_smart_derived_ptr();
+        var impl = cm.AbstractClass.implement({
+            returnsSharedPtr: function() {
+                return derived;
+            }
+        });
+        cm.callReturnsSharedPtrMethod(impl);
+        impl.delete();
+        derived.delete();
+        // Let the memory leak test superfixture check that no leaks occurred.
     });
 });
 
