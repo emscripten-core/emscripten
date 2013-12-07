@@ -2018,19 +2018,10 @@ def process(filename):
   # with Clang 3.2 -std=c++11 has been chosen as default, because of
   # < jrose> clb: it's deliberate, with the idea that for people who don't care about the standard, they should be using the "best" thing we can offer on that platform
   def test_cxx03_do_run(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_cxx03_do_run')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        #if __cplusplus != 199711L
-        #error By default, if no -std is specified, emscripten should be compiling with -std=c++03!
-        #endif
-
-        int main( int argc, const char *argv[] ) {
-          printf("Hello world!\\n");
-          return 0;
-        }
-        '''
-      self.do_run(src, 'Hello world!')
+    self.do_run_from_file(src, output)
 
   def test_bigswitch(self):
     if self.run_name != 'default': return self.skip('TODO: issue #781')
