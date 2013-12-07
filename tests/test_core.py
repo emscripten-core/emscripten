@@ -1745,26 +1745,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_mod_globalstruct(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_mod_globalstruct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        struct malloc_params {
-          size_t magic, page_size;
-        };
-
-        malloc_params mparams;
-
-        #define SIZE_T_ONE ((size_t)1)
-        #define page_align(S) (((S) + (mparams.page_size - SIZE_T_ONE)) & ~(mparams.page_size - SIZE_T_ONE))
-
-        int main()
-        {
-          mparams.page_size = 4096;
-          printf("*%d,%d,%d,%d*\\n", mparams.page_size, page_align(1000), page_align(6000), page_align(66474));
-          return 0;
-        }
-      '''
-      self.do_run(src, '*4096,4096,8192,69632*')
+    self.do_run_from_file(src, output)
 
   def test_pystruct(self):
       src = '''
