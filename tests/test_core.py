@@ -1572,32 +1572,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_stack_byval(self):
     if self.emcc_args is None: return # too slow in other modes
 
-    # We should also not blow up the stack with byval arguments
-    src = r'''
-      #include<stdio.h>
-      struct vec {
-        int x, y, z;
-        vec(int x_, int y_, int z_) : x(x_), y(y_), z(z_) {}
-        static vec add(vec a, vec b) {
-          return vec(a.x+b.x, a.y+b.y, a.z+b.z);
-        }
-      };
-      int main() {
-        int total = 0;
-        for (int i = 0; i < 1000; i++) {
-          for (int j = 0; j < 1000; j++) {
-            vec c(i+i%10, j*2, i%255);
-            vec d(j*2, j%255, i%120);
-            vec f = vec::add(c, d);
-            total += (f.x + f.y + f.z) % 100;
-            total %= 10240;
-          }
-        }
-        printf("sum:%d*\n", total);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'sum:9780*')
+    test_path = path_from_root('tests', 'core', 'test_stack_byval')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_stack_varargs(self):
     if self.emcc_args is None: return # too slow in other modes
