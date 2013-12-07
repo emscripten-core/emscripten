@@ -4439,22 +4439,11 @@ return malloc(size);
   def test_dlmalloc_partial_2(self):
     if self.emcc_args is None or 'SAFE_HEAP' in str(self.emcc_args) or 'CHECK_HEAP_ALIGN' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-      void *malloc(size_t size)
-      {
-        return (void*)123;
-      }
-      int main() {
-        void *x = malloc(10);
-        printf("got %p\n", x);
-        free(x);
-        printf("freed the faker\n");
-        return 1;
-      }
-'''
-    self.do_run(src, 'got 0x7b\nfreed')
+
+    test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_libcxx(self):
     if self.emcc_args is None: return self.skip('requires emcc')
