@@ -1739,26 +1739,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_bigarray(self):
     if self.emcc_args is None: return self.skip('need ta2 to compress type data on zeroinitializers')
 
-    # avoid "array initializer too large" errors
-    src = r'''
-      #include <stdio.h>
-      #include <assert.h>
+    test_path = path_from_root('tests', 'core', 'test_bigarray')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      #define SIZE (1024*100)
-      struct Struct {
-        char x;
-        int y;
-      };
-      Struct buffy[SIZE];
-
-      int main() {
-        for (int i = 0; i < SIZE; i++) { assert(buffy[i].x == 0 && buffy[i].y == 0); } // we were zeroinitialized
-        for (int i = 0; i < SIZE; i++) { buffy[i].x = i*i; buffy[i].y = i*i*i; } // we can save data
-        printf("*%d*\n", buffy[SIZE/3].x);
-        return 0;
-      }
-      '''
-    self.do_run(src, '*57*')
+    self.do_run_from_file(src, output)
 
   def test_mod_globalstruct(self):
       src = '''
