@@ -3643,7 +3643,8 @@ var LibraryGL = {
             GLctx.bindAttribLocation(this.program, GLImmediate.VERTEX, 'a_position');
             GLctx.bindAttribLocation(this.program, GLImmediate.COLOR, 'a_color');
             GLctx.bindAttribLocation(this.program, GLImmediate.NORMAL, 'a_normal');
-            for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+            var maxVertexAttribs = GLctx.getParameter(GLctx.MAX_VERTEX_ATTRIBS);
+            for (var i = 0; i < GLImmediate.MAX_TEXTURES && GLImmediate.TEXTURE0 + i < maxVertexAttribs; i++) {
               GLctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, 'a_texCoord'+i);
               GLctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, aTexCoordPrefix+i);
             }
