@@ -2136,3 +2136,17 @@ int main()
     assert 'test.o' in head, 'Invalid dependency target'
     assert 'test.cpp' in tail and 'test.hpp' in tail, 'Invalid dependencies generated'
 
+  def test_quoted_js_lib_key(self):
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+   __internal_data:{
+    '<' : 0,
+    'white space' : 1
+  },
+  printf__deps: ['__internal_data', 'fprintf']
+});
+''')
+
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js']).communicate()
+    self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+

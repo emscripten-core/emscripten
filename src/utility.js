@@ -346,13 +346,19 @@ function sortedJsonCompare(x, y) {
   return true;
 }
 
+function escapeJSONKey(x) {
+  if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
+  assert(x.indexOf("'") < 0, 'cannot have internal single quotes in keys: ' + x);
+  return "'" + x + "'";
+}
+
 function stringifyWithFunctions(obj) {
   if (typeof obj === 'function') return obj.toString();
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
   if (isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   } else {
-    return '{' + keys(obj).map(function(key) { return key + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
+    return '{' + keys(obj).map(function(key) { return escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key]) }).join(',') + '}';
   }
 }
 
