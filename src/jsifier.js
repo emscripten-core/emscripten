@@ -229,6 +229,9 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   function parseConst(value, type, ident) {
     var constant = makeConst(value, type);
+    // Sadly, we've thrown away type information in makeConst, so we're not
+    // passing correct type info to parseNumerical which works around this
+    // lack.
     constant = flatten(constant).map(function(x) { return parseNumerical(x) })
     return constant;
   }
