@@ -962,8 +962,13 @@ function parseNumerical(value, type) {
   }
   if (isNumber(value)) {
     var ret = parseFloat(value); // will change e.g. 5.000000e+01 to 50
+    // type may be undefined here, like when this is called from makeConst with a single argument.
+    // but if it is a number, then we can safely assume that this should handle negative zeros
+    // correctly.
+    if (type === undefined || type === 'double' || type === 'float') {
+      if (value[0] === '-' && ret === 0) { return '-.0'; } // fix negative 0, toString makes it 0
+    }
     if (type === 'double' || type === 'float') {
-      if (value[0] === '-' && ret === 0) return '-.0'; // fix negative 0, toString makes it 0
       if (!RUNNING_JS_OPTS) ret = asmEnsureFloat(ret, type);
     }
     return ret.toString();

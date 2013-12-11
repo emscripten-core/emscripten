@@ -477,6 +477,14 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output)
 
+  def test_literal_negative_zero(self):
+    if self.emcc_args == None: return self.skip('needs emcc')
+
+    test_path = path_from_root('tests', 'core', 'test_literal_negative_zero')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_llvm_intrinsics(self):
     if self.emcc_args == None: return self.skip('needs ta2')
 
