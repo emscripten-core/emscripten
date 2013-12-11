@@ -282,7 +282,12 @@ var Functions = {
         sig += Functions.getSignatureLetter(type);
       } else {
         var chunks = getNumIntChunks(type);
-        for (var j = 0; j < chunks; j++) sig += 'i';
+        if (chunks > 0) {
+          for (var j = 0; j < chunks; j++) sig += 'i';
+        } else {
+          // some special type like a SIMD vector
+          sig += Functions.getSignatureLetter(type);
+        }
       }
     }
     if (hasVarArgs) sig += 'i';
