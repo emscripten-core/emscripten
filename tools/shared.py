@@ -637,7 +637,7 @@ def check_engine(engine):
   try:
     if not CONFIG_FILE:
       return True # config stored directly in EM_CONFIG => skip engine check
-    return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
+    return 'hello, world!' in run_js(path_from_root('src', 'hello_world.js'), engine)
   except Exception, e:
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
