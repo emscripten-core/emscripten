@@ -1543,6 +1543,9 @@ keydown(100);keyup(100); // trigger the end
   def test_cube_explosion(self):
     self.btest('cube_explosion.c', reference='cube_explosion.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
+  def test_glgettexenv(self):
+    self.btest('glgettexenv.c', args=['-s', 'LEGACY_GL_EMULATION=1'], expected=['1'])
+
   def test_sdl_canvas_blank(self):
     self.btest('sdl_canvas_blank.c', reference='sdl_canvas_blank.png')
 

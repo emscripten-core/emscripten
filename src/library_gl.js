@@ -3424,9 +3424,9 @@ var LibraryGL = {
           switch (pname) {
             case GL_TEXTURE_ENV_COLOR:
               {{{ makeSetValue('param', '0', 'env.envColor[0]', 'float') }}};
-              {{{ makeSetValue('param', '1', 'env.envColor[1]', 'float') }}};
-              {{{ makeSetValue('param', '2', 'env.envColor[2]', 'float') }}};
-              {{{ makeSetValue('param', '3', 'env.envColor[3]', 'float') }}};
+              {{{ makeSetValue('param', '4', 'env.envColor[1]', 'float') }}};
+              {{{ makeSetValue('param', '8', 'env.envColor[2]', 'float') }}};
+              {{{ makeSetValue('param', '12', 'env.envColor[3]', 'float') }}};
               return;
           }
         }
