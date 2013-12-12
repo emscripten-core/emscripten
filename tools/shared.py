@@ -316,7 +316,7 @@ def check_sanity(force=False):
   try:
     reason = None
     if not CONFIG_FILE:
-      if not force: return # config stored directly in EM_CONFIG => skip sanity checks
+      return # config stored directly in EM_CONFIG => skip sanity checks
     else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
