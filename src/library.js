@@ -7701,6 +7701,94 @@ LibraryManager.library = {
     return _gai_strerror.buffer;
   },
 
+  // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
+  // http://pubs.opengroup.org/onlinepubs/9699919799/functions/getprotobyname.html
+  // The Protocols object holds our 'fake' protocols 'database'.
+  $Protocols: {
+    list: [],
+    map: {}
+  },
+  setprotoent__deps: ['$Protocols'],
+  setprotoent: function(stayopen) {
+    // void setprotoent(int stayopen);
+
+    // Allocate and populate a protoent structure given a name, protocol number and array of aliases
+    function allocprotoent(name, proto, aliases) {
+      // write name into buffer
+      var nameBuf = _malloc(name.length + 1);
+      writeAsciiToMemory(name, nameBuf);
+
+      // write aliases into buffer
+      var j = 0;
+      var length = aliases.length;
+      var aliasListBuf = _malloc((length + 1) * 4); // Use length + 1 so we have space for the terminating NULL ptr.
+
+      for (var i = 0; i < length; i++, j += 4) {
+        var alias = aliases[i];
+        var aliasBuf = _malloc(alias.length + 1);
+        writeAsciiToMemory(alias, aliasBuf);
+        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', 'i8*') }}};
+      }
+      {{{ makeSetValue('aliasListBuf', 'j', '0', 'i8*') }}}; // Terminating NULL pointer.
+
+      // generate protoent
+      var pe = _malloc({{{ C_STRUCTS.protoent.__size__ }}});
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', 'i8*') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', 'i8**') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_proto, 'proto', 'i32') }}};
+      return pe;
+    };
+
+    // Populate the protocol 'database'. The entries are limited to tcp and udp, though it is fairly trivial
+    // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
+    var list = Protocols.list;
+    var map  = Protocols.map;
+    if (list.length === 0) {
+        var entry = allocprotoent('tcp', 6, ['TCP']);
+        list.push(entry);
+        map['tcp'] = map['6'] = entry;
+        entry = allocprotoent('udp', 17, ['UDP']);
+        list.push(entry);
+        map['udp'] = map['17'] = entry;
+    }
+
+    _setprotoent.index = 0;
+  },
+
+  endprotoent: function() {
+    // void endprotoent(void);
+    // We're not using a real protocol database so we don't do a real close.
+  },
+
+  getprotoent__deps: ['setprotoent', '$Protocols'],
+  getprotoent: function(number) {
+    // struct protoent *getprotoent(void);
+    // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
+    if (_setprotoent.index === Protocols.list.length) {
+      return 0; 
+    } else {
+      var result = Protocols.list[_setprotoent.index++];
+      return result;
+    }
+  },
+
+  getprotobyname__deps: ['setprotoent', '$Protocols'],
+  getprotobyname: function(name) {
+    // struct protoent *getprotobyname(const char *);
+    name = Pointer_stringify(name);
+    _setprotoent(true);
+    var result = Protocols.map[name];
+    return result;
+  },
+
+  getprotobynumber__deps: ['setprotoent', '$Protocols'],
+  getprotobynumber: function(number) {
+    // struct protoent *getprotobynumber(int proto);
+    _setprotoent(true);
+    var result = Protocols.map[number];
+    return result;
+  },
+
   // ==========================================================================
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking

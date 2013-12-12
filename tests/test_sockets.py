@@ -228,6 +228,9 @@ class sockets(BrowserCore):
   def test_gethostbyname(self):
     self.do_run(open(path_from_root('tests', 'sockets', 'test_gethostbyname.c')).read(), 'success')
 
+  def test_getprotobyname(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
+
   def test_sockets_echo(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
