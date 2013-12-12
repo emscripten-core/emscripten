@@ -1,0 +1,6 @@
+Entering stack_manipulate_func, level: 0
+Setjmp normal execution path, level: 0
+Entering stack_manipulate_func, level: 1
+Perform longjmp at level 1
+Setjmp error execution path, level: 0
+Exiting stack_manipulate_func, level: 0

@@ -418,6 +418,12 @@ process(sys.argv[1])
     '''
     return (main, supp)
 
+  def do_run_from_file(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
+    self.do_run(open(src).read(), open(expected_output).read(),
+                args, output_nicerizer, output_processor, no_build, main_file,
+                additional_files, js_engines, post_build, basename, libraries,
+                includes, force_c, build_ll_hook, extra_emscripten_args)
+
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
     if force_c or (main_file is not None and main_file[-2:]) == '.c':

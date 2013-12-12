@@ -1,0 +1,6 @@
+ret: 0
+sysname: Emscripten
+nodename: emscripten
+release: 1.0
+version: #1
+machine: x86-JS
