@@ -1328,6 +1328,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_async_exit(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     open('main.c', 'w').write(r'''
       #include <stdio.h>
       #include <stdlib.h>

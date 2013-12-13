@@ -761,6 +761,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: logging.debug('  ..3..')
   temp3 = temp_files.get('.3.bc').name
   shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), temp2, '-pnacl-abi-simplify-postopt', '-o', temp3]))
+  #'-print-after-all'
   assert os.path.exists(temp3)
   if DEBUG:
     shutil.copyfile(temp3, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp3.bc'))
