@@ -1691,8 +1691,13 @@ keydown(100);keyup(100); // trigger the end
     assert 'Traceback' not in result
 
   def test_emrun(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_exit.c'), '--post-js', path_from_root('src', 'emrun_postjs.js'), '-o', 'hello_world.html']).communicate()
-    process = subprocess.Popen([PYTHON, path_from_root('emrun'), '--timeout', '30', 'hello_world.html'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_exit.c'), '--emrun', '-o', 'hello_world.html']).communicate()
+    outdir = os.getcwd()
+    # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
+    # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
+    # before launching.
+    os.chdir(path_from_root())
+    process = subprocess.Popen([PYTHON, path_from_root('emrun'), '--timeout', '30', '--verbose', os.path.join(outdir, 'hello_world.html')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = process.communicate()
     assert process.returncode == 100
     assert 'hello, world!' in stdout

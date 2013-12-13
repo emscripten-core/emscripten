@@ -499,6 +499,11 @@ Options that are modified or new in %s include:
   --proxy-to-worker        Generates both html and js files. The main
                            program is in js, and the html proxies to/from it.
 
+  --emrun                  Enables the generated output to be aware of the
+                           emrun command line tool. This allows stdout, stderr
+                           and exit(returncode) capture when running the
+                           generated application through emrun.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -774,6 +779,7 @@ try:
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
   bind = False
+  emrun = False
   jcache = False
   save_bc = False
   memory_init_file = False
@@ -963,11 +969,17 @@ try:
       if not absolute_warning_shown and os.path.isabs(path_name):
         logging.warning ('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
+    elif newargs[i] == '--emrun':
+      emrun = True
+      newargs[i] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   # If user did not specify a default -std for C++ code, specify the emscripten default.
   if default_cxx_std:
     newargs = newargs + [default_cxx_std]
+
+  if emrun:
+    post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
