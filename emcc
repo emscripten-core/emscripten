@@ -1143,11 +1143,10 @@ try:
 
     heap = 4096
     while heap < shared.Settings.TOTAL_MEMORY:
-      heap *= 2
-      #if heap <= 16*1024*1024:
-      #  heap *= 2
-      #else:
-      #  heap += 16*1024*1024
+      if heap < 16*1024*1024:
+        heap *= 2
+      else:
+        heap += 16*1024*1024
     if heap != shared.Settings.TOTAL_MEMORY:
       logging.warning('increasing TOTAL_MEMORY to %d to be more reasonable for asm.js' % heap)
       shared.Settings.TOTAL_MEMORY = heap
