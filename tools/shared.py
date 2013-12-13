@@ -184,6 +184,9 @@ else:
 
 try:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config')+1]
+  # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
+  # those child processes get the same configuration file by setting it to the currently active environment.
+  os.environ['EM_CONFIG'] = EM_CONFIG
 except:
   EM_CONFIG = os.environ.get('EM_CONFIG')
 
