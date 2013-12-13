@@ -26,6 +26,9 @@ browser_stderr_handle = sys.stderr
 # the close button.
 have_received_messages = False
 
+# At startup print a warning message once if user did not build with --emrun.
+emrun_not_enabled_nag_printed = False
+
 # Stores the exit() code of the html page when/if it quits.
 page_exit_code = 0
 
@@ -66,8 +69,11 @@ if not WINDOWS and not LINUX and not OSX:
 # the page was received.
 last_message_time = time.clock()
 
-# Absolute wallclock time in seconds telling when we launched the page.
+# Absolute wallclock time in seconds telling when we launched emrun.
 page_start_time = time.clock()
+
+# Stores the time of most recent http page serve.
+page_last_served_time = time.clock()
 
 # Returns given log message formatted to be outputted on a HTML page.
 def format_html(msg):
@@ -236,7 +242,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
         return
 
   def serve_forever(self, timeout=0.5):
-    global emrun_options, last_message_time, page_exit_code, have_received_messages
+    global emrun_options, last_message_time, page_exit_code, have_received_messages, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
     while self.is_running:
@@ -262,7 +268,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
         logv('No activity in ' + str(emrun_options.silence_timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--silence_timeout option)')
         page_exit_code = emrun_options.timeout_returncode
         emrun_options.kill_on_exit = True
-      
+
       # If the page has been running too long as a whole, kill process.
       time_since_start = now - page_start_time
       if emrun_options.timeout != 0 and time_since_start > emrun_options.timeout:
@@ -270,6 +276,12 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
         logv('Page has not finished in ' + str(emrun_options.timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--timeout option)')
         emrun_options.kill_on_exit = True
         page_exit_code = emrun_options.timeout_returncode
+
+      # If we detect that the page is not running with emrun enabled, print a warning message.
+      time_since_page_serve = now - page_last_served_time
+      if not emrun_not_enabled_nag_printed and not have_received_messages and time_since_page_serve > 5:
+        logi('The html page you are running is not emrun-capable. Stdout, stderr and exit(returncode) capture will not work. Recompile the application with the --emrun linker flag to enable this, or pass --no_emrun_detect to emrun to hide this check.')
+        emrun_not_enabled_nag_printed = True
 
     # Clean up at quit, print any leftover messages in queue.
     self.print_all_messages()
@@ -289,6 +301,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
   def send_head(self):
+    global page_last_served_time
     path = self.translate_path(self.path)
     f = None
  
@@ -320,6 +333,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     self.send_header('Cache-Control','no-cache, must-revalidate')
     self.send_header('Expires','-1')
     self.end_headers()
+    page_last_served_time = time.clock()
     return f
 
   def log_request(self, code):
@@ -333,7 +347,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
       sys.stderr.write(msg)
 
   def do_POST(self):
-    global page_exit_code, emrun_options
+    global page_exit_code, emrun_options, have_received_messages
 
     (_, _, path, query, _) = urlparse.urlsplit(self.path)
     data = self.rfile.read(int(self.headers['Content-Length']))
@@ -359,7 +373,9 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     is_exit = data.startswith('^exit^')
 
-    if not is_exit:
+    if data == '^pageload^': # Browser is just notifying that it has successfully launched the page.
+      have_received_messages = True
+    elif not is_exit:
       log = browser_loge if is_stderr else browser_logi
       self.server.handle_incoming_message(seq_num, log, data)
     elif not emrun_options.serve_after_exit:
@@ -702,7 +718,7 @@ def browser_display_name(browser):
   return browser
 
 def main():
-  global browser_process, processname_killed_atexit, emrun_options
+  global browser_process, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
   usage_str = "usage: %prog [options] [optional_portnum]"
   parser = optparse.OptionParser(usage=usage_str)
 
@@ -717,6 +733,9 @@ def main():
 
   parser.add_option('--no_browser', dest='no_browser', action='store_true', default=False,
     help='If specified, emrun will not launch a web browser to run the page.')
+
+  parser.add_option('--no_emrun_detect', dest='no_emrun_detect', action='store_true', default=False,
+    help='If specified, skips printing the warning message if html page is detected to not have been built with --emrun linker flag.')
 
   parser.add_option('--serve_after_close', dest='serve_after_close', action='store_true', default=False,
     help='If true, serves the web page even after the application quits by user closing the web page.')
@@ -854,6 +873,10 @@ def main():
     print_gpu_infolines()
   if options.browser_info:
     logi('Browser: ' + browser_display_name(browser[0]) + ' ' + get_executable_version(browser_exe))
+
+  # Suppress run warning if requested.
+  if options.no_emrun_detect:
+    emrun_not_enabled_nag_printed = True
 
   global browser_stdout_handle, browser_stderr_handle    
   if options.log_stdout:
