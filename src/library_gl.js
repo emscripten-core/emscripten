@@ -227,15 +227,13 @@ var LibraryGL = {
           ret = 1;
           break;
         case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-          if (type === 'Integer') {
-            // fall through, see gles2_conformance.cpp
-          } else {
+          if (type !== 'Integer') {
             GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
             Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
 #endif
-            return;
           }
+          return; // Do not write anything to the out pointer, since no binary formats are supported.
         case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
           ret = 0;
           break;
