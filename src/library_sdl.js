@@ -1216,6 +1216,8 @@ var LibrarySDL = {
     return ret;
   },
 
+  SDL_DisplayFormat: 'SDL_DisplayFormatAlpha',
+
   SDL_FreeSurface: function(surf) {
     if (surf) SDL.freeSurface(surf);
   },
@@ -1247,10 +1249,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_LowerBlit__deps: ['SDL_UpperBlit'],
-  SDL_LowerBlit: function(src, srcrect, dst, dstrect) {
-    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
-  },
+  SDL_LowerBlit: 'SDL_UpperBlit',
 
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
