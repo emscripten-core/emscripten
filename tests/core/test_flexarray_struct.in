@@ -1,13 +1,10 @@
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-typedef struct
-{
+typedef struct {
   uint16_t length;
-  struct 
-  {
+  struct {
     int32_t int32;
   } value[];
 } Tuple;
