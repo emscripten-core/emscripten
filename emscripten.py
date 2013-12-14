@@ -913,7 +913,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       Counter.i += 1
       bad = 'b' + str(i)
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
-      coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[i+1], settings) % p for p in range(len(sig)-1)])
+      coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[p+1], settings) % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
       def make_func(name, code):
         return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
