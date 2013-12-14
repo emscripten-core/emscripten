@@ -932,7 +932,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         if item == '0': return bad if not newline else (bad + '\n')
         if item not in metadata['implementedFunctions']:
           # this is imported into asm, we must wrap it
-          code = item + '(' + coerced_params + ')'
+          call_ident = item
+          if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
+          if not call_ident.startswith('_') and not call_ident.startswith('Math_'): call_ident = '_' + call_ident
+          code = call_ident + '(' + coerced_params + ')'
           if sig[0] != 'v':
             code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
           code += ';'
