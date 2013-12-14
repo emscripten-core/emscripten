@@ -4970,9 +4970,10 @@ def process(filename):
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
         if os.environ.get('EMCC_FAST_COMPILER') == '1' and os.path.basename(shortname) in [
-          'structparam', 'uadd_overflow_ta2', 'extendedprecision', 'issue_39', 'emptystruct',  # invalid ir
+          'structparam', 'uadd_overflow_ta2', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', # invalid ir
           'structphiparam', # pnacl limitation in ExpandStructRegs
-          'longjmp_tiny', 'longjmp_tiny_phi', # current fastcomp limitations
+          'legalizer_ta2', '514_ta2', # pnacl limitation in not legalizing i104, i96, etc.
+          'longjmp_tiny', 'longjmp_tiny_phi', 'indirectbrphi', 'ptrtoint_blockaddr', # current fastcomp limitations FIXME
         ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
           print self.skip('case "%s" only relevant for ta2' % shortname)

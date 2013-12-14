@@ -1,7 +1,7 @@
 ; ModuleID = '/dev/shm/tmp/src.cpp.o'
 ; Just test for compilation here
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-f128:128:128-n8:16:32"
-target triple = "i386-pc-linux-gnu"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
+target triple = "le32-unknown-nacl"
 
 %struct.CPU_Regs = type { [8 x %union.GenReg32] }
 %union.GenReg32 = type { [1 x i32] }
@@ -16,14 +16,15 @@ entry:
   %0 = alloca i32                                 ; [#uses=2]
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
   %1 = load i32* bitcast (i32* getelementptr inbounds (%struct.CPU_Regs* @cpu_regs, i32 0, i32 0, i32 1, i32 0, i32 0) to i32*), align 2 ; [#uses=1]
-  store i16 %1, i16* bitcast (%struct.CPU_Regs* @cpu_regs to i16*), align 2
+  %a1 = trunc i32 %1 to i16
+  store i16 %a1, i16* bitcast (%struct.CPU_Regs* @cpu_regs to i16*), align 2
   %2 = call i32 @puts(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   store i32 0, i32* %0, align 4
   %3 = load i32* %0, align 4                      ; [#uses=1]
   store i32 %3, i32* %retval, align 4
   br label %return
 
-  invoke void undef(%struct.CPU_Regs* noalias @cpu_regs, i32 %99)
+  invoke void undef(%struct.CPU_Regs* noalias @cpu_regs, i32 0)
           to label %invcont33 unwind label %lpad106
 
 invcont33:
