@@ -2150,3 +2150,8 @@ mergeInto(LibraryManager.library, {
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js']).communicate()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_float_h(self):
+    process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
+    out, err = process.communicate()
+    assert process.returncode is 0, 'float.h should agree with our system: ' + out + '\n\n\n' + err
+

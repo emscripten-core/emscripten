@@ -351,6 +351,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         }
       '''
       self.do_run(src, '*4903566027370624, 153236438355333*')
+
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not actually used'
 
@@ -1874,11 +1877,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_from_file(src, output, [], lambda x, err: x.replace('\n', '*'))
 
-  def test_float_h(self):
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
-    process.communicate()
-    assert process.returncode is 0, 'float.h should agree with our system'
-
   def test_llvm_used(self):
     Building.LLVM_OPTS = 3
 
@@ -2067,6 +2065,8 @@ def process(filename):
 ''', args=['34962', '26214', '35040'])
 
   def test_indirectbr(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
       test_path = path_from_root('tests', 'core', 'test_indirectbr')
@@ -2075,6 +2075,8 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_indirectbr_many(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('blockaddr > 255 requires ta2')
 
       test_path = path_from_root('tests', 'core', 'test_indirectbr_many')
@@ -4587,6 +4589,7 @@ return malloc(size);
   def test_simd(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4604,6 +4607,7 @@ return malloc(size);
   def test_simd3(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4630,6 +4634,7 @@ return malloc(size);
   def test_lua(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
@@ -5415,6 +5420,7 @@ def process(filename):
 
   def test_embind(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind']
 
     src = r'''
@@ -5437,6 +5443,7 @@ def process(filename):
 
   def test_embind_2(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       Module.print('lerp ' + Module.lerp(1, 2, 0.66) + '.');
@@ -5457,6 +5464,7 @@ def process(filename):
 
   def test_scriptaclass(self):
       if self.emcc_args is None: return self.skip('requires emcc')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.EXPORT_BINDINGS = 1
 
@@ -6030,6 +6038,7 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     src = '''
       #include <stdio.h>
