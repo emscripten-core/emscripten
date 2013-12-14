@@ -341,6 +341,10 @@ Options that are modified or new in %s include:
                            For more docs on the options --preload-file
                            accepts, see  https://github.com/kripken/emscripten/wiki/Filesystem-Guide
 
+  --exclude-file <name>   Files and directories to be excluded from 
+                           --embed-file and --preload-file
+                           wildcard is supported
+
   --compression <codec>    Compress both the compiled code and embedded/
                            preloaded files. <codec> should be a triple,
 
@@ -769,6 +773,7 @@ try:
   split_js_file = None
   preload_files = []
   embed_files = []
+  exclude_files = []
   compression = None
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
@@ -882,6 +887,11 @@ try:
     elif newargs[i].startswith('--preload-file'):
       check_bad_eq(newargs[i])
       preload_files.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--exclude-file'):
+      check_bad_eq(newargs[i])
+      exclude_files.append(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--compression'):
@@ -1700,6 +1710,9 @@ try:
     if len(embed_files) > 0:
       file_args.append('--embed')
       file_args += embed_files
+    if len(exclude_files) > 0:
+      file_args.append('--exclude')
+      file_args += exclude_files
     if Compression.on:
       file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
     if use_preload_cache:
