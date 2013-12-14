@@ -1273,6 +1273,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_white_list_exception(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
@@ -1287,6 +1289,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_uncaught_exception(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
 
@@ -1325,6 +1328,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, 'success')
 
   def test_typed_exceptions(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
       src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
@@ -1332,6 +1337,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, expected)
 
   def test_multiexception(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
     test_path = path_from_root('tests', 'core', 'test_multiexception')
@@ -1341,6 +1348,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_std_exception(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
@@ -2713,6 +2721,10 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+      self.skip('todo in fastcomp')
+      return False
+
     if self.emcc_args and '--memory-init-file' in self.emcc_args:
       for i in range(len(self.emcc_args)):
         if self.emcc_args[i] == '--memory-init-file':
@@ -3091,6 +3103,7 @@ def process(filename):
 
   def test_dlfcn_self(self):
     if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DLOPEN_SUPPORT = 1
 
     def post(filename):
@@ -5933,6 +5946,7 @@ def process(filename):
 
   def test_source_map(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
