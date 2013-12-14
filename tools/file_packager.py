@@ -166,12 +166,12 @@ def has_hidden_attribute(filepath):
 
 # The packager should never preload/embed files if the file is hidden (Win32).
 # or it matches any pattern specified in --exclude
-def should_ignore(fullname, filename):
+def should_ignore(fullname):
   if has_hidden_attribute(fullname):
     return True
     
   for p in excluded_patterns:
-    if fnmatch.fnmatch(filename, p):
+    if fnmatch.fnmatch(fullname, p):
       return True
   return False
 
@@ -183,7 +183,7 @@ def add(arg, dirname, names):
   new_names = []
   for name in names:
     fullname = os.path.join(dirname, name)
-    if should_ignore(fullname, name):
+    if should_ignore(fullname):
       if DEBUG:
         print >> sys.stderr, 'Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.'
     else:
@@ -196,7 +196,7 @@ def add(arg, dirname, names):
 
 new_data_files = []
 for file_ in data_files:
-  if not should_ignore(file_['srcpath'], os.path.basename(file_['srcpath'])):
+  if not should_ignore(file_['srcpath']):
     if os.path.isdir(file_['srcpath']):
       os.path.walk(file_['srcpath'], add, [file_['mode'], file_['srcpath'], file_['dstpath']])
     else:
