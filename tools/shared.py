@@ -176,13 +176,28 @@ if WINDOWS:
 else:
   logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
-# Emscripten configuration is done through the EM_CONFIG environment variable.
-# If the string value contained in this environment variable contains newline
-# separated definitions, then these definitions will be used to configure
+# Emscripten configuration is done through the --em-config command line option or
+# the EM_CONFIG environment variable. If the specified string value contains newline
+# or semicolon-separated definitions, then these definitions will be used to configure
 # Emscripten.  Otherwise, the string is understood to be a path to a settings
 # file that contains the required definitions.
 
-EM_CONFIG = os.environ.get('EM_CONFIG')
+try:
+  EM_CONFIG = sys.argv[sys.argv.index('--em-config')+1]
+  # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
+  # those child processes get the same configuration file by setting it to the currently active environment.
+  os.environ['EM_CONFIG'] = EM_CONFIG
+except:
+  EM_CONFIG = os.environ.get('EM_CONFIG')
+
+if EM_CONFIG and not os.path.isfile(EM_CONFIG):
+  if EM_CONFIG.startswith('-'):
+    raise Exception('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config EMSCRIPTEN_ROOT=/path/;LLVM_ROOT=/path;...')
+  if not '=' in EM_CONFIG:
+    raise Exception('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+  else:
+    EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:

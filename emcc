@@ -499,6 +499,12 @@ Options that are modified or new in %s include:
   --proxy-to-worker        Generates both html and js files. The main
                            program is in js, and the html proxies to/from it.
 
+  --em-config              Specifies the location of the .emscripten configuration
+                           file for the current compiler run. If not specified,
+                           the environment variable EM_CONFIG is read for this
+                           file, and if that is not set, the default location
+                           ~/.emscripten is assumed.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -963,6 +969,10 @@ try:
       if not absolute_warning_shown and os.path.isabs(path_name):
         logging.warning ('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
+    elif newargs[i] == '--em-config':
+      # This option is parsed in tools/shared.py, here only clean it up from being passed to clang.
+      newargs[i] = ''
+      newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   # If user did not specify a default -std for C++ code, specify the emscripten default.
