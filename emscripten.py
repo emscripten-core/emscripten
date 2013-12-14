@@ -913,8 +913,13 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       Counter.i += 1
       bad = 'b' + str(i)
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
+      coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[i+1], settings) % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
-      ret = '' if sig[0] == 'v' else ('return %s' % shared.JS.make_initializer(sig[0], settings))
+      def make_func(name, code):
+        return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
+      Counter.pre = [make_func(bad, ('abort' if not settings['ASSERTIONS'] else 'nullFunc') + '(' + str(i) + ');' + (
+        '' if sig[0] == 'v' else ('return %s' % shared.JS.make_initializer(sig[0], settings))
+      ))]
       start = raw.index('[')
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
@@ -925,11 +930,20 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         Counter.j += 1
         newline = Counter.j % 30 == 29
         if item == '0': return bad if not newline else (bad + '\n')
+        if item not in metadata['implementedFunctions']:
+          # this is imported into asm, we must wrap it
+          code = item + '(' + coerced_params + ')'
+          if sig[0] != 'v':
+            code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
+          code += ';'
+          Counter.pre.append(make_func(item + '__wrapper', code))
+          return item + '__wrapper'
         return item if not newline else (item + '\n')
       body = ','.join(map(fix_item, body))
-      return ('function %s(%s) { %s %s(%d); %s }' % (bad, params, coercions, 'abort' if not settings['ASSERTIONS'] else 'nullFunc', i, ret), ''.join([raw[:start+1], body, raw[end:]]))
+      return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
 
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
+    Counter.pre = []
 
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
