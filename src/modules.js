@@ -429,6 +429,26 @@ var LibraryManager = {
       eval(processMacros(preprocess(read(libraries[i]))));
     }
 
+    /*
+    // export code for CallHandlers.h
+    printErr('============================');
+    for (var x in this.library) {
+      var y = this.library[x];
+      if (typeof y === 'string' && x.indexOf('__sig') < 0 && x.indexOf('__postset') < 0 && y.indexOf(' ') < 0) {
+        printErr('DEF_REDIRECT_HANDLER(' + x + ', ' + y + ');');
+      }
+    }
+    printErr('============================');
+    for (var x in this.library) {
+      var y = this.library[x];
+      if (typeof y === 'string' && x.indexOf('__sig') < 0 && x.indexOf('__postset') < 0 && y.indexOf(' ') < 0) {
+        printErr('  SETUP_CALL_HANDLER(' + x + ');');
+      }
+    }
+    printErr('============================');
+    // end export code for CallHandlers.h
+    */
+
     this.loaded = true;
   },
 
