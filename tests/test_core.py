@@ -459,6 +459,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_float32_precise(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     Settings.PRECISE_F32 = 1
 
     test_path = path_from_root('tests', 'core', 'test_float32_precise')
@@ -1086,36 +1088,48 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_longjmp(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       test_path = path_from_root('tests', 'core', 'test_longjmp')
       src, output = (test_path + s for s in ('.in', '.out'))
 
       self.do_run_from_file(src, output)
 
   def test_longjmp2(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     test_path = path_from_root('tests', 'core', 'test_longjmp2')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_longjmp3(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     test_path = path_from_root('tests', 'core', 'test_longjmp3')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_longjmp4(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     test_path = path_from_root('tests', 'core', 'test_longjmp4')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_longjmp_funcptr(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     test_path = path_from_root('tests', 'core', 'test_longjmp_funcptr')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_longjmp_repeat(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       Settings.MAX_SETJMPS = 1
 
       test_path = path_from_root('tests', 'core', 'test_longjmp_repeat')
@@ -1124,6 +1138,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_longjmp_stacked(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     test_path = path_from_root('tests', 'core', 'test_longjmp_stacked')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -1131,12 +1147,16 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
 
   def test_longjmp_exc(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     test_path = path_from_root('tests', 'core', 'test_longjmp_exc')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_setjmp_many(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     src = r'''
       #include <stdio.h>
       #include <setjmp.h>
@@ -1155,6 +1175,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_exceptions(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
       if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.EXCEPTION_DEBUG = 1
 
@@ -1243,6 +1264,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_exception_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
     test_path = path_from_root('tests', 'core', 'test_exception_2')
@@ -1885,6 +1907,7 @@ def process(filename):
 
   def test_inlinejs(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -1897,6 +1920,7 @@ def process(filename):
 
   def test_inlinejs2(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs2')
       src, output = (test_path + s for s in ('.in', '.out'))
