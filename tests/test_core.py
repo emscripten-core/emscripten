@@ -4656,6 +4656,7 @@ return malloc(size);
   def test_freetype(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
@@ -4788,7 +4789,7 @@ def process(filename):
       test()
 
       assert 'asm2g' in test_modes
-      if self.run_name == 'asm2g' and not use_cmake:
+      if self.run_name == 'asm2g' and not use_cmake and os.environ.get('EMCC_FAST_COMPILER') != '1':
         # Test forced alignment
         print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
         old = open('src.cpp.o.js').read()
@@ -4801,6 +4802,7 @@ def process(filename):
 
   def test_poppler(self):
     if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     Settings.CORRECT_OVERFLOWS = 1
     Settings.CORRECT_SIGNS = 1
