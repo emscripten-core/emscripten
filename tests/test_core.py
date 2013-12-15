@@ -5014,10 +5014,11 @@ def process(filename):
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
         if os.environ.get('EMCC_FAST_COMPILER') == '1' and os.path.basename(shortname) in [
-          'structparam', 'uadd_overflow_ta2', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', # invalid ir
-          'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', # pnacl limitations in ExpandStructRegs
+          'structparam', 'uadd_overflow_ta2', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', 'phientryimplicit', 'phiself', 'invokebitcast', # invalid ir
+          'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
+          '2xi40', # pnacl limitations in ExpandGetElementPtr
           'legalizer_ta2', '514_ta2', # pnacl limitation in not legalizing i104, i96, etc.
-          'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_phi', 'indirectbrphi', 'ptrtoint_blockaddr', 'quoted', # current fastcomp limitations FIXME
+          'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_phi', 'longjmp_tiny_phi2', 'indirectbrphi', 'ptrtoint_blockaddr', 'quoted', # current fastcomp limitations FIXME
           'sillyfuncast', 'sillyfuncast2', 'sillybitcast', # TODO very very soon XXX
         ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
