@@ -741,9 +741,14 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   if DEBUG: shutil.copyfile(infile, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp0.ll'))
 
+  extra_opt_args = []
+  #if DEBUG: extra_opt_args.append('-time-passes')
+
+  if DEBUG: t = time.time()
+
   if DEBUG: logging.debug('  ..1..')
   temp1 = temp_files.get('.1.bc').name
-  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), infile, '-pnacl-abi-simplify-preopt', '-o', temp1]))
+  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), infile, '-pnacl-abi-simplify-preopt', '-o', temp1] + extra_opt_args))
   assert os.path.exists(temp1)
   if DEBUG:
     shutil.copyfile(temp1, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp1.bc'))
@@ -760,18 +765,26 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   if DEBUG: logging.debug('  ..3..')
   temp3 = temp_files.get('.3.bc').name
-  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), temp2, '-pnacl-abi-simplify-postopt', '-o', temp3]))
+  shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'opt'), temp2, '-pnacl-abi-simplify-postopt', '-o', temp3] + extra_opt_args))
   #'-print-after-all'
   assert os.path.exists(temp3)
   if DEBUG:
     shutil.copyfile(temp3, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp3.bc'))
     shared.jsrun.timeout_run(subprocess.Popen([os.path.join(shared.LLVM_ROOT, 'llvm-dis'), 'temp3.bc', '-o', 'temp3.ll']))
 
+  if DEBUG:
+    logging.debug('  emscript: ir simplification took %s seconds' % (time.time() - t))
+    t = time.time()
+
   if DEBUG: logging.debug('  ..4..')
   temp4 = temp_files.get('.4.js').name
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   shared.jsrun.timeout_run(subprocess.Popen([backend_compiler, temp3, '-march=js', '-filetype=asm', '-o', temp4], stdout=subprocess.PIPE))
   if DEBUG: shutil.copyfile(temp4, os.path.join(shared.CANONICAL_TEMP_DIR, 'temp4.js'))
+
+  if DEBUG:
+    logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
+    t = time.time()
 
   # Split up output
   backend_output = open(temp4).read()
@@ -836,7 +849,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
-  #print >> sys.stderr, out
+  if DEBUG:
+    logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
+    t = time.time()
 
   last_forwarded_json = forwarded_json = json.loads(forwarded_data)
 
@@ -1205,6 +1220,8 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
   outfile.write(post)
 
   outfile.close()
+
+  if DEBUG: logging.debug('  emscript: final python processing took %s seconds' % (time.time() - t))
 
 if os.environ.get('EMCC_FAST_COMPILER'):
   emscript = emscript_fast
