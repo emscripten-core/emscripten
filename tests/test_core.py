@@ -5018,7 +5018,7 @@ def process(filename):
           'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', # pnacl limitations in ExpandStructRegs
           'legalizer_ta2', '514_ta2', # pnacl limitation in not legalizing i104, i96, etc.
           'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_phi', 'indirectbrphi', 'ptrtoint_blockaddr', 'quoted', # current fastcomp limitations FIXME
-          'sillyfuncast', # TODO very very soon XXX
+          'sillyfuncast', 'sillyfuncast2', 'sillybitcast', # TODO very very soon XXX
         ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
           print self.skip('case "%s" only relevant for ta2' % shortname)
