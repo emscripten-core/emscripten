@@ -328,7 +328,10 @@ process(sys.argv[1])
       os.makedirs(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}, cache_name_extra='', native=False):
+  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args='help', cache=True, env_init={}, cache_name_extra='', native=False):
+    if make_args == 'help':
+      make_args = ['-j', str(multiprocessing.cpu_count())]
+
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
