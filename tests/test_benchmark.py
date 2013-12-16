@@ -30,6 +30,7 @@ class Benchmarker:
       self.times.append(curr)
 
   def display(self, baseline=None):
+    if baseline == self: baseline = None
     mean = sum(self.times)/len(self.times)
     squared_times = map(lambda x: x*x, self.times)
     mean_of_squared = sum(squared_times)/len(self.times)
@@ -38,7 +39,7 @@ class Benchmarker:
     sorted_times.sort()
     median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
 
-    print '   %20s: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, TEST_REPS),
+    print '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, TEST_REPS),
 
     if baseline:
       mean_baseline = sum(baseline.times)/len(baseline.times)
@@ -61,6 +62,10 @@ class ClangBenchmarker(Benchmarker):
     return self.parent.run_native(self.filename, args)
 
 class JSBenchmarker(Benchmarker):
+  def __init__(self, name, extra_args=[]):
+    self.name = name
+    self.extra_args = extra_args
+
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec):
     self.filename = filename
 
@@ -81,9 +86,8 @@ process(sys.argv[1])
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     #'--closure', '1',
-                    #'-s', 'PRECISE_F32=1',
                     #'-g',
-                    '-o', filename + '.js'] + shared_args + emcc_args, stdout=PIPE, stderr=PIPE).communicate()
+                    '-o', filename + '.js'] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE).communicate()
     assert os.path.exists(filename + '.js'), 'Failed to compile file: ' + output[0]
 
   def run(self, args):
@@ -92,7 +96,8 @@ process(sys.argv[1])
 # Benchmarkers
 benchmarkers = [
   ClangBenchmarker('clang'),
-  JSBenchmarker('JS')
+  JSBenchmarker('JS'),
+  JSBenchmarker('JS-f32', ['-s', 'PRECISE_F32=2'])
 ]
 
 class benchmark(RunnerCore):
@@ -145,13 +150,10 @@ class benchmark(RunnerCore):
     f.write(src)
     f.close()
 
+    print
     for b in benchmarkers:
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec)
       b.bench(args, output_parser)
-
-    print
-    benchmarkers[0].display()
-    for b in benchmarkers[1:]:
       b.display(benchmarkers[0])
 
   def test_primes(self):
