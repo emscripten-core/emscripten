@@ -1,13 +1,10 @@
+#include <stdio.h>
+#include <wchar.h>
 
-        #include <stdio.h>
-        #include <wchar.h>
+int main() {
+  const wchar_t* wstr = L"Hello";
 
-        int main()
-        {
-            const wchar_t* wstr = L"Hello";
+  printf("wcslen: %d\n", wcslen(wstr));
 
-            printf("wcslen: %d\n", wcslen(wstr));
-
-            return 0;
-        }
-      
+  return 0;
+}

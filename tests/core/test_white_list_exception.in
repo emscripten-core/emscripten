@@ -1,22 +1,21 @@
+#include <stdio.h>
 
-        #include <stdio.h>
+void thrower() {
+  printf("infunc...");
+  throw(99);
+  printf("FAIL");
+}
 
-        void thrower() {
-          printf("infunc...");
-          throw(99);
-          printf("FAIL");
-        }
+void somefunction() {
+  try {
+    thrower();
+  }
+  catch (...) {
+    printf("done!*\n");
+  }
+}
 
-        void somefunction() {
-          try {
-            thrower();
-          } catch(...) {
-            printf("done!*\n");
-          }
-        }
-
-        int main() {
-          somefunction();
-          return 0;
-        }
-      
+int main() {
+  somefunction();
+  return 0;
+}
