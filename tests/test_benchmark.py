@@ -112,8 +112,8 @@ process(sys.argv[1])
 benchmarkers = [
   NativeBenchmarker('clang', CLANG_CC, CLANG),
   NativeBenchmarker('gcc', 'gcc', 'g++'),
-  JSBenchmarker('JS-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-  JSBenchmarker('JS',     SPIDERMONKEY_ENGINE),
+  JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+  JSBenchmarker('sm',     SPIDERMONKEY_ENGINE),
   JSBenchmarker('v8',     V8_ENGINE)
 ]
 
