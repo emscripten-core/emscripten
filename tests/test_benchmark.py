@@ -72,7 +72,8 @@ class NativeBenchmarker(Benchmarker):
     self.filename = filename
 
   def run(self, args):
-    return self.parent.run_native(self.filename, args)
+    process = Popen([self.filename+'.native'] + args, stdout=PIPE, stderr=PIPE)
+    return process.communicate()[0]
 
 class JSBenchmarker(Benchmarker):
   def __init__(self, name, engine, extra_args=[]):
