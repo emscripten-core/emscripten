@@ -14,6 +14,87 @@ DEFAULT_ARG = '4'
 
 TEST_REPS = 2
 
+class Benchmarker:
+  def __init__(self, name):
+    self.name = name
+
+  def bench(self, args, output_parser=None):
+    self.times = []
+    for i in range(TEST_REPS):
+      start = time.time()
+      output = self.run(args)
+      if not output_parser:
+        curr = time.time()-start
+      else:
+        curr = output_parser(output)
+      self.times.append(curr)
+
+  def display(self, baseline=None):
+    mean = sum(self.times)/len(self.times)
+    squared_times = map(lambda x: x*x, self.times)
+    mean_of_squared = sum(squared_times)/len(self.times)
+    std = math.sqrt(mean_of_squared - mean*mean)
+    sorted_times = self.times[:]
+    sorted_times.sort()
+    median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
+
+    print '   %20s: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, TEST_REPS),
+
+    if baseline:
+      mean_baseline = sum(baseline.times)/len(baseline.times)
+      final = mean / mean_baseline
+      print '  Relative: %.2f X slower' % final
+    else:
+      print
+
+class ClangBenchmarker(Benchmarker):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec):
+    self.parent = parent
+    if not native_exec:
+      parent.build_native(filename, shared_args + native_args)
+    else:
+      shutil.copyfile(native_exec, filename + '.native')
+      shutil.copymode(native_exec, filename + '.native')
+    self.filename = filename
+
+  def run(self, args):
+    return self.parent.run_native(self.filename, args)
+
+class JSBenchmarker(Benchmarker):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec):
+    self.filename = filename
+
+    open('hardcode.py', 'w').write('''
+def process(filename):
+  js = open(filename).read()
+  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
+  assert js != replaced
+  open(filename, 'w').write(replaced)
+import sys
+process(sys.argv[1])
+''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
+)
+
+    try_delete(filename + '.js')
+    output = Popen([PYTHON, EMCC, filename, #'-O3',
+                    '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
+                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
+                    '-s', 'TOTAL_MEMORY=128*1024*1024',
+                    '--closure', '1',
+                    #'-s', 'PRECISE_F32=1',
+                    #'-g',
+                    '-o', filename + '.js'] + shared_args + emcc_args, stdout=PIPE, stderr=PIPE).communicate()
+    assert os.path.exists(filename + '.js'), 'Failed to compile file: ' + output[0]
+
+  def run(self, args):
+    return run_js(self.filename + '.js', engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
+
+# Benchmarkers
+benchmarkers = [
+  ClangBenchmarker('clang'),
+  JSBenchmarker('JS')
+]
+
 class benchmark(RunnerCore):
   save_dir = True
 
@@ -54,41 +135,6 @@ class benchmark(RunnerCore):
     JS_ENGINE = Building.JS_ENGINE_OVERRIDE if Building.JS_ENGINE_OVERRIDE is not None else JS_ENGINES[0]
     print 'Benchmarking JS engine: %s' % JS_ENGINE
 
-  def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
-    if reps == 0:
-      print '(no reps)'
-      return
-    mean = sum(times)/len(times)
-    squared_times = map(lambda x: x*x, times)
-    mean_of_squared = sum(squared_times)/len(times)
-    std = math.sqrt(mean_of_squared - mean*mean)
-    sorted_times = times[:]
-    sorted_times.sort()
-    median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
-
-    mean_native = sum(native_times)/len(native_times)
-    squared_native_times = map(lambda x: x*x, native_times)
-    mean_of_squared_native = sum(squared_native_times)/len(native_times)
-    std_native = math.sqrt(mean_of_squared_native - mean_native*mean_native)
-    sorted_native_times = native_times[:]
-    sorted_native_times.sort()
-    median_native = sum(sorted_native_times[len(sorted_native_times)/2 - 1:len(sorted_native_times)/2 + 1])/2
-
-    final = mean / mean_native
-
-    if last:
-      norm = 0
-      for i in range(len(times)):
-        norm += times[i]/native_times[i]
-      norm /= len(times)
-      print
-      print '  JavaScript: %.3f    Native: %.3f   Ratio:  %.3f  Normalized ratio: %.3f' % (mean, mean_native, final, norm)
-      return
-
-    print
-    print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
-    print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
-
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
     args = args or [DEFAULT_ARG]
     if args_processor: args = args_processor(args)
@@ -98,68 +144,15 @@ class benchmark(RunnerCore):
     f = open(filename, 'w')
     f.write(src)
     f.close()
-    final_filename = os.path.join(dirname, name + '.js')
 
-    open('hardcode.py', 'w').write('''
-def process(filename):
-  js = open(filename).read()
-  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
-  assert js != replaced
-  open(filename, 'w').write(replaced)
-import sys
-process(sys.argv[1])
-''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
-)
+    for b in benchmarkers:
+      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec)
+      b.bench(args, output_parser)
 
-    try_delete(final_filename)
-    output = Popen([PYTHON, EMCC, filename, #'-O3',
-                    '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
-                    '-s', 'TOTAL_MEMORY=128*1024*1024',
-                    '--closure', '1',
-                    #'-s', 'PRECISE_F32=1',
-                    #'-g',
-                    '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
-    assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
-
-    # Run JS
-    times = []
-    for i in range(reps):
-      start = time.time()
-      js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
-
-      if i == 0 and 'uccessfully compiled asm.js code' in js_output:
-        if 'asm.js link error' not in js_output:
-          print "[%s was asm.js'ified]" % name
-      if not output_parser:
-        curr = time.time()-start
-      else:
-        curr = output_parser(js_output)
-      times.append(curr)
-      if i == 0:
-        # Sanity check on output
-        self.assertContained(expected_output, js_output)
-
-    # Run natively
-    if not native_exec:
-      self.build_native(filename, shared_args + native_args)
-    else:
-      shutil.copyfile(native_exec, filename + '.native')
-      shutil.copymode(native_exec, filename + '.native')
-    native_times = []
-    for i in range(reps):
-      start = time.time()
-      native_output = self.run_native(filename, args)
-      if i == 0:
-        # Sanity check on output
-        self.assertContained(expected_output, native_output)
-      if not output_parser:
-        curr = time.time()-start
-      else:
-        curr = output_parser(native_output)
-      native_times.append(curr)
-
-    self.print_stats(times, native_times, reps=reps)
+    print
+    benchmarkers[0].display()
+    for b in benchmarkers[1:]:
+      b.display(benchmarkers[0])
 
   def test_primes(self):
     src = r'''
