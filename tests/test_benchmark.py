@@ -14,6 +14,8 @@ DEFAULT_ARG = '4'
 
 TEST_REPS = 2
 
+CORE_BENCHMARKS = True # core benchmarks vs full regression suite
+
 class Benchmarker:
   def __init__(self, name):
     self.name = name
@@ -399,9 +401,11 @@ class benchmark(RunnerCore):
     self.fasta('fasta_float', 'float')
 
   def test_fasta_double(self):
+    if CORE_BENCHMARKS: return
     self.fasta('fasta_double', 'double')
 
   def test_fasta_double_full(self):
+    if CORE_BENCHMARKS: return
     self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
 
   def test_skinning(self):
@@ -409,10 +413,12 @@ class benchmark(RunnerCore):
     self.do_benchmark('skinning', src, 'blah=0.000000')
 
   def test_life(self):
+    if CORE_BENCHMARKS: return
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
   def test_linpack_double(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return 100.0/float(re.search('Unrolled Double  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
