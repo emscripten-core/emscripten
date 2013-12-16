@@ -80,7 +80,7 @@ process(sys.argv[1])
                     '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
-                    '--closure', '1',
+                    #'--closure', '1',
                     #'-s', 'PRECISE_F32=1',
                     #'-g',
                     '-o', filename + '.js'] + shared_args + emcc_args, stdout=PIPE, stderr=PIPE).communicate()
