@@ -816,7 +816,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   # fix +float into float.0, if not running js opts
   if not settings['RUNNING_JS_OPTS']:
     def fix_dot_zero(m):
-      num = m.group(2)
+      num = m.group(3)
       # TODO: handle 0x floats?
       if num.find('.') < 0:
         e = num.find('e');
@@ -824,8 +824,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           num += '.0'
         else:
           num = num[:e] + '.0' + num[e:]
-      return m.group(1) + num
-    funcs = re.sub(r'([(=,] *)\+((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', lambda m: fix_dot_zero(m), funcs)
+      return m.group(1) + m.group(2) + num
+    funcs = re.sub(r'([(=,+\-*/%] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', lambda m: fix_dot_zero(m), funcs)
 
   # js compiler
 
