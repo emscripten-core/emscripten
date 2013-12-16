@@ -50,12 +50,23 @@ class Benchmarker:
     else:
       print
 
-class ClangBenchmarker(Benchmarker):
+class NativeBenchmarker(Benchmarker):
+  def __init__(self, name, cc, cxx):
+    self.name = name
+    self.cc = cc
+    self.cxx = cxx
+
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec):
     self.parent = parent
     if not native_exec:
-      parent.build_native(filename, shared_args + native_args)
+      compiler = self.cxx if filename.endswith('cpp') else self.cc
+      process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
+      output = process.communicate()
+      if process.returncode is not 0:
+        print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([compiler, '-O2', filename, '-o', filename+'.native']), process.returncode)
+        print "Output: " + output[0]
     else:
+      print '(using clang)'
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
     self.filename = filename
@@ -98,7 +109,8 @@ process(sys.argv[1])
 
 # Benchmarkers
 benchmarkers = [
-  ClangBenchmarker('clang'),
+  NativeBenchmarker('clang', CLANG_CC, CLANG),
+  NativeBenchmarker('gcc', 'gcc', 'g++'),
   JSBenchmarker('JS-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
   JSBenchmarker('JS',     SPIDERMONKEY_ENGINE),
   JSBenchmarker('v8',     V8_ENGINE)
