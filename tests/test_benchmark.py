@@ -62,8 +62,9 @@ class ClangBenchmarker(Benchmarker):
     return self.parent.run_native(self.filename, args)
 
 class JSBenchmarker(Benchmarker):
-  def __init__(self, name, extra_args=[]):
+  def __init__(self, name, engine, extra_args=[]):
     self.name = name
+    self.engine = engine
     self.extra_args = extra_args
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec):
@@ -91,13 +92,14 @@ process(sys.argv[1])
     assert os.path.exists(filename + '.js'), 'Failed to compile file: ' + output[0]
 
   def run(self, args):
-    return run_js(self.filename + '.js', engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
+    return run_js(self.filename + '.js', engine=self.engine, args=args, stderr=PIPE, full_output=True)
 
 # Benchmarkers
 benchmarkers = [
   ClangBenchmarker('clang'),
-  JSBenchmarker('JS'),
-  JSBenchmarker('JS-f32', ['-s', 'PRECISE_F32=2'])
+  JSBenchmarker('JS-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+  JSBenchmarker('JS',     SPIDERMONKEY_ENGINE),
+  JSBenchmarker('v8',     V8_ENGINE)
 ]
 
 class benchmark(RunnerCore):
