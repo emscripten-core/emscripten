@@ -726,7 +726,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   """
 
   assert(settings['ASM_JS']) # TODO: apply ASM_JS even in -O0 for fastcomp
-  assert(settings['RUNNING_JS_OPTS'])
 
   # Overview:
   #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
@@ -813,6 +812,20 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   for k, v in metadata['tables'].iteritems():
     table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
   funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
+
+  # fix +float into float.0, if not running js opts
+  if not settings['RUNNING_JS_OPTS']:
+    def fix_dot_zero(m):
+      num = m.group(2)
+      # TODO: handle 0x floats?
+      if num.find('.') < 0:
+        e = num.find('e');
+        if e < 0:
+          num += '.0'
+        else:
+          num = num[:e] + '.0' + num[e:]
+      return m.group(1) + num
+    funcs = re.sub(r'([=,] *)\+((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', lambda m: fix_dot_zero(m), funcs)
 
   # js compiler
 
