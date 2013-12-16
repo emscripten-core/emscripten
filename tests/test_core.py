@@ -4602,6 +4602,7 @@ return malloc(size);
 
   def test_simd2(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
