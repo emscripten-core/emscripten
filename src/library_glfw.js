@@ -120,7 +120,6 @@ var LibraryGLFW = {
       if (event.charCode) {
         var char = GLFW.getUnicodeChar(event.charCode);
         if (char !== null && GLFW.charFunc) {
-          event.preventDefault();
           Runtime.dynCall('vii', GLFW.charFunc, [event.charCode, 1]);
         }
       }
@@ -130,13 +129,18 @@ var LibraryGLFW = {
       var key = GLFW.DOMToGLFWKeyCode(event.keyCode);
       if (key && GLFW.keyFunc) {
         GLFW.keys[key] = status;
-        event.preventDefault();
         Runtime.dynCall('vii', GLFW.keyFunc, [key, status]);
       }
     },
 
     onKeydown: function(event) {
       GLFW.onKeyChanged(event, 1);//GLFW_PRESS
+      // This logic comes directly from the sdl implementation. We cannot
+      // call preventDefault on all keydown events otherwise onKeyPress will
+      // not get called
+      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
+        event.preventDefault();
+      }
     },
 
     onKeyup: function(event) {
