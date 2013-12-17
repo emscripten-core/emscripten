@@ -547,6 +547,9 @@ var LibraryGL = {
                           Module.ctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
 
       GL.floatExt = Module.ctx.getExtension('OES_texture_float');
+      
+      // Extension available from Firefox 26 and Google Chrome 30
+      GL.instancedArraysExt = Module.ctx.getExtension('ANGLE_instanced_arrays');
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -4959,6 +4962,33 @@ var LibraryGL = {
       return Module.ctx.getError();
     }
   },
+  
+  // ANGLE_instanced_arrays WebGL extension related functions
+  
+  glVertexAttribDivisor__sig: 'vii',
+  glVertexAttribDivisor: function(index, divisor) {
+#if ASSERTIONS    
+    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+#endif
+    GL.instancedArraysExt.vertexAttribDivisorANGLE(index, divisor);    
+  },
+
+  glDrawArraysInstanced_sig: 'viiii',
+  glDrawArraysInstanced: function(mode, first, count, primcount) {
+#if ASSERTIONS    
+    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+#endif
+    GL.instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount);
+  },
+  
+  glDrawElementsInstanced_sig: 'viiiii',
+  glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
+#if ASSERTIONS    
+    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+#endif
+    GL.instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount);
+  },
+  
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',
