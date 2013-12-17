@@ -4989,6 +4989,18 @@ var LibraryGL = {
     GL.instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount);
   },
   
+  // OpenGL Desktop/ES 2.0 instancing extensions compatibility
+  
+  glVertexAttribDivisorNV: 'glVertexAttribDivisor',
+  glDrawArraysInstancedNV: 'glDrawArraysInstanced',
+  glDrawElementsInstancedNV: 'glDrawElementsInstanced',
+  glVertexAttribDivisorEXT: 'glVertexAttribDivisor',
+  glDrawArraysInstancedEXT: 'glDrawArraysInstanced',
+  glDrawElementsInstancedEXT: 'glDrawElementsInstanced',
+  glVertexAttribDivisorARB: 'glVertexAttribDivisor',
+  glDrawArraysInstancedARB: 'glDrawArraysInstanced',
+  glDrawElementsInstancedARB: 'glDrawElementsInstanced',
+  
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',
