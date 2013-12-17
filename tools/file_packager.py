@@ -84,30 +84,36 @@ no_heap_copy = True
 
 for arg in sys.argv[1:]:
   if arg == '--preload':
-    leading = 'preload'
     has_preloaded = True
+    leading = 'preload'
   elif arg == '--embed':
     leading = 'embed'
   elif arg == '--exclude':
     leading = 'exclude'
   elif arg == '--compress':
-    leading = 'compress'
     compress_cnt = 1
     Compression.on = True
+    leading = 'compress'
   elif arg == '--no-force':
     force = False
+    leading = ''
   elif arg == '--use-preload-cache':
     use_preload_cache = True
+    leading = ''
   elif arg == '--no-heap-copy':
     no_heap_copy = False
+    leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
+    leading = ''
   elif arg.startswith('--crunch'):
     from shared import CRUNCH
     crunch = arg.split('=')[1] if '=' in arg else '128'
+    leading = ''
   elif arg.startswith('--plugin'):
     plugin = open(arg.split('=')[1], 'r').read()
     eval(plugin) # should append itself to plugins
+    leading = ''
   elif leading == 'preload' or leading == 'embed':
     mode = leading
     if '@' in arg:
@@ -130,6 +136,9 @@ for arg in sys.argv[1:]:
     elif compress_cnt == 3:
       Compression.js_name = arg
       compress_cnt = 0
+  else:
+    print >> sys.stderr, 'Unknown parameter:', arg
+    sys.exit(1)
 
 if (not force) and len(data_files) == 0:
   has_preloaded = False
