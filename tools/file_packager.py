@@ -45,6 +45,7 @@ import posixpath
 import shared
 from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
+import json
 
 if len(sys.argv) == 1:
   print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
@@ -394,19 +395,43 @@ for file_ in data_files:
   basename = os.path.basename(filename)
   if file_['mode'] == 'embed':
     # Embed
-    data = map(ord, open(file_['srcpath'], 'rb').read())
+    data = open(file_['srcpath'], 'rb').read()
+    data_array = map(ord, data)
+
     if not data:
       str_data = '[]'
     else:
+      is_plain_text = True
+      for i in range(len(data_array)):
+        c = data_array[i]
+        if c == 9 or c == 10 or c == 13:
+          continue
+        if c > 126 or c < 32:
+          is_plain_text = False
+          break
+
       str_data = ''
-      chunk_size = 10240
-      while len(data) > 0:
-        chunk = data[:chunk_size]
-        data = data[chunk_size:]
-        if not str_data:
-          str_data = str(chunk)
-        else:
-          str_data += '.concat(' + str(chunk) + ')'
+      if is_plain_text:
+        chunk_size = 10240
+        while len(data) > 0:
+          chunk = data[:chunk_size]
+          data = data[chunk_size:]
+          chunk_str = repr(chunk)
+          if not str_data:
+            str_data = chunk_str
+          else:
+            str_data += '+' + chunk_str
+      else: 
+        chunk_size = 10240
+        while len(data_array) > 0:
+          chunk = data_array[:chunk_size]
+          data_array = data_array[chunk_size:]
+          chunk_str = json.dumps(chunk, separators = (',', ':'))
+          if not str_data:
+            str_data = chunk_str
+          else:
+            str_data += '.concat(' + chunk_str + ')'
+
     code += '''Module['FS_createDataFile']('%s', '%s', %s, true, true);\n''' % (dirname, basename, str_data)
   elif file_['mode'] == 'preload':
     # Preload
