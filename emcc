@@ -1151,8 +1151,11 @@ try:
     logging.warning('disabling asm.js since embind is not ready for it yet')
     shared.Settings.ASM_JS = 0
 
+  if os.environ.get('EMCC_FAST_COMPILER'):
+    shared.Settings.ASM_JS = 1
+
   if shared.Settings.ASM_JS:
-    assert opt_level >= 1, 'asm.js requires -O1 or above'
+    assert opt_level >= 1 or os.environ.get('EMCC_FAST_COMPILER'), 'asm.js requires -O1 or above'
 
     if bind:
       shared.Settings.RESERVED_FUNCTION_POINTERS = max(shared.Settings.RESERVED_FUNCTION_POINTERS, 10)
