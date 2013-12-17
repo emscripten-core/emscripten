@@ -4,8 +4,8 @@ function emrun_register_handlers() {
     http.open("POST", "stdio.html", true);
     http.send(msg);
   }
-  // If the address contains localhost, we can assume we're running the test runner and should post stdout logs.
-  if (document.URL.search("localhost") != -1) {
+  // If the address contains localhost, or we are running the page from port 6931, we can assume we're running the test runner and should post stdout logs.
+  if (document.URL.search("localhost") != -1 || document.URL.search(":6931/") != -1) {
     var emrun_http_sequence_number = 1;
     var prevExit = Module['exit'];
     var prevPrint = Module['print'];

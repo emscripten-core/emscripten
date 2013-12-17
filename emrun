@@ -8,6 +8,7 @@ import os, platform, optparse, logging, re, pprint, atexit, urlparse, subprocess
 from operator import itemgetter
 from urllib import unquote
 from Queue import PriorityQueue
+from threading import Thread, RLock
 
 # Populated from cmdline params
 emrun_options = None
@@ -82,7 +83,10 @@ def format_html(msg):
   msg = cgi.escape(msg)
   msg = msg.replace('\r\n', '<br />').replace('\n', '<br />')
   return msg
-  
+
+# HTTP requests are handled from separate threads - synchronize them to avoid race conditions
+http_mutex = RLock()
+
 # Prints a log message to 'info' stdout channel. Always printed.
 def logi(msg):
   global last_message_time
@@ -153,7 +157,7 @@ def is_browser_process_alive():
   
 # Kills browser_process and processname_killed_atexit.
 def kill_browser_process():
-  global browser_process, processname_killed_atexit
+  global browser_process, processname_killed_atexit, emrun_options
   if browser_process:
     try:
       logv('Terminating browser process..')
@@ -161,21 +165,25 @@ def kill_browser_process():
     except:
       pass
     browser_process = None
-  
   if len(processname_killed_atexit) > 0:
-    logv("Terminating all processes that have string '" + processname_killed_atexit + "' in their name.")
-    if WINDOWS:
-      process_image = processname_killed_atexit if '.exe' in processname_killed_atexit else (processname_killed_atexit + '.exe')
-      process = subprocess.Popen(['taskkill', '/F', '/IM', process_image, '/T'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      process.communicate()
+    if emrun_options.android:
+      logv("Terminating Android app '" + processname_killed_atexit + "'.")
+      subprocess.call(['adb' ,'shell', 'am', 'force-stop', processname_killed_atexit])
     else:
-      try:
-        subprocess.call(['pkill', processname_killed_atexit])
-      except OSError, e:
+      logv("Terminating all processes that have string '" + processname_killed_atexit + "' in their name.")
+      if WINDOWS:
+        process_image = processname_killed_atexit if '.exe' in processname_killed_atexit else (processname_killed_atexit + '.exe')
+        process = subprocess.Popen(['taskkill', '/F', '/IM', process_image, '/T'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.communicate()
+      else:
         try:
-          subprocess.call(['killall', processname_killed_atexit])
+          subprocess.call(['pkill', processname_killed_atexit])
         except OSError, e:
-          loge('Both commands pkill and killall failed to clean up the spawned browser process. Perhaps neither of these utilities is available on your system?')
+          try:
+            subprocess.call(['killall', processname_killed_atexit])
+          except OSError, e:
+            loge('Both commands pkill and killall failed to clean up the spawned browser process. Perhaps neither of these utilities is available on your system?')
+    # Clear the process name to represent that the browser is now dead.
     processname_killed_atexit = ''
 
 # Our custom HTTP web server that will server the target page to run via .html.
@@ -190,56 +198,61 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 
   def handle_incoming_message(self, seq_num, log, data):
     global have_received_messages
-    have_received_messages = True
+    with http_mutex:
+      have_received_messages = True
 
-    if self.expected_http_seq_num == -1:
-      self.expected_http_seq_num = seq_num+1
-      log(data)
-    elif seq_num == -1: # Message arrived without a sequence number? Just log immediately
-      log(data)
-    elif seq_num == self.expected_http_seq_num:
-      log(data)
-      self.expected_http_seq_num += 1
-      self.print_messages_due()
-    elif seq_num < self.expected_http_seq_num:
-      log(data)
-    else:
-      log(data)
-      self.http_message_queue += [(seq_num, data, log)]
-      self.http_message_queue.sort(key=itemgetter(0))
-      if len(self.http_message_queue) > 16:
-        self.print_next_message()
+      if self.expected_http_seq_num == -1:
+        self.expected_http_seq_num = seq_num+1
+        log(data)
+      elif seq_num == -1: # Message arrived without a sequence number? Just log immediately
+        log(data)
+      elif seq_num == self.expected_http_seq_num:
+        log(data)
+        self.expected_http_seq_num += 1
+        self.print_messages_due()
+      elif seq_num < self.expected_http_seq_num:
+        log(data)
+      else:
+        log(data)
+        self.http_message_queue += [(seq_num, data, log)]
+        self.http_message_queue.sort(key=itemgetter(0))
+        if len(self.http_message_queue) > 16:
+          self.print_next_message()
   
   # If it's been too long since we we got a message, prints out the oldest queued message, ignoring the proper order.
   # This ensures that if any messages are actually lost, that the message queue will be orderly flushed.
   def print_timed_out_messages(self):
     global last_message_time
-    now = time.clock()
-    max_message_queue_time = 5
-    if len(self.http_message_queue) > 0 and now - last_message_time > max_message_queue_time:
-      self.print_next_message()
+    with http_mutex:
+      now = time.clock()
+      max_message_queue_time = 5
+      if len(self.http_message_queue) > 0 and now - last_message_time > max_message_queue_time:
+        self.print_next_message()
   
   # Skips to printing the next message in queue now, independent of whether there was missed messages in the sequence numbering.
   def print_next_message(self):
-    if len(self.http_message_queue) > 0:
-      self.expected_http_seq_num = self.http_message_queue[0][0]
-      self.print_messages_due()
+    with http_mutex:
+      if len(self.http_message_queue) > 0:
+        self.expected_http_seq_num = self.http_message_queue[0][0]
+        self.print_messages_due()
 
   # Completely flushes all out-of-order messages in the queue.
   def print_all_messages(self):
-    while len(self.http_message_queue) > 0:
-      self.print_next_message()
+    with http_mutex:
+      while len(self.http_message_queue) > 0:
+        self.print_next_message()
 
   # Prints any messages that are now due after we logged some other previous messages.
   def print_messages_due(self):
-    while len(self.http_message_queue) > 0:
-      msg = self.http_message_queue[0]
-      if msg[0] == self.expected_http_seq_num:
-        msg[2](msg[1])
-        self.expected_http_seq_num += 1
-        self.http_message_queue.pop(0)
-      else:
-        return
+    with http_mutex:
+      while len(self.http_message_queue) > 0:
+        msg = self.http_message_queue[0]
+        if msg[0] == self.expected_http_seq_num:
+          msg[2](msg[1])
+          self.expected_http_seq_num += 1
+          self.http_message_queue.pop(0)
+        else:
+          return
 
   def serve_forever(self, timeout=0.5):
     global emrun_options, last_message_time, page_exit_code, have_received_messages, emrun_not_enabled_nag_printed
@@ -279,7 +292,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 
       # If we detect that the page is not running with emrun enabled, print a warning message.
       time_since_page_serve = now - page_last_served_time
-      if not emrun_not_enabled_nag_printed and not have_received_messages and time_since_page_serve > 5:
+      if not emrun_not_enabled_nag_printed and not have_received_messages and time_since_page_serve > 10:
         logi('The html page you are running is not emrun-capable. Stdout, stderr and exit(returncode) capture will not work. Recompile the application with the --emrun linker flag to enable this, or pass --no_emrun_detect to emrun to hide this check.')
         emrun_not_enabled_nag_printed = True
 
@@ -773,6 +786,9 @@ def main():
   parser.add_option('--browser', dest='browser', default='',
     help='Specifies the browser executable to run the web page in.')
 
+  parser.add_option('--android', dest='android', action='store_true', default=False,
+    help='Launches the page in a browser of an Android device connected to an USB on the local system. (via adb)')
+
   parser.add_option('--system_info', dest='system_info', action='store_true',
     help='Prints information about the current system at startup.')
 
@@ -827,43 +843,82 @@ def main():
   url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
   if len(cmdlineparams) > 0:
     url += '?' + '&'.join(cmdlineparams)
-  url = 'http://localhost:'+str(options.port)+'/'+url
+  server_root = 'localhost'
+  if options.android:
+    server_root = socket.gethostbyname(socket.gethostname())
+  url = 'http://' + server_root + ':' + str(options.port)+'/'+url
   
   os.chdir(serve_dir)
   logv('Web server root directory: ' + os.path.abspath('.'))
 
-  browser = find_browser(str(options.browser))
-  browser_exe = browser[0]
-  browser_args = []
+  if options.android:
+    if options.browser == 'firefox':
+      browser_app = 'org.mozilla.firefox/.App'
+    elif options.browser == 'firefox_beta':
+      browser_app = 'org.mozilla.firefox_beta/.App'
+    elif options.browser == 'firefox_aurora' or options.browser == 'fennec_aurora':
+      browser_app = 'org.mozilla.fennec_aurora/.App'
+    elif options.browser == 'firefox_nightly' or options.browser == 'fennec':
+      browser_app = 'org.mozilla.fennec/.App'
+    elif options.browser == 'chrome':
+      browser_app = 'com.android.chrome/.Main'
+    elif options.browser == 'chrome_beta' or options.browser == 'chrome_canary': # There is no Chrome Canary for Android, but Play store has 'Chrome Beta' instead.
+      browser_app = 'com.chrome.beta/com.android.chrome.Main'
+    elif options.browser == 'opera':
+      browser_app = 'com.opera.browser/com.opera.Opera'
+    elif options.browser == 'opera_mini': # Launching the URL works, but page seems to never load (Fails with 'Network problem' even when other browsers work)
+      browser_app = 'com.opera.mini.android/.Browser'
+    elif options.browser =='dolphin': # Current stable Dolphin as of 12/2013 does not have WebGL support. 
+      browser_app = 'mobi.mgeek.TunnyBrowser/.BrowserActivity'
+    else:
+      loge("Don't know how to launch browser " + options.browser + ' on Android!')
+      return 1
+    # To add support for a new Android browser in the list above:
+    # 1. Install the browser to Android phone, connect it via adb to PC.
+    # 2. Type 'adb shell pm list packages -f' to locate the package name of that application.
+    # 3. Type 'adb pull <packagename>.apk' to copy the apk of that application to PC.
+    # 4. Type 'aapt d xmltree <packagename>.apk AndroidManifest.xml > manifest.txt' to extract the manifest from the package.
+    # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
 
-  if 'safari' in browser_exe.lower():
-    # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,
-    # but instead launches 'file:///http://page.com'. To remedy this, must use the open -a command
-    # to run Safari, but unfortunately this will end up spawning Safari process detached from emrun.
-    if OSX:
-      browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
+    if WINDOWS:
+      url = url.replace('&', '\\&')
+    browser = ['adb', 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
+    processname_killed_atexit = browser_app[:browser_app.find('/')]
+  else: #Launching a web page on local system.
+    browser = find_browser(str(options.browser))
+    browser_exe = browser[0]
+    browser_args = []
 
-    processname_killed_atexit = 'Safari'
-  elif 'chrome' in browser_exe.lower():
-    processname_killed_atexit = 'chrome'
-    browser_args = ['--incognito', '--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
-#    if options.no_server:
-#      browser_args += ['--disable-web-security']
-  elif 'firefox' in browser_exe.lower():
-    processname_killed_atexit = 'firefox'
-  elif 'iexplore' in browser_exe.lower():
-    processname_killed_atexit = 'iexplore'
-    browser_args = ['-private']
-  elif 'opera' in browser_exe.lower():
-    processname_killed_atexit = 'opera'
+    if 'safari' in browser_exe.lower():
+      # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,
+      # but instead launches 'file:///http://page.com'. To remedy this, must use the open -a command
+      # to run Safari, but unfortunately this will end up spawning Safari process detached from emrun.
+      if OSX:
+        browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
 
-  # In Windows cmdline, & character delimits multiple commmands, so must use ^ to escape them.
-  if browser_exe == 'cmd':
-    url = url.replace('&', '^&')
-  browser += browser_args + [url]
+      processname_killed_atexit = 'Safari'
+    elif 'chrome' in browser_exe.lower():
+      processname_killed_atexit = 'chrome'
+      browser_args = ['--incognito', '--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+  #    if options.no_server:
+  #      browser_args += ['--disable-web-security']
+    elif 'firefox' in browser_exe.lower():
+      processname_killed_atexit = 'firefox'
+    elif 'iexplore' in browser_exe.lower():
+      processname_killed_atexit = 'iexplore'
+      browser_args = ['-private']
+    elif 'opera' in browser_exe.lower():
+      processname_killed_atexit = 'opera'
+
+    # In Windows cmdline, & character delimits multiple commmands, so must use ^ to escape them.
+    if browser_exe == 'cmd':
+      url = url.replace('&', '^&')
+    browser += browser_args + [url]
 
   if options.kill_on_start:
+    pname = processname_killed_atexit
     kill_browser_process()
+    processname_killed_atexit = pname
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
@@ -894,6 +949,9 @@ def main():
     browser_process = subprocess.Popen(browser)
     if options.kill_on_exit:
       atexit.register(kill_browser_process)
+    # For Android automation, we execute adb, so this process does not represent a browser and no point killing it.
+    if options.android:
+      browser_process = None
 
   if not options.no_server:
     logv('Starting web server in port ' + str(options.port))
