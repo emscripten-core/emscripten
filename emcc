@@ -504,6 +504,12 @@ Options that are modified or new in %s include:
                            and exit(returncode) capture when running the
                            generated application through emrun.
 
+  --em-config              Specifies the location of the .emscripten configuration
+                           file for the current compiler run. If not specified,
+                           the environment variable EM_CONFIG is read for this
+                           file, and if that is not set, the default location
+                           ~/.emscripten is assumed.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -972,6 +978,11 @@ try:
     elif newargs[i] == '--emrun':
       emrun = True
       newargs[i] = ''
+    elif newargs[i] == '--em-config':
+      # This option is parsed in tools/shared.py, here only clean it up from being passed to clang.
+      newargs[i] = ''
+      newargs[i+1] = ''
+
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   # If user did not specify a default -std for C++ code, specify the emscripten default.

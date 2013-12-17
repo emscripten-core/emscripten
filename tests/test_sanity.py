@@ -548,3 +548,31 @@ fi
       if old:
         os.environ['EMCC_LLVM_TARGET'] = old
 
+  def test_emconfig(self):
+    restore()
+    
+    (fd, custom_config_filename) = tempfile.mkstemp(prefix='.emscripten_config_')
+
+    orig_config = open(CONFIG_FILE, 'r').read()
+ 
+    # Move the ~/.emscripten to a custom location.
+    tfile = os.fdopen(fd, "w")
+    tfile.write(orig_config)
+    tfile.close()
+
+    # Make a syntax error in the original config file so that attempting to access it would fail.
+    open(CONFIG_FILE, 'w').write('asdfasdfasdfasdf\n\'\'\'' + orig_config)
+
+    temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
+
+    os.chdir(temp_dir)
+    self.do([EMCC, '-O2', '--em-config', custom_config_filename, path_from_root('tests', 'hello_world.c')])
+    result = run_js('a.out.js')
+    
+    # Clean up created temp files.
+    os.remove(custom_config_filename)
+    os.chdir(path_from_root())
+    shutil.rmtree(temp_dir)
+
+    self.assertContained('hello, world!', result)
+
