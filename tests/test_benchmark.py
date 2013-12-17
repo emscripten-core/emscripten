@@ -56,8 +56,9 @@ class NativeBenchmarker(Benchmarker):
     self.cc = cc
     self.cxx = cxx
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.parent = parent
+    if lib_builder: native_args += lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
@@ -81,8 +82,9 @@ class JSBenchmarker(Benchmarker):
     self.engine = engine
     self.extra_args = extra_args
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.filename = filename
+    if lib_builder: emcc_args += lib_builder('js', native=False, env_init={})
 
     open('hardcode.py', 'w').write('''
 def process(filename):
@@ -152,12 +154,7 @@ class benchmark(RunnerCore):
     Building.COMPILER = CLANG
     Building.COMPILER_TEST_OPTS = []
 
-    # Pick the JS engine to benchmark. If you specify one, it will be picked. For example, python tests/runner.py benchmark SPIDERMONKEY_ENGINE
-    global JS_ENGINE
-    JS_ENGINE = Building.JS_ENGINE_OVERRIDE if Building.JS_ENGINE_OVERRIDE is not None else JS_ENGINES[0]
-    print 'Benchmarking JS engine: %s' % JS_ENGINE
-
-  def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
+  def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     args = args or [DEFAULT_ARG]
     if args_processor: args = args_processor(args)
 
@@ -169,7 +166,7 @@ class benchmark(RunnerCore):
 
     print
     for b in benchmarkers:
-      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec)
+      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
       b.bench(args, output_parser)
       b.display(benchmarkers[0])
 
@@ -474,42 +471,29 @@ class benchmark(RunnerCore):
 
   def test_zzz_zlib(self):
     src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
-    emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \
-                 ['-I' + path_from_root('tests', 'zlib')]
-    native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
-                   ['-I' + path_from_root('tests', 'zlib')]
+    def lib_builder(name, native, env_init):
+      return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
     self.do_benchmark('zlib', src, '''ok.''',
-                      force_c=True, emcc_args=emcc_args, native_args=native_args)
+                      force_c=True, shared_args=['-I' + path_from_root('tests', 'zlib')], lib_builder=lib_builder)
 
   def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
-
-    js_lib = self.get_library('box2d', [os.path.join('box2d.a')], configure=None)
-    native_lib = self.get_library('box2d_native', [os.path.join('box2d.a')], configure=None, native=True)
-
-    emcc_args = js_lib + ['-I' + path_from_root('tests', 'box2d')]
-    native_args = native_lib + ['-I' + path_from_root('tests', 'box2d')]
-
-    self.do_benchmark('box2d', src, 'frame averages', emcc_args=emcc_args, native_args=native_args)
+    def lib_builder(name, native, env_init):
+      return self.get_library('box2d', [os.path.join('box2d.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'box2d')], lib_builder=lib_builder)
 
   def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read() + \
           open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
-    js_lib = self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+    def lib_builder(name, native, env_init):
+      return self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                              configure_args=['--disable-demos','--disable-dependency-tracking'])
-    native_lib = self.get_library('bullet_native', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                             os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                             os.path.join('src', '.libs', 'libLinearMath.a')],
-                                  configure_args=['--disable-demos','--disable-dependency-tracking'],
-                                  native=True)
+                              configure_args=['--disable-demos','--disable-dependency-tracking'], native=native, cache_name_extra=name, env_init=env_init)
 
-    emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                          '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks'),
-                          '-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
-    native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                                '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+    emcc_args = ['-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
 
-    self.do_benchmark('bullet', src, '\nok.\n', emcc_args=emcc_args, native_args=native_args)
+    self.do_benchmark('bullet', src, '\nok.\n', emcc_args=emcc_args, shared_args=['-I' + path_from_root('tests', 'bullet', 'src'),
+                                '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')], lib_builder=lib_builder)
+
