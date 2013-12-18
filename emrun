@@ -74,7 +74,7 @@ last_message_time = time.clock()
 page_start_time = time.clock()
 
 # Stores the time of most recent http page serve.
-page_last_served_time = time.clock()
+page_last_served_time = None
 
 # Returns given log message formatted to be outputted on a HTML page.
 def format_html(msg):
@@ -291,10 +291,11 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
         page_exit_code = emrun_options.timeout_returncode
 
       # If we detect that the page is not running with emrun enabled, print a warning message.
-      time_since_page_serve = now - page_last_served_time
-      if not emrun_not_enabled_nag_printed and not have_received_messages and time_since_page_serve > 10:
-        logi('The html page you are running is not emrun-capable. Stdout, stderr and exit(returncode) capture will not work. Recompile the application with the --emrun linker flag to enable this, or pass --no_emrun_detect to emrun to hide this check.')
-        emrun_not_enabled_nag_printed = True
+      if not emrun_not_enabled_nag_printed and page_last_served_time is not None:
+        time_since_page_serve = now - page_last_served_time
+        if not have_received_messages and time_since_page_serve > 10:
+          logi('The html page you are running is not emrun-capable. Stdout, stderr and exit(returncode) capture will not work. Recompile the application with the --emrun linker flag to enable this, or pass --no_emrun_detect to emrun to hide this check.')
+          emrun_not_enabled_nag_printed = True
 
     # Clean up at quit, print any leftover messages in queue.
     self.print_all_messages()
@@ -933,7 +934,7 @@ def main():
   if options.no_emrun_detect:
     emrun_not_enabled_nag_printed = True
 
-  global browser_stdout_handle, browser_stderr_handle    
+  global browser_stdout_handle, browser_stderr_handle
   if options.log_stdout:
     browser_stdout_handle = open(options.log_stdout, 'ab')
   if options.log_stderr:
