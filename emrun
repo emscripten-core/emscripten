@@ -805,7 +805,7 @@ def main():
   (options, args) = parser.parse_args(sys.argv)
   emrun_options = options
 
-  if not options.browser:
+  if not options.browser and not options.android:
     if WINDOWS:
       options.browser = 'start'
     elif LINUX:
@@ -860,7 +860,10 @@ def main():
     if not ADB:
       loge("Could not find the adb tool. Install Android SDK and add the directory of adb to PATH.")
       return 1
-    if options.browser == 'firefox':
+    if not options.browser:
+      loge("Running on Android requires that you explicitly specify the browser to run with --browser <id>. Run emrun --android --list_browsers to obtain a list of installed browsers you can use.")
+      return 1
+    elif options.browser == 'firefox':
       browser_app = 'org.mozilla.firefox/.App'
     elif options.browser == 'firefox_beta':
       browser_app = 'org.mozilla.firefox_beta/.App'
