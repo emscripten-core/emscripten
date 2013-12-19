@@ -428,6 +428,19 @@ def get_cpu_infoline():
 
   return platform.machine() + ', ' + cpu_name
 
+def get_android_cpu_infoline():
+  lines = subprocess.check_output([ADB, 'shell', 'cat', '/proc/cpuinfo']).split('\n')
+  processor = ''
+  hardware = ''
+  for line in lines:
+    if line.startswith('Processor'):
+      processor = line[line.find(':')+1:].strip()
+    elif line.startswith('Hardware'):
+      hardware = line[line.find(':')+1:].strip()
+
+  freq = int(subprocess.check_output([ADB, 'shell', 'cat', '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq']).strip())/1000
+  return 'CPU: ' + processor + ', ' + hardware + ' @ ' + str(freq) + ' MHz'
+
 def win_print_gpu_info():
   gpus = []
   gpu_memory = []
@@ -592,19 +605,24 @@ def get_os_version():
     return 'Unknown OS'
 
 def get_system_memory():
+  global emrun_options
+
   try:
-    if WINDOWS:
-      return win32api.GlobalMemoryStatusEx()['TotalPhys']
-    elif OSX:
-      return int(subprocess.check_output(['sysctl', '-n', 'hw.memsize']).strip())
-    elif LINUX:
-      mem = open('/proc/meminfo', 'r')
-      lines = mem.readlines()
-      mem.close()
+    if LINUX or emrun_options.android:
+      if emrun_options.android:
+        lines = subprocess.check_output([ADB, 'shell', 'cat', '/proc/meminfo']).split('\n')
+      else:
+        mem = open('/proc/meminfo', 'r')
+        lines = mem.readlines()
+        mem.close()
       for i in lines:
         sline = i.split()
         if str(sline[0]) == 'MemTotal:':
           return int(sline[1]) * 1024
+    elif WINDOWS:
+      return win32api.GlobalMemoryStatusEx()['TotalPhys']
+    elif OSX:
+      return int(subprocess.check_output(['sysctl', '-n', 'hw.memsize']).strip())
   except:
     return -1
 
@@ -714,6 +732,31 @@ def find_browser(name):
         return [browser_exe]
   
   return None # Could not find the browser
+
+def get_android_model():
+  global ADB
+  manufacturer = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.manufacturer']).strip()
+  brand = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.brand']).strip()
+  model = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.model']).strip()
+  board = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.board']).strip()
+  device = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.device']).strip()
+  name = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.name']).strip()
+  return manufacturer + ' ' + brand + ' ' + model + ' ' + board + ' ' + device + ' ' + name
+
+def get_android_os_version():
+  global ADB
+  ver = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.version.release']).strip()
+  apiLevel = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.version.sdk']).strip()
+  if not apiLevel:
+    apiLevel = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.version.sdk_int']).strip()
+
+  os = ''
+  if ver:
+    os += 'Android ' + ver + ' '
+  if apiLevel:
+    os += 'SDK API Level ' + apiLevel + ' '
+  os += subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.description']).strip()
+  return os
 
 def list_android_browsers():
   global ADB
@@ -898,41 +941,42 @@ def main():
   logv('Web server root directory: ' + os.path.abspath('.'))
 
   if options.android:
-    if not options.browser:
-      loge("Running on Android requires that you explicitly specify the browser to run with --browser <id>. Run emrun --android --list_browsers to obtain a list of installed browsers you can use.")
-      return 1
-    elif options.browser == 'firefox':
-      browser_app = 'org.mozilla.firefox/.App'
-    elif options.browser == 'firefox_beta':
-      browser_app = 'org.mozilla.firefox_beta/.App'
-    elif options.browser == 'firefox_aurora' or options.browser == 'fennec_aurora':
-      browser_app = 'org.mozilla.fennec_aurora/.App'
-    elif options.browser == 'firefox_nightly' or options.browser == 'fennec':
-      browser_app = 'org.mozilla.fennec/.App'
-    elif options.browser == 'chrome':
-      browser_app = 'com.android.chrome/.Main'
-    elif options.browser == 'chrome_beta' or options.browser == 'chrome_canary': # There is no Chrome Canary for Android, but Play store has 'Chrome Beta' instead.
-      browser_app = 'com.chrome.beta/com.android.chrome.Main'
-    elif options.browser == 'opera':
-      browser_app = 'com.opera.browser/com.opera.Opera'
-    elif options.browser == 'opera_mini': # Launching the URL works, but page seems to never load (Fails with 'Network problem' even when other browsers work)
-      browser_app = 'com.opera.mini.android/.Browser'
-    elif options.browser =='dolphin': # Current stable Dolphin as of 12/2013 does not have WebGL support. 
-      browser_app = 'mobi.mgeek.TunnyBrowser/.BrowserActivity'
-    else:
-      loge("Don't know how to launch browser " + options.browser + ' on Android!')
-      return 1
-    # To add support for a new Android browser in the list above:
-    # 1. Install the browser to Android phone, connect it via adb to PC.
-    # 2. Type 'adb shell pm list packages -f' to locate the package name of that application.
-    # 3. Type 'adb pull <packagename>.apk' to copy the apk of that application to PC.
-    # 4. Type 'aapt d xmltree <packagename>.apk AndroidManifest.xml > manifest.txt' to extract the manifest from the package.
-    # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
+    if not options.no_browser:
+      if not options.browser:
+        loge("Running on Android requires that you explicitly specify the browser to run with --browser <id>. Run emrun --android --list_browsers to obtain a list of installed browsers you can use.")
+        return 1
+      elif options.browser == 'firefox':
+        browser_app = 'org.mozilla.firefox/.App'
+      elif options.browser == 'firefox_beta':
+        browser_app = 'org.mozilla.firefox_beta/.App'
+      elif options.browser == 'firefox_aurora' or options.browser == 'fennec_aurora':
+        browser_app = 'org.mozilla.fennec_aurora/.App'
+      elif options.browser == 'firefox_nightly' or options.browser == 'fennec':
+        browser_app = 'org.mozilla.fennec/.App'
+      elif options.browser == 'chrome':
+        browser_app = 'com.android.chrome/.Main'
+      elif options.browser == 'chrome_beta' or options.browser == 'chrome_canary': # There is no Chrome Canary for Android, but Play store has 'Chrome Beta' instead.
+        browser_app = 'com.chrome.beta/com.android.chrome.Main'
+      elif options.browser == 'opera':
+        browser_app = 'com.opera.browser/com.opera.Opera'
+      elif options.browser == 'opera_mini': # Launching the URL works, but page seems to never load (Fails with 'Network problem' even when other browsers work)
+        browser_app = 'com.opera.mini.android/.Browser'
+      elif options.browser =='dolphin': # Current stable Dolphin as of 12/2013 does not have WebGL support. 
+        browser_app = 'mobi.mgeek.TunnyBrowser/.BrowserActivity'
+      else:
+        loge("Don't know how to launch browser " + options.browser + ' on Android!')
+        return 1
+      # To add support for a new Android browser in the list above:
+      # 1. Install the browser to Android phone, connect it via adb to PC.
+      # 2. Type 'adb shell pm list packages -f' to locate the package name of that application.
+      # 3. Type 'adb pull <packagename>.apk' to copy the apk of that application to PC.
+      # 4. Type 'aapt d xmltree <packagename>.apk AndroidManifest.xml > manifest.txt' to extract the manifest from the package.
+      # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
 
-    if WINDOWS:
-      url = url.replace('&', '\\&')
-    browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
-    processname_killed_atexit = browser_app[:browser_app.find('/')]
+      if WINDOWS:
+        url = url.replace('&', '\\&')
+      browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
+      processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: #Launching a web page on local system.
     browser = find_browser(str(options.browser))
     browser_exe = browser[0]
@@ -971,12 +1015,20 @@ def main():
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
-    logi('Computer name: ' + socket.gethostname()) # http://stackoverflow.com/questions/799767/getting-name-of-windows-computer-running-python-script
-    logi('OS: ' + get_os_version() + ' with ' + str(get_system_memory()/1024/1024) + ' MB of System RAM')
-    logi('CPU: ' + get_cpu_infoline())
-    print_gpu_infolines()
+    if options.android:
+      logi('Model: ' + get_android_model())
+      logi('OS: ' + get_android_os_version() + ' with ' + str(get_system_memory()/1024/1024) + ' MB of System RAM')
+      logi('CPU: ' + get_android_cpu_infoline())
+    else:
+      logi('Computer name: ' + socket.gethostname()) # http://stackoverflow.com/questions/799767/getting-name-of-windows-computer-running-python-script
+      logi('OS: ' + get_os_version() + ' with ' + str(get_system_memory()/1024/1024) + ' MB of System RAM')
+      logi('CPU: ' + get_cpu_infoline())
+      print_gpu_infolines()
   if options.browser_info:
-    logi('Browser: ' + browser_display_name(browser[0]) + ' ' + get_executable_version(browser_exe))
+    if options.android:
+      logi('Browser: Android ' + browser_app)
+    else:
+      logi('Browser: ' + browser_display_name(browser[0]) + ' ' + get_executable_version(browser_exe))
 
   # Suppress run warning if requested.
   if options.no_emrun_detect:
