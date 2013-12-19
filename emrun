@@ -715,6 +715,50 @@ def find_browser(name):
   
   return None # Could not find the browser
 
+def list_android_browsers():
+  global ADB
+  apps = subprocess.check_output([ADB, 'shell', 'pm', 'list', 'packages', '-f']).replace('\r\n', '\n')
+  browsers = []
+  for line in apps.split('\n'):
+    line = line.strip()
+    if line.endswith('=org.mozilla.firefox'):
+      browsers += ['firefox']
+    if line.endswith('=org.mozilla.firefox_beta'):
+      browsers += ['firefox_beta']
+    if line.endswith('=org.mozilla.fennec_aurora'):
+      browsers += ['firefox_aurora']
+    if line.endswith('=org.mozilla.fennec'):
+      browsers += ['firefox_nightly']
+    if line.endswith('=com.android.chrome'):
+      browsers += ['chrome']
+    if line.endswith('=com.chrome.beta'):
+      browsers += ['chrome_beta']
+    if line.endswith('=com.opera.browser'):
+      browsers += ['opera']
+    if line.endswith('=com.opera.mini.android'):
+      browsers += ['opera_mini']
+    if line.endswith('=mobi.mgeek.TunnyBrowser'):
+      browsers += ['dolphin']
+
+  browsers.sort()
+  logi('emrun has automatically found the following browsers on the connected Android device:')
+  for browser in browsers:
+    logi('  - ' + browser)
+
+def list_pc_browsers():
+  browsers = ['firefox', 'firefox_beta', 'firefox_aurora', 'firefox_nightly', 'chrome', 'chrome_canary', 'iexplore', 'safari', 'opera']  
+  logi('emrun has automatically found the following browsers in the default install locations on the system:')
+  logi('')
+  for browser in browsers:
+    browser_exe = find_browser(browser)
+    if type(browser_exe) == list:
+      browser_exe = browser_exe[0]
+    if browser_exe:
+      logi('  - ' + browser + ': ' + browser_display_name(browser_exe) + ' ' + get_executable_version(browser_exe))
+  logi('')
+  logi('You can pass the --browser <id> option to launch with the given browser above.')
+  logi('Even if your browser was not detected, you can use --browser /path/to/browser/executable to launch with that browser.')
+
 def browser_display_name(browser):
   b = browser.lower()
   if 'iexplore' in b:
@@ -805,6 +849,12 @@ def main():
   (options, args) = parser.parse_args(sys.argv)
   emrun_options = options
 
+  if options.android:
+    ADB = which('adb')
+    if not ADB:
+      loge("Could not find the adb tool. Install Android SDK and add the directory of adb to PATH.")
+      return 1
+
   if not options.browser and not options.android:
     if WINDOWS:
       options.browser = 'start'
@@ -815,19 +865,11 @@ def main():
     elif OSX:
       options.browser = 'safari'
 
-  browsers = ['firefox', 'firefox_beta', 'firefox_aurora', 'firefox_nightly', 'chrome', 'chrome_canary', 'iexplore', 'safari', 'opera']  
   if options.list_browsers:
-    logi('emrun has automatically found the following browsers in the default install locations on the system:')
-    logi('')
-    for browser in browsers:
-      browser_exe = find_browser(browser)
-      if type(browser_exe) == list:
-        browser_exe = browser_exe[0]
-      if browser_exe:
-        logi('  - ' + browser + ': ' + browser_display_name(browser_exe) + ' ' + get_executable_version(browser_exe))
-    logi('')
-    logi('You can pass the --browser <id> option to launch with the given browser above.')
-    logi('Even if your browser was not detected, you can use --browser /path/to/browser/executable to launch with that browser.')
+    if options.android:
+      list_android_browsers()
+    else:
+      list_pc_browsers()
     return
 
   if len(args) < 2 and (options.system_info or options.browser_info):
@@ -856,10 +898,6 @@ def main():
   logv('Web server root directory: ' + os.path.abspath('.'))
 
   if options.android:
-    ADB = which('adb')
-    if not ADB:
-      loge("Could not find the adb tool. Install Android SDK and add the directory of adb to PATH.")
-      return 1
     if not options.browser:
       loge("Running on Android requires that you explicitly specify the browser to run with --browser <id>. Run emrun --android --list_browsers to obtain a list of installed browsers you can use.")
       return 1
