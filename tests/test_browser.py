@@ -122,9 +122,8 @@ If manually bisecting:
   def test_emscripten_log(self):
     src = os.path.join(self.get_dir(), 'src.cpp')
     open(src, 'w').write(self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    shutil.copyfile(path_from_root('tests', 'emscripten_log', 'emscripten-source-map.min.js'), os.path.join(self.get_dir(), 'emscripten-source-map.min.js'))
 
-    Popen([PYTHON, EMCC, src, path_from_root('system', 'lib', 'libcxxabi', 'src', 'cxa_demangle.cpp'), '-I'+path_from_root('system', 'lib', 'libcxxabi', 'include'), '--shell-file', path_from_root('tests', 'emscripten_log', 'shell-emscripten-log.html'), '-g', '-o', 'page.html']).communicate()
+    Popen([PYTHON, EMCC, src, '--pre-js', path_from_root('tests', 'emscripten_log', 'emscripten-source-map.min.js'), '-g', '-o', 'page.html']).communicate()
     self.run_browser('page.html', None, '/report_result?1')
   
   def build_native_lzma(self):

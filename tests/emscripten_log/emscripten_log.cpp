@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <cstring>
 
-#include <../lib/libcxxabi/include/cxxabi.h>
-
 #define STRINGIZE_HELPER(x) #x
 #define STRINGIZE(x) STRINGIZE_HELPER(x)
 
@@ -23,7 +21,7 @@ int result = 1; // If 1, this test succeeded.
 		} \
 	} while(0)
 
-void kitten()
+void __attribute__((noinline)) kitten()
 {
 	// Log to Emscripten Module.
 	emscripten_log(EM_LOG_NO_PATHS, "Print a log message: int: %d, string: %s.", 42, "hello");
@@ -49,7 +47,7 @@ void kitten()
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_ERROR | EM_LOG_C_STACK | EM_LOG_JS_STACK | EM_LOG_DEMANGLE);
 }
 
-void bar(int = 0, char * = 0, double = 0) // Arbitrary function signature to add some content to callstack.
+void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary function signature to add some content to callstack.
 {
 	if (1 == 2)
 		MYASSERT(2 == 1, "World falls apart!");
@@ -114,22 +112,15 @@ void bar(int = 0, char * = 0, double = 0) // Arbitrary function signature to add
 	MYASSERT(!!strstr(str, "at __Z3bariPcd (src.cpp"), "Callstack was %s!", str);
 	MYASSERT(!!strstr(str, "at __Z3FooIiEvv (src.cpp"), "Callstack was %s!", str);
 #else
-	MYASSERT(!!strstr(str, "at __Z3bariPcd (page.html"), "Callstack was %s!", str);
-	MYASSERT(!!strstr(str, "at __Z3FooIiEvv (page.html"), "Callstack was %s!", str);
+	MYASSERT(!!strstr(str, "at __Z3bariPcd (page.js"), "Callstack was %s!", str);
+	MYASSERT(!!strstr(str, "at __Z3FooIiEvv (page.js"), "Callstack was %s!", str);
 #endif
 }
 
 template<typename T>
-void Foo() // Arbitrary function signature to add some content to callstack.
+void __attribute__((noinline)) Foo() // Arbitrary function signature to add some content to callstack.
 {
 	bar();
-
-	// Test cxa_demangle.
-	int stat;
-	char* demangled = abi::__cxa_demangle("_Z3foov", NULL, NULL, &stat);
-	if (stat == 0 && demangled) {
-		printf("Demangled name is '%s'.", demangled);
-	}
 }
 
 int main()
@@ -138,5 +129,8 @@ int main()
 #ifndef RUN_FROM_JS_SHELL
 	REPORT_RESULT();
 	return 0;
+#else
+	if (result)
+		printf("Success!\n");
 #endif
 }

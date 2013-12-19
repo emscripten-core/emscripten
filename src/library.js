@@ -8838,27 +8838,7 @@ LibraryManager.library = {
   // Returns the given mangled C++ function name demangled to a readable form, or an empty string if the given string could not be demangled.
   // E.g. "_Z3foov" -> "foo()".
   emscripten_demangle: function(functionname) {
-    if (typeof ___cxa_demangle === 'undefined') {
-      Runtime.warnOnce('emscripten_demangle is not available in the current build. Please add the file $EMSCRIPTEN/system/lib/libcxxabi/src/cxa_demangle.cpp to your build to show demangled symbol names.');
-      return '';
-    }
-    // The application entry point has a special name, so treat it manually.
-    if (functionname == 'Object._main' || functionname == '_main') {
-      return 'main()';
-    }
-    // If the compiled symbol starts with two underscores, there's one extra, which throws off cxa_demangle, so remove the first underscore.
-    if (functionname.indexOf("__") == 0) {
-      functionname = functionname.slice(1);
-    }
-    var sp = STACKTOP;
-    var stat = allocate([0, 0, 0, 0], 'i32', ALLOC_STACK);
-    var mangledname = allocate(512, 'i32*', ALLOC_STACK);
-    writeStringToMemory(functionname, mangledname, false);
-    var demangledname = allocate(512, 'i32*', ALLOC_STACK);
-    ___cxa_demangle(mangledname, demangledname, 512, stat);
-    var str = Pointer_stringify(demangledname);
-    STACKTOP = sp;
-    return str;
+    return demangle(functionname);
   },
  
   // Returns [parentFuncArguments, functionName, paramListName]
