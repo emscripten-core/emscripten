@@ -2525,6 +2525,8 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_intentional_fault(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1' and self.run_name == 'default': return self.skip('todo in fastcomp in default')
+
     # Some programs intentionally segfault themselves, we should compile that into a throw
     src = r'''
       int main () {
