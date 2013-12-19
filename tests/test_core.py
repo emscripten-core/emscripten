@@ -525,7 +525,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
 
     assert 'asm1' in test_modes
-    if self.run_name == 'asm1':
+    if self.run_name == 'asm1' and not os.environ.get('EMCC_FAST_COMPILER'):
       assert Settings.RELOOP
       generated = open('src.cpp.o.js').read()
       main = generated[generated.find('function _main'):]
