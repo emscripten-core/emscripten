@@ -42,6 +42,9 @@ processname_killed_atexit = ""
 # If user does not specify a --port parameter, this port is used to launch the server.
 default_webserver_port = 6931
 
+# Location of Android Debug Bridge executable
+ADB = ''
+
 # Host OS detection to autolocate browsers and other OS-specific support needs.
 WINDOWS = False
 LINUX = False
@@ -157,7 +160,7 @@ def is_browser_process_alive():
   
 # Kills browser_process and processname_killed_atexit.
 def kill_browser_process():
-  global browser_process, processname_killed_atexit, emrun_options
+  global browser_process, processname_killed_atexit, emrun_options, ADB
   if browser_process:
     try:
       logv('Terminating browser process..')
@@ -168,7 +171,7 @@ def kill_browser_process():
   if len(processname_killed_atexit) > 0:
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
-      subprocess.call(['adb' ,'shell', 'am', 'force-stop', processname_killed_atexit])
+      subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
     else:
       logv("Terminating all processes that have string '" + processname_killed_atexit + "' in their name.")
       if WINDOWS:
@@ -732,7 +735,7 @@ def browser_display_name(browser):
   return browser
 
 def main():
-  global browser_process, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
+  global browser_process, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed, ADB
   usage_str = "usage: %prog [options] [optional_portnum]"
   parser = optparse.OptionParser(usage=usage_str)
 
@@ -853,6 +856,10 @@ def main():
   logv('Web server root directory: ' + os.path.abspath('.'))
 
   if options.android:
+    ADB = which('adb')
+    if not ADB:
+      loge("Could not find the adb tool. Install Android SDK and add the directory of adb to PATH.")
+      return 1
     if options.browser == 'firefox':
       browser_app = 'org.mozilla.firefox/.App'
     elif options.browser == 'firefox_beta':
@@ -883,7 +890,7 @@ def main():
 
     if WINDOWS:
       url = url.replace('&', '\\&')
-    browser = ['adb', 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
+    browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
     processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: #Launching a web page on local system.
     browser = find_browser(str(options.browser))
