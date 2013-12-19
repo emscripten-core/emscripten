@@ -264,6 +264,26 @@ var LibraryEGL = {
       return 0;
     }
 
+    // EGL 1.4 spec says default EGL_CONTEXT_CLIENT_VERSION is GLES1, but this is not supported by Emscripten.
+    // So user must pass EGL_CONTEXT_CLIENT_VERSION == 2 to initialize EGL.
+    var glesContextVersion = 1;
+    for(;;) {
+        var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
+        if (!param) break;
+        var value = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
+        if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
+          glesContextVersion = value;
+        }
+        contextAttribs += 8;
+    }
+    if (glesContextVersion != 2) {
+#if GL_ASSERTIONS
+      Module.printErr('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+#endif
+      EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
+      return 0; /* EGL_NO_CONTEXT */
+    }
+
     _glutInitDisplayMode(0x92 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE */);
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
