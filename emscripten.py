@@ -825,7 +825,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         else:
           num = num[:e] + '.0' + num[e:]
       return m.group(1) + m.group(2) + num
-    funcs = re.sub(r'([(=,+\-*/%<>] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', lambda m: fix_dot_zero(m), funcs)
+    funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', lambda m: fix_dot_zero(m), funcs)
 
   # js compiler
 
