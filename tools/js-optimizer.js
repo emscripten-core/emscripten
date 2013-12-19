@@ -585,12 +585,24 @@ function simplifyExpressions(ast) {
         }
       } else if (type === 'assign') {
         // optimizations for assigning into HEAP32 specifically
-        if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name' && node[2][1][1] === 'HEAP32') {
-          // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
-          if (node[3][0] === 'binary' && node[3][1] === '|') {
-            if (node[3][2][0] === 'num' && node[3][2][1] === 0 && node[3][3][0] != 'call') {
-              node[3] = node[3][3];
-            } else if (node[3][3][0] === 'num' && node[3][3][1] === 0 && node[3][2][0] != 'call') {
+        if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name') {
+          if (node[2][1][1] === 'HEAP32') {
+            // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
+            if (node[3][0] === 'binary' && node[3][1] === '|') {
+              if (node[3][2][0] === 'num' && node[3][2][1] === 0 && node[3][3][0] != 'call') {
+                node[3] = node[3][3];
+              } else if (node[3][3][0] === 'num' && node[3][3][1] === 0 && node[3][2][0] != 'call') {
+                node[3] = node[3][2];
+              }
+            }
+          } else if (node[2][1][1] === 'HEAP8') {
+            // HEAP8[..] = x & 0xff does not need the & 0xff
+            if (node[3][0] === 'binary' && node[3][1] === '&' && node[3][3][0] == 'num' && node[3][3][1] == 0xff) {
+              node[3] = node[3][2];
+            }
+          } else if (node[2][1][1] === 'HEAP16') {
+            // HEAP16[..] = x & 0xffff does not need the & 0xffff
+            if (node[3][0] === 'binary' && node[3][1] === '&' && node[3][3][0] == 'num' && node[3][3][1] == 0xffff) {
               node[3] = node[3][2];
             }
           }
