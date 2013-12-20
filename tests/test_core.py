@@ -6362,7 +6362,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   return TT
 
 # Make one run with the defaults
-default = make_run("default", compiler=CLANG, emcc_args=[])
+default = make_run("default", compiler=CLANG, emcc_args=[] if os.environ.get('EMCC_FAST_COMPILER') != '1' else ['-s', 'ASM_JS=1'])
 
 # Make one run with -O1, with safe heap
 o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=0", "-s", "SAFE_HEAP=1"])
