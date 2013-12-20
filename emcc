@@ -1683,7 +1683,7 @@ try:
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
-    if not save_bc:
+    if not save_bc and not os.environ.get('EMCC_FAST_COMPILER') and not AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
       shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
