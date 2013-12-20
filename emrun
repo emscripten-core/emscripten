@@ -1073,4 +1073,6 @@ def main():
   return page_exit_code
 
 if __name__ == '__main__':
-  sys.exit(main())
+  returncode = main()
+  logv('emrun quitting with process exit code ' + str(returncode))
+  sys.exit(returncode)
