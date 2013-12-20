@@ -216,7 +216,6 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
       elif seq_num < self.expected_http_seq_num:
         log(data)
       else:
-        log(data)
         self.http_message_queue += [(seq_num, data, log)]
         self.http_message_queue.sort(key=itemgetter(0))
         if len(self.http_message_queue) > 16:
