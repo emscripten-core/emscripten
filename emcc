@@ -1704,6 +1704,12 @@ try:
     assert len(input_files) == 1
   if DEBUG and save_bc: save_intermediate('ll', 'll')
 
+  # Simplify LLVM bitcode for fastcomp
+  if os.environ.get('EMCC_FAST_COMPILER'):
+    logging.debug('simplifying LLVM IR for fastcomp')
+    shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'])
+    if DEBUG: save_intermediate('simple', 'bc')
+
   if AUTODEBUG:
     logging.debug('autodebug')
     execute([shared.PYTHON, shared.AUTODEBUGGER, final, final + '.ad.ll'])
