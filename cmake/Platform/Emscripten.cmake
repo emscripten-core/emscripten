@@ -109,6 +109,8 @@ set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 # Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
 set(CMAKE_CXX_ARCHIVE_CREATE "${CMAKE_AR} rc <TARGET> ${CMAKE_START_TEMP_FILE} <LINK_FLAGS> <OBJECTS>${CMAKE_END_TEMP_FILE}")
 set(CMAKE_C_ARCHIVE_CREATE "${CMAKE_AR} rc <TARGET> ${CMAKE_START_TEMP_FILE} <LINK_FLAGS> <OBJECTS>${CMAKE_END_TEMP_FILE}")
+set(CMAKE_CXX_ARCHIVE_APPEND "${CMAKE_AR} r <TARGET> ${CMAKE_START_TEMP_FILE} <LINK_FLAGS> <OBJECTS>${CMAKE_END_TEMP_FILE}")
+set(CMAKE_C_ARCHIVE_APPEND "${CMAKE_AR} r <TARGET> ${CMAKE_START_TEMP_FILE} <LINK_FLAGS> <OBJECTS>${CMAKE_END_TEMP_FILE}")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 # There seems to be some kind of bug with CMake, so you might need to define this manually on the command line with "-DEMSCRIPTEN=1".
