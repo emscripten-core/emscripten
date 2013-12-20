@@ -10,7 +10,7 @@ import os, sys, difflib, shutil
 from distutils.spawn import find_executable
 from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
 
-sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
+sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tools')]
 import shared
 
 engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
