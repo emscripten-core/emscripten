@@ -1038,6 +1038,10 @@ def main():
     else:
       browser_stderr_handle = open(options.log_stderr, 'ab')
 
+  if not options.no_server:
+    logv('Starting web server in port ' + str(options.port))
+    httpd = HTTPWebServer(('', options.port), HTTPHandler)
+
   if not options.no_browser:
     logv("Executing %s" % ' '.join(browser))
     if browser[0] == 'cmd':
@@ -1050,8 +1054,6 @@ def main():
       browser_process = None
 
   if not options.no_server:
-    logv('Starting web server in port ' + str(options.port))
-    httpd = HTTPWebServer(('', options.port), HTTPHandler)
     try:
       httpd.serve_forever()
     except KeyboardInterrupt:
