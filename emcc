@@ -1683,6 +1683,11 @@ try:
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
+
+    # Simplify LLVM bitcode for fastcomp
+    if os.environ.get('EMCC_FAST_COMPILER'):
+      link_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+
     if not save_bc and not os.environ.get('EMCC_FAST_COMPILER') and not AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
@@ -1703,12 +1708,6 @@ try:
   else:
     assert len(input_files) == 1
   if DEBUG and save_bc: save_intermediate('ll', 'll')
-
-  # Simplify LLVM bitcode for fastcomp
-  if os.environ.get('EMCC_FAST_COMPILER'):
-    logging.debug('simplifying LLVM IR for fastcomp')
-    shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'])
-    if DEBUG: save_intermediate('simple', 'bc')
 
   if AUTODEBUG:
     logging.debug('autodebug')
