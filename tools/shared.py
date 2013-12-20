@@ -1077,7 +1077,7 @@ class Building:
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a respose file
     response_file = None
-    if WINDOWS and len(' '.join(link_cmd)) > 8192:
+    if len(' '.join(link_cmd)) > 8192:
       logging.debug('using response file for llvm-link')
       [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
 
