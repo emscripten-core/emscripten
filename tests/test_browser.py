@@ -1697,8 +1697,10 @@ keydown(100);keyup(100); // trigger the end
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    process = subprocess.Popen([PYTHON, path_from_root('emrun'), '--timeout', '30', '--verbose', os.path.join(outdir, 'hello_world.html')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen([PYTHON, path_from_root('emrun'), '--timeout', '30', '--verbose', os.path.join(outdir, 'hello_world.html'), '1', '2', '3'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = process.communicate()
     assert process.returncode == 100
+    assert 'argc: 4' in stdout
+    assert 'argv[3]: 3' in stdout
     assert 'hello, world!' in stdout
     assert 'hello, error stream!' in stderr
