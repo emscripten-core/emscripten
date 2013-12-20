@@ -3,18 +3,18 @@
 # to find failures, then check those out with this script
 
 echo "0"
-gcc $1 -I/home/alon/Dev/csmith/runtime
-~/Dev/emscripten/emcc $1 -I/home/alon/Dev/csmith/runtime
+gcc $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
+~/Dev/emscripten/emcc $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
 ./a.out
 mozjs a.out.js
 echo "1"
-gcc -O1 $1 -I/home/alon/Dev/csmith/runtime
-~/Dev/emscripten/emcc -O1 $1 -I/home/alon/Dev/csmith/runtime
+gcc -O1 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
+~/Dev/emscripten/emcc -O1 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
 ./a.out
 mozjs a.out.js
 echo "2"
-gcc -O2 $1 -I/home/alon/Dev/csmith/runtime
-~/Dev/emscripten/emcc -O2 -g2 $1 -I/home/alon/Dev/csmith/runtime
+gcc -O2 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
+~/Dev/emscripten/emcc -O2 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
 ./a.out
 mozjs a.out.js
 
