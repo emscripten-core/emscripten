@@ -5,16 +5,19 @@
 echo "0"
 gcc $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
 ~/Dev/emscripten/emcc $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
-./a.out
-mozjs a.out.js
+./a.out > o
+mozjs a.out.js > b
+diff o b
 echo "1"
 gcc -O1 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
 ~/Dev/emscripten/emcc -O1 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
-./a.out
-mozjs a.out.js
+./a.out > o
+mozjs a.out.js > b
+diff o b
 echo "2"
 gcc -O2 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
 ~/Dev/emscripten/emcc -O2 $1 -I/home/alon/Dev/csmith/runtime &> /dev/null
-./a.out
-mozjs a.out.js
+./a.out > o
+mozjs a.out.js > b
+diff o b
 
