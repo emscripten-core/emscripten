@@ -93,17 +93,7 @@ http_mutex = RLock()
 # Prints a log message to 'info' stdout channel. Always printed.
 def logi(msg):
   global last_message_time
-  if emrun_options.log_html:
-    sys.stdout.write(format_html(msg))
-  else:
-    print >> sys.stdout, msg
-  sys.stdout.flush()
-  last_message_time = time.clock()
-
-# Prints a verbose log message to stdout channel. Only shown if run with --verbose.
-def logv(msg):
-  global emrun_options, last_message_time
-  if emrun_options.verbose:
+  with http_mutex:
     if emrun_options.log_html:
       sys.stdout.write(format_html(msg))
     else:
@@ -111,15 +101,28 @@ def logv(msg):
     sys.stdout.flush()
     last_message_time = time.clock()
 
+# Prints a verbose log message to stdout channel. Only shown if run with --verbose.
+def logv(msg):
+  global emrun_options, last_message_time
+  with http_mutex:
+    if emrun_options.verbose:
+      if emrun_options.log_html:
+        sys.stdout.write(format_html(msg))
+      else:
+        print >> sys.stdout, msg
+      sys.stdout.flush()
+      last_message_time = time.clock()
+
 # Prints an error message to stderr channel.
 def loge(msg):
   global last_message_time
-  if emrun_options.log_html:
-    sys.stderr.write(format_html(msg))
-  else:
-    print >> sys.stderr, msg
-  sys.stderr.flush()
-  last_message_time = time.clock()
+  with http_mutex:
+    if emrun_options.log_html:
+      sys.stderr.write(format_html(msg))
+    else:
+      print >> sys.stderr, msg
+    sys.stderr.flush()
+    last_message_time = time.clock()
 
 def format_eol(msg):
   if WINDOWS:
@@ -1053,6 +1056,10 @@ def main():
     if options.android:
       browser_process = None
 
+  if browser_process and browser_process.poll() == None:
+    options.serve_after_close = True
+    logv('Warning: emrun got detached from the target browser process. Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+  
   if not options.no_server:
     try:
       httpd.serve_forever()
