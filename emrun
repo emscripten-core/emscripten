@@ -129,8 +129,6 @@ def format_eol(msg):
 # Prints a message to the browser stdout output stream.
 def browser_logi(msg):
   global browser_stdout_handle
-  if browser_stdout_handle != sys.stdout and not msg.endswith('\n'):
-    msg += '\n'
   msg = format_eol(msg)
   print >> browser_stdout_handle, msg
   browser_stdout_handle.flush()
@@ -139,8 +137,6 @@ def browser_logi(msg):
 # Prints a message to the browser stderr output stream.
 def browser_loge(msg):
   global browser_stderr_handle
-  if browser_stderr_handle != sys.stderr and not msg.endswith('\n'):
-    msg += '\n'
   msg = format_eol(msg)
   print >> browser_stderr_handle, msg
   browser_stderr_handle.flush()
