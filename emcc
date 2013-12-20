@@ -1685,10 +1685,10 @@ try:
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
     # Simplify LLVM bitcode for fastcomp
-    if os.environ.get('EMCC_FAST_COMPILER'):
+    if os.environ.get('EMCC_FAST_COMPILER') and not AUTODEBUG:
       link_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
 
-    if not save_bc and not os.environ.get('EMCC_FAST_COMPILER') and not AUTODEBUG:
+    if (not save_bc and not os.environ.get('EMCC_FAST_COMPILER')) or AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
       shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
@@ -1714,6 +1714,12 @@ try:
     execute([shared.PYTHON, shared.AUTODEBUGGER, final, final + '.ad.ll'])
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
+
+  # Simplify bitcode after autodebug
+  if os.environ.get('EMCC_FAST_COMPILER') and AUTODEBUG:
+    shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
+    final += '.adsimp.bc'
+    if DEBUG: save_intermediate('adsimp', 'bc')
 
   # Emscripten
   logging.debug('LLVM => JS')

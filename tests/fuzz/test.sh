@@ -14,7 +14,7 @@ gcc -O1 $1 -I/home/alon/Dev/csmith/runtime
 mozjs a.out.js
 echo "2"
 gcc -O2 $1 -I/home/alon/Dev/csmith/runtime
-~/Dev/emscripten/emcc -O2 $1 -I/home/alon/Dev/csmith/runtime
+~/Dev/emscripten/emcc -O2 -g2 $1 -I/home/alon/Dev/csmith/runtime
 ./a.out
 mozjs a.out.js
 
