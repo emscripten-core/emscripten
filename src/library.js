@@ -8835,12 +8835,6 @@ LibraryManager.library = {
     }
   },
 
-  // Returns the given mangled C++ function name demangled to a readable form, or an empty string if the given string could not be demangled.
-  // E.g. "_Z3foov" -> "foo()".
-  emscripten_demangle: function(functionname) {
-    return demangle(functionname);
-  },
- 
   // Returns [parentFuncArguments, functionName, paramListName]
   _emscripten_traverse_stack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
@@ -8870,7 +8864,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['emscripten_demangle', '_emscripten_traverse_stack'],
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
   emscripten_get_callstack_js: function(flags) {
     var err = new Error();
     if (!err.stack) {
@@ -8887,7 +8881,7 @@ LibraryManager.library = {
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
     if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
-      Runtime.warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored.');
+      Runtime.warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= 8/*EM_LOG_C_STACK*/;
       flags |= 16/*EM_LOG_JS_STACK*/;
     }
@@ -8926,7 +8920,7 @@ LibraryManager.library = {
           jsSymbolName = parts[1];
           file = parts[2];
           lineno = parts[3];
-          column = 0; // Firefox doesn't carry column information.
+          column = 0; // Firefox doesn't carry column information. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
         } else {
           // Was not able to extract this line for demangling/sourcemapping purposes. Output it as-is.
           callstack += line + '\n';
@@ -8935,7 +8929,7 @@ LibraryManager.library = {
       }
 
       // Try to demangle the symbol, but fall back to showing the original JS symbol name if not available.
-      var cSymbolName = (flags & 32/*EM_LOG_DEMANGLE*/) ? _emscripten_demangle(jsSymbolName) : jsSymbolName;
+      var cSymbolName = (flags & 32/*EM_LOG_DEMANGLE*/) ? demangle(jsSymbolName) : jsSymbolName;
       if (!cSymbolName) {
         cSymbolName = jsSymbolName;
       }
