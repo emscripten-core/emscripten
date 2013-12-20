@@ -115,6 +115,8 @@ function run(args) {
     return;
   }
 
+  preInit();
+
   preRun();
 
   if (runDependencies > 0) {
@@ -185,24 +187,22 @@ Module['abort'] = Module.abort = abort;
 
 // {{PRE_RUN_ADDITIONS}}
 
-if (Module['preInit']) {
-  if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-  while (Module['preInit'].length > 0) {
-    Module['preInit'].pop()();
-  }
-}
-
 // shouldRunNow refers to calling main(), not run().
 #if INVOKE_RUN
 var shouldRunNow = true;
 #else
 var shouldRunNow = false;
+Module.printErr('INVOKE_RUN=0 is now deprecated, please instead use AUTORUN=0 to customize the startup sequence');
 #endif
+
 if (Module['noInitialRun']) {
   shouldRunNow = false;
+  Module.printErr('noInitialRun is now deprecated, please instead use AUTORUN=0 to customize the startup sequence');
 }
 
+#if AUTORUN
 run();
+#endif
 
 // {{POST_RUN_ADDITIONS}}
 

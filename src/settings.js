@@ -45,7 +45,12 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // ASSERTIONS == 2 gives even more runtime checks
 var VERBOSE = 0; // When set to 1, will generate more verbose output during compilation.
 
-var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
+var AUTORUN = 1; // Whether we will call run() automatically or not. Disable if you'd instead
+                 // like to manually manage the file preloading, runtime initialization and
+                 // entry point invocation.
+
+var INVOKE_RUN = 1; // This feature is now deprecated, please instead use AUTORUN.
+                    // Whether we will run the main() function. Disable if you embed the generated
                     // code in your own, and will call main() yourself at the right time (which you
                     // can do with Module.callMain(), with an optional parameter of commandline args).
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
