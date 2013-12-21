@@ -82,7 +82,7 @@ use_preload_cache = False
 # If set to False, the XHR blob is kept intact, and fread()s etc. are performed directly to that data. This optimizes for minimal memory usage and fread() performance.
 no_heap_copy = True
 
-for arg in sys.argv[1:]:
+for arg in sys.argv[2:]:
   if arg == '--preload':
     has_preloaded = True
     leading = 'preload'
