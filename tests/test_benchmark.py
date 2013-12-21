@@ -70,10 +70,13 @@ class NativeBenchmarker(Benchmarker):
       print '(using clang)'
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
-    self.filename = filename
+
+    final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.native'
+    shutil.move(filename + '.native', final)
+    self.filename = final
 
   def run(self, args):
-    process = Popen([self.filename+'.native'] + args, stdout=PIPE, stderr=PIPE)
+    process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
     return process.communicate()[0]
 
 class JSBenchmarker(Benchmarker):
@@ -100,18 +103,20 @@ process(sys.argv[1])
 ''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
 )
 
-    try_delete(filename + '.js')
+    final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.js'
+    try_delete(final)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
                     '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     #'--closure', '1',
-                    #'-g',
-                    '-o', filename + '.js'] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
-    assert os.path.exists(filename + '.js'), 'Failed to compile file: ' + output[0]
+                    #'-g2',
+                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+    assert os.path.exists(final), 'Failed to compile file: ' + output[0]
+    self.filename = final
 
   def run(self, args):
-    return run_js(self.filename + '.js', engine=self.engine, args=args, stderr=PIPE, full_output=True)
+    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
 
 # Benchmarkers
 benchmarkers = [
