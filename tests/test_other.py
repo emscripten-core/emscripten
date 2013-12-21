@@ -1347,6 +1347,32 @@ f.close()
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst']).communicate()
     self.assertContained('|frist|\n|sacond|\n|thard|\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_exclude_file(self):
+    try_delete(os.path.join(self.get_dir(), 'tst'))
+    os.mkdir(os.path.join(self.get_dir(), 'tst'))
+    os.mkdir(os.path.join(self.get_dir(), 'tst', 'abc.exe'))
+    os.mkdir(os.path.join(self.get_dir(), 'tst', 'abc.txt'))
+
+    open(os.path.join(self.get_dir(), 'tst', 'hello.exe'), 'w').write('''hello''')
+    open(os.path.join(self.get_dir(), 'tst', 'hello.txt'), 'w').write('''world''')
+    open(os.path.join(self.get_dir(), 'tst', 'abc.exe', 'foo'), 'w').write('''emscripten''')
+    open(os.path.join(self.get_dir(), 'tst', 'abc.txt', 'bar'), 'w').write('''!!!''')
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        if(fopen("tst/hello.exe", "rb")) printf("Failed\n");
+        if(!fopen("tst/hello.txt", "rb")) printf("Failed\n");
+        if(fopen("tst/abc.exe/foo", "rb")) printf("Failed\n");
+        if(!fopen("tst/abc.txt/bar", "rb")) printf("Failed\n");
+
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst', '--exclude-file', '*.exe']).communicate()
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'))
+    assert output == ''
+
   def test_multidynamic_link(self):
     # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
     # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
