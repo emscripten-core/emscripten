@@ -40,7 +40,7 @@ while 1:
 
   print 'Tried %d, notes: %s' % (tried, notes)
   print '1) Generate C'
-  check_call([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'],# +
+  check_call([CSMITH, '--no-volatiles', '--no-packed-struct'],# '--no-math64'
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
                  stdout=open(filename + '.c', 'w'))
   #shutil.copyfile(filename + '.c', 'testcase%d.c' % tried)
