@@ -2021,7 +2021,7 @@ done.
     Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1']).communicate()
     output = run_js('a.out.js')
     self.assertContained('''operator new()
-_main
+main()
 f2()
 abcdabcdabcd(int)
 abcdabcdabcd(int)
