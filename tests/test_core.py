@@ -6082,6 +6082,11 @@ def process(filename):
     dirname = self.get_dir()
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
+  def test_emscripten_log(self):
+    if self.emcc_args is None: return self.skip('This test needs libc.')
+    if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
+    self.do_run('#define RUN_FROM_JS_SHELL\n' + open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
+
   def test_linespecific(self):
     if Settings.ASM_JS: return self.skip('asm always has corrections on')
 
