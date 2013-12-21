@@ -77,10 +77,13 @@ class NativeBenchmarker(Benchmarker):
     return process.communicate()[0]
 
 class JSBenchmarker(Benchmarker):
-  def __init__(self, name, engine, extra_args=[]):
+  def __init__(self, name, engine, extra_args=[], env={}):
     self.name = name
     self.engine = engine
     self.extra_args = extra_args
+    self.env = os.environ.copy()
+    for k, v in env.iteritems():
+      self.env[k] = v
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.filename = filename
@@ -104,7 +107,7 @@ process(sys.argv[1])
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     #'--closure', '1',
                     #'-g',
-                    '-o', filename + '.js'] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE).communicate()
+                    '-o', filename + '.js'] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(filename + '.js'), 'Failed to compile file: ' + output[0]
 
   def run(self, args):
@@ -113,12 +116,13 @@ process(sys.argv[1])
 # Benchmarkers
 benchmarkers = [
   NativeBenchmarker('clang', CLANG_CC, CLANG),
-  NativeBenchmarker('gcc', 'gcc', 'g++'),
-  JSBenchmarker('sm-f32',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+  #NativeBenchmarker('gcc', 'gcc', 'g++'),
+  #JSBenchmarker('sm-f32',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
   JSBenchmarker('sm',           SPIDERMONKEY_ENGINE),
+  JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
   #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
   #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
-  JSBenchmarker('v8',           V8_ENGINE)
+  #JSBenchmarker('v8',           V8_ENGINE)
 ]
 
 class benchmark(RunnerCore):
