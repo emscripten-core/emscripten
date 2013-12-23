@@ -478,19 +478,21 @@ mergeInto(LibraryManager.library, {
         // in the coordinates.
         var rect = Module["canvas"].getBoundingClientRect();
         var x, y;
+        var scrollX = ((window.scrollX !== undefined) ? window.scrollX : window.pageXOffset);
+        var scrollY = ((window.scrollY !== undefined) ? window.scrollY : window.pageYOffset);
         if (event.type == 'touchstart' ||
             event.type == 'touchend' ||
             event.type == 'touchmove') {
           var t = event.touches.item(0);
           if (t) {
-            x = t.pageX - (window.scrollX + rect.left);
-            y = t.pageY - (window.scrollY + rect.top);
+            x = t.pageX - (scrollX + rect.left);
+            y = t.pageY - (scrollY + rect.top);
           } else {
             return;
           }
         } else {
-          x = event.pageX - (window.scrollX + rect.left);
-          y = event.pageY - (window.scrollY + rect.top);
+          x = event.pageX - (scrollX + rect.left);
+          y = event.pageY - (scrollY + rect.top);
         }
 
         // the canvas might be CSS-scaled compared to its backbuffer;
