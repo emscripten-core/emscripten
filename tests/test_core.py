@@ -771,6 +771,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output)
 
+  def test_closebitcasts(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+    test_path = path_from_root('tests', 'core', 'closebitcasts')
+    src, output = (test_path + s for s in ('.c', '.txt'))
+    self.do_run_from_file(src, output)
+
   def test_fast_math(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     Building.COMPILER_TEST_OPTS += ['-ffast-math']

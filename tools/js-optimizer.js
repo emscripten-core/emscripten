@@ -2427,7 +2427,12 @@ function eliminate(ast, memSafe) {
               if (allowTracking) track(name, node[3], node);
             }
           } else if (target[0] === 'sub') {
-            if (!isTempDoublePtrAccess(target) && !memoryInvalidated) {
+            if (isTempDoublePtrAccess(target)) {
+              if (!globalsInvalidated) {
+                invalidateGlobals();
+                globalsInvalidated = true;
+              }
+            } else if (!memoryInvalidated) {
               invalidateMemory();
               memoryInvalidated = true;
             }
