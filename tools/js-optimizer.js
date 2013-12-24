@@ -271,6 +271,16 @@ function isEmptyNode(node) {
   return node.length === 2 && node[0] === 'toplevel' && node[1].length === 0;
 }
 
+function clearEmptyNodes(list) {
+  for (var i = 0; i < list.length;) {
+    if (isEmptyNode(list[i]) || (list[i][0] === 'stat' && isEmptyNode(list[i][1]))) {
+      list.splice(i, 1);
+    } else {
+      i++;
+    }
+  }
+}
+
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
@@ -2692,6 +2702,7 @@ function eliminate(ast, memSafe) {
           }
           if (ifTrue[1][0] && ifTrue[1][0][0] === 'break') {
             var assigns = ifFalse[1];
+            clearEmptyNodes(assigns);
             var loopers = [], helpers = [];
             for (var i = 0; i < assigns.length; i++) {
               if (assigns[i][0] === 'stat' && assigns[i][1][0] === 'assign') {
