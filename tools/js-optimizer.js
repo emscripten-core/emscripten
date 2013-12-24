@@ -2149,9 +2149,6 @@ var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
 function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
-                                       // XXX note that we assume they have no effect. this is only true due to the compiler emitting (write, read)
-                                       //     using the comma operator, so they are not split up. Otherwise, we would need to invalidate
-                                       //     tempDoublePtr when it is used, so write; read; write; read; would not become write; write; read; read;
   assert(node[0] === 'sub');
   return (node[2][0] === 'name' && node[2][1] === 'tempDoublePtr') ||
          (node[2][0] === 'binary' && ((node[2][2][0] === 'name' && node[2][2][1] === 'tempDoublePtr') ||
