@@ -299,4 +299,9 @@ function select2($foundBase_0_off0) {
  STACKTOP = sp;
  return ($foundBase_0_off0 ? 0 : $call24) | 0;
 }
+function binary(x) {
+ x = x | 0;
+ memset(f(x)) | 0;
+ +dmemset(f(x));
+}
 
