@@ -1754,7 +1754,7 @@ try:
     if DEBUG: save_intermediate('autodebug', 'll')
 
   # Simplify bitcode after autodebug
-  if os.environ.get('EMCC_FAST_COMPILER') and AUTODEBUG:
+  if os.environ.get('EMCC_FAST_COMPILER') and (AUTODEBUG or LEAVE_INPUTS_RAW):
     shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
     final += '.adsimp.bc'
     if DEBUG: save_intermediate('adsimp', 'bc')
