@@ -53,14 +53,17 @@ from tools import shared, jsrun
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS
 from tools.response_file import read_response_file
 
-C_SUFFIXES = ('.c', '.C')
-CXX_SUFFIXES = ('.cpp', '.cxx', '.cc', '.CPP', '.CXX', '.CC')
-SOURCE_SUFFIXES = C_SUFFIXES + CXX_SUFFIXES + ('.m', '.mm')
-BITCODE_SUFFIXES = ('.bc', '.o', '.obj')
-DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
-STATICLIB_SUFFIXES = ('.a',)
-ASSEMBLY_SUFFIXES = ('.ll',)
+# endings = dot + a suffix, safe to test by  filename.endswith(endings)
+C_ENDINGS = ('.c', '.C')
+CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.CPP', '.CXX', '.CC')
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + ('.m', '.mm')
+BITCODE_ENDINGS = ('.bc', '.o', '.obj')
+DYNAMICLIB_ENDINGS = ('.dylib', '.so', '.dll')
+STATICLIB_ENDINGS = ('.a',)
+ASSEMBLY_ENDINGS = ('.ll',)
+
 LIB_PREFIXES = ('', 'lib')
+
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
@@ -1053,7 +1056,7 @@ try:
       prev = newargs[i-1]
       if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
 
-    if (os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES)):
+    if (os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS)):
       arg = os.path.realpath(arg)
 
     if not arg.startswith('-'):
@@ -1062,14 +1065,14 @@ try:
         exit(1)
 
       arg_suffix = filename_type_suffix(arg)
-      if arg_suffix.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+      if arg_suffix.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
         newargs[i] = ''
-        if arg_suffix.endswith(SOURCE_SUFFIXES):
+        if arg_suffix.endswith(SOURCE_ENDINGS):
           input_files.append(arg)
           has_source_inputs = True
-        elif arg_suffix.endswith(ASSEMBLY_SUFFIXES) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
+        elif arg_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
           input_files.append(arg)
-        elif arg_suffix.endswith(STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES):
+        elif arg_suffix.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
           # if it's not, and it's a library, just add it to libs to find later
           l = unsuffixed_basename(arg)
           for prefix in LIB_PREFIXES:
@@ -1081,10 +1084,10 @@ try:
           newargs[i] = ''
         else:
           logging.warning(arg + ' is not valid LLVM bitcode')
-      elif arg_suffix.endswith(STATICLIB_SUFFIXES):
+      elif arg_suffix.endswith(STATICLIB_ENDINGS):
         if not shared.Building.is_ar(arg):
           if shared.Building.is_bitcode(arg):
-            logging.error(arg + ': File has a suffix of a static library ' + str(STATICLIB_SUFFIXES) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(BITCODE_SUFFIXES))
+            logging.error(arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(BITCODE_ENDINGS))
           else:
             logging.error(arg + ': Unknown format, not a static library!')
           exit(1)
@@ -1114,7 +1117,7 @@ try:
     logging.debug('looking for library "%s"' % lib)
     found = False
     for prefix in LIB_PREFIXES:
-      for suff in STATICLIB_SUFFIXES + DYNAMICLIB_SUFFIXES:
+      for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
         name = prefix + lib + suff
         for lib_dir in lib_dirs:
           path = os.path.join(lib_dir, name)
@@ -1130,7 +1133,7 @@ try:
   # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
   if not filename_type_suffix(target)[1:] in JS_CONTAINING_SUFFIXES or ignore_dynamic_linking:
     def check(input_file):
-      if input_file.endswith(DYNAMICLIB_SUFFIXES):
+      if input_file.endswith(DYNAMICLIB_ENDINGS):
         if not ignore_dynamic_linking: logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end' % os.path.basename(input_file))
         return False
       else:
@@ -1138,7 +1141,7 @@ try:
     input_files = filter(lambda input_file: check(input_file), input_files)
 
   if len(input_files) == 0:
-    logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + STATICLIB_SUFFIXES + ASSEMBLY_SUFFIXES))
+    logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS))
     exit(0)
 
   newargs = CC_ADDITIONAL_ARGS + newargs
@@ -1276,13 +1279,13 @@ try:
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
     file_suffix = filename_type_suffix(input_file)
-    if file_suffix.endswith(SOURCE_SUFFIXES):
+    if file_suffix.endswith(SOURCE_ENDINGS):
       logging.debug('compiling source file: ' + input_file)
       input_file = shared.Building.preprocess(input_file, in_temp(uniquename(input_file)))
       output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
-      if file_suffix.endswith(CXX_SUFFIXES):
+      if file_suffix.endswith(CXX_ENDINGS):
         args += shared.EMSDK_CXX_OPTS
       logging.debug("running: " + call + ' ' + ' '.join(args))
       execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
@@ -1290,17 +1293,17 @@ try:
         logging.error('compiler frontend failed to generate LLVM bitcode, halting')
         sys.exit(1)
     else: # bitcode
-      if file_suffix.endswith(BITCODE_SUFFIXES):
+      if file_suffix.endswith(BITCODE_ENDINGS):
         logging.debug('copying bitcode file: ' + input_file)
         temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      elif file_suffix.endswith(DYNAMICLIB_SUFFIXES) or shared.Building.is_ar(input_file):
+      elif file_suffix.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
         logging.debug('copying library file: ' + input_file)
         temp_file = in_temp(uniquename(input_file))
         shutil.copyfile(input_file, temp_file)
         temp_files.append(temp_file)
-      elif file_suffix.endswith(ASSEMBLY_SUFFIXES):
+      elif file_suffix.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
           # Note that by assembling the .ll file, then disassembling it later, we will
           # remove annotations which is a good thing for compilation time
@@ -1319,7 +1322,7 @@ try:
     if llvm_opts > 0:
       for i, input_file in enumerate(input_files):
         file_suffix = filename_type_suffix(input_file)
-        if file_suffix.endswith(SOURCE_SUFFIXES):
+        if file_suffix.endswith(SOURCE_ENDINGS):
           temp_file = temp_files[i]
           logging.debug('optimizing %s with -O%s' % (input_file, llvm_opts))
           shared.Building.llvm_opt(temp_file, llvm_opts)
@@ -1664,11 +1667,11 @@ try:
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
-     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
+     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_ENDINGS or suffix(temp_files[0]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
     t0 = time.time()
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents = len(filter(lambda temp: not temp.endswith(STATICLIB_SUFFIXES), temp_files)) == 0)
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents = len(filter(lambda temp: not temp.endswith(STATICLIB_ENDINGS), temp_files)) == 0)
     t1 = time.time()
     logging.debug('    linking took %.2f seconds' % (t1 - t0))
     final = in_temp(target_basename + '.bc')
