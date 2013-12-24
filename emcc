@@ -571,6 +571,20 @@ def is_minus_s_for_emcc(newargs,i):
     logging.warning('treating -s as linker option and not as -s OPT=VALUE for js compilation')
     return False
 
+def filter_emscripten_options(argv):
+  idx = 0
+  skip_next = False
+  for el in argv:
+    if skip_next:
+      skip_next = False
+      idx += 1
+      continue
+    if el == '-s' and is_minus_s_for_emcc(argv, idx): # skip -s X=Y if not using js for configure
+      skip_next = True
+    elif el.strip() != '--ignore-dynamic-linking':
+      yield el
+    idx += 1
+
 # If this is a configure-type thing, do not compile to JavaScript, instead use clang
 # to compile to a native binary (using our headers, so things make sense later)
 CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
@@ -609,21 +623,11 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
   if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
 
-  def filter_emscripten_options(argv):
-    idx = 0
-    skip_next = False
-    for el in argv:
-      if skip_next:
-        skip_next = False
-        idx += 1
-        continue
-      if not use_js and el == '-s' and is_minus_s_for_emcc(argv, idx): # skip -s X=Y if not using js for configure
-        skip_next = True
-      else:
-        yield el
-      idx += 1
-
-  cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
+  if not use_js:
+    cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
+  else:
+    cmd = [compiler] + sys.argv[1:]
+  
   if not use_js: cmd += shared.EMSDK_OPTS + ['-DEMSCRIPTEN']
   if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
@@ -705,13 +709,13 @@ for i in range(1, len(sys.argv)):
 
 if '-M' in sys.argv or '-MM' in sys.argv:
   # Just output dependencies, do not compile. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
-  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
+  cmd = [CC] + shared.COMPILER_OPTS + list(filter_emscripten_options(sys.argv[1:]))
   logging.debug('just dependencies: ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
 if '-E' in sys.argv:
   # Just run the preprocessor
-  cmd = [CC] + sys.argv[1:]
+  cmd = [CC] + list(filter_emscripten_options(sys.argv[1:]))
   logging.debug('just preprocessor ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
@@ -1132,7 +1136,9 @@ try:
       if found: break
 
   if ignore_dynamic_linking:
-    input_files = filter(lambda input_file: not input_file.endswith(DYNAMICLIB_SUFFIXES), input_files)
+    # Also ignore things like "libtest.so.1.0.0".
+    pattern = re.compile(r'(?:' + '|'.join(DYNAMICLIB_SUFFIXES).replace('.', r'\.') + r')(?:\.[0-9]+)*$')
+    input_files = filter(lambda input_file: pattern.search(input_file) is None, input_files)
 
   if len(input_files) == 0:
     logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + STATICLIB_SUFFIXES + ASSEMBLY_SUFFIXES))
