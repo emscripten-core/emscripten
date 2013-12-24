@@ -1414,12 +1414,11 @@ f.close()
       }
     ''')
 
-    # This lets us link the same dynamic lib twice. We will need to link it in manually at the end.
-    compiler = [PYTHON, EMCC, '--ignore-dynamic-linking']
+    compiler = [PYTHON, EMCC]
 
     # Build libfile normally into an .so
     Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so')]).communicate()
-    # Build libother and dynamically link it to libfile - but add --ignore-dynamic-linking
+    # Build libother and dynamically link it to libfile
     Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
     # Build the main file, linking in both the libs
     Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother', '-c']).communicate()
