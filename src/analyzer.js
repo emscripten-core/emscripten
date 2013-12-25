@@ -1570,7 +1570,17 @@ function analyzer(data, sidePass) {
         for (var j = 0; j < label.lines.length; j++) {
           var line = label.lines[j];
           if ((line.intertype == 'call' || line.intertype == 'invoke') && line.ident == setjmp) {
-            // Add a new label
+            if (line.intertype == 'invoke') {
+              // setjmp cannot trigger unwinding, so just reduce the invoke to a call + branch
+              line.intertype = 'call';
+              label.lines.push({
+                intertype: 'branch',
+                label: line.toLabel,
+                lineNum: line.lineNum + 0.01, // XXX legalizing might confuse this
+              });
+              line.toLabel = line.unwindLabel = -2;
+            }
+            // split this label into up to the setjmp (including), then a new label for the rest. longjmp will reach the rest
             var oldLabel = label.ident;
             var newLabel = func.labelIdCounter++;
             if (!func.setjmpTable) func.setjmpTable = [];
