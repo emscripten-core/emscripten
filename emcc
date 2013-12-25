@@ -1065,7 +1065,7 @@ try:
 
     if not arg.startswith('-'):
       if not os.path.exists(arg):
-        logging.error(arg + ': No such file or directory')
+        logging.error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)' % (arg, arg))
         exit(1)
 
       arg_ending = filename_type_ending(arg)
