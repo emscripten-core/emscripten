@@ -2187,3 +2187,12 @@ mergeInto(LibraryManager.library, {
     out, err = process.communicate()
     assert process.returncode is 0, 'float.h should agree with our system: ' + out + '\n\n\n' + err
 
+  def test_default_obj_ext(self):
+    outdir = os.path.join(self.get_dir(), 'out_dir') + '/'
+    os.mkdir(outdir)
+    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir], stdout=PIPE, stderr=PIPE)
+    process.communicate()
+    assert(os.path.isfile(outdir + 'hello_world.o'))
+    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'], stdout=PIPE, stderr=PIPE)
+    process.communicate()
+    assert(os.path.isfile(outdir + 'hello_world.obj'))
