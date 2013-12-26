@@ -270,3 +270,47 @@ L46: do {
 } while(0);
 // block C
 
+
+
+-- If pattern, emulated --
+
+
+
+L50:  while(1) {
+ switch(label) {
+  case 40: {
+   // block A
+   if (check == 10) {
+    atob();
+    label = 41;
+    continue L50;
+   } else {
+    atoc();
+    label = 42;
+    continue L50;
+   }
+   break;
+  }
+  case 41: {
+   // block B
+   switch (b_check()) {
+   case 17: {
+    btoc();
+    label = 42;
+    continue L50;
+    break;
+   }
+   default: {
+    label = 40;
+    continue L50;
+   }
+   }
+   break;
+  }
+  case 42: {
+   // block C
+   break;
+  }
+ }
+}
+

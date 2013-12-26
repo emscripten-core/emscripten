@@ -87,6 +87,12 @@ int main() {
   Relooper r;
 '''
 
+  if random.random() < 0.1:
+    print 'emulate'
+    fast += '''
+  r.SetEmulate(true);
+'''
+
   for i in range(num):
     fast += '''  r.AddBlock(b%d);
 ''' % i

@@ -96,6 +96,7 @@ class SimpleShape;
 class LabeledShape;
 class MultipleShape;
 class LoopShape;
+class EmulatedShape;
 
 struct Shape {
   int Id; // A unique identifier. Used to identify loops, labels are Lx where x is the Id.
@@ -105,7 +106,8 @@ struct Shape {
   enum ShapeType {
     Simple,
     Multiple,
-    Loop
+    Loop,
+    Emulated
   };
   ShapeType Type;
 
@@ -118,6 +120,7 @@ struct Shape {
   static MultipleShape *IsMultiple(Shape *It) { return It && It->Type == Multiple ? (MultipleShape*)It : NULL; }
   static LoopShape *IsLoop(Shape *It) { return It && It->Type == Loop ? (LoopShape*)It : NULL; }
   static LabeledShape *IsLabeled(Shape *It) { return IsMultiple(It) || IsLoop(It) ? (LabeledShape*)It : NULL; }
+  static EmulatedShape *IsEmulated(Shape *It) { return It && It->Type == Emulated ? (EmulatedShape*)It : NULL; }
 
   // INTERNAL
   static int IdCounter;
@@ -162,12 +165,15 @@ struct LoopShape : public LabeledShape {
   void Render(bool InLoop);
 };
 
-/*
-struct EmulatedShape : public Shape {
-  std::deque<Block*> Blocks;
+// TODO EmulatedShape is only partially functional. Currently it can be used for the
+//      entire set of blocks being relooped, but not subsets.
+struct EmulatedShape : public LabeledShape {
+  Block *Entry;
+  BlockSet Blocks;
+
+  EmulatedShape() : LabeledShape(Emulated) { Labeled = true; }
   void Render(bool InLoop);
 };
-*/
 
 // Implements the relooper algorithm for a function's blocks.
 //
@@ -184,6 +190,7 @@ struct Relooper {
   std::deque<Block*> Blocks;
   std::deque<Shape*> Shapes;
   Shape *Root;
+  bool Emulate;
 
   Relooper();
   ~Relooper();
@@ -204,6 +211,9 @@ struct Relooper {
 
   // Sets asm.js mode on or off (default is off)
   static void SetAsmJSMode(int On);
+
+  // Sets whether we must emulate everything with switch-loop code
+  void SetEmulate(int E) { Emulate = E; }
 };
 
 typedef std::map<Block*, BlockSet> BlockBlockSetMap;

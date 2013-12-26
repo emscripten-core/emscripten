@@ -142,6 +142,7 @@ void Block::Render(bool InLoop) {
   if (!ProcessedBranchesOut.size()) return;
 
   bool SetLabel = true; // in some cases it is clear we can avoid setting label, see later
+  bool ForceSetLabel = Shape::IsEmulated(Parent);
 
   // A setting of the label variable (label = x) is necessary if it can
   // cause an impact. The main case is where we set label to x, then elsewhere
@@ -210,7 +211,7 @@ void Block::Render(bool InLoop) {
       Target = DefaultTarget;
       Details = ProcessedBranchesOut[DefaultTarget];
     }
-    bool SetCurrLabel = SetLabel && Target->IsCheckedMultipleEntry;
+    bool SetCurrLabel = (SetLabel && Target->IsCheckedMultipleEntry) || ForceSetLabel;
     bool HasFusedContent = Fused && contains(Fused->InnerMap, Target);
     bool HasContent = SetCurrLabel || Details->Type != Branch::Direct || HasFusedContent || Details->Code;
     if (iter != ProcessedBranchesOut.end()) {
@@ -330,16 +331,19 @@ void LoopShape::Render(bool InLoop) {
   if (Next) Next->Render(InLoop);
 };
 
-/*
 // EmulatedShape
 
 void EmulatedShape::Render(bool InLoop) {
+  PrintIndented("label = %d;\n", Entry->Id);
+  if (Labeled) {
+    PrintIndented("L%d: ", Id);
+  }
   PrintIndented("while(1) {\n");
   Indenter::Indent();
-  PrintIndented("switch(label) {\n");
+  PrintIndented("switch(label|0) {\n");
   Indenter::Indent();
-  for (int i = 0; i < Blocks.size(); i++) {
-    Block *Curr = Blocks[i];
+  for (BlockSet::iterator iter = Blocks.begin(); iter != Blocks.end(); iter++) {
+    Block *Curr = *iter;
     PrintIndented("case %d: {\n", Curr->Id);
     Indenter::Indent();
     Curr->Render(InLoop);
@@ -353,11 +357,10 @@ void EmulatedShape::Render(bool InLoop) {
   PrintIndented("}\n");
   if (Next) Next->Render(InLoop);
 };
-*/
 
 // Relooper
 
-Relooper::Relooper() : Root(NULL) {
+Relooper::Relooper() : Root(NULL), Emulate(false) {
 }
 
 Relooper::~Relooper() {
@@ -461,7 +464,7 @@ void Relooper::Calculate(Block *Entry) {
     }
   }
 
-  Pre.SplitDeadEnds();
+  if (!Emulate) Pre.SplitDeadEnds();
 
   // Recursively process the graph
 
@@ -524,6 +527,21 @@ void Relooper::Calculate(Block *Entry) {
         }
       }
       return Simple;
+    }
+
+    Shape *MakeEmulated(BlockSet &Blocks, Block *Entry, BlockSet &NextEntries) {
+      PrintDebug("creating emulated block with entry #%d and everything it can reach, %d blocks\n", Entry->Id, Blocks.size());
+      EmulatedShape *Emulated = new EmulatedShape;
+      Notice(Emulated);
+      Emulated->Entry = Entry;
+      for (BlockSet::iterator iter = Blocks.begin(); iter != Blocks.end(); iter++) {
+        Block *Curr = *iter;
+        Emulated->Blocks.insert(Curr);
+        Curr->Parent = Emulated;
+        Solipsize(Curr, Branch::Continue, Emulated, Blocks);
+      }
+      Blocks.clear();
+      return Emulated;
     }
 
     Shape *MakeLoop(BlockSet &Blocks, BlockSet& Entries, BlockSet &NextEntries) {
@@ -837,6 +855,9 @@ void Relooper::Calculate(Block *Entry) {
         if (Entries->size() == 0) return Ret;
         if (Entries->size() == 1) {
           Block *Curr = *(Entries->begin());
+          if (Parent->Emulate) {
+            Make(MakeEmulated(Blocks, Curr, *NextEntries));
+          }
           if (Curr->BranchesIn.size() == 0) {
             // One entry, no looping ==> Simple
             Make(MakeSimple(Blocks, Curr, *NextEntries));
@@ -844,6 +865,7 @@ void Relooper::Calculate(Block *Entry) {
           // One entry, looping ==> Loop
           Make(MakeLoop(Blocks, *Entries, *NextEntries));
         }
+
         // More than one entry, try to eliminate through a Multiple groups of
         // independent blocks from an entry/ies. It is important to remove through
         // multiples as opposed to looping since the former is more performant.
