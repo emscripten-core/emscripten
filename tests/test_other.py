@@ -1165,7 +1165,7 @@ f.close()
     ''')
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'mylib1.js'),
-                                                                     '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]).communicate()
+                                                                   '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]).communicate()
     self.assertContained('hello from lib!\n*32*\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_identical_basenames(self):
