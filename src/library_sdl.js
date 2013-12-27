@@ -1220,6 +1220,7 @@ var LibrarySDL = {
     if (surf) SDL.freeSurface(surf);
   },
 
+  SDL_UpperBlit__deps: ['SDL_LockSurface'],
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
     var srcData = SDL.surfaces[src];
     var dstData = SDL.surfaces[dst];
