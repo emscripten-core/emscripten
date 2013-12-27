@@ -3125,6 +3125,17 @@ function outline(ast) {
                 parts = [];
                 var curr = node;
                 while (1) {
+                  if (!curr[3]) {
+                    // we normally expect ..if (cond) { .. } else [if (nextCond) {] (in [] is what we hope to see)
+                    // but are now seeing ..if (cond) { .. } with no else. This might be
+                    //                    ..if (cond) if (nextCond) {
+                    // which vacuum can generate from       if (cond) {} else if (nextCond), making it
+                    //                                      if (!cond) if (nextCond)
+                    // so we undo that, in hopes of making it more flattenable
+                    curr[3] = curr[2];
+                    curr[2] = ['block', []];
+                    curr[1] = simplifyNotCompsDirect(['unary-prefix', '!', curr[1]]);
+                  }
                   parts.push({ condition: curr[1], body: curr[2] });
                   curr = curr[3];
                   if (!curr) break;
