@@ -57,7 +57,7 @@ struct Block {
   BlockBranchMap ProcessedBranchesOut;
   BlockSet ProcessedBranchesIn;
   Shape *Parent; // The shape we are directly inside
-  int Id; // A unique identifier
+  int Id; // A unique identifier, defined when added to relooper
   const char *Code; // The string representation of the code in this block. Owning pointer (we copy the input)
   const char *BranchVar; // If we have more than one branch out, the variable whose value determines where we go
   bool IsCheckedMultipleEntry; // If true, we are a multiple entry, so reaching us requires setting the label variable
@@ -69,9 +69,6 @@ struct Block {
 
   // Prints out the instructions code and branchings
   void Render(bool InLoop);
-
-  // INTERNAL
-  static int IdCounter;
 };
 
 // Represents a structured control flow shape, one of
@@ -99,7 +96,7 @@ class LoopShape;
 class EmulatedShape;
 
 struct Shape {
-  int Id; // A unique identifier. Used to identify loops, labels are Lx where x is the Id.
+  int Id; // A unique identifier. Used to identify loops, labels are Lx where x is the Id. Defined when added to relooper
   Shape *Next; // The shape that will appear in the code right after this one
   Shape *Natural; // The shape that control flow gets to naturally (if there is Next, then this is Next)
 
@@ -111,7 +108,7 @@ struct Shape {
   };
   ShapeType Type;
 
-  Shape(ShapeType TypeInit) : Id(Shape::IdCounter++), Next(NULL), Type(TypeInit) {}
+  Shape(ShapeType TypeInit) : Id(-1), Next(NULL), Type(TypeInit) {}
   virtual ~Shape() {}
 
   virtual void Render(bool InLoop) = 0;
@@ -121,9 +118,6 @@ struct Shape {
   static LoopShape *IsLoop(Shape *It) { return It && It->Type == Loop ? (LoopShape*)It : NULL; }
   static LabeledShape *IsLabeled(Shape *It) { return IsMultiple(It) || IsLoop(It) ? (LabeledShape*)It : NULL; }
   static EmulatedShape *IsEmulated(Shape *It) { return It && It->Type == Emulated ? (EmulatedShape*)It : NULL; }
-
-  // INTERNAL
-  static int IdCounter;
 };
 
 struct SimpleShape : public Shape {
@@ -191,6 +185,8 @@ struct Relooper {
   std::deque<Shape*> Shapes;
   Shape *Root;
   bool Emulate;
+  int BlockIdCounter;
+  int ShapeIdCounter;
 
   Relooper();
   ~Relooper();

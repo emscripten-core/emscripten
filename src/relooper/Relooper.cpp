@@ -101,9 +101,7 @@ void Branch::Render(Block *Target, bool SetLabel) {
 
 // Block
 
-int Block::IdCounter = 1; // 0 is reserved for clearings
-
-Block::Block(const char *CodeInit, const char *BranchVarInit) : Parent(NULL), Id(Block::IdCounter++), IsCheckedMultipleEntry(false) {
+Block::Block(const char *CodeInit, const char *BranchVarInit) : Parent(NULL), Id(-1), IsCheckedMultipleEntry(false) {
   Code = strdup(CodeInit);
   BranchVar = BranchVarInit ? strdup(BranchVarInit) : NULL;
 }
@@ -273,10 +271,6 @@ void Block::Render(bool InLoop) {
   }
 }
 
-// Shape
-
-int Shape::IdCounter = 0;
-
 // MultipleShape
 
 void MultipleShape::RenderLoopPrefix() {
@@ -360,7 +354,7 @@ void EmulatedShape::Render(bool InLoop) {
 
 // Relooper
 
-Relooper::Relooper() : Root(NULL), Emulate(false) {
+Relooper::Relooper() : Root(NULL), Emulate(false), BlockIdCounter(1), ShapeIdCounter(0) { // block ID 0 is reserved for clearings
 }
 
 Relooper::~Relooper() {
@@ -369,6 +363,7 @@ Relooper::~Relooper() {
 }
 
 void Relooper::AddBlock(Block *New) {
+  New->Id = BlockIdCounter++;
   Blocks.push_back(New);
 }
 
@@ -473,6 +468,7 @@ void Relooper::Calculate(Block *Entry) {
 
     // Add a shape to the list of shapes in this Relooper calculation
     void Notice(Shape *New) {
+      New->Id = Parent->ShapeIdCounter++;
       Parent->Shapes.push_back(New);
     }
 
