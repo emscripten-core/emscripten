@@ -517,6 +517,13 @@ Options that are modified or new in %s include:
                            file, and if that is not set, the default location
                            ~/.emscripten is assumed.
 
+  --default-obj-ext .ext   Specifies the file suffix to generate if the location
+                           of a directory name is passed to -o directive, e.g.
+                             emcc -c a.c -o dir/
+                           will by default generate an output name 'dir/a.o', 
+                           but this cmdline param can be passed to generate a
+                           file with a custom suffix 'dir/a.ext'. 
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -804,6 +811,7 @@ try:
   use_preload_cache = False
   no_heap_copy = False
   proxy_to_worker = False
+  default_object_extension = '.o'
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -998,6 +1006,12 @@ try:
     elif newargs[i] == '--em-config':
       # This option is parsed in tools/shared.py, here only clean it up from being passed to clang.
       newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i] == '--default-obj-ext':
+      newargs[i] = ''
+      default_object_extension = newargs[i+1]
+      if not default_object_extension.startswith('.'):
+        default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
 
   newargs = [ arg for arg in newargs if arg is not '' ]
@@ -1340,7 +1354,16 @@ try:
     else:
       if len(input_files) == 1:
         temp_output_base = in_temp(unsuffixed(uniquename(input_files[0])))
-        shutil.move(temp_output_base + '.o', specified_target)
+        if specified_target.endswith('/') or specified_target.endswith('\\') or os.path.isdir(specified_target): # User passed '-o <directory' as the location to output to.
+          obj_output_name = os.path.join(specified_target, os.path.splitext(os.path.basename(input_file))[0] + default_object_extension)
+          logging.debug('User specified -o <directoryname> as the location of the output. Generating output file ' + obj_output_name)
+          try:
+            shutil.move(temp_output_base + '.o', obj_output_name)
+          except IOError, e:
+            logging.error('Could not write to output file ' + obj_output_name + '. Perhaps the output directory does not exist?')
+            exit(1)
+        else: # User passed '-o <filename>' as the location to output to.
+          shutil.move(temp_output_base + '.o', specified_target)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
           # adjusting the target name away from the temporary file name to the specified target.
