@@ -1513,6 +1513,8 @@ class Building:
       text = m.groups(0)[0]
       assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
       assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
+      if os.environ.get('EMCC_FAST_COMPILER'): # fake it in fastcomp
+        return text.replace('emscripten_jcache_printf', 'printf')
       start = text.index('(')
       end = text.rindex(')')
       args = text[start+1:end].split(',')
