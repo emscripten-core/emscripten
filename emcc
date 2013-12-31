@@ -1187,7 +1187,9 @@ try:
     logging.warning('disabling asm.js since embind is not ready for it yet')
     shared.Settings.ASM_JS = 0
 
-  if os.environ.get('EMCC_FAST_COMPILER'):
+  fastcomp = os.environ.get('EMCC_FAST_COMPILER') == '1'
+
+  if fastcomp:
     shared.Settings.ASM_JS = 1
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 0:
       logging.warning('disabling exception catching since not supported in fastcomp yet')
@@ -1211,7 +1213,7 @@ try:
       jcache = False
 
   if shared.Settings.ASM_JS:
-    assert opt_level >= 1 or os.environ.get('EMCC_FAST_COMPILER'), 'asm.js requires -O1 or above'
+    assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
 
     if bind:
       shared.Settings.RESERVED_FUNCTION_POINTERS = max(shared.Settings.RESERVED_FUNCTION_POINTERS, 10)
@@ -1748,22 +1750,25 @@ try:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
-    # Simplify LLVM bitcode for fastcomp
-    if os.environ.get('EMCC_FAST_COMPILER') and not AUTODEBUG:
-      link_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
 
-    if (not save_bc and not os.environ.get('EMCC_FAST_COMPILER')) or AUTODEBUG:
+    if (not save_bc and not fastcomp) or AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
       shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
       final = final + '.link.ll'
       if DEBUG: save_intermediate('linktime', 'll')
     else:
+      if fastcomp and not save_bc:
+        # Simplify LLVM bitcode for fastcomp
+        link_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
       shared.Building.llvm_opt(final, link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
-
-  if save_bc:
-    shutil.copyfile(final, save_bc)
+      if save_bc:
+        shutil.copyfile(final, save_bc)
+        if fastcomp:
+          shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
+          final += '.adsimp.bc'
+          if DEBUG: save_intermediate('adsimp', 'bc')
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
@@ -1780,7 +1785,7 @@ try:
     if DEBUG: save_intermediate('autodebug', 'll')
 
   # Simplify bitcode after autodebug
-  if os.environ.get('EMCC_FAST_COMPILER') and (AUTODEBUG or LEAVE_INPUTS_RAW):
+  if fastcomp and (AUTODEBUG or LEAVE_INPUTS_RAW):
     shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
     final += '.adsimp.bc'
     if DEBUG: save_intermediate('adsimp', 'bc')

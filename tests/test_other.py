@@ -463,6 +463,7 @@ f.close()
     assert 'function _malloc' in src
 
   def test_dangerous_func_cast(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     src = r'''
       #include <stdio.h>
       typedef void (*voidfunc)();
@@ -1791,6 +1792,7 @@ f.close()
     assert 'If you see this - the world is all right!' in output
 
   def test_embind(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     for args, fail in [
       ([], True), # without --bind, we fail
       (['--bind'], False),
@@ -1856,6 +1858,8 @@ seeked= file.
     assert output == invalid
 
   def test_link_s(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo safe heap in fastcomp')
+
     # -s OPT=VALUE can conflict with -s as a linker option. We warn and ignore
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
       extern "C" {
