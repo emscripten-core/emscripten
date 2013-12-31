@@ -397,6 +397,8 @@ f.close()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_unaligned_memory(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
       #include <stdio.h>
       #include <stdarg.h>
@@ -421,6 +423,8 @@ f.close()
     self.assertContained('data: 67452301\ndata[0,1] 16bit: 2301\ndata[1,2] 16bit: 4523', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_unaligned_memory_2(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
       #include <string>
       #include <stdio.h>
@@ -523,6 +527,8 @@ f.close()
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
   def test_static_link(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     def test(name, header, main, side, expected, args=[], suffix='cpp', first=True):
       print name
       #t = main ; main = side ; side = t
@@ -2143,6 +2149,8 @@ int main()
       self.assertContained('File size: 722', out)
 
   def test_simd(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     self.clear()
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-DSP', '--llvm-opts', '''['-O3', '-vectorize', '-vectorize-loops', '-bb-vectorize-vector-bits=128', '-force-vector-width=4']''']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
