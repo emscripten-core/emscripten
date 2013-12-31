@@ -1,0 +1,107 @@
+#include <stdio.h>
+#include <gc.h>
+#include <assert.h>
+
+void *global;
+
+void finalizer(void *ptr, void *arg) {
+  printf("finalizing %d (global == %d)\n", (int)arg, ptr == global);
+}
+
+void finalizer2(void *ptr, void *arg) {
+  printf("finalizing2 %d (global == %d)\n", (int)arg, ptr == global);
+}
+
+int main() {
+  GC_INIT();
+
+  void *local, *local2, *local3, *local4, *local5, *local6;
+
+  // Hold on to global, drop locals
+
+  global = GC_MALLOC(1024);  // rooted since in a static allocation
+  GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
+  printf("alloc %p\n", global);
+
+  local = GC_MALLOC(1024);  // not rooted since stack is not scanned
+  GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void *)1, 0, 0);
+  printf("alloc %p\n", local);
+
+  assert((char *)local - (char *)global >= 1024 ||
+         (char *)global - (char *)local >= 1024);
+
+  local2 = GC_MALLOC(1024);  // no finalizer
+  printf("alloc %p\n", local2);
+
+  local3 = GC_MALLOC(1024);  // with finalizable2
+  GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer2, (void *)2, 0, 0);
+  printf("alloc %p\n", local);
+
+  local4 = GC_MALLOC(1024);  // yet another
+  GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer2, (void *)3, 0, 0);
+  printf("alloc %p\n", local);
+
+  printf("basic test\n");
+
+  GC_FORCE_COLLECT();
+
+  printf("*\n");
+
+  GC_FREE(global);  // force free will actually work
+
+  // scanning inside objects
+
+  global = GC_MALLOC(12);
+  GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
+  local = GC_MALLOC(12);
+  GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void *)1, 0, 0);
+  local2 = GC_MALLOC_ATOMIC(12);
+  GC_REGISTER_FINALIZER_NO_ORDER(local2, finalizer, (void *)2, 0, 0);
+  local3 = GC_MALLOC(12);
+  GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer, (void *)3, 0, 0);
+  local4 = GC_MALLOC(12);
+  GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer, (void *)4, 0, 0);
+  local5 = GC_MALLOC_UNCOLLECTABLE(12);
+  // This should never trigger since local5 is uncollectable
+  GC_REGISTER_FINALIZER_NO_ORDER(local5, finalizer, (void *)5, 0, 0);
+
+  printf("heap size = %d\n", GC_get_heap_size());
+
+  local4 = GC_REALLOC(local4, 24);
+
+  printf("heap size = %d\n", GC_get_heap_size());
+
+  local6 = GC_MALLOC(12);
+  GC_REGISTER_FINALIZER_NO_ORDER(local6, finalizer, (void *)6, 0, 0);
+  // This should be the same as a free
+  GC_REALLOC(local6, 0);
+
+  void **globalData = (void **)global;
+  globalData[0] = local;
+  globalData[1] = local2;
+
+  void **localData = (void **)local;
+  localData[0] = local3;
+
+  void **local2Data = (void **)local2;
+  local2Data[0] =
+      local4;  // actually ignored, because local2 is atomic, so 4 is freeable
+
+  printf("object scan test test\n");
+
+  GC_FORCE_COLLECT();
+
+  printf("*\n");
+
+  GC_FREE(global);  // force free will actually work
+
+  printf("*\n");
+
+  GC_FORCE_COLLECT();
+
+  printf(".\n");
+
+  global = 0;
+
+  return 0;
+}

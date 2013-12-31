@@ -14,6 +14,122 @@ DEFAULT_ARG = '4'
 
 TEST_REPS = 2
 
+CORE_BENCHMARKS = True # core benchmarks vs full regression suite
+
+class Benchmarker:
+  def __init__(self, name):
+    self.name = name
+
+  def bench(self, args, output_parser=None):
+    self.times = []
+    for i in range(TEST_REPS):
+      start = time.time()
+      output = self.run(args)
+      if not output_parser:
+        curr = time.time()-start
+      else:
+        curr = output_parser(output)
+      self.times.append(curr)
+
+  def display(self, baseline=None):
+    if baseline == self: baseline = None
+    mean = sum(self.times)/len(self.times)
+    squared_times = map(lambda x: x*x, self.times)
+    mean_of_squared = sum(squared_times)/len(self.times)
+    std = math.sqrt(mean_of_squared - mean*mean)
+    sorted_times = self.times[:]
+    sorted_times.sort()
+    median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
+
+    print '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, TEST_REPS),
+
+    if baseline:
+      mean_baseline = sum(baseline.times)/len(baseline.times)
+      final = mean / mean_baseline
+      print '  Relative: %.2f X slower' % final
+    else:
+      print
+
+class NativeBenchmarker(Benchmarker):
+  def __init__(self, name, cc, cxx):
+    self.name = name
+    self.cc = cc
+    self.cxx = cxx
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+    self.parent = parent
+    if lib_builder: native_args += lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
+    if not native_exec:
+      compiler = self.cxx if filename.endswith('cpp') else self.cc
+      process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
+      output = process.communicate()
+      if process.returncode is not 0:
+        print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([compiler, '-O2', filename, '-o', filename+'.native']), process.returncode)
+        print "Output: " + output[0]
+    else:
+      print '(using clang)'
+      shutil.copyfile(native_exec, filename + '.native')
+      shutil.copymode(native_exec, filename + '.native')
+
+    final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.native'
+    shutil.move(filename + '.native', final)
+    self.filename = final
+
+  def run(self, args):
+    process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
+    return process.communicate()[0]
+
+class JSBenchmarker(Benchmarker):
+  def __init__(self, name, engine, extra_args=[], env={}):
+    self.name = name
+    self.engine = engine
+    self.extra_args = extra_args
+    self.env = os.environ.copy()
+    for k, v in env.iteritems():
+      self.env[k] = v
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+    self.filename = filename
+    if lib_builder: emcc_args += lib_builder('js', native=False, env_init={})
+
+    open('hardcode.py', 'w').write('''
+def process(filename):
+  js = open(filename).read()
+  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
+  assert js != replaced
+  open(filename, 'w').write(replaced)
+import sys
+process(sys.argv[1])
+''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
+)
+
+    final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.js'
+    try_delete(final)
+    output = Popen([PYTHON, EMCC, filename, #'-O3',
+                    '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
+                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
+                    '-s', 'TOTAL_MEMORY=128*1024*1024',
+                    #'--closure', '1',
+                    #'-g2',
+                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+    assert os.path.exists(final), 'Failed to compile file: ' + output[0]
+    self.filename = final
+
+  def run(self, args):
+    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
+
+# Benchmarkers
+benchmarkers = [
+  NativeBenchmarker('clang', CLANG_CC, CLANG),
+  #NativeBenchmarker('gcc', 'gcc', 'g++'),
+  #JSBenchmarker('sm-f32',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+  JSBenchmarker('sm',           SPIDERMONKEY_ENGINE),
+  JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
+  #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
+  #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
+  #JSBenchmarker('v8',           V8_ENGINE)
+]
+
 class benchmark(RunnerCore):
   save_dir = True
 
@@ -49,47 +165,7 @@ class benchmark(RunnerCore):
     Building.COMPILER = CLANG
     Building.COMPILER_TEST_OPTS = []
 
-    # Pick the JS engine to benchmark. If you specify one, it will be picked. For example, python tests/runner.py benchmark SPIDERMONKEY_ENGINE
-    global JS_ENGINE
-    JS_ENGINE = Building.JS_ENGINE_OVERRIDE if Building.JS_ENGINE_OVERRIDE is not None else JS_ENGINES[0]
-    print 'Benchmarking JS engine: %s' % JS_ENGINE
-
-  def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
-    if reps == 0:
-      print '(no reps)'
-      return
-    mean = sum(times)/len(times)
-    squared_times = map(lambda x: x*x, times)
-    mean_of_squared = sum(squared_times)/len(times)
-    std = math.sqrt(mean_of_squared - mean*mean)
-    sorted_times = times[:]
-    sorted_times.sort()
-    median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
-
-    mean_native = sum(native_times)/len(native_times)
-    squared_native_times = map(lambda x: x*x, native_times)
-    mean_of_squared_native = sum(squared_native_times)/len(native_times)
-    std_native = math.sqrt(mean_of_squared_native - mean_native*mean_native)
-    sorted_native_times = native_times[:]
-    sorted_native_times.sort()
-    median_native = sum(sorted_native_times[len(sorted_native_times)/2 - 1:len(sorted_native_times)/2 + 1])/2
-
-    final = mean / mean_native
-
-    if last:
-      norm = 0
-      for i in range(len(times)):
-        norm += times[i]/native_times[i]
-      norm /= len(times)
-      print
-      print '  JavaScript: %.3f    Native: %.3f   Ratio:  %.3f  Normalized ratio: %.3f' % (mean, mean_native, final, norm)
-      return
-
-    print
-    print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
-    print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
-
-  def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
+  def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     args = args or [DEFAULT_ARG]
     if args_processor: args = args_processor(args)
 
@@ -98,68 +174,12 @@ class benchmark(RunnerCore):
     f = open(filename, 'w')
     f.write(src)
     f.close()
-    final_filename = os.path.join(dirname, name + '.js')
 
-    open('hardcode.py', 'w').write('''
-def process(filename):
-  js = open(filename).read()
-  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
-  assert js != replaced
-  open(filename, 'w').write(replaced)
-import sys
-process(sys.argv[1])
-''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
-)
-
-    try_delete(final_filename)
-    output = Popen([PYTHON, EMCC, filename, #'-O3',
-                    '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
-                    '-s', 'TOTAL_MEMORY=128*1024*1024',
-                    '--closure', '1',
-                    #'-s', 'PRECISE_F32=1',
-                    #'-g',
-                    '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
-    assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
-
-    # Run JS
-    times = []
-    for i in range(reps):
-      start = time.time()
-      js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
-
-      if i == 0 and 'uccessfully compiled asm.js code' in js_output:
-        if 'asm.js link error' not in js_output:
-          print "[%s was asm.js'ified]" % name
-      if not output_parser:
-        curr = time.time()-start
-      else:
-        curr = output_parser(js_output)
-      times.append(curr)
-      if i == 0:
-        # Sanity check on output
-        self.assertContained(expected_output, js_output)
-
-    # Run natively
-    if not native_exec:
-      self.build_native(filename, shared_args + native_args)
-    else:
-      shutil.copyfile(native_exec, filename + '.native')
-      shutil.copymode(native_exec, filename + '.native')
-    native_times = []
-    for i in range(reps):
-      start = time.time()
-      native_output = self.run_native(filename, args)
-      if i == 0:
-        # Sanity check on output
-        self.assertContained(expected_output, native_output)
-      if not output_parser:
-        curr = time.time()-start
-      else:
-        curr = output_parser(native_output)
-      native_times.append(curr)
-
-    self.print_stats(times, native_times, reps=reps)
+    print
+    for b in benchmarkers:
+      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
+      b.bench(args, output_parser)
+      b.display(benchmarkers[0])
 
   def test_primes(self):
     src = r'''
@@ -402,9 +422,11 @@ process(sys.argv[1])
     self.fasta('fasta_float', 'float')
 
   def test_fasta_double(self):
+    if CORE_BENCHMARKS: return
     self.fasta('fasta_double', 'double')
 
   def test_fasta_double_full(self):
+    if CORE_BENCHMARKS: return
     self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
 
   def test_skinning(self):
@@ -412,10 +434,12 @@ process(sys.argv[1])
     self.do_benchmark('skinning', src, 'blah=0.000000')
 
   def test_life(self):
+    if CORE_BENCHMARKS: return
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
   def test_linpack_double(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return 100.0/float(re.search('Unrolled Double  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
@@ -426,6 +450,7 @@ process(sys.argv[1])
     self.do_benchmark('linpack_float', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Single  Precision''', force_c=True, output_parser=output_parser, shared_args=['-DSP'])
 
   def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
+    if CORE_BENCHMARKS: return
     args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
            ['-I' + path_from_root('tests', 'nbody-java')]
     self.do_benchmark('nbody_java', '', '''Time(s)''',
@@ -458,42 +483,29 @@ process(sys.argv[1])
 
   def test_zzz_zlib(self):
     src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
-    emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \
-                 ['-I' + path_from_root('tests', 'zlib')]
-    native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
-                   ['-I' + path_from_root('tests', 'zlib')]
+    def lib_builder(name, native, env_init):
+      return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
     self.do_benchmark('zlib', src, '''ok.''',
-                      force_c=True, emcc_args=emcc_args, native_args=native_args)
+                      force_c=True, shared_args=['-I' + path_from_root('tests', 'zlib')], lib_builder=lib_builder)
 
   def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
-
-    js_lib = self.get_library('box2d', [os.path.join('box2d.a')], configure=None)
-    native_lib = self.get_library('box2d_native', [os.path.join('box2d.a')], configure=None, native=True)
-
-    emcc_args = js_lib + ['-I' + path_from_root('tests', 'box2d')]
-    native_args = native_lib + ['-I' + path_from_root('tests', 'box2d')]
-
-    self.do_benchmark('box2d', src, 'frame averages', emcc_args=emcc_args, native_args=native_args)
+    def lib_builder(name, native, env_init):
+      return self.get_library('box2d', [os.path.join('box2d.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'box2d')], lib_builder=lib_builder)
 
   def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read() + \
           open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
-    js_lib = self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+    def lib_builder(name, native, env_init):
+      return self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                              configure_args=['--disable-demos','--disable-dependency-tracking'])
-    native_lib = self.get_library('bullet_native', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                             os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                             os.path.join('src', '.libs', 'libLinearMath.a')],
-                                  configure_args=['--disable-demos','--disable-dependency-tracking'],
-                                  native=True)
+                              configure_args=['--disable-demos','--disable-dependency-tracking'], native=native, cache_name_extra=name, env_init=env_init)
 
-    emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                          '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks'),
-                          '-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
-    native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                                '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+    emcc_args = ['-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
 
-    self.do_benchmark('bullet', src, '\nok.\n', emcc_args=emcc_args, native_args=native_args)
+    self.do_benchmark('bullet', src, '\nok.\n', emcc_args=emcc_args, shared_args=['-I' + path_from_root('tests', 'bullet', 'src'),
+                                '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')], lib_builder=lib_builder)
+

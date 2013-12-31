@@ -1,0 +1,19 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+
+void bye() { printf("all ok\n"); }
+
+int main(int argc, char **argv) {
+  atexit(bye);
+
+  char *buffer = (char *)malloc(100);
+  for (int i = 0; i < 100; i++) buffer[i] = (i * i) % 256;
+  buffer = (char *)realloc(buffer, argc + 50);
+  for (int i = 0; i < argc + 50; i++) {
+    // printf("%d : %d : %d : %d\n", i, (int)(buffer + i), buffer[i],
+    // (char)((i*i)%256));
+    assert(buffer[i] == (char)((i * i) % 256));
+  }
+  return 1;
+}

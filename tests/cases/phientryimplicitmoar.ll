@@ -1,6 +1,6 @@
 ; ModuleID = 'tests/hello_world.bc'
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
-target triple = "i386-pc-linux-gnu"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
+target triple = "le32-unknown-nacl"
 
 @.str = private unnamed_addr constant [15 x i8] c"hello, world!\0A\00", align 1 ; [#uses=1 type=[15 x i8]*]
 @.str2 = private unnamed_addr constant [15 x i8] c"hello!!world!\0A\00", align 1 ; [#uses=1 type=[15 x i8]*]
@@ -9,16 +9,16 @@ define i32 @main() {
   %retval = alloca i32, align 4
   %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str2, i32 0, i32 0))
   %a12 = zext i1 1 to i32
-  br label %13
+  br label %L13
 
-; <label>:13                                      ; preds = %13, %1
-  %a14 = phi i32 [ %a12, %1 ], [ %a15, %13 ]
+L13:
+  %a14 = phi i32 [ %a12, %0 ], [ %a15, %L13 ]
   %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0))
   %a15 = add nsw i32 %a14, 2
   %a16 = icmp eq i32 %a15, 9
-  br i1 %a16, label %17, label %13
+  br i1 %a16, label %L17, label %L13
 
-; <label>:17                                      ; preds = %1
+L17:
   %call1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str2, i32 0, i32 0))
   ret i32 1
 }

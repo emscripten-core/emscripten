@@ -280,9 +280,10 @@ function tempDouble2($46, $14, $28, $42, $20, $32, $45) {
  $20 = $20 | 0;
  $32 = $32 | 0;
  $45 = $45 | 0;
- var $_sroa_06_0_insert_insert$1 = 0;
+ var $46 = 0, $_sroa_06_0_insert_insert$1 = 0;
+ $46 = (HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0);
  $_sroa_06_0_insert_insert$1 = (HEAPF32[tempDoublePtr >> 2] = ($20 < $32 ? $20 : $32) - $42, HEAP32[tempDoublePtr >> 2] | 0) | 0;
- HEAP32[$45 >> 2] = 0 | (HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0);
+ HEAP32[$45 >> 2] = 0 | $46;
  HEAP32[$45 + 4 >> 2] = $_sroa_06_0_insert_insert$1;
  HEAP32[$45 + 8 >> 2] = $_sroa_06_0_insert_insert$1;
 }
@@ -297,5 +298,10 @@ function select2($foundBase_0_off0) {
  $call24 = MUST_RUN() | 0;
  STACKTOP = sp;
  return ($foundBase_0_off0 ? 0 : $call24) | 0;
+}
+function binary(x) {
+ x = x | 0;
+ memset(f(x)) | 0;
+ +dmemset(f(x));
 }
 

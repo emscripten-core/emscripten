@@ -843,7 +843,7 @@ f.close()
 
     for test_opts, expected_ranges in [
       ([], {
-         100: (190, 275),
+         100: (190, 500),
          250: (200, 500),
          500: (250, 500),
         1000: (230, 1000),
@@ -1165,7 +1165,7 @@ f.close()
     ''')
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'mylib1.js'),
-                                                                     '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]).communicate()
+                                                                   '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]).communicate()
     self.assertContained('hello from lib!\n*32*\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_identical_basenames(self):
@@ -1347,61 +1347,93 @@ f.close()
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst']).communicate()
     self.assertContained('|frist|\n|sacond|\n|thard|\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-  def test_multidynamic_link(self):
-    # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
-    # A workaround is to use --ignore-dynamic-linking, see emcc --help for details
+  def test_exclude_file(self):
+    try_delete(os.path.join(self.get_dir(), 'tst'))
+    os.mkdir(os.path.join(self.get_dir(), 'tst'))
+    os.mkdir(os.path.join(self.get_dir(), 'tst', 'abc.exe'))
+    os.mkdir(os.path.join(self.get_dir(), 'tst', 'abc.txt'))
 
+    open(os.path.join(self.get_dir(), 'tst', 'hello.exe'), 'w').write('''hello''')
+    open(os.path.join(self.get_dir(), 'tst', 'hello.txt'), 'w').write('''world''')
+    open(os.path.join(self.get_dir(), 'tst', 'abc.exe', 'foo'), 'w').write('''emscripten''')
+    open(os.path.join(self.get_dir(), 'tst', 'abc.txt', 'bar'), 'w').write('''!!!''')
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
       #include <stdio.h>
-      extern void printey();
-      extern void printother();
       int main() {
-        printf("*");
-        printey();
-        printf("\n");
-        printother();
-        printf("\n");
-        printf("*");
+        if(fopen("tst/hello.exe", "rb")) printf("Failed\n");
+        if(!fopen("tst/hello.txt", "rb")) printf("Failed\n");
+        if(fopen("tst/abc.exe/foo", "rb")) printf("Failed\n");
+        if(!fopen("tst/abc.txt/bar", "rb")) printf("Failed\n");
+
         return 0;
       }
     ''')
 
-    try:
-      os.makedirs(os.path.join(self.get_dir(), 'libdir'));
-    except:
-      pass
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst', '--exclude-file', '*.exe']).communicate()
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'))
+    assert output == ''
 
-    open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
-      #include <stdio.h>
-      void printey() {
-        printf("hello from lib");
-      }
-    ''')
+  def test_multidynamic_link(self):
+    # Linking the same dynamic library in statically will error, normally, since we statically link it, causing dupe symbols
 
-    open(os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), 'w').write('''
-      #include <stdio.h>
-      extern void printey();
-      void printother() {
-        printf("|");
-        printey();
-        printf("|");
-      }
-    ''')
+    def test(link_cmd, lib_suffix=''):
+      print link_cmd, lib_suffix
 
-    # This lets us link the same dynamic lib twice. We will need to link it in manually at the end.
-    compiler = [PYTHON, EMCC, '--ignore-dynamic-linking']
+      self.clear()
 
-    # Build libfile normally into an .so
-    Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so')]).communicate()
-    # Build libother and dynamically link it to libfile - but add --ignore-dynamic-linking
-    Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
-    # Build the main file, linking in both the libs
-    Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother', '-c']).communicate()
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        extern void printey();
+        extern void printother();
+        int main() {
+          printf("*");
+          printey();
+          printf("\n");
+          printother();
+          printf("\n");
+          printf("*");
+          return 0;
+        }
+      ''')
 
-    # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother']).communicate()
+      try:
+        os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      except:
+        pass
 
-    self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+      open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib");
+        }
+      ''')
+
+      open(os.path.join(self.get_dir(), 'libdir', 'libother.cpp'), 'w').write('''
+        #include <stdio.h>
+        extern void printey();
+        void printother() {
+          printf("|");
+          printey();
+          printf("|");
+        }
+      ''')
+
+      compiler = [PYTHON, EMCC]
+
+      # Build libfile normally into an .so
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so' + lib_suffix)]).communicate()
+      # Build libother and dynamically link it to libfile
+      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp')] + link_cmd + ['-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
+      # Build the main file, linking in both the libs
+      Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp')] + link_cmd + ['-lother', '-c']).communicate()
+      print '...'
+      # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o')] + link_cmd + ['-lother']).communicate()
+
+      self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    test(['-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile']) # -l, auto detection from library path
+    test(['-L' + os.path.join(self.get_dir(), 'libdir'), os.path.join(self.get_dir(), 'libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
   def test_js_link(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
@@ -1918,19 +1950,19 @@ seeked= file.
     # crunch should not be run if a .crn exists that is more recent than the .dds
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
     time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
     assert os.stat('test.data').st_size < 0.25*os.stat('ship.dds').st_size, 'Compressed should be much smaller than dds'
     crunch_time = os.stat('ship.crn').st_mtime
     dds_time = os.stat('ship.dds').st_mtime
     assert crunch_time > dds_time, 'Crunch is more recent'
     # run again, should not recrunch!
     time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
     assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged'
     # update dds, so should recrunch
     time.sleep(0.1)
     os.utime('ship.dds', None)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
     assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
 
   def test_headless(self):
@@ -1995,7 +2027,7 @@ done.
     Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1']).communicate()
     output = run_js('a.out.js')
     self.assertContained('''operator new()
-_main
+main()
 f2()
 abcdabcdabcd(int)
 abcdabcdabcd(int)
@@ -2136,3 +2168,31 @@ int main()
     assert 'test.o' in head, 'Invalid dependency target'
     assert 'test.cpp' in tail and 'test.hpp' in tail, 'Invalid dependencies generated'
 
+  def test_quoted_js_lib_key(self):
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+   __internal_data:{
+    '<' : 0,
+    'white space' : 1
+  },
+  printf__deps: ['__internal_data', 'fprintf']
+});
+''')
+
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js']).communicate()
+    self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+  def test_float_h(self):
+    process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
+    out, err = process.communicate()
+    assert process.returncode is 0, 'float.h should agree with our system: ' + out + '\n\n\n' + err
+
+  def test_default_obj_ext(self):
+    outdir = os.path.join(self.get_dir(), 'out_dir') + '/'
+    os.mkdir(outdir)
+    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir], stdout=PIPE, stderr=PIPE)
+    process.communicate()
+    assert(os.path.isfile(outdir + 'hello_world.o'))
+    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'], stdout=PIPE, stderr=PIPE)
+    process.communicate()
+    assert(os.path.isfile(outdir + 'hello_world.obj'))

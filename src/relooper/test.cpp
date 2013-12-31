@@ -258,5 +258,33 @@ int main() {
 
     puts(buffer);
   }
+
+  if (1) {
+    Relooper::SetOutputBuffer(buffer, sizeof(buffer));
+
+    printf("\n\n-- If pattern, emulated --\n\n", "the_var");
+
+    Block *b_a = new Block("// block A\n", NULL);
+    Block *b_b = new Block("// block B\n", "b_check()");
+    Block *b_c = new Block("// block C\n", NULL);
+
+    b_a->AddBranchTo(b_b, "check == 10", "atob();");
+    b_a->AddBranchTo(b_c, NULL, "atoc();");
+
+    b_b->AddBranchTo(b_c, "case 17:", "btoc();");
+    b_b->AddBranchTo(b_a, NULL, NULL);
+
+    Relooper r;
+    r.SetEmulate(true);
+    r.AddBlock(b_a);
+    r.AddBlock(b_b);
+    r.AddBlock(b_c);
+
+    r.Calculate(b_a);
+    printf("\n\n", "the_var");
+    r.Render();
+
+    puts(buffer);
+  }
 }
 

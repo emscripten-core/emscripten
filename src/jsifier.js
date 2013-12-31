@@ -1859,10 +1859,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         // first row are utilities called from generated code, second are needed from fastLong
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
          'llvm_ctlz_i32', 'llvm_cttz_i32'].forEach(function(func) {
-          if (!Functions.libraryFunctions[func]) {
+          if (!Functions.libraryFunctions[func] || (phase == 'glue' && func[0] === 'l' && !addedLibraryItems[func])) { // TODO: one-by-one in fastcomp glue mode
             print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
             Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
-            Functions.libraryFunctions[func] = 1;
+            Functions.libraryFunctions[func] = phase == 'glue' ? 2 : 1; // XXX
             // limited dependency handling
             var deps = LibraryManager.library[func + '__deps'];
             if (deps) {

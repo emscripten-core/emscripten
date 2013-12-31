@@ -1,0 +1,9 @@
+m_divshift is 1, on 279365114840 >?= 2147483648
+m_divshift is 2, on 139682557420 >?= 2147483648
+m_divshift is 3, on 69841278710 >?= 2147483648
+m_divshift is 4, on 34920639355 >?= 2147483648
+m_divshift is 5, on 17460319677 >?= 2147483648
+m_divshift is 6, on 8730159838 >?= 2147483648
+m_divshift is 7, on 4365079919 >?= 2147483648
+m_divshift is 8, on 2182539959 >?= 2147483648
+m_divisor is 1091269979

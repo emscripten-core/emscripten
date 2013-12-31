@@ -1,10 +1,13 @@
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
+target triple = "le32-unknown-nacl"
+
 @.str = private constant [15 x i8] c"hello, world!\0A\00", align 1 ; [#uses=1]
 
 define linkonce_odr i32 @main() align 2 {
-  %333 = call i32 @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
-  %444 = zext i32 %333 to i64
-  %199 = trunc i8 1 to i1                        ; [#uses=1]
-  switch i64 %444, label %label999 [
+  %a333 = call i32 @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %a444 = zext i32 %a333 to i64
+  %a199 = trunc i8 1 to i1                        ; [#uses=1]
+  switch i64 %a444, label %label999 [
     i64 1000, label %label9950
     i64 1001, label %label9951
     i64 1002, label %label9952
@@ -24,7 +27,7 @@ define linkonce_odr i32 @main() align 2 {
   br label %label999
 
 label9950:
-  %333b = call i32 @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %a333b = call i32 @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   br label %label999
 
 label9951:

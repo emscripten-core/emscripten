@@ -282,7 +282,12 @@ var Functions = {
         sig += Functions.getSignatureLetter(type);
       } else {
         var chunks = getNumIntChunks(type);
-        for (var j = 0; j < chunks; j++) sig += 'i';
+        if (chunks > 0) {
+          for (var j = 0; j < chunks; j++) sig += 'i';
+        } else if (type !== '...') {
+          // some special type like a SIMD vector (anything but varargs, which we handle below)
+          sig += Functions.getSignatureLetter(type);
+        }
       }
     }
     if (hasVarArgs) sig += 'i';
@@ -423,6 +428,26 @@ var LibraryManager = {
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }
+
+    /*
+    // export code for CallHandlers.h
+    printErr('============================');
+    for (var x in this.library) {
+      var y = this.library[x];
+      if (typeof y === 'string' && x.indexOf('__sig') < 0 && x.indexOf('__postset') < 0 && y.indexOf(' ') < 0) {
+        printErr('DEF_REDIRECT_HANDLER(' + x + ', ' + y + ');');
+      }
+    }
+    printErr('============================');
+    for (var x in this.library) {
+      var y = this.library[x];
+      if (typeof y === 'string' && x.indexOf('__sig') < 0 && x.indexOf('__postset') < 0 && y.indexOf(' ') < 0) {
+        printErr('  SETUP_CALL_HANDLER(' + x + ');');
+      }
+    }
+    printErr('============================');
+    // end export code for CallHandlers.h
+    */
 
     this.loaded = true;
   },

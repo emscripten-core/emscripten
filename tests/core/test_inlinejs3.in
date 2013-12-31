@@ -1,0 +1,20 @@
+#include <stdio.h>
+#include <emscripten.h>
+
+int main(int argc, char **argv) {
+  EM_ASM(Module.print('hello dere1'));
+  EM_ASM(Module.print('hello dere2'););
+  for (int i = 0; i < 3; i++) {
+    EM_ASM(Module.print('hello dere3'); Module.print('hello dere' + 4););
+  }
+  int sum = 0;
+  for (int i = 0; i < argc * 3; i++) {
+    sum += EM_ASM_INT({
+                        Module.print('i: ' + [ $0, ($1).toFixed(2) ]);
+                        return $0 * 2;
+                      },
+                      i, double(i) / 12);
+  }
+  printf("sum: %d\n", sum);
+  return 0;
+}

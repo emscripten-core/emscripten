@@ -134,7 +134,7 @@ load('settings.js');
 var settings_file = arguments_[0];
 var ll_file = arguments_[1];
 phase = arguments_[2];
-if (phase == 'pre') {
+if (phase == 'pre' || phase == 'glue') {
   additionalLibraries = Array.prototype.slice.call(arguments_, 3);
 } else {
   var forwardedDataFile = arguments_[3];

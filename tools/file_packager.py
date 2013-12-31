@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
 
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
@@ -45,9 +45,10 @@ import posixpath
 import shared
 from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
+import fnmatch
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
 See the source for more details.'''
   sys.exit(0)
 
@@ -66,10 +67,10 @@ DDS_HEADER_SIZE = 128
 AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to work around silly av false positives
 
 data_files = []
-in_preload = False
-in_embed = False
+excluded_patterns = []
+leading = ''
 has_preloaded = False
-in_compress = 0
+compress_cnt = 0
 crunch = 0
 plugins = []
 jsoutput = None
@@ -81,45 +82,40 @@ use_preload_cache = False
 # If set to False, the XHR blob is kept intact, and fread()s etc. are performed directly to that data. This optimizes for minimal memory usage and fread() performance.
 no_heap_copy = True
 
-for arg in sys.argv[1:]:
+for arg in sys.argv[2:]:
   if arg == '--preload':
-    in_preload = True
-    in_embed = False
     has_preloaded = True
-    in_compress = 0
+    leading = 'preload'
   elif arg == '--embed':
-    in_embed = True
-    in_preload = False
-    in_compress = 0
+    leading = 'embed'
+  elif arg == '--exclude':
+    leading = 'exclude'
   elif arg == '--compress':
+    compress_cnt = 1
     Compression.on = True
-    in_compress = 1
-    in_preload = False
-    in_embed = False
+    leading = 'compress'
   elif arg == '--no-force':
     force = False
+    leading = ''
   elif arg == '--use-preload-cache':
     use_preload_cache = True
+    leading = ''
   elif arg == '--no-heap-copy':
     no_heap_copy = False
+    leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
+    leading = ''
   elif arg.startswith('--crunch'):
     from shared import CRUNCH
     crunch = arg.split('=')[1] if '=' in arg else '128'
-    in_preload = False
-    in_embed = False
-    in_compress = 0
+    leading = ''
   elif arg.startswith('--plugin'):
     plugin = open(arg.split('=')[1], 'r').read()
     eval(plugin) # should append itself to plugins
-    in_preload = False
-    in_embed = False
-    in_compress = 0
-  elif in_preload or in_embed:
-    mode = 'preload'
-    if in_embed:
-      mode = 'embed'
+    leading = ''
+  elif leading == 'preload' or leading == 'embed':
+    mode = leading
     if '@' in arg:
       srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
     else:
@@ -128,16 +124,21 @@ for arg in sys.argv[1:]:
       data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode })
     else:
       print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
-  elif in_compress:
-    if in_compress == 1:
+  elif leading == 'exclude':
+    excluded_patterns.append(arg)
+  elif leading == 'compress':
+    if compress_cnt == 1:
       Compression.encoder = arg
-      in_compress = 2
-    elif in_compress == 2:
+      compress_cnt = 2
+    elif compress_cnt == 2:
       Compression.decoder = arg
-      in_compress = 3
-    elif in_compress == 3:
+      compress_cnt = 3
+    elif compress_cnt == 3:
       Compression.js_name = arg
-      in_compress = 0
+      compress_cnt = 0
+  else:
+    print >> sys.stderr, 'Unknown parameter:', arg
+    sys.exit(1)
 
 if (not force) and len(data_files) == 0:
   has_preloaded = False
@@ -172,16 +173,14 @@ def has_hidden_attribute(filepath):
     result = False
   return result
 
-# The packager should never preload/embed any directories that have a component starting with '.' in them,
-# or if the file is hidden (Win32). Note that this filter ONLY applies to directories. Explicitly specified single files
-# are always preloaded/embedded, even if they start with a '.'.
-def should_ignore(filename):
-  if has_hidden_attribute(filename):
+# The packager should never preload/embed files if the file is hidden (Win32).
+# or it matches any pattern specified in --exclude
+def should_ignore(fullname):
+  if has_hidden_attribute(fullname):
     return True
     
-  components = filename.replace('\\\\', '/').replace('\\', '/').split('/')
-  for c in components:
-    if c.startswith('.') and c != '.' and c != '..':
+  for p in excluded_patterns:
+    if fnmatch.fnmatch(fullname, p):
       return True
   return False
 
@@ -190,20 +189,31 @@ def add(arg, dirname, names):
   # rootpathsrc: The path name of the root directory on the local FS we are adding to emscripten virtual FS.
   # rootpathdst: The name we want to make the source path available on the emscripten virtual FS.
   mode, rootpathsrc, rootpathdst = arg
+  new_names = []
   for name in names:
     fullname = os.path.join(dirname, name)
-    if not os.path.isdir(fullname):
-      if should_ignore(fullname):
-        if DEBUG:
-          print >> sys.stderr, 'Skipping hidden file "' + fullname + '" from inclusion in the emscripten virtual file system.'
-      else:
+    if should_ignore(fullname):
+      if DEBUG:
+        print >> sys.stderr, 'Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.'
+    else:
+      new_names.append(name)
+      if not os.path.isdir(fullname):
         dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
-        data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode })
+        new_data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode })
+  del names[:]
+  names.extend(new_names)
 
+new_data_files = []
 for file_ in data_files:
-  if os.path.isdir(file_['srcpath']):
-    os.path.walk(file_['srcpath'], add, [file_['mode'], file_['srcpath'], file_['dstpath']])
-data_files = filter(lambda file_: not os.path.isdir(file_['srcpath']), data_files)
+  if not should_ignore(file_['srcpath']):
+    if os.path.isdir(file_['srcpath']):
+      os.path.walk(file_['srcpath'], add, [file_['mode'], file_['srcpath'], file_['dstpath']])
+    else:
+      new_data_files.append(file_)
+data_files = filter(lambda file_: not os.path.isdir(file_['srcpath']), new_data_files)
+if len(data_files) == 0:
+  print >> sys.stderr, 'Nothing to do!' 
+  sys.exit(1)
 
 # Absolutize paths, and check that they make sense
 curr_abspath = os.path.abspath(os.getcwd())

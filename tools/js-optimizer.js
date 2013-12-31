@@ -271,6 +271,16 @@ function isEmptyNode(node) {
   return node.length === 2 && node[0] === 'toplevel' && node[1].length === 0;
 }
 
+function clearEmptyNodes(list) {
+  for (var i = 0; i < list.length;) {
+    if (isEmptyNode(list[i]) || (list[i][0] === 'stat' && isEmptyNode(list[i][1]))) {
+      list.splice(i, 1);
+    } else {
+      i++;
+    }
+  }
+}
+
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
@@ -585,12 +595,24 @@ function simplifyExpressions(ast) {
         }
       } else if (type === 'assign') {
         // optimizations for assigning into HEAP32 specifically
-        if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name' && node[2][1][1] === 'HEAP32') {
-          // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
-          if (node[3][0] === 'binary' && node[3][1] === '|') {
-            if (node[3][2][0] === 'num' && node[3][2][1] === 0 && node[3][3][0] != 'call') {
-              node[3] = node[3][3];
-            } else if (node[3][3][0] === 'num' && node[3][3][1] === 0 && node[3][2][0] != 'call') {
+        if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name') {
+          if (node[2][1][1] === 'HEAP32') {
+            // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
+            if (node[3][0] === 'binary' && node[3][1] === '|') {
+              if (node[3][2][0] === 'num' && node[3][2][1] === 0 && node[3][3][0] != 'call') {
+                node[3] = node[3][3];
+              } else if (node[3][3][0] === 'num' && node[3][3][1] === 0 && node[3][2][0] != 'call') {
+                node[3] = node[3][2];
+              }
+            }
+          } else if (node[2][1][1] === 'HEAP8') {
+            // HEAP8[..] = x & 0xff does not need the & 0xff
+            if (node[3][0] === 'binary' && node[3][1] === '&' && node[3][3][0] == 'num' && node[3][3][1] == 0xff) {
+              node[3] = node[3][2];
+            }
+          } else if (node[2][1][1] === 'HEAP16') {
+            // HEAP16[..] = x & 0xffff does not need the & 0xffff
+            if (node[3][0] === 'binary' && node[3][1] === '&' && node[3][3][0] == 'num' && node[3][3][1] == 0xffff) {
               node[3] = node[3][2];
             }
           }
@@ -2122,7 +2144,7 @@ function registerize(ast) {
 // In memSafe mode, we are more careful and assume functions can replace HEAP and FUNCTION_TABLE, which
 // can happen in ALLOW_MEMORY_GROWTH mode
 
-var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label', 'switch'); // do is checked carefully, however
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label', 'switch', 'binary', 'unary-prefix'); // do is checked carefully, however
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
@@ -2412,7 +2434,12 @@ function eliminate(ast, memSafe) {
               if (allowTracking) track(name, node[3], node);
             }
           } else if (target[0] === 'sub') {
-            if (!isTempDoublePtrAccess(target) && !memoryInvalidated) {
+            if (isTempDoublePtrAccess(target)) {
+              if (!globalsInvalidated) {
+                invalidateGlobals();
+                globalsInvalidated = true;
+              }
+            } else if (!memoryInvalidated) {
               invalidateMemory();
               memoryInvalidated = true;
             }
@@ -2672,6 +2699,7 @@ function eliminate(ast, memSafe) {
           }
           if (ifTrue[1][0] && ifTrue[1][0][0] === 'break') {
             var assigns = ifFalse[1];
+            clearEmptyNodes(assigns);
             var loopers = [], helpers = [];
             for (var i = 0; i < assigns.length; i++) {
               if (assigns[i][0] === 'stat' && assigns[i][1][0] === 'assign') {
@@ -3097,6 +3125,17 @@ function outline(ast) {
                 parts = [];
                 var curr = node;
                 while (1) {
+                  if (!curr[3]) {
+                    // we normally expect ..if (cond) { .. } else [if (nextCond) {] (in [] is what we hope to see)
+                    // but are now seeing ..if (cond) { .. } with no else. This might be
+                    //                    ..if (cond) if (nextCond) {
+                    // which vacuum can generate from       if (cond) {} else if (nextCond), making it
+                    //                                      if (!cond) if (nextCond)
+                    // so we undo that, in hopes of making it more flattenable
+                    curr[3] = curr[2];
+                    curr[2] = ['block', []];
+                    curr[1] = simplifyNotCompsDirect(['unary-prefix', '!', curr[1]]);
+                  }
                   parts.push({ condition: curr[1], body: curr[2] });
                   curr = curr[3];
                   if (!curr) break;

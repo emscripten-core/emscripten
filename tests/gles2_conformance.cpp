@@ -30,6 +30,16 @@ int main(int argc, char *argv[])
     glShaderBinary(1, &vs, 0, 0, 0);
     assert(glGetError() != GL_NO_ERROR);
 
+    // Calling any of glGet() with null pointer should be detected and not crash.
+    // Note that native code can crash when passed a null pointer, and the GL spec does not say anything
+    // about this, so we spec that Emscripten GLES2 code should generate GL_INVALID_VALUE.
+    glGetBooleanv(GL_ACTIVE_TEXTURE, 0);
+    assert(glGetError() == GL_INVALID_VALUE);
+    glGetIntegerv(GL_ACTIVE_TEXTURE, 0);
+    assert(glGetError() == GL_INVALID_VALUE);
+    glGetFloatv(GL_ACTIVE_TEXTURE, 0);
+    assert(glGetError() == GL_INVALID_VALUE);
+
     GLboolean b = GL_TRUE;
     GLint i = -1;
     GLfloat f = -1.f;
@@ -44,18 +54,14 @@ int main(int argc, char *argv[])
     assert(f == 0.f);
 
     // Currently testing that glGetIntegerv(GL_SHADER_BINARY_FORMATS) should be a no-op.
-    // The spec is somewhat vague here, equally as good could be to return GL_INVALID_ENUM here.
-    i = 123;
-    glGetIntegerv(GL_SHADER_BINARY_FORMATS, &i);
+    int formats[10] = { 123 };
+    glGetIntegerv(GL_SHADER_BINARY_FORMATS, formats);
     assert(glGetError() == GL_NO_ERROR);
-    assert(i == 0);
+    assert(formats[0] == 123);
 
-    // Spec does not say what to report on the following, but since GL_SHADER_BINARY_FORMATS is supposed
-    // to return a a pointer to an array representing a list, the pointer can't be converted to bool or float,
-    // so report a GL_INVALID_ENUM.
+    // Converting enums to booleans or floats would be odd, so test that the following report a GL_INVALID_ENUM.
     glGetBooleanv(GL_SHADER_BINARY_FORMATS, &b);
-    assert(glGetError() == GL_INVALID_ENUM);
-    
+    assert(glGetError() == GL_INVALID_ENUM);    
     glGetFloatv(GL_SHADER_BINARY_FORMATS, &f);
     assert(glGetError() == GL_INVALID_ENUM);
 

@@ -176,13 +176,28 @@ if WINDOWS:
 else:
   logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
-# Emscripten configuration is done through the EM_CONFIG environment variable.
-# If the string value contained in this environment variable contains newline
-# separated definitions, then these definitions will be used to configure
+# Emscripten configuration is done through the --em-config command line option or
+# the EM_CONFIG environment variable. If the specified string value contains newline
+# or semicolon-separated definitions, then these definitions will be used to configure
 # Emscripten.  Otherwise, the string is understood to be a path to a settings
 # file that contains the required definitions.
 
-EM_CONFIG = os.environ.get('EM_CONFIG')
+try:
+  EM_CONFIG = sys.argv[sys.argv.index('--em-config')+1]
+  # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
+  # those child processes get the same configuration file by setting it to the currently active environment.
+  os.environ['EM_CONFIG'] = EM_CONFIG
+except:
+  EM_CONFIG = os.environ.get('EM_CONFIG')
+
+if EM_CONFIG and not os.path.isfile(EM_CONFIG):
+  if EM_CONFIG.startswith('-'):
+    raise Exception('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config EMSCRIPTEN_ROOT=/path/;LLVM_ROOT=/path;...')
+  if not '=' in EM_CONFIG:
+    raise Exception('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+  else:
+    EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:
@@ -307,7 +322,7 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.7.8'
+EMSCRIPTEN_VERSION = '1.8.0'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
@@ -316,7 +331,7 @@ def check_sanity(force=False):
   try:
     reason = None
     if not CONFIG_FILE:
-      if not force: return # config stored directly in EM_CONFIG => skip sanity checks
+      return # config stored directly in EM_CONFIG => skip sanity checks
     else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
@@ -637,7 +652,7 @@ def check_engine(engine):
   try:
     if not CONFIG_FILE:
       return True # config stored directly in EM_CONFIG => skip engine check
-    return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
+    return 'hello, world!' in run_js(path_from_root('src', 'hello_world.js'), engine)
   except Exception, e:
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
@@ -667,7 +682,7 @@ def line_splitter(data):
 
   return out
 
-def limit_size(string, MAX=12000*20):
+def limit_size(string, MAX=800*20):
   if len(string) < MAX: return string
   return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
@@ -926,7 +941,7 @@ class Building:
 
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None, native=False):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args='help', cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None, native=False):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers).
@@ -934,6 +949,8 @@ class Building:
 
     if type(generated_libs) is not list: generated_libs = [generated_libs]
     if source_dir is None: source_dir = path_from_root('tests', name.replace('_native', ''))
+    if make_args == 'help':
+      make_args = ['-j', str(multiprocessing.cpu_count())]
 
     temp_dir = build_dir
     if copy_project:
@@ -1077,7 +1094,7 @@ class Building:
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a respose file
     response_file = None
-    if WINDOWS and len(' '.join(link_cmd)) > 8192:
+    if len(' '.join(link_cmd)) > 8192:
       logging.debug('using response file for llvm-link')
       [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
 
@@ -1496,6 +1513,8 @@ class Building:
       text = m.groups(0)[0]
       assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
       assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
+      if os.environ.get('EMCC_FAST_COMPILER'): # fake it in fastcomp
+        return text.replace('emscripten_jcache_printf', 'printf')
       start = text.index('(')
       end = text.rindex(')')
       args = text[start+1:end].split(',')

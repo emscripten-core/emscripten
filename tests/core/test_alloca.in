@@ -1,0 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  char *pc;
+  pc = (char *)alloca(5);
+  printf("z:%d*%d*\n", pc > 0, (int)pc);
+  return 0;
+}

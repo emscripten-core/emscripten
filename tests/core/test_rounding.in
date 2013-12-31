@@ -1,0 +1,26 @@
+#include <stdio.h>
+#include <math.h>
+
+int main() {
+  printf("%.1f ", round(1.4));
+  printf("%.1f ", round(1.6));
+  printf("%.1f ", round(-1.4));
+  printf("%.1f ", round(-1.6));
+
+  printf("%.1f ", round(1.5));
+  printf("%.1f ", round(2.5));
+  printf("%.1f ", round(-1.5));
+  printf("%.1f ", round(-2.5));
+
+  printf("%ld ", lrint(1.4));
+  printf("%ld ", lrint(1.6));
+  printf("%ld ", lrint(-1.4));
+  printf("%ld ", lrint(-1.6));
+
+  printf("%ld ", lrint(1.5));
+  printf("%ld ", lrint(2.5));
+  printf("%ld ", lrint(-1.5));
+  printf("%ld ", lrint(-2.5));
+
+  return 0;
+}

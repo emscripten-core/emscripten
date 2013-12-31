@@ -961,7 +961,7 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.EACCES);
       }
       if (!stream.stream_ops.mmap) {
-        throw new FS.errnoError(ERRNO_CODES.ENODEV);
+        throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },

@@ -1,0 +1,23 @@
+*
+int:1
+unsigned int:2
+unsigned:2
+signed int:1
+long:3
+unsigned long:4
+signed long:3
+long long:5
+unsigned long long:6
+signed long long:5
+short:7
+unsigned short:8
+signed short:7
+char:9
+unsigned char:10
+signed char:11
+float:12
+double:13
+long double:14
+void:15
+void*:16
+*

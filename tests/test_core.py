@@ -10,103 +10,29 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return not ('i386-pc-linux-gnu' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'i386-pc-linux-gnu')
 
   def test_hello_world(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          printf("hello, world!\\n");
-          return 0;
-        }
-      '''
-      self.do_run(src, 'hello, world!')
+      test_path = path_from_root('tests', 'core', 'test_hello_world')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
       assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in open(self.in_dir('src.cpp.o.js')).read(), 'must not emit this unneeded internal thing'
 
   def test_intvars(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
-      src = '''
-        #include <stdio.h>
-        int global = 20;
-        int *far;
-        int main()
-        {
-          int x = 5;
-          int y = x+17;
-          int z = (y-1)/2; // Should stay an integer after division!
-          y += 1;
-          int w = x*3+4;
-          int k = w < 15 ? 99 : 101;
-          far = &k;
-          *far += global;
-          int i = k > 100; // Should be an int, not a bool!
-          int j = i << 6;
-          j >>= 1;
-          j = j ^ 5;
-          int h = 1;
-          h |= 0;
-          int p = h;
-          p &= 0;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n", x, y, z, w, k, i, j, h, p);
+      test_path = path_from_root('tests', 'core', 'test_intvars')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-          long hash = -1;
-          size_t perturb;
-          int ii = 0;
-          for (perturb = hash; ; perturb >>= 5) {
-            printf("%d:%d", ii, perturb);
-            ii++;
-            if (ii == 9) break;
-            printf(",");
-          }
-          printf("*\\n");
-          printf("*%.1d,%.2d*\\n", 56, 9);
-
-          // Fixed-point math on 64-bit ints. Tricky to support since we have no 64-bit shifts in JS
-          {
-            struct Fixed {
-              static int Mult(int a, int b) {
-                return ((long long)a * (long long)b) >> 16;
-              }
-            };
-            printf("fixed:%d\\n", Fixed::Mult(150000, 140000));
-          }
-
-          printf("*%ld*%p\\n", (long)21, &hash); // The %p should not enter an infinite loop!
-          return 0;
-        }
-      '''
-      self.do_run(src, '*5,23,10,19,121,1,37,1,0*\n0:-1,1:134217727,2:4194303,3:131071,4:4095,5:127,6:3,7:0,8:0*\n*56,09*\nfixed:320434\n*21*')
+      self.do_run_from_file(src, output)
 
   def test_sintvars(self):
       Settings.CORRECT_SIGNS = 1 # Relevant to this test
-      src = '''
-        #include <stdio.h>
-        struct S {
-          char *match_start;
-          char *strstart;
-        };
-        int main()
-        {
-          struct S _s;
-          struct S *s = &_s;
-          unsigned short int sh;
-
-          s->match_start = (char*)32522;
-          s->strstart = (char*)(32780);
-          printf("*%d,%d,%d*\\n", (int)s->strstart, (int)s->match_start, (int)(s->strstart - s->match_start));
-          sh = s->strstart - s->match_start;
-          printf("*%d,%d*\\n", sh, sh>>7);
-
-          s->match_start = (char*)32999;
-          s->strstart = (char*)(32780);
-          printf("*%d,%d,%d*\\n", (int)s->strstart, (int)s->match_start, (int)(s->strstart - s->match_start));
-          sh = s->strstart - s->match_start;
-          printf("*%d,%d*\\n", sh, sh>>7);
-        }
-      '''
-      output = '*32780,32522,258*\n*258,2*\n*32780,32999,-219*\n*65317,510*'
       Settings.CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
-      self.do_run(src, output, force_c=True)
+
+      test_path = path_from_root('tests', 'core', 'test_sintvars')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output, force_c=True)
 
   def test_i64(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
@@ -338,169 +264,42 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_b(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-      src = r'''
-        #include <stdio.h>
-        #include <sys/time.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_b')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        typedef long long int64;
-
-        #define PRMJ_USEC_PER_SEC       1000000L
-
-        int main(int argc, char * argv[]) {
-            int64 sec = 1329409675 + argc;
-            int64 usec = 2329509675;
-            int64 mul = int64(sec) * PRMJ_USEC_PER_SEC;
-            int64 add = mul + int64(usec);
-            int add_low = add;
-            int add_high = add >> 32;
-            printf("*%lld,%lld,%u,%u*\n", mul, add, add_low, add_high);
-            int64 x = sec + (usec << 25);
-            x >>= argc*3;
-            printf("*%llu*\n", x);
-            return 0;
-        }
-      '''
-
-      self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n*9770671914067409*\n')
+      self.do_run_from_file(src, output)
 
   def test_i64_cmp(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-      src = r'''
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_cmp')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        typedef long long int64;
-
-        bool compare(int64 val) {
-          return val == -12;
-        }
-
-        bool compare2(int64 val) {
-          return val < -12;
-        }
-
-        int main(int argc, char * argv[]) {
-            printf("*%d,%d,%d,%d,%d,%d*\n", argc, compare(argc-1-12), compare(1000+argc), compare2(argc-1-10), compare2(argc-1-14), compare2(argc+1000));
-            return 0;
-        }
-      '''
-
-      self.do_run(src, '*1,1,0,0,1,0*\n')
+      self.do_run_from_file(src, output)
 
   def test_i64_cmp2(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-      src = r'''
-        #include <inttypes.h>
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_cmp2')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        typedef int32_t INT32;
-        typedef int64_t INT64;
-        typedef uint8_t UINT8;
-
-        void interface_clock_changed()
-        {
-          UINT8 m_divshift;
-          INT32 m_divisor;
-
-          //INT64 attos = m_attoseconds_per_cycle;
-          INT64 attos = 279365114840;
-          m_divshift = 0;
-          while (attos >= (1UL << 31))
-          {
-            m_divshift++;
-            printf("m_divshift is %i, on %Ld >?= %lu\n", m_divshift, attos, 1UL << 31);
-            attos >>= 1;
-          }
-          m_divisor = attos;
-
-          printf("m_divisor is %i\n",m_divisor);
-        }
-
-        int main() {
-          interface_clock_changed();
-          return 0;
-        }
-      '''
-      self.do_run(src, '''m_divshift is 1, on 279365114840 >?= 2147483648
-m_divshift is 2, on 139682557420 >?= 2147483648
-m_divshift is 3, on 69841278710 >?= 2147483648
-m_divshift is 4, on 34920639355 >?= 2147483648
-m_divshift is 5, on 17460319677 >?= 2147483648
-m_divshift is 6, on 8730159838 >?= 2147483648
-m_divshift is 7, on 4365079919 >?= 2147483648
-m_divshift is 8, on 2182539959 >?= 2147483648
-m_divisor is 1091269979
-''')
+      self.do_run_from_file(src, output)
 
   def test_i64_double(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
+      test_path = path_from_root('tests', 'core', 'test_i64_double')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-      src = r'''
-        #include <stdio.h>
-
-        typedef long long int64;
-        #define JSDOUBLE_HI32_SIGNBIT   0x80000000
-
-        bool JSDOUBLE_IS_NEGZERO(double d)
-        {
-          union {
-            struct {
-              unsigned int lo, hi;
-            } s;
-            double d;
-          } x;
-          if (d != 0)
-            return false;
-          x.d = d;
-          return (x.s.hi & JSDOUBLE_HI32_SIGNBIT) != 0;
-        }
-
-        bool JSINT64_IS_NEGZERO(int64 l)
-        {
-          union {
-            int64 i;
-            double d;
-          } x;
-          if (l != 0)
-            return false;
-          x.i = l;
-          return x.d == -0;
-        }
-
-        int main(int argc, char * argv[]) {
-          printf("*%d,%d,%d,%d*\n", JSDOUBLE_IS_NEGZERO(0), JSDOUBLE_IS_NEGZERO(-0), JSDOUBLE_IS_NEGZERO(-1), JSDOUBLE_IS_NEGZERO(+1));
-          printf("*%d,%d,%d,%d*\n", JSINT64_IS_NEGZERO(0), JSINT64_IS_NEGZERO(-0), JSINT64_IS_NEGZERO(-1), JSINT64_IS_NEGZERO(+1));
-          return 0;
-        }
-      '''
-      self.do_run(src, '*0,0,0,0*\n*1,1,0,0*\n') # same as gcc
+      self.do_run_from_file(src, output)
 
   def test_i64_umul(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-      src = r'''
-        #include <inttypes.h>
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_umul')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        typedef uint32_t UINT32;
-        typedef uint64_t UINT64;
-
-        int main() {
-        volatile UINT32 testu32a = 2375724032U;
-        UINT32 bigu32 = 0xffffffffU;
-        volatile UINT64 testu64a = 14746250828952703000U;
-
-        while ((UINT64)testu32a * (UINT64)bigu32 < testu64a) {
-          printf("testu64a is %llu\n", testu64a);
-          testu64a /= 2;
-        }
-
-        return 0;
-        }
-      '''
-      self.do_run(src, 'testu64a is 14746250828952703000\n')
+      self.do_run_from_file(src, output)
 
   def test_i64_precise(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
@@ -552,6 +351,9 @@ m_divisor is 1091269979
         }
       '''
       self.do_run(src, '*4903566027370624, 153236438355333*')
+
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not actually used'
 
@@ -579,513 +381,119 @@ m_divisor is 1091269979
   def test_i64_llabs(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
     Settings.PRECISE_I64_MATH = 2
-    self.do_run(r'''
-      #include <stdio.h>
-      #include <stdlib.h>
 
-      int main(int argc, char ** argv) {
-        printf("%lld,%lld\n", llabs(-576460752303423489), llabs(576460752303423489));
-        return 0;
-      }
-    ''', '576460752303423489,576460752303423489')
+    test_path = path_from_root('tests', 'core', 'test_i64_llabs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_i64_zextneg(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i64_zextneg')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char *argv[])
-      {
-          uint8_t byte = 0x80;
-          uint16_t two = byte;
-          uint32_t four = byte;
-          uint64_t eight = byte;
-
-          printf("value: %d,%d,%d,%lld.\n", byte, two, four, eight);
-
-          return 0;
-      }
-    '''
-    self.do_run(src, 'value: 128,128,128,128.')
+    self.do_run_from_file(src, output)
 
   def test_i64_7z(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
-      uint64_t a, b;
-      int main(int argc, char *argv[])
-      {
-          a = argc;
-          b = argv[1][0];
-          printf("%d,%d\n", a, b);
-          if (a > a + b || a > a + b + 1) {
-              printf("one %lld, %lld", a, b);
-              return 0;
-          }
-          printf("zero %lld, %lld", a, b);
-          return 0;
-      }
-    '''
-    self.do_run(src, 'zero 2, 104', ['hallo'])
+    test_path = path_from_root('tests', 'core', 'test_i64_7z')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output, ['hallo'])
 
   def test_i64_i16(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
-      int main(int argc, char ** argv){
-          int y=-133;
-          int64_t x= ((int64_t)((short)(y)))*(100 + argc);
-          if(x>0)
-              printf(">0\n");
-          else
-              printf("<=0\n");
-      }
-    '''
-    self.do_run(src, '<=0')
+    test_path = path_from_root('tests', 'core', 'test_i64_i16')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_i64_qdouble(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdio.h>
-      typedef long long qint64; /* 64 bit signed */
-      typedef double qreal;
+    test_path = path_from_root('tests', 'core', 'test_i64_qdouble')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-
-      int main(int argc, char **argv)
-      {
-        qreal c = 111;
-        qint64 d = -111 + (argc - 1);
-        c += d;
-        if (c < -1 || c > 1)
-        {
-                printf("Failed!\n");
-        }
-        else
-        {
-                printf("Succeeded!\n");
-        }
-      };
-    '''
-    self.do_run(src, 'Succeeded!')
+    self.do_run_from_file(src, output)
 
   def test_i64_varargs(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdint.h>
-      #include <stdarg.h>
+    test_path = path_from_root('tests', 'core', 'test_i64_varargs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int64_t ccv_cache_generate_signature(char *msg, int len, int64_t sig_start, ...) {
-        if (sig_start < 10123)
-          printf("%s\n", msg+len);
-        va_list v;
-        va_start(v, sig_start);
-        if (sig_start > 1413)
-          printf("%d\n", va_arg(v, int));
-        else
-          printf("nada\n");
-        va_end(v);
-        return len*sig_start*(msg[0]+1);
-      }
-
-      int main(int argc, char **argv)
-      {
-        for (int i = 0; i < argc; i++) {
-          int64_t x;
-          if (i % 123123 == 0)
-            x = ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 54.111);
-          else
-            x = ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 13);
-          printf("%lld\n", x);
-        }
-      };
-    '''
-    self.do_run(src, '''in/this.program
-nada
-1536
-a
-nada
-5760
-fl
-nada
-6592
-sdfasdfasdf
-nada
-7840
-''', 'waka fleefl asdfasdfasdfasdf'.split(' '))
+    self.do_run_from_file(src, output, 'waka fleefl asdfasdfasdfasdf'.split(' '))
 
   def test_i32_mul_precise(self):
     if self.emcc_args == None: return self.skip('needs ta2')
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i32_mul_precise')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char **argv) {
-        unsigned long d1 = 0x847c9b5d;
-        unsigned long q =  0x549530e1;
-        if (argc > 1000) { q += argc; d1 -= argc; } // confuse optimizer
-        printf("%lu\n", d1*q);
-        return 0;
-      }
-    '''
-    self.do_run(src, '3217489085')
+    self.do_run_from_file(src, output)
 
   def test_i32_mul_semiprecise(self):
     if Settings.ASM_JS: return self.skip('asm is always fully precise')
 
     Settings.PRECISE_I32_MUL = 0 # we want semiprecise here
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i32_mul_semiprecise')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef unsigned int uint;
-
-      // from cube2, zlib licensed
-
-      #define N (624)
-      #define M (397)
-      #define K (0x9908B0DFU)
-
-      static uint state[N];
-      static int next = N;
-
-      void seedMT(uint seed)
-      {
-          state[0] = seed;
-          for(uint i = 1; i < N; i++) // if we do not do this precisely, at least we should coerce to int immediately, not wait
-              state[i] = seed = 1812433253U * (seed ^ (seed >> 30)) + i;
-          next = 0;
-      }
-
-      int main() {
-        seedMT(5497);
-        for (int i = 0; i < 10; i++) printf("%d: %u\n", i, state[i]);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0: 5497
-1: 2916432318
-2: 2502517762
-3: 3151524867
-4: 2323729668
-5: 2053478917
-6: 2409490438
-7: 848473607
-8: 691103752
-9: 3915535113
-''')
+    self.do_run_from_file(src, output)
 
   def test_i16_emcc_intrinsic(self):
     Settings.CORRECT_SIGNS = 1 # Relevant to this test
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_i16_emcc_intrinsic')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int test(unsigned short a, unsigned short b) {
-          unsigned short result = a;
-          result += b;
-          if (result < b) printf("C!");
-          return result;
-      }
-
-      int main(void) {
-          printf(",%d,", test(0, 0));
-          printf(",%d,", test(1, 1));
-          printf(",%d,", test(65535, 1));
-          printf(",%d,", test(1, 65535));
-          printf(",%d,", test(32768, 32767));
-          printf(",%d,", test(32768, 32768));
-          return 0;
-      }
-    '''
-    self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
+    self.do_run_from_file(src, output)
 
   def test_double_i64_conversion(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
 
-    src = r'''
-      #include <cassert>
-      #include <inttypes.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_double_i64_conversion')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      __attribute((noinline)) bool eq(double d, int64_t i) {
-        int64_t i2 = (int64_t)d;
-        if (i != i2) {
-          printf("%.20g converted to int64 returns %lld, not %lld as expected!\n", d, i2, i);
-        }
-        return i == i2;
-      }
-
-      int main() {
-        assert(eq(0.0, 0));
-        assert(eq(-0.0, 0));
-        assert(eq(0.1, 0));
-        assert(eq(-0.1, 0));
-        assert(eq(0.6, 0));
-        assert(eq(-0.6, 0));
-        assert(eq(1.0, 1));
-        assert(eq(-1.0, -1));
-        assert(eq(1.1, 1));
-        assert(eq(-1.1, -1));
-        assert(eq(1.6, 1));
-        assert(eq(-1.6, -1));
-        assert(eq(4294967295.0, 4294967295LL));
-        assert(eq(4294967295.5, 4294967295LL));
-        assert(eq(4294967296.0, 4294967296LL));
-        assert(eq(4294967296.5, 4294967296LL));
-        assert(eq(14294967295.0, 14294967295LL));
-        assert(eq(14294967295.5, 14294967295LL));
-        assert(eq(14294967296.0, 14294967296LL));
-        assert(eq(14294967296.5, 14294967296LL));
-        assert(eq(-4294967295.0, -4294967295LL));
-        assert(eq(-4294967295.5, -4294967295LL));
-        assert(eq(-4294967296.0, -4294967296LL));
-        assert(eq(-4294967296.5, -4294967296LL));
-        assert(eq(-14294967295.0, -14294967295LL));
-        assert(eq(-14294967295.5, -14294967295LL));
-        assert(eq(-14294967296.0, -14294967296LL));
-        assert(eq(-14294967296.5, -14294967296LL));
-
-        assert(eq(4294967295.3, 4294967295LL));
-        assert(eq(4294967296.3, 4294967296LL));
-        assert(eq(14294967295.3, 14294967295LL));
-        assert(eq(14294967296.3, 14294967296LL));
-        assert(eq(-4294967295.3, -4294967295LL));
-        assert(eq(-4294967296.3, -4294967296LL));
-        assert(eq(-14294967295.3, -14294967295LL));
-        assert(eq(-14294967296.3, -14294967296LL));
-
-        assert(eq(4294967295.8, 4294967295LL));
-        assert(eq(4294967296.8, 4294967296LL));
-        assert(eq(14294967295.8, 14294967295LL));
-        assert(eq(14294967296.8, 14294967296LL));
-        assert(eq(-4294967295.8, -4294967295LL));
-        assert(eq(-4294967296.8, -4294967296LL));
-        assert(eq(-14294967295.8, -14294967295LL));
-        assert(eq(-14294967296.8, -14294967296LL));
-
-        // The following number is the largest double such that all integers smaller than this can exactly be represented in a double.
-        assert(eq(9007199254740992.0, 9007199254740992LL /* == 2^53 */));
-        assert(eq(-9007199254740992.0, -9007199254740992LL /* == -2^53 */));
-
-        printf("OK!\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, 'OK!\n');
+    self.do_run_from_file(src, output)
 
   def test_float32_precise(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     Settings.PRECISE_F32 = 1
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_float32_precise')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char **argv) {
-        float x = 1.23456789123456789;
-        float y = 5.20456089123406709;
-        while (argc > 10 || argc % 19 == 15) {
-          // confuse optimizer
-          x /= y;
-          y = 2*y - 1;
-          argc--;
-        }
-        x = x - y;
-        y = 3*y - x/2;
-        x = x*y;
-        y += 0.000000000123123123123;
-        x -= y/7.654;
-        printf("\n%.20f, %.20f\n", x, y);
-        return 0;
-      }
-    '''
-    self.do_run(src, '\n-72.16590881347656250000, 17.59867858886718750000\n')
+    self.do_run_from_file(src, output)
 
   def test_negative_zero(self):
-    src = r'''
-      #include <stdio.h>
-      #include <math.h>
+    test_path = path_from_root('tests', 'core', 'test_negative_zero')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        #define TEST(x, y) \
-          printf("%.2f, %.2f ==> %.2f\n", x, y, copysign(x, y));
-        TEST( 5.0f,  5.0f);
-        TEST( 5.0f, -5.0f);
-        TEST(-5.0f,  5.0f);
-        TEST(-5.0f, -5.0f);
-        TEST( 5.0f,  4.0f);
-        TEST( 5.0f, -4.0f);
-        TEST(-5.0f,  4.0f);
-        TEST(-5.0f, -4.0f);
-        TEST( 0.0f,  5.0f);
-        TEST( 0.0f, -5.0f);
-        TEST(-0.0f,  5.0f);
-        TEST(-0.0f, -5.0f);
-        TEST( 5.0f,  0.0f);
-        TEST( 5.0f, -0.0f);
-        TEST(-5.0f,  0.0f);
-        TEST(-5.0f, -0.0f);
-        TEST( 0.0f,  0.0f);
-        TEST( 0.0f, -0.0f);
-        TEST(-0.0f,  0.0f);
-        TEST(-0.0f, -0.0f);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''5.00, 5.00 ==> 5.00
-5.00, -5.00 ==> -5.00
--5.00, 5.00 ==> 5.00
--5.00, -5.00 ==> -5.00
-5.00, 4.00 ==> 5.00
-5.00, -4.00 ==> -5.00
--5.00, 4.00 ==> 5.00
--5.00, -4.00 ==> -5.00
-0.00, 5.00 ==> 0.00
-0.00, -5.00 ==> -0.00
--0.00, 5.00 ==> 0.00
--0.00, -5.00 ==> -0.00
-5.00, 0.00 ==> 5.00
-5.00, -0.00 ==> -5.00
--5.00, 0.00 ==> 5.00
--5.00, -0.00 ==> -5.00
-0.00, 0.00 ==> 0.00
-0.00, -0.00 ==> -0.00
--0.00, 0.00 ==> 0.00
--0.00, -0.00 ==> -0.00
-''')
+    self.do_run_from_file(src, output)
 
   def test_llvm_intrinsics(self):
     if self.emcc_args == None: return self.skip('needs ta2')
 
     Settings.PRECISE_I64_MATH = 2 # for bswap64
 
-    src = r'''
-      #include <stdio.h>
-      #include <sys/types.h>
+    test_path = path_from_root('tests', 'core', 'test_llvm_intrinsics')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      extern "C" {
-        extern unsigned short llvm_bswap_i16(unsigned short x);
-        extern unsigned int llvm_bswap_i32(unsigned int x);
-        extern int32_t llvm_ctlz_i32(int32_t x);
-        extern int64_t llvm_ctlz_i64(int64_t x);
-        extern int32_t llvm_cttz_i32(int32_t x);
-        extern int64_t llvm_cttz_i64(int64_t x);
-        extern int32_t llvm_ctpop_i32(int32_t x);
-        extern int64_t llvm_ctpop_i64(int64_t x);
-        extern int llvm_expect_i32(int x, int y);
-      }
-
-      int main(void) {
-          unsigned short x = 0xc8ef;
-          printf("%x,%x\n", x&0xff, x >> 8);
-          x = llvm_bswap_i16(x);
-          printf("%x,%x\n", x&0xff, x >> 8);
-
-          unsigned int y = 0xc5de158a;
-          printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
-          y = llvm_bswap_i32(y);
-          printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
-
-          printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
-          printf("%d,%d\n", (int)llvm_cttz_i64(((int64_t)1) << 40), llvm_cttz_i32(1<<10));
-          printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1), llvm_ctpop_i32(0x3101));
-          printf("%d\n", (int)llvm_ctpop_i32(-594093059));
-
-          printf("%d\n", llvm_expect_i32(x % 27, 3));
-
-          int64_t a = 1;
-          a = __builtin_bswap64(a);
-          printf("%lld\n", a);
-
-          return 0;
-      }
-    '''
-    self.do_run(src, '''ef,c8
-c8,ef
-8a,15,de,c5
-c5,de,15,8a
-23,21
-40,10
-5,4
-22
-13
-72057594037927936
-''')
+    self.do_run_from_file(src, output)
 
   def test_bswap64(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_bswap64')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      #include <iostream>
-      #include <string>
-      #include <sstream>
-
-      typedef unsigned long long quint64;
-
-      using namespace std;
-
-      inline quint64 qbswap(quint64 source)
-      {
-          return 0
-              | ((source & quint64(0x00000000000000ffLL)) << 56)
-              | ((source & quint64(0x000000000000ff00LL)) << 40)
-              | ((source & quint64(0x0000000000ff0000LL)) << 24)
-              | ((source & quint64(0x00000000ff000000LL)) << 8)
-              | ((source & quint64(0x000000ff00000000LL)) >> 8)
-              | ((source & quint64(0x0000ff0000000000LL)) >> 24)
-              | ((source & quint64(0x00ff000000000000LL)) >> 40)
-              | ((source & quint64(0xff00000000000000LL)) >> 56);
-      }
-
-      int main()
-      {
-        quint64 v = strtoull("4433ffeeddccbb00", NULL, 16);
-        printf("%lld\n", v);
-
-        const string string64bitInt = "4433ffeeddccbb00";
-        stringstream s(string64bitInt);
-        quint64 int64bitInt = 0;
-        printf("1\n");
-        s >> hex >> int64bitInt;
-        printf("2\n");
-
-        stringstream out;
-        out << hex << qbswap(int64bitInt);
-
-        cout << out.str() << endl;
-        cout << hex << int64bitInt << endl;
-        cout << string64bitInt << endl;
-
-        if (out.str() != "bbccddeeff3344")
-        {
-          cout << "Failed!" << endl;
-        }
-        else
-        {
-          cout << "Succeeded!" << endl;
-        }
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '''4914553019779824384
-1
-2
-bbccddeeff3344
-4433ffeeddccbb00
-4433ffeeddccbb00
-Succeeded!
-''')
+    self.do_run_from_file(src, output)
 
   def test_sha1(self):
     if self.emcc_args == None: return self.skip('needs ta2')
@@ -1117,7 +525,7 @@ Succeeded!
       os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
 
     assert 'asm1' in test_modes
-    if self.run_name == 'asm1':
+    if self.run_name == 'asm1' and not os.environ.get('EMCC_FAST_COMPILER'):
       assert Settings.RELOOP
       generated = open('src.cpp.o.js').read()
       main = generated[generated.find('function _main'):]
@@ -1351,240 +759,70 @@ Succeeded!
 
   def test_bitfields(self):
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # bitfields do loads on invalid areas, by design
-      src = '''
-        #include <stdio.h>
-        struct bitty {
-          unsigned x : 1;
-          unsigned y : 1;
-          unsigned z : 1;
-        };
-        int main()
-        {
-          bitty b;
-          printf("*");
-          for (int i = 0; i <= 1; i++)
-            for (int j = 0; j <= 1; j++)
-              for (int k = 0; k <= 1; k++) {
-                b.x = i;
-                b.y = j;
-                b.z = k;
-                printf("%d,%d,%d,", b.x, b.y, b.z);
-              }
-          printf("*\\n");
-          return 0;
-        }
-      '''
-      self.do_run(src, '*0,0,0,0,0,1,0,1,0,0,1,1,1,0,0,1,0,1,1,1,0,1,1,1,*')
+
+      test_path = path_from_root('tests', 'core', 'test_bitfields')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_floatvars(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_floatvars')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        // headers test, see issue #1013
-        #include<cfloat>
-        #include<cmath>
+    self.do_run_from_file(src, output)
 
-        int main(int argc, char **argv)
-        {
-          float x = 1.234, y = 3.5, q = 0.00000001;
-          y *= 3;
-          int z = x < y;
-          printf("*%d,%d,%.1f,%d,%.4f,%.2f*\\n", z, int(y), y, (int)x, x, q);
-
-          printf("%.2f, %.2f, %.2f, %.2f\\n", fmin(0.5, 3.3), fmin(NAN, 3.3), fmax(0.5, 3.3), fmax(NAN, 3.3));
-
-          printf("small: %.10f\\n", argc * 0.000001);
-
-          /*
-          // Rounding behavior
-          float fs[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
-          double ds[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
-          for (int i = 0; i < 6; i++)
-            printf("*int(%.2f)=%d,%d*\\n", fs[i], int(fs[i]), int(ds[i]));
-          */
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\nsmall: 0.0000010000\n')
+  def test_closebitcasts(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+    test_path = path_from_root('tests', 'core', 'closebitcasts')
+    src, output = (test_path + s for s in ('.c', '.txt'))
+    self.do_run_from_file(src, output)
 
   def test_fast_math(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     Building.COMPILER_TEST_OPTS += ['-ffast-math']
 
-    self.do_run(r'''
-#include <stdio.h>
-#include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_fast_math')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-int main(int argc, char** argv) {
-  char* endptr;
-  --argc, ++argv;
-  double total = 0.0;
-  for (; argc; argc--, argv++) {
-    total += strtod(*argv, &endptr);
-  }
-  printf("total: %g\n", total);
-  return 0;
-}
-''', 'total: 19', ['5', '6', '8'])
+    self.do_run_from_file(src, output, ['5', '6', '8'])
 
   def test_zerodiv(self):
-    self.do_run(r'''
-      #include <stdio.h>
-      int main(int argc, const char* argv[])
-      {
-        float f1 = 1.0f;
-        float f2 = 0.0f;
-        float f_zero = 0.0f;
+    test_path = path_from_root('tests', 'core', 'test_zerodiv')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        float f3 = 0.0f / f2;
-        float f4 = f2 / 0.0f;
-        float f5 = f2 / f2;
-        float f6 = f2 / f_zero;
-
-        printf("f3: %f\n", f3);
-        printf("f4: %f\n", f4);
-        printf("f5: %f\n", f5);
-        printf("f6: %f\n", f6);
-
-        return 0;
-      }
-    ''', '''f3: nan
-f4: nan
-f5: nan
-f6: nan
-''')
+    self.do_run_from_file(src, output)
 
   def test_zero_multiplication(self):
-    src = '''
-      #include <stdio.h>
-      int main(int argc, char * argv[]) {
-        int one = argc;
+    test_path = path_from_root('tests', 'core', 'test_zero_multiplication')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        printf("%d ", 0 * one);
-        printf("%d ", 0 * -one);
-        printf("%d ", -one * 0);
-        printf("%g ", 0.0 * one);
-        printf("%g ", 0.0 * -one);
-        printf("%g", -one * 0.0);
-        return 0;
-      }
-    '''
-    self.do_run(src, '0 0 0 0 -0 -0')
+    self.do_run_from_file(src, output)
 
   def test_isnan(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_isnan')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int IsNaN(double x){
-        int rc;   /* The value return */
-        volatile double y = x;
-        volatile double z = y;
-        rc = (y!=z);
-        return rc;
-      }
-
-      int main() {
-        double tests[] = { 1.0, 3.333, 1.0/0.0, 0.0/0.0, -1.0/0.0, -0, 0, -123123123, 12.0E200 };
-        for (int i = 0; i < sizeof(tests)/sizeof(double); i++)
-          printf("%d - %f - %d\n", i, tests[i], IsNaN(tests[i]));
-      }
-      '''
-    self.do_run(src, '''0 - 1.000000 - 0
-1 - 3.333000 - 0
-2 - inf - 0
-3 - nan - 1
-4 - -inf - 0
-5 - 0.000000 - 0
-6 - 0.000000 - 0
-7 - -123123123.000000 - 0
-8 - 1.2e+201 - 0
-''')
+    self.do_run_from_file(src, output)
 
   def test_globaldoubles(self):
-      src = r'''
-        #include <stdlib.h>
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_globaldoubles')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        double      testVu,    testVv,    testWu,    testWv;
-
-        void Test(double _testVu, double _testVv, double _testWu, double _testWv)
-        {
-            testVu = _testVu;
-            testVv = _testVv;
-            testWu = _testWu;
-            testWv = _testWv;
-            printf("BUG?\n");
-            printf("Display: Vu=%f  Vv=%f  Wu=%f  Wv=%f\n", testVu, testVv, testWu, testWv);
-        }
-
-        int main(void)
-        {
-            double v1 = 465.1;
-            double v2 = 465.2;
-            double v3 = 160.3;
-            double v4 = 111.4;
-            Test(v1, v2, v3, v4);
-            return 0;
-        }
-      '''
-      self.do_run(src, 'BUG?\nDisplay: Vu=465.100000  Vv=465.200000  Wu=160.300000  Wv=111.400000')
+    self.do_run_from_file(src, output)
 
   def test_math(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
-      src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <cmath>
-        int main(int argc, char **argv)
-        {
-          printf("*%.2f,%.2f,%d", M_PI, -M_PI, (1/0.0) > 1e300); // could end up as infinity, or just a very very big number
-          printf(",%d", isfinite(NAN) != 0);
-          printf(",%d", isfinite(INFINITY) != 0);
-          printf(",%d", isfinite(-INFINITY) != 0);
-          printf(",%d", isfinite(12.3) != 0);
-          printf(",%d", isinf(NAN) != 0);
-          printf(",%d", isinf(INFINITY) != 0);
-          printf(",%d", isinf(-INFINITY) != 0);
-          printf(",%d", isinf(12.3) != 0);
-          div_t div_result = div(23, 10);
-          printf(",%d", div_result.quot);
-          printf(",%d", div_result.rem);
-          double sine = -1.0, cosine = -1.0;
-          sincos(0.0, &sine, &cosine);
-          printf(",%1.1lf", sine);
-          printf(",%1.1lf", cosine);
-          float fsine = -1.0f, fcosine = -1.0f;
-          sincosf(0.0, &fsine, &fcosine);
-          printf(",%1.1f", fsine);
-          printf(",%1.1f", fcosine);
-          fsine = sinf(1.1 + argc - 1);
-          fcosine = cosf(1.1 + argc - 1);
-          printf(",%1.1f", fsine);
-          printf(",%1.1f", fcosine);
-          printf("*\\n");
-          return 0;
-        }
-      '''
-      self.do_run(src, '*3.14,-3.14,1,0,0,0,1,0,1,1,0,2,3,0.0,1.0,0.0,1.0,0.9,0.5*')
+
+      test_path = path_from_root('tests', 'core', 'test_math')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_erf(self):
-      src = '''
-        #include <math.h>
-        #include <stdio.h>
-        int main()
-        {
-          printf("%1.6f, %1.6f, %1.6f, %1.6f, %1.6f, %1.6f\\n",
-                 erf(1.0),
-                 erf(3.0),
-                 erf(-1.0),
-                 erfc(1.0),
-                 erfc(3.0),
-                 erfc(-1.5));
-          return 0;
-        }
-      '''
-      self.do_run(src, '0.842701, 0.999978, -0.842701, 0.157299, 0.000022, 1.966105')
+      test_path = path_from_root('tests', 'core', 'test_erf')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_math_hyperbolic(self):
       src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
@@ -1592,131 +830,39 @@ f6: nan
       self.do_run(src, expected)
 
   def test_frexp(self):
-      src = '''
-        #include <stdio.h>
-        #include <math.h>
-        #include <assert.h>
+      test_path = path_from_root('tests', 'core', 'test_frexp')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        static const double tol=1e-16;
-
-        void test_value(double value)
-        {
-          int exponent;
-          double x=frexp(value, &exponent);
-          double expected=x*pow(2.0, exponent);
-
-          printf("%f=%f*2^%d\\n", value, x, exponent);
-
-          assert(fabs(expected-value)<tol);
-          assert(x==0 || (fabs(x)>=5e-1 && fabs(x)<1)); // x has a magnitude in the interval [1/2, 1)
-        }
-
-        int main()
-        {
-          test_value(0);
-          test_value(100.1);
-          test_value(-100.1);
-          test_value(.5);
-          test_value(-.5);
-          test_value(1-1e-16);
-          test_value(-(1-1e-16));
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '''0.000000=0.000000*2^0
-100.100000=0.782031*2^7
--100.100000=-0.782031*2^7
-0.500000=0.500000*2^0
--0.500000=-0.500000*2^0
-1.000000=1.000000*2^0
--1.000000=-1.000000*2^0''')
+      self.do_run_from_file(src, output)
 
   def test_rounding(self):
-      src = '''
-        #include <stdio.h>
-        #include <math.h>
+      test_path = path_from_root('tests', 'core', 'test_rounding')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main()
-        {
-          printf("%.1f ", round(1.4));
-          printf("%.1f ", round(1.6));
-          printf("%.1f ", round(-1.4));
-          printf("%.1f ", round(-1.6));
+      self.do_run_from_file(src, output)
 
-          printf("%.1f ", round(1.5));
-          printf("%.1f ", round(2.5));
-          printf("%.1f ", round(-1.5));
-          printf("%.1f ", round(-2.5));
-
-          printf("%ld ", lrint(1.4));
-          printf("%ld ", lrint(1.6));
-          printf("%ld ", lrint(-1.4));
-          printf("%ld ", lrint(-1.6));
-
-          printf("%ld ", lrint(1.5));
-          printf("%ld ", lrint(2.5));
-          printf("%ld ", lrint(-1.5));
-          printf("%ld ", lrint(-2.5));
-
-          return 0;
-        }
-        '''
-      self.do_run(src, "1.0 2.0 -1.0 -2.0 2.0 3.0 -2.0 -3.0 "
-                       "1 2 -1 -2 2 2 -2 -2")
-
-  # This example borrowed from MSDN documentation
   def test_fcvt(self):
       if self.emcc_args is None: return self.skip('requires emcc')
 
-      src = '''
-        #include <stdlib.h>
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_fcvt')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-           int  decimal, sign;
-           char *buffer;
-           double source = 3.1415926535;
-
-           buffer = fcvt(source, 7, &decimal, &sign);
-           printf("source: %2.10f   buffer: '%s'   decimal: %d   sign: %d\\n",
-                   source, buffer, decimal, sign);
-        }
-        '''
-      self.do_run(src, "source: 3.1415926535   buffer: '31415927'   decimal: 1   sign: 0");
+      self.do_run_from_file(src, output)
 
   def test_llrint(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
-    src = r'''
-      #include <stdio.h>
-      #include <math.h>
-      int main() {
-        printf("%lld\n%lld\n%lld\n%lld\n", llrint(0.1), llrint(0.6), llrint(1.25), llrint(1099511627776.667));
-        return 0;
-      }
-    '''
-    self.do_run(src, '0\n1\n1\n1099511627777\n')
+
+    test_path = path_from_root('tests', 'core', 'test_llrint')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_getgep(self):
-      # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
-      src = '''
-        #include <stdio.h>
-        struct {
-          int y[10];
-          int z[10];
-        } commonblock;
+    # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
+    test_path = path_from_root('tests', 'core', 'test_getgep')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main()
-        {
-          for (int i = 0; i < 10; ++i) {
-            commonblock.y[i] = 1;
-            commonblock.z[i] = 2;
-          }
-          printf("*%d %d*\\n", commonblock.y[0], commonblock.z[0]);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*1 2*')
+    self.do_run_from_file(src, output)
 
   def test_multiply_defined_symbols(self):
     a1 = "int f() { return 1; }"
@@ -1759,288 +905,80 @@ f6: nan
     self.do_ll_run(all_name, 'result: 1')
 
   def test_if(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          int x = 5;
-          if (x > 3) {
-            printf("*yes*\\n");
-          }
-          return 0;
-        }
-      '''
-      self.do_run(src, '*yes*')
+    test_path = path_from_root('tests', 'core', 'test_if')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_if_else(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          int x = 5;
-          if (x > 10) {
-            printf("*yes*\\n");
-          } else {
-            printf("*no*\\n");
-          }
-          return 0;
-        }
-      '''
-      self.do_run(src, '*no*')
+    test_path = path_from_root('tests', 'core', 'test_if_else')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_loop(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          int x = 5;
-          for (int i = 0; i < 6; i++) {
-            x += x*i;
-            if (x > 1000) {
-              if (x % 7 == 0) printf("cheez\\n");
-              x /= 2;
-              break;
-            }
-          }
-          printf("*%d*\\n", x);
-          return 0;
-        }
-      '''
+    test_path = path_from_root('tests', 'core', 'test_loop')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      self.do_run(src, '*1800*')
-
-      generated = open('src.cpp.o.js', 'r').read()
+    self.do_run_from_file(src, output)
 
   def test_stack(self):
-      Settings.INLINING_LIMIT = 50
+    Settings.INLINING_LIMIT = 50
 
-      src = '''
-        #include <stdio.h>
-        int test(int i) {
-          int x = 10;
-          if (i > 0) {
-            return test(i-1);
-          }
-          return int(&x); // both for the number, and forces x to not be nativized
-        }
-        int main(int argc, char **argv)
-        {
-          // We should get the same value for the first and last - stack has unwound
-          int x1 = test(argc - 2);
-          int x2 = test(100);
-          int x3 = test((argc - 2) / 4);
-          printf("*%d,%d*\\n", x3-x1, x2 != x1);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*0,1*')
+    test_path = path_from_root('tests', 'core', 'test_stack')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_strings(self):
-      src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <string.h>
+      test_path = path_from_root('tests', 'core', 'test_strings')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main(int argc, char **argv)
-        {
-          int x = 5, y = 9, magic = 7; // fool compiler with magic
-          memmove(&x, &y, magic-7); // 0 should not crash us
-
-          int xx, yy, zz;
-          char s[32];
-          int cc = sscanf("abc_10.b1_xyz9_543_defg", "abc_%d.%2x_xyz9_%3d_%3s", &xx, &yy, &zz, s);
-          printf("%d:%d,%d,%d,%s\\n", cc, xx, yy, zz, s);
-
-          printf("%d\\n", argc);
-          puts(argv[1]);
-          puts(argv[2]);
-          printf("%d\\n", atoi(argv[3])+2);
-          const char *foolingthecompiler = "\\rabcd";
-          printf("%d\\n", strlen(foolingthecompiler)); // Tests parsing /0D in llvm - should not be a 0 (end string) then a D!
-          printf("%s\\n", NULL); // Should print '(null)', not the string at address 0, which is a real address for us!
-          printf("/* a comment */\\n"); // Should not break the generated code!
-          printf("// another\\n"); // Should not break the generated code!
-
-          char* strdup_val = strdup("test");
-          printf("%s\\n", strdup_val);
-          free(strdup_val);
-
-          {
-            char *one = "one 1 ONE !";
-            char *two = "two 2 TWO ?";
-            char three[1024];
-            memset(three, '.', 1024);
-            three[50] = 0;
-            strncpy(three + argc, one + (argc/2), argc+1);
-            strncpy(three + argc*3, two + (argc/3), argc+2);
-            printf("waka %s\\n", three);
-          }
-
-          {
-            char *one = "string number one top notch";
-            char *two = "fa la sa ho fi FI FO FUM WHEN WHERE WHY HOW WHO";
-            char three[1000];
-            strcpy(three, &one[argc*2]);
-            char *four = strcat(three, &two[argc*3]);
-            printf("cat |%s|\\n", three);
-            printf("returned |%s|\\n", four);
-          }
-
-          return 0;
-        }
-      '''
       for named in (0, 1):
         print named
+
         Settings.NAMED_GLOBALS = named
-        self.do_run(src, '''4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\nwaka ....e 1 O...wo 2 T................................
-cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|
-returned |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too', '74'])
+        self.do_run_from_file(src, output, ['wowie', 'too', '74'])
+
         if self.emcc_args == []:
           gen = open(self.in_dir('src.cpp.o.js')).read()
           assert ('var __str1;' in gen) == named
 
   def test_strcmp_uni(self):
-    src = '''
-      #include <stdio.h>
-      #include <string.h>
-      int main()
-      {
-        #define TEST(func) \
-        { \
-          char *word = "WORD"; \
-          char wordEntry[2] = { -61,-126 }; /* "Â"; */ \
-          int cmp = func(word, wordEntry, 2); \
-          printf("Compare value " #func " is %d\\n", cmp); \
-        }
-        TEST(strncmp);
-        TEST(strncasecmp);
-        TEST(memcmp);
-      }
-    '''
-    self.do_run(src, 'Compare value strncmp is -1\nCompare value strncasecmp is -1\nCompare value memcmp is -1\n')
+    test_path = path_from_root('tests', 'core', 'test_strcmp_uni')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_strndup(self):
-      src = '''
-        //---------------
-        //- http://pubs.opengroup.org/onlinepubs/9699919799/functions/strndup.html
-        //---------------
+    test_path = path_from_root('tests', 'core', 'test_strndup')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <string.h>
-
-        int main(int argc, char **argv) {
-          const char* source = "strndup - duplicate a specific number of bytes from a string";
-
-          char* strdup_val = strndup(source, 0);
-          printf("1:%s\\n", strdup_val);
-          free(strdup_val);
-
-          strdup_val = strndup(source, 7);
-          printf("2:%s\\n", strdup_val);
-          free(strdup_val);
-
-          strdup_val = strndup(source, 1000);
-          printf("3:%s\\n", strdup_val);
-          free(strdup_val);
-
-          strdup_val = strndup(source, 60);
-          printf("4:%s\\n", strdup_val);
-          free(strdup_val);
-
-          strdup_val = strndup(source, 19);
-          printf("5:%s\\n", strdup_val);
-          free(strdup_val);
-
-          strdup_val = strndup(source, -1);
-          printf("6:%s\\n", strdup_val);
-          free(strdup_val);
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '1:\n2:strndup\n3:strndup - duplicate a specific number of bytes from a string\n4:strndup - duplicate a specific number of bytes from a string\n5:strndup - duplicate\n6:\n')
+    self.do_run_from_file(src, output)
 
   def test_errar(self):
-      src = r'''
-        #include <stdio.h>
-        #include <errno.h>
-        #include <string.h>
+    test_path = path_from_root('tests', 'core', 'test_errar')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          char* err;
-          char buffer[200];
-
-          err = strerror(EDOM);
-          strerror_r(EWOULDBLOCK, buffer, 200);
-          printf("<%s>\n", err);
-          printf("<%s>\n", buffer);
-
-          printf("<%d>\n", strerror_r(EWOULDBLOCK, buffer, 0));
-          errno = 123;
-          printf("<%d>\n", errno);
-
-          return 0;
-        }
-        '''
-      expected = '''
-        <Math arg out of domain of func>
-        <No more processes>
-        <34>
-        <123>
-        '''
-      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_mainenv(self):
-      src = '''
-        #include <stdio.h>
-        int main(int argc, char **argv, char **envp)
-        {
-          printf("*%p*\\n", envp);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*(nil)*')
+    test_path = path_from_root('tests', 'core', 'test_mainenv')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_funcs(self):
-      src = '''
-        #include <stdio.h>
-        int funcy(int x)
-        {
-          return x*9;
-        }
-        int main()
-        {
-          printf("*%d,%d*\\n", funcy(8), funcy(10));
-          return 0;
-        }
-      '''
-      self.do_run(src, '*72,90*')
+    test_path = path_from_root('tests', 'core', 'test_funcs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_structs(self):
-      src = '''
-        #include <stdio.h>
-        struct S
-        {
-          int x, y;
-        };
-        int main()
-        {
-          S a, b;
-          a.x = 5; a.y = 6;
-          b.x = 101; b.y = 7009;
-          S *c, *d;
-          c = &a;
-          c->x *= 2;
-          c = &b;
-          c->y -= 1;
-          d = c;
-          d->y += 10;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d*\\n", a.x, a.y, b.x, b.y, c->x, c->y, d->x, d->y);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*10,6,101,7018,101,7018,101,7018*')
+    test_path = path_from_root('tests', 'core', 'test_structs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   gen_struct_src = '''
         #include <stdio.h>
@@ -2069,82 +1007,22 @@ returned |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 
       self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
   def test_addr_of_stacked(self):
-      src = '''
-        #include <stdio.h>
-        void alter(int *y)
-        {
-          *y += 5;
-        }
-        int main()
-        {
-          int x = 2;
-          alter(&x);
-          printf("*%d*\\n", x);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*7*')
+    test_path = path_from_root('tests', 'core', 'test_addr_of_stacked')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_globals(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_globals')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        char cache[256], *next = cache;
-
-        int main()
-        {
-          cache[10] = 25;
-          next[20] = 51;
-          printf("*%d,%d*\\n", next[10], cache[20]);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*25,51*')
+    self.do_run_from_file(src, output)
 
   def test_linked_list(self):
-      src = '''
-        #include <stdio.h>
-        struct worker_args {
-          int value;
-          struct worker_args *next;
-        };
-        int main()
-        {
-          worker_args a;
-          worker_args b;
-          a.value = 60;
-          a.next = &b;
-          b.value = 900;
-          b.next = NULL;
-          worker_args* c = &a;
-          int total = 0;
-          while (c) {
-            total += c->value;
-            c = c->next;
-          }
+    test_path = path_from_root('tests', 'core', 'test_linked_list')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-          // Chunk of em
-          worker_args chunk[10];
-          for (int i = 0; i < 9; i++) {
-            chunk[i].value = i*10;
-            chunk[i].next = &chunk[i+1];
-          }
-          chunk[9].value = 90;
-          chunk[9].next = &chunk[0];
-
-          c = chunk;
-          do {
-            total += c->value;
-            c = c->next;
-          } while (c != chunk);
-
-          printf("*%d,%d*\\n", total, b.next);
-          // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*1410,0*')
+    self.do_run_from_file(src, output)
 
   def test_sup(self):
       src = '''
@@ -2197,418 +1075,97 @@ returned |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 
         self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
   def test_assert(self):
-      src = '''
-        #include <stdio.h>
-        #include <assert.h>
-        int main() {
-          assert(1 == true); // pass
-          assert(1 == false); // fail
-          return 0;
-        }
-      '''
-      self.do_run(src, 'Assertion failed: 1 == false')
+    test_path = path_from_root('tests', 'core', 'test_assert')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_libcextra(self):
       if self.emcc_args is None: return self.skip('needs emcc for libcextra')
-      src = r'''
-        #include <stdio.h>
-        #include <wchar.h>
 
-        int main()
-        {
-            const wchar_t* wstr = L"Hello";
+      test_path = path_from_root('tests', 'core', 'test_libcextra')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-            printf("wcslen: %d\n", wcslen(wstr));
-
-            return 0;
-        }
-      '''
-      self.do_run(src, 'wcslen: 5')
+      self.do_run_from_file(src, output)
 
   def test_regex(self):
-      # This is from http://pic.dhe.ibm.com/infocenter/iseries/v7r1m0/index.jsp?topic=%2Frtref%2Fregexec.htm
       if self.emcc_args is None: return self.skip('needs emcc for libcextra')
-      src = r'''
-        #include <regex.h>
-        #include <stdio.h>
-        #include <stdlib.h>
 
-        int main(void)
-        {
-           regex_t    preg;
-           const char *string = "a very simple simple simple string";
-           const char *pattern = "\\(sim[a-z]le\\) \\1";
-           int        rc;
-           size_t     nmatch = 2;
-           regmatch_t pmatch[2];
+      test_path = path_from_root('tests', 'core', 'test_regex')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-           if (0 != (rc = regcomp(&preg, pattern, 0))) {
-              printf("regcomp() failed, returning nonzero (%d)\n", rc);
-              exit(EXIT_FAILURE);
-           }
-
-           if (0 != (rc = regexec(&preg, string, nmatch, pmatch, 0))) {
-              printf("Failed to match '%s' with '%s',returning %d.\n",
-                     string, pattern, rc);
-           }
-           else {
-              printf("With the whole expression, "
-                     "a matched substring \"%.*s\" is found at position %d to %d.\n",
-                     pmatch[0].rm_eo - pmatch[0].rm_so, &string[pmatch[0].rm_so],
-                     pmatch[0].rm_so, pmatch[0].rm_eo - 1);
-              printf("With the sub-expression, "
-                     "a matched substring \"%.*s\" is found at position %d to %d.\n",
-                     pmatch[1].rm_eo - pmatch[1].rm_so, &string[pmatch[1].rm_so],
-                     pmatch[1].rm_so, pmatch[1].rm_eo - 1);
-           }
-           regfree(&preg);
-           return 0;
-        }
-      '''
-      self.do_run(src, 'With the whole expression, a matched substring "simple simple" is found at position 7 to 19.\n'
-                       'With the sub-expression, a matched substring "simple" is found at position 7 to 12.')
+      self.do_run_from_file(src, output)
 
   def test_longjmp(self):
-      src = r'''
-        #include <stdio.h>
-        #include <setjmp.h>
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-        static jmp_buf buf;
+      test_path = path_from_root('tests', 'core', 'test_longjmp')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        void second(void) {
-            printf("second\n");
-            longjmp(buf,-1);
-        }
-
-        void first(void) {
-            printf("first\n");                         // prints
-            longjmp(buf,1);                            // jumps back to where setjmp was called - making setjmp now return 1
-        }
-
-        int main() {
-            volatile int x = 0;
-            int jmpval = setjmp(buf);
-            if (!jmpval) {
-                x++;                                   // should be properly restored once longjmp jumps back
-                first();                               // when executed, setjmp returns 1
-                printf("skipped\n");                   // does not print
-            } else if (jmpval == 1) {                  // when first() jumps back, setjmp returns 1
-                printf("result: %d %d\n", x, jmpval);  // prints
-                x++;
-                second();                              // when executed, setjmp returns -1
-            } else if (jmpval == -1) {                 // when second() jumps back, setjmp returns -1
-                printf("result: %d %d\n", x, jmpval);  // prints
-            }
-
-            return 0;
-        }
-      '''
-      self.do_run(src, 'first\nresult: 1 1\nsecond\nresult: 2 -1')
+      self.do_run_from_file(src, output)
 
   def test_longjmp2(self):
-    src = r'''
-      #include <setjmp.h>
-      #include <stdio.h>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-      typedef struct {
-        jmp_buf* jmp;
-      } jmp_state;
+    test_path = path_from_root('tests', 'core', 'test_longjmp2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void stack_manipulate_func(jmp_state* s, int level) {
-        jmp_buf buf;
-
-        printf("Entering stack_manipulate_func, level: %d\n", level);
-
-        if (level == 0) {
-          s->jmp = &buf;
-          if (setjmp(*(s->jmp)) == 0) {
-            printf("Setjmp normal execution path, level: %d\n", level);
-            stack_manipulate_func(s, level + 1);
-          } else {
-            printf("Setjmp error execution path, level: %d\n", level);
-          }
-        } else {
-          printf("Perform longjmp at level %d\n", level);
-          longjmp(*(s->jmp), 1);
-        }
-
-        printf("Exiting stack_manipulate_func, level: %d\n", level);
-      }
-
-      int main(int argc, char *argv[]) {
-        jmp_state s;
-        s.jmp = NULL;
-        stack_manipulate_func(&s, 0);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '''Entering stack_manipulate_func, level: 0
-Setjmp normal execution path, level: 0
-Entering stack_manipulate_func, level: 1
-Perform longjmp at level 1
-Setjmp error execution path, level: 0
-Exiting stack_manipulate_func, level: 0
-''')
+    self.do_run_from_file(src, output)
 
   def test_longjmp3(self):
-    src = r'''
-      #include <setjmp.h>
-      #include <stdio.h>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-      typedef struct {
-        jmp_buf* jmp;
-      } jmp_state;
+    test_path = path_from_root('tests', 'core', 'test_longjmp3')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void setjmp_func(jmp_state* s, int level) {
-        jmp_buf* prev_jmp = s->jmp;
-        jmp_buf c_jmp;
-
-        if (level == 2) {
-          printf("level is 2, perform longjmp!\n");
-          longjmp(*(s->jmp), 1);
-        }
-
-        if (setjmp(c_jmp) == 0) {
-          printf("setjmp normal execution path, level: %d\n", level);
-          s->jmp = &c_jmp;
-          setjmp_func(s, level + 1);
-        } else {
-          printf("setjmp exception execution path, level: %d\n", level);
-          if (prev_jmp) {
-            printf("prev_jmp is not empty, continue with longjmp!\n");
-            s->jmp = prev_jmp;
-            longjmp(*(s->jmp), 1);
-          }
-        }
-
-        printf("Exiting setjmp function, level: %d\n", level);
-      }
-
-      int main(int argc, char *argv[]) {
-        jmp_state s;
-        s.jmp = NULL;
-
-        setjmp_func(&s, 0);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '''setjmp normal execution path, level: 0
-setjmp normal execution path, level: 1
-level is 2, perform longjmp!
-setjmp exception execution path, level: 1
-prev_jmp is not empty, continue with longjmp!
-setjmp exception execution path, level: 0
-Exiting setjmp function, level: 0
-''')
+    self.do_run_from_file(src, output)
 
   def test_longjmp4(self):
-    src = r'''
-      #include <setjmp.h>
-      #include <stdio.h>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-      typedef struct {
-        jmp_buf* jmp;
-      } jmp_state;
+    test_path = path_from_root('tests', 'core', 'test_longjmp4')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void second_func(jmp_state* s);
-
-      void first_func(jmp_state* s) {
-        jmp_buf* prev_jmp = s->jmp;
-        jmp_buf c_jmp;
-        volatile int once = 0;
-
-        if (setjmp(c_jmp) == 0) {
-          printf("Normal execution path of first function!\n");
-
-          s->jmp = &c_jmp;
-          second_func(s);
-        } else {
-          printf("Exception execution path of first function! %d\n", once);
-
-          if (!once) {
-            printf("Calling longjmp the second time!\n");
-            once = 1;
-            longjmp(*(s->jmp), 1);
-          }
-        }
-      }
-
-      void second_func(jmp_state* s) {
-        longjmp(*(s->jmp), 1);
-      }
-
-      int main(int argc, char *argv[]) {
-        jmp_state s;
-        s.jmp = NULL;
-
-        first_func(&s);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '''Normal execution path of first function!
-Exception execution path of first function! 0
-Calling longjmp the second time!
-Exception execution path of first function! 1
-''')
+    self.do_run_from_file(src, output)
 
   def test_longjmp_funcptr(self):
-      src = r'''
-        #include <stdio.h>
-        #include <setjmp.h>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-        static jmp_buf buf;
+    test_path = path_from_root('tests', 'core', 'test_longjmp_funcptr')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        void (*fp)() = NULL;
-
-        void second(void) {
-            printf("second\n");         // prints
-            longjmp(buf,1);             // jumps back to where setjmp was called - making setjmp now return 1
-        }
-
-        void first(void) {
-            fp();
-            printf("first\n");          // does not print
-        }
-
-        int main(int argc, char **argv) {
-            fp = argc == 200 ? NULL : second;
-
-            volatile int x = 0;
-            if ( ! setjmp(buf) ) {
-                x++;
-                first();                // when executed, setjmp returns 0
-            } else {                    // when longjmp jumps back, setjmp returns 1
-                printf("main: %d\n", x);       // prints
-            }
-
-            return 0;
-        }
-      '''
-      self.do_run(src, 'second\nmain: 1\n')
+    self.do_run_from_file(src, output)
 
   def test_longjmp_repeat(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       Settings.MAX_SETJMPS = 1
 
-      src = r'''
-        #include <stdio.h>
-        #include <setjmp.h>
+      test_path = path_from_root('tests', 'core', 'test_longjmp_repeat')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        static jmp_buf buf;
-
-        int main() {
-          volatile int x = 0;
-          printf("setjmp:%d\n", setjmp(buf));
-          x++;
-          printf("x:%d\n", x);
-          if (x < 4) longjmp(buf, x*2);
-          return 0;
-        }
-      '''
-      self.do_run(src, '''setjmp:0
-x:1
-setjmp:2
-x:2
-setjmp:4
-x:3
-setjmp:6
-x:4
-''')
+      self.do_run_from_file(src, output)
 
   def test_longjmp_stacked(self):
-      src = r'''
-        #include <stdio.h>
-        #include <setjmp.h>
-        #include <stdlib.h>
-        #include <string.h>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-        int bottom, top;
+    test_path = path_from_root('tests', 'core', 'test_longjmp_stacked')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int run(int y) {
-          // confuse stack
-          char *s = (char*)alloca(100);
-          memset(s, 1, 100);
-          s[y] = y;
-          s[y/2] = y*2;
-          volatile int x = s[y];
-          top = (int)alloca(4);
-          if (x <= 2) return x;
-          jmp_buf buf;
-          printf("setjmp of %d\n", x);
-          if (setjmp(buf) == 0) {
-            printf("going\n");
-            x += run(x/2);
-            longjmp(buf, 1);
-          }
-          printf("back\n");
-          return x/2;
-        }
+    self.do_run_from_file(src, output)
 
-        int main(int argc, char **argv) {
-          int sum = 0;
-          for (int i = 0; i < argc*2; i++) {
-            bottom = (int)alloca(4);
-            sum += run(10);
-            // scorch the earth
-            if (bottom < top) {
-              memset((void*)bottom, 1, top - bottom);
-            } else {
-              memset((void*)top, 1, bottom - top);
-            }
-          }
-          printf("%d\n", sum);
-          return sum;
-        }
-      '''
-      self.do_run(src, '''setjmp of 10
-going
-setjmp of 5
-going
-back
-back
-setjmp of 10
-going
-setjmp of 5
-going
-back
-back
-12
-''')
 
   def test_longjmp_exc(self):
-    src = r'''
-      #include <stdlib.h>
-      #include <stdio.h>
-      #include <setjmp.h>
-      #include <emscripten.h>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-      jmp_buf abortframe;
+    test_path = path_from_root('tests', 'core', 'test_longjmp_exc')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void dostuff(int a) {
-        printf("pre\n");
-        if (a != 42) emscripten_run_script("waka_waka()"); // this should fail, and never reach "never"
-        printf("never\n");
-
-        if (a == 100) {
-          longjmp (abortframe, -1);
-        }
-
-        if (setjmp(abortframe)) {
-          printf("got 100");
-        }
-      }
-
-      int main(int argc, char **argv) {
-        dostuff(argc);
-        exit(1);
-        return 1;
-      }
-      '''
-    self.do_run(src, 'waka_waka');
+    self.do_run_from_file(src, output)
 
   def test_setjmp_many(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     src = r'''
       #include <stdio.h>
       #include <setjmp.h>
@@ -2627,6 +1184,7 @@ back
   def test_exceptions(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
       if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.EXCEPTION_DEBUG = 1
 
@@ -2715,69 +1273,32 @@ back
 
   def test_exception_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    src = r'''
-      #include <stdexcept>
-      #include <stdio.h>
 
-      typedef void (*FuncPtr)();
+    test_path = path_from_root('tests', 'core', 'test_exception_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void ThrowException()
-      {
-        throw std::runtime_error("catch me!");
-      }
-
-      FuncPtr ptr = ThrowException;
-
-      int main()
-      {
-        try
-        {
-	        ptr();
-        }
-        catch(...)
-        {
-	        printf("Exception caught successfully!\n");
-        }
-        return 0;
-      }
-    '''
-    self.do_run(src, 'Exception caught successfully!')
+    self.do_run_from_file(src, output)
 
   def test_white_list_exception(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
 
-    src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_white_list_exception')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        void thrower() {
-          printf("infunc...");
-          throw(99);
-          printf("FAIL");
-        }
-
-        void somefunction() {
-          try {
-            thrower();
-          } catch(...) {
-            printf("done!*\\n");
-          }
-        }
-
-        int main() {
-          somefunction();
-          return 0;
-        }
-      '''
-    self.do_run(src, 'infunc...done!*')
+    self.do_run_from_file(src, output)
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.EXCEPTION_CATCHING_WHITELIST = []
 
   def test_uncaught_exception(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
 
@@ -2816,6 +1337,8 @@ back
       self.do_run(src, 'success')
 
   def test_typed_exceptions(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
       src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
@@ -2823,90 +1346,29 @@ back
       self.do_run(src, expected)
 
   def test_multiexception(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    src = r'''
-#include <stdio.h>
 
-static int current_exception_id = 0;
+    test_path = path_from_root('tests', 'core', 'test_multiexception')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-typedef struct {
-int jmp;
-} jmp_state;
-
-void setjmp_func(jmp_state* s, int level) {
-int prev_jmp = s->jmp;
-int c_jmp;
-
-if (level == 2) {
-  printf("level is 2, perform longjmp!\n");
-  throw 1;
-}
-
-c_jmp = current_exception_id++;
-try {
-  printf("setjmp normal execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
-  s->jmp = c_jmp;
-  setjmp_func(s, level + 1);
-} catch (int catched_eid) {
-  printf("caught %d\n", catched_eid);
-  if (catched_eid == c_jmp) {
-    printf("setjmp exception execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
-    if (prev_jmp != -1) {
-      printf("prev_jmp is not empty, continue with longjmp!\n");
-      s->jmp = prev_jmp;
-      throw s->jmp;
-    }
-  } else {
-    throw;
-  }
-}
-
-printf("Exiting setjmp function, level: %d, prev_jmp: %d\n", level, prev_jmp);
-}
-
-int main(int argc, char *argv[]) {
-jmp_state s;
-s.jmp = -1;
-
-setjmp_func(&s, 0);
-
-return 0;
-}
-'''
-    self.do_run(src, '''setjmp normal execution path, level: 0, prev_jmp: -1
-setjmp normal execution path, level: 1, prev_jmp: 0
-level is 2, perform longjmp!
-caught 1
-setjmp exception execution path, level: 1, prev_jmp: 0
-prev_jmp is not empty, continue with longjmp!
-caught 0
-setjmp exception execution path, level: 0, prev_jmp: -1
-Exiting setjmp function, level: 0, prev_jmp: -1
-''')
+    self.do_run_from_file(src, output)
 
   def test_std_exception(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
-    src = r'''
-      #include <stdio.h>
-      #include <exception>
+    test_path = path_from_root('tests', 'core', 'test_std_exception')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main()
-      {
-          std::exception e;
-          try {
-            throw e;
-          } catch(std::exception e) {
-            printf("caught std::exception\n");
-          }
-          return 0;
-      }
-    '''
-    self.do_run(src, 'caught std::exception')
+    self.do_run_from_file(src, output)
 
   def test_async_exit(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     open('main.c', 'w').write(r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -2974,128 +1436,40 @@ Exiting setjmp function, level: 0, prev_jmp: -1
     self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
 
   def test_class(self):
-      src = '''
-        #include <stdio.h>
-        struct Random {
-           enum { IM = 139968, IA = 3877, IC = 29573 };
-           Random() : last(42) {}
-           float get( float max = 1.0f ) {
-              last = ( last * IA + IC ) % IM;
-              return max * last / IM;
-           }
-        protected:
-           unsigned int last;
-        } rng1;
-        int main()
-        {
-          Random rng2;
-          int count = 0;
-          for (int i = 0; i < 100; i++) {
-            float x1 = rng1.get();
-            float x2 = rng2.get();
-            printf("%f, %f\\n", x1, x2);
-            if (x1 != x2) count += 1;
-          }
-          printf("*%d*\\n", count);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*0*')
+    test_path = path_from_root('tests', 'core', 'test_class')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_inherit(self):
-      src = '''
-        #include <stdio.h>
-        struct Parent {
-          int x1, x2;
-        };
-        struct Child : Parent {
-          int y;
-        };
-        int main()
-        {
-          Parent a;
-          a.x1 = 50;
-          a.x2 = 87;
-          Child b;
-          b.x1 = 78;
-          b.x2 = 550;
-          b.y = 101;
-          Child* c = (Child*)&a;
-          c->x1 ++;
-          c = &b;
-          c->y --;
-          printf("*%d,%d,%d,%d,%d,%d,%d*\\n", a.x1, a.x2, b.x1, b.x2, b.y, c->x1, c->x2);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*51,87,78,550,100,78,550*')
+    test_path = path_from_root('tests', 'core', 'test_inherit')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_isdigit_l(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
 
-      src = '''
-        #include <iostream>
-        int main() {
-          using namespace std;
-          use_facet<num_put<char> >(cout.getloc()).put(cout, cout, '0', 3.14159265);
-        }
-      '''
-      self.do_run(src, '3.14159')
+      test_path = path_from_root('tests', 'core', 'test_isdigit_l')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_iswdigit(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
 
-      src = '''
-        #include <stdio.h>
-        #include <cctype>
-        #include <cwctype>
+      test_path = path_from_root('tests', 'core', 'test_iswdigit')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          using namespace std;
-          printf("%d ", isdigit('0'));
-          printf("%d ", iswdigit(L'0'));
-          return 0;
-        }
-      '''
-      self.do_run(src, '1 1')
+      self.do_run_from_file(src, output)
 
   def test_polymorph(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-        #include <stdio.h>
-        struct Pure {
-          virtual int implme() = 0;
-        };
-        struct Parent : Pure {
-          virtual int getit() { return 11; };
-          int implme() { return 32; }
-        };
-        struct Child : Parent {
-          int getit() { return 74; }
-          int implme() { return 1012; }
-        };
 
-        struct Other {
-          int one() { return 11; }
-          int two() { return 22; }
-        };
+      test_path = path_from_root('tests', 'core', 'test_polymorph')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main()
-        {
-          Parent *x = new Parent();
-          Parent *y = new Child();
-          printf("*%d,%d,%d,%d*\\n", x->getit(), y->getit(), x->implme(), y->implme());
-
-          Other *o = new Other;
-          int (Other::*Ls)() = &Other::one;
-          printf("*%d*\\n", (o->*(Ls))());
-          Ls = &Other::two;
-          printf("*%d*\\n", (o->*(Ls))());
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*11,74,32,1012*\n*11*\n*22*')
+      self.do_run_from_file(src, output)
 
   def test_segfault(self):
     if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
@@ -3165,211 +1539,64 @@ Exiting setjmp function, level: 0, prev_jmp: -1
   def test_dynamic_cast(self):
       if self.emcc_args is None: return self.skip('need libcxxabi')
 
-      src = r'''
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_dynamic_cast')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        struct Support {
-          virtual void f() {
-            printf("f()\n");
-          }
-        };
-
-        struct Derived : Support {
-        };
-
-        int main() {
-          Support * p = new Derived;
-          dynamic_cast<Derived*>(p)->f();
-        }
-      '''
-      self.do_run(src, 'f()\n')
+      self.do_run_from_file(src, output)
 
   def test_dynamic_cast_b(self):
       if self.emcc_args is None: return self.skip('need libcxxabi')
 
-      src = '''
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_dynamic_cast_b')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        class CBase { virtual void dummy() {} };
-        class CDerived : public CBase { int a; };
-        class CDerivedest : public CDerived { float b; };
-
-        int main ()
-        {
-          CBase *pa = new CBase;
-          CBase *pb = new CDerived;
-          CBase *pc = new CDerivedest;
-
-          printf("a1: %d\\n", dynamic_cast<CDerivedest*>(pa) != NULL);
-          printf("a2: %d\\n", dynamic_cast<CDerived*>(pa) != NULL);
-          printf("a3: %d\\n", dynamic_cast<CBase*>(pa) != NULL);
-
-          printf("b1: %d\\n", dynamic_cast<CDerivedest*>(pb) != NULL);
-          printf("b2: %d\\n", dynamic_cast<CDerived*>(pb) != NULL);
-          printf("b3: %d\\n", dynamic_cast<CBase*>(pb) != NULL);
-
-          printf("c1: %d\\n", dynamic_cast<CDerivedest*>(pc) != NULL);
-          printf("c2: %d\\n", dynamic_cast<CDerived*>(pc) != NULL);
-          printf("c3: %d\\n", dynamic_cast<CBase*>(pc) != NULL);
-
-          return 0;
-        }
-      '''
-      self.do_run(src, 'a1: 0\na2: 0\na3: 1\nb1: 0\nb2: 1\nb3: 1\nc1: 1\nc2: 1\nc3: 1\n')
+      self.do_run_from_file(src, output)
 
   def test_dynamic_cast_2(self):
     if self.emcc_args is None: return self.skip('need libcxxabi')
 
-    src = r'''
-      #include <stdio.h>
-      #include <typeinfo>
+    test_path = path_from_root('tests', 'core', 'test_dynamic_cast_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      class Class {};
-
-      int main() {
-          const Class* dp = dynamic_cast<const Class*>(&typeid(Class));
-          // should return dp == NULL,
-          printf("pointer: %p\n", dp);
-      }
-      '''
-    self.do_run(src, "pointer: (nil)")
+    self.do_run_from_file(src, output)
 
   def test_funcptr(self):
-      src = '''
-        #include <stdio.h>
-        int calc1() { return 26; }
-        int calc2() { return 90; }
-        typedef int (*fp_t)();
+    test_path = path_from_root('tests', 'core', 'test_funcptr')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        fp_t globally1 = calc1;
-        fp_t globally2 = calc2;
-
-        int nothing(const char *str) { return 0; }
-
-        int main()
-        {
-          fp_t fp = calc1;
-          void *vp = (void*)fp;
-          fp_t fpb = (fp_t)vp;
-          fp_t fp2 = calc2;
-          void *vp2 = (void*)fp2;
-          fp_t fpb2 = (fp_t)vp2;
-          printf("*%d,%d,%d,%d,%d,%d*\\n", fp(), fpb(), fp2(), fpb2(), globally1(), globally2());
-
-          fp_t t = calc1;
-          printf("*%d,%d", t == calc1, t == calc2);
-          t = calc2;
-          printf(",%d,%d*\\n", t == calc1, t == calc2);
-
-          int (*other)(const char *str);
-          other = nothing;
-          other("*hello!*");
-          other = puts;
-          other("*goodbye!*");
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*26,26,90,90,26,90*\n*1,0,0,1*\n*goodbye!*')
+    self.do_run_from_file(src, output)
 
   def test_mathfuncptr(self):
-      src = '''
-        #include <math.h>
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_mathfuncptr')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int
-        main(int argc, char **argv) {
-         float (*fn)(float) =  argc != 12 ? &sqrtf : &fabsf;
-         float (*fn2)(float) = argc != 13 ? &fabsf : &sqrtf;
-         float (*fn3)(float) = argc != 14 ? &erff  : &fabsf;
-         printf("fn2(-5) = %d, fn(10) = %.2f, erf(10) = %.2f\\n", (int)fn2(-5), fn(10), fn3(10));
-         return 0;
-        }
-        '''
-      self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16, erf(10) = 1.00')
+    self.do_run_from_file(src, output)
 
   def test_funcptrfunc(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_funcptrfunc')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef void (*funcptr)(int, int);
-      typedef funcptr (*funcptrfunc)(int);
-
-      funcptr __attribute__ ((noinline)) getIt(int x) {
-        return (funcptr)x;
-      }
-
-      int main(int argc, char **argv)
-      {
-        funcptrfunc fpf = argc < 100 ? getIt : NULL;
-        printf("*%p*\n", fpf(argc));
-        return 0;
-      }
-    '''
-    self.do_run(src, '*0x1*')
+    self.do_run_from_file(src, output)
 
   def test_funcptr_namecollide(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_funcptr_namecollide')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void do_call(void (*puts)(const char *), const char *str);
-
-      void do_print(const char *str) {
-        if (!str) do_call(NULL, "delusion");
-        if ((int)str == -1) do_print(str+10);
-        puts("====");
-        puts(str);
-        puts("====");
-      }
-
-      void do_call(void (*puts)(const char *), const char *str) {
-        if (!str) do_print("confusion");
-        if ((int)str == -1) do_call(NULL, str-10);
-        (*puts)(str);
-      }
-
-      int main(int argc, char **argv)
-      {
-        for (int i = 0; i < argc; i++) {
-          do_call(i != 10 ? do_print : NULL, i != 15 ? "waka waka" : NULL);
-        }
-        return 0;
-      }
-    '''
-    self.do_run(src, 'waka', force_c=True)
+    self.do_run_from_file(src, output, force_c=True)
 
   def test_emptyclass(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-      #include <stdio.h>
 
-      struct Randomized {
-        Randomized(int x) {
-          printf("*zzcheezzz*\\n");
-        }
-      };
+      test_path = path_from_root('tests', 'core', 'test_emptyclass')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main( int argc, const char *argv[] ) {
-        new Randomized(55);
-
-        return 0;
-      }
-      '''
-      self.do_run(src, '*zzcheezzz*')
+      self.do_run_from_file(src, output)
 
   def test_alloca(self):
-    src = '''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_alloca')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char *pc;
-        pc = (char *)alloca(5);
-        printf("z:%d*%d*\\n", pc > 0, (int)pc);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'z:1*', force_c=True)
+    self.do_run_from_file(src, output, force_c=True)
 
   def test_rename(self):
     src = open(path_from_root('tests', 'stdio', 'test_rename.c'), 'r').read()
@@ -3378,80 +1605,29 @@ Exiting setjmp function, level: 0, prev_jmp: -1
   def test_alloca_stack(self):
     if self.emcc_args is None: return # too slow in other modes
 
-    # We should not blow up the stack with numerous allocas
-    src = '''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_alloca_stack')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      func(int i) {
-        char *pc = (char *)alloca(100);
-        *pc = i;
-        (*pc)++;
-        return (*pc) % 10;
-      }
-      int main() {
-        int total = 0;
-        for (int i = 0; i < 1024*1024; i++)
-          total += func(i);
-        printf("ok:%d*\\n", total);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok:-32768*', force_c=True)
+    self.do_run_from_file(src, output, force_c=True)
 
   def test_stack_byval(self):
     if self.emcc_args is None: return # too slow in other modes
 
-    # We should also not blow up the stack with byval arguments
-    src = r'''
-      #include<stdio.h>
-      struct vec {
-        int x, y, z;
-        vec(int x_, int y_, int z_) : x(x_), y(y_), z(z_) {}
-        static vec add(vec a, vec b) {
-          return vec(a.x+b.x, a.y+b.y, a.z+b.z);
-        }
-      };
-      int main() {
-        int total = 0;
-        for (int i = 0; i < 1000; i++) {
-          for (int j = 0; j < 1000; j++) {
-            vec c(i+i%10, j*2, i%255);
-            vec d(j*2, j%255, i%120);
-            vec f = vec::add(c, d);
-            total += (f.x + f.y + f.z) % 100;
-            total %= 10240;
-          }
-        }
-        printf("sum:%d*\n", total);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'sum:9780*')
+    test_path = path_from_root('tests', 'core', 'test_stack_byval')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_stack_varargs(self):
     if self.emcc_args is None: return # too slow in other modes
 
     Settings.INLINING_LIMIT = 50
-
-    # We should not blow up the stack with numerous varargs
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      void func(int i) {
-        printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-                 i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-      }
-      int main() {
-        for (int i = 0; i < 1024; i++)
-          func(i);
-        printf("ok!\n");
-        return 0;
-      }
-    '''
     Settings.TOTAL_STACK = 1024
-    self.do_run(src, 'ok!')
+
+    test_path = path_from_root('tests', 'core', 'test_stack_varargs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_stack_varargs2(self):
     if self.emcc_args is None: return # too slow in other modes
@@ -3532,23 +1708,10 @@ Exiting setjmp function, level: 0, prev_jmp: -1
   def test_stack_void(self):
     Settings.INLINING_LIMIT = 50
 
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_stack_void')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      static char s[100]="aaaaa";
-      static int func(void) {
-        if(s[0]!='a') return 0;
-        printf("iso open %s\n", s, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001);
-        return 0;
-      }
-      int main(){
-        int i;
-        for(i=0;i<5000;i++)
-          func();
-        printf(".ok.\n");
-      }
-    '''
-    self.do_run(src, '.ok.\n')
+    self.do_run_from_file(src, output)
 
   def test_life(self):
     if self.emcc_args is None: return self.skip('need c99')
@@ -3591,145 +1754,42 @@ Exiting setjmp function, level: 0, prev_jmp: -1
 ''', ['2'], force_c=True)
 
   def test_array2(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_array2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        static const double grid[4][2] = {
-         {-3/3.,-1/3.},{+1/3.,-3/3.},
-         {-1/3.,+3/3.},{+3/3.,+1/3.}
-        };
-
-        int main() {
-          for (int i = 0; i < 4; i++)
-            printf("%d:%.2f,%.2f ", i, grid[i][0], grid[i][1]);
-          printf("\\n");
-          return 0;
-        }
-        '''
-      self.do_run(src, '0:-1.00,-0.33 1:0.33,-1.00 2:-0.33,1.00 3:1.00,0.33')
+    self.do_run_from_file(src, output)
 
   def test_array2b(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_array2b')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        static const struct {
-          unsigned char left;
-          unsigned char right;
-        } prioritah[] = {
-           {6, 6}, {6, 6}, {7, 95}, {7, 7}
-        };
-
-        int main() {
-          printf("*%d,%d\\n", prioritah[1].left, prioritah[1].right);
-          printf("%d,%d*\\n", prioritah[2].left, prioritah[2].right);
-          return 0;
-        }
-        '''
-      self.do_run(src, '*6,6\n7,95*')
-
+    self.do_run_from_file(src, output)
 
   def test_constglobalstructs(self):
-      src = '''
-        #include <stdio.h>
-        struct IUB {
-           int c;
-           double p;
-           unsigned int pi;
-        };
+    test_path = path_from_root('tests', 'core', 'test_constglobalstructs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        IUB iub[] = {
-           { 'a', 0.27, 5 },
-           { 'c', 0.15, 4 },
-           { 'g', 0.12, 3 },
-           { 't', 0.27, 2 },
-        };
-
-        const unsigned char faceedgesidx[6][4] =
-        {
-            { 4, 5, 8, 10 },
-            { 6, 7, 9, 11 },
-            { 0, 2, 8, 9  },
-            { 1, 3, 10,11 },
-            { 0, 1, 4, 6 },
-            { 2, 3, 5, 7 },
-        };
-
-        int main( int argc, const char *argv[] ) {
-           printf("*%d,%d,%d,%d*\\n", iub[0].c, int(iub[1].p*100), iub[2].pi, faceedgesidx[3][2]);
-           return 0;
-        }
-        '''
-      self.do_run(src, '*97,15,3,10*')
+    self.do_run_from_file(src, output)
 
   def test_conststructs(self):
-      src = '''
-        #include <stdio.h>
-        struct IUB {
-           int c;
-           double p;
-           unsigned int pi;
-        };
+    test_path = path_from_root('tests', 'core', 'test_conststructs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main( int argc, const char *argv[] ) {
-           int before = 70;
-           IUB iub[] = {
-              { 'a', 0.3029549426680, 5 },
-              { 'c', 0.15, 4 },
-              { 'g', 0.12, 3 },
-              { 't', 0.27, 2 },
-           };
-           int after = 90;
-           printf("*%d,%d,%d,%d,%d,%d*\\n", before, iub[0].c, int(iub[1].p*100), iub[2].pi, int(iub[0].p*10000), after);
-           return 0;
-        }
-        '''
-      self.do_run(src, '*70,97,15,3,3029,90*')
+    self.do_run_from_file(src, output)
 
   def test_bigarray(self):
     if self.emcc_args is None: return self.skip('need ta2 to compress type data on zeroinitializers')
 
-    # avoid "array initializer too large" errors
-    src = r'''
-      #include <stdio.h>
-      #include <assert.h>
+    test_path = path_from_root('tests', 'core', 'test_bigarray')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      #define SIZE (1024*100)
-      struct Struct {
-        char x;
-        int y;
-      };
-      Struct buffy[SIZE];
-
-      int main() {
-        for (int i = 0; i < SIZE; i++) { assert(buffy[i].x == 0 && buffy[i].y == 0); } // we were zeroinitialized
-        for (int i = 0; i < SIZE; i++) { buffy[i].x = i*i; buffy[i].y = i*i*i; } // we can save data
-        printf("*%d*\n", buffy[SIZE/3].x);
-        return 0;
-      }
-      '''
-    self.do_run(src, '*57*')
+    self.do_run_from_file(src, output)
 
   def test_mod_globalstruct(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_mod_globalstruct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        struct malloc_params {
-          size_t magic, page_size;
-        };
-
-        malloc_params mparams;
-
-        #define SIZE_T_ONE ((size_t)1)
-        #define page_align(S) (((S) + (mparams.page_size - SIZE_T_ONE)) & ~(mparams.page_size - SIZE_T_ONE))
-
-        int main()
-        {
-          mparams.page_size = 4096;
-          printf("*%d,%d,%d,%d*\\n", mparams.page_size, page_align(1000), page_align(6000), page_align(66474));
-          return 0;
-        }
-      '''
-      self.do_run(src, '*4096,4096,8192,69632*')
+    self.do_run_from_file(src, output)
 
   def test_pystruct(self):
       src = '''
@@ -3803,107 +1863,41 @@ Exiting setjmp function, level: 0, prev_jmp: -1
 
   def test_ptrtoint(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-        #include <stdio.h>
 
-        int main( int argc, const char *argv[] ) {
-          char *a = new char[10];
-          char *a0 = a+0;
-          char *a5 = a+5;
-          int *b = new int[10];
-          int *b0 = b+0;
-          int *b5 = b+5;
-          int c = (int)b5-(int)b0; // Emscripten should warn!
-          int d = (int)b5-(int)b0; // Emscripten should warn!
-          printf("*%d*\\n", (int)a5-(int)a0);
-          return 0;
-        }
-        '''
       runner = self
       def check_warnings(output):
           runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
-      self.do_run(src, '*5*', output_processor=check_warnings)
+
+      test_path = path_from_root('tests', 'core', 'test_ptrtoint')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output, output_processor=check_warnings)
 
   def test_sizeof(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       # Has invalid writes between printouts
       Settings.SAFE_HEAP = 0
 
-      src = '''
-        #include <stdio.h>
-        #include <string.h>
-        #include "emscripten.h"
+      test_path = path_from_root('tests', 'core', 'test_sizeof')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        struct A { int x, y; };
-
-        int main( int argc, const char *argv[] ) {
-          int *a = new int[10];
-          int *b = new int[1];
-          int *c = new int[10];
-          for (int i = 0; i < 10; i++)
-            a[i] = 2;
-          *b = 5;
-          for (int i = 0; i < 10; i++)
-            c[i] = 8;
-          printf("*%d,%d,%d,%d,%d*\\n", a[0], a[9], *b, c[0], c[9]);
-          // Should overwrite a, but not touch b!
-          memcpy(a, c, 10*sizeof(int));
-          printf("*%d,%d,%d,%d,%d*\\n", a[0], a[9], *b, c[0], c[9]);
-
-          // Part 2
-          A as[3] = { { 5, 12 }, { 6, 990 }, { 7, 2 } };
-          memcpy(&as[0], &as[2], sizeof(A));
-
-          printf("*%d,%d,%d,%d,%d,%d*\\n", as[0].x, as[0].y, as[1].x, as[1].y, as[2].x, as[2].y);
-          return 0;
-        }
-        '''
-      self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x, err: x.replace('\n', '*'))
-
-  def test_float_h(self):
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
-    process.communicate()
-    assert process.returncode is 0, 'float.h should agree with our system'
+      self.do_run_from_file(src, output, [], lambda x, err: x.replace('\n', '*'))
 
   def test_llvm_used(self):
-    src = r'''
-  #include <stdio.h>
-  #include <emscripten.h>
-  
-  extern "C" {
-    EMSCRIPTEN_KEEPALIVE void foobar(int x) {
-      printf("Worked! %d\n", x);
-    }
-  }
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('pnacl kills llvm_used')
 
-  int main() {
-    emscripten_run_script("Module['_foobar'](10)");
-    return 0;
-  }'''
-    
     Building.LLVM_OPTS = 3
-    self.do_run(src, 'Worked! 10\n')
+
+    test_path = path_from_root('tests', 'core', 'test_llvm_used')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_emscripten_api(self):
       #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
-      src = r'''
-        #include <stdio.h>
-        #include "emscripten.h"
-
-        extern "C" {
-          void save_me_aimee() { printf("mann\n"); }
-        }
-
-        int main() {
-          // EMSCRIPTEN_COMMENT("hello from the source");
-          emscripten_run_script("Module.print('hello world' + '!')");
-          printf("*%d*\n", emscripten_run_script_int("5*20"));
-          printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
-          emscripten_run_script("Module['_save_me_aimee']()");
-          return 0;
-        }
-        '''
+      test_path = path_from_root('tests', 'core', 'test_emscripten_api')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
       check = '''
 def process(filename):
@@ -3911,12 +1905,12 @@ def process(filename):
   # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 '''
       Settings.EXPORTED_FUNCTIONS = ['_main', '_save_me_aimee']
-      self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
+      self.do_run_from_file(src, output, post_build=check)
 
       # test EXPORT_ALL
       Settings.EXPORTED_FUNCTIONS = []
       Settings.EXPORT_ALL = 1
-      self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
+      self.do_run_from_file(src, output, post_build=check)
 
   def test_emscripten_get_now(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
@@ -3927,92 +1921,31 @@ def process(filename):
 
   def test_inlinejs(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
-      src = r'''
-        #include <stdio.h>
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-        double get() {
-          double ret = 0;
-          __asm __volatile__("Math.abs(-12/3.3)":"=r"(ret)); // write to a variable
-          asm("#comment1");
-          asm volatile("#comment2");
-          asm volatile("#comment3\n"
-                       "#comment4\n");
-          return ret;
-        }
+      test_path = path_from_root('tests', 'core', 'test_inlinejs')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          asm("Module.print('Inline JS is very cool')");
-          printf("%.2f\n", get());
+      self.do_run_from_file(src, output)
 
-          // Test that passing multiple input and output variables works.
-          int src1 = 1, src2 = 2, src3 = 3;
-          int dst1 = 0, dst2 = 0, dst3 = 0;
-          // TODO asm("Module.print(%3); Module.print(%4); Module.print(%5); %0 = %3; %1 = %4; %2 = %5;" : "=r"(dst1),"=r"(dst2),"=r"(dst3): "r"(src1),"r"(src2),"r"(src3));
-          // TODO printf("%d\n%d\n%d\n", dst1, dst2, dst3);
-
-          return 0;
-        }
-        '''
-
-      self.do_run(src, 'Inline JS is very cool\n3.64\n') # TODO 1\n2\n3\n1\n2\n3\n')
       if self.emcc_args == []: # opts will eliminate the comments
         out = open('src.cpp.o.js').read()
         for i in range(1, 5): assert ('comment%d' % i) in out
 
   def test_inlinejs2(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
-      src = r'''
-        #include <stdio.h>
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-        int mix(int x, int y) {
-          int ret;
-          asm("Math.pow(2, %0+%1+1)" : "=r"(ret) : "r"(x), "r"(y)); // read and write
-          return ret;
-        }
+      test_path = path_from_root('tests', 'core', 'test_inlinejs2')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        void mult() {
-          asm("var $_$1 = Math.abs(-100); $_$1 *= 2; Module.print($_$1)"); // multiline
-          asm __volatile__("Module.print('done')");
-        }
-
-        int main(int argc, char **argv) {
-          printf("%d\n", mix(argc, argc/2));
-          mult();
-          return 0;
-        }
-        '''
-
-      self.do_run(src, '4\n200\ndone\n')
+      self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
-    src = r'''
-      #include <stdio.h>
-      #include <emscripten.h>
+      test_path = path_from_root('tests', 'core', 'test_inlinejs3')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char **argv) {
-        EM_ASM(Module.print('hello dere1'));
-        EM_ASM(
-          Module.print('hello dere2');
-        );
-        for (int i = 0; i < 3; i++) {
-          EM_ASM(
-            Module.print('hello dere3');
-            Module.print('hello dere' + 4);
-          );
-        }
-        int sum = 0;
-        for (int i = 0; i < argc*3; i++) {
-          sum += EM_ASM_INT({
-            Module.print('i: ' + [$0, ($1).toFixed(2)]);
-            return $0*2;
-          }, i, double(i)/12);
-        }
-        printf("sum: %d\n", sum);
-        return 0;
-      }
-      '''
-
-    self.do_run(src, 'hello dere1\nhello dere2\nhello dere3\nhello dere4\nhello dere3\nhello dere4\nhello dere3\nhello dere4\ni: 0,0.00\ni: 1,0.08\ni: 2,0.17\nsum: 6\n')
+      self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
     if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
@@ -4106,71 +2039,33 @@ def process(filename):
 
   def test_tinyfuncstr(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      src = '''
-        #include <stdio.h>
 
-        struct Class {
-          static char *name1() { return "nameA"; }
-                 char *name2() { return "nameB"; }
-        };
+      test_path = path_from_root('tests', 'core', 'test_tinyfuncstr')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main() {
-          printf("*%s,%s*\\n", Class::name1(), (new Class())->name2());
-          return 0;
-        }
-        '''
-      self.do_run(src, '*nameA,nameB*')
+      self.do_run_from_file(src, output)
 
   def test_llvmswitch(self):
       Settings.CORRECT_SIGNS = 1
 
-      src = '''
-        #include <stdio.h>
-        #include <string.h>
+      test_path = path_from_root('tests', 'core', 'test_llvmswitch')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int switcher(int p)
-        {
-          switch(p) {
-            case 'a':
-            case 'b':
-            case 'c':
-                return p-1;
-            case -15:
-                return p+1;
-          }
-          return p;
-        }
-
-        int main( int argc, const char *argv[] ) {
-          unsigned int x = 0xfffffff1;
-          x >>= (argc-1); // force it to be unsigned for purpose of checking our switch comparison in signed/unsigned
-          printf("*%d,%d,%d,%d,%d,%d*\\n", switcher('a'), switcher('b'), switcher('c'), switcher(x), switcher(-15), switcher('e'));
-          return 0;
-        }
-        '''
-      self.do_run(src, '*96,97,98,-14,-14,101*')
+      self.do_run_from_file(src, output)
 
   # By default, when user has not specified a -std flag, Emscripten should always build .cpp files using the C++03 standard,
   # i.e. as if "-std=c++03" had been passed on the command line. On Linux with Clang 3.2 this is the case, but on Windows
   # with Clang 3.2 -std=c++11 has been chosen as default, because of
   # < jrose> clb: it's deliberate, with the idea that for people who don't care about the standard, they should be using the "best" thing we can offer on that platform
   def test_cxx03_do_run(self):
-      src = '''
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_cxx03_do_run')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        #if __cplusplus != 199711L
-        #error By default, if no -std is specified, emscripten should be compiling with -std=c++03!
-        #endif
-
-        int main( int argc, const char *argv[] ) {
-          printf("Hello world!\\n");
-          return 0;
-        }
-        '''
-      self.do_run(src, 'Hello world!')
+    self.do_run_from_file(src, output)
 
   def test_bigswitch(self):
     if self.run_name != 'default': return self.skip('TODO: issue #781')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
@@ -4179,49 +2074,24 @@ def process(filename):
 ''', args=['34962', '26214', '35040'])
 
   def test_indirectbr(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
-      src = '''
-        #include <stdio.h>
-        int main(void) {
-          const void *addrs[2] = { &&FOO, &&BAR };
+      test_path = path_from_root('tests', 'core', 'test_indirectbr')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-          // confuse the optimizer so it doesn't hardcode the jump and avoid generating an |indirectbr| instruction
-          int which = 0;
-          for (int x = 0; x < 1000; x++) which = (which + x*x) % 7;
-          which = (which % 2) + 1;
-
-          goto *addrs[which];
-
-        FOO:
-          printf("bad\\n");
-          return 0;
-        BAR:
-          printf("good\\n");
-          const void *addr = &&FOO;
-          goto *addr;
-        }
-        '''
-      self.do_run(src, 'good\nbad')
+      self.do_run_from_file(src, output)
 
   def test_indirectbr_many(self):
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('blockaddr > 255 requires ta2')
 
-      blocks = range(1500)
-      init = ', '.join(['&&B%d' % b for b in blocks])
-      defs = '\n'.join(['B%d: printf("%d\\n"); return 0;' % (b,b) for b in blocks])
-      src = '''
-        #include <stdio.h>
-        int main(int argc, char **argv) {
-          printf("\\n");
-          const void *addrs[] = { %s };
-          goto *addrs[argc*argc + 1000];
+      test_path = path_from_root('tests', 'core', 'test_indirectbr_many')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-%s
-          return 0;
-        }
-        ''' % (init, defs)
-      self.do_run(src, '\n1001\n')
+      self.do_run_from_file(src, output)
 
   def test_pack(self):
       src = '''
@@ -4261,124 +2131,10 @@ def process(filename):
       if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
       if not self.is_le32(): return self.skip('we do not support all varargs stuff without le32')
 
-      src = '''
-        #include <stdio.h>
-        #include <stdarg.h>
+      test_path = path_from_root('tests', 'core', 'test_varargs')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        void vary(const char *s, ...)
-        {
-          va_list v;
-          va_start(v, s);
-          char d[20];
-          vsnprintf(d, 20, s, v);
-          puts(d);
-
-          // Try it with copying
-          va_list tempva;
-          va_copy(tempva, v);
-          vsnprintf(d, 20, s, tempva);
-          puts(d);
-
-          va_end(v);
-        }
-
-        void vary2(char color, const char *s, ...)
-        {
-          va_list v;
-          va_start(v, s);
-          char d[21];
-          d[0] = color;
-          vsnprintf(d+1, 20, s, v);
-          puts(d);
-          va_end(v);
-        }
-        
-        void varargs_listoffsets_list_evaluate(int count, va_list ap, int vaIteration)
-        {
-          while(count > 0)
-          {
-              const char* string = va_arg(ap, const char*);
-              printf("%s", string);
-              count--;
-          }
-          printf("\\n");
-        }
-          
-        void varags_listoffsets_list_copy(int count, va_list ap, int iteration)
-        {
-          va_list ap_copy;
-          va_copy(ap_copy, ap);
-          varargs_listoffsets_list_evaluate(count, ap_copy, iteration);
-          va_end(ap_copy);
-        }
-          
-        void varargs_listoffsets_args(int type, int count, ...)
-        {
-          va_list ap;
-          va_start(ap, count);
-          
-          // evaluate a copied list
-          varags_listoffsets_list_copy(count, ap, 1);
-          varags_listoffsets_list_copy(count, ap, 2);
-          varags_listoffsets_list_copy(count, ap, 3);
-          varags_listoffsets_list_copy(count, ap, 4);
-          
-          varargs_listoffsets_list_evaluate(count, ap, 1);
-          
-          // NOTE: we expect this test to fail, so we will check the stdout for <BAD+0><BAD+1>.....
-          varargs_listoffsets_list_evaluate(count, ap, 2);
-          
-          // NOTE: this test has to work again, as we restart the list
-          va_end(ap);
-          va_start(ap, count);
-          varargs_listoffsets_list_evaluate(count, ap, 3);
-          va_end(ap);
-        }
-        
-        void varargs_listoffsets_main()
-        {
-          varargs_listoffsets_args(0, 5, "abc", "def", "ghi", "jkl", "mno", "<BAD+0>", "<BAD+1>", "<BAD+2>", "<BAD+3>", "<BAD+4>", "<BAD+5>", "<BAD+6>", "<BAD+7>", "<BAD+8>", "<BAD+9>", "<BAD+10>", "<BAD+11>", "<BAD+12>", "<BAD+13>", "<BAD+14>", "<BAD+15>", "<BAD+16>");
-        }
-
-        #define GETMAX(pref, type) \
-          type getMax##pref(int num, ...) \
-          { \
-            va_list vv; \
-            va_start(vv, num); \
-            type maxx = va_arg(vv, type); \
-            for (int i = 1; i < num; i++) \
-            { \
-              type curr = va_arg(vv, type); \
-              maxx = curr > maxx ? curr : maxx; \
-            } \
-            va_end(vv); \
-            return maxx; \
-          }
-        GETMAX(i, int);
-        GETMAX(D, double);
-
-        int main(int argc, char **argv) {
-          vary("*cheez: %d+%d*", 0, 24); // Also tests that '0' is not special as an array ender
-          vary("*albeit*"); // Should not fail with no var args in vararg function
-          vary2('Q', "%d*", 85);
-
-          int maxxi = getMaxi(6,        2, 5, 21, 4, -10, 19);
-          printf("maxxi:%d*\\n", maxxi);
-          double maxxD = getMaxD(6,        (double)2.1, (double)5.1, (double)22.1, (double)4.1, (double)-10.1, (double)19.1, (double)2);
-          printf("maxxD:%.2f*\\n", (float)maxxD);
-
-          // And, as a function pointer
-          void (*vfp)(const char *s, ...) = argc == 1211 ? NULL : vary;
-          vfp("*vfp:%d,%d*", 22, 199);
-
-          // ensure lists work properly when copied, reinited etc.
-          varargs_listoffsets_main();
-
-          return 0;
-        }
-        '''
-      self.do_run(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n*vfp:22,199*\n*vfp:22,199*\n'+
-      'abcdefghijklmno\nabcdefghijklmno\nabcdefghijklmno\nabcdefghijklmno\nabcdefghijklmno\n<BAD+0><BAD+1><BAD+2><BAD+3><BAD+4>\nabcdefghijklmno\n')
+      self.do_run_from_file(src, output)
 
   def test_varargs_byval(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('FIXME: Add support for this')
@@ -4454,20 +2210,10 @@ The current type of b is: 9
 ''')
 
   def test_functionpointer_libfunc_varargs(self):
-    src = r'''
-      #include <stdio.h>
-      #include <fcntl.h>
-      typedef int (*fp_t)(int, int, ...);
-      int main(int argc, char **argv) {
-        fp_t fp = &fcntl;
-        if (argc == 1337) fp = (fp_t)&main;
-        (*fp)(0, 10);
-        (*fp)(0, 10, 5);
-        printf("waka\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, '''waka''')
+    test_path = path_from_root('tests', 'core', 'test_functionpointer_libfunc_varargs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_structbyval(self):
       Settings.INLINING_LIMIT = 50
@@ -4655,228 +2401,72 @@ The current type of b is: 9
     if self.emcc_args is None: return self.skip('requires emcc')
 
     # tests strtoll for hex strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtoll_hex')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "0x4 -0x3A +0xDEADBEEF";
-        char *end_char;
-
-        // undefined base
-        long long int l1 = strtoll(STRING, &end_char, 0);
-        long long int l2 = strtoll(end_char, &end_char, 0);
-        long long int l3 = strtoll(end_char, NULL, 0);
-
-        // defined base
-        long long int l4 = strtoll(STRING, &end_char, 16);
-        long long int l5 = strtoll(end_char, &end_char, 16);
-        long long int l6 = strtoll(end_char, NULL, 16);
-
-        printf("%d%d%d%d%d%d\n", l1==0x4, l2==-0x3a, l3==0xdeadbeef, l4==0x4, l5==-0x3a, l6==0xdeadbeef);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
+    self.do_run_from_file(src, output)
 
   def test_strtoll_dec(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
     # tests strtoll for decimal strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtoll_dec')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "4 -38 +4711";
-        char *end_char;
-
-        // undefined base
-        long long int l1 = strtoll(STRING, &end_char, 0);
-        long long int l2 = strtoll(end_char, &end_char, 0);
-        long long int l3 = strtoll(end_char, NULL, 0);
-
-        // defined base
-        long long int l4 = strtoll(STRING, &end_char, 10);
-        long long int l5 = strtoll(end_char, &end_char, 10);
-        long long int l6 = strtoll(end_char, NULL, 10);
-
-        printf("%d%d%d%d%d%d\n", l1==4, l2==-38, l3==4711, l4==4, l5==-38, l6==4711);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
+    self.do_run_from_file(src, output)
 
   def test_strtoll_bin(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
     # tests strtoll for binary strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtoll_bin')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "1 -101 +1011";
-        char *end_char;
-
-        // defined base
-        long long int l4 = strtoll(STRING, &end_char, 2);
-        long long int l5 = strtoll(end_char, &end_char, 2);
-        long long int l6 = strtoll(end_char, NULL, 2);
-
-        printf("%d%d%d\n", l4==1, l5==-5, l6==11);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111')
+    self.do_run_from_file(src, output)
 
   def test_strtoll_oct(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
     # tests strtoll for decimal strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtoll_oct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "0 -035 +04711";
-        char *end_char;
+    self.do_run_from_file(src, output)
 
-        // undefined base
-        long long int l1 = strtoll(STRING, &end_char, 0);
-        long long int l2 = strtoll(end_char, &end_char, 0);
-        long long int l3 = strtoll(end_char, NULL, 0);
-
-        // defined base
-        long long int l4 = strtoll(STRING, &end_char, 8);
-        long long int l5 = strtoll(end_char, &end_char, 8);
-        long long int l6 = strtoll(end_char, NULL, 8);
-
-        printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
-  
   def test_strtol_hex(self):
     # tests strtoll for hex strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtol_hex')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "0x4 -0x3A +0xDEAD";
-        char *end_char;
-
-        // undefined base
-        long l1 = strtol(STRING, &end_char, 0);
-        long l2 = strtol(end_char, &end_char, 0);
-        long l3 = strtol(end_char, NULL, 0);
-
-        // defined base
-        long l4 = strtol(STRING, &end_char, 16);
-        long l5 = strtol(end_char, &end_char, 16);
-        long l6 = strtol(end_char, NULL, 16);
-
-        printf("%d%d%d%d%d%d\n", l1==0x4, l2==-0x3a, l3==0xdead, l4==0x4, l5==-0x3a, l6==0xdead);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
+    self.do_run_from_file(src, output)
 
   def test_strtol_dec(self):
     # tests strtoll for decimal strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtol_dec')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "4 -38 +4711";
-        char *end_char;
-
-        // undefined base
-        long l1 = strtol(STRING, &end_char, 0);
-        long l2 = strtol(end_char, &end_char, 0);
-        long l3 = strtol(end_char, NULL, 0);
-
-        // defined base
-        long l4 = strtol(STRING, &end_char, 10);
-        long l5 = strtol(end_char, &end_char, 10);
-        long l6 = strtol(end_char, NULL, 10);
-
-        printf("%d%d%d%d%d%d\n", l1==4, l2==-38, l3==4711, l4==4, l5==-38, l6==4711);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
+    self.do_run_from_file(src, output)
 
   def test_strtol_bin(self):
     # tests strtoll for binary strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtol_bin')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "1 -101 +1011";
-        char *end_char;
-
-        // defined base
-        long l4 = strtol(STRING, &end_char, 2);
-        long l5 = strtol(end_char, &end_char, 2);
-        long l6 = strtol(end_char, NULL, 2);
-
-        printf("%d%d%d\n", l4==1, l5==-5, l6==11);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111')
+    self.do_run_from_file(src, output)
 
   def test_strtol_oct(self):
     # tests strtoll for decimal strings (0x...) 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strtol_oct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        const char *STRING = "0 -035 +04711";
-        char *end_char;
-
-        // undefined base
-        long l1 = strtol(STRING, &end_char, 0);
-        long l2 = strtol(end_char, &end_char, 0);
-        long l3 = strtol(end_char, NULL, 0);
-
-        // defined base
-        long l4 = strtol(STRING, &end_char, 8);
-        long l5 = strtol(end_char, &end_char, 8);
-        long l6 = strtol(end_char, NULL, 8);
-
-        printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
-        return 0;
-      }
-    '''
-    self.do_run(src, '111111')
+    self.do_run_from_file(src, output)
 
   def test_atexit(self):
     # Confirms they are called in reverse order
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_atexit')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      static void cleanA() {
-        printf("A");
-      }
-      static void cleanB() {
-        printf("B");
-      }
-
-      int main() {
-        atexit(cleanA);
-        atexit(cleanB);
-        return 0;
-      }
-      '''
-    self.do_run(src, 'BA')
+    self.do_run_from_file(src, output)
 
   def test_pthread_specific(self):
     if self.emcc_args is None: return self.skip('requires emcc')
@@ -4899,346 +2489,50 @@ The current type of b is: 9
 
   def test_timeb(self):
     # Confirms they are called in reverse order
-    src = r'''
-      #include <stdio.h>
-      #include <assert.h>
-      #include <sys/timeb.h>
+    test_path = path_from_root('tests', 'core', 'test_timeb')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        timeb tb;
-        tb.timezone = 1;
-        printf("*%d\n", ftime(&tb));
-        assert(tb.time > 10000);
-        assert(tb.timezone == 0);
-        assert(tb.dstflag == 0);
-        return 0;
-      }
-      '''
-    self.do_run(src, '*0\n')
+    self.do_run_from_file(src, output)
 
   def test_time_c(self):
-    src = r'''
-      #include <time.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_time_c')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        time_t t = time(0);
-        printf("time: %s\n", ctime(&t));
-      }
-    '''
-    self.do_run(src, 'time: ') # compilation check, mainly
+    self.do_run_from_file(src, output)
 
   def test_gmtime(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-      #include <time.h>
-      #include <assert.h>
+    test_path = path_from_root('tests', 'core', 'test_gmtime')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(void)
-      {
-          time_t t=time(NULL);
-          struct tm *ptm=gmtime(&t);
-          struct tm tmCurrent=*ptm;
-          int hour=tmCurrent.tm_hour;
-
-          t-=hour*3600; // back to midnight
-          int yday = -1;
-          for(hour=0;hour<24;hour++)
-          {
-              ptm=gmtime(&t);
-              // tm_yday must be constant all day...
-              printf("yday: %d, hour: %d\n", ptm->tm_yday, hour);
-              if (yday == -1) yday = ptm->tm_yday;
-              else assert(yday == ptm->tm_yday);
-              t+=3600; // add one hour
-          }
-          printf("ok!\n");
-          return(0);
-      }
-    '''
-    self.do_run(src, '''ok!''')
+    self.do_run_from_file(src, output)
 
   def test_strptime_tm(self):
-    src=r'''
-      #include <time.h>
-      #include <stdio.h>
-      #include <string.h>
+    test_path = path_from_root('tests', 'core', 'test_strptime_tm')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        struct tm tm;
-        char *ptr = strptime("17410105012000", "%H%M%S%d%m%Y", &tm);
-
-        printf("%s: %s, %d/%d/%d %d:%d:%d", 
-          (ptr != NULL && *ptr=='\0') ? "OK" : "ERR", 
-          tm.tm_wday == 0 ? "Sun" : (tm.tm_wday == 1 ? "Mon" : (tm.tm_wday == 2 ? "Tue" : (tm.tm_wday == 3 ? "Wed" : (tm.tm_wday == 4 ? "Thu" : (tm.tm_wday == 5 ? "Fri" : (tm.tm_wday == 6 ? "Sat" : "ERR")))))),
-          tm.tm_mon+1,
-          tm.tm_mday,
-          tm.tm_year+1900,
-          tm.tm_hour,
-          tm.tm_min,
-          tm.tm_sec            
-        );
-      }
-    ''' 
-    self.do_run(src, 'OK: Wed, 1/5/2000 17:41:1')
+    self.do_run_from_file(src, output)
 
   def test_strptime_days(self):
-    src = r'''
-      #include <time.h>
-      #include <stdio.h>
-      #include <string.h>
+    test_path = path_from_root('tests', 'core', 'test_strptime_days')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      static const struct {
-        const char *input;
-        const char *format;
-      } day_tests[] = {
-        { "2000-01-01", "%Y-%m-%d"},
-        { "03/03/00", "%D"},
-        { "9/9/99", "%x"},
-        { "19990502123412", "%Y%m%d%H%M%S"},
-        { "2001 20 Mon", "%Y %U %a"},
-        { "2006 4 Fri", "%Y %U %a"},
-        { "2001 21 Mon", "%Y %W %a"},
-        { "2013 29 Wed", "%Y %W %a"},
-        { "2000-01-01 08:12:21 AM", "%Y-%m-%d %I:%M:%S %p"},
-        { "2000-01-01 08:12:21 PM", "%Y-%m-%d %I:%M:%S %p"},
-        { "2001 17 Tue", "%Y %U %a"},
-        { "2001 8 Thursday", "%Y %W %a"},
-      };
-
-      int main() {  
-        struct tm tm;
-
-        for (int i = 0; i < sizeof (day_tests) / sizeof (day_tests[0]); ++i) {
-          memset (&tm, '\0', sizeof (tm));
-          char *ptr = strptime(day_tests[i].input, day_tests[i].format, &tm);
-
-          printf("%s: %d/%d/%d (%dth DoW, %dth DoY)\n", (ptr != NULL && *ptr=='\0') ? "OK" : "ERR", tm.tm_mon+1, tm.tm_mday, 1900+tm.tm_year, tm.tm_wday, tm.tm_yday);
-        }
-      }
-    '''
-    self.do_run(src, 'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
-                     'OK: 3/3/2000 (5th DoW, 62th DoY)\n'\
-                     'OK: 9/9/1999 (4th DoW, 251th DoY)\n'\
-                     'OK: 5/2/1999 (0th DoW, 121th DoY)\n'\
-                     'OK: 5/21/2001 (1th DoW, 140th DoY)\n'\
-                     'OK: 1/27/2006 (5th DoW, 26th DoY)\n'\
-                     'OK: 5/21/2001 (1th DoW, 140th DoY)\n'\
-                     'OK: 7/24/2013 (3th DoW, 204th DoY)\n'\
-                     'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
-                     'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
-                     'OK: 5/1/2001 (2th DoW, 120th DoY)\n'\
-                     'OK: 2/22/2001 (4th DoW, 52th DoY)\n'\
-    )
+    self.do_run_from_file(src, output)
 
   def test_strptime_reentrant(self):
-    src=r'''
-      #include <time.h>
-      #include <stdio.h>
-      #include <string.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strptime_reentrant')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main () {
-        int result = 0;
-        struct tm tm;
-
-        memset (&tm, 0xaa, sizeof (tm));
-
-        /* Test we don't crash on uninitialized struct tm.
-           Some fields might contain bogus values until everything
-           needed is initialized, but we shouldn't crash.  */
-        if (strptime ("2007", "%Y", &tm) == NULL
-            || strptime ("12", "%d", &tm) == NULL
-            || strptime ("Feb", "%b", &tm) == NULL
-            || strptime ("13", "%M", &tm) == NULL
-            || strptime ("21", "%S", &tm) == NULL
-            || strptime ("16", "%H", &tm) == NULL) {
-          printf("ERR: returned NULL");
-          exit(EXIT_FAILURE);
-        }
-
-        if (tm.tm_sec != 21 || tm.tm_min != 13 || tm.tm_hour != 16
-            || tm.tm_mday != 12 || tm.tm_mon != 1 || tm.tm_year != 107
-            || tm.tm_wday != 1 || tm.tm_yday != 42) {
-          printf("ERR: unexpected tm content (1) - %d/%d/%d %d:%d:%d", tm.tm_mon+1, tm.tm_mday, tm.tm_year+1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
-          exit(EXIT_FAILURE);
-        }
-
-        if (strptime ("8", "%d", &tm) == NULL) {
-          printf("ERR: strptime failed");
-          exit(EXIT_FAILURE);
-        }
-
-        if (tm.tm_sec != 21 || tm.tm_min != 13 || tm.tm_hour != 16
-            || tm.tm_mday != 8 || tm.tm_mon != 1 || tm.tm_year != 107
-            || tm.tm_wday != 4 || tm.tm_yday != 38) {
-          printf("ERR: unexpected tm content (2) - %d/%d/%d %d:%d:%d", tm.tm_mon+1, tm.tm_mday, tm.tm_year+1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
-          exit(EXIT_FAILURE);
-        }
-
-        printf("OK");
-      }
-    '''
-    self.do_run(src, 'OK')
+    self.do_run_from_file(src, output)
 
   def test_strftime(self):
-    src=r'''
-      #include <time.h>
-      #include <stdio.h>
-      #include <string.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_strftime')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void test(int result, const char* comment, const char* parsed = "") {
-        printf("%d",result);
-        if (!result) {
-          printf("\nERROR: %s (\"%s\")\n", comment, parsed);
-        }
-      }
-
-      int cmp(const char *s1, const char *s2) {
-        for ( ; *s1 == *s2 ; s1++,s2++ ) {
-          if ( *s1 == '\0' )
-            break;
-        } 
-
-        return (*s1 - *s2);
-      }
-
-      int main() {
-          struct tm tm;
-          char s[1000];
-          size_t size;
-          
-          tm.tm_sec = 4;
-          tm.tm_min = 23;
-          tm.tm_hour = 20;
-          tm.tm_mday = 21;
-          tm.tm_mon = 1;
-          tm.tm_year = 74;
-          tm.tm_wday = 4;
-          tm.tm_yday = 51;
-          tm.tm_isdst = 0;
-          
-          size = strftime(s, 1000, "", &tm);
-          test((size==0) && (*s=='\0'), "strftime test #1", s);
-
-          size = strftime(s, 1000, "%a", &tm);
-          test((size==3) && !cmp(s, "Thu"), "strftime test #2", s);
-
-          size = strftime(s, 1000, "%A", &tm);
-          test((size==8) && !cmp(s, "Thursday"), "strftime test #3", s);
-
-          size = strftime(s, 1000, "%b", &tm);
-          test((size==3) && !cmp(s, "Feb"), "strftime test #4", s);
-
-          size = strftime(s, 1000, "%B", &tm);
-          test((size==8) && !cmp(s, "February"),
-                             "strftime test #5", s);
-
-          size = strftime(s, 1000, "%d", &tm);
-          test((size==2) && !cmp(s, "21"),
-                             "strftime test #6", s);
-
-          size = strftime(s, 1000, "%H", &tm);
-          test((size==2) && !cmp(s, "20"),
-                             "strftime test #7", s);
-
-          size = strftime(s, 1000, "%I", &tm);
-          test((size==2) && !cmp(s, "08"),
-                             "strftime test #8", s);
-
-          size = strftime(s, 1000, "%j", &tm);
-          test((size==3) && !cmp(s, "052"),
-                             "strftime test #9", s);
-
-          size = strftime(s, 1000, "%m", &tm);
-          test((size==2) && !cmp(s, "02"),
-                             "strftime test #10", s);
-
-          size = strftime(s, 1000, "%M", &tm);
-          test((size==2) && !cmp(s, "23"),
-                             "strftime test #11", s);
-
-          size = strftime(s, 1000, "%p", &tm);
-          test((size==2) && !cmp(s, "PM"),
-                             "strftime test #12", s);
-
-          size = strftime(s, 1000, "%S", &tm);
-          test((size==2) && !cmp(s, "04"),
-                             "strftime test #13", s);
-
-          size = strftime(s, 1000, "%U", &tm);
-          test((size==2) && !cmp(s, "07"),
-                             "strftime test #14", s);
-
-          size = strftime(s, 1000, "%w", &tm);
-          test((size==1) && !cmp(s, "4"),
-                             "strftime test #15", s);
-
-          size = strftime(s, 1000, "%W", &tm);
-          test((size==2) && !cmp(s, "07"),
-                             "strftime test #16", s);
-
-          size = strftime(s, 1000, "%y", &tm);
-          test((size==2) && !cmp(s, "74"),
-                             "strftime test #17", s);
-
-          size = strftime(s, 1000, "%Y", &tm);
-          test((size==4) && !cmp(s, "1974"),
-                             "strftime test #18", s);
-
-          size = strftime(s, 1000, "%%", &tm);
-          test((size==1) && !cmp(s, "%"),
-                             "strftime test #19", s);
-
-          size = strftime(s, 5, "%Y", &tm);
-          test((size==4) && !cmp(s, "1974"),
-                             "strftime test #20", s);
-
-          size = strftime(s, 4, "%Y", &tm);
-          test((size==0), "strftime test #21", s);
-
-          tm.tm_mon = 0;
-          tm.tm_mday = 1;
-          size = strftime(s, 10, "%U", &tm);
-          test((size==2) && !cmp(s, "00"), "strftime test #22", s);
-
-          size = strftime(s, 10, "%W", &tm);
-          test((size==2) && !cmp(s, "00"), "strftime test #23", s);
-
-          // 1/1/1973 was a Sunday and is in CW 1
-          tm.tm_year = 73;
-          size = strftime(s, 10, "%W", &tm);
-          test((size==2) && !cmp(s, "01"), "strftime test #24", s);
-
-          // 1/1/1978 was a Monday and is in CW 1
-          tm.tm_year = 78;
-          size = strftime(s, 10, "%U", &tm);
-          test((size==2) && !cmp(s, "01"), "strftime test #25", s);
-
-          // 2/1/1999
-          tm.tm_year = 99;
-          tm.tm_yday = 1;
-          size = strftime(s, 10, "%G (%V)", &tm);
-          test((size==9) && !cmp(s, "1998 (53)"), "strftime test #26", s);
-
-          size = strftime(s, 10, "%g", &tm);
-          test((size==2) && !cmp(s, "98"), "strftime test #27", s);
-
-          // 30/12/1997
-          tm.tm_year = 97;
-          tm.tm_yday = 363;
-          size = strftime(s, 10, "%G (%V)", &tm);
-          test((size==9) && !cmp(s, "1998 (01)"), "strftime test #28", s);
-
-          size = strftime(s, 10, "%g", &tm);
-          test((size==2) && !cmp(s, "98"), "strftime test #29", s);
-      } 
-    '''
-    self.do_run(src, '11111111111111111111111111111')
+    self.do_run_from_file(src, output)
 
   def test_intentional_fault(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1' and self.run_name == 'default': return self.skip('todo in fastcomp in default')
+
     # Some programs intentionally segfault themselves, we should compile that into a throw
     src = r'''
       int main () {
@@ -5249,33 +2543,10 @@ The current type of b is: 9
     self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')
 
   def test_trickystring(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_trickystring')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef struct
-      {
-        int (*f)(void *);
-        void *d;
-        char s[16];
-      } LMEXFunctionStruct;
-
-      int f(void *user)
-      {
-        return 0;
-      }
-
-      static LMEXFunctionStruct const a[] =
-      {
-        {f, (void *)(int)'a', "aa"}
-      };
-
-      int main()
-      {
-        printf("ok\n");
-        return a[0].f(a[0].d);
-      }
-    '''
-    self.do_run(src, 'ok\n')
+    self.do_run_from_file(src, output)
 
   def test_statics(self):
       # static initializers save i16 but load i8 for some reason (or i64 and load i8)
@@ -5283,46 +2554,10 @@ The current type of b is: 9
         Settings.SAFE_HEAP = 3
         Settings.SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26', 'src.cpp:28']
 
-      src = '''
-        #include <stdio.h>
-        #include <string.h>
+      test_path = path_from_root('tests', 'core', 'test_statics')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        #define CONSTRLEN 32
-
-        char * (*func)(char *, const char *) = NULL;
-
-        void conoutfv(const char *fmt)
-        {
-            static char buf[CONSTRLEN];
-            func(buf, fmt); // call by function pointer to make sure we test strcpy here
-            puts(buf);
-        }
-
-        struct XYZ {
-          float x, y, z;
-          XYZ(float a, float b, float c) : x(a), y(b), z(c) { }
-          static const XYZ& getIdentity()
-          {
-            static XYZ iT(1,2,3);
-            return iT;
-          }
-        };
-        struct S {
-          static const XYZ& getIdentity()
-          {
-            static const XYZ iT(XYZ::getIdentity());
-            return iT;
-          }
-        };
-
-        int main() {
-          func = &strcpy;
-          conoutfv("*staticccz*");
-          printf("*%.2f,%.2f,%.2f*\\n", S::getIdentity().x, S::getIdentity().y, S::getIdentity().z);
-          return 0;
-        }
-        '''
-      self.do_run(src, '*staticccz*\n*1.00,2.00,3.00*')
+      self.do_run_from_file(src, output)
 
   def test_copyop(self):
       if self.emcc_args is None: return self.skip('requires emcc')
@@ -5331,392 +2566,75 @@ The current type of b is: 9
       # memcpy for assignments, with hardcoded numbers of bytes
       # (llvm-gcc copies items one by one). See QUANTUM_SIZE in
       # settings.js.
-      src = '''
-        #include <stdio.h>
-        #include <math.h>
-        #include <string.h>
+      test_path = path_from_root('tests', 'core', 'test_copyop')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        struct vec {
-          double x,y,z;
-          vec() : x(0), y(0), z(0) { };
-          vec(const double a, const double b, const double c) : x(a), y(b), z(c) { };
-        };
-
-        struct basis {
-          vec a, b, c;
-          basis(const vec& v) {
-            a=v; // should not touch b!
-            printf("*%.2f,%.2f,%.2f*\\n", b.x, b.y, b.z);
-          }
-        };
-
-        int main() {
-          basis B(vec(1,0,0));
-
-          // Part 2: similar problem with memset and memmove
-          int x = 1, y = 77, z = 2;
-          memset((void*)&x, 0, sizeof(int));
-          memset((void*)&z, 0, sizeof(int));
-          printf("*%d,%d,%d*\\n", x, y, z);
-          memcpy((void*)&x, (void*)&z, sizeof(int));
-          memcpy((void*)&z, (void*)&x, sizeof(int));
-          printf("*%d,%d,%d*\\n", x, y, z);
-          memmove((void*)&x, (void*)&z, sizeof(int));
-          memmove((void*)&z, (void*)&x, sizeof(int));
-          printf("*%d,%d,%d*\\n", x, y, z);
-          return 0;
-        }
-        '''
-      self.do_run(src, '*0.00,0.00,0.00*\n*0,77,0*\n*0,77,0*\n*0,77,0*')
+      self.do_run_from_file(src, output)
 
   def test_memcpy_memcmp(self):
-      src = '''
-        #include <stdio.h>
-        #include <string.h>
-        #include <assert.h>
+      test_path = path_from_root('tests', 'core', 'test_memcpy_memcmp')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        #define MAXX 48
-        void reset(unsigned char *buffer) {
-          for (int i = 0; i < MAXX; i++) buffer[i] = i+1;
-        }
-        void dump(unsigned char *buffer) {
-          for (int i = 0; i < MAXX-1; i++) printf("%2d,", buffer[i]);
-          printf("%d\\n", buffer[MAXX-1]);
-        }
-        int main() {
-          unsigned char buffer[MAXX];
-          for (int i = MAXX/4; i < MAXX-MAXX/4; i++) {
-            for (int j = MAXX/4; j < MAXX-MAXX/4; j++) {
-              for (int k = 1; k < MAXX/4; k++) {
-                if (i == j) continue;
-                if (i < j && i+k > j) continue;
-                if (j < i && j+k > i) continue;
-                printf("[%d,%d,%d] ", i, j, k);
-                reset(buffer);
-                memcpy(buffer+i, buffer+j, k);
-                dump(buffer);
-                assert(memcmp(buffer+i, buffer+j, k) == 0);
-                buffer[i + k/2]++;
-                if (buffer[i + k/2] != 0) {
-                  assert(memcmp(buffer+i, buffer+j, k) > 0);
-                } else {
-                  assert(memcmp(buffer+i, buffer+j, k) < 0);
-                }
-                buffer[i + k/2]--;
-                buffer[j + k/2]++;
-                if (buffer[j + k/2] != 0) {
-                  assert(memcmp(buffer+i, buffer+j, k) < 0);
-                } else {
-                  assert(memcmp(buffer+i, buffer+j, k) > 0);
-                }
-              }
-            }
-          }
-          return 0;
-        }
-        '''
       def check(result, err):
         return hashlib.sha1(result).hexdigest()
-      self.do_run(src, '6c9cdfe937383b79e52ca7a2cce83a21d9f5422c',
-                  output_nicerizer = check)
+
+      self.do_run_from_file(src, output, output_nicerizer = check)
 
   def test_memcpy2(self):
-    src = r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <assert.h>
-      int main() {
-        char buffer[256];
-        for (int i = 0; i < 10; i++) {
-          for (int j = 0; j < 10; j++) {
-            for (int k = 0; k < 35; k++) {
-              for (int t = 0; t < 256; t++) buffer[t] = t;
-              char *dest = buffer + i + 128;
-              char *src = buffer+j;
-              //printf("%d, %d, %d\n", i, j, k);
-              assert(memcpy(dest, src, k) == dest);
-              assert(memcmp(dest, src, k) == 0);
-            }
-          }
-        }
-        printf("ok.\n");
-        return 1;
-      }
-    '''
-    self.do_run(src, 'ok.');
+      test_path = path_from_root('tests', 'core', 'test_memcpy2')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_getopt(self):
       if self.emcc_args is None: return self.skip('needs emcc for libc')
 
-      src = '''
-        #pragma clang diagnostic ignored "-Winvalid-pp-token"
-        #include <unistd.h>
-        #include <stdlib.h>
-        #include <stdio.h>
+      test_path = path_from_root('tests', 'core', 'test_getopt')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int
-        main(int argc, char *argv[])
-        {
-           int flags, opt;
-           int nsecs, tfnd;
-
-           nsecs = 0;
-           tfnd = 0;
-           flags = 0;
-           while ((opt = getopt(argc, argv, "nt:")) != -1) {
-               switch (opt) {
-               case 'n':
-                   flags = 1;
-                   break;
-               case 't':
-                   nsecs = atoi(optarg);
-                   tfnd = 1;
-                   break;
-               default: /* '?' */
-                   fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\\n",
-                           argv[0]);
-                   exit(EXIT_FAILURE);
-               }
-           }
-
-           printf("flags=%d; tfnd=%d; optind=%d\\n", flags, tfnd, optind);
-
-           if (optind >= argc) {
-               fprintf(stderr, "Expected argument after options\\n");
-               exit(EXIT_FAILURE);
-           }
-
-           printf("name argument = %s\\n", argv[optind]);
-
-           /* Other code omitted */
-
-           exit(EXIT_SUCCESS);
-        }
-      '''
-      self.do_run(src, 'flags=1; tfnd=1; optind=4\nname argument = foobar', args=['-t', '12', '-n', 'foobar'])
+      self.do_run_from_file(src, output, args=['-t', '12', '-n', 'foobar'])
 
   def test_getopt_long(self):
       if self.emcc_args is None: return self.skip('needs emcc for libc')
 
-      src = '''
-        #pragma clang diagnostic ignored "-Winvalid-pp-token"
-        #pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
-        #include <stdio.h>     /* for printf */
-        #include <stdlib.h>    /* for exit */
-        #include <getopt.h>
+      test_path = path_from_root('tests', 'core', 'test_getopt_long')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int
-        main(int argc, char **argv)
-        {
-           int c;
-           int digit_optind = 0;
-
-           while (1) {
-               int this_option_optind = optind ? optind : 1;
-               int option_index = 0;
-               static struct option long_options[] = {
-                   {"add",     required_argument, 0,  0 },
-                   {"append",  no_argument,       0,  0 },
-                   {"delete",  required_argument, 0,  0 },
-                   {"verbose", no_argument,       0,  0 },
-                   {"create",  required_argument, 0, 'c'},
-                   {"file",    required_argument, 0,  0 },
-                   {0,         0,                 0,  0 }
-               };
-
-               c = getopt_long(argc, argv, "abc:d:012",
-                        long_options, &option_index);
-               if (c == -1)
-                   break;
-
-               switch (c) {
-               case 0:
-                   printf("option %s", long_options[option_index].name);
-                   if (optarg)
-                       printf(" with arg %s", optarg);
-                   printf("\\n");
-                   break;
-
-               case '0':
-               case '1':
-               case '2':
-                   if (digit_optind != 0 && digit_optind != this_option_optind)
-                     printf("digits occur in two different argv-elements.\\n");
-                   digit_optind = this_option_optind;
-                   printf("option %c\\n", c);
-                   break;
-
-               case 'a':
-                   printf("option a\\n");
-                   break;
-
-               case 'b':
-                   printf("option b\\n");
-                   break;
-
-               case 'c':
-                   printf("option c with value '%s'\\n", optarg);
-                   break;
-
-               case 'd':
-                   printf("option d with value '%s'\\n", optarg);
-                   break;
-
-               case '?':
-                   break;
-
-               default:
-                   printf("?? getopt returned character code 0%o ??\\n", c);
-               }
-           }
-
-           if (optind < argc) {
-               printf("non-option ARGV-elements: ");
-               while (optind < argc)
-                   printf("%s ", argv[optind++]);
-               printf("\\n");
-           }
-
-           exit(EXIT_SUCCESS);
-        }
-      '''
-      self.do_run(src, 'option file with arg foobar\noption b', args=['--file', 'foobar', '-b'])
+      self.do_run_from_file(src, output, args=['--file', 'foobar', '-b'])
 
   def test_memmove(self):
-    src = '''
-      #include <stdio.h>
-      #include <string.h>
-      int main() {
-        char str[] = "memmove can be very useful....!";
-        memmove (str+20, str+15, 11);
-        puts(str);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'memmove can be very very useful')
+    test_path = path_from_root('tests', 'core', 'test_memmove')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_memmove2(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
 
-    src = r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <assert.h>
-      int main() {
-        int sum = 0;
-        char buffer[256];
-        for (int i = 0; i < 10; i++) {
-          for (int j = 0; j < 10; j++) {
-            for (int k = 0; k < 35; k++) {
-              for (int t = 0; t < 256; t++) buffer[t] = t;
-              char *dest = buffer + i;
-              char *src = buffer + j;
-              if (dest == src) continue;
-              //printf("%d, %d, %d\n", i, j, k);
-              assert(memmove(dest, src, k) == dest);
-              for (int t = 0; t < 256; t++) sum += buffer[t];
-            }
-          }
-        }
-        printf("final: %d.\n", sum);
-        return 1;
-      }
-    '''
-    self.do_run(src, 'final: -403200.');
+    test_path = path_from_root('tests', 'core', 'test_memmove2')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_memmove3(self):
-    src = '''
-      #include <stdio.h>
-      #include <string.h>
-      int main() {
-        char str[] = "memmove can be vvery useful....!";
-        memmove(str+15, str+16, 17);
-        puts(str);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'memmove can be very useful....!')
+    test_path = path_from_root('tests', 'core', 'test_memmove3')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_flexarray_struct(self):
-    src = r'''
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_flexarray_struct')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-typedef struct
-{
-  uint16_t length;
-  struct 
-  {
-    int32_t int32;
-  } value[];
-} Tuple;
-
-int main() {
-  Tuple T[10];
-  Tuple *t = &T[0];
-
-  t->length = 4;
-  t->value->int32 = 100;
-
-  printf("(%d, %d)\n", t->length, t->value->int32);
-  return 0;
-}
-'''
-    self.do_run(src, '(4, 100)')
+    self.do_run_from_file(src, output)
 
   def test_bsearch(self):
     if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
 
-    src = '''
-        #include <stdlib.h>
-        #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_bsearch')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int cmp(const void* key, const void* member) {
-          return *(int *)key - *(int *)member;
-        }
-
-        void printResult(int* needle, int* haystack, unsigned int len) {
-          void *result = bsearch(needle, haystack, len, sizeof(unsigned int), cmp);
-
-          if (result == NULL) {
-            printf("null\\n");
-          } else {
-            printf("%d\\n", *(unsigned int *)result);
-          }
-        }
-
-        int main() {
-          int a[] = { -2, -1, 0, 6, 7, 9 };
-          int b[] = { 0, 1 };
-
-          /* Find all keys that exist. */
-          for(int i = 0; i < 6; i++) {
-            int val = a[i];
-
-            printResult(&val, a, 6);
-          }
-
-          /* Keys that are covered by the range of the array but aren't in
-           * the array cannot be found.
-           */
-          int v1 = 3;
-          int v2 = 8;
-          printResult(&v1, a, 6);
-          printResult(&v2, a, 6);
-
-          /* Keys outside the range of the array cannot be found. */
-          int v3 = -1;
-          int v4 = 2;
-
-          printResult(&v3, b, 2);
-          printResult(&v4, b, 2);
-
-          return 0;
-        }
-        '''
-
-    self.do_run(src, '-2\n-1\n0\n6\n7\n9\nnull\nnull\nnull\nnull')
+    self.do_run_from_file(src, output)
 
   def test_nestedstructs(self):
       src = '''
@@ -5816,6 +2734,10 @@ int main() {
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+      self.skip('todo in fastcomp')
+      return False
+
     if self.emcc_args and '--memory-init-file' in self.emcc_args:
       for i in range(len(self.emcc_args)):
         if self.emcc_args[i] == '--memory-init-file':
@@ -6194,32 +3116,9 @@ def process(filename):
 
   def test_dlfcn_self(self):
     if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DLOPEN_SUPPORT = 1
 
-    src = r'''
-#include <stdio.h>
-#include <dlfcn.h>
-#include <emscripten.h>
-
-int EMSCRIPTEN_KEEPALIVE global = 123;
-
-extern "C" EMSCRIPTEN_KEEPALIVE void foo(int x) {
-printf("%d\n", x);
-}
-
-extern "C" EMSCRIPTEN_KEEPALIVE void repeatable() {
-void* self = dlopen(NULL, RTLD_LAZY);
-int* global_ptr = (int*)dlsym(self, "global");
-void (*foo_ptr)(int) = (void (*)(int))dlsym(self, "foo");
-foo_ptr(*global_ptr);
-dlclose(self);
-}
-
-int main() {
-repeatable();
-repeatable();
-return 0;
-}'''
     def post(filename):
       with open(filename) as f:
         for line in f:
@@ -6231,8 +3130,11 @@ return 0;
       table = table[table.find('{'):table.rfind('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
       assert table.count(',') <= 4
-    self.do_run(src, '123\n123', post_build=(None, post))
 
+    test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output, post_build=(None, post))
 
   def test_dlfcn_unique_sig(self):
     if not self.can_dlfcn(): return
@@ -6711,61 +3613,10 @@ ok
     self.do_run(src.replace('strtod', 'strtold'), re.sub(r'\n\s+', '\n', expected)) # XXX add real support for long double
 
   def test_strtok(self):
-    src = r'''
-      #include<stdio.h>
-      #include<string.h>
+    test_path = path_from_root('tests', 'core', 'test_strtok')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char test[80], blah[80];
-        char *sep = "\\/:;=-";
-        char *word, *phrase, *brkt, *brkb;
-
-        strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
-
-        for (word = strtok_r(test, sep, &brkt); word; word = strtok_r(NULL, sep, &brkt)) {
-          strcpy(blah, "blah:blat:blab:blag");
-          for (phrase = strtok_r(blah, sep, &brkb); phrase; phrase = strtok_r(NULL, sep, &brkb)) {
-            printf("at %s:%s\n", word, phrase);
-          }
-        }
-        return 0;
-      }
-    '''
-
-    expected = '''at This:blah
-at This:blat
-at This:blab
-at This:blag
-at is.a:blah
-at is.a:blat
-at is.a:blab
-at is.a:blag
-at test:blah
-at test:blat
-at test:blab
-at test:blag
-at of:blah
-at of:blat
-at of:blab
-at of:blag
-at the:blah
-at the:blat
-at the:blab
-at the:blag
-at string:blah
-at string:blat
-at string:blab
-at string:blag
-at tokenizer:blah
-at tokenizer:blat
-at tokenizer:blab
-at tokenizer:blag
-at function.:blah
-at function.:blat
-at function.:blab
-at function.:blag
-'''
-    self.do_run(src, expected)
+    self.do_run_from_file(src, output)
 
   def test_parseInt(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
@@ -6775,20 +3626,10 @@ at function.:blag
     self.do_run(src, expected)
 
   def test_transtrcase(self):
-    src = '''
-      #include <stdio.h>
-      #include <string.h>
-      int main()  {
-        char szToupr[] = "hello, ";
-        char szTolwr[] = "EMSCRIPTEN";
-        strupr(szToupr);
-        strlwr(szTolwr);
-        printf(szToupr);
-        printf(szTolwr);
-        return 0;
-      }
-      '''
-    self.do_run(src, 'HELLO, emscripten')
+    test_path = path_from_root('tests', 'core', 'test_transtrcase')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_printf(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
@@ -6799,350 +3640,58 @@ at function.:blag
     self.do_run(src, expected)
 
   def test_printf_2(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_printf_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char c = '1';
-        short s = 2;
-        int i = 3;
-        long long l = 4;
-        float f = 5.5;
-        double d = 6.6;
-
-        printf("%c,%hd,%d,%lld,%.1f,%.1llf\n", c, s, i, l, f, d);
-        printf("%#x,%#x\n", 1, 0);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, '1,2,3,4,5.5,6.6\n0x1,0\n')
+    self.do_run_from_file(src, output)
 
   def test_vprintf(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdarg.h>
+    test_path = path_from_root('tests', 'core', 'test_vprintf')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void print(char* format, ...) {
-        va_list args;
-        va_start (args, format);
-        vprintf (format, args);
-        va_end (args);
-      }
-
-      int main () {
-         print("Call with %d variable argument.\n", 1);
-         print("Call with %d variable %s.\n", 2, "arguments");
-
-         return 0;
-      }
-      '''
-    expected = '''
-      Call with 1 variable argument.
-      Call with 2 variable arguments.
-      '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_vsnprintf(self):
     if self.emcc_args is None: return self.skip('needs i64 math')
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdarg.h>
-      #include <stdint.h>
+    test_path = path_from_root('tests', 'core', 'test_vsnprintf')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void printy(const char *f, ...)
-      {
-        char buffer[256];
-        va_list args;
-        va_start(args, f);
-        vsnprintf(buffer, 256, f, args);
-        puts(buffer);
-        va_end(args);
-      }
-
-      int main(int argc, char **argv) {
-        int64_t x = argc - 1;
-        int64_t y = argc - 1 + 0x400000;
-        if (x % 3 == 2) y *= 2;
-
-        printy("0x%llx_0x%llx", x, y);
-        printy("0x%llx_0x%llx", x, x);
-        printy("0x%llx_0x%llx", y, x);
-        printy("0x%llx_0x%llx", y, y);
-
-        {
-          uint64_t A = 0x800000;
-          uint64_t B = 0x800000000000ULL;
-          printy("0x%llx_0x%llx", A, B);
-        }
-        {
-          uint64_t A = 0x800;
-          uint64_t B = 0x12340000000000ULL;
-          printy("0x%llx_0x%llx", A, B);
-        }
-        {
-          uint64_t A = 0x000009182746756;
-          uint64_t B = 0x192837465631ACBDULL;
-          printy("0x%llx_0x%llx", A, B);
-        }
-
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0x0_0x400000
-0x0_0x0
-0x400000_0x0
-0x400000_0x400000
-0x800000_0x800000000000
-0x800_0x12340000000000
-0x9182746756_0x192837465631acbd
-''')
+    self.do_run_from_file(src, output)
 
   def test_printf_more(self):
-    src = r'''
-      #include <stdio.h>
-      int main()  {
-        int size = snprintf(NULL, 0, "%s %d %.2f\n", "me and myself", 25, 1.345);
-        char buf[size];
-        snprintf(buf, size, "%s %d %.2f\n", "me and myself", 25, 1.345);
-        printf("%d : %s\n", size, buf);
-        char *buff = NULL;
-        asprintf(&buff, "%d waka %d\n", 21, 95);
-        puts(buff);
-        return 0;
-      }
-      '''
-    self.do_run(src, '22 : me and myself 25 1.34\n21 waka 95\n')
+    test_path = path_from_root('tests', 'core', 'test_printf_more')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_perrar(self):
-    src = r'''
-      #include <sys/types.h>
-      #include <sys/stat.h>
-      #include <fcntl.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_perrar')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main( int argc, char** argv ){
-        int retval = open( "NonExistingFile", O_RDONLY );
-        if( retval == -1 )
-        perror( "Cannot open NonExistingFile" );
-        return 0;
-      }
-      '''
-    self.do_run(src, 'Cannot open NonExistingFile: No such file or directory\n')
+    self.do_run_from_file(src, output)
 
   def test_atoX(self):
     if self.emcc_args is None: return self.skip('requires ta2')
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_atoX')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main () {
-        printf("%d*", atoi(""));
-        printf("%d*", atoi("a"));
-        printf("%d*", atoi(" b"));
-        printf("%d*", atoi(" c "));
-        printf("%d*", atoi("6"));
-        printf("%d*", atoi(" 5"));
-        printf("%d*", atoi("4 "));
-        printf("%d*", atoi("3 6"));
-        printf("%d*", atoi(" 3 7"));
-        printf("%d*", atoi("9 d"));
-        printf("%d\n", atoi(" 8 e"));
-        printf("%d*", atol(""));
-        printf("%d*", atol("a"));
-        printf("%d*", atol(" b"));
-        printf("%d*", atol(" c "));
-        printf("%d*", atol("6"));
-        printf("%d*", atol(" 5"));
-        printf("%d*", atol("4 "));
-        printf("%d*", atol("3 6"));
-        printf("%d*", atol(" 3 7"));
-        printf("%d*", atol("9 d"));
-        printf("%d\n", atol(" 8 e"));
-        printf("%lld*", atoll("6294967296"));
-        printf("%lld*", atoll(""));
-        printf("%lld*", atoll("a"));
-        printf("%lld*", atoll(" b"));
-        printf("%lld*", atoll(" c "));
-        printf("%lld*", atoll("6"));
-        printf("%lld*", atoll(" 5"));
-        printf("%lld*", atoll("4 "));
-        printf("%lld*", atoll("3 6"));
-        printf("%lld*", atoll(" 3 7"));
-        printf("%lld*", atoll("9 d"));
-        printf("%lld\n", atoll(" 8 e"));
-        return 0;
-      }
-      '''
-    self.do_run(src, '0*0*0*0*6*5*4*3*3*9*8\n0*0*0*0*6*5*4*3*3*9*8\n6294967296*0*0*0*0*6*5*4*3*3*9*8\n')
+    self.do_run_from_file(src, output)
 
   def test_strstr(self):
-    src = r'''
-      #include <stdio.h>
-      #include <string.h>
+    test_path = path_from_root('tests', 'core', 'test_strstr')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main()
-      {
-        printf("%d\n", !!strstr("\\n", "\\n"));
-        printf("%d\n", !!strstr("cheezy", "ez"));
-        printf("%d\n", !!strstr("cheeezy", "ez"));
-        printf("%d\n", !!strstr("cheeeeeeeeeezy", "ez"));
-        printf("%d\n", !!strstr("cheeeeeeeeee1zy", "ez"));
-        printf("%d\n", !!strstr("che1ezy", "ez"));
-        printf("%d\n", !!strstr("che1ezy", "che"));
-        printf("%d\n", !!strstr("ce1ezy", "che"));
-        printf("%d\n", !!strstr("ce1ezy", "ezy"));
-        printf("%d\n", !!strstr("ce1ezyt", "ezy"));
-        printf("%d\n", !!strstr("ce1ez1y", "ezy"));
-        printf("%d\n", !!strstr("cheezy", "a"));
-        printf("%d\n", !!strstr("cheezy", "b"));
-        printf("%d\n", !!strstr("cheezy", "c"));
-        printf("%d\n", !!strstr("cheezy", "d"));
-        printf("%d\n", !!strstr("cheezy", "g"));
-        printf("%d\n", !!strstr("cheezy", "h"));
-        printf("%d\n", !!strstr("cheezy", "i"));
-        printf("%d\n", !!strstr("cheezy", "e"));
-        printf("%d\n", !!strstr("cheezy", "x"));
-        printf("%d\n", !!strstr("cheezy", "y"));
-        printf("%d\n", !!strstr("cheezy", "z"));
-        printf("%d\n", !!strstr("cheezy", "_"));
-
-        const char *str = "a big string";
-        printf("%d\n", strstr(str, "big") - str);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''1
-1
-1
-1
-0
-1
-1
-0
-1
-1
-0
-0
-0
-1
-0
-0
-1
-0
-1
-0
-1
-1
-0
-2
-''')
+    self.do_run_from_file(src, output)
 
   def test_sscanf(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
 
-    src = r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_sscanf')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main () {
-        #define CHECK(str) \
-        { \
-          char name[1000]; \
-          memset(name, 0, 1000); \
-          int prio = 99; \
-          sscanf(str, "%s %d", name, &prio); \
-          printf("%s : %d\n", name, prio); \
-        }
-        CHECK("en-us 2");
-        CHECK("en-r");
-        CHECK("en 3");
-
-        printf("%f, %f\n", atof("1.234567"), atof("cheez"));
-
-        char float_formats[] = "fegE";
-        char format[] = "%_";
-        for(int i = 0; i < 4; ++i) {
-          format[1] = float_formats[i];
-
-          float n = -1;
-          sscanf(" 2.8208", format, &n);
-          printf("%.4f\n", n);
-
-          float a = -1;
-          sscanf("-3.03", format, &a);
-          printf("%.4f\n", a);
-        }
-
-        char buffy[100];
-        sscanf("cheez some thing moar 123\nyet more\n", "cheez %s", buffy);
-        printf("|%s|\n", buffy);
-        sscanf("cheez something\nmoar 123\nyet more\n", "cheez %s", buffy);
-        printf("|%s|\n", buffy);
-        sscanf("cheez somethingmoar\tyet more\n", "cheez %s", buffy);
-        printf("|%s|\n", buffy);
-
-        int numverts = -1;
-        printf("%d\n", sscanf("	numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
-        printf("%d\n", numverts);
-
-        int index;
-        float u, v;
-        short start, count;
-        printf("%d\n", sscanf("	vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
-        printf("%d,%.6f,%.6f,%hu,%hu\n", index, u, v, start, count);
-
-        int neg, neg2, neg3 = 0;
-        printf("%d\n", sscanf("-123 -765 -34-6", "%d %u %d", &neg, &neg2, &neg3));
-        printf("%d,%u,%d\n", neg, neg2, neg3);
-
-        {
-          int a = 0;
-          sscanf("1", "%i", &a);
-          printf("%i\n", a);
-        }
-
-        char buf1[100], buf2[100], buf3[100], buf4[100];
-
-        int numItems = sscanf("level=4:ref=3", "%255[^:=]=%255[^:]:%255[^=]=%255c", buf1, buf2, buf3, buf4);
-        printf("%d, %s, %s, %s, %s\n", numItems, buf1, buf2, buf3, buf4);
-
-        numItems = sscanf("def|456", "%[a-z]|%[0-9]", buf1, buf2);
-        printf("%d, %s, %s\n", numItems, buf1, buf2);
-
-        numItems = sscanf("3-4,-ab", "%[-0-9],%[ab-z-]", buf1, buf2);
-        printf("%d, %s, %s\n", numItems, buf1, buf2);
-
-        numItems = sscanf("Hello,World", "%[A-Za-z],%[^0-9]", buf1, buf2);
-        printf("%d, %s, %s\n", numItems, buf1, buf2);
-
-        numItems = sscanf("Hello4711", "%[^0-9],%[^0-9]", buf1, buf2);
-        printf("%d, %s\n", numItems, buf1);
-
-        numItems = sscanf("JavaScript", "%4[A-Za-z]", buf1);
-        printf("%d, %s\n", numItems, buf1);
-    
-        numItems = sscanf("[]", "%1[[]%1[]]", buf1, buf2);
-        printf("%d, %s, %s\n", numItems, buf1, buf2);
-
-        return 0;
-      }
-      '''
-    self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n2.8208\n-3.0300\n2.8208\n-3.0300\n2.8208\n-3.0300\n2.8208\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
-                     '1\n1499\n' +
-                     '5\n87,0.481565,0.059481,0,1\n' +
-                     '3\n-123,4294966531,-34\n' +
-                     '1\n' +
-                     '4, level, 4, ref, 3\n' +
-                     '2, def, 456\n' +
-                     '2, 3-4, -ab\n' +
-                     '2, Hello, World\n' +
-                     '1, Hello\n' +
-                     '1, Java\n' +
-                     '2, [, ]')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_2(self):
     # doubles
@@ -7201,226 +3750,77 @@ Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
   def test_sscanf_n(self):
-    src = r'''
-      #include<stdio.h>
-      int main() {
-        char *line = "version 1.0";
-        int i, l, lineno;
-        char word[80];
-        if (sscanf(line, "%s%n", word, &l) != 1) {
-            printf("Header format error, line %d\n", lineno);
-        }
-        printf("[DEBUG] word 1: %s, l: %d\n", word, l);
+    test_path = path_from_root('tests', 'core', 'test_sscanf_n')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        int x = sscanf("one %n two", "%s %n", word, &l);
-        printf("%d,%s,%d\n", x, word, l);
-        {
-          int a, b, c, count;
-          count = sscanf("12345 6789", "%d %n%d", &a, &b, &c);
-          printf("%i %i %i %i\n", count, a, b, c);
-        }
-        return 0;
-      }
-    '''
-    self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4\n2 12345 6 6789\n''')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_whitespace(self):
-    src = r'''
-      #include<stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_sscanf_whitespace')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        short int x;
-        short int y;
-
-        const char* buffer[] = {
-          "173,16",
-          "    16,173",
-          "183,   173",
-          "  17,   287",
-          " 98,  123,   "
-        };
-
-        for (int i=0; i<5; ++i) {
-          sscanf(buffer[i], "%hd,%hd", &x, &y);
-          printf("%d:%d,%d ", i, x, y);
-        }
-
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
-    src = r'''
-      #include<stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_sscanf_other_whitespace')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        short int x;
-        short int y;
-
-        const char* buffer[] = {
-          "\t2\t3\t", /* TAB - horizontal tab */
-          "\t\t5\t\t7\t\t",
-          "\n11\n13\n",  /* LF - line feed */
-          "\n\n17\n\n19\n\n",
-          "\v23\v29\v",  /* VT - vertical tab */
-          "\v\v31\v\v37\v\v",
-          "\f41\f43\f",  /* FF - form feed */
-          "\f\f47\f\f53\f\f",
-          "\r59\r61\r",  /* CR - carrage return */
-          "\r\r67\r\r71\r\r"
-        };
-
-        for (int i=0; i<10; ++i) {
-          x = 0; y = 0;
-          sscanf(buffer[i], " %d %d ", &x, &y);
-          printf("%d, %d, ",  x, y);
-        }
-
-        return 0;
-      }
-    '''
-    self.do_run(src, '''2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, ''')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_3(self):
     # i64
     if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
 
-      int main(){
+    test_path = path_from_root('tests', 'core', 'test_sscanf_3')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-          int64_t s, m, l;
-          printf("%d\n", sscanf("123 1073741823 1125899906842620", "%lld %lld %lld", &s, &m, &l));
-          printf("%lld,%lld,%lld\n", s, m, l);
-
-          int64_t negS, negM, negL;
-          printf("%d\n", sscanf("-123 -1073741823 -1125899906842620", "%lld %lld %lld", &negS, &negM, &negL));
-          printf("%lld,%lld,%lld\n", negS, negM, negL);
-
-          return 0;
-      }
-    '''
-
-    self.do_run(src, '3\n123,1073741823,1125899906842620\n' +
-                   '3\n-123,-1073741823,-1125899906842620\n')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_4(self):
-    src = r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_sscanf_4')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main()
-      {
-        char pYear[16], pMonth[16], pDay[16], pDate[64];
-        printf("%d\n", sscanf("Nov 19 2012", "%s%s%s", pMonth, pDay, pYear));
-        printf("day %s, month %s, year %s \n", pDay, pMonth, pYear);
-        return(0);
-      }
-    '''
-    self.do_run(src, '3\nday 19, month Nov, year 2012');
+    self.do_run_from_file(src, output)
 
   def test_sscanf_5(self):
-    src = r'''
-      #include "stdio.h"
+    test_path = path_from_root('tests', 'core', 'test_sscanf_5')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      static const char *colors[] = {
-        "  c black",
-        ". c #001100",
-        "X c #111100"
-      };
-
-      int main(){
-        unsigned char code;
-        char color[32];
-        int rcode;
-        for(int i = 0; i < 3; i++) {
-          rcode = sscanf(colors[i], "%c c %s", &code, color);
-          printf("%i, %c, %s\n", rcode, code, color);
-        }
-      }
-    '''
-    self.do_run(src, '2,  , black\n2, ., #001100\n2, X, #111100');
+    self.do_run_from_file(src, output)
 
   def test_sscanf_6(self):
-    src = r'''
-      #include <stdio.h>
-      #include <string.h>
-      int main()
-      {
-        char *date = "18.07.2013w";
-        char c[10];
-        memset(c, 0, 10);
-        int y, m, d, i;
-        i = sscanf(date, "%d.%d.%4d%c", &d, &m, &y, c);
-        printf("date: %s; day %2d, month %2d, year %4d, extra: %c, %d\n", date, d, m, y, c[0], i);
-        i = sscanf(date, "%d.%d.%3c", &d, &m, c);
-        printf("date: %s; day %2d, month %2d, year %4d, extra: %s, %d\n", date, d, m, y, c, i);
-      }
-    '''
-    self.do_run(src, '''date: 18.07.2013w; day 18, month  7, year 2013, extra: w, 4
-date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
-''');
+    test_path = path_from_root('tests', 'core', 'test_sscanf_6')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_sscanf_skip(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
 
-    src = r'''
-      #include <stdint.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_sscanf_skip')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(){
-          int val1;
-          printf("%d\n", sscanf("10 20 30 40", "%*lld %*d %d", &val1));
-          printf("%d\n", val1);
-
-          int64_t large, val2;
-          printf("%d\n", sscanf("1000000 -1125899906842620 -123 -1073741823", "%lld %*lld %ld %*d", &large, &val2));
-          printf("%lld,%d\n", large, val2);
-
-          return 0;
-      }
-    '''
-    self.do_run(src, '1\n30\n2\n1000000,-123\n')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_caps(self):
-    src = r'''
-      #include "stdio.h"
+    test_path = path_from_root('tests', 'core', 'test_sscanf_caps')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(){
-        unsigned int a;
-        float e, f, g;
-        sscanf("a 1.1 1.1 1.1", "%X %E %F %G", &a, &e, &f, &g);
-        printf("%d %.1F %.1F %.1F\n", a, e, f, g);
-      }
-    '''
-    self.do_run(src, '10 1.1 1.1 1.1');
+    self.do_run_from_file(src, output)
 
   def test_sscanf_hex(self):
-    src = r'''
-      #include "stdio.h"
+    test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(){
-        unsigned int a, b;
-        sscanf("0x12AB 12AB", "%x %x", &a, &b);
-        printf("%d %d\n", a, b);
-      }
-    '''
-    self.do_run(src, '4779 4779')
+    self.do_run_from_file(src, output)
 
   def test_sscanf_float(self):
-    src = r'''
-      #include "stdio.h"
+    test_path = path_from_root('tests', 'core', 'test_sscanf_float')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(){
-        float f1, f2, f3, f4, f5, f6, f7, f8, f9;
-        sscanf("0.512 0.250x5.129_-9.98 1.12*+54.32E3 +54.32E3^87.5E-3 87.5E-3$", "%f %fx%f_%f %f*%f %f^%f %f$", &f1, &f2, &f3, &f4, &f5, &f6, &f7, &f8, &f9);
-        printf("\n%f, %f, %f, %f, %f, %f, %f, %f, %f\n", f1, f2, f3, f4, f5, f6, f7, f8, f9);
-      }
-    '''
-    self.do_run(src, '\n0.512000, 0.250000, 5.129000, -9.980000, 1.120000, 54320.000000, 54320.000000, 0.087500, 0.087500\n')
+    self.do_run_from_file(src, output)
 
   def test_langinfo(self):
     src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
@@ -7499,28 +3899,10 @@ def process(filename):
     self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), post_build=post)
 
   def test_fwrite_0(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_fwrite_0')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main ()
-      {
-          FILE *fh;
-
-          fh = fopen("a.txt", "wb");
-          if (!fh) exit(1);
-          fclose(fh);
-
-          fh = fopen("a.txt", "rb");
-          if (!fh) exit(1);
-
-          char data[] = "foobar";
-          size_t written = fwrite(data, 1, sizeof(data), fh);
-
-          printf("written=%zu\n", written);
-      }
-      '''
-    self.do_run(src, 'written=0')
+    self.do_run_from_file(src, output)
 
   def test_fgetc_ungetc(self):
     src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
@@ -7651,145 +4033,22 @@ def process(filename):
   )
   open(filename, 'w').write(src)
 '''
-    src = r'''
-      #include <stdio.h>
-      #include <errno.h>
-      #include <fcntl.h>
-      #include <poll.h>
+    test_path = path_from_root('tests', 'core', 'test_poll')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        struct pollfd multi[5];
-        multi[0].fd = open("/file", O_RDONLY, 0777);
-        multi[1].fd = open("/device", O_RDONLY, 0777);
-        multi[2].fd = 123;
-        multi[3].fd = open("/file", O_RDONLY, 0777);
-        multi[4].fd = open("/file", O_RDONLY, 0777);
-        multi[0].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
-        multi[1].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
-        multi[2].events = POLLIN | POLLOUT | POLLNVAL | POLLERR;
-        multi[3].events = 0x00;
-        multi[4].events = POLLOUT | POLLNVAL | POLLERR;
-
-        printf("ret: %d\n", poll(multi, 5, 123));
-        printf("errno: %d\n", errno);
-        printf("multi[0].revents: %d\n", multi[0].revents == (POLLIN | POLLOUT));
-        printf("multi[1].revents: %d\n", multi[1].revents == (POLLIN | POLLOUT));
-        printf("multi[2].revents: %d\n", multi[2].revents == POLLNVAL);
-        printf("multi[3].revents: %d\n", multi[3].revents == 0);
-        printf("multi[4].revents: %d\n", multi[4].revents == POLLOUT);
-
-        return 0;
-      }
-      '''
-    expected = r'''
-      ret: 4
-      errno: 0
-      multi[0].revents: 1
-      multi[1].revents: 1
-      multi[2].revents: 1
-      multi[3].revents: 1
-      multi[4].revents: 1
-      '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
+    self.do_run_from_file(src, output, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
 
   def test_statvfs(self):
-    src = r'''
-      #include <stdio.h>
-      #include <errno.h>
-      #include <sys/statvfs.h>
+    test_path = path_from_root('tests', 'core', 'test_statvfs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        struct statvfs s;
-
-        printf("result: %d\n", statvfs("/test", &s));
-        printf("errno: %d\n", errno);
-
-        printf("f_bsize: %lu\n", s.f_bsize);
-        printf("f_frsize: %lu\n", s.f_frsize);
-        printf("f_blocks: %lu\n", s.f_blocks);
-        printf("f_bfree: %lu\n", s.f_bfree);
-        printf("f_bavail: %lu\n", s.f_bavail);
-        printf("f_files: %d\n", s.f_files > 5);
-        printf("f_ffree: %lu\n", s.f_ffree);
-        printf("f_favail: %lu\n", s.f_favail);
-        printf("f_fsid: %lu\n", s.f_fsid);
-        printf("f_flag: %lu\n", s.f_flag);
-        printf("f_namemax: %lu\n", s.f_namemax);
-
-        return 0;
-      }
-      '''
-    expected = r'''
-      result: 0
-      errno: 0
-      f_bsize: 4096
-      f_frsize: 4096
-      f_blocks: 1000000
-      f_bfree: 500000
-      f_bavail: 500000
-      f_files: 1
-      f_ffree: 1000000
-      f_favail: 1000000
-      f_fsid: 42
-      f_flag: 2
-      f_namemax: 255
-      '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_libgen(self):
-    src = r'''
-      #include <stdio.h>
-      #include <libgen.h>
+    test_path = path_from_root('tests', 'core', 'test_libgen')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char p1[16] = "/usr/lib", p1x[16] = "/usr/lib";
-        printf("%s -> ", p1);
-        printf("%s : %s\n", dirname(p1x), basename(p1));
-
-        char p2[16] = "/usr", p2x[16] = "/usr";
-        printf("%s -> ", p2);
-        printf("%s : %s\n", dirname(p2x), basename(p2));
-
-        char p3[16] = "/usr/", p3x[16] = "/usr/";
-        printf("%s -> ", p3);
-        printf("%s : %s\n", dirname(p3x), basename(p3));
-
-        char p4[16] = "/usr/lib///", p4x[16] = "/usr/lib///";
-        printf("%s -> ", p4);
-        printf("%s : %s\n", dirname(p4x), basename(p4));
-
-        char p5[16] = "/", p5x[16] = "/";
-        printf("%s -> ", p5);
-        printf("%s : %s\n", dirname(p5x), basename(p5));
-
-        char p6[16] = "///", p6x[16] = "///";
-        printf("%s -> ", p6);
-        printf("%s : %s\n", dirname(p6x), basename(p6));
-
-        char p7[16] = "/usr/../lib/..", p7x[16] = "/usr/../lib/..";
-        printf("%s -> ", p7);
-        printf("%s : %s\n", dirname(p7x), basename(p7));
-
-        char p8[16] = "", p8x[16] = "";
-        printf("(empty) -> %s : %s\n", dirname(p8x), basename(p8));
-
-        printf("(null) -> %s : %s\n", dirname(0), basename(0));
-
-        return 0;
-      }
-      '''
-    expected = '''
-      /usr/lib -> /usr : lib
-      /usr -> / : usr
-      /usr/ -> / : usr
-      /usr/lib/// -> /usr : lib
-      / -> / : /
-      /// -> / : /
-      /usr/../lib/.. -> /usr/../lib : ..
-      (empty) -> . : .
-      (null) -> . : .
-    '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_utime(self):
     src = open(path_from_root('tests', 'utime', 'test_utime.c'), 'r').read()
@@ -7799,98 +4058,45 @@ def process(filename):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
 
-    src = r'''
-      #include <stdio.h>
-      #include <emscripten.h>
+    test_path = path_from_root('tests', 'core', 'test_utf')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        char *c = "μ†ℱ ╋ℯ╳╋ 😇";
-        printf("%d %d %d %d %s\n", c[0]&0xff, c[1]&0xff, c[2]&0xff, c[3]&0xff, c);
-        emscripten_run_script(
-          "cheez = _malloc(100);"
-          "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez);"
-          "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, 'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, 'i8')&0xff, ]);");
-      }
-    '''
-    self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋ 😇\nμ†ℱ ╋ℯ╳╋ 😇,206,188,226,128\n');
+    self.do_run_from_file(src, output)
 
   def test_utf32(self):
     if self.emcc_args is None: return self.skip('need libc for wcslen()')
     if not self.is_le32(): return self.skip('this test uses inline js, which requires le32')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 
-    src = '''
-      #include <iostream>
-      template<int i>
-      void printText( const char (&text)[ i ] )
-      {
-         std::cout << text;
-      }
-      int main()
-      {
-        printText( "some string constant" );
-        return 0;
-      }
-    '''
-    self.do_run(src, "some string constant")
+    test_path = path_from_root('tests', 'core', 'test_direct_string_constant_usage')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_std_cout_new(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
-    src = '''
-      #include <iostream>
+    test_path = path_from_root('tests', 'core', 'test_std_cout_new')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      struct NodeInfo { //structure that we want to transmit to our shaders
-          float x;
-          float y;
-          float s;
-          float c;
-      };
-      const int nbNodes = 100;
-      NodeInfo * data = new NodeInfo[nbNodes]; //our data that will be transmitted using float texture.
-
-      template<int i>
-      void printText( const char (&text)[ i ] )
-      {
-         std::cout << text << std::endl;
-      }
-
-      int main()
-      {
-        printText( "some string constant" );
-        return 0;
-      }
-    '''
-
-    self.do_run(src, "some string constant")
+    self.do_run_from_file(src, output)
 
   def test_istream(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 
-    src = '''
-      #include <string>
-      #include <sstream>
-      #include <iostream>
+    test_path = path_from_root('tests', 'core', 'test_istream')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main()
-      {
-          std::string mystring("1 2 3");
-          std::istringstream is(mystring);
-          int one, two, three;
-
-          is >> one >> two >> three;
-
-          printf( "%i %i %i", one, two, three );
-      }
-    '''
     for linkable in [0]:#, 1]:
       print linkable
       Settings.LINKABLE = linkable # regression check for issue #273
-      self.do_run(src, "1 2 3")
+      self.do_run_from_file(src, output)
 
   def test_fs_base(self):
     Settings.INCLUDE_FULL_LIBRARY = 1
@@ -8032,31 +4238,10 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_uname(self):
-    src = r'''
-      #include <stdio.h>
-      #include <sys/utsname.h>
+    test_path = path_from_root('tests', 'core', 'test_uname')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        struct utsname u;
-        printf("ret: %d\n", uname(&u));
-        printf("sysname: %s\n", u.sysname);
-        printf("nodename: %s\n", u.nodename);
-        printf("release: %s\n", u.release);
-        printf("version: %s\n", u.version);
-        printf("machine: %s\n", u.machine);
-        printf("invalid: %d\n", uname(0));
-        return 0;
-      }
-      '''
-    expected = '''
-      ret: 0
-      sysname: Emscripten
-      nodename: emscripten
-      release: 1.0
-      version: #1
-      machine: x86-JS
-    '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
@@ -8069,30 +4254,10 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_getloadavg(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_getloadavg')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main() {
-        double load[5] = {42.13, 42.13, 42.13, 42.13, 42.13};
-        printf("ret: %d\n", getloadavg(load, 5));
-        printf("load[0]: %.3lf\n", load[0]);
-        printf("load[1]: %.3lf\n", load[1]);
-        printf("load[2]: %.3lf\n", load[2]);
-        printf("load[3]: %.3lf\n", load[3]);
-        printf("load[4]: %.3lf\n", load[4]);
-        return 0;
-      }
-      '''
-    expected = '''
-      ret: 3
-      load[0]: 0.100
-      load[1]: 0.100
-      load[2]: 0.100
-      load[3]: 42.130
-      load[4]: 42.130
-    '''
-    self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+    self.do_run_from_file(src, output)
 
   def test_799(self):
     src = open(path_from_root('tests', '799.cpp'), 'r').read()
@@ -8109,149 +4274,22 @@ PORT: 3979
     self.do_run(src, expected)
 
   def test_strcasecmp(self):
-    src = r'''
-      #include <stdio.h>
-      #include <strings.h>
-      int sign(int x) {
-        if (x < 0) return -1;
-        if (x > 0) return 1;
-        return 0;
-      }
-      int main() {
-        printf("*\n");
+    test_path = path_from_root('tests', 'core', 'test_strcasecmp')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-        printf("%d\n", sign(strcasecmp("hello", "hello")));
-        printf("%d\n", sign(strcasecmp("hello1", "hello")));
-        printf("%d\n", sign(strcasecmp("hello", "hello1")));
-        printf("%d\n", sign(strcasecmp("hello1", "hello1")));
-        printf("%d\n", sign(strcasecmp("iello", "hello")));
-        printf("%d\n", sign(strcasecmp("hello", "iello")));
-        printf("%d\n", sign(strcasecmp("A", "hello")));
-        printf("%d\n", sign(strcasecmp("Z", "hello")));
-        printf("%d\n", sign(strcasecmp("a", "hello")));
-        printf("%d\n", sign(strcasecmp("z", "hello")));
-        printf("%d\n", sign(strcasecmp("hello", "a")));
-        printf("%d\n", sign(strcasecmp("hello", "z")));
-
-        printf("%d\n", sign(strcasecmp("Hello", "hello")));
-        printf("%d\n", sign(strcasecmp("Hello1", "hello")));
-        printf("%d\n", sign(strcasecmp("Hello", "hello1")));
-        printf("%d\n", sign(strcasecmp("Hello1", "hello1")));
-        printf("%d\n", sign(strcasecmp("Iello", "hello")));
-        printf("%d\n", sign(strcasecmp("Hello", "iello")));
-        printf("%d\n", sign(strcasecmp("A", "hello")));
-        printf("%d\n", sign(strcasecmp("Z", "hello")));
-        printf("%d\n", sign(strcasecmp("a", "hello")));
-        printf("%d\n", sign(strcasecmp("z", "hello")));
-        printf("%d\n", sign(strcasecmp("Hello", "a")));
-        printf("%d\n", sign(strcasecmp("Hello", "z")));
-
-        printf("%d\n", sign(strcasecmp("hello", "Hello")));
-        printf("%d\n", sign(strcasecmp("hello1", "Hello")));
-        printf("%d\n", sign(strcasecmp("hello", "Hello1")));
-        printf("%d\n", sign(strcasecmp("hello1", "Hello1")));
-        printf("%d\n", sign(strcasecmp("iello", "Hello")));
-        printf("%d\n", sign(strcasecmp("hello", "Iello")));
-        printf("%d\n", sign(strcasecmp("A", "Hello")));
-        printf("%d\n", sign(strcasecmp("Z", "Hello")));
-        printf("%d\n", sign(strcasecmp("a", "Hello")));
-        printf("%d\n", sign(strcasecmp("z", "Hello")));
-        printf("%d\n", sign(strcasecmp("hello", "a")));
-        printf("%d\n", sign(strcasecmp("hello", "z")));
-
-        printf("%d\n", sign(strcasecmp("Hello", "Hello")));
-        printf("%d\n", sign(strcasecmp("Hello1", "Hello")));
-        printf("%d\n", sign(strcasecmp("Hello", "Hello1")));
-        printf("%d\n", sign(strcasecmp("Hello1", "Hello1")));
-        printf("%d\n", sign(strcasecmp("Iello", "Hello")));
-        printf("%d\n", sign(strcasecmp("Hello", "Iello")));
-        printf("%d\n", sign(strcasecmp("A", "Hello")));
-        printf("%d\n", sign(strcasecmp("Z", "Hello")));
-        printf("%d\n", sign(strcasecmp("a", "Hello")));
-        printf("%d\n", sign(strcasecmp("z", "Hello")));
-        printf("%d\n", sign(strcasecmp("Hello", "a")));
-        printf("%d\n", sign(strcasecmp("Hello", "z")));
-
-        printf("%d\n", sign(strncasecmp("hello", "hello", 3)));
-        printf("%d\n", sign(strncasecmp("hello1", "hello", 3)));
-        printf("%d\n", sign(strncasecmp("hello", "hello1", 3)));
-        printf("%d\n", sign(strncasecmp("hello1", "hello1", 3)));
-        printf("%d\n", sign(strncasecmp("iello", "hello", 3)));
-        printf("%d\n", sign(strncasecmp("hello", "iello", 3)));
-        printf("%d\n", sign(strncasecmp("A", "hello", 3)));
-        printf("%d\n", sign(strncasecmp("Z", "hello", 3)));
-        printf("%d\n", sign(strncasecmp("a", "hello", 3)));
-        printf("%d\n", sign(strncasecmp("z", "hello", 3)));
-        printf("%d\n", sign(strncasecmp("hello", "a", 3)));
-        printf("%d\n", sign(strncasecmp("hello", "z", 3)));
-
-        printf("*\n");
-
-        return 0;
-      }
-    '''
-    self.do_run(src, '''*\n0\n1\n-1\n0\n1\n-1\n-1\n1\n-1\n1\n1\n-1\n0\n1\n-1\n0\n1\n-1\n-1\n1\n-1\n1\n1\n-1\n0\n1\n-1\n0\n1\n-1\n-1\n1\n-1\n1\n1\n-1\n0\n1\n-1\n0\n1\n-1\n-1\n1\n-1\n1\n1\n-1\n0\n0\n0\n0\n1\n-1\n-1\n1\n-1\n1\n1\n-1\n*\n''')
+    self.do_run_from_file(src, output)
 
   def test_atomic(self):
-    src = '''
-      #include <stdio.h>
-      int main() {
-        int x = 10;
-        int y = __sync_add_and_fetch(&x, 5);
-        printf("*%d,%d*\\n", x, y);
-        x = 10;
-        y = __sync_fetch_and_add(&x, 5);
-        printf("*%d,%d*\\n", x, y);
-        x = 10;
-        y = __sync_lock_test_and_set(&x, 6);
-        printf("*%d,%d*\\n", x, y);
-        x = 10;
-        y = __sync_bool_compare_and_swap(&x, 9, 7);
-        printf("*%d,%d*\\n", x, y);
-        y = __sync_bool_compare_and_swap(&x, 10, 7);
-        printf("*%d,%d*\\n", x, y);
-        return 0;
-      }
-    '''
+    test_path = path_from_root('tests', 'core', 'test_atomic')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-    self.do_run(src, '*15,15*\n*15,10*\n*6,10*\n*10,0*\n*7,1*')
+    self.do_run_from_file(src, output)
 
   def test_phiundef(self):
-    src = r'''
-#include <stdlib.h>
-#include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_phiundef')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-static int state;
-
-struct my_struct {
-union {
-  struct {
-    unsigned char a;
-    unsigned char b;
-  } c;
-  unsigned int d;
-} e;
-unsigned int f;
-};
-
-int main(int argc, char **argv) {
-  struct my_struct r;
-
-  state = 0;
-
-  for (int i=0;i<argc+10;i++)
-  {
-      if (state % 2 == 0)
-          r.e.c.a = 3;
-      else
-          printf("%d\n", r.e.c.a);
-      state++;
-  }
-  return 0;
-}
-    '''
-
-    self.do_run(src, '3\n3\n3\n3\n3\n')
+    self.do_run_from_file(src, output)
 
   # libc++ tests
 
@@ -8274,86 +4312,19 @@ int main(int argc, char **argv) {
 
   def test_stdvec(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    src = '''
-      #include <vector>
-      #include <stdio.h>
 
-      struct S {
-          int a;
-          float b;
-      };
+    test_path = path_from_root('tests', 'core', 'test_stdvec')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void foo(int a, float b)
-      {
-        printf("%d:%.2f\\n", a, b);
-      }
-
-      int main ( int argc, char *argv[] )
-      {
-        std::vector<S> ar;
-        S s;
-
-        s.a = 789;
-        s.b = 123.456f;
-        ar.push_back(s);
-
-        s.a = 0;
-        s.b = 100.1f;
-        ar.push_back(s);
-
-        foo(ar[0].a, ar[0].b);
-        foo(ar[1].a, ar[1].b);
-      }
-    '''
-
-    self.do_run(src, '789:123.46\n0:100.1')
+    self.do_run_from_file(src, output)
 
   def test_reinterpreted_ptrs(self):
     if self.emcc_args is None: return self.skip('needs emcc and libc')
 
-    src = r'''
-#include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_reinterpreted_ptrs')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-class Foo {
-private:
-  float bar;
-public:
-  int baz;
-
-  Foo(): bar(0), baz(4711) {};
-
-  int getBar() const;
-};
-
-int Foo::getBar() const {
-  return this->bar;
-};
-
-const Foo *magic1 = reinterpret_cast<Foo*>(0xDEAD111F);
-const Foo *magic2 = reinterpret_cast<Foo*>(0xDEAD888F);
-
-static void runTest() {
-
-  const Foo *a = new Foo();
-  const Foo *b = a;
-
-  if (a->getBar() == 0) {
-      if (a->baz == 4712)
-          b = magic1;
-      else
-          b = magic2;
-  }
-
-  printf("%s\n", (b == magic1 ? "magic1" : (b == magic2 ? "magic2" : "neither")));
-};
-
-extern "C" {
-  int main(int argc, char **argv) {
-      runTest();
-  }
-}
-'''
-    self.do_run(src, 'magic2')
+    self.do_run_from_file(src, output)
 
   def test_jansson(self):
       return self.skip('currently broken')
@@ -8522,22 +4493,11 @@ return malloc(size);
   def test_dlmalloc_partial_2(self):
     if self.emcc_args is None or 'SAFE_HEAP' in str(self.emcc_args) or 'CHECK_HEAP_ALIGN' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-      void *malloc(size_t size)
-      {
-        return (void*)123;
-      }
-      int main() {
-        void *x = malloc(10);
-        printf("got %p\n", x);
-        free(x);
-        printf("freed the faker\n");
-        return 1;
-      }
-'''
-    self.do_run(src, 'got 0x7b\nfreed')
+
+    test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_libcxx(self):
     if self.emcc_args is None: return self.skip('requires emcc')
@@ -8556,171 +4516,35 @@ return malloc(size);
       ''', 'hello world');
 
   def test_typeid(self):
-    self.do_run(r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <typeinfo>
-      int main() {
-        printf("*\n");
-        #define MAX 100
-        int ptrs[MAX];
-        int groups[MAX];
-        memset(ptrs, 0, MAX*sizeof(int));
-        memset(groups, 0, MAX*sizeof(int));
-        int next_group = 1;
-        #define TEST(X) { \
-          int ptr = (int)&typeid(X); \
-          int group = 0; \
-          int i; \
-          for (i = 0; i < MAX; i++) { \
-            if (!groups[i]) break; \
-            if (ptrs[i] == ptr) { \
-              group = groups[i]; \
-              break; \
-            } \
-          } \
-          if (!group) { \
-            groups[i] = group = next_group++; \
-            ptrs[i] = ptr; \
-          } \
-          printf("%s:%d\n", #X, group); \
-        }
-        TEST(int);
-        TEST(unsigned int);
-        TEST(unsigned);
-        TEST(signed int);
-        TEST(long);
-        TEST(unsigned long);
-        TEST(signed long);
-        TEST(long long);
-        TEST(unsigned long long);
-        TEST(signed long long);
-        TEST(short);
-        TEST(unsigned short);
-        TEST(signed short);
-        TEST(char);
-        TEST(unsigned char);
-        TEST(signed char);
-        TEST(float);
-        TEST(double);
-        TEST(long double);
-        TEST(void);
-        TEST(void*);
-        printf("*\n");
-      }
-      ''', '''*
-int:1
-unsigned int:2
-unsigned:2
-signed int:1
-long:3
-unsigned long:4
-signed long:3
-long long:5
-unsigned long long:6
-signed long long:5
-short:7
-unsigned short:8
-signed short:7
-char:9
-unsigned char:10
-signed char:11
-float:12
-double:13
-long double:14
-void:15
-void*:16
-*
-''');
+    test_path = path_from_root('tests', 'core', 'test_typeid')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_static_variable(self):
     if self.emcc_args is None: Settings.SAFE_HEAP = 0 # LLVM mixes i64 and i8 in the guard check
-    src = '''
-      #include <stdio.h>
 
-      struct DATA
-      {
-          int value;
+    test_path = path_from_root('tests', 'core', 'test_static_variable')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-          DATA()
-          {
-              value = 0;
-          }
-      };
-
-      DATA & GetData()
-      {
-          static DATA data;
-
-          return data;
-      }
-
-      int main()
-      {
-          GetData().value = 10;
-          printf( "value:%i", GetData().value );
-      }
-    '''
-    self.do_run(src, 'value:10')
+    self.do_run_from_file(src, output)
 
   def test_fakestat(self):
-    src = r'''
-      #include <stdio.h>
-      struct stat { int x, y; };
-      int main() {
-        stat s;
-        s.x = 10;
-        s.y = 22;
-        printf("*%d,%d*\n", s.x, s.y);
-      }
-    '''
-    self.do_run(src, '*10,22*')
+    test_path = path_from_root('tests', 'core', 'test_fakestat')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
 
   def test_mmap(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
     Settings.TOTAL_MEMORY = 128*1024*1024
 
-    src = '''
-      #include <stdio.h>
-      #include <sys/mman.h>
-      #include <assert.h>
+    test_path = path_from_root('tests', 'core', 'test_mmap')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      int main(int argc, char *argv[]) {
-          for (int i = 0; i < 10; i++) {
-            int* map = (int*)mmap(0, 5000, PROT_READ | PROT_WRITE,
-                    MAP_SHARED | MAP_ANON, -1, 0);
-            /* TODO: Should we align to 4k?
-            assert(((int)map) % 4096 == 0); // aligned
-            */
-            assert(munmap(map, 5000) == 0);
-          }
-
-          const int NUM_BYTES = 8 * 1024 * 1024;
-          const int NUM_INTS = NUM_BYTES / sizeof(int);
-
-          int* map = (int*)mmap(0, NUM_BYTES, PROT_READ | PROT_WRITE,
-                  MAP_SHARED | MAP_ANON, -1, 0);
-          assert(map != MAP_FAILED);
-
-          int i;
-
-          for (i = 0; i < NUM_INTS; i++) {
-              map[i] = i;
-          }
-
-          for (i = 0; i < NUM_INTS; i++) {
-              assert(map[i] == i);
-          }
-
-          assert(munmap(map, NUM_BYTES) == 0);
-
-          printf("hello,world");
-          return 0;
-      }
-    '''
-    self.do_run(src, 'hello,world')
-    self.do_run(src, 'hello,world', force_c=True)
+    self.do_run_from_file(src, output)
+    self.do_run_from_file(src, output, force_c=True)
 
   def test_mmap_file(self):
     if self.emcc_args is None: return self.skip('requires emcc')
@@ -8778,605 +4602,34 @@ void*:16
   def test_simd(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
-    src = r'''
-#include <stdio.h>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-#include <emscripten/vector.h>
+    test_path = path_from_root('tests', 'core', 'test_simd')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-static inline float32x4 __attribute__((always_inline))
-_mm_set_ps(const float __Z, const float __Y, const float __X, const float __W)
-{
-  return (float32x4){ __W, __X, __Y, __Z };
-}
-
-static __inline__ float32x4 __attribute__((__always_inline__))
-_mm_setzero_ps(void)
-{
-  return (float32x4){ 0.0, 0.0, 0.0, 0.0 };
-}
-
-int main(int argc, char **argv) {
-  float data[8];
-  for (int i = 0; i < 32; i++) data[i] = (1+i+argc)*(2+i+argc*argc); // confuse optimizer
-  {
-    float32x4 *a = (float32x4*)&data[0];
-    float32x4 *b = (float32x4*)&data[4];
-    float32x4 c, d;
-    c = *a;
-    d = *b;
-    printf("1floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
-    c = c+d;
-    printf("2floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
-    d = c*d;
-    printf("3floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
-    c = _mm_setzero_ps();
-    printf("zeros %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3]);
-  }
-  {
-    int32x4 *a = (int32x4*)&data[0];
-    int32x4 *b = (int32x4*)&data[4];
-    int32x4 c, d, e, f;
-    c = *a;
-    d = *b;
-    printf("4ints! %d, %d, %d, %d   %d, %d, %d, %d\n", c[0], c[1], c[2], c[3], d[0], d[1], d[2], d[3]);
-    e = c+d;
-    f = c-d;
-    printf("5ints! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
-    e = c&d;
-    f = c|d;
-    e = ~c&d;
-    f = c^d;
-    printf("5intops! %d, %d, %d, %d   %d, %d, %d, %d\n", e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3]);
-  }
-  {
-    float32x4 c, d, e, f;
-    c = _mm_set_ps(9.0, 4.0, 0, -9.0);
-    d = _mm_set_ps(10.0, 14.0, -12, -2.0);
-    printf("6floats! %d, %d, %d, %d   %d, %d, %d, %d\n", (int)c[0], (int)c[1], (int)c[2], (int)c[3], (int)d[0], (int)d[1], (int)d[2], (int)d[3]);
-    printf("7calcs: %d\n", emscripten_float32x4_signmask(c)); // TODO: just not just compilation but output as well
-  }
-
-  return 0;
-}
-    '''
-
-    self.do_run(src, '''1floats! 6, 12, 20, 30   42, 56, 72, 90
-2floats! 48, 68, 92, 120   42, 56, 72, 90
-3floats! 48, 68, 92, 120   2016, 3808, 6624, 10800
-zeros 0, 0, 0, 0
-4ints! 1086324736, 1094713344, 1101004800, 1106247680   1109917696, 1113587712, 1116733440, 1119092736
-5ints! -2098724864, -2086666240, -2077229056, -2069626880   -23592960, -18874368, -15728640, -12845056
-5intops! 36175872, 35651584, 34603008, 33816576   48758784, 52428800, 53477376, 54788096
-6floats! -9, 0, 4, 9   -2, -12, 14, 10
-''')
+    self.do_run_from_file(src, output)
 
   def test_simd2(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-    self.do_run(r'''
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_simd2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      typedef float __m128 __attribute__ ((__vector_size__ (16)));
-
-      static inline __m128 __attribute__((always_inline))
-      _mm_set_ps(const float __Z, const float __Y, const float __X, const float __W)
-      {
-        return (__m128){ __W, __X, __Y, __Z };
-      }
-
-      static inline void __attribute__((always_inline))
-      _mm_store_ps(float *__P, __m128 __A)
-      {
-        *(__m128 *)__P = __A;
-      }
-
-      static inline __m128 __attribute__((always_inline))
-      _mm_add_ps(__m128 __A, __m128 __B)
-      {
-        return __A + __B;
-      }
-
-      using namespace std;
-
-      int main(int argc, char ** argv) {
-          float __attribute__((__aligned__(16))) ar[4];
-          __m128 v1 = _mm_set_ps(9.0, 4.0, 0, -9.0);
-          __m128 v2 = _mm_set_ps(7.0, 3.0, 2.5, 1.0);
-          __m128 v3 = _mm_add_ps(v1, v2);
-          _mm_store_ps(ar, v3);
-          
-          for (int i = 0; i < 4; i++) {
-              printf("%f\n", ar[i]);
-          }
-          
-          return 0;
-      }
-      ''', '''-8.000000
-2.500000
-7.000000
-16.000000
-''')
+    self.do_run_from_file(src, output)
 
   def test_simd3(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
-    src = r'''
-    #include <iostream>
-    #include <emmintrin.h>
-    #include <assert.h>
-    #include <stdint.h>
-    #include <bitset>
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-    using namespace std;
+    test_path = path_from_root('tests', 'core', 'test_simd3')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-    void testSetPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
-        _mm_store_ps(ar, v);    
-        assert(ar[0] == 4.0);
-        assert(ar[1] == 3.0);
-        assert(ar[2] == 2.0);
-        assert(ar[3] == 1.0);
-    }
-
-    void testSet1Ps() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v = _mm_set1_ps(5.5);
-        _mm_store_ps(ar, v);    
-        assert(ar[0] == 5.5);
-        assert(ar[1] == 5.5);
-        assert(ar[2] == 5.5);
-        assert(ar[3] == 5.5);
-    }
-
-    void testSetZeroPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v = _mm_setzero_ps();
-        _mm_store_ps(ar, v);    
-        assert(ar[0] == 0);
-        assert(ar[1] == 0);
-        assert(ar[2] == 0);
-        assert(ar[3] == 0);
-    }
-
-    void testSetEpi32() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v = _mm_set_epi32(5, 7, 126, 381);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == 381);
-        assert(ar[1] == 126);
-        assert(ar[2] == 7);
-        assert(ar[3] == 5);
-        v = _mm_set_epi32(0x55555555, 0xaaaaaaaa, 0xffffffff, 0x12345678);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == 0x12345678);
-        assert(ar[1] == 0xffffffff);
-        assert(ar[2] == 0xaaaaaaaa);
-        assert(ar[3] == 0x55555555);
-    }
-
-    void testSet1Epi32() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v = _mm_set1_epi32(-5);
-        _mm_store_si128((__m128i *)ar, v);    
-        assert(ar[0] == -5);
-        assert(ar[1] == -5);
-        assert(ar[2] == -5);
-        assert(ar[3] == -5);
-    }
-
-    void testSetZeroSi128() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v = _mm_setzero_si128();
-        _mm_store_si128((__m128i *)ar, v);    
-        assert(ar[0] == 0);
-        assert(ar[1] == 0);
-        assert(ar[2] == 0);
-        assert(ar[3] == 0);
-    }
-
-    void testBitCasts() {
-        int32_t __attribute__((__aligned__(16))) ar1[4];
-        float __attribute__((__aligned__(16))) ar2[4];
-        __m128i v1 = _mm_set_epi32(0x3f800000, 0x40000000, 0x40400000, 0x40800000);
-        __m128 v2 = _mm_castsi128_ps(v1);
-        _mm_store_ps(ar2, v2);
-        assert(ar2[0] == 4.0);
-        assert(ar2[1] == 3.0);
-        assert(ar2[2] == 2.0);
-        assert(ar2[3] == 1.0);
-        v2 = _mm_set_ps(5.0, 6.0, 7.0, 8.0);
-        v1 = _mm_castps_si128(v2);
-        _mm_store_si128((__m128i *)ar1, v1);
-        assert(ar1[0] == 0x41000000);
-        assert(ar1[1] == 0x40e00000);
-        assert(ar1[2] == 0x40c00000);
-        assert(ar1[3] == 0x40a00000);
-        float w = 0;
-        float z = -278.3;
-        float y = 5.2;
-        float x = -987654321; 
-        v1 = _mm_castps_si128(_mm_set_ps(w, z, y, x));
-        _mm_store_ps(ar2, _mm_castsi128_ps(v1));
-        assert(ar2[0] == x);
-        assert(ar2[1] == y);
-        assert(ar2[2] == z);
-        assert(ar2[3] == w);
-        /*
-        std::bitset<sizeof(float)*CHAR_BIT> bits1x(*reinterpret_cast<unsigned long*>(&(ar2[0])));
-        std::bitset<sizeof(float)*CHAR_BIT> bits1y(*reinterpret_cast<unsigned long*>(&(ar2[1])));
-        std::bitset<sizeof(float)*CHAR_BIT> bits1z(*reinterpret_cast<unsigned long*>(&(ar2[2])));
-        std::bitset<sizeof(float)*CHAR_BIT> bits1w(*reinterpret_cast<unsigned long*>(&(ar2[3])));
-        std::bitset<sizeof(float)*CHAR_BIT> bits2x(*reinterpret_cast<unsigned long*>(&x));
-        std::bitset<sizeof(float)*CHAR_BIT> bits2y(*reinterpret_cast<unsigned long*>(&y));
-        std::bitset<sizeof(float)*CHAR_BIT> bits2z(*reinterpret_cast<unsigned long*>(&z));
-        std::bitset<sizeof(float)*CHAR_BIT> bits2w(*reinterpret_cast<unsigned long*>(&w));
-        assert(bits1x == bits2x);
-        assert(bits1y == bits2y);
-        assert(bits1z == bits2z);
-        assert(bits1w == bits2w);
-        */
-        v2 = _mm_castsi128_ps(_mm_set_epi32(0xffffffff, 0, 0x5555cccc, 0xaaaaaaaa));
-        _mm_store_si128((__m128i *)ar1, _mm_castps_si128(v2));
-        assert(ar1[0] == 0xaaaaaaaa);
-        assert(ar1[1] == 0x5555cccc);
-        assert(ar1[2] == 0);
-        assert(ar1[3] == 0xffffffff);
-    }
-
-    void testConversions() {
-        int32_t __attribute__((__aligned__(16))) ar1[4];
-        float __attribute__((__aligned__(16))) ar2[4];
-        __m128i v1 = _mm_set_epi32(0, -3, -517, 256);
-        __m128 v2 = _mm_cvtepi32_ps(v1);
-        _mm_store_ps(ar2, v2);
-        assert(ar2[0] == 256.0);
-        assert(ar2[1] == -517.0);
-        assert(ar2[2] == -3.0);
-        assert(ar2[3] == 0);
-        v2 = _mm_set_ps(5.0, 6.0, 7.45, -8.0);
-        v1 = _mm_cvtps_epi32(v2);
-        _mm_store_si128((__m128i *)ar1, v1);
-        assert(ar1[0] == -8);
-        assert(ar1[1] == 7);
-        assert(ar1[2] == 6);
-        assert(ar1[3] == 5);
-    }
-
-    void testMoveMaskPs() {
-        __m128 v = _mm_castsi128_ps(_mm_set_epi32(0xffffffff, 0xffffffff, 0, 0xffffffff));
-        int mask = _mm_movemask_ps(v);
-        assert(mask == 13);
-    }
-
-    void testAddPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(4.0, 3.0, 2.0, 1.0);
-        __m128 v2 = _mm_set_ps(10.0, 20.0, 30.0, 40.0);
-        __m128 v = _mm_add_ps(v1, v2);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 41.0);
-        assert(ar[1] == 32.0);
-        assert(ar[2] == 23.0);
-        assert(ar[3] == 14.0);
-    }
-
-    void testSubPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(4.0, 3.0, 2.0, 1.0);
-        __m128 v2 = _mm_set_ps(10.0, 20.0, 30.0, 40.0);
-        __m128 v = _mm_sub_ps(v1, v2);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == -39.0);
-        assert(ar[1] == -28.0);
-        assert(ar[2] == -17.0);
-        assert(ar[3] == -6.0);
-    }
-
-    void testMulPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(4.0, 3.0, 2.0, 1.0);
-        __m128 v2 = _mm_set_ps(10.0, 20.0, 30.0, 40.0);
-        __m128 v = _mm_mul_ps(v1, v2);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 40.0);
-        assert(ar[1] == 60.0);
-        assert(ar[2] == 60.0);
-        assert(ar[3] == 40.0);
-    }
-
-    void testDivPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(4.0, 9.0, 8.0, 1.0);
-        __m128 v2 = _mm_set_ps(2.0, 3.0, 1.0, 0.5);
-        __m128 v = _mm_div_ps(v1, v2);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 2.0);
-        assert(ar[1] == 8.0);
-        assert(ar[2] == 3.0);
-        assert(ar[3] == 2.0);
-    }
-
-    void testMinPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(-20.0, 10.0, 30.0, 0.5);
-        __m128 v2 = _mm_set_ps(2.0, 1.0, 50.0, 0.0);
-        __m128 v = _mm_min_ps(v1, v2);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 0.0);
-        assert(ar[1] == 30.0);
-        assert(ar[2] == 1.0);
-        assert(ar[3] == -20.0);
-    }
-
-    void testMaxPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(-20.0, 10.0, 30.0, 0.5);
-        __m128 v2 = _mm_set_ps(2.5, 5.0, 55.0, 1.0);
-        __m128 v = _mm_max_ps(v1, v2);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 1.0);
-        assert(ar[1] == 55.0);
-        assert(ar[2] == 10.0);
-        assert(ar[3] == 2.5);
-    }
-
-    void testSqrtPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(16.0, 9.0, 4.0, 1.0);
-        __m128 v = _mm_sqrt_ps(v1);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 1.0);
-        assert(ar[1] == 2.0);
-        assert(ar[2] == 3.0);
-        assert(ar[3] == 4.0);
-    }
-
-    void testCmpLtPs() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(1.0, 2.0, 0.1, 0.001);
-        __m128 v2 = _mm_set_ps(2.0, 2.0, 0.001, 0.1);
-        __m128 v = _mm_cmplt_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar, _mm_castps_si128(v));
-        assert(ar[0] == 0xffffffff);
-        assert(ar[1] == 0);
-        assert(ar[2] == 0);
-        assert(ar[3] == 0xffffffff);
-        assert(_mm_movemask_ps(v) == 9);
-    }
-
-    void testCmpLePs() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(1.0, 2.0, 0.1, 0.001);
-        __m128 v2 = _mm_set_ps(2.0, 2.0, 0.001, 0.1);
-        __m128 v = _mm_cmple_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar, _mm_castps_si128(v));
-        assert(ar[0] == 0xffffffff);
-        assert(ar[1] == 0);
-        assert(ar[2] == 0xffffffff);
-        assert(ar[3] == 0xffffffff);
-        assert(_mm_movemask_ps(v) == 13);
-    }
-
-    void testCmpEqPs() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(1.0, 2.0, 0.1, 0.001);
-        __m128 v2 = _mm_set_ps(2.0, 2.0, 0.001, 0.1);
-        __m128 v = _mm_cmpeq_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar, _mm_castps_si128(v));
-        assert(ar[0] == 0);
-        assert(ar[1] == 0);
-        assert(ar[2] == 0xffffffff);
-        assert(ar[3] == 0);
-        assert(_mm_movemask_ps(v) == 4);
-    }
-
-    void testCmpGePs() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(1.0, 2.0, 0.1, 0.001);
-        __m128 v2 = _mm_set_ps(2.0, 2.0, 0.001, 0.1);
-        __m128 v = _mm_cmpge_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar, _mm_castps_si128(v));
-        assert(ar[0] == 0);
-        assert(ar[1] == 0xffffffff);
-        assert(ar[2] == 0xffffffff);
-        assert(ar[3] == 0);
-        assert(_mm_movemask_ps(v) == 6);
-    }
-
-    void testCmpGtPs() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(1.0, 2.0, 0.1, 0.001);
-        __m128 v2 = _mm_set_ps(2.0, 2.0, 0.001, 0.1);
-        __m128 v = _mm_cmpgt_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar, _mm_castps_si128(v));
-        assert(ar[0] == 0);
-        assert(ar[1] == 0xffffffff);
-        assert(ar[2] == 0);
-        assert(ar[3] == 0);
-        assert(_mm_movemask_ps(v) == 2);
-    }
-
-    void testAndPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(425, -501, -32, 68);
-        __m128 v2 = _mm_castsi128_ps(_mm_set_epi32(0xffffffff, 0xffffffff, 0, 0xffffffff));
-        __m128 v = _mm_and_ps(v1, v2);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 68);
-        assert(ar[1] == 0);
-        assert(ar[2] == -501);
-        assert(ar[3] == 425);
-        int32_t __attribute__((__aligned__(16))) ar2[4];
-        v1 = _mm_castsi128_ps(_mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, -1431655766, 0xaaaaaaaa));
-        v2 = _mm_castsi128_ps(_mm_set_epi32(0x55555555, 0x55555555,  0x55555555, 0x55555555));
-        v = _mm_and_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar2, _mm_castps_si128(v));
-        assert(ar2[0] == 0);
-        assert(ar2[1] == 0);
-        assert(ar2[2] == 0);
-        assert(ar2[3] == 0);
-    }
-
-    void testAndNotPs() {
-        float __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_set_ps(425, -501, -32, 68);
-        __m128 v2 = _mm_castsi128_ps(_mm_set_epi32(0xffffffff, 0xffffffff, 0, 0xffffffff));
-        __m128 v = _mm_andnot_ps(v2, v1);
-        _mm_store_ps(ar, v);
-        assert(ar[0] == 0);
-        assert(ar[1] == -32);
-        assert(ar[2] == 0);
-        assert(ar[3] == 0);
-        int32_t __attribute__((__aligned__(16))) ar2[4];
-        v1 = _mm_castsi128_ps(_mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, -1431655766, 0xaaaaaaaa));
-        v2 = _mm_castsi128_ps(_mm_set_epi32(0x55555555, 0x55555555,  0x55555555, 0x55555555));
-        v = _mm_andnot_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar2, _mm_castps_si128(v));
-        assert(ar2[0] == 0x55555555);
-        assert(ar2[1] == 0x55555555);
-        assert(ar2[2] == 0x55555555);
-        assert(ar2[3] == 0x55555555);
-    }
-
-    void testOrPs() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_castsi128_ps(_mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, 0xffffffff, 0));
-        __m128 v2 = _mm_castsi128_ps(_mm_set_epi32(0x55555555, 0x55555555, 0x55555555, 0x55555555));
-        __m128 v = _mm_or_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar, _mm_castps_si128(v));
-        assert(ar[0] == 0x55555555);
-        assert(ar[1] == 0xffffffff);
-        assert(ar[2] == 0xffffffff);
-        assert(ar[3] == 0xffffffff);
-    }
-
-    void testXorPs() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128 v1 = _mm_castsi128_ps(_mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, 0xffffffff, 0));
-        __m128 v2 = _mm_castsi128_ps(_mm_set_epi32(0x55555555, 0x55555555, 0x55555555, 0x55555555));
-        __m128 v = _mm_xor_ps(v1, v2);
-        _mm_store_si128((__m128i *)ar, _mm_castps_si128(v));
-        assert(ar[0] == 0x55555555);
-        assert(ar[1] == 0xaaaaaaaa);
-        assert(ar[2] == 0xffffffff);
-        assert(ar[3] == 0xffffffff);
-    }
-
-    void testAndSi128() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v1 = _mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, -1431655766, 0xaaaaaaaa);
-        __m128i v2 = _mm_set_epi32(0x55555555, 0x55555555,  0x55555555, 0x55555555);
-        __m128i v = _mm_and_si128(v1, v2);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == 0);
-        assert(ar[1] == 0);
-        assert(ar[2] == 0);
-        assert(ar[3] == 0);
-    }
-
-    void testAndNotSi128() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v1 = _mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, -1431655766, 0xaaaaaaaa);
-        __m128i v2 = _mm_set_epi32(0x55555555, 0x55555555,  0x55555555, 0x55555555);
-        __m128i v = _mm_andnot_si128(v1, v2);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == 0x55555555);
-        assert(ar[1] == 0x55555555);
-        assert(ar[2] == 0x55555555);
-        assert(ar[3] == 0x55555555);
-    }
-
-    void testOrSi128() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v1 = _mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, 0xffffffff, 0);
-        __m128i v2 = _mm_set_epi32(0x55555555, 0x55555555, 0x55555555, 0x55555555);
-        __m128i v = _mm_or_si128(v1, v2);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == 0x55555555);
-        assert(ar[1] == 0xffffffff);
-        assert(ar[2] == 0xffffffff);
-        assert(ar[3] == 0xffffffff);
-    }
-
-    void testXorSi128() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v1 = _mm_set_epi32(0xaaaaaaaa, 0xaaaaaaaa, 0xffffffff, 0);
-        __m128i v2 = _mm_set_epi32(0x55555555, 0x55555555, 0x55555555, 0x55555555);
-        __m128i v = _mm_xor_si128(v1, v2);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == 0x55555555);
-        assert(ar[1] == 0xaaaaaaaa);
-        assert(ar[2] == 0xffffffff);
-        assert(ar[3] == 0xffffffff);
-    }
-
-    void testAddEpi32() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v1 = _mm_set_epi32(4, 3, 2, 1);
-        __m128i v2 = _mm_set_epi32(10, 20, 30, 40);
-        __m128i v = _mm_add_epi32(v1, v2);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == 41);
-        assert(ar[1] == 32);
-        assert(ar[2] == 23);
-        assert(ar[3] == 14);
-    }
-
-    void testSubEpi32() {
-        int32_t __attribute__((__aligned__(16))) ar[4];
-        __m128i v1 = _mm_set_epi32(4, 3, 2, 1);
-        __m128i v2 = _mm_set_epi32(10, 20, 30, 40);
-        __m128i v = _mm_sub_epi32(v1, v2);
-        _mm_store_si128((__m128i *)ar, v);
-        assert(ar[0] == -39);
-        assert(ar[1] == -28);
-        assert(ar[2] == -17);
-        assert(ar[3] == -6);
-    }
-
-    int main(int argc, char ** argv) {
-        testSetPs();
-        testSet1Ps();
-        testSetZeroPs();
-        testSetEpi32();
-        testSet1Epi32();
-        testSetZeroSi128();
-        testBitCasts();
-        testConversions();
-        testMoveMaskPs();
-        testAddPs();
-        testSubPs();
-        testMulPs();
-        testDivPs();
-        testMaxPs();
-        testMinPs();
-        testSqrtPs();
-        testCmpLtPs();
-        testCmpLePs();
-        testCmpEqPs();
-        testCmpGePs();
-        testCmpGtPs();
-        testAndPs();
-        testAndNotPs();
-        testOrPs();
-        testXorPs();
-        testAndSi128();
-        testAndNotSi128();
-        testOrSi128();
-        testXorSi128();
-        testAddEpi32();
-        testSubEpi32();
-        printf("DONE");
-        return 0;
-    }
-    '''
-
-    self.do_run(src, 'DONE')
-
+    self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):
-    Settings.NAMED_GLOBALS = 1 # test coverage for this
+    if os.environ.get('EMCC_FAST_COMPILER') != '1': Settings.NAMED_GLOBALS = 1 # test coverage for this
 
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
@@ -9395,6 +4648,7 @@ zeros 0, 0, 0, 0
   def test_lua(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
@@ -9412,6 +4666,7 @@ zeros 0, 0, 0, 0
   def test_freetype(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
@@ -9544,7 +4799,7 @@ def process(filename):
       test()
 
       assert 'asm2g' in test_modes
-      if self.run_name == 'asm2g' and not use_cmake:
+      if self.run_name == 'asm2g' and not use_cmake and os.environ.get('EMCC_FAST_COMPILER') != '1':
         # Test forced alignment
         print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
         old = open('src.cpp.o.js').read()
@@ -9557,6 +4812,7 @@ def process(filename):
 
   def test_poppler(self):
     if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     Settings.CORRECT_OVERFLOWS = 1
     Settings.CORRECT_SIGNS = 1
@@ -9771,6 +5027,14 @@ def process(filename):
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
+        if os.environ.get('EMCC_FAST_COMPILER') == '1' and os.path.basename(shortname) in [
+          'structparam', 'uadd_overflow_ta2', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', 'phientryimplicit', 'phiself', 'invokebitcast', # invalid ir
+          'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
+          '2xi40', # pnacl limitations in ExpandGetElementPtr
+          'legalizer_ta2', '514_ta2', # pnacl limitation in not legalizing i104, i96, etc.
+          'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_phi', 'longjmp_tiny_phi2', 'longjmp_tiny_invoke_phi', 'indirectbrphi', 'ptrtoint_blockaddr', 'quoted', # current fastcomp limitations FIXME
+          'sillyfuncast', 'sillyfuncast2', 'sillybitcast', 'atomicrmw_unaligned' # TODO XXX
+        ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
           print self.skip('case "%s" only relevant for ta2' % shortname)
           continue
@@ -9814,6 +5078,9 @@ def process(filename):
     def run_all(x):
       print x
       for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')):
+        #if os.path.basename(name) != '4.c': continue
+        if os.environ.get('EMCC_FAST_COMPILER') == '1' and os.path.basename(name) in ['17.c']: continue # pnacl limitation in not legalizing i104, i96, etc.
+
         print name
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
                     open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=True)
@@ -9913,33 +5180,10 @@ def process(filename):
     Settings.CORRUPTION_CHECK = 1
 
     # test for free(0), malloc(0), etc.
-    src = r'''
-      #include <iostream>
-      #include <fstream>
-      #include <stdlib.h>
-      #include <stdio.h>
+    test_path = path_from_root('tests', 'core', 'test_corruption_2')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void bye() {
-        printf("all ok\n");
-      }
-
-      int main() {
-        atexit(bye);
-
-        std::string testPath = "/Script/WA-KA.txt";
-        std::fstream str(testPath.c_str(), std::ios::in | std::ios::binary);
-
-        if (str.is_open())
-        {
-          std::cout << "open!" << std::endl;
-        } else {
-          std::cout << "missing!" << std::endl;
-        }
-
-        return 1;
-      }
-      '''
-    self.do_run(src, 'missing!\nall ok\n')
+    self.do_run_from_file(src, output)
 
   def test_corruption_3(self):
     if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
@@ -9948,55 +5192,16 @@ def process(filename):
     Settings.CORRUPTION_CHECK = 1
 
     # realloc
-    src = r'''
-      #include <stdlib.h>
-      #include <stdio.h>
-      #include <assert.h>
+    test_path = path_from_root('tests', 'core', 'test_corruption_3')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void bye() {
-        printf("all ok\n");
-      }
-
-      int main(int argc, char **argv) {
-        atexit(bye);
-
-        char *buffer = (char*)malloc(100);
-        for (int i = 0; i < 100; i++) buffer[i] = (i*i)%256;
-        buffer = (char*)realloc(buffer, argc + 50);
-        for (int i = 0; i < argc + 50; i++) {
-          //printf("%d : %d : %d : %d\n", i, (int)(buffer + i), buffer[i], (char)((i*i)%256));
-          assert(buffer[i] == (char)((i*i)%256));
-        }
-        return 1;
-      }
-      '''
-    self.do_run(src, 'all ok\n')
+    self.do_run_from_file(src, output)
 
   ### Integration tests
 
   def test_ccall(self):
     if self.emcc_args is not None and '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
-
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      extern "C" {
-        int get_int() { return 5; }
-        float get_float() { return 3.14; }
-        char * get_string() { return "hello world"; }
-        void print_int(int x) { printf("%d\n", x); }
-        void print_float(float x) { printf("%.2f\n", x); }
-        void print_string(char *x) { printf("%s\n", x); }
-        int multi(int x, float y, int z, char *str) { if (x) puts(str); return (x+y)*z; }
-        int * pointer(int *in) { printf("%d\n", *in); static int ret = 21; return &ret; }
-      }
-
-      int main(int argc, char **argv) {
-        return 0;
-      }
-    '''
 
     post = '''
 def process(filename):
@@ -10036,7 +5241,10 @@ def process(filename):
 
     Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
 
-    self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
+    test_path = path_from_root('tests', 'core', 'test_ccall')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output, post_build=post)
 
   def test_pgo(self):
     if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
@@ -10111,6 +5319,7 @@ def process(filename):
 
   def test_asm_pgo(self):
     if not Settings.ASM_JS: return self.skip('this is a test for PGO for asm (NB: not *in* asm)')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
@@ -10183,6 +5392,7 @@ def process(filename):
 
   def test_add_function(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
@@ -10223,31 +5433,14 @@ def process(filename):
   def test_demangle_stacks(self):
     if Settings.ASM_JS: return self.skip('spidermonkey has stack trace issues')
 
-    src = r'''
-      #include<stdio.h>
-      #include<stdlib.h>
+    test_path = path_from_root('tests', 'core', 'test_demangle_stacks')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      namespace NameSpace {
-        class Class {
-        public:
-          int Aborter(double x, char y, int *z) {
-            int addr = x+y+(int)z;
-            void *p = (void*)addr;
-            for (int i = 0; i < 100; i++) free(p); // will abort, should show proper stack trace
-          }
-        };
-      }
-
-      int main(int argc, char **argv) {
-        NameSpace::Class c;
-        c.Aborter(1.234, 'a', NULL);
-        return 0;
-      }
-    '''
-    self.do_run(src, 'NameSpace::Class::Aborter(double, char, int*)');
+    self.do_run_from_file(src, output)
 
   def test_embind(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind']
 
     src = r'''
@@ -10270,6 +5463,7 @@ def process(filename):
 
   def test_embind_2(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       Module.print('lerp ' + Module.lerp(1, 2, 0.66) + '.');
@@ -10290,6 +5484,7 @@ def process(filename):
 
   def test_scriptaclass(self):
       if self.emcc_args is None: return self.skip('requires emcc')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.EXPORT_BINDINGS = 1
 
@@ -10779,6 +5974,7 @@ def process(filename):
 
   def test_source_map(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
@@ -10862,6 +6058,7 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     src = '''
       #include <stdio.h>
@@ -10892,6 +6089,11 @@ def process(filename):
 
     dirname = self.get_dir()
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
+
+  def test_emscripten_log(self):
+    if self.emcc_args is None: return self.skip('This test needs libc.')
+    if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
+    self.do_run('#define RUN_FROM_JS_SHELL\n' + open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
 
   def test_linespecific(self):
     if Settings.ASM_JS: return self.skip('asm always has corrections on')
@@ -11084,132 +6286,10 @@ def process(filename):
 
     Settings.GC_SUPPORT = 1
 
-    src = r'''
-      #include <stdio.h>
-      #include <gc.h>
-      #include <assert.h>
+    test_path = path_from_root('tests', 'core', 'test_gc')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      void *global;
-
-      void finalizer(void *ptr, void *arg) {
-        printf("finalizing %d (global == %d)\n", (int)arg, ptr == global);
-      }
-
-      void finalizer2(void *ptr, void *arg) {
-        printf("finalizing2 %d (global == %d)\n", (int)arg, ptr == global);
-      }
-
-      int main() {
-        GC_INIT();
-
-        void *local, *local2, *local3, *local4, *local5, *local6;
-
-        // Hold on to global, drop locals
-
-        global = GC_MALLOC(1024); // rooted since in a static allocation
-        GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
-        printf("alloc %p\n", global);
-
-        local = GC_MALLOC(1024); // not rooted since stack is not scanned
-        GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void*)1, 0, 0);
-        printf("alloc %p\n", local);
-
-        assert((char*)local - (char*)global >= 1024 || (char*)global - (char*)local >= 1024);
-
-        local2 = GC_MALLOC(1024); // no finalizer
-        printf("alloc %p\n", local2);
-
-        local3 = GC_MALLOC(1024); // with finalizable2
-        GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer2, (void*)2, 0, 0);
-        printf("alloc %p\n", local);
-
-        local4 = GC_MALLOC(1024); // yet another
-        GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer2, (void*)3, 0, 0);
-        printf("alloc %p\n", local);
-
-        printf("basic test\n");
-
-        GC_FORCE_COLLECT();
-
-        printf("*\n");
-
-        GC_FREE(global); // force free will actually work
-
-        // scanning inside objects
-
-        global = GC_MALLOC(12);
-        GC_REGISTER_FINALIZER_NO_ORDER(global, finalizer, 0, 0, 0);
-        local = GC_MALLOC(12);
-        GC_REGISTER_FINALIZER_NO_ORDER(local, finalizer, (void*)1, 0, 0);
-        local2 = GC_MALLOC_ATOMIC(12);
-        GC_REGISTER_FINALIZER_NO_ORDER(local2, finalizer, (void*)2, 0, 0);
-        local3 = GC_MALLOC(12);
-        GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer, (void*)3, 0, 0);
-        local4 = GC_MALLOC(12);
-        GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer, (void*)4, 0, 0);
-        local5 = GC_MALLOC_UNCOLLECTABLE(12);
-        // This should never trigger since local5 is uncollectable
-        GC_REGISTER_FINALIZER_NO_ORDER(local5, finalizer, (void*)5, 0, 0);
-
-        printf("heap size = %d\n", GC_get_heap_size());
-
-        local4 = GC_REALLOC(local4, 24);
-
-        printf("heap size = %d\n", GC_get_heap_size());
-
-        local6 = GC_MALLOC(12);
-        GC_REGISTER_FINALIZER_NO_ORDER(local6, finalizer, (void*)6, 0, 0);
-        // This should be the same as a free
-        GC_REALLOC(local6, 0);
-
-        void **globalData = (void**)global;
-        globalData[0] = local;
-        globalData[1] = local2;
-
-        void **localData = (void**)local;
-        localData[0] = local3;
-
-        void **local2Data = (void**)local2;
-        local2Data[0] = local4; // actually ignored, because local2 is atomic, so 4 is freeable
-
-        printf("object scan test test\n");
-
-        GC_FORCE_COLLECT();
-
-        printf("*\n");
-
-        GC_FREE(global); // force free will actually work
-
-        printf("*\n");
-
-        GC_FORCE_COLLECT();
-
-        printf(".\n");
-
-        global = 0;
-
-        return 0;
-      }
-    '''
-    self.do_run(src, '''basic test
-finalizing 1 (global == 0)
-finalizing2 2 (global == 0)
-finalizing2 3 (global == 0)
-*
-finalizing 0 (global == 1)
-heap size = 72
-heap size = 84
-finalizing 6 (global == 0)
-object scan test test
-finalizing 4 (global == 0)
-*
-finalizing 0 (global == 1)
-*
-finalizing 1 (global == 0)
-finalizing 2 (global == 0)
-finalizing 3 (global == 0)
-.
-''')
+    self.do_run_from_file(src, output)
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
@@ -11295,7 +6375,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   return TT
 
 # Make one run with the defaults
-default = make_run("default", compiler=CLANG, emcc_args=[])
+default = make_run("default", compiler=CLANG, emcc_args=[] if os.environ.get('EMCC_FAST_COMPILER') != '1' else ['-s', 'ASM_JS=1'])
 
 # Make one run with -O1, with safe heap
 o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=0", "-s", "SAFE_HEAP=1"])

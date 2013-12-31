@@ -8860,5 +8860,20 @@ function math(a, b, c, d) {
  w = Math_imul(d);
  print(x + y + z + w);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi", "intoCond", "math"]
+function td(x, y) { // tempDoublePtr should invalidate each other
+  HEAP32[tempDoublePtr>>2] = x;
+  var xf = HEAPF32[tempDoublePtr>>2];
+  HEAP32[tempDoublePtr>>2] = y;
+  var yf = HEAPF32[tempDoublePtr>>2];
+  func(xf, yf);
+  //
+  HEAPF64[tempDoublePtr>>3] = x;
+  var xl = HEAP32[tempDoublePtr>>2];
+  var xh = HEAP32[tempDoublePtr>>2];
+  HEAPF64[tempDoublePtr>>3] = y;
+  var yl = HEAP32[tempDoublePtr>>2];
+  var yh = HEAP32[tempDoublePtr>>2];
+  func(xl, xh, yl, yh);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi", "intoCond", "math", "td"]
 

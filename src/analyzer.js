@@ -1570,7 +1570,17 @@ function analyzer(data, sidePass) {
         for (var j = 0; j < label.lines.length; j++) {
           var line = label.lines[j];
           if ((line.intertype == 'call' || line.intertype == 'invoke') && line.ident == setjmp) {
-            // Add a new label
+            if (line.intertype == 'invoke') {
+              // setjmp cannot trigger unwinding, so just reduce the invoke to a call + branch
+              line.intertype = 'call';
+              label.lines.push({
+                intertype: 'branch',
+                label: line.toLabel,
+                lineNum: line.lineNum + 0.01, // XXX legalizing might confuse this
+              });
+              line.toLabel = line.unwindLabel = -2;
+            }
+            // split this label into up to the setjmp (including), then a new label for the rest. longjmp will reach the rest
             var oldLabel = label.ident;
             var newLabel = func.labelIdCounter++;
             if (!func.setjmpTable) func.setjmpTable = [];
@@ -1662,11 +1672,13 @@ function analyzer(data, sidePass) {
   function stackAnalyzer() {
     data.functions.forEach(function(func) {
       var lines = func.labels[0].lines;
+      var hasAlloca = false;
       for (var i = 0; i < lines.length; i++) {
         var item = lines[i];
         if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.ident)) break;
         item.allocatedSize = func.variables[item.assignTo].impl === VAR_EMULATED ?
           calcAllocatedSize(item.allocatedType)*item.ident: 0;
+        hasAlloca = true;
         if (USE_TYPED_ARRAYS === 2) {
           // We need to keep the stack aligned
           item.allocatedSize = Runtime.forceAlign(item.allocatedSize, Runtime.STACK_ALIGN);
@@ -1682,6 +1694,7 @@ function analyzer(data, sidePass) {
       }
       func.initialStack = index;
       func.otherStackAllocations = false;
+      if (func.initialStack === 0 && hasAlloca) func.otherStackAllocations = true; // a single alloca of zero still requires us to emit stack support code
       while (func.initialStack == 0) { // one-time loop with possible abort in the middle
         // If there is no obvious need for stack management, perhaps we don't need it
         // (we try to optimize that way with SKIP_STACK_IN_SMALL). However,
