@@ -286,6 +286,21 @@ def check_llvm_version():
   except Exception, e:
     logging.warning('Could not verify LLVM version: %s' % str(e))
 
+def check_fastcomp():
+  try:
+    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
+    pre, targets = llc_version_info.split('Registered Targets:')
+    if 'js' not in targets or 'JavaScript (asm.js, emscripten) backend' not in targets:
+      logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
+      print >> sys.stderr, '==========================================================================='
+      print >> sys.stderr, llc_version_info,
+      print >> sys.stderr, '==========================================================================='
+      return False
+    return True
+  except Exception, e:
+    logging.warning('cound not check fastcomp: %s' % str(e))
+    return True
+
 EXPECTED_NODE_VERSION = (0,8,0)
 
 def check_node_version():
@@ -353,9 +368,11 @@ def check_sanity(force=False):
       Cache.erase()
       force = False # the check actually failed, so definitely write out the sanity file, to avoid others later seeing failures too
 
-    # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
+    # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_llvm_version()
     check_node_version()
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+      fastcomp_ok = check_fastcomp()
 
     if os.environ.get('EM_IGNORE_SANITY'):
       logging.info('EM_IGNORE_SANITY set, ignoring sanity checks')
@@ -375,6 +392,11 @@ def check_sanity(force=False):
     for cmd in [CLANG, LINK_CMD[0], LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
+        sys.exit(1)
+
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+      if not fastcomp_ok:
+        logging.critical('failing sanity checks due to previous fastcomp failure')
         sys.exit(1)
 
     try:
@@ -1438,7 +1460,7 @@ class Building:
   @staticmethod
   def ensure_relooper(relooper):
     if os.path.exists(relooper): return
-    if os.environ.get('EMCC_FAST_COMPILER'):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
       logging.debug('not building relooper to js, using it in c++ backend')
       return
 
@@ -1513,7 +1535,7 @@ class Building:
       text = m.groups(0)[0]
       assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
       assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
-      if os.environ.get('EMCC_FAST_COMPILER'): # fake it in fastcomp
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': # fake it in fastcomp
         return text.replace('emscripten_jcache_printf', 'printf')
       start = text.index('(')
       end = text.rindex(')')
