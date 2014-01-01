@@ -1822,9 +1822,7 @@ function analyzer(data, sidePass) {
         var label = func.labels[i];
         for (var j = 0; j < label.lines.length; ++j) {
           var line = label.lines[j];
-          if (line.intertype == 'return') {
-            line.async = true;
-          } else if ((line.intertype == 'call') && (line.ident in allAsyncFunctions)) {
+          if ((line.intertype == 'call') && (line.ident in allAsyncFunctions)) {
             line.async = true;
             // split a new label, simliar as handling setjmp
             // TODO: setjmp may be implemented as an async function ?
