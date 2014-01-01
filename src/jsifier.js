@@ -88,7 +88,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
         libFuncsToInclude = [];
         for (var key in LibraryManager.library) {
-          if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
+          if (!key.match(/__(deps|postset|inline|asm|sig|async)$/)) {
             libFuncsToInclude.push(key);
           }
         }
@@ -760,7 +760,9 @@ function JSify(data, functionsOnly, givenFunctions) {
 
           if(func.async) {
             // to create a closure, define all the local variables
-            ret += indent + 'var ' + keys(func.variables).join(',') + ';\n';
+            var variables = keys(func.variables);
+            if(variables.length > 0)
+                ret += indent + 'var ' + variables.join(',') + ';\n';
             ret += indent + '(function ' + getAsyncFunctionName(func.ident) + '(' + ASYNC_RETURN_VALUE + '){\n';
           }
 
@@ -1152,7 +1154,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
   }
-  // TODO: need to handle async cases?
   function switchHandler(item) {
     // use a switch if the range is not too big or sparse
     var minn = Infinity, maxx = -Infinity;
