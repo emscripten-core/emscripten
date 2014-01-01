@@ -25,7 +25,7 @@ var ASYNC_CALLBACK = 'async_callback';
 var ASYNC_RETURN_VALUE = 'async_return_value';
 // TODO: is the 'async' prefix OK?
 function getAsyncFunctionName(funcName) {
-    return 'async_' + funcName; 
+  return 'async_' + funcName; 
 }
 
 // JSifier
@@ -612,7 +612,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     
     if (DLOPEN_SUPPORT) Functions.getIndex(func.ident);
 
-    // TODO: where do I define constants?
     if(func.async)
       paramIdents.unshift(ASYNC_CALLBACK);
 
@@ -760,9 +759,9 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
 
           if(func.async) {
-              // to create a closure, define all the local variables
-              ret += indent + 'var ' + keys(func.variables).join(',') + ';\n';
-              ret += indent + '(function ' + getAsyncFunctionName(func.ident) + '(' + ASYNC_RETURN_VALUE + '){\n';
+            // to create a closure, define all the local variables
+            ret += indent + 'var ' + keys(func.variables).join(',') + ';\n';
+            ret += indent + '(function ' + getAsyncFunctionName(func.ident) + '(' + ASYNC_RETURN_VALUE + '){\n';
           }
 
           ret += indent + 'while(1)';
@@ -800,8 +799,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
 
         if(func.async) {
-            // close the async function
-            ret += indent + '})(0);';
+          // close the async function
+          ret += indent + '})(0);';
         }
 
         ret += '\n';
@@ -1249,9 +1248,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     ret += 'return';
 
-    // TODO: where do I define constants: (for async_callback)
     if(item.async)
-        ret += ' async_callback(';
+      ret += ' ' + ASYNC_CALLBACK + '(';
 
     var value = item.value ? finalizeLLVMParameter(item.value) : null;
     if (!value && item.funcData.returnType != 'void') value = '0'; // no-value returns must become value returns if function returns
@@ -1260,7 +1258,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if(item.async)
-        ret += ')';
+      ret += ')';
     return ret + ';';
   }
   function resumeHandler(item) {
@@ -1686,10 +1684,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     // prepend the async callback
     var args1 = args;
     if(item.async) {
-        // setup the label for callback
-        // and make sure we return 
-        ret += 'label = ' + item.asyncReturnLabel + ';return ';
-        args1.unshift(getAsyncFunctionName(item.funcData.ident)); 
+      // setup the label for callback
+      // and make sure we return 
+      ret += 'label = ' + item.asyncReturnLabel + ';return ';
+      args1.unshift(getAsyncFunctionName(item.funcData.ident)); 
     }
 
     ret += callIdent + '(' + args1.join(',') + ')';
