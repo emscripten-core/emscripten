@@ -4973,7 +4973,7 @@ var LibraryGL = {
     GL.instancedArraysExt.vertexAttribDivisorANGLE(index, divisor);    
   },
 
-  glDrawArraysInstanced_sig: 'viiii',
+  glDrawArraysInstanced__sig: 'viiii',
   glDrawArraysInstanced: function(mode, first, count, primcount) {
 #if GL_ASSERTIONS    
     assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
@@ -4981,7 +4981,7 @@ var LibraryGL = {
     GL.instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount);
   },
   
-  glDrawElementsInstanced_sig: 'viiiii',
+  glDrawElementsInstanced__sig: 'viiiii',
   glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
 #if GL_ASSERTIONS    
     assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
