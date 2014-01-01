@@ -17,6 +17,16 @@ var INDENTATION = ' ';
 
 var functionStubSigs = {};
 
+// constants for async functions
+// TODO: where should I put these?
+
+var ASYNC_CALLBACK = 'async_callback';
+var ASYNC_RETURN_VALUE = 'async_return_value';
+// TODO: is the 'async' prefix OK?
+function getAsyncFunctionName(funcName) {
+    return 'async_' + funcName; 
+}
+
 // JSifier
 function JSify(data, functionsOnly) {
   //B.start('jsifier');
@@ -114,7 +124,10 @@ function JSify(data, functionsOnly) {
     }
     currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
     data.unparsedFunctions = null;
+    // TODO: where to put this?
+    print('Module["async"]=Module["async"]||' + (data.async ? 'true' : 'false') + ';\n');
   }
+
 
   // Actors
 
@@ -585,6 +598,10 @@ function JSify(data, functionsOnly) {
     
     if (DLOPEN_SUPPORT) Functions.getIndex(func.ident);
 
+    // TODO: where do I define constants?
+    if(func.async)
+      paramIdents.unshift(ASYNC_CALLBACK);
+
     func.JS += 'function ' + func.ident + '(' + paramIdents.join(',') + '){\n';
 
     if (PGO) {
@@ -727,14 +744,26 @@ function JSify(data, functionsOnly) {
               ret += makeSetValue('setjmpTable', '0', '0', 'i32') + ';'; // initialize first entry to 0
             }
           }
+
+          if(func.async) {
+              // to create a closure, define all the local variables
+              ret += indent + 'var ' + keys(func.variables).join(',') + ';\n';
+              ret += indent + '(function ' + getAsyncFunctionName(func.ident) + '(' + ASYNC_RETURN_VALUE + '){\n';
+          }
+
           ret += indent + 'while(1)';
           if (func.setjmpTable && !ASM_JS) {
             ret += 'try { ';
           }
           ret += 'switch(' + asmCoercion('label', 'i32') + '){\n';
           ret += block.labels.map(function(label) {
-            return INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
-                          + getLabelLines(label);
+            var ret = INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n';
+            if(label.assignAsyncReturnValueTo) {
+              // retrieve the return value
+              ret += INDENTATION + label.assignAsyncReturnValueTo + '=' + ASYNC_RETURN_VALUE + ';\n';
+            }
+            ret += getLabelLines(label);
+            return ret;
           }).join('\n') + '\n';
           if (func.setjmpTable && ASM_JS) {
             // emit a label in which we write to the proper local variable, before jumping to the actual label
@@ -755,6 +784,12 @@ function JSify(data, functionsOnly) {
         } else {
           ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0]);
         }
+
+        if(func.async) {
+            // close the async function
+            ret += indent + '})(0);';
+        }
+
         ret += '\n';
       } else {
         // Reloop multiple blocks using the compiled relooper
@@ -878,9 +913,11 @@ function JSify(data, functionsOnly) {
   function makeAssign(item) {
     var valueJS = item.JS;
     item.JS = '';
-    if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED) { // asm only needs non-allocas
+   
+    if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED || item.funcData.async) { // asm only needs non-allocas
       if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
-      item.JS += ((ASM_JS || item.overrideSSA) ? '' : 'var ') + toNiceIdent(item.assignTo);
+      // for async functions, local variables are defined outside the closure 
+      item.JS += ((ASM_JS || item.overrideSSA || item.funcData.async) ? '' : 'var ') + toNiceIdent(item.assignTo);
     }
     var value = parseNumerical(valueJS);
     var impl = getVarImpl(item.funcData, item.assignTo);
@@ -1197,11 +1234,19 @@ function JSify(data, functionsOnly) {
           +  "INDENT = INDENT.substr(0, INDENT.length-2);";
     }
     ret += 'return';
+
+    // TODO: where do I define constants: (for async_callback)
+    if(item.async)
+        ret += ' async_callback(';
+
     var value = item.value ? finalizeLLVMParameter(item.value) : null;
     if (!value && item.funcData.returnType != 'void') value = '0'; // no-value returns must become value returns if function returns
     if (value) {
       ret += ' ' + asmCoercion(value, item.type);
     }
+
+    if(item.async)
+        ret += ')';
     return ret + ';';
   }
   function resumeHandler(item) {
@@ -1622,7 +1667,18 @@ function JSify(data, functionsOnly) {
       if (!ASM_JS || functionTableCall) callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }
 
-    var ret = callIdent + '(' + args.join(',') + ')';
+    var ret = '';
+
+    // prepend the async callback
+    var args1 = args;
+    if(item.async) {
+        // setup the label for callback
+        // and make sure we return 
+        ret += 'label = ' + item.asyncReturnLabel + ';return ';
+        args1.unshift(getAsyncFunctionName(item.funcData.ident)); 
+    }
+
+    ret += callIdent + '(' + args1.join(',') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
       if (ffiCall) {
         ret = asmFFICoercion(ret, returnType);
