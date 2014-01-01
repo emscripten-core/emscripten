@@ -1234,7 +1234,7 @@ function JSify(data, functionsOnly) {
     }
     ret += 'return';
 
-    if(item.async)
+    if(item.funcData.async)
       ret += ' ' + ASYNC_CALLBACK + '(';
 
     var value = item.value ? finalizeLLVMParameter(item.value) : null;
@@ -1243,8 +1243,9 @@ function JSify(data, functionsOnly) {
       ret += ' ' + asmCoercion(value, item.type);
     }
 
-    if(item.async)
+    if(item.funcData.async)
       ret += ')';
+
     return ret + ';';
   }
   function resumeHandler(item) {
