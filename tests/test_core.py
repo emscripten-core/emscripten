@@ -6308,21 +6308,41 @@ def process(filename):
     open(os.path.join(self.get_dir(), 'tmp.c'), 'w').write('''
       #include <stdio.h>
       void async_sleep(int);
-      int work() {
-        printf("hello");
-        async_sleep(100);
-        printf("world");
+      void work1() {
+         // no return
+         async_sleep(100);
+      }
+      int work(int i) {
+        switch(i) {
+          case 0:
+            // normal async call
+            printf("hello");
+            async_sleep(100);
+            printf("world");
+            break;
+          case 1:
+            // fake async call
+            printf("hello");
+            printf("world");
+            break;
+          case 2:
+            printf("hello");
+            work1();
+            printf("world");
+            return 1024;
+            break;
+        }
         return 1024;
       }
       int main() {
         for(int i = 0; i < 3; ++i)
-          printf("%d", work());
+          printf("%d", work(i));
         return 0;
       }
     ''')
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'tmp.c'), '--js-library', os.path.join(self.get_dir(), 'tmp_lib.js')]).communicate()
-    assert run_js(os.path.join(self.get_dir(), 'a.out.js')).strip() == 'helloworld1024' * 3
+    self.assertIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')).strip(), 'helloworld1024' * 3)
 
 
 
