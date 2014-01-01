@@ -1919,6 +1919,13 @@ var LibraryGL = {
         return id;
       };
 
+      function ensurePrecision(source) {
+        if (!/precision +(low|medium|high)p +float *;/.test(source)) {
+          source = 'precision mediump float;\n' + source;
+        }
+        return source;
+      }
+
       var glShaderSource = _glShaderSource;
       _glShaderSource = function _glShaderSource(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
@@ -1992,6 +1999,7 @@ var LibraryGL = {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
+          source = ensurePrecision(source);
         } else { // Fragment shader
           for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
             var old = source;
@@ -2023,7 +2031,7 @@ var LibraryGL = {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
-          source = 'precision mediump float;\n' + source;
+          source = ensurePrecision(source);
         }
 #if GL_DEBUG
         GL.shaderSources[shader] = source;
