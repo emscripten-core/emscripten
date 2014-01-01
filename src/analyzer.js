@@ -1814,46 +1814,45 @@ function analyzer(data, sidePass) {
     // mark async functions definitions and calls
     item.functions.forEach(function(func) {
       if (!(func.ident in allAsyncFunctions))
-      return;
+        return;
 
-    func.async = true;
+      func.async = true;
 
-    for (var i = 0; i < func.labels.length; ++i) {
-      var label = func.labels[i];
-      for (var j = 0; j < label.lines.length; ++j) {
-        var line = label.lines[j];
-        if (line.intertype == 'return') {
-          line.async = true;
-        } else if ((line.intertype == 'call') && (line.ident in allAsyncFunctions)) {
-          line.async = true;
-          // split a new label, simliar as handling setjmp
-          // TODO: setjmp may be implemented as an async function ?
-          var newLabelId = line.asyncReturnLabel = func.labelIdCounter++;
-          var newLabelLines = label.lines.slice(j+1);
+      for (var i = 0; i < func.labels.length; ++i) {
+        var label = func.labels[i];
+        for (var j = 0; j < label.lines.length; ++j) {
+          var line = label.lines[j];
+          if (line.intertype == 'return') {
+            line.async = true;
+          } else if ((line.intertype == 'call') && (line.ident in allAsyncFunctions)) {
+            line.async = true;
+            // split a new label, simliar as handling setjmp
+            // TODO: setjmp may be implemented as an async function ?
+            var newLabelId = line.asyncReturnLabel = func.labelIdCounter++;
+            var newLabelLines = label.lines.slice(j+1);
 
-          var newLabel = {
-            intertype: 'label',
-            ident: newLabelId,
-            lineNum: label.lineNum + 0.5,
-            lines: label.lines.slice(j+1)
-          };
+            var newLabel = {
+              intertype: 'label',
+              ident: newLabelId,
+              lineNum: label.lineNum + 0.5,
+              lines: label.lines.slice(j+1)
+            };
 
-          // handle return value
-          if (line.assignTo) {
-            newLabel.assignAsyncReturnValueTo = line.assignTo;
-            delete line.assignTo;
+            // handle return value
+            if (line.assignTo) {
+              newLabel.assignAsyncReturnValueTo = line.assignTo;
+              delete line.assignTo;
+            }
+
+            func.labels.splice(i+1, 0, newLabel);
+
+            func.labelsDict[newLabelId] = func.labels[i+1];
+            label.lines = label.lines.slice(0, j+1);
+
+            // TODO: fix phi? what is a phi?
           }
-
-          func.labels.splice(i+1, 0, newLabel);
-
-          func.labelsDict[newLabelId] = func.labels[i+1];
-          label.lines = label.lines.slice(0, j+1);
-
-          // TODO: fix phi? what is a phi?
         }
       }
-    }
-
     });
   }
 
