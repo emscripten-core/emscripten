@@ -74,7 +74,14 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     var start = Date.now();
 #endif
 
-    var ret = Module['_main'](argc, argv, 0);
+    // TODO: determine better names for the keys
+    if (Module['async']) {
+      Module['noExitRuntime'] = true;
+      var callback = Module['asyncCallback'] || function(){};
+      var ret = Module['_main'](callback, argc, argv, 0);
+    } else {
+      var ret = Module['_main'](argc, argv, 0);
+    }
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');

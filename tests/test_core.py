@@ -6291,6 +6291,41 @@ def process(filename):
 
     self.do_run_from_file(src, output)
 
+  # TODO: where shall I put this test?
+  def test_async_transform(self):
+    if self.emcc_args is None: return self.skip('need emcc')
+    if Settings.ASM_JS: return self.skip('async transform does not work with ASM.js currently')
+
+    open(os.path.join(self.get_dir(), 'tmp_lib.js'), 'w').write('''
+      mergeInto(LibraryManager.library, {
+        async_sleep_async: true,
+        async_sleep: function (callback, msec) {
+          setTimeout(callback, msec);
+        },
+      });
+    ''')
+
+    open(os.path.join(self.get_dir(), 'tmp.c'), 'w').write('''
+      #include <stdio.h>
+      void async_sleep(int);
+      int work() {
+        printf("hello");
+        async_sleep(100);
+        printf("world");
+        return 1024;
+      }
+      int main() {
+        for(int i = 0; i < 3; ++i)
+          printf("%d", work());
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'tmp.c'), '--js-library', os.path.join(self.get_dir(), 'tmp_lib.js')]).communicate()
+    assert run_js(os.path.join(self.get_dir(), 'a.out.js')).strip() == 'helloworld1024' * 3
+
+
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
