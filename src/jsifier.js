@@ -1153,6 +1153,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
   }
+  // TODO: need to handle async cases?
   function switchHandler(item) {
     // use a switch if the range is not too big or sparse
     var minn = Infinity, maxx = -Infinity;
