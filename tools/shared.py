@@ -746,6 +746,39 @@ def expand_response(data):
     return json.loads(open(data[1:]).read())
   return data
 
+# Reads the given PE file and returns 32 or 64 denoting
+# the bitness of that executable or 0 if failed to detect.
+# From http://stackoverflow.com/questions/1345632/determine-if-an-executable-or-library-is-32-or-64-bits-on-windows
+def get_windows_exe_bitness(filename):
+  try:
+    import struct
+
+    IMAGE_FILE_MACHINE_I386=332
+    IMAGE_FILE_MACHINE_IA64=512
+    IMAGE_FILE_MACHINE_AMD64=34404
+
+    if not filename.endswith('.exe'):
+      filename += '.exe'
+    f = open(filename, "rb")
+    s = f.read(2)
+    if s != "MZ":
+      f.close()
+      return 0
+
+    f.seek(60)
+    s = f.read(4)
+    header_offset = struct.unpack("<L", s)[0]
+    f.seek(header_offset+4)
+    s = f.read(2)
+    machine = struct.unpack("<H", s)[0]
+    f.close()
+    if machine == IMAGE_FILE_MACHINE_IA64 or machine == IMAGE_FILE_MACHINE_AMD64:
+      return 64
+    else:
+      return 32
+  except:
+    return 0
+
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
 class Settings2(type):
@@ -1136,7 +1169,20 @@ class Building:
       if len(' '.join(link_cmd)) > 8192:
         logging.warning('emcc: link command line is very long, even with response file -- use paths with no spaces')
 
-    output = Popen(link_cmd, stdout=PIPE).communicate()[0]
+    try:
+      output = Popen(link_cmd, stdout=PIPE).communicate()[0]
+    except WindowsError, e:
+      logging.error('Link command ' + str(link_cmd) + ' failed with an exception: ' + str(e))
+      python_bitness = 64 if sys.maxsize > 2**32 else 32
+      link_file_bitness = get_windows_exe_bitness(link_cmd[0])
+      if link_file_bitness == 0 and e.winerror == 6: # winerror 6 == 'Handle is invalid'
+        logging.error('This can be due to mismatching toolchain bitness! You are running a ' + str(python_bitness) + '-bit Python from ' + sys.executable + ', but the bitness of the linker executable ' + link_cmd[0] + ' could not be determined. Make sure that the linker command is valid and the toolchain is consistent with the same bitness!')
+      elif python_bitness != link_file_bitness:
+        logging.error('This can be due to mismatching toolchain bitness! You are running a ' + str(python_bitness) + '-bit Python from ' + sys.executable + ', but the linker ' + link_cmd[0] + ' is a ' + str(link_file_bitness) + '-bit executable. Make sure that the toolchain is consistent with the same bitness!')
+      sys.exit(1)
+    except Exception, e:
+      logging.error('Link command ' + str(link_cmd) + ' failed with an exception: ' + str(e))
+      raise
 
     if response_file:
       os.unlink(response_file)
