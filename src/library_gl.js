@@ -2112,8 +2112,9 @@ var LibraryGL = {
         if (GL.currProgram != program) {
           GL.immediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
           GL.currProgram = program;
+          GL.immediate.fixedFunctionProgram = 0;
+          glUseProgram(program);
         }
-        glUseProgram(program);
       }
 
       var glDeleteProgram = _glDeleteProgram;
@@ -3745,8 +3746,10 @@ var LibraryGL = {
 #endif
 
           if (!GL.currProgram) {
-            Module.ctx.useProgram(this.program);
-            GL.immediate.fixedFunctionProgram = this.program;
+            if (GL.immediate.fixedFunctionProgram != this.program) {
+              Module.ctx.useProgram(this.program);
+              GL.immediate.fixedFunctionProgram = this.program;
+            }
           }
 
           if (this.modelViewLocation && this.modelViewMatrixVersion != GL.immediate.matrixVersion[0/*m*/]) {
