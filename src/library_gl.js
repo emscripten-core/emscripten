@@ -22,9 +22,13 @@ var LibraryGL = {
 
 #if FULL_ES2
     clientBuffers: [],
-#endif
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
+#endif
+#if LEGACY_GL_EMULATION
+    currArrayBuffer: 0,
+    currElementArrayBuffer: 0,
+#endif
 
     byteSizeByTypeRoot: 0x1400, // GL_BYTE
     byteSizeByType: [
@@ -1335,11 +1339,20 @@ var LibraryGL = {
 #endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
 
+#if FULL_ES2
     if (target == Module.ctx.ARRAY_BUFFER) {
       GL.currArrayBuffer = buffer;
     } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
       GL.currElementArrayBuffer = buffer;
     }
+#endif
+#if LEGACY_GL_EMULATION
+    if (target == Module.ctx.ARRAY_BUFFER) {
+      GL.currArrayBuffer = buffer;
+    } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
+      GL.currElementArrayBuffer = buffer;
+    }
+#endif
 
     Module.ctx.bindBuffer(target, bufferObj);
   },
