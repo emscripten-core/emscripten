@@ -2158,11 +2158,11 @@ var LibraryGL = {
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = function _glGetFloatv(pname, params) {
         if (pname == 0x0BA6) { // GL_MODELVIEW_MATRIX
-          HEAPF32.set(GL.immediate.matrix['m'], params >> 2);
+          HEAPF32.set(GL.immediate.matrix[0/*m*/], params >> 2);
         } else if (pname == 0x0BA7) { // GL_PROJECTION_MATRIX
-          HEAPF32.set(GL.immediate.matrix['p'], params >> 2);
+          HEAPF32.set(GL.immediate.matrix[1/*p*/], params >> 2);
         } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
-          HEAPF32.set(GL.immediate.matrix['t' + GL.immediate.clientActiveTexture], params >> 2);
+          HEAPF32.set(GL.immediate.matrix[2/*t*/ + GL.immediate.clientActiveTexture], params >> 2);
         } else if (pname == 0x0B66) { // GL_FOG_COLOR
           HEAPF32.set(GLEmulation.fogColor, params >> 2);
         } else if (pname == 0x0B63) { // GL_FOG_START
@@ -3334,9 +3334,9 @@ var LibraryGL = {
     lastStride: -1, // ""
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
-    matrix: {},
-    matrixStack: {},
-    currentMatrix: 'm', // default is modelview
+    matrix: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
+    matrixStack: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
+    currentMatrix: 0, // default is modelview
     tempMatrix: null,
     matricesModified: false,
     useTextureMatrix: false,
@@ -3635,9 +3635,9 @@ var LibraryGL = {
             Module.ctx.linkProgram(this.program);
           }
 
-          // Stores a map that remembers which matrix uniforms are up-to-date in this FFP renderer, so they don't need to be resubmitted
+          // Stores an array that remembers which matrix uniforms are up-to-date in this FFP renderer, so they don't need to be resubmitted
           // each time we render with this program.
-          this.textureMatrixVersion = {};
+          this.textureMatrixVersion = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
 
@@ -3749,13 +3749,13 @@ var LibraryGL = {
             GL.immediate.fixedFunctionProgram = this.program;
           }
 
-          if (this.modelViewLocation && this.modelViewMatrixVersion != GL.immediate.matrixVersion['m']) {
-            this.modelViewMatrixVersion = GL.immediate.matrixVersion['m'];
-            Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
+          if (this.modelViewLocation && this.modelViewMatrixVersion != GL.immediate.matrixVersion[0/*m*/]) {
+            this.modelViewMatrixVersion = GL.immediate.matrixVersion[0/*m*/];
+            Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix[0/*m*/]);
           }
-          if (this.projectionLocation && this.projectionMatrixVersion != GL.immediate.matrixVersion['p']) {
-            this.projectionMatrixVersion = GL.immediate.matrixVersion['p'];
-            Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
+          if (this.projectionLocation && this.projectionMatrixVersion != GL.immediate.matrixVersion[1/*p*/]) {
+            this.projectionMatrixVersion = GL.immediate.matrixVersion[1/*p*/];
+            Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix[1/*p*/]);
           }
 
           var clientAttributes = GL.immediate.clientAttributes;
@@ -3819,7 +3819,7 @@ var LibraryGL = {
                 Module.ctx.disableVertexAttribArray(attribLoc);
               }
 #endif
-              var t = 't'+i;
+              var t = 2/*t*/+i;
               if (this.textureMatrixLocations[i] && this.textureMatrixVersion[t] != GL.immediate.matrixVersion[t]) { // XXX might we need this even without the condition we are currently in?
                 this.textureMatrixVersion[t] = GL.immediate.matrixVersion[t];
                 Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix[t]);
@@ -4027,25 +4027,25 @@ var LibraryGL = {
         GLEmulation.enabledClientAttribIndices.push(false);
       }
 
-      this.matrixStack['m'] = [];
-      this.matrixStack['p'] = [];
+      this.matrixStack[0/*m*/] = [];
+      this.matrixStack[1/*p*/] = [];
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-        this.matrixStack['t' + i] = [];
+        this.matrixStack[2/*t*/ + i] = [];
       }
 
       // Initialize matrix library
       // When user sets a matrix, increment a 'version number' on the new data, and when rendering, submit
       // the matrices to the shader program only if they have an old version of the data.
-      GL.immediate.matrixVersion = {};
-      GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrixVersion['m'] = 0;
-      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['m']);
-      GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrixVersion['p'] = 0;
-      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['p']);
+      GL.immediate.matrixVersion = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+      GL.immediate.matrix[0/*m*/] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrixVersion[0/*m*/] = 0;
+      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix[0/*m*/]);
+      GL.immediate.matrix[1/*p*/] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrixVersion[1/*p*/] = 0;
+      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix[1/*p*/]);
       for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-        GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
-        GL.immediate.matrixVersion['t' + i] = 0;
+        GL.immediate.matrix[2/*t*/ + i] = GL.immediate.matrix.lib.mat4.create();
+        GL.immediate.matrixVersion[2/*t*/ + i] = 0;
       }
 
       // Renderer cache
@@ -4613,12 +4613,12 @@ var LibraryGL = {
   glMatrixMode__deps: ['$GL', '$GLImmediateSetup', '$GLEmulation'], // emulation is not strictly needed, this is a workaround
   glMatrixMode: function(mode) {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
-      GL.immediate.currentMatrix = 'm';
+      GL.immediate.currentMatrix = 0/*m*/;
     } else if (mode == 0x1701 /* GL_PROJECTION */) {
-      GL.immediate.currentMatrix = 'p';
+      GL.immediate.currentMatrix = 1/*p*/;
     } else if (mode == 0x1702) { // GL_TEXTURE
       GL.immediate.useTextureMatrix = true;
-      GL.immediate.currentMatrix = 't' + GL.immediate.clientActiveTexture;
+      GL.immediate.currentMatrix = 2/*t*/ + GL.immediate.clientActiveTexture;
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
     }
