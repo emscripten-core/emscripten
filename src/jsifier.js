@@ -802,7 +802,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
         if(func.async) {
           // close the async function
-          ret += indent + '})(0);';
+          ret += indent + '})();';
         }
 
         ret += '\n';
