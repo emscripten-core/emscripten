@@ -27,12 +27,30 @@ mergeInto(LibraryManager.library, {
   // tweaked slightly in order to use the 'compact' UUID form used by libuuid.
   uuid_generate: function(out) {
     // void uuid_generate(uuid_t out);
-    var uuid = new Array(16);
-    var d = new Date().getTime();
-    for (var i = 0; i < 16; i++) {
-      var r = (d + Math.random()*256)%256 | 0;
-      d = Math.floor(d/256);
-      uuid[i] = r;
+    var uuid = null;
+
+    if (ENVIRONMENT_IS_NODE) {
+      // If Node.js try to use crypto.randomBytes
+      try {
+        var rb = require('crypto').randomBytes;
+        uuid = rb(16);
+      } catch(e) {}
+    } else if (typeof(window.crypto) != 'undefined' && 
+               typeof(window.crypto.getRandomValues) != 'undefined') {
+      // If crypto.getRandomValues is available try to use it.
+      uuid = new Uint8Array(16);
+      window.crypto.getRandomValues(uuid);
+    }
+
+    // Fall back to Math.random if a higher quality random number generator is not available.
+    if (!uuid) {
+      uuid = new Array(16);
+      var d = new Date().getTime();
+      for (var i = 0; i < 16; i++) {
+        var r = (d + Math.random()*256)%256 | 0;
+        d = Math.floor(d/256);
+        uuid[i] = r;
+      }
     }
 
     uuid[6] = (uuid[6] & 0x0F) | 0x40;

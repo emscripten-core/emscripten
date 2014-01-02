@@ -1,8 +1,9 @@
-
 #include <uuid/uuid.h>
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <emscripten.h>
 
 int isUUID(char* p, int upper) {
     char* p1 = p;
@@ -56,6 +57,13 @@ int main() {
 
     assert(uuid_is_null(uuid) == 1);
 
-    return 0;
+    // The following lets the browser test exit cleanly.
+    int result = 1;
+    #if EMSCRIPTEN
+        #ifdef REPORT_RESULT
+            REPORT_RESULT();
+        #endif
+    #endif
+    exit(0);
 }
 

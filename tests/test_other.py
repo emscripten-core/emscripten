@@ -2197,14 +2197,3 @@ mergeInto(LibraryManager.library, {
     process.communicate()
     assert(os.path.isfile(outdir + 'hello_world.obj'))
 
-  def test_uuid(self):
-    # Run with ./runner.py other.test_uuid
-    Popen([PYTHON, EMCC, path_from_root('tests', 'uuid', 'test.c'), '-o', path_from_root('tests', 'uuid', 'test.js')], stdout=PIPE, stderr=PIPE).communicate()
-
-    out = run_js(path_from_root('tests', 'uuid', 'test.js'), full_output=True)
-    print out
-
-    # Tidy up files that might have been created by this test.
-    try_delete(path_from_root('tests', 'uuid', 'test.js'))
-    try_delete(path_from_root('tests', 'uuid', 'test.js.map'))
-
