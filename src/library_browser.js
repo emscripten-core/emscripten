@@ -482,12 +482,12 @@ mergeInto(LibraryManager.library, {
         //Neither .scrollX or .pageXOffset are defined in a spec, but
         //we prefer .scrollX because it is currently in a spec draft.
         //(see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
-        var scrollX = ((window.scrollX !== undefined) ? window.scrollX : window.pageXOffset);
-        var scrollY = ((window.scrollY !== undefined) ? window.scrollY : window.pageYOffset);
+        var scrollX = ((typeof window.scrollX !== 'undefined') ? window.scrollX : window.pageXOffset);
+        var scrollY = ((typeof window.scrollY !== 'undefined') ? window.scrollY : window.pageYOffset);
         #if ASSERTIONS
         //If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
         //and we have no viable fallback.
-        assert((scrollX !== undefined) && (scrollY !== undefined), 'Unable to retrieve scroll position, mouse positions likely broken.');
+        assert((typeof scrollX !== 'undefined') && (typeof scrollY !== 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
         #endif
         if (event.type == 'touchstart' ||
             event.type == 'touchend' ||
