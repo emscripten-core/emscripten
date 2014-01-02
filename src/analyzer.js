@@ -1765,7 +1765,7 @@ function analyzer(data, sidePass) {
 
   // perform transformations if async functions are used
   function asyncTransformer() {
-    // create call_graph
+    // create call graph
     // b in callGraph[a] <=> b calls a
     var callGraph = {};
     item.functions.forEach(function(func) {
