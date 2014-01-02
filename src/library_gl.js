@@ -1348,7 +1348,7 @@ var LibraryGL = {
 #endif
 #if LEGACY_GL_EMULATION
     if (target == Module.ctx.ARRAY_BUFFER) {
-      GL.currArrayBuffer = buffer;
+      GL.immediate.lastArrayBuffer = GL.currArrayBuffer = buffer;
     } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
       GL.currElementArrayBuffer = buffer;
     }
@@ -3739,20 +3739,17 @@ var LibraryGL = {
 #endif
           if (!GL.currArrayBuffer) {
             // Bind the array buffer and upload data after cleaning up the previous renderer
-#if GL_UNSAFE_OPTS
-            // Potentially unsafe, since lastArrayBuffer might not reflect the true array buffer in code that mixes immediate/non-immediate
+
             if (arrayBuffer != GL.immediate.lastArrayBuffer) {
-#endif
               Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, arrayBuffer);
-#if GL_UNSAFE_OPTS
+              GL.immediate.lastArrayBuffer = arrayBuffer;
             }
-#endif
+
             Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, GL.immediate.vertexData.subarray(start >> 2, end >> 2));
           }
 #if GL_UNSAFE_OPTS
           if (canSkip) return;
           GL.immediate.lastRenderer = this;
-          GL.immediate.lastArrayBuffer = arrayBuffer;
           GL.immediate.lastProgram = GL.currProgram || this.program;
           GL.immediate.lastStride == GL.immediate.stride;
           GL.immediate.matricesModified = false;
@@ -3894,11 +3891,11 @@ var LibraryGL = {
           }
           if (!GL.currArrayBuffer) {
             Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+            GL.immediate.lastArrayBuffer = null;
           }
 
 #if GL_UNSAFE_OPTS
           GL.immediate.lastRenderer = null;
-          GL.immediate.lastArrayBuffer = null;
           GL.immediate.lastProgram = null;
 #endif
           GL.immediate.matricesModified = true;
