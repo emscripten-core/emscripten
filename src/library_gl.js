@@ -4485,7 +4485,7 @@ var LibraryGL = {
 
   // ClientState/gl*Pointer
 
-  glEnableClientState: function(cap, disable) {
+  glEnableClientState: function(cap) {
     var attrib = GLEmulation.getAttributeFromCapability(cap);
     if (attrib === null) {
 #if ASSERTIONS
@@ -4493,21 +4493,29 @@ var LibraryGL = {
 #endif
       return;
     }
-    if (disable && GL.immediate.enabledClientAttributes[attrib]) {
-      GL.immediate.enabledClientAttributes[attrib] = false;
-      GL.immediate.totalEnabledClientAttributes--;
-      this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
-      if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
-    } else if (!disable && !GL.immediate.enabledClientAttributes[attrib]) {
+    if (!GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = true;
       GL.immediate.totalEnabledClientAttributes++;
       this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
       if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
+      GL.immediate.modifiedClientAttributes = true;
     }
-    GL.immediate.modifiedClientAttributes = true;
   },
   glDisableClientState: function(cap) {
-    _glEnableClientState(cap, 1);
+    var attrib = GLEmulation.getAttributeFromCapability(cap);
+    if (attrib === null) {
+#if ASSERTIONS
+      Module.printErr('WARNING: unhandled clientstate: ' + cap);
+#endif
+      return;
+    }
+    if (GL.immediate.enabledClientAttributes[attrib]) {
+      GL.immediate.enabledClientAttributes[attrib] = false;
+      GL.immediate.totalEnabledClientAttributes--;
+      this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
+      if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
+      GL.immediate.modifiedClientAttributes = true;
+    }
   },
 
   glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
