@@ -680,10 +680,7 @@ If manually bisecting:
     self.btest('sdl_stb_image_data.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not'])
 
   def test_sdl_canvas(self):
-    open(os.path.join(self.get_dir(), 'sdl_canvas.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas.c')).read()))
-
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_sdl_canvas_proxy(self):
     def post():
