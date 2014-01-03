@@ -14,53 +14,369 @@ function processMacros(text) {
   });
 }
 
+// O(len(start)) method for checking if str begins with start.
+function strStartsWith(str, start) {
+  if (str.length < start.length) return false;
+  for(var i = 0; i < start.length; ++i) {
+    if (str[i] != start[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Returns the value of the given #define. If a variable has been defined, but not given a value, i.e. "#define FOO",
+// then true is returned. Otherwise the string value of the #define is returned. If the #define is not present, return undefined.
+// #defines are maintained in two different maps, one for permanent vars coming from settings.js, another 
+// that are temporary and only apply to currently preprocessed source file.
+function getIdent(ident, defines, defines2) {
+  if (ident in defines) {
+    return defines[ident];
+  }
+  if (ident in defines2) {
+    return defines2[ident];
+  }
+  return undefined;
+}
+
+// Returns true if the given identifier 'ident' is defined in either of the two #define maps.
+function isDefined(ident, defines, defines2) {
+  return ident in defines || ident in defines2;
+}
+
+// Given an expression string like "(A && B || (C > 0 && D != E))", tokenizes it into a list of primitive tokens.
+function tokenizeExpression(expression) {
+  expression = expression.trim();
+  if (expression.length == 0) {
+    return [];
+  }  
+  function isalpha(ch) { return /[_a-z]$/i.test(ch); }
+  function isdigit(ch) { return /[0-9]$/i.test(ch); }
+  function tokenType(ch) {
+    if (isalpha(ch)) { return 'a'; }
+    if (isdigit(ch)) { return '0'; }
+    return ch;
+  }
+
+  var tokenList = []; // Fills the list of ready tokens as we go.
+  var prevStart = 0; // Index of first untokenized character.
+  var prevCh = expression[0];
+  var prevTokenType = tokenType(prevCh);
+  for(var i = 1; i < expression.length; ++i) {
+    var curCh = expression[i];
+    var curTokenType = tokenType(curCh);
+    var areOfSameToken = (prevTokenType == curTokenType || (prevTokenType == 'a' && curTokenType == '0')) && curCh != '(' && curCh != ')' && curCh != '!';
+    if (curCh == '(' && prevTokenType == 'a') {
+      prevTokenType = '('; // Instead of representing a preprocessor text, this is a macro function, i.e. tokens "FUNC("
+      areOfSameToken = true;
+    }
+    if (curCh == '=' && (prevCh == '<' || prevCh == '>' || prevCh == '!')) {
+      areOfSameToken = true;
+      prevTokenType = prevCh + curCh;
+    }
+    if (!areOfSameToken) {
+      var token = {
+        type: prevTokenType,
+        text: expression.substring(prevStart, i),
+        toString: function() { return this.text; }
+      }
+      if (prevTokenType != ' ') {
+        tokenList.push(token);
+      }
+      prevStart = i;
+      prevCh = curCh;
+      prevTokenType = curTokenType;
+    } 
+  }
+  // Finish last token.
+  var token = {
+    type: prevTokenType,
+    text: expression.substring(prevStart, expression.length),
+    toString: function() { return this.text; }
+  }
+  if (prevTokenType != ' ') {
+    tokenList.push(token);
+  }
+  return tokenList;
+}
+
+// Debugging and error messaging - dumps the given preprocessor expression tree to console.
+function dumpTree(tree, indent) {
+  var i = '';
+  for(var x = 0; x < indent; ++x) i += ' ';
+
+  if (tree instanceof Array) {
+    for(var j = 0; j < tree.length; ++j) {
+      console.error(i + 'idx ' + j + ': ');
+        dumpTree(tree[j], indent+1);
+    }
+    console.error('');
+    return;
+  }
+
+  if (tree.type == 'tree') {
+    dumpTree(tree.children, indent+1);
+  } else if (tree.type == 'unary_op' && tree.op_type == '!') {
+    dumpTree(tree.children, indent+1);
+  } else if (tree.type == 'binary_op') {
+    console.error(i+ ' left:');
+    dumpTree(tree.left, indent+2);
+    console.error(' ');
+    console.error(i+ ' right:');
+    dumpTree(tree.right, indent+2);
+    console.error(' ');
+    console.error(' ');
+  } else {
+    console.error(i + 'type: ' + tree.type + ', text:' + tree.text + ', op_type: ' + tree.op_type);
+  }
+}
+
+// Find by token type.
+function findFirstToken(tokenList, type) { for(var t = 0;    t < tokenList.length; ++t) { if (tokenList[t].type == type) return t; } return -1; }
+function findLastToken(tokenList, type)  { for(var t = tokenList.length-1; t >= 0; --t) { if (tokenList[t].type == type) return t; } return -1; }
+
+function buildExpressionTreeBinaryOps(tokenList) {
+  // Process binary operators in their order of precedence, left-to-right associativity.
+  var ops = ['<', '<=', '>', '>=', '=', '!=', '&', '|' ];
+  for(i in ops) {
+    for(;;) {
+      var idx = findFirstToken(tokenList, ops[i]);
+      if (idx == -1) {
+        break;
+      }
+      if (idx == 0 || idx >= tokenList.length) {
+        error('Binary operator requires expressions on both sides of the operator!');
+      }
+      var leftTree = tokenList[idx-1];
+      var rightTree = tokenList[idx+1];
+      var token = {
+        type: 'binary_op',
+        op_type: ops[i],
+        left: leftTree,
+        right: rightTree,
+        toString: function() { return this.left.toString() + this.op_type + this.right.toString(); }
+      };
+      tokenList = tokenList.slice(0, idx-1).concat([token]).concat(tokenList.slice(idx+2));
+    }
+  }
+  if (tokenList instanceof Array) {
+    if (tokenList.length > 1) {
+      error('Failed to build expression tree from expression!');
+      dumpTree(tokenList);
+    }
+    return tokenList[0];
+  } else {
+    return tokenList;
+  }
+}
+
+// Possible token types in token list, in order of precedence: (), !, <, <=, >, >=, ==, !=, &&, ||, a, 0
+function buildExpressionTree(tokenList) {
+  // Consume any macro functions and parentheses first (highest precedence)
+  for(;;) {
+    var s = findFirstToken(tokenList, '(');
+    var e = -1;
+    // Find matching closing parentheses.
+    var parenCount = 1;
+    for(var i = s+1; i < tokenList.length; ++i) {
+      if (tokenList[i].type == '(') {
+        parenCount++;
+      } else if (tokenList[i].type == ')') {
+        parenCount--;
+      }
+      if (parenCount == 0) {
+        e = i;
+        break;
+      }
+    }
+    if (s == -1 && e == -1) {
+      break;
+    }
+    if (s >= e || s == -1 || e == -1) {
+      error('Failed to match parentheses in conditional preprocessor expression!');
+      dumpTree(tokenList);
+    }
+    var subtree = tokenList.slice(s+1, e);
+    subtree = buildExpressionTree(subtree);
+    var token = {
+      type: 'function',
+      left: tokenList[s],
+      right: tokenList[e],
+      text: tokenList[s].text, // Possible macro function name
+      children: subtree,
+      toString: function() { return this.left.toString() + this.children.toString() + this.right.toString(); }
+    };
+    tokenList = tokenList.slice(0, s).concat([token]).concat(tokenList.slice(e+1));
+  }
+  // Process unary operator ! right-to-left, so that !!ident turns properly into !(!(ident)) and not into !(!)ident
+  for(;;) {
+    var neg = findLastToken(tokenList, '!');
+    if (neg == -1) {
+      break;
+    }
+    if (neg+1 >= tokenList.length) {
+      error('Unary operator ! requires an expression');
+    }
+    var right = tokenList[neg+1];
+    var token = {
+      type: 'unary_op',
+      op_type: '!',
+      children: right,
+      toString: function() { return '!' + this.children.toString(); }
+    };
+
+    tokenList = tokenList.slice(0, neg).concat([token]).concat(tokenList.slice(neg+2));
+  }
+  return buildExpressionTreeBinaryOps(tokenList);
+}
+
+function evaluateExpressionTree(tree, defines, defines2) {
+  function evalBoolean(val) { return (val === true) ? 1 : (val === false) ? 0 : (val != 0); }
+  var result;
+  if (tree.type == 'function') {
+    if (tree.text == 'defined(') {
+      result = isDefined(tree.children, defines, defines2);
+    } else {    
+      result = evaluateExpressionTree(tree.children, defines, defines2);
+    }
+  } else if (tree.type == 'unary_op' && tree.op_type == '!') {
+    result = evalBoolean(evaluateExpressionTree(tree.children, defines, defines2)) ? 0 : 1;
+  } else if (tree.type == 'binary_op') {
+    var left = evaluateExpressionTree(tree.left, defines, defines2);
+    var right = evaluateExpressionTree(tree.right, defines, defines2);
+    if (tree.op_type == '=') result = left == right;
+    else if (tree.op_type == '!=') result = left != right;
+    else if (tree.op_type == '>')  result = parseInt(left) > parseInt(right);
+    else if (tree.op_type == '>=') result = parseInt(left) >= parseInt(right);
+    else if (tree.op_type == '<')  result = parseInt(left) <  parseInt(right);
+    else if (tree.op_type == '<=') result = parseInt(left) <= parseInt(right);
+    else if (tree.op_type == '&') result = evalBoolean(left) && evalBoolean(right);
+    else if (tree.op_type == '|') result = evalBoolean(left) || evalBoolean(right);
+    else {
+      error('Unknown binary_op type ' + tree.op_type);
+    }
+  } else if (tree.type == 'a') {
+    var ident = getIdent(tree.text, defines, defines2);
+    if (ident === undefined) {
+      result = false;
+    } else {
+      result = ident;
+    }
+  } else if (tree.type == '0') {
+    result = tree.text;
+  } else {
+    error("Don't know how to evaluate token " + tree.text + ' of type ' + tree.type + '!');
+    dumpTree(tree);
+  }
+  return result;
+}
+ 
+function evaluateExpression(expressionString, defines, defines2) {
+  var tokenList = tokenizeExpression(expressionString);
+  var expressionTree = buildExpressionTree(tokenList);
+  var ret = evaluateExpressionTree(expressionTree, defines, defines2);
+  if (expressionString.indexOf('VAR_') != -1)
+  if (ret === undefined) {
+    error("Failed to evaluate preprocessor directive " + expressionString);
+    console.error('Token list:');
+    dumpTree(tokenList);
+    console.error('Expression tree:');
+    dumpTree(expressionTree);
+    console.error('');
+  }
+  return ret;
+}
+
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
 function preprocess(text) {
   var lines = text.split('\n');
   var ret = '';
-  var showStack = [];
+  var E_TRUE = 2; // We are inside a nested preprocessor block that evaluated to true.
+  var E_FALSE = 1; // We are inside a nested preprocessor block that evaluated to false.
+  var E_FALSE_MATCHED = 0; // We are inside a nested chained preprocessor block that was not evaluated since an above #if block this was chained to was run.
+  var exprResultStack = []; // Stores a stack of true/false depending on whether previous #if directives have evaluated to true or not.
+
+  var defines = {};
+
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     if (line[line.length-1] == '\r') {
       line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
     }
-    if (!line[0] || line[0] != '#') {
-      if (showStack.indexOf(false) == -1) {
-        ret += line + '\n';
-      }
-    } else {
-      if (line[1] == 'i') {
-        if (line[2] == 'f') { // if
-          var parts = line.split(' ');
-          var ident = parts[1];
-          var op = parts[2];
-          var value = parts[3];
-          if (op) {
-            if (op === '==') {
-              showStack.push(ident in this && this[ident] == value);
-            } else if (op === '!=') {
-              showStack.push(!(ident in this && this[ident] == value));
-            } else {
-              error('unsupported preprecessor op ' + op);
-            }
-          } else {
-            showStack.push(ident in this && this[ident] > 0);
-          }
-        } else if (line[2] == 'n') { // include
-          ret += '\n' + read(line.substr(line.indexOf(' ')+1)) + '\n'
-        }
-      } else if (line[2] == 'l') { // else
-        showStack.push(!showStack.pop());
-      } else if (line[2] == 'n') { // endif
-        showStack.pop();
-      } else {
-        throw "Unclear preprocessor command: " + line;
+    var activeSection = true;
+    for(var s in exprResultStack) {
+      if (exprResultStack[s] != E_TRUE) {
+        activeSection = false;
+        break;
       }
     }
+    if (line[0] != '#') {
+      if (activeSection) {
+        ret += line + '\n';
+      }
+    } else if (activeSection && strStartsWith(line, '#define ')) {
+      var d = line.split(' ');
+      if (d.length < 2 || d[1].length == 0) { // "#define\n"
+        error('Could not parse #define directive "' + line + '". Syntax: #define identifier [value]');
+        return;
+      }
+      if (d.length == 2) { // "#define A"
+        defines[d[1]] = true;
+      } else { // "#define A B"
+        defines[d[1]] = d[2];
+      }
+    } else if (activeSection && strStartsWith(line, '#undef ')) {
+      var d = line.split(' ');
+      if (d.length < 2 || d[1].length == 0) { // "#undef\n"
+        error('Could not parse #undef directive "' + line + '". Syntax: #undef identifier');
+        return;
+      }
+      delete defines[d[1]]; // "#undef A"
+    } else if (strStartsWith(line, '#if ')) { // "#if expression"
+      var expression = line.substr(4).trim();
+      var expressionResult = evaluateExpression(expression, defines, this);
+      exprResultStack.push(expressionResult ? E_TRUE : E_FALSE);
+    } else if (strStartsWith(line, '#ifdef ')) {
+      var expression = line.substr(7).trim();
+      var expressionResult = isDefined(expression, defines, this);
+      exprResultStack.push(expressionResult ? E_TRUE : E_FALSE);
+    } else if (strStartsWith(line, '#ifndef ')) {
+      var expression = line.substr(8).trim();
+      var expressionResult = !isDefined(expression, defines, this);
+      exprResultStack.push(expressionResult ? E_TRUE : E_FALSE);
+    } else if (strStartsWith(line, '#elif ')) {
+      var ifResult = exprResultStack[exprResultStack.length-1];
+      if (ifResult == E_FALSE) {
+        var expression = line.substr(6).trim();
+        var expressionResult = evaluateExpression(expression, defines, this);
+        exprResultStack[exprResultStack.length-1] = expressionResult ? E_TRUE : E_FALSE;
+      } else {
+        exprResultStack[exprResultStack.length-1] = E_FALSE_MATCHED;
+      }
+    } else if (strStartsWith(line, '#else')) {
+      var elseResult = exprResultStack.pop();
+      exprResultStack.push((elseResult == E_FALSE) ? E_TRUE : E_FALSE);
+    } else if (strStartsWith(line, '#warning ')) {
+      var msg = line.substr(9).trim();
+      console.error('#warning: ' + msg);
+    } else if (strStartsWith(line, '#error ')) {
+      var msg = line.substr(7).trim();
+      error('#error: ' + msg);
+    } else if (strStartsWith(line, '#endif')) {
+      if (exprResultStack.length == 0) {
+        error('Found an #endif without #if');
+        return;
+      }
+      exprResultStack.pop();
+    } else if (activeSection && strStartsWith(line, '#include')) {
+      ret += '\n' + read(line.substr(line.indexOf(' ')+1)) + '\n'
+    }
   }
-  assert(showStack.length == 0);
+  if (exprResultStack.length != 0) {
+    error('Unterminated preprocessor directive, missing #endif!');
+  }
   return ret;
 }
 

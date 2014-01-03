@@ -2002,6 +2002,10 @@ done.
     assert '''hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
 
+  def test_js_library_preprocess(self):
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-library', path_from_root('tests', 'library_preprocess.js')], stdout=PIPE).communicate()
+    self.assertContained('success!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
   def test_demangle(self):
     open('src.cpp', 'w').write('''
       #include <stdio.h>
