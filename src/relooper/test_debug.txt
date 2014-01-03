@@ -4,18 +4,18 @@ int main() {
   rl_set_output_buffer(buffer);
   void *block_map[10000];
   void *rl = rl_new_relooper();
-  void *b1 = rl_new_block("// code 1");
-  block_map[1] = b1;
-  rl_relooper_add_block(rl, block_map[1]);
-  void *b2 = rl_new_block("// code 2");
-  block_map[2] = b2;
-  rl_relooper_add_block(rl, block_map[2]);
-  void *b3 = rl_new_block("// code 3");
-  block_map[3] = b3;
-  rl_relooper_add_block(rl, block_map[3]);
-  void *b4 = rl_new_block("// code 4");
-  block_map[4] = b4;
-  rl_relooper_add_block(rl, block_map[4]);
+  void *b-1 = rl_new_block("// code -1");
+  block_map[-1] = b-1;
+  rl_relooper_add_block(rl, block_map[-1]);
+  void *b-1 = rl_new_block("// code -1");
+  block_map[-1] = b-1;
+  rl_relooper_add_block(rl, block_map[-1]);
+  void *b-1 = rl_new_block("// code -1");
+  block_map[-1] = b-1;
+  rl_relooper_add_block(rl, block_map[-1]);
+  void *b-1 = rl_new_block("// code -1");
+  block_map[-1] = b-1;
+  rl_relooper_add_block(rl, block_map[-1]);
   rl_block_add_branch_to(block_map[1], block_map[2], "ep -> LBB1", NULL);
   rl_block_add_branch_to(block_map[1], block_map[4], NULL, NULL);
   rl_block_add_branch_to(block_map[2], block_map[3], "LBB1 -> LBB2", NULL);
@@ -114,29 +114,29 @@ int main() {
 // Process() returning
 // === Optimizing shapes ===
 // Fusing Multiple to Simple
-ep
-L1: do {
- switch (the_var) {
- ep -> LBB1 {
-  LBB1
+ ep
+ L1: do {
   switch (the_var) {
-  LBB1 -> LBB2 {
+  ep -> LBB1 {
+   LBB1
+   switch (the_var) {
+   LBB1 -> LBB2 {
+    break;
+   }
+   default: {
+    break L1;
+   }
+   }
+   LBB2
+   switch (the_var) {
+   default: {
+   }
+   }
    break;
   }
   default: {
-   break L1;
   }
   }
-  LBB2
-  switch (the_var) {
-  default: {
-  }
-  }
-  break;
- }
- default: {
- }
- }
-} while(0);
-LBB3
+ } while(0);
+ LBB3
 

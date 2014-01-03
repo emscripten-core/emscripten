@@ -195,6 +195,34 @@ class sanity(RunnerCore):
     finally:
       del os.environ['EM_IGNORE_SANITY']
 
+  def test_llvm_fastcomp(self):
+    if os.environ.get('EMCC_FAST_COMPILER') != '1': return self.skip('not using fastcomp')
+
+    WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
+
+    restore()
+
+    # Should see js backend during sanity check
+    assert check_fastcomp()
+    output = self.check_working(EMCC)
+    assert WARNING not in output, output
+
+    # Fake incorrect llc output, no mention of js backend
+    restore()
+    f = open(CONFIG_FILE, 'a')
+    f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
+    f.close()
+
+    if not os.path.exists(path_from_root('tests', 'fake')):
+      os.makedirs(path_from_root('tests', 'fake'))
+
+    f = open(path_from_root('tests', 'fake', 'llc'), 'w')
+    f.write('#!/bin/sh\n')
+    f.write('echo "llc fake output\nRegistered Targets:\nno j-s backend for you!"')
+    f.close()
+    os.chmod(path_from_root('tests', 'fake', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    output = self.check_working(EMCC, WARNING)
+
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
     NODE_WARNING_2 = 'cannot check node version'
@@ -547,4 +575,32 @@ fi
     finally:
       if old:
         os.environ['EMCC_LLVM_TARGET'] = old
+
+  def test_emconfig(self):
+    restore()
+    
+    (fd, custom_config_filename) = tempfile.mkstemp(prefix='.emscripten_config_')
+
+    orig_config = open(CONFIG_FILE, 'r').read()
+ 
+    # Move the ~/.emscripten to a custom location.
+    tfile = os.fdopen(fd, "w")
+    tfile.write(orig_config)
+    tfile.close()
+
+    # Make a syntax error in the original config file so that attempting to access it would fail.
+    open(CONFIG_FILE, 'w').write('asdfasdfasdfasdf\n\'\'\'' + orig_config)
+
+    temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
+
+    os.chdir(temp_dir)
+    self.do([EMCC, '-O2', '--em-config', custom_config_filename, path_from_root('tests', 'hello_world.c')])
+    result = run_js('a.out.js')
+    
+    # Clean up created temp files.
+    os.remove(custom_config_filename)
+    os.chdir(path_from_root())
+    shutil.rmtree(temp_dir)
+
+    self.assertContained('hello, world!', result)
 

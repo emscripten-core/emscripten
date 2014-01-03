@@ -210,21 +210,30 @@ var LibraryGL = {
     },
 
     get: function(name_, p, type) {
+      // Guard against user passing a null pointer.
+      // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
+      // Testing on desktop core GL 3, the application crashes on glGetIntegerv to a null pointer, but
+      // better to report an error instead of doing anything random.
+      if (!p) {
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_VALUE in glGet' + type + 'v(name=' + name_ + ': Function called with null out pointer!');
+#endif
+        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+        return;
+      }
       var ret = undefined;
       switch(name_) { // Handle a few trivial GLES values
         case 0x8DFA: // GL_SHADER_COMPILER
           ret = 1;
           break;
         case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-          if (type === 'Integer') {
-            // fall through, see gles2_conformance.cpp
-          } else {
+          if (type !== 'Integer') {
             GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
             Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
 #endif
-            return;
           }
+          return; // Do not write anything to the out pointer, since no binary formats are supported.
         case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
           ret = 0;
           break;
@@ -259,11 +268,27 @@ var LibraryGL = {
             return;
           case "object":
             if (result === null) {
-              GL.recordError(0x0500); // GL_INVALID_ENUM
+              // null is a valid result for some (e.g., which buffer is bound - perhaps nothing is bound), but otherwise
+              // can mean an invalid name_, which we need to report as an error
+              switch(name_) {
+                case 0x8894: // ARRAY_BUFFER_BINDING
+                case 0x8B8D: // CURRENT_PROGRAM
+                case 0x8895: // ELEMENT_ARRAY_BUFFER_BINDING
+                case 0x8CA6: // FRAMEBUFFER_BINDING
+                case 0x8CA7: // RENDERBUFFER_BINDING
+                case 0x8069: // TEXTURE_BINDING_2D
+                case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
+                  ret = 0;
+                  break;
+                }
+                default: {
+                  GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-              Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') and it returns null!');
+                  Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') and it returns null!');
 #endif
-              return;
+                  return;
+                }
+              }
             } else if (result instanceof Float32Array ||
                        result instanceof Uint32Array ||
                        result instanceof Int32Array ||
@@ -538,6 +563,9 @@ var LibraryGL = {
                           Module.ctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
 
       GL.floatExt = Module.ctx.getExtension('OES_texture_float');
+      
+      // Extension available from Firefox 26 and Google Chrome 30
+      GL.instancedArraysExt = Module.ctx.getExtension('ANGLE_instanced_arrays');
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -1676,7 +1704,7 @@ var LibraryGL = {
   glGetFramebufferAttachmentParameteriv__sig: 'viiii',
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
     var result = Module.ctx.getFramebufferAttachmentParameter(target, attachment, pname);
-    {{{ makeSetValue('params', '0', 'params', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'result', 'i32') }}};
   },
 
   glIsFramebuffer__sig: 'ii',
@@ -1907,6 +1935,13 @@ var LibraryGL = {
         return id;
       };
 
+      function ensurePrecision(source) {
+        if (!/precision +(low|medium|high)p +float *;/.test(source)) {
+          source = 'precision mediump float;\n' + source;
+        }
+        return source;
+      }
+
       var glShaderSource = _glShaderSource;
       _glShaderSource = function _glShaderSource(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
@@ -1980,6 +2015,7 @@ var LibraryGL = {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
+          source = ensurePrecision(source);
         } else { // Fragment shader
           for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
             var old = source;
@@ -2011,7 +2047,7 @@ var LibraryGL = {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
-          source = 'precision mediump float;\n' + source;
+          source = ensurePrecision(source);
         }
 #if GL_DEBUG
         GL.shaderSources[shader] = source;
@@ -4950,6 +4986,45 @@ var LibraryGL = {
       return Module.ctx.getError();
     }
   },
+  
+  // ANGLE_instanced_arrays WebGL extension related functions
+  
+  glVertexAttribDivisor__sig: 'vii',
+  glVertexAttribDivisor: function(index, divisor) {
+#if GL_ASSERTIONS    
+    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+#endif
+    GL.instancedArraysExt.vertexAttribDivisorANGLE(index, divisor);    
+  },
+
+  glDrawArraysInstanced__sig: 'viiii',
+  glDrawArraysInstanced: function(mode, first, count, primcount) {
+#if GL_ASSERTIONS    
+    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+#endif
+    GL.instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount);
+  },
+  
+  glDrawElementsInstanced__sig: 'viiiii',
+  glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
+#if GL_ASSERTIONS    
+    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+#endif
+    GL.instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount);
+  },
+  
+  // OpenGL Desktop/ES 2.0 instancing extensions compatibility
+  
+  glVertexAttribDivisorNV: 'glVertexAttribDivisor',
+  glDrawArraysInstancedNV: 'glDrawArraysInstanced',
+  glDrawElementsInstancedNV: 'glDrawElementsInstanced',
+  glVertexAttribDivisorEXT: 'glVertexAttribDivisor',
+  glDrawArraysInstancedEXT: 'glDrawArraysInstanced',
+  glDrawElementsInstancedEXT: 'glDrawElementsInstanced',
+  glVertexAttribDivisorARB: 'glVertexAttribDivisor',
+  glDrawArraysInstancedARB: 'glDrawArraysInstanced',
+  glDrawElementsInstancedARB: 'glDrawElementsInstanced',
+  
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',

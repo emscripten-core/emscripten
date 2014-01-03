@@ -16,6 +16,7 @@ function processMacros(text) {
 
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
+// Also handles #include x.js (similar to C #include <file>)
 function preprocess(text) {
   var lines = text.split('\n');
   var ret = '';
@@ -30,25 +31,29 @@ function preprocess(text) {
         ret += line + '\n';
       }
     } else {
-      if (line[1] && line[1] == 'i') { // if
-        var parts = line.split(' ');
-        var ident = parts[1];
-        var op = parts[2];
-        var value = parts[3];
-        if (op) {
-          if (op === '==') {
-            showStack.push(ident in this && this[ident] == value);
-          } else if (op === '!=') {
-            showStack.push(!(ident in this && this[ident] == value));
+      if (line[1] == 'i') {
+        if (line[2] == 'f') { // if
+          var parts = line.split(' ');
+          var ident = parts[1];
+          var op = parts[2];
+          var value = parts[3];
+          if (op) {
+            if (op === '==') {
+              showStack.push(ident in this && this[ident] == value);
+            } else if (op === '!=') {
+              showStack.push(!(ident in this && this[ident] == value));
+            } else {
+              error('unsupported preprecessor op ' + op);
+            }
           } else {
-            error('unsupported preprecessor op ' + op);
+            showStack.push(ident in this && this[ident] > 0);
           }
-        } else {
-          showStack.push(ident in this && this[ident] > 0);
+        } else if (line[2] == 'n') { // include
+          ret += '\n' + read(line.substr(line.indexOf(' ')+1)) + '\n'
         }
-      } else if (line[2] && line[2] == 'l') { // else
+      } else if (line[2] == 'l') { // else
         showStack.push(!showStack.pop());
-      } else if (line[2] && line[2] == 'n') { // endif
+      } else if (line[2] == 'n') { // endif
         showStack.pop();
       } else {
         throw "Unclear preprocessor command: " + line;

@@ -37,12 +37,21 @@ int main(int argc, char *argv[])
     assert(eglGetError() == EGL_SUCCESS);
     assert(surface != 0);
 
+    // WebGL maps to GLES2. GLES1 is not supported.
+    EGLint contextAttribsOld[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 1,
+        EGL_NONE
+    };
+    EGLContext context = eglCreateContext(display, config, NULL, contextAttribsOld);
+    assert(eglGetError() != EGL_SUCCESS);
+
     EGLint contextAttribs[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
         EGL_NONE
     };
-    EGLContext context = eglCreateContext(display, config, NULL, contextAttribs);
+    context = eglCreateContext(display, config, NULL, contextAttribs);
     assert(eglGetError() == EGL_SUCCESS);
     assert(context != 0);
 

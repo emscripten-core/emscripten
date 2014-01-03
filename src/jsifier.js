@@ -6,7 +6,6 @@
 // Handy sets
 
 var STRUCT_LIST = set('struct', 'list');
-var UNDERSCORE_OPENPARENS = set('_', '(');
 var RELOOP_IGNORED_LASTS = set('return', 'unreachable', 'resume');
 
 var addedLibraryItems = {};
@@ -95,19 +94,6 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
 
   // Functions
-
-  Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
-
-  data.functionStubs.forEach(function(func) {
-    // Don't overwrite stubs that have more info.
-    if (!Functions.currExternalFunctions.hasOwnProperty(func.ident) ||
-        !Functions.currExternalFunctions[func.ident].numParams === undefined) {
-      Functions.currExternalFunctions[func.ident] = {
-        hasVarArgs: func.hasVarArgs,
-        numParams: func.params && func.params.length
-      };
-    }
-  });
 
   if (phase == 'funcs') { // || phase == 'pre') { // pre has function shells, just to defined implementedFunctions
     var MAX_BATCH_FUNC_LINES = 1000;
@@ -1824,7 +1810,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('staticSealed = true; // seal the static portion of memory\n');
         print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
         print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
-        print('assert(DYNAMIC_BASE < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY\n');
+        print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
       }
 
       if (asmLibraryFunctions.length > 0) {
@@ -1859,10 +1845,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         // first row are utilities called from generated code, second are needed from fastLong
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
          'llvm_ctlz_i32', 'llvm_cttz_i32'].forEach(function(func) {
-          if (!Functions.libraryFunctions[func]) {
+          if (!Functions.libraryFunctions[func] || (phase == 'glue' && func[0] === 'l' && !addedLibraryItems[func])) { // TODO: one-by-one in fastcomp glue mode
             print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
             Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
-            Functions.libraryFunctions[func] = 1;
+            Functions.libraryFunctions[func] = phase == 'glue' ? 2 : 1; // XXX
             // limited dependency handling
             var deps = LibraryManager.library[func + '__deps'];
             if (deps) {

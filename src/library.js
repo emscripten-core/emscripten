@@ -1868,14 +1868,13 @@ LibraryManager.library = {
 #endif
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
-
-#if TARGET_LE32
+#if TARGET_LE32 == 1
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
         argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
 #else
-        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
-               {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
+        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true, 4) }}},
+               {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true, 4) }}}];
 #endif
 
 #else
@@ -7702,6 +7701,94 @@ LibraryManager.library = {
     return _gai_strerror.buffer;
   },
 
+  // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
+  // http://pubs.opengroup.org/onlinepubs/9699919799/functions/getprotobyname.html
+  // The Protocols object holds our 'fake' protocols 'database'.
+  $Protocols: {
+    list: [],
+    map: {}
+  },
+  setprotoent__deps: ['$Protocols'],
+  setprotoent: function(stayopen) {
+    // void setprotoent(int stayopen);
+
+    // Allocate and populate a protoent structure given a name, protocol number and array of aliases
+    function allocprotoent(name, proto, aliases) {
+      // write name into buffer
+      var nameBuf = _malloc(name.length + 1);
+      writeAsciiToMemory(name, nameBuf);
+
+      // write aliases into buffer
+      var j = 0;
+      var length = aliases.length;
+      var aliasListBuf = _malloc((length + 1) * 4); // Use length + 1 so we have space for the terminating NULL ptr.
+
+      for (var i = 0; i < length; i++, j += 4) {
+        var alias = aliases[i];
+        var aliasBuf = _malloc(alias.length + 1);
+        writeAsciiToMemory(alias, aliasBuf);
+        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', 'i8*') }}};
+      }
+      {{{ makeSetValue('aliasListBuf', 'j', '0', 'i8*') }}}; // Terminating NULL pointer.
+
+      // generate protoent
+      var pe = _malloc({{{ C_STRUCTS.protoent.__size__ }}});
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', 'i8*') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', 'i8**') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_proto, 'proto', 'i32') }}};
+      return pe;
+    };
+
+    // Populate the protocol 'database'. The entries are limited to tcp and udp, though it is fairly trivial
+    // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
+    var list = Protocols.list;
+    var map  = Protocols.map;
+    if (list.length === 0) {
+        var entry = allocprotoent('tcp', 6, ['TCP']);
+        list.push(entry);
+        map['tcp'] = map['6'] = entry;
+        entry = allocprotoent('udp', 17, ['UDP']);
+        list.push(entry);
+        map['udp'] = map['17'] = entry;
+    }
+
+    _setprotoent.index = 0;
+  },
+
+  endprotoent: function() {
+    // void endprotoent(void);
+    // We're not using a real protocol database so we don't do a real close.
+  },
+
+  getprotoent__deps: ['setprotoent', '$Protocols'],
+  getprotoent: function(number) {
+    // struct protoent *getprotoent(void);
+    // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
+    if (_setprotoent.index === Protocols.list.length) {
+      return 0; 
+    } else {
+      var result = Protocols.list[_setprotoent.index++];
+      return result;
+    }
+  },
+
+  getprotobyname__deps: ['setprotoent', '$Protocols'],
+  getprotobyname: function(name) {
+    // struct protoent *getprotobyname(const char *);
+    name = Pointer_stringify(name);
+    _setprotoent(true);
+    var result = Protocols.map[name];
+    return result;
+  },
+
+  getprotobynumber__deps: ['setprotoent', '$Protocols'],
+  getprotobynumber: function(number) {
+    // struct protoent *getprotobynumber(int proto);
+    _setprotoent(true);
+    var result = Protocols.map[number];
+    return result;
+  },
+
   // ==========================================================================
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
@@ -8746,6 +8833,194 @@ LibraryManager.library = {
     } else {
       return 1000*1000; // milliseconds
     }
+  },
+
+  // Returns [parentFuncArguments, functionName, paramListName]
+  _emscripten_traverse_stack: function(args) {
+    if (!args || !args.callee || !args.callee.name) {
+      return [null, '', ''];
+    }
+
+    var funstr = args.callee.toString();
+    var funcname = args.callee.name;
+    var str = '(';
+    var first = true;
+    for(i in args) {
+      var a = args[i];
+      if (!first) {
+        str += ", ";
+      }
+      first = false;
+      if (typeof a === 'number' || typeof a === 'string') {
+        str += a;
+      } else {
+        str += '(' + typeof a + ')';
+      }
+    }
+    str += ')';
+    var caller = args.callee.caller;
+    args = caller ? caller.arguments : [];
+    if (first)
+      str = '';
+    return [args, funcname, str];
+  },
+
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
+  emscripten_get_callstack_js: function(flags) {
+    var err = new Error();
+    if (!err.stack) {
+      Runtime.warnOnce('emscripten_get_callstack_js is not supported on this browser!');
+      return '';
+    }
+    var callstack = new Error().stack.toString();
+
+    // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everyhing up to these from the output.
+    var iThisFunc = callstack.lastIndexOf('_emscripten_log');
+    var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
+    var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
+    callstack = callstack.slice(iNextLine);
+
+    // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
+    if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
+      Runtime.warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
+      flags ^= 8/*EM_LOG_C_STACK*/;
+      flags |= 16/*EM_LOG_JS_STACK*/;
+    }
+
+    var stack_args = null;
+    if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
+      // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
+      var stack_args = __emscripten_traverse_stack(arguments);
+      while (stack_args[1].indexOf('_emscripten_') >= 0)
+        stack_args = __emscripten_traverse_stack(stack_args[0]);
+    }
+    
+    // Process all lines:
+    lines = callstack.split('\n');
+    callstack = '';
+    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)'); // Extract components of form '       Object._main@http://server.com:4324'
+    var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
+    
+    for(l in lines) {
+      var line = lines[l];
+
+      var jsSymbolName = '';
+      var file = '';
+      var lineno = 0;
+      var column = 0;
+
+      var parts = chromeRe.exec(line);
+      if (parts && parts.length == 5) {
+        jsSymbolName = parts[1];
+        file = parts[2];
+        lineno = parts[3];
+        column = parts[4];
+      } else {
+        parts = firefoxRe.exec(line);
+        if (parts && parts.length == 4) {
+          jsSymbolName = parts[1];
+          file = parts[2];
+          lineno = parts[3];
+          column = 0; // Firefox doesn't carry column information. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+        } else {
+          // Was not able to extract this line for demangling/sourcemapping purposes. Output it as-is.
+          callstack += line + '\n';
+          continue;
+        }
+      }
+
+      // Try to demangle the symbol, but fall back to showing the original JS symbol name if not available.
+      var cSymbolName = (flags & 32/*EM_LOG_DEMANGLE*/) ? demangle(jsSymbolName) : jsSymbolName;
+      if (!cSymbolName) {
+        cSymbolName = jsSymbolName;
+      }
+
+      var haveSourceMap = false;
+
+      if (flags & 8/*EM_LOG_C_STACK*/) {
+        var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
+        haveSourceMap = (orig && orig.source);
+        if (haveSourceMap) {
+          if (flags & 64/*EM_LOG_NO_PATHS*/) {
+            orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
+          }
+          callstack += '    at ' + cSymbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
+        }
+      }
+      if ((flags & 16/*EM_LOG_JS_STACK*/) || !haveSourceMap) {
+        if (flags & 64/*EM_LOG_NO_PATHS*/) {
+          file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
+        }
+        callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
+      }
+      
+      // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
+      if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
+        if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {
+          callstack = callstack.replace(/\s+$/, '');
+          callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
+        }
+        stack_args = __emscripten_traverse_stack(stack_args[0]);
+      }
+    }
+    // Trim extra whitespace at the end of the output.
+    callstack = callstack.replace(/\s+$/, '');
+    return callstack;
+  },
+
+  emscripten_get_callstack__deps: ['emscripten_get_callstack_js'],
+  emscripten_get_callstack: function(flags, str, maxbytes) {
+    var callstack = _emscripten_get_callstack_js(flags);
+    // User can query the required amount of bytes to hold the callstack.
+    if (!str || maxbytes <= 0) {
+      return callstack.length+1;
+    }
+    // Truncate output to avoid writing past bounds.
+    if (callstack.length > maxbytes-1) {
+      callstack.slice(0, maxbytes-1);
+    }
+    // Output callstack string as C string to HEAP.
+    writeStringToMemory(callstack, str, false);
+
+    // Return number of bytes written.
+    return callstack.length+1;
+  },
+
+  emscripten_log_js__deps: ['emscripten_get_callstack_js'],
+  emscripten_log_js: function(flags, str) {
+    if (flags & 24/*EM_LOG_C_STACK | EM_LOG_JS_STACK*/) {
+      str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
+      str += (str.length > 0 ? '\n' : '') + _emscripten_get_callstack_js(flags);
+    }
+
+    if (flags & 1 /*EM_LOG_CONSOLE*/) {
+      if (flags & 4 /*EM_LOG_ERROR*/) {
+        console.error(str);
+      } else if (flags & 2 /*EM_LOG_WARN*/) {
+        console.warn(str);
+      } else {
+        console.log(str);
+      }
+    } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
+      Module.printErr(str);
+    } else {
+      Module.print(str);
+    }
+  },
+
+  emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
+  emscripten_log: function(flags, varargs) {
+    // Extract the (optionally-existing) printf format specifier field from varargs.
+    var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
+    varargs += Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true));
+    var str = '';
+    if (format) {
+      var result = __formatString(format, varargs);
+      for(var i = 0 ; i < result.length; ++i) {
+        str += String.fromCharCode(result[i]);
+      }
+    }
+    _emscripten_log_js(flags, str);
   },
 
   //============================

@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include <math.h>
+
+int main() {
+#define TEST(x, y) printf("%.2f, %.2f ==> %.2f\n", x, y, copysign(x, y));
+  TEST(5.0f, 5.0f);
+  TEST(5.0f, -5.0f);
+  TEST(-5.0f, 5.0f);
+  TEST(-5.0f, -5.0f);
+  TEST(5.0f, 4.0f);
+  TEST(5.0f, -4.0f);
+  TEST(-5.0f, 4.0f);
+  TEST(-5.0f, -4.0f);
+  TEST(0.0f, 5.0f);
+  TEST(0.0f, -5.0f);
+  TEST(-0.0f, 5.0f);
+  TEST(-0.0f, -5.0f);
+  TEST(5.0f, 0.0f);
+  TEST(5.0f, -0.0f);
+  TEST(-5.0f, 0.0f);
+  TEST(-5.0f, -0.0f);
+  TEST(0.0f, 0.0f);
+  TEST(0.0f, -0.0f);
+  TEST(-0.0f, 0.0f);
+  TEST(-0.0f, -0.0f);
+  return 0;
+}

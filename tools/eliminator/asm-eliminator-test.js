@@ -370,5 +370,13 @@ function select2($foundBase_0_off0) {
  STACKTOP = sp;
  return $retval_0 | 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2"]
+function binary(x) {
+  x = x | 0;
+  var y = 0, z = 0;
+  y = f(x);
+  memset(y) | 0;
+  z = f(x);
+  +dmemset(z);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary"]
 

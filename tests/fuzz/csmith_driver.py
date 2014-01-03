@@ -6,11 +6,11 @@ Runs csmith, a C fuzzer, and looks for bugs.
 CSMITH_PATH should be set to something like /usr/local/include/csmith
 '''
 
-import os, sys, difflib, shutil
+import os, sys, difflib, shutil, random
 from distutils.spawn import find_executable
 from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
 
-sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
+sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tools')]
 import shared
 
 engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
@@ -35,9 +35,12 @@ notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
 fails = 0
 
 while 1:
+  opts = '-O' + str(random.randint(0, 2))
+  print 'opt level:', opts
+
   print 'Tried %d, notes: %s' % (tried, notes)
   print '1) Generate C'
-  check_call([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'],# +
+  check_call([CSMITH, '--no-volatiles', '--no-packed-struct'],# '--no-math64'
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
                  stdout=open(filename + '.c', 'w'))
   #shutil.copyfile(filename + '.c', 'testcase%d.c' % tried)
@@ -47,8 +50,8 @@ while 1:
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  shared.check_execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
-  shared.check_execute([shared.CLANG_CC, '-O2', '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
+  shared.check_execute([shared.CLANG_CC, opts, filename + '.c', '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
+  shared.check_execute([shared.CLANG_CC, opts, '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
   shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'])
   shutil.move(filename + '.bc.run', filename + '2')
   shared.check_execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS)
@@ -71,7 +74,7 @@ while 1:
   def try_js(args):
     shared.try_delete(filename + '.js')
     print '(compile)'
-    shared.check_execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args)
+    shared.check_execute([shared.EMCC, opts, filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args)
     assert os.path.exists(filename + '.js')
     print '(run)'
     js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1, check_timeout=True)

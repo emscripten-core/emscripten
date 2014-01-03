@@ -1,0 +1,13 @@
+#include <stdio.h>
+#include <exception>
+
+int main() {
+  std::exception e;
+  try {
+    throw e;
+  }
+  catch (std::exception e) {
+    printf("caught std::exception\n");
+  }
+  return 0;
+}
