@@ -18,7 +18,7 @@ var INDENTATION = ' ';
 var functionStubSigs = {};
 
 // JSifier
-function JSify(data, functionsOnly, givenFunctions) {
+function JSify(data, functionsOnly) {
   //B.start('jsifier');
   var mainPass = !functionsOnly;
 
@@ -109,7 +109,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
                                  ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
       if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
-      JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true, Functions);
+      JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true);
       if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
     }
     currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
@@ -1796,7 +1796,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
         });
       }
-      JSify(globalsData, true, Functions);
+      JSify(globalsData, true);
       globalsData = null;
       data.unparsedGlobalss = null;
 
