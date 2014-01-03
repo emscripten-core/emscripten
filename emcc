@@ -1228,16 +1228,6 @@ try:
       shared.Settings.CORRECT_OVERFLOWS = 1
     assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-    heap = 4096
-    while heap < shared.Settings.TOTAL_MEMORY:
-      if heap < 16*1024*1024:
-        heap *= 2
-      else:
-        heap += 16*1024*1024
-    if heap != shared.Settings.TOTAL_MEMORY:
-      logging.warning('increasing TOTAL_MEMORY to %d to be more reasonable for asm.js' % heap)
-      shared.Settings.TOTAL_MEMORY = heap
-
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
 

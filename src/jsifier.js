@@ -1810,7 +1810,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('staticSealed = true; // seal the static portion of memory\n');
         print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
         print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
-        print('assert(DYNAMIC_BASE < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY\n');
+        print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
       }
 
       if (asmLibraryFunctions.length > 0) {
