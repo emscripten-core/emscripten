@@ -417,7 +417,7 @@ void Relooper::Calculate(Block *Entry) {
         for (BlockSet::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
           Block *Prior = *iter;
           Block *Split = new Block(Original->Code, Original->BranchVar);
-          Parent->Blocks.push_back(Split);
+          Parent->AddBlock(Split);
           PrintDebug("  to %d\n", Split->Id);
           Split->BranchesIn.insert(Prior);
           Branch *Details = Prior->BranchesOut[Original];
