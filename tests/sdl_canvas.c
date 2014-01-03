@@ -62,6 +62,8 @@ int main(int argc, char **argv) {
 
   printf("you should see two lines of text in different colors and a blue rectangle\n");
 
+  SDL_UnlockSurface(screen);
+  
   SDL_Quit();
 
   printf("done.\n");
