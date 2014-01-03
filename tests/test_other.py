@@ -2208,3 +2208,4 @@ mergeInto(LibraryManager.library, {
     process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'], stdout=PIPE, stderr=PIPE)
     process.communicate()
     assert(os.path.isfile(outdir + 'hello_world.obj'))
+
