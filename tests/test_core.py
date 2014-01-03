@@ -937,6 +937,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       for named in (0, 1):
         print named
 
+        if os.environ.get('EMCC_FAST_COMPILER') == '1' and named: continue # no named globals in fastcomp
+
         Settings.NAMED_GLOBALS = named
         self.do_run_from_file(src, output, ['wowie', 'too', '74'])
 
