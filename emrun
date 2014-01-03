@@ -492,15 +492,18 @@ def win_print_gpu_info():
       print "GPU"+str(i)+ ": " + gpus[i] + " with " + gpu_memory[i] + " MBs of VRAM"
 
 def linux_print_gpu_info():
-  glxinfo = subprocess.check_output('glxinfo')
-  for line in glxinfo.split("\n"):
-    if "OpenGL vendor string:" in line:
-      gl_vendor = line[len("OpenGL vendor string:"):].strip()
-    if "OpenGL version string:" in line:
-      gl_version = line[len("OpenGL version string:"):].strip()
-    if "OpenGL renderer string:" in line:
-      gl_renderer = line[len("OpenGL renderer string:"):].strip()
-  logi('GPU: ' + gl_vendor + ' ' + gl_renderer + ', GL version ' + gl_version)
+  try:
+    glxinfo = subprocess.check_output('glxinfo')
+    for line in glxinfo.split("\n"):
+      if "OpenGL vendor string:" in line:
+        gl_vendor = line[len("OpenGL vendor string:"):].strip()
+      if "OpenGL version string:" in line:
+        gl_version = line[len("OpenGL version string:"):].strip()
+      if "OpenGL renderer string:" in line:
+        gl_renderer = line[len("OpenGL renderer string:"):].strip()
+    logi('GPU: ' + gl_vendor + ' ' + gl_renderer + ', GL version ' + gl_version)
+  except:
+    pass
 
 def osx_print_gpu_info():
   try:
@@ -722,11 +725,12 @@ def find_browser(name):
                           ('firefox_beta', os.path.expanduser('~/firefox_beta/firefox')),
                           ('firefox_aurora', os.path.expanduser('~/firefox_aurora/firefox')),
                           ('firefox_nightly', os.path.expanduser('~/firefox_nightly/firefox')),
-                          ('chrome', which('google-chrome-stable'))]
+                          ('chrome', which('google-chrome-stable')),
+                          ('chrome', which('google-chrome'))]
 
   for (alias, browser_exe) in browser_locations:
     if name == alias:
-      if os.path.isfile(browser_exe):
+      if browser_exe is not None and os.path.isfile(browser_exe):
         return [browser_exe]
   
   return None # Could not find the browser
