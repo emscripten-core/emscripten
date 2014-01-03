@@ -1348,7 +1348,7 @@ var LibraryGL = {
 #endif
 #if LEGACY_GL_EMULATION
     if (target == Module.ctx.ARRAY_BUFFER) {
-      GL.immediate.lastArrayBuffer = GL.currArrayBuffer = buffer;
+      GLImmediate.lastArrayBuffer = GL.currArrayBuffer = buffer;
     } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
       GL.currElementArrayBuffer = buffer;
     }
@@ -1788,7 +1788,7 @@ var LibraryGL = {
       _glEnable = function _glEnable(cap) {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
-        if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
+        if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
           if (GLEmulation.fogEnabled != true) {
             GL.immediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
@@ -1811,7 +1811,7 @@ var LibraryGL = {
 
       var glDisable = _glDisable;
       _glDisable = function _glDisable(cap) {
-        if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
+        if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
           if (GLEmulation.fogEnabled != false) {
             GL.immediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
@@ -1844,7 +1844,7 @@ var LibraryGL = {
       _glGetBooleanv = function _glGetBooleanv(pname, p) {
         var attrib = GLEmulation.getAttributeFromCapability(pname);
         if (attrib !== null) {
-          var result = GL.immediate.enabledClientAttributes[attrib];
+          var result = GLImmediate.enabledClientAttributes[attrib];
           {{{ makeSetValue('p', '0', 'result === true ? 1 : 0', 'i8') }}};
           return;
         }
@@ -1998,7 +1998,7 @@ var LibraryGL = {
           if (need_mm && !has_mm) source = 'uniform mat4 u_modelView; \n' + source;
           if (need_pm && !has_pm) source = 'uniform mat4 u_projection; \n' + source;
           GL.shaderInfos[shader].ftransform = need_pm || need_mm || need_pv; // we will need to provide the fixed function stuff as attributes and uniforms
-          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             var old = source;
             var need_vtc = source.search('v_texCoord' + i) == -1;
@@ -2036,7 +2036,7 @@ var LibraryGL = {
           }
           source = ensurePrecision(source);
         } else { // Fragment shader
-          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             var old = source;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
             if (source != old) {
@@ -2125,7 +2125,7 @@ var LibraryGL = {
         if (GL.currProgram != program) {
           GL.immediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
           GL.currProgram = program;
-          GL.immediate.fixedFunctionProgram = 0;
+          GLImmediate.fixedFunctionProgram = 0;
           glUseProgram(program);
         }
       }
@@ -2172,11 +2172,11 @@ var LibraryGL = {
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = function _glGetFloatv(pname, params) {
         if (pname == 0x0BA6) { // GL_MODELVIEW_MATRIX
-          HEAPF32.set(GL.immediate.matrix[0/*m*/], params >> 2);
+          HEAPF32.set(GLImmediate.matrix[0/*m*/], params >> 2);
         } else if (pname == 0x0BA7) { // GL_PROJECTION_MATRIX
-          HEAPF32.set(GL.immediate.matrix[1/*p*/], params >> 2);
+          HEAPF32.set(GLImmediate.matrix[1/*p*/], params >> 2);
         } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
-          HEAPF32.set(GL.immediate.matrix[2/*t*/ + GL.immediate.clientActiveTexture], params >> 2);
+          HEAPF32.set(GLImmediate.matrix[2/*t*/ + GLImmediate.clientActiveTexture], params >> 2);
         } else if (pname == 0x0B66) { // GL_FOG_COLOR
           HEAPF32.set(GLEmulation.fogColor, params >> 2);
         } else if (pname == 0x0B63) { // GL_FOG_START
@@ -2232,13 +2232,13 @@ var LibraryGL = {
 #endif
           // Fall through:
         case 0x8078: // GL_TEXTURE_COORD_ARRAY
-          attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
+          attrib = GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture; break;
         case 0x8074: // GL_VERTEX_ARRAY
-          attrib = GL.immediate.VERTEX; break;
+          attrib = GLImmediate.VERTEX; break;
         case 0x8075: // GL_NORMAL_ARRAY
-          attrib = GL.immediate.NORMAL; break;
+          attrib = GLImmediate.NORMAL; break;
         case 0x8076: // GL_COLOR_ARRAY
-          attrib = GL.immediate.COLOR; break;
+          attrib = GLImmediate.COLOR; break;
       }
       return attrib;
     },
@@ -2321,7 +2321,7 @@ var LibraryGL = {
 
   // See comment in GLEmulation.init()
 #if FULL_ES2 == 0
-  $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
+  $GLImmediate__postset: 'GLImmediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GLImmediate.init() });',
 #endif
   $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
   $GLImmediate: {
@@ -2739,7 +2739,7 @@ var LibraryGL = {
         }
         this.invalidateKey = function() {
           this.key0 = -1; // The key of this texture unit must be recomputed when rendering the next time.
-          GL.immediate.currentRenderer = null; // The currently used renderer must be re-evaluated at next render.
+          GLImmediate.currentRenderer = null; // The currently used renderer must be re-evaluated at next render.
         }
         this.traverseState = function(keyView) {
           if (this.key0 == -1) {
@@ -3110,25 +3110,25 @@ var LibraryGL = {
           switch (cap) {
             case GL_TEXTURE_1D:
               if (!cur.enabled_tex1D) {
-                GL.immediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
+                GLImmediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
                 cur.enabled_tex1D = true;
               }
               break;
             case GL_TEXTURE_2D:
               if (!cur.enabled_tex2D) {
-                GL.immediate.currentRenderer = null;
+                GLImmediate.currentRenderer = null;
                 cur.enabled_tex2D = true;
               }
               break;
             case GL_TEXTURE_3D:
               if (!cur.enabled_tex3D) {
-                GL.immediate.currentRenderer = null;
+                GLImmediate.currentRenderer = null;
                 cur.enabled_tex3D = true;
               }
               break;
             case GL_TEXTURE_CUBE_MAP:
               if (!cur.enabled_texCube) {
-                GL.immediate.currentRenderer = null;
+                GLImmediate.currentRenderer = null;
                 cur.enabled_texCube = true;
               }
               break;
@@ -3140,25 +3140,25 @@ var LibraryGL = {
           switch (cap) {
             case GL_TEXTURE_1D:
               if (cur.enabled_tex1D) {
-                GL.immediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
+                GLImmediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
                 cur.enabled_tex1D = false;
               }
               break;
             case GL_TEXTURE_2D:
               if (cur.enabled_tex2D) {
-                GL.immediate.currentRenderer = null;
+                GLImmediate.currentRenderer = null;
                 cur.enabled_tex2D = false;
               }
               break;
             case GL_TEXTURE_3D:
               if (cur.enabled_tex3D) {
-                GL.immediate.currentRenderer = null;
+                GLImmediate.currentRenderer = null;
                 cur.enabled_tex3D = false;
               }
               break;
             case GL_TEXTURE_CUBE_MAP:
               if (cur.enabled_texCube) {
-                GL.immediate.currentRenderer = null;
+                GLImmediate.currentRenderer = null;
                 cur.enabled_texCube = false;
               }
               break;
@@ -3431,8 +3431,8 @@ var LibraryGL = {
       }
       // return a renderer object given the liveClientAttributes
       // we maintain a cache of renderers, optimized to not generate garbage
-      var attributes = GL.immediate.liveClientAttributes;
-      var cacheMap = GL.immediate.rendererCache;
+      var attributes = GLImmediate.liveClientAttributes;
+      var cacheMap = GLImmediate.rendererCache;
       var temp;
       var keyView = cacheMap.getStaticKeyView().reset();
 
@@ -3463,7 +3463,7 @@ var LibraryGL = {
       // By cur program:
       keyView.next(GL.currProgram);
       if (!GL.currProgram) {
-        GL.immediate.TexEnvJIT.traverseState(keyView);
+        GLImmediate.TexEnvJIT.traverseState(keyView);
       }
 
       // If we don't already have it, create it.
@@ -3484,14 +3484,14 @@ var LibraryGL = {
     createRenderer: function createRenderer(renderer) {
       var useCurrProgram = !!GL.currProgram;
       var hasTextures = false;
-      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-        var texAttribName = GL.immediate.TEXTURE0 + i;
-        if (!GL.immediate.enabledClientAttributes[texAttribName])
+      for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+        var texAttribName = GLImmediate.TEXTURE0 + i;
+        if (!GLImmediate.enabledClientAttributes[texAttribName])
           continue;
 
 #if ASSERTIONS
         if (!useCurrProgram) {
-          if (GL.immediate.TexEnvJIT.getTexUnitType(i) == 0) {
+          if (GLImmediate.TexEnvJIT.getTexUnitType(i) == 0) {
              Runtime.warnOnce("GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
           }
         }
@@ -3507,7 +3507,7 @@ var LibraryGL = {
           var aTexCoordPrefix = 'a_texCoord';
           var vTexCoordPrefix = 'v_texCoord';
           var vPrimColor = 'v_color';
-          var uTexMatrixPrefix = GL.immediate.useTextureMatrix ? 'u_textureMatrix' : null;
+          var uTexMatrixPrefix = GLImmediate.useTextureMatrix ? 'u_textureMatrix' : null;
 
           if (useCurrProgram) {
             if (GL.shaderInfos[GL.programShaders[GL.currProgram][0]].type == Module.ctx.VERTEX_SHADER) {
@@ -3541,14 +3541,14 @@ var LibraryGL = {
               }
             }
 
-            GL.immediate.TexEnvJIT.setGLSLVars(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix);
-            var fsTexEnvPass = GL.immediate.TexEnvJIT.genAllPassLines('gl_FragColor', 2);
+            GLImmediate.TexEnvJIT.setGLSLVars(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix);
+            var fsTexEnvPass = GLImmediate.TexEnvJIT.genAllPassLines('gl_FragColor', 2);
 
             var texUnitAttribList = '';
             var texUnitVaryingList = '';
             var texUnitUniformList = '';
             var vsTexCoordInits = '';
-            this.usedTexUnitList = GL.immediate.TexEnvJIT.getUsedTexUnitList();
+            this.usedTexUnitList = GLImmediate.TexEnvJIT.getUsedTexUnitList();
             for (var i = 0; i < this.usedTexUnitList.length; i++) {
               var texUnit = this.usedTexUnitList[i];
               texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
@@ -3556,7 +3556,7 @@ var LibraryGL = {
               texUnitUniformList += 'uniform sampler2D ' + uTexUnitPrefix + texUnit + ';\n';
               vsTexCoordInits += '  ' + vTexCoordPrefix + texUnit + ' = ' + aTexCoordPrefix + texUnit + ';\n';
 
-              if (GL.immediate.useTextureMatrix) {
+              if (GLImmediate.useTextureMatrix) {
                 texUnitUniformList += 'uniform mat4 ' + uTexMatrixPrefix + texUnit + ';\n';
               }
             }
@@ -3639,12 +3639,12 @@ var LibraryGL = {
             // code can submit attributes to any generated FFP shader without having to examine each shader in turn.
             // These prespecified locations are only assumed if GL_FFP_ONLY is specified, since user could also create their
             // own shaders that didn't have attributes in the same locations.
-            Module.ctx.bindAttribLocation(this.program, GL.immediate.VERTEX, 'a_position');
-            Module.ctx.bindAttribLocation(this.program, GL.immediate.COLOR, 'a_color');
-            Module.ctx.bindAttribLocation(this.program, GL.immediate.NORMAL, 'a_normal');
-            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-              Module.ctx.bindAttribLocation(this.program, GL.immediate.TEXTURE0 + i, 'a_texCoord'+i);
-              Module.ctx.bindAttribLocation(this.program, GL.immediate.TEXTURE0 + i, aTexCoordPrefix+i);
+            Module.ctx.bindAttribLocation(this.program, GLImmediate.VERTEX, 'a_position');
+            Module.ctx.bindAttribLocation(this.program, GLImmediate.COLOR, 'a_color');
+            Module.ctx.bindAttribLocation(this.program, GLImmediate.NORMAL, 'a_normal');
+            for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+              Module.ctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, 'a_texCoord'+i);
+              Module.ctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, aTexCoordPrefix+i);
             }
             Module.ctx.linkProgram(this.program);
           }
@@ -3657,8 +3657,8 @@ var LibraryGL = {
 
           this.texCoordLocations = [];
 
-          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-            if (!GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + i]) {
+          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+            if (!GLImmediate.enabledClientAttributes[GLImmediate.TEXTURE0 + i]) {
               this.texCoordLocations[i] = -1;
               continue;
             }
@@ -3685,7 +3685,7 @@ var LibraryGL = {
           }
 
           this.textureMatrixLocations = [];
-          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             this.textureMatrixLocations[i] = Module.ctx.getUniformLocation(this.program, 'u_textureMatrix' + i);
           }
           this.colorLocation = Module.ctx.getAttribLocation(this.program, 'a_color');
@@ -3695,8 +3695,8 @@ var LibraryGL = {
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
 
           this.hasTextures = hasTextures;
-          this.hasNormal = GL.immediate.enabledClientAttributes[GL.immediate.NORMAL] &&
-                           GL.immediate.clientAttributes[GL.immediate.NORMAL].size > 0 &&
+          this.hasNormal = GLImmediate.enabledClientAttributes[GLImmediate.NORMAL] &&
+                           GLImmediate.clientAttributes[GLImmediate.NORMAL].size > 0 &&
                            this.normalLocation >= 0;
           this.hasColor = (this.colorLocation === 0) || this.colorLocation > 0;
 
@@ -3714,8 +3714,8 @@ var LibraryGL = {
           // Calculate the array buffer
           var arrayBuffer;
           if (!GL.currArrayBuffer) {
-            var start = GL.immediate.firstVertex*GL.immediate.stride;
-            var end = GL.immediate.lastVertex*GL.immediate.stride;
+            var start = GLImmediate.firstVertex*GLImmediate.stride;
+            var end = GLImmediate.lastVertex*GLImmediate.stride;
 #if ASSERTIONS
             assert(end <= GL.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
 #endif
@@ -3729,85 +3729,85 @@ var LibraryGL = {
           // If the array buffer is unchanged and the renderer as well, then we can avoid all the work here
           // XXX We use some heuristics here, and this may not work in all cases. Try disabling GL_UNSAFE_OPTS if you
           // have odd glitches
-          var lastRenderer = GL.immediate.lastRenderer;
+          var lastRenderer = GLImmediate.lastRenderer;
           var canSkip = this == lastRenderer &&
-                        arrayBuffer == GL.immediate.lastArrayBuffer &&
-                        (GL.currProgram || this.program) == GL.immediate.lastProgram &&
-                        GL.immediate.stride == GL.immediate.lastStride &&
-                        !GL.immediate.matricesModified;
+                        arrayBuffer == GLImmediate.lastArrayBuffer &&
+                        (GL.currProgram || this.program) == GLImmediate.lastProgram &&
+                        GLImmediate.stride == GLImmediate.lastStride &&
+                        !GLImmediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
 #endif
           if (!GL.currArrayBuffer) {
             // Bind the array buffer and upload data after cleaning up the previous renderer
 
-            if (arrayBuffer != GL.immediate.lastArrayBuffer) {
+            if (arrayBuffer != GLImmediate.lastArrayBuffer) {
               Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, arrayBuffer);
-              GL.immediate.lastArrayBuffer = arrayBuffer;
+              GLImmediate.lastArrayBuffer = arrayBuffer;
             }
 
-            Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, GL.immediate.vertexData.subarray(start >> 2, end >> 2));
+            Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, GLImmediate.vertexData.subarray(start >> 2, end >> 2));
           }
 #if GL_UNSAFE_OPTS
           if (canSkip) return;
-          GL.immediate.lastRenderer = this;
-          GL.immediate.lastProgram = GL.currProgram || this.program;
-          GL.immediate.lastStride == GL.immediate.stride;
-          GL.immediate.matricesModified = false;
+          GLImmediate.lastRenderer = this;
+          GLImmediate.lastProgram = GL.currProgram || this.program;
+          GLImmediate.lastStride == GLImmediate.stride;
+          GLImmediate.matricesModified = false;
 #endif
 
           if (!GL.currProgram) {
-            if (GL.immediate.fixedFunctionProgram != this.program) {
+            if (GLImmediate.fixedFunctionProgram != this.program) {
               Module.ctx.useProgram(this.program);
-              GL.immediate.fixedFunctionProgram = this.program;
+              GLImmediate.fixedFunctionProgram = this.program;
             }
           }
 
-          if (this.modelViewLocation && this.modelViewMatrixVersion != GL.immediate.matrixVersion[0/*m*/]) {
-            this.modelViewMatrixVersion = GL.immediate.matrixVersion[0/*m*/];
-            Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix[0/*m*/]);
+          if (this.modelViewLocation && this.modelViewMatrixVersion != GLImmediate.matrixVersion[0/*m*/]) {
+            this.modelViewMatrixVersion = GLImmediate.matrixVersion[0/*m*/];
+            Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GLImmediate.matrix[0/*m*/]);
           }
-          if (this.projectionLocation && this.projectionMatrixVersion != GL.immediate.matrixVersion[1/*p*/]) {
-            this.projectionMatrixVersion = GL.immediate.matrixVersion[1/*p*/];
-            Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix[1/*p*/]);
+          if (this.projectionLocation && this.projectionMatrixVersion != GLImmediate.matrixVersion[1/*p*/]) {
+            this.projectionMatrixVersion = GLImmediate.matrixVersion[1/*p*/];
+            Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GLImmediate.matrix[1/*p*/]);
           }
 
-          var clientAttributes = GL.immediate.clientAttributes;
-          var posAttr = clientAttributes[GL.immediate.VERTEX];
+          var clientAttributes = GLImmediate.clientAttributes;
+          var posAttr = clientAttributes[GLImmediate.VERTEX];
 
 #if GL_ASSERTIONS
-          GL.validateVertexAttribPointer(posAttr.size, posAttr.type, GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
+          GL.validateVertexAttribPointer(posAttr.size, posAttr.type, GLImmediate.stride, clientAttributes[GLImmediate.VERTEX].offset);
 #endif
 
 #if GL_FFP_ONLY
           if (!GL.currArrayBuffer) {
-            Module.ctx.vertexAttribPointer(GL.immediate.VERTEX, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
-            GL.enableVertexAttribArray(GL.immediate.VERTEX);
+            Module.ctx.vertexAttribPointer(GLImmediate.VERTEX, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
+            GL.enableVertexAttribArray(GLImmediate.VERTEX);
             if (this.hasNormal) {
-              var normalAttr = clientAttributes[GL.immediate.NORMAL];
-              Module.ctx.vertexAttribPointer(GL.immediate.NORMAL, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
-              GL.enableVertexAttribArray(GL.immediate.NORMAL);
+              var normalAttr = clientAttributes[GLImmediate.NORMAL];
+              Module.ctx.vertexAttribPointer(GLImmediate.NORMAL, normalAttr.size, normalAttr.type, true, GLImmediate.stride, normalAttr.offset);
+              GL.enableVertexAttribArray(GLImmediate.NORMAL);
             }
           }
 #else
-          Module.ctx.vertexAttribPointer(this.positionLocation, posAttr.size, posAttr.type, false, GL.immediate.stride, posAttr.offset);
+          Module.ctx.vertexAttribPointer(this.positionLocation, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasNormal) {
-            var normalAttr = clientAttributes[GL.immediate.NORMAL];
+            var normalAttr = clientAttributes[GLImmediate.NORMAL];
 #if GL_ASSERTIONS
-            GL.validateVertexAttribPointer(normalAttr.size, normalAttr.type, GL.immediate.stride, normalAttr.offset);
+            GL.validateVertexAttribPointer(normalAttr.size, normalAttr.type, GLImmediate.stride, normalAttr.offset);
 #endif
-            Module.ctx.vertexAttribPointer(this.normalLocation, normalAttr.size, normalAttr.type, true, GL.immediate.stride, normalAttr.offset);
+            Module.ctx.vertexAttribPointer(this.normalLocation, normalAttr.size, normalAttr.type, true, GLImmediate.stride, normalAttr.offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
 #endif
           if (this.hasTextures) {
-            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+            for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
 #if GL_FFP_ONLY
               if (!GL.currArrayBuffer) {
-                var attribLoc = GL.immediate.TEXTURE0+i;
+                var attribLoc = GLImmediate.TEXTURE0+i;
                 var texAttr = clientAttributes[attribLoc];
                 if (texAttr.size) {
-                  Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GL.immediate.stride, texAttr.offset);
+                  Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GLImmediate.stride, texAttr.offset);
                   GL.enableVertexAttribArray(attribLoc);
                 } else {
                   // These two might be dangerous, but let's try them.
@@ -3818,13 +3818,13 @@ var LibraryGL = {
 #else
               var attribLoc = this.texCoordLocations[i];
               if (attribLoc === undefined || attribLoc < 0) continue;
-              var texAttr = clientAttributes[GL.immediate.TEXTURE0+i];
+              var texAttr = clientAttributes[GLImmediate.TEXTURE0+i];
 
               if (texAttr.size) {
 #if GL_ASSERTIONS
-                GL.validateVertexAttribPointer(texAttr.size, texAttr.type, GL.immediate.stride, texAttr.offset);
+                GL.validateVertexAttribPointer(texAttr.size, texAttr.type, GLImmediate.stride, texAttr.offset);
 #endif
-                Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GL.immediate.stride, texAttr.offset);
+                Module.ctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GLImmediate.stride, texAttr.offset);
                 Module.ctx.enableVertexAttribArray(attribLoc);
               } else {
                 // These two might be dangerous, but let's try them.
@@ -3833,33 +3833,33 @@ var LibraryGL = {
               }
 #endif
               var t = 2/*t*/+i;
-              if (this.textureMatrixLocations[i] && this.textureMatrixVersion[t] != GL.immediate.matrixVersion[t]) { // XXX might we need this even without the condition we are currently in?
-                this.textureMatrixVersion[t] = GL.immediate.matrixVersion[t];
-                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GL.immediate.matrix[t]);
+              if (this.textureMatrixLocations[i] && this.textureMatrixVersion[t] != GLImmediate.matrixVersion[t]) { // XXX might we need this even without the condition we are currently in?
+                this.textureMatrixVersion[t] = GLImmediate.matrixVersion[t];
+                Module.ctx.uniformMatrix4fv(this.textureMatrixLocations[i], false, GLImmediate.matrix[t]);
               }
             }
           }
-          if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
-            var colorAttr = clientAttributes[GL.immediate.COLOR];
+          if (GLImmediate.enabledClientAttributes[GLImmediate.COLOR]) {
+            var colorAttr = clientAttributes[GLImmediate.COLOR];
 #if GL_ASSERTIONS
-            GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GL.immediate.stride, colorAttr.offset);
+            GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GLImmediate.stride, colorAttr.offset);
 #endif
 #if GL_FFP_ONLY
             if (!GL.currArrayBuffer) {
-              Module.ctx.vertexAttribPointer(GL.immediate.COLOR, colorAttr.size, colorAttr.type, true, GL.immediate.stride, colorAttr.offset);
-              GL.enableVertexAttribArray(GL.immediate.COLOR);
+              Module.ctx.vertexAttribPointer(GLImmediate.COLOR, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
+              GL.enableVertexAttribArray(GLImmediate.COLOR);
             }
 #else
-            Module.ctx.vertexAttribPointer(this.colorLocation, colorAttr.size, colorAttr.type, true, GL.immediate.stride, colorAttr.offset);
+            Module.ctx.vertexAttribPointer(this.colorLocation, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
 #endif
           } else if (this.hasColor) {
 #if GL_FFP_ONLY
-            GL.disableVertexAttribArray(GL.immediate.COLOR);
-            Module.ctx.vertexAttrib4fv(GL.immediate.COLOR, GL.immediate.clientColor);
+            GL.disableVertexAttribArray(GLImmediate.COLOR);
+            Module.ctx.vertexAttrib4fv(GLImmediate.COLOR, GLImmediate.clientColor);
 #else
             Module.ctx.disableVertexAttribArray(this.colorLocation);
-            Module.ctx.vertexAttrib4fv(this.colorLocation, GL.immediate.clientColor);
+            Module.ctx.vertexAttrib4fv(this.colorLocation, GLImmediate.clientColor);
 #endif
           }
           if (this.hasFog) {
@@ -3874,8 +3874,8 @@ var LibraryGL = {
 #if !GL_FFP_ONLY
           Module.ctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
-            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-              if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0+i] && this.texCoordLocations[i] >= 0) {
+            for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+              if (GLImmediate.enabledClientAttributes[GLImmediate.TEXTURE0+i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.disableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -3891,14 +3891,14 @@ var LibraryGL = {
           }
           if (!GL.currArrayBuffer) {
             Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
-            GL.immediate.lastArrayBuffer = null;
+            GLImmediate.lastArrayBuffer = null;
           }
 
 #if GL_UNSAFE_OPTS
-          GL.immediate.lastRenderer = null;
-          GL.immediate.lastProgram = null;
+          GLImmediate.lastRenderer = null;
+          GLImmediate.lastProgram = null;
 #endif
-          GL.immediate.matricesModified = true;
+          GLImmediate.matricesModified = true;
 #endif
         }
       };
@@ -3911,23 +3911,23 @@ var LibraryGL = {
       // attributes enabled, and we use webgl-friendly modes (no GL_QUADS), then no need
       // for emulation
       _glDrawArrays = function _glDrawArrays(mode, first, count) {
-        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
+        if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6) {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
-        GL.immediate.prepareClientAttributes(count, false);
-        GL.immediate.mode = mode;
+        GLImmediate.prepareClientAttributes(count, false);
+        GLImmediate.mode = mode;
         if (!GL.currArrayBuffer) {
-          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'GL.immediate.vertexPointer + (first+count)*GL.immediate.stride') }}}; // XXX assuming float
-          GL.immediate.firstVertex = first;
-          GL.immediate.lastVertex = first + count;
+          GLImmediate.vertexData = {{{ makeHEAPView('F32', 'GLImmediate.vertexPointer', 'GLImmediate.vertexPointer + (first+count)*GLImmediate.stride') }}}; // XXX assuming float
+          GLImmediate.firstVertex = first;
+          GLImmediate.lastVertex = first + count;
         }
-        GL.immediate.flush(null, first);
-        GL.immediate.mode = -1;
+        GLImmediate.flush(null, first);
+        GLImmediate.mode = -1;
       };
 
       _glDrawElements = function _glDrawElements(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
-        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
+        if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
           Module.ctx.drawElements(mode, count, type, indices);
           return;
         }
@@ -3937,27 +3937,27 @@ var LibraryGL = {
         }
         console.log("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
-        GL.immediate.prepareClientAttributes(count, false);
-        GL.immediate.mode = mode;
+        GLImmediate.prepareClientAttributes(count, false);
+        GLImmediate.mode = mode;
         if (!GL.currArrayBuffer) {
-          GL.immediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
-          GL.immediate.lastVertex = end ? end+1 : 0;
-          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', '(end ? GL.immediate.vertexPointer + (end+1)*GL.immediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
+          GLImmediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
+          GLImmediate.lastVertex = end ? end+1 : 0;
+          GLImmediate.vertexData = {{{ makeHEAPView('F32', 'GLImmediate.vertexPointer', '(end ? GLImmediate.vertexPointer + (end+1)*GLImmediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
         }
-        GL.immediate.flush(count, 0, indices);
-        GL.immediate.mode = -1;
+        GLImmediate.flush(count, 0, indices);
+        GLImmediate.mode = -1;
       };
 
       // TexEnv stuff needs to be prepared early, so do it here.
       // init() is too late for -O2, since it freezes the GL functions
       // by that point.
-      GL.immediate.MapTreeLib = GL.immediate.spawnMapTreeLib();
-      GL.immediate.spawnMapTreeLib = null;
+      GLImmediate.MapTreeLib = GLImmediate.spawnMapTreeLib();
+      GLImmediate.spawnMapTreeLib = null;
 
-      GL.immediate.TexEnvJIT = GL.immediate.spawnTexEnvJIT();
-      GL.immediate.spawnTexEnvJIT = null;
+      GLImmediate.TexEnvJIT = GLImmediate.spawnTexEnvJIT();
+      GLImmediate.spawnTexEnvJIT = null;
 
-      GL.immediate.setupHooks();
+      GLImmediate.setupHooks();
     },
 
     setupHooks: function() {
@@ -3967,36 +3967,36 @@ var LibraryGL = {
 
       var glActiveTexture = _glActiveTexture;
       _glActiveTexture = function _glActiveTexture(texture) {
-        GL.immediate.TexEnvJIT.hook_activeTexture(texture);
+        GLImmediate.TexEnvJIT.hook_activeTexture(texture);
         glActiveTexture(texture);
       };
 
       var glEnable = _glEnable;
       _glEnable = function _glEnable(cap) {
-        GL.immediate.TexEnvJIT.hook_enable(cap);
+        GLImmediate.TexEnvJIT.hook_enable(cap);
         glEnable(cap);
       };
       var glDisable = _glDisable;
       _glDisable = function _glDisable(cap) {
-        GL.immediate.TexEnvJIT.hook_disable(cap);
+        GLImmediate.TexEnvJIT.hook_disable(cap);
         glDisable(cap);
       };
 
       var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
       _glTexEnvf = function _glTexEnvf(target, pname, param) {
-        GL.immediate.TexEnvJIT.hook_texEnvf(target, pname, param);
+        GLImmediate.TexEnvJIT.hook_texEnvf(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvf(target, pname, param);
       };
       var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
       _glTexEnvi = function _glTexEnvi(target, pname, param) {
-        GL.immediate.TexEnvJIT.hook_texEnvi(target, pname, param);
+        GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvi(target, pname, param);
       };
       var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
       _glTexEnvfv = function _glTexEnvfv(target, pname, param) {
-        GL.immediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
+        GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvfv(target, pname, param);
       };
@@ -4007,7 +4007,7 @@ var LibraryGL = {
           case 0x8B8D: { // GL_CURRENT_PROGRAM
             // Just query directly so we're working with WebGL objects.
             var cur = Module.ctx.getParameter(Module.ctx.CURRENT_PROGRAM);
-            if (cur == GL.immediate.fixedFunctionProgram) {
+            if (cur == GLImmediate.fixedFunctionProgram) {
               // Pretend we're not using a program.
               {{{ makeSetValue('params', '0', '0', 'i32') }}};
               return;
@@ -4023,7 +4023,7 @@ var LibraryGL = {
     initted: false,
     init: function() {
       Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
-      GL.immediate.initted = true;
+      GLImmediate.initted = true;
 
       if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
 
@@ -4031,34 +4031,34 @@ var LibraryGL = {
 
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
-      GL.immediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
-      GL.immediate.NUM_ATTRIBUTES = 3 /*pos+normal+color attributes*/ + GL.immediate.MAX_TEXTURES;
-      GL.immediate.clientAttributes = [];
+      GLImmediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
+      GLImmediate.NUM_ATTRIBUTES = 3 /*pos+normal+color attributes*/ + GLImmediate.MAX_TEXTURES;
+      GLImmediate.clientAttributes = [];
       GLEmulation.enabledClientAttribIndices = [];
-      for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
-        GL.immediate.clientAttributes.push({});
+      for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
+        GLImmediate.clientAttributes.push({});
         GLEmulation.enabledClientAttribIndices.push(false);
       }
 
       this.matrixStack[0/*m*/] = [];
       this.matrixStack[1/*p*/] = [];
-      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+      for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
         this.matrixStack[2/*t*/ + i] = [];
       }
 
       // Initialize matrix library
       // When user sets a matrix, increment a 'version number' on the new data, and when rendering, submit
       // the matrices to the shader program only if they have an old version of the data.
-      GL.immediate.matrixVersion = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
-      GL.immediate.matrix[0/*m*/] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrixVersion[0/*m*/] = 0;
-      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix[0/*m*/]);
-      GL.immediate.matrix[1/*p*/] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrixVersion[1/*p*/] = 0;
-      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix[1/*p*/]);
-      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-        GL.immediate.matrix[2/*t*/ + i] = GL.immediate.matrix.lib.mat4.create();
-        GL.immediate.matrixVersion[2/*t*/ + i] = 0;
+      GLImmediate.matrixVersion = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+      GLImmediate.matrix[0/*m*/] = GLImmediate.matrix.lib.mat4.create();
+      GLImmediate.matrixVersion[0/*m*/] = 0;
+      GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[0/*m*/]);
+      GLImmediate.matrix[1/*p*/] = GLImmediate.matrix.lib.mat4.create();
+      GLImmediate.matrixVersion[1/*p*/] = 0;
+      GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[1/*p*/]);
+      for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+        GLImmediate.matrix[2/*t*/ + i] = GLImmediate.matrix.lib.mat4.create();
+        GLImmediate.matrixVersion[2/*t*/ + i] = 0;
       }
 
       // Renderer cache
@@ -4084,16 +4084,16 @@ var LibraryGL = {
       // does not work for glBegin/End, where we generate renderer components dynamically and then
       // disable them ourselves, but it does help with glDrawElements/Arrays.
       if (!this.modifiedClientAttributes) {
-        GL.immediate.vertexCounter = (GL.immediate.stride * count) / 4; // XXX assuming float
+        GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
         return;
       }
       this.modifiedClientAttributes = false;
 
       var stride = 0, start;
-      var attributes = GL.immediate.liveClientAttributes;
+      var attributes = GLImmediate.liveClientAttributes;
       attributes.length = 0;
-      for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
-        if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
+      for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
+        if (GLImmediate.enabledClientAttributes[i]) attributes.push(GLImmediate.clientAttributes[i]);
       }
       attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
       start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
@@ -4115,8 +4115,8 @@ var LibraryGL = {
 #if ASSERTIONS
         Runtime.warnOnce('Unpacking/restriding attributes, this is slow and dangerous');
 #endif
-        if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
-        start = GL.immediate.restrideBuffer;
+        if (!GLImmediate.restrideBuffer) GLImmediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
+        start = GLImmediate.restrideBuffer;
 #if ASSERTIONS
         assert(start % 4 == 0);
 #endif
@@ -4166,14 +4166,14 @@ var LibraryGL = {
           bytes = stride;
         }
       }
-      GL.immediate.stride = bytes;
+      GLImmediate.stride = bytes;
 
       if (!beginEnd) {
         bytes *= count;
         if (!GL.currArrayBuffer) {
-          GL.immediate.vertexPointer = start;
+          GLImmediate.vertexPointer = start;
         }
-        GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
+        GLImmediate.vertexCounter = bytes / 4; // XXX assuming float
       }
     },
 
@@ -4187,7 +4187,7 @@ var LibraryGL = {
       var renderer = this.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * this.vertexCounter / GL.immediate.stride;
+      var numVertexes = 4 * this.vertexCounter / GLImmediate.stride;
 #if ASSERTIONS
       assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
 #endif
@@ -4195,7 +4195,7 @@ var LibraryGL = {
       var numIndexes = 0;
       if (numProvidedIndexes) {
         numIndexes = numProvidedIndexes;
-        if (!GL.currArrayBuffer && GL.immediate.firstVertex > GL.immediate.lastVertex) {
+        if (!GL.currArrayBuffer && GLImmediate.firstVertex > GLImmediate.lastVertex) {
           // Figure out the first and last vertex from the index data
 #if ASSERTIONS
           assert(!GL.currElementArrayBuffer); // If we are going to upload array buffer data, we need to find which range to
@@ -4205,8 +4205,8 @@ var LibraryGL = {
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'i16', null, 1) }}};
-            GL.immediate.firstVertex = Math.min(GL.immediate.firstVertex, currIndex);
-            GL.immediate.lastVertex = Math.max(GL.immediate.lastVertex, currIndex+1);
+            GLImmediate.firstVertex = Math.min(GLImmediate.firstVertex, currIndex);
+            GLImmediate.lastVertex = Math.max(GLImmediate.lastVertex, currIndex+1);
           }
         }
         if (!GL.currElementArrayBuffer) {
@@ -4220,15 +4220,15 @@ var LibraryGL = {
           ptr = 0;
           emulatedElementArrayBuffer = true;
         }
-      } else if (GL.immediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
-        if (GL.immediate.mode != 7) throw 'unsupported immediate mode ' + GL.immediate.mode; // GL_QUADS
-        // GL.immediate.firstVertex is the first vertex we want. Quad indexes are in the pattern
+      } else if (GLImmediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
+        if (GLImmediate.mode != 7) throw 'unsupported immediate mode ' + GLImmediate.mode; // GL_QUADS
+        // GLImmediate.firstVertex is the first vertex we want. Quad indexes are in the pattern
         // 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at index firstVertex * 1.5 to see it.
         // Then since indexes are 2 bytes each, that means 3
 #if ASSERTIONS
-        assert(GL.immediate.firstVertex % 4 == 0);
+        assert(GLImmediate.firstVertex % 4 == 0);
 #endif
-        ptr = GL.immediate.firstVertex*3;
+        ptr = GLImmediate.firstVertex*3;
         var numQuads = numVertexes / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
 #if ASSERTIONS
@@ -4243,7 +4243,7 @@ var LibraryGL = {
       if (numIndexes) {
         Module.ctx.drawElements(Module.ctx.TRIANGLES, numIndexes, Module.ctx.UNSIGNED_SHORT, ptr);
       } else {
-        Module.ctx.drawArrays(GL.immediate.mode, startIndex, numVertexes);
+        Module.ctx.drawArrays(GLImmediate.mode, startIndex, numVertexes);
       }
 
       if (emulatedElementArrayBuffer) {
@@ -4256,57 +4256,57 @@ var LibraryGL = {
     }
   },
 
-  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GL.immediate = GLImmediate; GL.immediate.matrix.lib = ' + read('gl-matrix.js') + ';\n' }],
+  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GL.immediate = GLImmediate; GLImmediate.matrix.lib = ' + read('gl-matrix.js') + ';\n' }],
   $GLImmediateSetup: {},
 
   glBegin__deps: ['$GLImmediateSetup'],
   glBegin: function(mode) {
     // Push the old state:
-    GL.immediate.enabledClientAttributes_preBegin = GL.immediate.enabledClientAttributes;
-    GL.immediate.enabledClientAttributes = [];
+    GLImmediate.enabledClientAttributes_preBegin = GLImmediate.enabledClientAttributes;
+    GLImmediate.enabledClientAttributes = [];
 
-    GL.immediate.clientAttributes_preBegin = GL.immediate.clientAttributes;
-    GL.immediate.clientAttributes = []
-    for (var i = 0; i < GL.immediate.clientAttributes_preBegin.length; i++) {
-      GL.immediate.clientAttributes.push({});
+    GLImmediate.clientAttributes_preBegin = GLImmediate.clientAttributes;
+    GLImmediate.clientAttributes = []
+    for (var i = 0; i < GLImmediate.clientAttributes_preBegin.length; i++) {
+      GLImmediate.clientAttributes.push({});
     }
 
-    GL.immediate.mode = mode;
-    GL.immediate.vertexCounter = 0;
-    var components = GL.immediate.rendererComponents = [];
-    for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
+    GLImmediate.mode = mode;
+    GLImmediate.vertexCounter = 0;
+    var components = GLImmediate.rendererComponents = [];
+    for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
       components[i] = 0;
     }
-    GL.immediate.rendererComponentPointer = 0;
-    GL.immediate.vertexData = GL.immediate.tempData;
+    GLImmediate.rendererComponentPointer = 0;
+    GLImmediate.vertexData = GLImmediate.tempData;
   },
 
   glEnd: function() {
-    GL.immediate.prepareClientAttributes(GL.immediate.rendererComponents[GL.immediate.VERTEX], true);
-    GL.immediate.firstVertex = 0;
-    GL.immediate.lastVertex = GL.immediate.vertexCounter / (GL.immediate.stride >> 2);
-    GL.immediate.flush();
-    GL.immediate.disableBeginEndClientAttributes();
-    GL.immediate.mode = -1;
+    GLImmediate.prepareClientAttributes(GLImmediate.rendererComponents[GLImmediate.VERTEX], true);
+    GLImmediate.firstVertex = 0;
+    GLImmediate.lastVertex = GLImmediate.vertexCounter / (GLImmediate.stride >> 2);
+    GLImmediate.flush();
+    GLImmediate.disableBeginEndClientAttributes();
+    GLImmediate.mode = -1;
 
     // Pop the old state:
-    GL.immediate.enabledClientAttributes = GL.immediate.enabledClientAttributes_preBegin;
-    GL.immediate.clientAttributes = GL.immediate.clientAttributes_preBegin;
+    GLImmediate.enabledClientAttributes = GLImmediate.enabledClientAttributes_preBegin;
+    GLImmediate.clientAttributes = GLImmediate.clientAttributes_preBegin;
     GL.immediate.currentRenderer = null; // The set of active client attributes changed, we must re-lookup the renderer to use.
-    GL.immediate.modifiedClientAttributes = true;
+    GLImmediate.modifiedClientAttributes = true;
   },
 
   glVertex3f: function(x, y, z) {
 #if ASSERTIONS
-    assert(GL.immediate.mode >= 0); // must be in begin/end
+    assert(GLImmediate.mode >= 0); // must be in begin/end
 #endif
-    GL.immediate.vertexData[GL.immediate.vertexCounter++] = x;
-    GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
-    GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z || 0;
 #if ASSERTIONS
-    assert(GL.immediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
-    GL.immediate.addRendererComponent(GL.immediate.VERTEX, 3, Module.ctx.FLOAT);
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 3, Module.ctx.FLOAT);
   },
   glVertex2f: 'glVertex3f',
 
@@ -4325,11 +4325,11 @@ var LibraryGL = {
 
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
-    assert(GL.immediate.mode >= 0); // must be in begin/end
+    assert(GLImmediate.mode >= 0); // must be in begin/end
 #endif
-    GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
-    GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
-    GL.immediate.addRendererComponent(GL.immediate.TEXTURE0, 2, Module.ctx.FLOAT);
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = u;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = v;
+    GLImmediate.addRendererComponent(GLImmediate.TEXTURE0, 2, Module.ctx.FLOAT);
   },
   glTexCoord2f: 'glTexCoord2i',
 
@@ -4347,19 +4347,19 @@ var LibraryGL = {
     a = Math.max(Math.min(a, 1), 0);
 
     // TODO: make ub the default, not f, save a few mathops
-    if (GL.immediate.mode >= 0) {
-      var start = GL.immediate.vertexCounter << 2;
-      GL.immediate.vertexDataU8[start + 0] = r * 255;
-      GL.immediate.vertexDataU8[start + 1] = g * 255;
-      GL.immediate.vertexDataU8[start + 2] = b * 255;
-      GL.immediate.vertexDataU8[start + 3] = a * 255;
-      GL.immediate.vertexCounter++;
-      GL.immediate.addRendererComponent(GL.immediate.COLOR, 4, Module.ctx.UNSIGNED_BYTE);
+    if (GLImmediate.mode >= 0) {
+      var start = GLImmediate.vertexCounter << 2;
+      GLImmediate.vertexDataU8[start + 0] = r * 255;
+      GLImmediate.vertexDataU8[start + 1] = g * 255;
+      GLImmediate.vertexDataU8[start + 2] = b * 255;
+      GLImmediate.vertexDataU8[start + 3] = a * 255;
+      GLImmediate.vertexCounter++;
+      GLImmediate.addRendererComponent(GLImmediate.COLOR, 4, Module.ctx.UNSIGNED_BYTE);
     } else {
-      GL.immediate.clientColor[0] = r;
-      GL.immediate.clientColor[1] = g;
-      GL.immediate.clientColor[2] = b;
-      GL.immediate.clientColor[3] = a;
+      GLImmediate.clientColor[0] = r;
+      GLImmediate.clientColor[1] = g;
+      GLImmediate.clientColor[2] = b;
+      GLImmediate.clientColor[3] = a;
     }
   },
   glColor4d: 'glColor4f',
@@ -4503,12 +4503,12 @@ var LibraryGL = {
 #endif
       return;
     }
-    if (!GL.immediate.enabledClientAttributes[attrib]) {
-      GL.immediate.enabledClientAttributes[attrib] = true;
-      GL.immediate.totalEnabledClientAttributes++;
+    if (!GLImmediate.enabledClientAttributes[attrib]) {
+      GLImmediate.enabledClientAttributes[attrib] = true;
+      GLImmediate.totalEnabledClientAttributes++;
       this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
       if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
-      GL.immediate.modifiedClientAttributes = true;
+      GLImmediate.modifiedClientAttributes = true;
     }
   },
   glDisableClientState: function(cap) {
@@ -4519,57 +4519,57 @@ var LibraryGL = {
 #endif
       return;
     }
-    if (GL.immediate.enabledClientAttributes[attrib]) {
-      GL.immediate.enabledClientAttributes[attrib] = false;
-      GL.immediate.totalEnabledClientAttributes--;
+    if (GLImmediate.enabledClientAttributes[attrib]) {
+      GLImmediate.enabledClientAttributes[attrib] = false;
+      GLImmediate.totalEnabledClientAttributes--;
       this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
       if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
-      GL.immediate.modifiedClientAttributes = true;
+      GLImmediate.modifiedClientAttributes = true;
     }
   },
 
   glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.VERTEX, size, type, stride, pointer);
+    GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
-      Module.ctx.vertexAttribPointer(GL.immediate.VERTEX, size, type, false, stride, pointer);
-      GL.enableVertexAttribArray(GL.immediate.VERTEX);
+      Module.ctx.vertexAttribPointer(GLImmediate.VERTEX, size, type, false, stride, pointer);
+      GL.enableVertexAttribArray(GLImmediate.VERTEX);
     }
 #endif
   },
   glTexCoordPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture, size, type, stride, pointer);
+    GLImmediate.setClientAttribute(GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture, size, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
-      var loc = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture;
+      var loc = GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture;
       Module.ctx.vertexAttribPointer(loc, size, type, false, stride, pointer);
       GL.enableVertexAttribArray(loc);
     }
 #endif
   },
   glNormalPointer: function(type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.NORMAL, 3, type, stride, pointer);
+    GLImmediate.setClientAttribute(GLImmediate.NORMAL, 3, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
-      Module.ctx.vertexAttribPointer(GL.immediate.NORMAL, size, type, true, stride, pointer);
-      GL.enableVertexAttribArray(GL.immediate.NORMAL);
+      Module.ctx.vertexAttribPointer(GLImmediate.NORMAL, size, type, true, stride, pointer);
+      GL.enableVertexAttribArray(GLImmediate.NORMAL);
     }
 #endif
   },
   glColorPointer: function(size, type, stride, pointer) {
-    GL.immediate.setClientAttribute(GL.immediate.COLOR, size, type, stride, pointer);
+    GLImmediate.setClientAttribute(GLImmediate.COLOR, size, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
-      Module.ctx.vertexAttribPointer(GL.immediate.COLOR, size, type, true, stride, pointer);
-      GL.enableVertexAttribArray(GL.immediate.COLOR);
+      Module.ctx.vertexAttribPointer(GLImmediate.COLOR, size, type, true, stride, pointer);
+      GL.enableVertexAttribArray(GLImmediate.COLOR);
     }
 #endif
   },
 
   glClientActiveTexture__sig: 'vi',
   glClientActiveTexture: function(texture) {
-    GL.immediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
+    GLImmediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
   },
 
   // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
@@ -4601,16 +4601,16 @@ var LibraryGL = {
   glBindVertexArray: function(vao) {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
     GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
-    if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
+    if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
     _glBindBuffer(Module.ctx.ARRAY_BUFFER, 0); // XXX if one was there before we were bound?
     _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, 0);
     for (var vaa in GLEmulation.enabledVertexAttribArrays) {
       Module.ctx.disableVertexAttribArray(vaa);
     }
     GLEmulation.enabledVertexAttribArrays = {};
-    GL.immediate.enabledClientAttributes = [0, 0];
-    GL.immediate.totalEnabledClientAttributes = 0;
-    GL.immediate.modifiedClientAttributes = true;
+    GLImmediate.enabledClientAttributes = [0, 0];
+    GLImmediate.totalEnabledClientAttributes = 0;
+    GLImmediate.modifiedClientAttributes = true;
     if (vao) {
       // replay vao
       var info = GLEmulation.vaos[vao];
@@ -4634,132 +4634,132 @@ var LibraryGL = {
   glMatrixMode__deps: ['$GL', '$GLImmediateSetup', '$GLEmulation'], // emulation is not strictly needed, this is a workaround
   glMatrixMode: function(mode) {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
-      GL.immediate.currentMatrix = 0/*m*/;
+      GLImmediate.currentMatrix = 0/*m*/;
     } else if (mode == 0x1701 /* GL_PROJECTION */) {
-      GL.immediate.currentMatrix = 1/*p*/;
+      GLImmediate.currentMatrix = 1/*p*/;
     } else if (mode == 0x1702) { // GL_TEXTURE
-      GL.immediate.useTextureMatrix = true;
-      GL.immediate.currentMatrix = 2/*t*/ + GL.immediate.clientActiveTexture;
+      GLImmediate.useTextureMatrix = true;
+      GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.clientActiveTexture;
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
     }
   },
 
   glPushMatrix: function() {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrixStack[GL.immediate.currentMatrix].push(
-        Array.prototype.slice.call(GL.immediate.matrix[GL.immediate.currentMatrix]));
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrixStack[GLImmediate.currentMatrix].push(
+        Array.prototype.slice.call(GLImmediate.matrix[GLImmediate.currentMatrix]));
   },
 
   glPopMatrix: function() {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix[GL.immediate.currentMatrix] = GL.immediate.matrixStack[GL.immediate.currentMatrix].pop();
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix[GLImmediate.currentMatrix] = GLImmediate.matrixStack[GLImmediate.currentMatrix].pop();
   },
 
   glLoadIdentity__deps: ['$GL', '$GLImmediateSetup'],
   glLoadIdentity: function() {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix[GL.immediate.currentMatrix]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadMatrixd: function(matrix) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
     if (GL.debug) Module.printErr('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixd: function(matrix) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
-    GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrix.lib.mat4.transpose(GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixf: function(matrix) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GL.immediate.matrix[GL.immediate.currentMatrix]);
-    GL.immediate.matrix.lib.mat4.transpose(GL.immediate.matrix[GL.immediate.currentMatrix]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrix.lib.mat4.transpose(GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glMultMatrixd: function(matrix) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
         {{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}});
   },
 
   glMultMatrixf: function(matrix) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
         {{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}});
   },
 
   glMultTransposeMatrixd: function(matrix) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    var colMajor = GL.immediate.matrix.lib.mat4.create();
-    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, colMajor);
-    GL.immediate.matrix.lib.mat4.transpose(colMajor);
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix], colMajor);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    var colMajor = GLImmediate.matrix.lib.mat4.create();
+    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, colMajor);
+    GLImmediate.matrix.lib.mat4.transpose(colMajor);
+    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix], colMajor);
   },
 
   glMultTransposeMatrixf: function(matrix) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    var colMajor = GL.immediate.matrix.lib.mat4.create();
-    GL.immediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, colMajor);
-    GL.immediate.matrix.lib.mat4.transpose(colMajor);
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix], colMajor);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    var colMajor = GLImmediate.matrix.lib.mat4.create();
+    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, colMajor);
+    GLImmediate.matrix.lib.mat4.transpose(colMajor);
+    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix], colMajor);
   },
 
   glFrustum: function(left, right, bottom, top_, nearVal, farVal) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
-        GL.immediate.matrix.lib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
+        GLImmediate.matrix.lib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
   },
   glFrustumf: 'glFrustum',
 
   glOrtho: function(left, right, bottom, top_, nearVal, farVal) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
-        GL.immediate.matrix.lib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
+        GLImmediate.matrix.lib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
   },
   glOrthof: 'glOrtho',
 
   glScaled: function(x, y, z) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.scale(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.scale(GLImmediate.matrix[GLImmediate.currentMatrix], [x, y, z]);
   },
   glScalef: 'glScaled',
 
   glTranslated: function(x, y, z) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.translate(GL.immediate.matrix[GL.immediate.currentMatrix], [x, y, z]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.translate(GLImmediate.matrix[GLImmediate.currentMatrix], [x, y, z]);
   },
   glTranslatef: 'glTranslated',
 
   glRotated: function(angle, x, y, z) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.rotate(GL.immediate.matrix[GL.immediate.currentMatrix], angle*Math.PI/180, [x, y, z]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.rotate(GLImmediate.matrix[GLImmediate.currentMatrix], angle*Math.PI/180, [x, y, z]);
   },
   glRotatef: 'glRotated',
 
@@ -4840,17 +4840,17 @@ var LibraryGL = {
   // GLU
 
   gluPerspective: function(fov, aspect, near, far) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix[GL.immediate.currentMatrix] =
-      GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far,
-                                               GL.immediate.matrix[GL.immediate.currentMatrix]);
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix[GLImmediate.currentMatrix] =
+      GLImmediate.matrix.lib.mat4.perspective(fov, aspect, near, far,
+                                               GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
-    GL.immediate.matricesModified = true;
-    GL.immediate.matrixVersion[GL.immediate.currentMatrix] = (GL.immediate.matrixVersion[GL.immediate.currentMatrix] + 1)|0;
-    GL.immediate.matrix.lib.mat4.lookAt(GL.immediate.matrix[GL.immediate.currentMatrix], [ex, ey, ez],
+    GLImmediate.matricesModified = true;
+    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
+    GLImmediate.matrix.lib.mat4.lookAt(GLImmediate.matrix[GLImmediate.currentMatrix], [ex, ey, ez],
         [cx, cy, cz], [ux, uy, uz]);
   },
 
@@ -4859,9 +4859,9 @@ var LibraryGL = {
 
     var inVec = new Float32Array(4);
     var outVec = new Float32Array(4);
-    GL.immediate.matrix.lib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
+    GLImmediate.matrix.lib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
         [objX, objY, objZ, 1.0], outVec);
-    GL.immediate.matrix.lib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
+    GLImmediate.matrix.lib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
         outVec, inVec);
     if (inVec[3] == 0.0) {
       return 0 /* GL_FALSE */;
@@ -4885,7 +4885,7 @@ var LibraryGL = {
   },
 
   gluUnProject: function(winX, winY, winZ, model, proj, view, objX, objY, objZ) {
-    var result = GL.immediate.matrix.lib.mat4.unproject([winX, winY, winZ],
+    var result = GLImmediate.matrix.lib.mat4.unproject([winX, winY, winZ],
         {{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
         {{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
         {{{ makeHEAPView('32', 'view', 'view+' + (4*4)) }}});
