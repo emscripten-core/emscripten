@@ -8858,7 +8858,8 @@ LibraryManager.library = {
       }
     }
     str += ')';
-    args = args.callee.caller.arguments;
+    var caller = args.callee.caller;
+    args = caller ? caller.arguments : [];
     if (first)
       str = '';
     return [args, funcname, str];
