@@ -319,7 +319,7 @@ mergeInto(LibraryManager.library, {
         }, false);
       }
       if (setInModule) {
-        Module.ctx = ctx;
+        GLctx = Module.ctx = ctx;
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
         Browser.init();
