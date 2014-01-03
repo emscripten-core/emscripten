@@ -268,11 +268,27 @@ var LibraryGL = {
             return;
           case "object":
             if (result === null) {
-              GL.recordError(0x0500); // GL_INVALID_ENUM
+              // null is a valid result for some (e.g., which buffer is bound - perhaps nothing is bound), but otherwise
+              // can mean an invalid name_, which we need to report as an error
+              switch(name_) {
+                case 0x8894: // ARRAY_BUFFER_BINDING
+                case 0x8B8D: // CURRENT_PROGRAM
+                case 0x8895: // ELEMENT_ARRAY_BUFFER_BINDING
+                case 0x8CA6: // FRAMEBUFFER_BINDING
+                case 0x8CA7: // RENDERBUFFER_BINDING
+                case 0x8069: // TEXTURE_BINDING_2D
+                case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
+                  ret = 0;
+                  break;
+                }
+                default: {
+                  GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-              Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') and it returns null!');
+                  Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') and it returns null!');
 #endif
-              return;
+                  return;
+                }
+              }
             } else if (result instanceof Float32Array ||
                        result instanceof Uint32Array ||
                        result instanceof Int32Array ||
