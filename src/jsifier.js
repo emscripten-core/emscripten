@@ -95,19 +95,6 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // Functions
 
-  Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
-
-  data.functionStubs.forEach(function(func) {
-    // Don't overwrite stubs that have more info.
-    if (!Functions.currExternalFunctions.hasOwnProperty(func.ident) ||
-        !Functions.currExternalFunctions[func.ident].numParams === undefined) {
-      Functions.currExternalFunctions[func.ident] = {
-        hasVarArgs: func.hasVarArgs,
-        numParams: func.params && func.params.length
-      };
-    }
-  });
-
   if (phase == 'funcs') { // || phase == 'pre') { // pre has function shells, just to defined implementedFunctions
     var MAX_BATCH_FUNC_LINES = 1000;
     while (data.unparsedFunctions.length > 0) {
