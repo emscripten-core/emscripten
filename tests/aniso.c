@@ -151,6 +151,11 @@ int main(int argc, char *argv[])
       assert(!glGetError());
       glBindFramebuffer(GL_RENDERBUFFER, 0);
       assert(glGetError());
+
+      GLint out = 321;
+      assert(!glGetError());
+      glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &out); // invalid, just test output
+      assert(out == 0);
     }
 
     // Prepare and Render

@@ -1704,7 +1704,7 @@ var LibraryGL = {
   glGetFramebufferAttachmentParameteriv__sig: 'viiii',
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
     var result = Module.ctx.getFramebufferAttachmentParameter(target, attachment, pname);
-    {{{ makeSetValue('params', '0', 'params', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'result', 'i32') }}};
   },
 
   glIsFramebuffer__sig: 'ii',
