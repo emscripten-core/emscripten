@@ -6301,7 +6301,7 @@ def process(filename):
 
     open(os.path.join(self.get_dir(), 'tmp_lib.js'), 'w').write('''
       mergeInto(LibraryManager.library, {
-        async_sleep_async: true,
+        async_sleep__async: true,
         async_sleep: function (callback, msec) {
           setTimeout(callback, msec);
         },
@@ -6319,19 +6319,19 @@ def process(filename):
         switch(i) {
           case 0:
             // normal async call
-            printf("hello");
+            printf("hello\\n");
             async_sleep(100);
-            printf("world");
+            printf("world\\n");
             break;
           case 1:
             // fake async call
-            printf("hello");
-            printf("world");
+            printf("hello\\n");
+            printf("world\\n");
             break;
           case 2:
-            printf("hello");
+            printf("hello\\n");
             work1();
-            printf("world");
+            printf("world\\n");
             return 1024;
             break;
         }
@@ -6339,13 +6339,14 @@ def process(filename):
       }
       int main() {
         for(int i = 0; i < 3; ++i)
-          printf("%d", work(i));
+          printf("%d\\n", work(i));
+        fflush(stdout);
         return 0;
       }
     ''')
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'tmp.c'), '--js-library', os.path.join(self.get_dir(), 'tmp_lib.js')]).communicate()
-    self.assertIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')).strip(), 'helloworld1024' * 3)
+    self.assertIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')).strip(), ('hello\nworld\n1024\n' * 3).strip())
 
 
 
