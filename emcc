@@ -348,7 +348,9 @@ Options that are modified or new in %s include:
                            --embed-file and --preload-file
                            wildcard is supported
 
-  --compression <codec>    Compress both the compiled code and embedded/
+  --compression <codec>    **THIS OPTION IS DEPRECATED**
+
+                           Compress both the compiled code and embedded/
                            preloaded files. <codec> should be a triple,
 
                               <native_encoder>,<js_decoder>,<js_name>
@@ -922,6 +924,7 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--compression'):
+      logging.warning('--compression is deprecated. Instead, it is recommended you use native gzip compression in your webserver')
       check_bad_eq(newargs[i])
       parts = newargs[i+1].split(',')
       assert len(parts) == 3, '--compression requires specifying    native_encoder,js_decoder,js_name  - see emcc --help. got: %s' % newargs[i+1]
