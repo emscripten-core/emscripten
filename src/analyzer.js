@@ -1803,7 +1803,11 @@ function analyzer(data, sidePass) {
               newLabel.assignAsyncReturnValueTo = line.assignTo;
               delete line.assignTo;
             }
-            // TODO: handle stack for varargs
+
+            // handle stack for varargs
+            if (isVarArgsFunctionType(line.type))
+              newLabel.restoreVarArgsStack = true;
+            
 
             func.labels.splice(i+1, 0, newLabel);
 
