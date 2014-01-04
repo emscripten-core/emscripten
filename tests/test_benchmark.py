@@ -58,7 +58,7 @@ class NativeBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.parent = parent
-    if lib_builder: native_args += lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
+    if lib_builder: native_args = native_args + lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
@@ -90,7 +90,7 @@ class JSBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.filename = filename
-    if lib_builder: emcc_args += lib_builder('js', native=False, env_init={})
+    if lib_builder: emcc_args = emcc_args + lib_builder('js', native=False, env_init={})
 
     open('hardcode.py', 'w').write('''
 def process(filename):
