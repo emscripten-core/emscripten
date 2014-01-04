@@ -1056,23 +1056,27 @@ var LibrarySDL = {
       var buffer = surfData.buffer;
 #if USE_TYPED_ARRAYS == 2
       assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
-      var src;
+      var src = buffer >> 2;
       var dst = 0;
       var isScreen = surf == SDL.screen;
       var num;
       if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) {
-        // IE10/IE11: Canvases are backed by the deprecated CanvasPixelArray,
+        // IE10/IE11: ImageData objects are backed by the deprecated CanvasPixelArray,
         // not UInt8ClampedArray. These don't have buffers, so we need to revert
         // to copying a byte at a time. We do the undefined check because modern
         // browsers do not define CanvasPixelArray anymore.
-        src = buffer;
         num = data.length;
         while (dst < num) {
-          data[dst++] = HEAP8[src++];
+          var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+          data[dst  ] = val & 0xff;
+          data[dst+1] = (val >> 8) & 0xff;
+          data[dst+2] = (val >> 16) & 0xff;
+          data[dst+3] = isScreen ? 0xff : ((val >> 24) & 0xff);
+          src++;
+          dst += 4;
         }
       } else {
         var data32 = new Uint32Array(data.buffer);
-        src = buffer >> 2;
         num = data32.length;
         while (dst < num) {
           // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
