@@ -1078,9 +1078,15 @@ var LibrarySDL = {
       } else {
         var data32 = new Uint32Array(data.buffer);
         num = data32.length;
-        while (dst < num) {
-          // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-          data32[dst++] = HEAP32[src++] | (isScreen ? 0xff000000 : 0);
+        if (isScreen) {
+          while (dst < num) {
+            // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+            data32[dst++] = HEAP32[src++] | 0xff000000;
+          }
+        } else {
+          while (dst < num) {
+            data32[dst++] = HEAP32[src++];
+          }
         }
       }
 #else
