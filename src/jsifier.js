@@ -18,10 +18,8 @@ var INDENTATION = ' ';
 var functionStubSigs = {};
 
 // constants for async functions
-// TODO: where should I put these?
 var ASYNC_CALLBACK = 'async_callback';
 var ASYNC_RETURN_VALUE = 'async_return_value';
-// TODO: is the 'async' prefix OK?
 function getAsyncFunctionName(funcName) {
   // the inner function of async C functions
   // need a name similar as the original name, will be useful in stack trace
@@ -762,6 +760,9 @@ function JSify(data, functionsOnly) {
               // retrieve the return value
               ret += INDENTATION + label.assignAsyncReturnValueTo + '=' + ASYNC_RETURN_VALUE + ';\n';
             }
+            if(label.restoreVarArgsStack) {
+              ret += INDENTATION +  'STACKTOP=tempVarArgs;\n';
+            }
             ret += getLabelLines(label);
             return ret;
           }).join('\n') + '\n';
@@ -1286,7 +1287,8 @@ function JSify(data, functionsOnly) {
           + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
           + 'return null } })();';
     }
-    ret = makeVarArgsCleanup(ret);
+    if(!item.async)
+      ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
       var illegal = USE_TYPED_ARRAYS == 2 && isIllegalType(item.type);
@@ -1713,7 +1715,7 @@ function JSify(data, functionsOnly) {
   function callHandler(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
     var ret = makeFunctionCall(item, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
-    return makeVarArgsCleanup(ret);
+    return item.async ? ret : makeVarArgsCleanup(ret);
   }
 
   function unreachableHandler(item) {
@@ -2034,7 +2036,6 @@ function JSify(data, functionsOnly) {
     }
 
     Functions.asyncFunctions = asyncFunctions;
-    console.error(asyncFunctions);
   }
 
   // Data
