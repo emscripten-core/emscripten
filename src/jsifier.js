@@ -19,11 +19,12 @@ var functionStubSigs = {};
 
 // constants for async functions
 // TODO: where should I put these?
-
 var ASYNC_CALLBACK = 'async_callback';
 var ASYNC_RETURN_VALUE = 'async_return_value';
 // TODO: is the 'async' prefix OK?
 function getAsyncFunctionName(funcName) {
+  // the inner function of async C functions
+  // need a name similar as the original name, will be useful in stack trace
   return 'async_' + funcName; 
 }
 
@@ -124,8 +125,6 @@ function JSify(data, functionsOnly) {
     }
     currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
     data.unparsedFunctions = null;
-    // TODO: where to put this?
-    print('Module["async"]=Module["async"]||' + (data.async ? 'true' : 'false') + ';\n');
   }
 
 
@@ -782,15 +781,14 @@ function JSify(data, functionsOnly) {
             ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
           }
           if (ASM_JS && func.returnType !== 'void') ret += '  return ' + asmInitializer(func.returnType) + ';\n'; // Add a return
+
+          if(func.async) {
+            // close the async function
+            ret += indent + '})();';
+          }
         } else {
           ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0]);
         }
-
-        if(func.async) {
-          // close the async function
-          ret += indent + '})();';
-        }
-
         ret += '\n';
       } else {
         // Reloop multiple blocks using the compiled relooper
@@ -1980,6 +1978,73 @@ function JSify(data, functionsOnly) {
 
     PassManager.serialize();
   }
+  
+  // check if any async functions are used, mark them if any
+  function checkAsyncFunctions() {
+    var asyncFunctions = {};
+    data.functionStubs.forEach(function(func) {
+      // check only the functions used by C
+      // do not check __deps: a sync function may depend on async functions
+      if (LibraryManager.library[LibraryManager.getRootIdent(func.ident.substr(1)) + '__async']) {
+        asyncFunctions[func.ident] = true;
+      }
+    });
+
+    if(keys(asyncFunctions).length == 0)
+      return;
+
+    print('Module["async"] = true;\n');
+
+    Functions.asyncFunctions = asyncFunctions;
+
+    /*
+     * TODO: analyze the call graph and mark async functions
+     * we don't have the information in the pre phase
+     * and the functions will be split in the funcs phase
+     *
+     * Need to do these somewhere between these two phases.
+     * For now, just mark all C functions as async
+     */
+    
+    data.unparsedFunctions.forEach(function(func) {
+      if(!(func.ident.substr(1) in LibraryManager.library))
+        asyncFunctions[func.ident] = true;
+    });
+
+    /*
+    // create call graph
+    // b in callGraph[a] <=> b calls a
+    var callGraph = {};
+    data.unparsedFunctions.forEach(function(func) {
+      var caller = func.ident;
+      func.lines.forEach(function(line) {
+        if (line.intertype == 'call') {
+          var callee = line.ident;
+          if (!(callee in callGraph))
+            callGraph[callee] = {};
+          callGraph[callee][caller] = true;
+        }
+      });
+    });
+    // perform DFS on the graph, search for all async functions
+    var allAsyncFunctions = {};
+    var functionsToCheck = asyncLibraryFunctions;
+    while(functionsToCheck.length > 0) {
+      var func = functionsToCheck.pop();
+      allAsyncFunctions[func] = true;
+      // check all the functions that call func
+      var callers = callGraph[func];
+      if (callers) {
+        for (var caller in callers) {
+          if(!(caller in allAsyncFunctions)) {
+            allAsyncFunctions[caller] = true;
+            functionsToCheck.push(caller);
+          }
+        }
+      }
+    }
+    */
+  }
 
   // Data
 
@@ -1989,6 +2054,7 @@ function JSify(data, functionsOnly) {
       data.unparsedFunctions.forEach(function(func) {
         Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
       });
+      checkAsyncFunctions();
     }
     data.functionStubs.forEach(functionStubHandler);
     assert(data.functions.length == 0);
