@@ -1765,64 +1765,23 @@ function analyzer(data, sidePass) {
 
   // perform transformations if async functions are used
   function asyncTransformer() {
-    // create call graph
-    // b in callGraph[a] <=> b calls a
-    var callGraph = {};
-    item.functions.forEach(function(func) {
-      var caller = func.ident;
-      func.lines.forEach(function(line) {
-        if (line.intertype == 'call') {
-          var callee = line.ident;
-          if (!(callee in callGraph))
-        callGraph[callee] = {};
-      callGraph[callee][caller] = true;
-        }
-      });
-    });
-
-    // check if there are any async functions defined in JS library are used
-    var asyncLibraryFunctions = [];
-    for (var funcIdent in callGraph) {
-      if (LibraryManager.library[LibraryManager.getRootIdent(funcIdent.substr(1)) + '__async']) {
-        asyncLibraryFunctions.push(funcIdent);
-      }
-    }
-    // no async function is used, quit
-    if (asyncLibraryFunctions.length == 0)
+    if(!Functions.asyncFunctions || keys(Functions.asyncFunctions).length == 0)
       return;
 
-    item.async = true;
-
-    // perform DFS on the graph, search for all async functions
-    var allAsyncFunctions = {};
-    var functionsToCheck = asyncLibraryFunctions;
-    while(functionsToCheck.length > 0) {
-      var func = functionsToCheck.pop();
-      allAsyncFunctions[func] = true;
-      // check all the functions that call func
-      var callers = callGraph[func];
-      if (callers) {
-        for (var caller in callers) {
-          if(!(caller in allAsyncFunctions)) {
-            allAsyncFunctions[caller] = true;
-            functionsToCheck.push(caller);
-          }
-        }
-      }
+    function isAsync(ident) {
+      // currently we mark all C functions as async
+      return (ident in Functions.asyncFunctions);
     }
 
     // mark async functions definitions and calls
     item.functions.forEach(function(func) {
-      if (!(func.ident in allAsyncFunctions))
-        return;
-
       func.async = true;
 
       for (var i = 0; i < func.labels.length; ++i) {
         var label = func.labels[i];
         for (var j = 0; j < label.lines.length; ++j) {
           var line = label.lines[j];
-          if ((line.intertype == 'call') && (line.ident in allAsyncFunctions)) {
+          if ((line.intertype == 'call') && isAsync(line.ident)) {
             line.async = true;
             // split a new label, simliar as handling setjmp
             // TODO: setjmp may be implemented as an async function ?

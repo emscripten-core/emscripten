@@ -69,44 +69,48 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 
   initialStackTop = STACKTOP;
 
-  try {
+  // TODO: determine better names for the keys
+  if (Module['async']) {
+    // TODO: handle exception
+    // TODO: BENCHMARK
+    var callback = function(ret){
+      if(!Module['noExitRuntime'])
+        exit(ret);
+    };
+    Module['_main'](callback, argc, argv, 0);
+  } else {
+    // sync 
+    try {
 #if BENCHMARK
-    var start = Date.now();
+      var start = Date.now();
 #endif
-
-    // TODO: determine better names for the keys
-    if (Module['async']) {
-      Module['noExitRuntime'] = true;
-      var callback = Module['asyncCallback'] || function(){};
-      var ret = Module['_main'](callback, argc, argv, 0);
-    } else {
       var ret = Module['_main'](argc, argv, 0);
-    }
 
 #if BENCHMARK
-    Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
+      Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-    // if we're not running an evented main loop, it's time to exit
-    if (!Module['noExitRuntime']) {
-      exit(ret);
+      // if we're not running an evented main loop, it's time to exit
+      if (!Module['noExitRuntime']) {
+        exit(ret);
+      }
     }
-  }
-  catch(e) {
-    if (e instanceof ExitStatus) {
-      // exit() throws this once it's done to make sure execution
-      // has been stopped completely
-      return;
-    } else if (e == 'SimulateInfiniteLoop') {
-      // running an evented main loop, don't immediately exit
-      Module['noExitRuntime'] = true;
-      return;
-    } else {
-      if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
-      throw e;
+    catch(e) {
+      if (e instanceof ExitStatus) {
+        // exit() throws this once it's done to make sure execution
+        // has been stopped completely
+        return;
+      } else if (e == 'SimulateInfiniteLoop') {
+        // running an evented main loop, don't immediately exit
+        Module['noExitRuntime'] = true;
+        return;
+      } else {
+        if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+        throw e;
+      }
+    } finally {
+      calledMain = true;
     }
-  } finally {
-    calledMain = true;
   }
 }
 
@@ -139,6 +143,7 @@ function run(args) {
       Module['callMain'](args);
     }
 
+    // TODO: rearrange for async
     postRun();
   }
 
