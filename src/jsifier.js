@@ -1982,69 +1982,60 @@ function JSify(data, functionsOnly) {
   
   // check if any async functions are used, mark them if any
   function checkAsyncFunctions() {
-    var asyncFunctions = {};
+    var asyncLibFunctions = []; 
     data.functionStubs.forEach(function(func) {
       // check only the functions used by C
       // do not check __deps: a sync function may depend on async functions
       if (LibraryManager.library[LibraryManager.getRootIdent(func.ident.substr(1)) + '__async']) {
-        asyncFunctions[func.ident] = true;
+        asyncLibFunctions.push(func.ident);
       }
     });
 
-    if(keys(asyncFunctions).length == 0)
+    if(asyncLibFunctions.length == 0)
       return;
 
     print('Module["async"] = true;\n');
 
-    Functions.asyncFunctions = asyncFunctions;
 
     /*
-     * TODO: analyze the call graph and mark async functions
-     * we don't have the information in the pre phase
-     * and the functions will be split in the funcs phase
-     *
-     * Need to do these somewhere between these two phases.
-     * For now, just mark all C functions as async
+     * analyze the call graph and mark async functions
+     * we have callee's dumped from emscripten.py
      */
     
-    data.unparsedFunctions.forEach(function(func) {
-      if(!(func.ident.substr(1) in LibraryManager.library))
-        asyncFunctions[func.ident] = true;
-    });
-
-    /*
     // create call graph
     // b in callGraph[a] <=> b calls a
     var callGraph = {};
     data.unparsedFunctions.forEach(function(func) {
       var caller = func.ident;
-      func.lines.forEach(function(line) {
-        if (line.intertype == 'call') {
-          var callee = line.ident;
-          if (!(callee in callGraph))
-            callGraph[callee] = {};
-          callGraph[callee][caller] = true;
-        }
-      });
+      // ignore the first and the last line, which are function definitions
+      for(var i = 1, l = func.lines.length - 1; i < l; ++i) {
+        var callee = toNiceIdent(func.lines[i].replace(/^\s+|\s+$/g, ''));
+        if (!(callee in callGraph))
+          callGraph[callee] = {};
+        callGraph[callee][caller] = true;
+      }
     });
     // perform DFS on the graph, search for all async functions
-    var allAsyncFunctions = {};
-    var functionsToCheck = asyncLibraryFunctions;
+    var asyncFunctions = {};
+    var functionsToCheck = asyncLibFunctions;
+
     while(functionsToCheck.length > 0) {
       var func = functionsToCheck.pop();
-      allAsyncFunctions[func] = true;
+      asyncFunctions[func] = true;
       // check all the functions that call func
       var callers = callGraph[func];
       if (callers) {
         for (var caller in callers) {
-          if(!(caller in allAsyncFunctions)) {
-            allAsyncFunctions[caller] = true;
+          if(!(caller in asyncFunctions)) {
+            asyncFunctions[caller] = true;
             functionsToCheck.push(caller);
           }
         }
       }
     }
-    */
+
+    Functions.asyncFunctions = asyncFunctions;
+    console.error(asyncFunctions);
   }
 
   // Data
