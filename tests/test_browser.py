@@ -120,6 +120,8 @@ If manually bisecting:
 '''
 
   def test_emscripten_log(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp uses asm, where call stacks are sometimes less clear')
+
     src = os.path.join(self.get_dir(), 'src.cpp')
     open(src, 'w').write(self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
 
@@ -1108,6 +1110,8 @@ keydown(100);keyup(100); // trigger the end
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_beeps(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo c++ exceptions in fastcomp')
+
     open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
@@ -1191,10 +1195,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('openal_buffers.c', '0', args=['--preload-file', 'the_entertainer.wav'],)
 
   def test_glfw(self):
-    open(os.path.join(self.get_dir(), 'glfw.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'glfw.c')).read()))
-
-    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'glfw.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_egl(self):
     open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
@@ -1433,6 +1434,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest('sdl_resize.c', '1')
 
   def test_gc(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('flaky in fastcomp and also non-fastcomp -O1, timing issues')
+
     self.btest('browser_gc.cpp', '1')
 
   def test_glshaderinfo(self):
@@ -1619,11 +1622,12 @@ keydown(100);keyup(100); // trigger the end
     self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_aniso(self):
-    if SPIDERMONKEY_ENGINE in JS_ENGINES:
+    if SPIDERMONKEY_ENGINE in JS_ENGINES and os.environ.get('EMCC_FAST_COMPILER') != '1':
       # asm.js-ification check
       Popen([PYTHON, EMCC, path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
       Settings.ASM_JS = 1
       self.run_generated_code(SPIDERMONKEY_ENGINE, 'a.out.js')
+      print 'passed asm test'
 
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
     self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-s', 'LEGACY_GL_EMULATION=1'])
@@ -1678,6 +1682,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
   def test_module(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
     Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
 
