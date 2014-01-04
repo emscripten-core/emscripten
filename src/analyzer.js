@@ -1775,6 +1775,9 @@ function analyzer(data, sidePass) {
 
     // mark async functions definitions and calls
     item.functions.forEach(function(func) {
+      if(!isAsync(func.ident))
+        return;
+
       func.async = true;
 
       for (var i = 0; i < func.labels.length; ++i) {
