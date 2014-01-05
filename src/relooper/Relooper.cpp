@@ -308,7 +308,7 @@ void MultipleShape::Render(bool InLoop) {
   }
   RenderLoopPostfix();
   if (Next) Next->Render(InLoop);
-};
+}
 
 // LoopShape
 
@@ -323,7 +323,7 @@ void LoopShape::Render(bool InLoop) {
   Indenter::Unindent();
   PrintIndented("}\n");
   if (Next) Next->Render(InLoop);
-};
+}
 
 // EmulatedShape
 
@@ -350,7 +350,7 @@ void EmulatedShape::Render(bool InLoop) {
   Indenter::Unindent();
   PrintIndented("}\n");
   if (Next) Next->Render(InLoop);
-};
+}
 
 // Relooper
 
@@ -358,8 +358,8 @@ Relooper::Relooper() : Root(NULL), Emulate(false), BlockIdCounter(1), ShapeIdCou
 }
 
 Relooper::~Relooper() {
-  for (int i = 0; i < Blocks.size(); i++) delete Blocks[i];
-  for (int i = 0; i < Shapes.size(); i++) delete Shapes[i];
+  for (unsigned i = 0; i < Blocks.size(); i++) delete Blocks[i];
+  for (unsigned i = 0; i < Shapes.size(); i++) delete Shapes[i];
 }
 
 void Relooper::AddBlock(Block *New) {
@@ -399,7 +399,7 @@ void Relooper::Calculate(Block *Entry) {
     // RAII cleanup. Without splitting, we will be forced to introduce labelled loops to allow
     // reaching the final block
     void SplitDeadEnds() {
-      int TotalCodeSize = 0;
+      unsigned TotalCodeSize = 0;
       for (BlockSet::iterator iter = Live.begin(); iter != Live.end(); iter++) {
         Block *Curr = *iter;
         TotalCodeSize += strlen(Curr->Code);
@@ -451,7 +451,7 @@ void Relooper::Calculate(Block *Entry) {
   Pre.FindLive(Entry);
 
   // Add incoming branches from live blocks, ignoring dead code
-  for (int i = 0; i < Blocks.size(); i++) {
+  for (unsigned i = 0; i < Blocks.size(); i++) {
     Block *Curr = Blocks[i];
     if (!contains(Pre.Live, Curr)) continue;
     for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
