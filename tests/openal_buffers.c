@@ -26,7 +26,7 @@ unsigned int bits = 0;
 ALenum format = 0;
 ALuint source = 0;
 
-void iter(void *arg) {
+void iter() {
   ALuint buffer = 0;
   ALint buffersProcessed = 0;
   ALint buffersWereQueued = 0;
@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
   emscripten_set_main_loop(iter, 0, 0);
 #else
   while (1) {
-    iter(NULL);
+    iter();
     usleep(16);
   }
 #endif
