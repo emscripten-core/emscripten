@@ -1814,7 +1814,7 @@ function analyzer(data, sidePass) {
             func.labelsDict[newLabelId] = func.labels[i+1];
             label.lines = label.lines.slice(0, j+1);
 
-            // TODO: fix phi? what is a phi?
+            // TODO: fix phi?
           }
         }
       }

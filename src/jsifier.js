@@ -636,9 +636,28 @@ function JSify(data, functionsOnly) {
           }).join(',') + ';\n';
         }
       }
-    }
-
-    if (!ASM_JS) {
+    } else if (func.async) {
+      // similar as above
+      addVariable('label', 'i32', func);
+      var vars = values(func.variables).filter(function(v) {
+        return v.origin !== 'funcparam' &&
+               (!isIllegalType(getImplementationType(v)) || v.ident.indexOf('$', 1) > 0); 
+      });
+      if (vars.length > 0) {
+        var chunkSize = 20;
+        var chunks = [];
+        var i = 0;
+        while (i < vars.length) {
+          chunks.push(vars.slice(i, i+chunkSize));
+          i += chunkSize;
+        }
+        for (i = 0; i < chunks.length; i++) {
+          func.JS += INDENTATION + 'var ' + chunks[i].map(function(v) {
+            return v.ident;
+          }).join(',') + ';\n';
+        }
+      }
+    } else {
       if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
       func.JS += INDENTATION + 'var label=0;\n';
     }
@@ -742,10 +761,6 @@ function JSify(data, functionsOnly) {
           }
 
           if(func.async) {
-            // to create a closure, define all the local variables
-            var variables = keys(func.variables);
-            if(variables.length > 0)
-                ret += indent + 'var ' + variables.join(',') + ';\n';
             ret += indent + '(function ' + getAsyncFunctionName(func.ident) + '(' + ASYNC_RETURN_VALUE + '){\n';
           }
 
@@ -761,7 +776,7 @@ function JSify(data, functionsOnly) {
               ret += INDENTATION + label.assignAsyncReturnValueTo + '=' + ASYNC_RETURN_VALUE + ';\n';
             }
             if(label.restoreVarArgsStack) {
-              ret += INDENTATION +  'STACKTOP=tempVarArgs;\n';
+              ret += INDENTATION + 'STACKTOP=tempVarArgs;\n';
             }
             ret += getLabelLines(label);
             return ret;
@@ -913,9 +928,8 @@ function JSify(data, functionsOnly) {
   function makeAssign(item) {
     var valueJS = item.JS;
     item.JS = '';
-   
+    if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
     if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED || item.funcData.async) { // asm only needs non-allocas
-      if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
       // for async functions, local variables are defined outside the closure 
       item.JS += ((ASM_JS || item.overrideSSA || item.funcData.async) ? '' : 'var ') + toNiceIdent(item.assignTo);
     }
@@ -956,7 +970,7 @@ function JSify(data, functionsOnly) {
     return ';';
   }
   function varHandler(item) { // assigns into phis become simple vars
-    return ASM_JS ? ';' : ('var ' + item.ident + ';');
+    return (ASM_JS || item.funcData.async) ? ';' : ('var ' + item.ident + ';');
   }
   function storeHandler(item) {
     var value = finalizeLLVMParameter(item.value);
@@ -1236,7 +1250,7 @@ function JSify(data, functionsOnly) {
     ret += 'return';
 
     if(item.funcData.async)
-      ret += ' ' + ASYNC_CALLBACK + '(';
+      ret += ' setTimeout(function(){' + ASYNC_CALLBACK + '(';
 
     var value = item.value ? finalizeLLVMParameter(item.value) : null;
     if (!value && item.funcData.returnType != 'void') value = '0'; // no-value returns must become value returns if function returns
@@ -1245,7 +1259,7 @@ function JSify(data, functionsOnly) {
     }
 
     if(item.funcData.async)
-      ret += ')';
+      ret += ');},0)';
 
     return ret + ';';
   }
@@ -1288,6 +1302,8 @@ function JSify(data, functionsOnly) {
           + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
           + 'return null } })();';
     }
+
+    // TODO: put cleanup into a data structure and link the next label to it
     if(!item.async)
       ret = makeVarArgsCleanup(ret);
 
@@ -1295,7 +1311,7 @@ function JSify(data, functionsOnly) {
       var illegal = USE_TYPED_ARRAYS == 2 && isIllegalType(item.type);
       var assignTo = illegal ? item.assignTo + '$r' : item.assignTo;
       ret = makeVarDef(assignTo) + '=' + ret;
-      if (ASM_JS) addVariable(assignTo, item.type);
+      if (ASM_JS || item.async) addVariable(assignTo, item.type);
       if (illegal) {
         var bits = getBits(item.type);
         for (var i = 0; i < bits/32; i++) {
