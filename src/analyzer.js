@@ -1763,6 +1763,97 @@ function analyzer(data, sidePass) {
     });
   }
 
+  // perform transformations if async functions are used
+  function asyncTransformer() {
+    // create call graph
+    // b in callGraph[a] <=> b calls a
+    var callGraph = {};
+    item.functions.forEach(function(func) {
+      var caller = func.ident;
+      func.lines.forEach(function(line) {
+        if (line.intertype == 'call') {
+          var callee = line.ident;
+          if (!(callee in callGraph))
+        callGraph[callee] = {};
+      callGraph[callee][caller] = true;
+        }
+      });
+    });
+
+    // check if there are any async functions defined in JS library are used
+    var asyncLibraryFunctions = [];
+    for (var funcIdent in callGraph) {
+      if (LibraryManager.library[LibraryManager.getRootIdent(funcIdent.substr(1)) + '__async']) {
+        asyncLibraryFunctions.push(funcIdent);
+      }
+    }
+    // no async function is used, quit
+    if (asyncLibraryFunctions.length == 0)
+      return;
+
+    item.async = true;
+
+    // perform DFS on the graph, search for all async functions
+    var allAsyncFunctions = {};
+    var functionsToCheck = asyncLibraryFunctions;
+    while(functionsToCheck.length > 0) {
+      var func = functionsToCheck.pop();
+      allAsyncFunctions[func] = true;
+      // check all the functions that call func
+      var callers = callGraph[func];
+      if (callers) {
+        for (var caller in callers) {
+          if(!(caller in allAsyncFunctions)) {
+            allAsyncFunctions[caller] = true;
+            functionsToCheck.push(caller);
+          }
+        }
+      }
+    }
+
+    // mark async functions definitions and calls
+    item.functions.forEach(function(func) {
+      if (!(func.ident in allAsyncFunctions))
+        return;
+
+      func.async = true;
+
+      for (var i = 0; i < func.labels.length; ++i) {
+        var label = func.labels[i];
+        for (var j = 0; j < label.lines.length; ++j) {
+          var line = label.lines[j];
+          if ((line.intertype == 'call') && (line.ident in allAsyncFunctions)) {
+            line.async = true;
+            // split a new label, simliar as handling setjmp
+            // TODO: setjmp may be implemented as an async function ?
+            var newLabelId = line.asyncReturnLabel = func.labelIdCounter++;
+            var newLabelLines = label.lines.slice(j+1);
+
+            var newLabel = {
+              intertype: 'label',
+              ident: newLabelId,
+              lineNum: label.lineNum + 0.5,
+              lines: label.lines.slice(j+1)
+            };
+
+            // handle return value
+            if (line.assignTo) {
+              newLabel.assignAsyncReturnValueTo = line.assignTo;
+              delete line.assignTo;
+            }
+
+            func.labels.splice(i+1, 0, newLabel);
+
+            func.labelsDict[newLabelId] = func.labels[i+1];
+            label.lines = label.lines.slice(0, j+1);
+
+            // TODO: fix phi? what is a phi?
+          }
+        }
+      }
+    });
+  }
+
   // main
   castAway();
   legalizer();
@@ -1774,6 +1865,7 @@ function analyzer(data, sidePass) {
   labelAnalyzer();
   stackAnalyzer();
   relooper();
+  asyncTransformer();
 
   //B.stop('analyzer');
   return item;
