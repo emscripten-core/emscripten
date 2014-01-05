@@ -625,8 +625,8 @@ function JSify(data, functionsOnly) {
       }
     }
 
-    if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
     if (!ASM_JS) {
+      if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
       func.JS += INDENTATION + 'var label=0;\n';
     }
 
@@ -878,8 +878,8 @@ function JSify(data, functionsOnly) {
   function makeAssign(item) {
     var valueJS = item.JS;
     item.JS = '';
-    if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
     if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED) { // asm only needs non-allocas
+      if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
       item.JS += ((ASM_JS || item.overrideSSA) ? '' : 'var ') + toNiceIdent(item.assignTo);
     }
     var value = parseNumerical(valueJS);
