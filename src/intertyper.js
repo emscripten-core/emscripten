@@ -241,7 +241,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       if (mainPass && /^}.*/.test(line)) {
         inFunction = false;
         if (mainPass) {
-          var func = funcHeaderHandler({ tokens: tokenize(currFunctionLines[0], currFunctionLineNum) });
+          var func = funcHeaderHandler({ tokens: tokenize(currFunctionLines[0]) });
 
           if (SKIP_STACK_IN_SMALL && /emscripten_autodebug/.exec(func.ident)) {
             warnOnce('Disabling SKIP_STACK_IN_SMALL because we are apparently processing autodebugger data');
