@@ -842,6 +842,8 @@ class Building:
   COMPILER_TEST_OPTS = [] # For use of the test runner
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
 
+  SAFE_OPT_OPTS = ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4
+
   @staticmethod
   def get_building_env(native=False):
     env = os.environ.copy()
@@ -1163,7 +1165,7 @@ class Building:
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
-    opts += ['-disable-loop-vectorization', '-disable-slp-vectorization']
+    opts += Building.SAFE_OPT_OPTS
     logging.debug('emcc: LLVM opts: ' + str(opts))
     target = out or (filename + '.opt.bc')
     output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
