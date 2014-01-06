@@ -125,7 +125,6 @@ function JSify(data, functionsOnly) {
     data.unparsedFunctions = null;
   }
 
-
   // Actors
 
   function makeEmptyStruct(type) {
@@ -761,6 +760,7 @@ function JSify(data, functionsOnly) {
           }
 
           if(func.async) {
+            // define the closure
             ret += indent + '(function ' + getAsyncFunctionName(func.ident) + '(' + ASYNC_RETURN_VALUE + '){\n';
           }
 
@@ -771,6 +771,7 @@ function JSify(data, functionsOnly) {
           ret += 'switch(' + asmCoercion('label', 'i32') + '){\n';
           ret += block.labels.map(function(label) {
             var ret = INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n';
+            // TODO: make this the 'asyncCleanup' field
             if(label.assignAsyncReturnValueTo) {
               // retrieve the return value
               ret += INDENTATION + label.assignAsyncReturnValueTo + '=' + ASYNC_RETURN_VALUE + ';\n';
@@ -799,7 +800,7 @@ function JSify(data, functionsOnly) {
           if (ASM_JS && func.returnType !== 'void') ret += '  return ' + asmInitializer(func.returnType) + ';\n'; // Add a return
 
           if(func.async) {
-            // close the async function
+            // close the closure
             ret += indent + '})();';
           }
         } else {
@@ -1250,7 +1251,7 @@ function JSify(data, functionsOnly) {
     ret += 'return';
 
     if(item.funcData.async)
-      ret += ' setTimeout(function(){' + ASYNC_CALLBACK + '(';
+      ret += ' ' + ASYNC_CALLBACK + '(';
 
     var value = item.value ? finalizeLLVMParameter(item.value) : null;
     if (!value && item.funcData.returnType != 'void') value = '0'; // no-value returns must become value returns if function returns
@@ -1259,7 +1260,7 @@ function JSify(data, functionsOnly) {
     }
 
     if(item.funcData.async)
-      ret += ');},0)';
+      ret += ')';
 
     return ret + ';';
   }
@@ -1303,7 +1304,7 @@ function JSify(data, functionsOnly) {
           + 'return null } })();';
     }
 
-    // TODO: put cleanup into a data structure and link the next label to it
+    // TODO: make it 'asyncCleanup'
     if(!item.async)
       ret = makeVarArgsCleanup(ret);
 
@@ -2009,9 +2010,11 @@ function JSify(data, functionsOnly) {
       }
     });
 
+    // nothing to do if no async function is used
     if(asyncLibFunctions.length == 0)
       return;
 
+    // let runtime know
     print('Module["async"] = true;\n');
 
 

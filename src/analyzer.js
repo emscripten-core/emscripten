@@ -1798,6 +1798,10 @@ function analyzer(data, sidePass) {
               lines: label.lines.slice(j+1)
             };
 
+            // TODO: 
+            // handle this in the 'call' line, mark then as 'asyncCleanup'
+            // link this label to the 'call' and add 'asyncCleanup' when generating JS
+            
             // handle return value
             if (line.assignTo) {
               newLabel.assignAsyncReturnValueTo = line.assignTo;
