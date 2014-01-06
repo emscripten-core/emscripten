@@ -35,8 +35,8 @@ mergeInto(LibraryManager.library, {
         var rb = require('crypto').randomBytes;
         uuid = rb(16);
       } catch(e) {}
-    } else if (typeof(window.crypto) != 'undefined' && 
-               typeof(window.crypto.getRandomValues) != 'undefined') {
+    } else if (typeof(window.crypto) !== 'undefined' && 
+               typeof(window.crypto.getRandomValues) !== 'undefined') {
       // If crypto.getRandomValues is available try to use it.
       uuid = new Uint8Array(16);
       window.crypto.getRandomValues(uuid);

@@ -1382,6 +1382,8 @@ class Building:
     if not os.path.exists(CLOSURE_COMPILER):
       raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
 
+    CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
+
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
     args = [JAVA,
@@ -1389,6 +1391,7 @@ class Building:
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--language_in', 'ECMASCRIPT5',
+            '--externs', CLOSURE_EXTERNS,
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if pretty: args += ['--formatting', 'PRETTY_PRINT']
