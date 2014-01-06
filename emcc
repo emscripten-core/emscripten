@@ -687,7 +687,7 @@ if os.environ.get('EMMAKEN_CXX'):
 CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
 
 EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += shlex.split(EMMAKEN_CFLAGS)
+if EMMAKEN_CFLAGS: sys.argv += shlex.split(EMMAKEN_CFLAGS)
 
 # ---------------- Utilities ---------------
 
