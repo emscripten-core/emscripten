@@ -126,6 +126,8 @@ var LibraryGLUT = {
         return keycode - 106 + 42; // *,+-./  TODO handle shift?
 
       switch (keycode) {
+        case 9:  // tab key
+        case 13: // return key
         case 27: // escape
         case 32: // space
         case 61: // equal
