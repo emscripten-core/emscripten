@@ -1210,6 +1210,7 @@ try:
     assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
     assert shared.Settings.TARGET_LE32 == 1, 'fastcomp requires le32'
+    assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
     assert not bind, 'embind not supported in fastcomp yet'
     if jcache:
       logging.warning('jcache is not supported in fastcomp (you should not need it anyhow), disabling')
