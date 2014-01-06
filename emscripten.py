@@ -111,7 +111,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # extract callees
   # do not care about function pointers
-  call_iter = re.finditer('\n\s*(?:[%@][^ ]*\s+=\s+)?(?:(?:tail\s+)?call|invoke).*?(@[^\(]+)\(', ll)
+  call_iter = re.finditer('\n\s*(?:[%@][^ ]*\s+=\s+)?(?:(?:tail\s+)?call|invoke)[^\(\n]*?(@[^\(]+)\(', ll)
   last_call_idx = -1
   last_call_match = None
 
