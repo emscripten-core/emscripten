@@ -272,9 +272,17 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 EXPECTED_LLVM_VERSION = (3,2)
 
+actual_clang_version = None
+
+def get_clang_version():
+  global actual_clang_version
+  if actual_clang_version is None:
+    actual_clang_version = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0].split(' ')[2]
+  return actual_clang_version
+
 def check_clang_version():
-  expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
-  actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
+  expected = '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  actual = get_clang_version()
   if expected in actual:
     return True
   logging.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
@@ -337,10 +345,10 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.8.4'
+EMSCRIPTEN_VERSION = '1.8.5'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
+  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
 
 def check_sanity(force=False):
   try:
@@ -842,8 +850,6 @@ class Building:
   COMPILER_TEST_OPTS = [] # For use of the test runner
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
 
-  SAFE_OPT_OPTS = ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4
-
   @staticmethod
   def get_building_env(native=False):
     env = os.environ.copy()
@@ -1165,7 +1171,8 @@ class Building:
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
-    opts += Building.SAFE_OPT_OPTS
+    if get_clang_version() == '3.4':
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4 has these on by default
     logging.debug('emcc: LLVM opts: ' + str(opts))
     target = out or (filename + '.opt.bc')
     output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
