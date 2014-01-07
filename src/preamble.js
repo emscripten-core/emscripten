@@ -282,7 +282,18 @@ var setjmpId = 1; // Used in setjmp/longjmp
 var setjmpLabels = {};
 #endif
 
+#if PROXY_TO_WORKER
+var _ABORT = false;
+Object.defineProperty(self, 'ABORT', {
+  get: function() {return _ABORT; },
+  set: function(value) {
+    _ABORT = value;
+    postMessage({ target: 'set', property: 'ABORT', value: value });
+  }
+});
+#else
 var ABORT = false; // whether we are quitting the application. no code should run after this. set in exit() and abort()
+#endif
 var EXITSTATUS = 0;
 
 var undef = 0;

@@ -1,8 +1,12 @@
-
 function EventListener() {
   this.listeners = {};
 
   this.addEventListener = function addEventListener(event, func) {
+    // The extra initializer check here is necessary because the regular
+    // initilizer doesn't seem to work when audio proxy dependency is used
+    // with closure option.
+    this.listeners = this.listeners || {};
+    
     if (!this.listeners[event]) this.listeners[event] = [];
     this.listeners[event].push(func);
   };
@@ -139,7 +143,18 @@ onmessage = function onmessage(message) {
       } else throw 'ey?';
       break;
     }
+    case 'audio' : {
+      if (message.data['features']) {
+        self['audioFeatures'] = message.data['features'];
+        Module['removeRunDependency']('client audio features');
+      } else {
+        SDL.audio.caller(message.data['op']);
+      }
+      break;
+    }
     default: throw 'wha? ' + message.data.target;
   }
 };
 
+Module['addRunDependency']('client audio features');
+postMessage({target: 'status', status: 'ready'});
