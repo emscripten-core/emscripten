@@ -6310,6 +6310,8 @@ def process(filename):
 
     open(os.path.join(self.get_dir(), 'tmp.c'), 'w').write('''
       #include <stdio.h>
+      #include <setjmp.h>
+      static jmp_buf buf;
       void async_sleep(int);
       void work1() {
          // no return
@@ -6319,34 +6321,46 @@ def process(filename):
         switch(i) {
           case 0:
             // normal async call
-            printf("hello\\n");
+            printf("hello");
             async_sleep(100);
-            printf("world\\n");
+            printf("world");
             break;
           case 1:
             // fake async call
-            printf("hello\\n");
-            printf("world\\n");
+            printf("hello");
+            printf("world");
             break;
           case 2:
-            printf("hello\\n");
+            // return early
+            printf("hello");
             work1();
-            printf("world\\n");
+            printf("world");
             return 1024;
             break;
+          case 3:
+            // setjmp / longjmp
+            printf("hello");
+            longjmp(buf, 1);
+            printf("world");
+            return 1024;
         }
         return 1024;
       }
       int main() {
-        for(int i = 0; i < 3; ++i)
-          printf("%d\\n", work(i));
-        fflush(stdout);
+        if(!setjmp(buf)) 
+        {
+            for(int i = 0; i < 4; ++i)
+              printf("%d", work(i));
+            fflush(stdout);
+        } else {
+            printf("jmp");
+        }
         return 0;
       }
     ''')
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'tmp.c'), '--js-library', os.path.join(self.get_dir(), 'tmp_lib.js')]).communicate()
-    self.assertIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')).strip(), ('hello\nworld\n1024\n' * 3).strip())
+    self.assertIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')).strip(), ('helloworld1024helloworld1024helloworld1024hellojmp').strip())
 
 
 
