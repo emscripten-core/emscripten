@@ -931,7 +931,6 @@ function JSify(data, functionsOnly) {
     item.JS = '';
     if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
     if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED || item.funcData.async) { // asm only needs non-allocas
-      // for async functions, local variables are defined outside the closure 
       item.JS += ((ASM_JS || item.overrideSSA || item.funcData.async) ? '' : 'var ') + toNiceIdent(item.assignTo);
     }
     var value = parseNumerical(valueJS);
@@ -1076,9 +1075,10 @@ function JSify(data, functionsOnly) {
     label = getOldLabel(label);
     if (!phiSets[label]) return '';
     var labelSets = phiSets[label];
+    var isAsync = Framework.currItem.funcData.async;
     // FIXME: Many of the |var |s here are not needed, but without them we get slowdowns with closure compiler. TODO: remove this workaround.
     if (labelSets.length == 1) {
-      return (ASM_JS ? '' : 'var ') + labelSets[0].ident + '=' + labelSets[0].valueJS + ';';
+      return (ASM_JS || isAsync ? '' : 'var ') + labelSets[0].ident + '=' + labelSets[0].valueJS + ';';
     }
     // TODO: eliminate unneeded sets (to undefined etc.)
     var deps = {}; // for each ident we will set, which others it depends on
