@@ -119,21 +119,26 @@ process(sys.argv[1])
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
 
 # Benchmarkers
-benchmarkers = [
-  #NativeBenchmarker('clang', CLANG_CC, CLANG),
-  NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
-  #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
-  #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
-  #NativeBenchmarker('gcc', 'gcc', 'g++'),
-  JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-  #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
-  #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
-  #JSBenchmarker('sm-f32-3.4', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
-  #JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
-  #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
-  #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
-  #JSBenchmarker('v8',           V8_ENGINE)
-]
+try:
+  benchmarkers_error = ''
+  benchmarkers = [
+    #NativeBenchmarker('clang', CLANG_CC, CLANG),
+    NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
+    #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
+    #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
+    #NativeBenchmarker('gcc', 'gcc', 'g++'),
+    JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+    #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
+    #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
+    #JSBenchmarker('sm-f32-3.4', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
+    #JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
+    #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
+    #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
+    #JSBenchmarker('v8',           V8_ENGINE)
+  ]
+except Exception, e:
+  benchmarkers_error = str(e)
+  benchmarkers = []
 
 class benchmark(RunnerCore):
   save_dir = True
@@ -171,6 +176,8 @@ class benchmark(RunnerCore):
     Building.COMPILER_TEST_OPTS = []
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
+    if len(benchmarkers) == 0: raise Exception('error, no benchmarkers: ' + benchmarkers_error)
+
     args = args or [DEFAULT_ARG]
     if args_processor: args = args_processor(args)
 
