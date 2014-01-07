@@ -122,9 +122,9 @@ process(sys.argv[1])
 # Benchmarkers
 benchmarkers = [
   #NativeBenchmarker('clang', CLANG_CC, CLANG),
-  #NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
-  #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
-  #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
+  NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
+  NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
+  NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
   #NativeBenchmarker('gcc', 'gcc', 'g++'),
   #JSBenchmarker('sm-f32',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
   JSBenchmarker('sm-f32-3.2',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
@@ -465,17 +465,15 @@ class benchmark(RunnerCore):
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
-    #shutil.copyfile(path_from_root('tests', 'lua', 'binarytrees.lua'), 'binarytrees.lua')
-    #shutil.copyfile(path_from_root('tests', 'lua', 'scimark.lua'), 'scimark.lua')
-    emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
-                ['--embed-file', benchmark + '.lua']
-                #['--embed-file', 'binarytrees.lua', '--embed-file', 'scimark.lua'] + ['--minify', '0']
-    shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
-    emcc_args[0] += '.bc'
-    native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
-
+    def lib_builder(name, native, env_init):
+      ret = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      if native: return ret
+      shutil.copyfile(ret[0], ret[0] + '.bc')
+      ret[0] += '.bc'
+      return ret
     self.do_benchmark('lua_' + benchmark, '', expected,
-                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG], emcc_args=['--embed-file', benchmark + '.lua'],
+                      lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
   def test_zzz_lua_scimark(self):
