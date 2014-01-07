@@ -1916,6 +1916,9 @@ try:
 
     js_optimizer_queue += [get_eliminate()]
 
+    if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
+      js_optimizer_queue += ['aggressiveVariableElimination']
+
     if opt_level >= 2:
       js_optimizer_queue += ['simplifyExpressions']
 

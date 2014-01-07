@@ -49,7 +49,8 @@ function preprocess(text) {
             showStack.push(ident in this && this[ident] > 0);
           }
         } else if (line[2] == 'n') { // include
-          ret += '\n' + read(line.substr(line.indexOf(' ')+1)) + '\n'
+          var included = read(line.substr(line.indexOf(' ')+1));
+          ret += '\n' + preprocess(included) + '\n'
         }
       } else if (line[2] == 'l') { // else
         showStack.push(!showStack.pop());
@@ -1639,7 +1640,10 @@ function getFastValue(a, op, b, type) {
 }
 
 function getFastValues(list, op, type) {
-  assert(op == '+');
+  assert(op === '+' && type === 'i32');
+  for (var i = 0; i < list.length; i++) {
+    if (isNumber(list[i])) list[i] = (list[i]|0) + '';
+  }
   var changed = true;
   while (changed) {
     changed = false;
@@ -1647,6 +1651,7 @@ function getFastValues(list, op, type) {
       var fast = getFastValue(list[i], op, list[i+1], type);
       var raw = list[i] + op + list[i+1];
       if (fast.length < raw.length || fast.indexOf(op) < 0) {
+        if (isNumber(fast)) fast = (fast|0) + '';
         list[i] = fast;
         list.splice(i+1, 1);
         i--;

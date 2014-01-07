@@ -1720,3 +1720,30 @@ keydown(100);keyup(100); // trigger the end
     assert 'argv[3]: 3' in stdout
     assert 'hello, world!' in stdout
     assert 'hello, error stream!' in stderr
+
+  def test_uuid(self):
+    # Run with ./runner.py browser.test_uuid
+    # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
+    # high quality crypto random number generators such as crypto.getRandomValues or randomBytes (if available).
+
+    # First run tests in Node and/or SPIDERMONKEY using run_js. Use closure compiler so we can check that
+    # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', path_from_root('tests', 'uuid', 'test.js')], stdout=PIPE, stderr=PIPE).communicate()
+
+    test_js_closure = open(path_from_root('tests', 'uuid', 'test.js')).read()
+
+    # Check that test.js compiled with --closure 1 contains ").randomBytes" and "window.crypto.getRandomValues"
+    assert ").randomBytes" in test_js_closure
+    assert "window.crypto.getRandomValues" in test_js_closure
+
+    out = run_js(path_from_root('tests', 'uuid', 'test.js'), full_output=True)
+    print out
+
+    # Tidy up files that might have been created by this test.
+    try_delete(path_from_root('tests', 'uuid', 'test.js'))
+    try_delete(path_from_root('tests', 'uuid', 'test.js.map'))
+
+    # Now run test in browser
+    self.btest(path_from_root('tests', 'uuid', 'test.c'), '1')
+
+
