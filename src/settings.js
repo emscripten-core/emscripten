@@ -123,6 +123,7 @@ var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 6
                      // 2: Model C++ floats precisely using Math.fround if available in the JS engine, otherwise
                      //    use an empty polyfill. This will have less of a speed penalty than using the full
                      //    polyfill in cases where engine support is not present.
+var SIMD = 0; // Whether to emit SIMD code ( https://github.com/johnmccutchan/ecmascript_simd )
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
