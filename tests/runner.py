@@ -342,7 +342,7 @@ process(sys.argv[1])
 
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
-        print >> sys.stderr,  '<load %s from cache> ' % cache_name,
+        print >> sys.stderr,  '<load %s from cache> ' % cache_name
         generated_libs = []
         for basename, contents in self.library_cache[cache_name]:
           bc_file = os.path.join(build_dir, cache_name + '_' +  basename)
