@@ -90,7 +90,8 @@ class JSBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.filename = filename
-    if lib_builder: emcc_args = emcc_args + lib_builder('js', native=False, env_init={})
+    llvm_root = self.env.get('LLVM') or LLVM_ROOT
+    if lib_builder: emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env)
 
     open('hardcode.py', 'w').write('''
 def process(filename):
@@ -120,10 +121,16 @@ process(sys.argv[1])
 
 # Benchmarkers
 benchmarkers = [
-  NativeBenchmarker('clang', CLANG_CC, CLANG),
+  #NativeBenchmarker('clang', CLANG_CC, CLANG),
+  #NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
+  #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
+  #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
   #NativeBenchmarker('gcc', 'gcc', 'g++'),
   #JSBenchmarker('sm-f32',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-  JSBenchmarker('sm',           SPIDERMONKEY_ENGINE),
+  JSBenchmarker('sm-f32-3.2',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
+  JSBenchmarker('sm-f32-3.3',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
+  JSBenchmarker('sm-f32-3.4',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
+  #JSBenchmarker('sm',           SPIDERMONKEY_ENGINE),
   #JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
   #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
   #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
