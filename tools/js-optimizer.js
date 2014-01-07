@@ -3030,17 +3030,18 @@ function aggressiveVariableEliminationInternal(func, asmData) {
 
   allTrivials = {};
 
-  var values = {};
+  var values = {}, recursives = {};
 
   function evaluate(name) {
     var node = values[name];
     if (node) return node;
-    values[node] = null; // prevent infinite recursion
+    values[name] = null; // prevent infinite recursion
     var def = defs[name];
     if (def) {
       node = def[3];
       if (node[0] == 'name') {
         var name2 = node[1];
+        assert(name2 !== name);
         if (name2 in trivials) {
           node = evaluate(name2);
         }
@@ -3048,6 +3049,10 @@ function aggressiveVariableEliminationInternal(func, asmData) {
         traverse(node, function(node, type) {
           if (type == 'name') {
             var name2 = node[1];
+            if (name2 === name) {
+              recursives[name] = 1;
+              return false;
+            }
             if (name2 in trivials) {
               return evaluate(name2);
             }
@@ -3061,6 +3066,9 @@ function aggressiveVariableEliminationInternal(func, asmData) {
 
   for (var name in trivials) {
     evaluate(name);
+  }
+  for (var name in recursives) {
+    delete trivials[name];
   }
 
   for (var name in trivials) {
