@@ -49,7 +49,8 @@ function preprocess(text) {
             showStack.push(ident in this && this[ident] > 0);
           }
         } else if (line[2] == 'n') { // include
-          ret += '\n' + read(line.substr(line.indexOf(' ')+1)) + '\n'
+          var included = read(line.substr(line.indexOf(' ')+1));
+          ret += '\n' + preprocess(included) + '\n'
         }
       } else if (line[2] == 'l') { // else
         showStack.push(!showStack.pop());
