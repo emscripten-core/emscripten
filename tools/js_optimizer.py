@@ -24,41 +24,16 @@ import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
 class Minifier:
   '''
-    asm.js minification support. We calculate possible names and minification of
+    asm.js minification support. We calculate minification of
     globals here, then pass that into the parallel js-optimizer.js runners which
     during registerize perform minification of locals.
   '''
 
-  def __init__(self, js, js_engine, MAX_NAMES):
+  def __init__(self, js, js_engine):
     self.js = js
     self.js_engine = js_engine
-    MAX_NAMES = min(MAX_NAMES, 120000)
-
-    # Create list of valid short names
-
-    INVALID_2 = set(['do', 'if', 'in'])
-    INVALID_3 = set(['for', 'new', 'try', 'var', 'env', 'let'])
-
-    self.names = []
-    init_possibles = string.ascii_letters + '_$'
-    later_possibles = init_possibles + string.digits
-    for a in init_possibles:
-      if len(self.names) >= MAX_NAMES: break
-      self.names.append(a)
-    for a in init_possibles:
-      for b in later_possibles:
-        if len(self.names) >= MAX_NAMES: break
-        curr = a + b
-        if curr not in INVALID_2: self.names.append(curr)
-    for a in init_possibles:
-      for b in later_possibles:
-        for c in later_possibles:
-          if len(self.names) >= MAX_NAMES: break
-          curr = a + b + c
-          if curr not in INVALID_3: self.names.append(curr)
 
   def minify_shell(self, shell, minify_whitespace, source_map=False):
-    #print >> sys.stderr, "MINIFY SHELL 1111111111", shell, "\n222222222222222"
     # Run through js-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
@@ -91,7 +66,6 @@ class Minifier:
 
   def serialize(self):
     return {
-      'names': self.names,
       'globals': self.globs
     }
 
@@ -187,7 +161,7 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       # we assume there is a maximum of one new name per line
-      minifier = Minifier(js, js_engine, js.count('\n') + asm_shell.count('\n'))
+      minifier = Minifier(js, js_engine)
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker

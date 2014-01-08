@@ -1743,6 +1743,36 @@ function getStackBumpSize(ast) {
   return node ? node[3][2][3][1] : 0;
 }
 
+// Name minification
+
+var RESERVED = set('do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let');
+var VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
+var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
+
+var minifiedNames = [];
+var minifiedState = [0];
+
+function ensureMinifiedNames(n) { // make sure the nth index in minifiedNames exists. done 100% deterministically
+  while (minifiedNames.length < n+1) {
+    // generate the current name
+    var name = VALID_MIN_INITS[minifiedState[0]];
+    for (var i = 1; i < minifiedState.length; i++) {
+      name += VALID_MIN_LATERS[minifiedState[i]];
+    }
+    if (!(name in RESERVED)) minifiedNames.push(name);
+    // increment the state
+    var i = 0;
+    while (1) {
+      minifiedState[i]++;
+      if (minifiedState[i] < (i === 0 ? VALID_MIN_INITS : VALID_MIN_LATERS).length) break;
+      // overflow
+      minifiedState[i] = 0;
+      i++;
+      if (i === minifiedState.length) minifiedState.push(-1); // will become 0 after increment in next loop head
+    }
+  }
+}
+
 // Very simple 'registerization', coalescing of variables into a smaller number,
 // as part of minification. Globals-level minification began in a previous pass,
 // we receive extraInfo which tells us how to rename globals. (Only in asm.js.)
@@ -1853,14 +1883,14 @@ function registerize(ast) {
         return ret;
       }
       // find the next free minified name that is not used by a global that shows up in this function
-      while (nextRegName < extraInfo.names.length) {
-        var ret = extraInfo.names[nextRegName++];
+      while (1) {
+        ensureMinifiedNames(nextRegName);
+        var ret = minifiedNames[nextRegName++];
         if (!usedGlobals[ret]) {
           regTypes[ret] = type;
           return ret;
         }
       }
-      assert('ran out of names');
     }
     // Find the # of uses of each variable.
     // While doing so, check if all a variable's uses are dominated in a simple
@@ -2847,16 +2877,16 @@ function minifyGlobals(ast) {
       var vars = node[1];
       for (var i = 0; i < vars.length; i++) {
         var name = vars[i][0];
-        assert(next < extraInfo.names.length);
-        vars[i][0] = minified[name] = extraInfo.names[next++];
+        ensureMinifiedNames(next);
+        vars[i][0] = minified[name] = minifiedNames[next++];
       }
     }
   });
   // add all globals in function chunks, i.e. not here but passed to us
   for (var i = 0; i < extraInfo.globals.length; i++) {
     name = extraInfo.globals[i];
-    assert(next < extraInfo.names.length);
-    minified[name] = extraInfo.names[next++];
+    ensureMinifiedNames(next);
+    minified[name] = minifiedNames[next++];
   }
   // apply minification
   traverse(ast, function(node, type) {
