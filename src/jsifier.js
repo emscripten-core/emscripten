@@ -1871,7 +1871,7 @@ function JSify(data, functionsOnly) {
       print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
       print('var i64Math = null;');
     }
-    if (Types.usesSIMD) {
+    if (Types.usesSIMD || SIMD) {
       print(read('simd.js'));
     }
 

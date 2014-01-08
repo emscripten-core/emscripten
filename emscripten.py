@@ -804,6 +804,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       map(lambda x: x[1:], metadata['implementedFunctions'])
     )
   ) + map(lambda x: x[1:], metadata['externs'])
+  if metadata['simd']:
+    settings['SIMD'] = 1
+    settings['ASM_JS'] = 2
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
