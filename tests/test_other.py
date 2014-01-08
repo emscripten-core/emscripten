@@ -2150,16 +2150,16 @@ int main()
       self.assertContained('File size: 722', out)
 
   def test_simd(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
     if get_clang_version() == '3.2':
-      simd_args = ['-O3', '-vectorize', '-vectorize-loops', '-bb-vectorize-vector-bits=128', '-force-vector-width=4']
+      simd_args = ['-O3', '-vectorize', '-vectorize-loops']
     elif get_clang_version() == '3.3':
-      simd_args = ['-O3', '-vectorize-loops', '-vectorize-slp', '-vectorize-slp-aggressive']
+      simd_args = ['-O3', '-vectorize-loops', '-vectorize-slp-aggressive', '-bb-vectorize-aligned-only'] # XXX this generates <2 x float> , '-vectorize-slp']
     elif get_clang_version() == '3.4':
       simd_args = ['-O3'] # vectorization on by default, SIMD=1 makes us not disable it
     else:
       raise Exception('unknown llvm version')
+
+    simd_args += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
 
     self.clear()
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '--llvm-opts', str(simd_args)]).communicate()
