@@ -929,8 +929,8 @@ function JSify(data, functionsOnly) {
   function makeAssign(item) {
     var valueJS = item.JS;
     item.JS = '';
-    if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
     if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED || item.funcData.async) { // asm only needs non-allocas
+      if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
       item.JS += ((ASM_JS || item.overrideSSA || item.funcData.async) ? '' : 'var ') + toNiceIdent(item.assignTo);
     }
     var value = parseNumerical(valueJS);
