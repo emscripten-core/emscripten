@@ -123,7 +123,7 @@ var LibraryGLUT = {
       if (65 <= keycode && keycode <= 90)
         return event['shiftKey'] ? keycode : keycode + 32;
       if (96 <= keycode && keycode <= 105)
-          return keycode - 48; // numpad numbers    
+        return keycode - 48; // numpad numbers    
       if (106 <= keycode && keycode <= 111)
         return keycode - 106 + 42; // *,+-./  TODO handle shift?
 
