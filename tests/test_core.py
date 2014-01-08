@@ -4652,7 +4652,7 @@ return malloc(size);
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-    for aggro in ([0, 1] if '-O2' in self.emcc_args else [0]):
+    for aggro in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args else [0]):
       print aggro
       Settings.AGGRESSIVE_VARIABLE_ELIMINATION = aggro
       self.do_run('',
