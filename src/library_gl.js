@@ -4243,8 +4243,10 @@ var LibraryGL = {
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
 
-#if GL_UNSAFE_OPTS == 0 && !GL_FFP_ONLY
+#if GL_UNSAFE_OPTS == 0
+#if !GL_FFP_ONLY
       renderer.cleanup();
+#endif
 #endif
     }
   },
