@@ -4,7 +4,7 @@
  */
 
 var LibraryGL = {
-  $GL__postset: 'GL.init()',
+  $GL__postset: 'var GLctx; GL.init()',
   $GL: {
 #if GL_DEBUG
     debug: true,
@@ -3376,11 +3376,11 @@ var LibraryGL = {
     fixedFunctionProgram: null,
 
     setClientAttribute: function setClientAttribute(name, size, type, stride, pointer) {
-      var attrib = this.clientAttributes[name];
+      var attrib = GLImmediate.clientAttributes[name];
       if (!attrib) {
         for (var i = 0; i <= name; i++) { // keep flat
-          if (!this.clientAttributes[i]) {
-            this.clientAttributes[i] = {
+          if (!GLImmediate.clientAttributes[i]) {
+            GLImmediate.clientAttributes[i] = {
               name: name,
               size: size,
               type: type,
@@ -3398,37 +3398,37 @@ var LibraryGL = {
         attrib.pointer = pointer;
         attrib.offset = 0;
       }
-      this.modifiedClientAttributes = true;
+      GLImmediate.modifiedClientAttributes = true;
     },
 
     // Renderers
     addRendererComponent: function addRendererComponent(name, size, type) {
-      if (!this.rendererComponents[name]) {
-        this.rendererComponents[name] = 1;
+      if (!GLImmediate.rendererComponents[name]) {
+        GLImmediate.rendererComponents[name] = 1;
 #if ASSERTIONS
-        if (this.enabledClientAttributes[name]) {
+        if (GLImmediate.enabledClientAttributes[name]) {
           console.log("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
         }
 #endif
-        this.enabledClientAttributes[name] = true;
-        this.setClientAttribute(name, size, type, 0, this.rendererComponentPointer);
-        this.rendererComponentPointer += size * GL.byteSizeByType[type - GL.byteSizeByTypeRoot];
+        GLImmediate.enabledClientAttributes[name] = true;
+        GLImmediate.setClientAttribute(name, size, type, 0, GLImmediate.rendererComponentPointer);
+        GLImmediate.rendererComponentPointer += size * GL.byteSizeByType[type - GL.byteSizeByTypeRoot];
       } else {
-        this.rendererComponents[name]++;
+        GLImmediate.rendererComponents[name]++;
       }
     },
 
     disableBeginEndClientAttributes: function disableBeginEndClientAttributes() {
-      for (var i = 0; i < this.NUM_ATTRIBUTES; i++) {
-        if (this.rendererComponents[i]) this.enabledClientAttributes[i] = false;
+      for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
+        if (GLImmediate.rendererComponents[i]) GLImmediate.enabledClientAttributes[i] = false;
       }
     },
 
     getRenderer: function getRenderer() {
       // If no FFP state has changed that would have forced to re-evaluate which FFP emulation shader to use,
       // we have the currently used renderer in cache, and can immediately return that.
-      if (this.currentRenderer) {
-        return this.currentRenderer;
+      if (GLImmediate.currentRenderer) {
+        return GLImmediate.currentRenderer;
       }
       // return a renderer object given the liveClientAttributes
       // we maintain a cache of renderers, optimized to not generate garbage
@@ -3473,12 +3473,12 @@ var LibraryGL = {
 #if GL_DEBUG
         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
 #endif
-        renderer = this.createRenderer();
-        this.currentRenderer = renderer;
+        renderer = GLImmediate.createRenderer();
+        GLImmediate.currentRenderer = renderer;
         keyView.set(renderer);
         return renderer;
       }
-      this.currentRenderer = renderer; // Cache the currently used renderer, so later lookups without state changes can get this fast.
+      GLImmediate.currentRenderer = renderer; // Cache the currently used renderer, so later lookups without state changes can get this fast.
       return renderer;
     },
 
@@ -4028,7 +4028,7 @@ var LibraryGL = {
 
       if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
 
-      this.TexEnvJIT.init(GLctx);
+      GLImmediate.TexEnvJIT.init(GLctx);
 
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
@@ -4044,28 +4044,28 @@ var LibraryGL = {
       // Initialize matrix library
       // When user sets a matrix, increment a 'version number' on the new data, and when rendering, submit
       // the matrices to the shader program only if they have an old version of the data.
-      this.matrix = [];
-      this.matrixStack = [];
-      this.matrixVersion = [];
+      GLImmediate.matrix = [];
+      GLImmediate.matrixStack = [];
+      GLImmediate.matrixVersion = [];
       for (var i = 0; i < 2 + GLImmediate.MAX_TEXTURES; i++) { // Modelview, Projection, plus one matrix for each texture coordinate.
-        this.matrixStack.push([]);
-        this.matrixVersion.push(0);
+        GLImmediate.matrixStack.push([]);
+        GLImmediate.matrixVersion.push(0);
         GLImmediate.matrix.push(GLImmediate.matrixLib.mat4.create());
         GLImmediate.matrixLib.mat4.identity(GLImmediate.matrix[i]);
       }
 
       // Renderer cache
-      this.rendererCache = this.MapTreeLib.create();
+      GLImmediate.rendererCache = GLImmediate.MapTreeLib.create();
 
       // Buffers for data
-      this.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
-      this.indexData = new Uint16Array(GL.MAX_TEMP_BUFFER_SIZE >> 1);
+      GLImmediate.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
+      GLImmediate.indexData = new Uint16Array(GL.MAX_TEMP_BUFFER_SIZE >> 1);
 
-      this.vertexDataU8 = new Uint8Array(this.tempData.buffer);
+      GLImmediate.vertexDataU8 = new Uint8Array(GLImmediate.tempData.buffer);
 
       GL.generateTempBuffers(true);
 
-      this.clientColor = new Float32Array([1, 1, 1, 1]);
+      GLImmediate.clientColor = new Float32Array([1, 1, 1, 1]);
     },
 
     // Prepares and analyzes client attributes.
@@ -4076,11 +4076,11 @@ var LibraryGL = {
       // If no client attributes were modified since we were last called, do nothing. Note that this
       // does not work for glBegin/End, where we generate renderer components dynamically and then
       // disable them ourselves, but it does help with glDrawElements/Arrays.
-      if (!this.modifiedClientAttributes) {
+      if (!GLImmediate.modifiedClientAttributes) {
         GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
         return;
       }
-      this.modifiedClientAttributes = false;
+      GLImmediate.modifiedClientAttributes = false;
 
       var stride = 0, start;
       var attributes = GLImmediate.liveClientAttributes;
@@ -4177,10 +4177,10 @@ var LibraryGL = {
       startIndex = startIndex || 0;
       ptr = ptr || 0;
 
-      var renderer = this.getRenderer();
+      var renderer = GLImmediate.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * this.vertexCounter / GLImmediate.stride;
+      var numVertexes = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
 #if ASSERTIONS
       assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
 #endif
@@ -4500,7 +4500,7 @@ var LibraryGL = {
     if (!GLImmediate.enabledClientAttributes[attrib]) {
       GLImmediate.enabledClientAttributes[attrib] = true;
       GLImmediate.totalEnabledClientAttributes++;
-      this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
+      GLImmediate.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
       if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
       GLImmediate.modifiedClientAttributes = true;
     }
@@ -4516,7 +4516,7 @@ var LibraryGL = {
     if (GLImmediate.enabledClientAttributes[attrib]) {
       GLImmediate.enabledClientAttributes[attrib] = false;
       GLImmediate.totalEnabledClientAttributes--;
-      this.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
+      GLImmediate.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
       if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
       GLImmediate.modifiedClientAttributes = true;
     }
