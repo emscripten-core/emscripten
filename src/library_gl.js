@@ -746,7 +746,8 @@ var LibraryGL = {
     } else {
       data = null;
     }
-    GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data);
+    // N.b. using array notation explicitly to not confuse Closure minification.
+    GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, data);
   },
 
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
@@ -759,7 +760,7 @@ var LibraryGL = {
     } else {
       data = null;
     }
-    CLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, data);
+    CLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, data);
   },
 
   glTexImage2D__sig: 'viiiiiiiii',
@@ -4049,8 +4050,8 @@ var LibraryGL = {
       for (var i = 0; i < 2 + GLImmediate.MAX_TEXTURES; i++) { // Modelview, Projection, plus one matrix for each texture coordinate.
         this.matrixStack.push([]);
         this.matrixVersion.push(0);
-        GLImmediate.matrix.push(GLImmediate.matrix.lib.mat4.create());
-        GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[i]);
+        GLImmediate.matrix.push(GLImmediate.matrixLib.mat4.create());
+        GLImmediate.matrixLib.mat4.identity(GLImmediate.matrix[i]);
       }
 
       // Renderer cache
@@ -4248,7 +4249,8 @@ var LibraryGL = {
     }
   },
 
-  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GLImmediate.matrix.lib = ' + read('gl-matrix.js') + ';\n' }],
+  $GLImmediateSetup: {},
+  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GLImmediate.matrixLib = ' + read('gl-matrix.js') + ';\n' }],
   $GLImmediateSetup: {},
 
   glBegin__deps: ['$GLImmediateSetup'],
@@ -4654,13 +4656,13 @@ var LibraryGL = {
   glLoadIdentity: function() {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrixLib.mat4.identity(GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadMatrixd: function(matrix) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadMatrixf: function(matrix) {
@@ -4669,89 +4671,89 @@ var LibraryGL = {
 #endif
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixd: function(matrix) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
-    GLImmediate.matrix.lib.mat4.transpose(GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrixLib.mat4.transpose(GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glLoadTransposeMatrixf: function(matrix) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
-    GLImmediate.matrix.lib.mat4.transpose(GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
+    GLImmediate.matrixLib.mat4.transpose(GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   glMultMatrixd: function(matrix) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
+    GLImmediate.matrixLib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
         {{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}});
   },
 
   glMultMatrixf: function(matrix) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
+    GLImmediate.matrixLib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
         {{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}});
   },
 
   glMultTransposeMatrixd: function(matrix) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    var colMajor = GLImmediate.matrix.lib.mat4.create();
-    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, colMajor);
-    GLImmediate.matrix.lib.mat4.transpose(colMajor);
-    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix], colMajor);
+    var colMajor = GLImmediate.matrixLib.mat4.create();
+    GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, colMajor);
+    GLImmediate.matrixLib.mat4.transpose(colMajor);
+    GLImmediate.matrixLib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix], colMajor);
   },
 
   glMultTransposeMatrixf: function(matrix) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    var colMajor = GLImmediate.matrix.lib.mat4.create();
-    GLImmediate.matrix.lib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, colMajor);
-    GLImmediate.matrix.lib.mat4.transpose(colMajor);
-    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix], colMajor);
+    var colMajor = GLImmediate.matrixLib.mat4.create();
+    GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F32', 'matrix', 'matrix+' + (16*4)) }}}, colMajor);
+    GLImmediate.matrixLib.mat4.transpose(colMajor);
+    GLImmediate.matrixLib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix], colMajor);
   },
 
   glFrustum: function(left, right, bottom, top_, nearVal, farVal) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
-        GLImmediate.matrix.lib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
+    GLImmediate.matrixLib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
+        GLImmediate.matrixLib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
   },
   glFrustumf: 'glFrustum',
 
   glOrtho: function(left, right, bottom, top_, nearVal, farVal) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
-        GLImmediate.matrix.lib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
+    GLImmediate.matrixLib.mat4.multiply(GLImmediate.matrix[GLImmediate.currentMatrix],
+        GLImmediate.matrixLib.mat4.ortho(left, right, bottom, top_, nearVal, farVal));
   },
   glOrthof: 'glOrtho',
 
   glScaled: function(x, y, z) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.scale(GLImmediate.matrix[GLImmediate.currentMatrix], [x, y, z]);
+    GLImmediate.matrixLib.mat4.scale(GLImmediate.matrix[GLImmediate.currentMatrix], [x, y, z]);
   },
   glScalef: 'glScaled',
 
   glTranslated: function(x, y, z) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.translate(GLImmediate.matrix[GLImmediate.currentMatrix], [x, y, z]);
+    GLImmediate.matrixLib.mat4.translate(GLImmediate.matrix[GLImmediate.currentMatrix], [x, y, z]);
   },
   glTranslatef: 'glTranslated',
 
   glRotated: function(angle, x, y, z) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.rotate(GLImmediate.matrix[GLImmediate.currentMatrix], angle*Math.PI/180, [x, y, z]);
+    GLImmediate.matrixLib.mat4.rotate(GLImmediate.matrix[GLImmediate.currentMatrix], angle*Math.PI/180, [x, y, z]);
   },
   glRotatef: 'glRotated',
 
@@ -4835,14 +4837,14 @@ var LibraryGL = {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
     GLImmediate.matrix[GLImmediate.currentMatrix] =
-      GLImmediate.matrix.lib.mat4.perspective(fov, aspect, near, far,
+      GLImmediate.matrixLib.mat4.perspective(fov, aspect, near, far,
                                                GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix.lib.mat4.lookAt(GLImmediate.matrix[GLImmediate.currentMatrix], [ex, ey, ez],
+    GLImmediate.matrixLib.mat4.lookAt(GLImmediate.matrix[GLImmediate.currentMatrix], [ex, ey, ez],
         [cx, cy, cz], [ux, uy, uz]);
   },
 
@@ -4851,9 +4853,9 @@ var LibraryGL = {
 
     var inVec = new Float32Array(4);
     var outVec = new Float32Array(4);
-    GLImmediate.matrix.lib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
+    GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
         [objX, objY, objZ, 1.0], outVec);
-    GLImmediate.matrix.lib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
+    GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
         outVec, inVec);
     if (inVec[3] == 0.0) {
       return 0 /* GL_FALSE */;
@@ -4877,7 +4879,7 @@ var LibraryGL = {
   },
 
   gluUnProject: function(winX, winY, winZ, model, proj, view, objX, objY, objZ) {
-    var result = GLImmediate.matrix.lib.mat4.unproject([winX, winY, winZ],
+    var result = GLImmediate.matrixLib.mat4.unproject([winX, winY, winZ],
         {{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
         {{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
         {{{ makeHEAPView('32', 'view', 'view+' + (4*4)) }}});
