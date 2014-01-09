@@ -1791,7 +1791,7 @@ var LibraryGL = {
         if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
           if (GLEmulation.fogEnabled != true) {
-            GL.immediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = true;
           }
           return;
@@ -1814,7 +1814,7 @@ var LibraryGL = {
         if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
           if (GLEmulation.fogEnabled != false) {
-            GL.immediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = false;
           }
           return;
@@ -2123,7 +2123,7 @@ var LibraryGL = {
         }
 #endif
         if (GL.currProgram != program) {
-          GL.immediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
+          GLImmediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
           GL.currProgram = program;
           GLImmediate.fixedFunctionProgram = 0;
           glUseProgram(program);
@@ -2134,7 +2134,7 @@ var LibraryGL = {
       _glDeleteProgram = function _glDeleteProgram(program) {
         glDeleteProgram(program);
         if (program == GL.currProgram) {
-          GL.immediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
+          GLImmediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
           GL.currProgram = 0;
         }
       };
@@ -3348,9 +3348,9 @@ var LibraryGL = {
     lastStride: -1, // ""
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
-    matrix: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-    matrixStack: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-    currentMatrix: 0, // default is modelview
+    matrix: [],
+    matrixStack: [],
+    currentMatrix: 0, // 0: modelview, 1: projection, 2+i, texture matrix i.
     tempMatrix: null,
     matricesModified: false,
     useTextureMatrix: false,
@@ -4040,25 +4040,17 @@ var LibraryGL = {
         GLEmulation.enabledClientAttribIndices.push(false);
       }
 
-      this.matrixStack[0/*m*/] = [];
-      this.matrixStack[1/*p*/] = [];
-      for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
-        this.matrixStack[2/*t*/ + i] = [];
-      }
-
       // Initialize matrix library
       // When user sets a matrix, increment a 'version number' on the new data, and when rendering, submit
       // the matrices to the shader program only if they have an old version of the data.
-      GLImmediate.matrixVersion = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
-      GLImmediate.matrix[0/*m*/] = GLImmediate.matrix.lib.mat4.create();
-      GLImmediate.matrixVersion[0/*m*/] = 0;
-      GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[0/*m*/]);
-      GLImmediate.matrix[1/*p*/] = GLImmediate.matrix.lib.mat4.create();
-      GLImmediate.matrixVersion[1/*p*/] = 0;
-      GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[1/*p*/]);
-      for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
-        GLImmediate.matrix[2/*t*/ + i] = GLImmediate.matrix.lib.mat4.create();
-        GLImmediate.matrixVersion[2/*t*/ + i] = 0;
+      this.matrix = [];
+      this.matrixStack = [];
+      this.matrixVersion = [];
+      for (var i = 0; i < 2 + GLImmediate.MAX_TEXTURES; i++) { // Modelview, Projection, plus one matrix for each texture coordinate.
+        this.matrixStack.push([]);
+        this.matrixVersion.push(0);
+        GLImmediate.matrix.push(GLImmediate.matrix.lib.mat4.create());
+        GLImmediate.matrix.lib.mat4.identity(GLImmediate.matrix[i]);
       }
 
       // Renderer cache
@@ -4256,7 +4248,7 @@ var LibraryGL = {
     }
   },
 
-  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GL.immediate = GLImmediate; GLImmediate.matrix.lib = ' + read('gl-matrix.js') + ';\n' }],
+  $GLImmediateSetup__deps: ['$GLImmediate', function() { return 'GLImmediate.matrix.lib = ' + read('gl-matrix.js') + ';\n' }],
   $GLImmediateSetup: {},
 
   glBegin__deps: ['$GLImmediateSetup'],
@@ -4292,7 +4284,7 @@ var LibraryGL = {
     // Pop the old state:
     GLImmediate.enabledClientAttributes = GLImmediate.enabledClientAttributes_preBegin;
     GLImmediate.clientAttributes = GLImmediate.clientAttributes_preBegin;
-    GL.immediate.currentRenderer = null; // The set of active client attributes changed, we must re-lookup the renderer to use.
+    GLImmediate.currentRenderer = null; // The set of active client attributes changed, we must re-lookup the renderer to use.
     GLImmediate.modifiedClientAttributes = true;
   },
 
@@ -4432,13 +4424,13 @@ var LibraryGL = {
           case 0x0801: // GL_EXP2
           case 0x2601: // GL_LINEAR
             if (GLEmulation.fogMode != param) {
-              GL.immediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
+              GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
               GLEmulation.fogMode = param;
             }
             break;
           default: // default to GL_EXP
             if (GLEmulation.fogMode != 0x0800 /* GL_EXP */) {
-              GL.immediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
+              GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
               GLEmulation.fogMode = 0x0800 /* GL_EXP */;
             }
             break;
