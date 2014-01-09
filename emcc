@@ -1194,9 +1194,6 @@ try:
 
   if fastcomp:
     shared.Settings.ASM_JS = 1
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 0:
-      logging.warning('disabling exception catching since not supported in fastcomp yet')
-      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     assert shared.Settings.ALLOW_MEMORY_GROWTH == 0, 'memory growth not supported in fastcomp yet'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.SAFE_HEAP == 0, 'safe heap not supported in fastcomp yet'
@@ -1215,6 +1212,10 @@ try:
     if jcache:
       logging.warning('jcache is not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
+
+    fastcomp_opts = ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+    if not shared.Settings.DISABLE_EXCEPTION_CATCHING:
+      fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
 
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
@@ -1744,7 +1745,6 @@ try:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
-
     if (not save_bc and not fastcomp) or AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
@@ -1754,13 +1754,13 @@ try:
     else:
       if fastcomp and not save_bc:
         # Simplify LLVM bitcode for fastcomp
-        link_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+        link_opts += fastcomp_opts
       shared.Building.llvm_opt(final, link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
         shutil.copyfile(final, save_bc)
         if fastcomp:
-          shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
+          shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
           final += '.adsimp.bc'
           if DEBUG: save_intermediate('adsimp', 'bc')
 
@@ -1780,7 +1780,7 @@ try:
 
   # Simplify bitcode after autodebug
   if fastcomp and (AUTODEBUG or LEAVE_INPUTS_RAW):
-    shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
+    shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
     final += '.adsimp.bc'
     if DEBUG: save_intermediate('adsimp', 'bc')
 
