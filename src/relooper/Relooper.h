@@ -89,11 +89,11 @@ struct Block {
 //            setjmp returns, etc.)
 //
 
-class SimpleShape;
-class LabeledShape;
-class MultipleShape;
-class LoopShape;
-class EmulatedShape;
+struct SimpleShape;
+struct LabeledShape;
+struct MultipleShape;
+struct LoopShape;
+struct EmulatedShape;
 
 struct Shape {
   int Id; // A unique identifier. Used to identify loops, labels are Lx where x is the Id. Defined when added to relooper
