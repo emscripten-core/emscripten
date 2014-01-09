@@ -1777,7 +1777,10 @@ var LibraryGL = {
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
-          GLEmulation.fogEnabled = true;
+          if (GLEmulation.fogEnabled != true) {
+            GL.immediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.fogEnabled = true;
+          }
           return;
         } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
@@ -1797,7 +1800,10 @@ var LibraryGL = {
       _glDisable = function _glDisable(cap) {
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
-          GLEmulation.fogEnabled = false;
+          if (GLEmulation.fogEnabled != false) {
+            GL.immediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.fogEnabled = false;
+          }
           return;
         } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
@@ -2104,7 +2110,7 @@ var LibraryGL = {
         }
 #endif
         if (GL.currProgram != program) {
-          GL.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
+          GL.immediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
           GL.currProgram = program;
         }
         glUseProgram(program);
@@ -2113,7 +2119,10 @@ var LibraryGL = {
       var glDeleteProgram = _glDeleteProgram;
       _glDeleteProgram = function _glDeleteProgram(program) {
         glDeleteProgram(program);
-        if (program == GL.currProgram) GL.currProgram = 0;
+        if (program == GL.currProgram) {
+          GL.immediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
+          GL.currProgram = 0;
+        }
       };
 
       // If attribute 0 was not bound, bind it to 0 for WebGL performance reasons. Track if 0 is free for that.
@@ -4270,7 +4279,7 @@ var LibraryGL = {
     // Pop the old state:
     GL.immediate.enabledClientAttributes = GL.immediate.enabledClientAttributes_preBegin;
     GL.immediate.clientAttributes = GL.immediate.clientAttributes_preBegin;
-
+    GL.immediate.currentRenderer = null; // The set of active client attributes changed, we must re-lookup the renderer to use.
     GL.immediate.modifiedClientAttributes = true;
   },
 
@@ -4409,9 +4418,17 @@ var LibraryGL = {
         switch (param) {
           case 0x0801: // GL_EXP2
           case 0x2601: // GL_LINEAR
-            GLEmulation.fogMode = param; break;
+            if (GLEmulation.fogMode != param) {
+              GL.immediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
+              GLEmulation.fogMode = param;
+            }
+            break;
           default: // default to GL_EXP
-            GLEmulation.fogMode = 0x0800 /* GL_EXP */; break;
+            if (GLEmulation.fogMode != 0x0800 /* GL_EXP */) {
+              GL.immediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
+              GLEmulation.fogMode = 0x0800 /* GL_EXP */;
+            }
+            break;
         }
         break;
     }
