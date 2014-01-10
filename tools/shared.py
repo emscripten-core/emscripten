@@ -629,28 +629,51 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  EMSDK_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
-    '-Xclang', '-isystem' + path_from_root('system', 'local', 'include'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'compat'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'emscripten'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
+  C_INCLUDE_PATHS = [ path_from_root('system', 'local', 'include'),
+                      path_from_root('system', 'include', 'compat'),
+                      path_from_root('system', 'include'),
+                      path_from_root('system', 'include', 'emscripten'),
+                      path_from_root('system', 'include', 'bsd'), # posix stuff
+                      path_from_root('system', 'include', 'libc'),
+                      path_from_root('system', 'include', 'gfx'),
+                      path_from_root('system', 'include', 'net'),
+                      path_from_root('system', 'include', 'SDL')
   ]
-  EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
+
+  CXX_INCLUDE_PATHS = [ path_from_root('system', 'include', 'libcxx')
+  ]
+
+  def include_directive(paths):
+    result = []
+    for path in paths:
+      result += ['-Xclang', '-isystem' + path]
+    return result;
+  
+  C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
+  ]
+
+  C_EMSDK_OPTS   = C_OPTS + include_directive(C_INCLUDE_PATHS)
+  CXX_EMSDK_OPTS = C_OPTS + include_directive(C_INCLUDE_PATHS) + include_directive(CXX_INCLUDE_PATHS)
+  EMSDK_OPTS     = CXX_EMSDK_OPTS
+
+  C_EMSDK_OPTS   += COMPILER_STANDARDIZATION_OPTS
+  CXX_EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
+  EMSDK_OPTS     += COMPILER_STANDARDIZATION_OPTS
+
   if LLVM_TARGET != 'le32-unknown-nacl':
     EMSDK_CXX_OPTS = ['-nostdinc++'] # le32 target does not need -nostdinc++
   else:
     EMSDK_CXX_OPTS = []
+  C_COMPILER_OPTS   = COMPILER_OPTS + C_EMSDK_OPTS
+  CXX_COMPILER_OPTS = COMPILER_OPTS + CXX_EMSDK_OPTS + EMSDK_CXX_OPTS
   COMPILER_OPTS += EMSDK_OPTS
 else:
   EMSDK_OPTS = []
   EMSDK_CXX_OPTS = []
   COMPILER_OPTS += COMPILER_STANDARDIZATION_OPTS
+  C_COMPILER_OPTS   = COMPILER_OPTS
+  CXX_COMPILER_OPTS = COMPILER_OPTS
+
 
 #print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
 #print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)
