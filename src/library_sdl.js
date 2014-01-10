@@ -94,7 +94,6 @@ var LibrarySDL = {
 
       17:  1248, // control (right, or left)
       18:  1250, // alt
-      173: 45, // minus
       16:  1249, // shift
       
       96: 88 | 1<<10, // keypad 0
@@ -125,6 +124,28 @@ var LibrarySDL = {
       190: 46, // period
       191: 47, // slash (/)
       192: 96, // backtick/backquote (`)
+      
+      219: 91, // left bracket ([)
+      220: 92, // backslash (\)
+      221: 93, // right bracket (])
+
+      // Next 3 keycodes may vary across browsers, as seen in:
+      // http://www.javascripter.net/faq/keycodes.htm
+      // and might need to be determined programmatically.
+      // Keycodes common to MSIE, Safari and Chrome:
+      186: 59, // semicolon (;)
+      187: 61, // equals (=)
+      189: 45, // minus (-)
+      /*
+      // Keycodes in Firefox:
+      59: 59, // semicolon (;)
+      107: 61, // equals (=)
+      109: 45, // minus (-)
+      // Keycodes in Opera:
+      59: 59, // semicolon (;)
+      61: 61, // equals (=)
+      109: 45, // minus (-)
+      */
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
