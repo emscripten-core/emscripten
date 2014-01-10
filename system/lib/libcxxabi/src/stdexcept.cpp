@@ -47,7 +47,7 @@ private:
 #if __APPLE__
     static
     const void*
-    compute_gcc_empty_string_storage() _LIBCPP_CANTTHROW
+    compute_gcc_empty_string_storage() _NOEXCEPT
     {
         void* handle = dlopen("/usr/lib/libstdc++.6.dylib", RTLD_NOLOAD);
         if (handle == 0)
@@ -57,7 +57,7 @@ private:
     
     static
     const void*
-    get_gcc_empty_string_storage() _LIBCPP_CANTTHROW
+    get_gcc_empty_string_storage() _NOEXCEPT
     {
         static const void* p = compute_gcc_empty_string_storage();
         return p;
@@ -66,9 +66,9 @@ private:
 
 public:
     explicit __libcpp_nmstr(const char* msg);
-    __libcpp_nmstr(const __libcpp_nmstr& s) _LIBCPP_CANTTHROW;
-    __libcpp_nmstr& operator=(const __libcpp_nmstr& s) _LIBCPP_CANTTHROW;
-    ~__libcpp_nmstr() _LIBCPP_CANTTHROW;
+    __libcpp_nmstr(const __libcpp_nmstr& s) _NOEXCEPT;
+    __libcpp_nmstr& operator=(const __libcpp_nmstr& s) _NOEXCEPT;
+    ~__libcpp_nmstr();
     const char* c_str() const _NOEXCEPT {return str_;}
 };
 
@@ -80,11 +80,11 @@ __libcpp_nmstr::__libcpp_nmstr(const char* msg)
     c->len = c->cap = len;
     str_ += offset;
     count() = 0;
-    std::strcpy(const_cast<char*>(c_str()), msg);
+    std::memcpy(const_cast<char*>(c_str()), msg, len + 1);
 }
 
 inline
-__libcpp_nmstr::__libcpp_nmstr(const __libcpp_nmstr& s)
+__libcpp_nmstr::__libcpp_nmstr(const __libcpp_nmstr& s) _NOEXCEPT
     : str_(s.str_)
 {
 #if __APPLE__
@@ -94,7 +94,7 @@ __libcpp_nmstr::__libcpp_nmstr(const __libcpp_nmstr& s)
 }
 
 __libcpp_nmstr&
-__libcpp_nmstr::operator=(const __libcpp_nmstr& s)
+__libcpp_nmstr::operator=(const __libcpp_nmstr& s) _NOEXCEPT
 {
     const char* p = str_;
     str_ = s.str_;
