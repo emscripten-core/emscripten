@@ -2219,3 +2219,35 @@ mergeInto(LibraryManager.library, {
     process.communicate()
     assert(os.path.isfile(outdir + 'hello_world.obj'))
 
+
+  def test_doublestart_bug(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <emscripten.h>
+
+void main_loop(void) {
+    static int cnt = 0;
+    if (++cnt >= 10) emscripten_cancel_main_loop();
+}
+
+int main(void) {
+    printf("This should only appear once.\n");
+    emscripten_set_main_loop(main_loop, 10, 0);
+    return 0;
+}
+''')
+
+    open('pre.js', 'w').write(r'''
+if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
+if (!Module['preRun']) Module['preRun'] = [];
+Module["preRun"].push(function () {
+    Module['addRunDependency']('test_run_dependency');
+    Module['removeRunDependency']('test_run_dependency');
+});
+''')
+
+    Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js']).communicate()
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'), engine=NODE_JS)
+
+    assert output.count('This should only appear once.') == 1, '\n'+output
+
