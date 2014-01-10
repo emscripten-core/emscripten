@@ -1016,6 +1016,36 @@ try:
       if not default_object_extension.startswith('.'):
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
+    elif newargs[i] == '-x':
+      newargs[i] = ''
+      
+      def simplify(langdesc):
+        if langdesc == "none":
+          return None
+        defines = { 'c'  : ['c', 'c-header', 'c-cpp-output'
+                   ],
+                   'cxx' : ['c++', 'c++-header', 'c++-cpp-output'
+                   ],
+                   'fail': ['objective-c', 'objective-c-header', 'objective-c-cpp-output', 'objective-c++', 'objective-c++-header', 'objective-c++-cpp-output', 'assembler', 'assembler-with-cpp', 'ada', 'f77', 'f77-cpp-input', 'f95', 'f95-cpp-input'
+                   ]
+        }
+
+        for ret, list in defines.iteritems():
+          if langdesc in list:
+            if ret == 'fail':
+              logging.error('%s: language not supported by emscripten' % (langdesc))
+              exit(1)
+            return ret
+
+        logging.error('%s: No such language id (for -x )' % (langdesc))
+        exit(1)
+              
+      lang = simplify(newargs[i+1])
+      newargs[i+1] = ''
+      if lang == 'c':
+        shared.COMPILER_OPTS = shared.C_COMPILER_OPTS
+      elif lang == 'cxx':
+        shared.COMPILER_OPTS = shared.CXX_COMPILER_OPTS
 
   newargs = [ arg for arg in newargs if arg is not '' ]
 
@@ -1075,7 +1105,7 @@ try:
 
     if i > 0:
       prev = newargs[i-1]
-      if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
+      if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
 
     if (os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS)):
       arg = os.path.realpath(arg)
