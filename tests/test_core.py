@@ -1186,7 +1186,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_exceptions(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
       if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.EXCEPTION_DEBUG = 1
 
@@ -1275,7 +1274,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_exception_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
     test_path = path_from_root('tests', 'core', 'test_exception_2')
@@ -1358,7 +1356,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_std_exception(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
