@@ -1300,7 +1300,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_uncaught_exception(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
 
