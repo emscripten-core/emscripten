@@ -10,20 +10,20 @@ define linkonce_odr i32 @main() align 2 {
   %a400 = zext i32 %a333 to i64
   %a444 = udiv i64 %a400, 3
   switch i64 %a444, label %label999 [
-    i64 1000, label %label9950
-    i64 1001, label %label9951
-    i64 1002, label %label9952
-    i64 1003, label %label9953
-    i64 1004, label %label9954
-    i64 1005, label %label9955
-    i64 1006, label %label9956
-    i64 1007, label %label9957
-    i64 1008, label %label9958
-    i64 1009, label %label9959
+    i64 0, label %label9950
+    i64 1, label %label9951
+    i64 2, label %label9952
+    i64 3, label %label9953
+    i64 4, label %label9954
+    i64 5, label %label9955
+    i64 6, label %label9956
+    i64 7, label %label9957
+    i64 8, label %label9958
+    i64 9, label %label9959
   ]
 
 label9950:
-  %waka = phi i32 [1000, %0], [0, %label9951], [1, %label9952], [2, %label9953], [3, %label9954], [4, %label9955], [5, %label9956], [6, %label9957], [7, %label9958], [8, %label9959]
+  %waka = phi i32 [11000, %0], [10, %label9951], [11, %label9952], [12, %label9953], [13, %label9954], [14, %label9955], [15, %label9956], [16, %label9957], [17, %label9958], [18, %label9959]
   %a333b = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %waka)
   br label %label999
 
