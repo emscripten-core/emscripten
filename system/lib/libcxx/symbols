@@ -2408,7 +2408,6 @@
          D _ZTISt15underflow_error
          D _ZTISt16invalid_argument
          D _ZTISt16nested_exception
-         C _ZTISt9exception
          C _ZTSNSt3__110__stdinbufIcEE
          C _ZTSNSt3__110__stdinbufIwEE
          C _ZTSNSt3__110__time_getE
@@ -2542,7 +2541,6 @@
          D _ZTSSt15underflow_error
          D _ZTSSt16invalid_argument
          D _ZTSSt16nested_exception
-         C _ZTSSt9exception
          D _ZTTNSt3__110istrstreamE
          D _ZTTNSt3__110ostrstreamE
          W _ZTTNSt3__113basic_istreamIcNS_11char_traitsIcEEEE
