@@ -615,6 +615,13 @@ extern DECLSPEC void SDLCALL SDL_DelEventWatch(SDL_EventFilter filter,
 extern DECLSPEC void SDLCALL SDL_FilterEvents(SDL_EventFilter filter,
                                               void *userdata);
 
+/**
+ *  Use instead of SDL_PollEvent. Your application will be called whenever there
+ *  are events available.
+ */
+extern DECLSPEC void SDLCALL SDL_SetEventHandler(SDL_EventFilter handler,
+                                              void *userdata);
+
 /*@{*/
 #define SDL_QUERY	-1
 #define SDL_IGNORE	 0
