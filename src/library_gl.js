@@ -4170,7 +4170,7 @@ var LibraryGL = {
         }
         for (var i = 0; i < attributes.length; i++) {
           var attr = attributes[i];
-          attr.offset = attr.pointer - clientStartPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
+          attr.offset = attr.pointer - GLImmediate.vertexPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
         GLImmediate.stride = Math.max(maxStride, bytes);
       }
