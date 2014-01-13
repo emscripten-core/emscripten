@@ -3367,6 +3367,7 @@ var LibraryGL = {
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
     clientAttributes: [], // raw data, including possible unneeded ones
+    liveClientAttributes: [], // the ones actually alive in the current computation, sorted
     currentRenderer: null, // Caches the currently active FFP emulation renderer, so that it does not have to be re-looked up unless relevant state changes.
     modifiedClientAttributes: false,
     clientActiveTexture: 0,
@@ -3429,17 +3430,17 @@ var LibraryGL = {
       if (GLImmediate.currentRenderer) {
         return GLImmediate.currentRenderer;
       }
+      // return a renderer object given the liveClientAttributes
       // we maintain a cache of renderers, optimized to not generate garbage
+      var attributes = GLImmediate.liveClientAttributes;
       var cacheMap = GLImmediate.rendererCache;
       var temp;
       var keyView = cacheMap.getStaticKeyView().reset();
 
       // By attrib state:
       var enabledAttributesKey = 0;
-      for (var i = 0; i < GLImmediate.MAX_TEXTURES+3; i++) {
-        if (GLImmediate.enabledClientAttributes[i]) {
-          enabledAttributesKey |= 1 << i;
-        }
+      for (var i = 0; i < attributes.length; i++) {
+        enabledAttributesKey |= 1 << attributes[i].name;
       }
       keyView.next(enabledAttributesKey);
 
@@ -3470,13 +3471,7 @@ var LibraryGL = {
       var renderer = keyView.get();
       if (!renderer) {
 #if GL_DEBUG
-        var liveClientAttributes = [];
-        for (var i = 0; i < GLImmediate.MAX_TEXTURES+3; i++) {
-          if (GLImmediate.enabledClientAttributes[i]) {
-            liveClientAttributes.push(clientAttributes[i]);
-          }
-        }
-        Module.printErr('generating renderer for ' + JSON.stringify(liveClientAttributes));
+        Module.printErr('generating renderer for ' + JSON.stringify(attributes));
 #endif
         renderer = GLImmediate.createRenderer();
         GLImmediate.currentRenderer = renderer;
@@ -4111,9 +4106,12 @@ var LibraryGL = {
       var bytes = 0; // Total number of bytes taken up by a single vertex.
       var minStride = 0x7FFFFFFF;
       var maxStride = 0;
+      var attributes = GLImmediate.liveClientAttributes;
+      attributes.length = 0;
       for (var i = 0; i < 3+GLImmediate.MAX_TEXTURES; i++) {
         if (GLImmediate.enabledClientAttributes[i]) {
           var attr = GLImmediate.clientAttributes[i];
+          attributes.push(attr);
           clientStartPointer = Math.min(clientStartPointer, attr.pointer);
           attr.sizeBytes = attr.size * GL.byteSizeByType[attr.type - GL.byteSizeByTypeRoot];
           bytes += attr.sizeBytes;
@@ -4133,37 +4131,33 @@ var LibraryGL = {
         var start = GLImmediate.restrideBuffer;
         bytes = 0;
         // calculate restrided offsets and total size
-        for (var i = 0; i < GLImmediate.clientAttributes.length; i++) {
-          if (GLImmediate.enabledClientAttributes[i]) {
-            var attribute = GLImmediate.clientAttributes[i];
-            var size = attribute.sizeBytes;
-            if (size % 4 != 0) size += 4 - (size % 4); // align everything
-            attribute.offset = bytes;
-            bytes += size;
-          }
+        for (var i = 0; i < attributes.length; i++) {
+          var attr = attributes[i];
+          var size = attr.sizeBytes;
+          if (size % 4 != 0) size += 4 - (size % 4); // align everything
+          attr.offset = bytes;
+          bytes += size;
         }
-        // copy out the data (we need to know the stride for that, and define attribute.pointer)
-        for (var i = 0; i < GLImmediate.clientAttributes.length; i++) {
-          if (GLImmediate.enabledClientAttributes[i]) {
-            var attribute = GLImmediate.clientAttributes[i];
-            var srcStride = Math.max(attribute.sizeBytes, attribute.stride);
-            if ((srcStride & 3) == 0 && (attribute.sizeBytes & 3) == 0) {
-              var size4 = attribute.sizeBytes>>2;
-              var srcStride4 = Math.max(attribute.sizeBytes, attribute.stride)>>2;
-              for (var j = 0; j < count; j++) {
-                for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
-                  HEAP32[((start + attribute.offset + bytes*j)>>2) + k] = HEAP32[(attribute.pointer>>2) + j*srcStride4 + k];
-                }
-              }
-            } else {
-              for (var j = 0; j < count; j++) {
-                for (var k = 0; k < attribute.sizeBytes; k++) { // source data was not aligned to multiples of 4, must copy byte by byte.
-                  HEAP8[start + attribute.offset + bytes*j + k] = HEAP8[attribute.pointer + j*srcStride + k];
-                }
+        // copy out the data (we need to know the stride for that, and define attr.pointer)
+        for (var i = 0; i < attributes.length; i++) {
+          var attr = attributes[i];
+          var srcStride = Math.max(attr.sizeBytes, attr.stride);
+          if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
+            var size4 = attr.sizeBytes>>2;
+            var srcStride4 = Math.max(attr.sizeBytes, attr.stride)>>2;
+            for (var j = 0; j < count; j++) {
+              for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
+                HEAP32[((start + attr.offset + bytes*j)>>2) + k] = HEAP32[(attr.pointer>>2) + j*srcStride4 + k];
               }
             }
-            attribute.pointer = start + attribute.offset;
+          } else {
+            for (var j = 0; j < count; j++) {
+              for (var k = 0; k < attr.sizeBytes; k++) { // source data was not aligned to multiples of 4, must copy byte by byte.
+                HEAP8[start + attr.offset + bytes*j + k] = HEAP8[attr.pointer + j*srcStride + k];
+              }
+            }
           }
+          attr.pointer = start + attr.offset;
         }
         GLImmediate.stride = bytes;
         GLImmediate.vertexPointer = start;
@@ -4174,11 +4168,9 @@ var LibraryGL = {
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
         }
-        for (var i = 0; i < 3+GLImmediate.MAX_TEXTURES; i++) {
-          if (GLImmediate.enabledClientAttributes[i]) {
-            var attr = GLImmediate.clientAttributes[i];
-            attr.offset = attr.pointer - clientStartPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
-          }
+        for (var i = 0; i < attributes.length; i++) {
+          var attr = attributes[i];
+          attr.offset = attr.pointer - clientStartPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
         GLImmediate.stride = Math.max(maxStride, bytes);
       }
