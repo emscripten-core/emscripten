@@ -315,3 +315,48 @@
   }
  }
 
+
+
+-- If pattern, emulated, using MakeOutputBuffer --
+
+
+
+ label = 1;
+ L0:  while(1) {
+  switch(label|0) {
+   case 3: {
+    // block C
+    break;
+   }
+   case 1: {
+    // block A
+    if (check == 10) {
+     atob();
+     label = 2;
+     continue L0;
+    } else {
+     atoc();
+     label = 3;
+     continue L0;
+    }
+    break;
+   }
+   case 2: {
+    // block B
+    switch (b_check()) {
+    case 17: {
+     btoc();
+     label = 3;
+     continue L0;
+     break;
+    }
+    default: {
+     label = 1;
+     continue L0;
+    }
+    }
+    break;
+   }
+  }
+ }
+

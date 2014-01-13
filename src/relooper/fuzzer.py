@@ -47,8 +47,18 @@ while(1) switch(label) {
 
 int main() {
   char *buffer = (char*)malloc(10*1024*1024);
+'''
+
+  if random.randint(0, 1) == 0:
+    make = False
+    fast += '''
   Relooper::SetOutputBuffer(buffer, 10*1024*1024);
 '''
+  else:
+    make = True
+    fast += '''
+  Relooper::MakeOutputBuffer(%d);
+''' % random.randint(1, 1024*1024*10)
 
   for i in range(1, num):
     slow += '  case %d: print(%d); state = check(); modded = state %% %d\n' % (i, i, len(branches[i])+1)
@@ -102,11 +112,11 @@ int main() {
   printf("\\n\\n");
   r.Render();
 
-  puts(buffer);
+  puts(%s);
 
   return 1;
 }
-'''
+''' % ('buffer' if not make else 'Relooper::GetOutputBuffer()')
 
   slow += '}'
 

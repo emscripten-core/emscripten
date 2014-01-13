@@ -200,10 +200,15 @@ struct Relooper {
   void Render();
 
   // Sets the global buffer all printing goes to. Must call this or MakeOutputBuffer.
+  // XXX: this is deprecated, see MakeOutputBuffer
   static void SetOutputBuffer(char *Buffer, int Size);
 
-  // Creates an output buffer. Must call this or SetOutputBuffer.
+  // Creates an internal output buffer. Must call this or SetOutputBuffer. Size is
+  // a hint for the initial size of the buffer, it can be resized later one demand.
+  // For that reason this is more recommended than SetOutputBuffer.
   static void MakeOutputBuffer(int Size);
+
+  static char *GetOutputBuffer();
 
   // Sets asm.js mode on or off (default is off)
   static void SetAsmJSMode(int On);

@@ -40,27 +40,56 @@ static void PutIndented(const char *String);
 static char *OutputBufferRoot = NULL;
 static char *OutputBuffer = NULL;
 static int OutputBufferSize = 0;
+static int OutputBufferOwned = false;
+
+static int LeftInOutputBuffer() {
+  return OutputBufferSize - (OutputBuffer - OutputBufferRoot);
+}
+
+static bool EnsureOutputBuffer(int Needed) { // ensures the output buffer is sufficient. returns true is no problem happened
+  Needed++; // ensure the trailing \0 is not forgotten
+  int Left = LeftInOutputBuffer();
+  if (!OutputBufferOwned) {
+    assert(Needed < Left);
+  } else {
+    // we own the buffer, and can resize if necessary
+    if (Needed >= Left) {
+      int Offset = OutputBuffer - OutputBufferRoot;
+      int TotalNeeded = OutputBufferSize + Needed - Left + 10240;
+      int NewSize = OutputBufferSize;
+      while (NewSize < TotalNeeded) NewSize = NewSize + (NewSize/2);
+      //printf("resize %d => %d\n", OutputBufferSize, NewSize);
+      OutputBufferRoot = (char*)realloc(OutputBufferRoot, NewSize);
+      OutputBuffer = OutputBufferRoot + Offset;
+      OutputBufferSize = NewSize;
+      return false;
+    }
+  }
+  return true;
+}
 
 void PrintIndented(const char *Format, ...) {
   assert(OutputBuffer);
-  assert(OutputBuffer + Indenter::CurrIndent*INDENTATION - OutputBufferRoot < OutputBufferSize);
+  EnsureOutputBuffer(Indenter::CurrIndent*INDENTATION);
   for (int i = 0; i < Indenter::CurrIndent*INDENTATION; i++, OutputBuffer++) *OutputBuffer = ' ';
-  va_list Args;
-  va_start(Args, Format);
-  int left = OutputBufferSize - (OutputBuffer - OutputBufferRoot);
-  int written = vsnprintf(OutputBuffer, left, Format, Args);
-  assert(written < left);
-  OutputBuffer += written;
-  va_end(Args);
+  int Written;
+  while (1) { // write and potentially resize buffer until we have enough room
+    int Left = LeftInOutputBuffer();
+    va_list Args;
+    va_start(Args, Format);
+    Written = vsnprintf(OutputBuffer, Left, Format, Args);
+    va_end(Args);
+    if (EnsureOutputBuffer(Written)) break;
+  }
+  OutputBuffer += Written;
 }
 
 void PutIndented(const char *String) {
   assert(OutputBuffer);
-  assert(OutputBuffer + Indenter::CurrIndent*INDENTATION - OutputBufferRoot < OutputBufferSize);
+  EnsureOutputBuffer(Indenter::CurrIndent*INDENTATION);
   for (int i = 0; i < Indenter::CurrIndent*INDENTATION; i++, OutputBuffer++) *OutputBuffer = ' ';
-  int left = OutputBufferSize - (OutputBuffer - OutputBufferRoot);
-  int needed = strlen(String)+1;
-  assert(needed < left);
+  int Needed = strlen(String)+1;
+  EnsureOutputBuffer(Needed);
   strcpy(OutputBuffer, String);
   OutputBuffer += strlen(String);
   *OutputBuffer++ = '\n';
@@ -1158,11 +1187,17 @@ void Relooper::Render() {
 void Relooper::SetOutputBuffer(char *Buffer, int Size) {
   OutputBufferRoot = OutputBuffer = Buffer;
   OutputBufferSize = Size;
+  OutputBufferOwned = false;
 }
 
 void Relooper::MakeOutputBuffer(int Size) {
   OutputBufferRoot = OutputBuffer = (char*)malloc(Size);
   OutputBufferSize = Size;
+  OutputBufferOwned = true;
+}
+
+char *Relooper::GetOutputBuffer() {
+  return OutputBufferRoot;
 }
 
 void Relooper::SetAsmJSMode(int On) {
