@@ -31,6 +31,8 @@ invcont33:
   ret i32 %retval1
 
 lpad106:
+  %Z = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+       cleanup
   ret i32 %retval1
 
 return:                                           ; preds = %entry
@@ -40,3 +42,6 @@ return:                                           ; preds = %entry
 
 ; [#uses=1]
 declare i32 @puts(i8*)
+
+declare i32 @__gxx_personality_v0(...)
+
