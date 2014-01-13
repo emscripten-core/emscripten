@@ -4077,96 +4077,110 @@ var LibraryGL = {
       // does not work for glBegin/End, where we generate renderer components dynamically and then
       // disable them ourselves, but it does help with glDrawElements/Arrays.
       if (!GLImmediate.modifiedClientAttributes) {
+#if GL_ASSERTIONS
+        if ((GLImmediate.stride & 3) != 0) {
+          Runtime.warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
+        }
+#endif
         GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
         return;
       }
       GLImmediate.modifiedClientAttributes = false;
 
-      var stride = 0, start;
+      // The role of prepareClientAttributes is to examine the set of client-side vertex attribute buffers
+      // that user code has submitted, and to prepare them to be uploaded to a VBO in GPU memory
+      // (since WebGL does not support client-side rendering, i.e. rendering from vertex data in CPU memory)
+      // User can submit vertex data generally in three different configurations:
+      // 1. Fully planar: all attributes are in their own separate tightly-packed arrays in CPU memory.
+      // 2. Fully interleaved: all attributes share a single array where data is interleaved something like (pos,uv,normal), (pos,uv,normal), ...
+      // 3. Complex hybrid: Multiple separate arrays that either are sparsely strided, and/or partially interleave vertex attributes.
+
+      // For simplicity, we support the case (2) as the fast case. For (1) and (3), we do a memory copy of the
+      // vertex data here to prepare a relayouted buffer that is of the structure in case (2). The reason
+      // for this is that it allows the emulation code to get away with using just one VBO buffer for rendering,
+      // and not have to maintain multiple ones. Therefore cases (1) and (3) will be very slow, and case (2) is fast.
+
+      // Detect which case we are in by using a quick heuristic by examining the strides of the buffers. If all the buffers have identical 
+      // stride, we assume we have case (2), otherwise we have something more complex.
+      var clientStartPointer = 0x7FFFFFFF;
+      var bytes = 0; // Total number of bytes taken up by a single vertex.
+      var minStride = 0x7FFFFFFF;
+      var maxStride = 0;
       var attributes = GLImmediate.liveClientAttributes;
       attributes.length = 0;
-      for (var i = 0; i < GLImmediate.NUM_ATTRIBUTES; i++) {
-        if (GLImmediate.enabledClientAttributes[i]) attributes.push(GLImmediate.clientAttributes[i]);
-      }
-      attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
-      start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
-      var multiStrides = false;
-      for (var i = 0; i < attributes.length; i++) {
-        var attribute = attributes[i];
-        if (!attribute) break;
-        if (stride != 0 && stride != attribute.stride) multiStrides = true;
-        if (attribute.stride) stride = attribute.stride;
+      for (var i = 0; i < 3+GLImmediate.MAX_TEXTURES; i++) {
+        if (GLImmediate.enabledClientAttributes[i]) {
+          var attr = GLImmediate.clientAttributes[i];
+          attributes.push(attr);
+          clientStartPointer = Math.min(clientStartPointer, attr.pointer);
+          attr.sizeBytes = attr.size * GL.byteSizeByType[attr.type - GL.byteSizeByTypeRoot];
+          bytes += attr.sizeBytes;
+          minStride = Math.min(minStride, attr.stride);
+          maxStride = Math.max(maxStride, attr.stride);
+        }
       }
 
-      if (multiStrides) stride = 0; // we will need to restride
-      var bytes = 0; // total size in bytes
-      if (!stride && !beginEnd) {
-        // beginEnd can not have stride in the attributes, that is fine. otherwise,
-        // no stride means that all attributes are in fact packed. to keep the rest of
-        // our emulation code simple, we perform unpacking/restriding here. this adds overhead, so
-        // it is a good idea to not hit this!
-#if ASSERTIONS
-        Runtime.warnOnce('Unpacking/restriding attributes, this is slow and dangerous');
+      if ((minStride != maxStride || maxStride < bytes) && !beginEnd) {
+        // We are in cases (1) or (3): slow path, shuffle the data around into a single interleaved vertex buffer.
+        // The immediate-mode glBegin()/glEnd() vertex submission gets automatically generated in appropriate layout,
+        // so never need to come down this path if that was used.
+#if GL_ASSERTIONS
+        Runtime.warnOnce('Rendering from planar client-side vertex arrays. This is a very slow emulation path! Use interleaved vertex arrays for best performance.');
 #endif
         if (!GLImmediate.restrideBuffer) GLImmediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
-        start = GLImmediate.restrideBuffer;
-#if ASSERTIONS
-        assert(start % 4 == 0);
-#endif
+        var start = GLImmediate.restrideBuffer;
+        bytes = 0;
         // calculate restrided offsets and total size
         for (var i = 0; i < attributes.length; i++) {
-          var attribute = attributes[i];
-          if (!attribute) break;
-          var size = attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
+          var attr = attributes[i];
+          var size = attr.sizeBytes;
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
-          attribute.offset = bytes;
+          attr.offset = bytes;
           bytes += size;
         }
-#if ASSERTIONS
-        assert(count*bytes <= GL.MAX_TEMP_BUFFER_SIZE);
-#endif
-        // copy out the data (we need to know the stride for that, and define attribute.pointer
+        // copy out the data (we need to know the stride for that, and define attr.pointer)
         for (var i = 0; i < attributes.length; i++) {
-          var attribute = attributes[i];
-          if (!attribute) break;
-          var size4 = Math.floor((attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot])/4);
-          for (var j = 0; j < count; j++) {
-            for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
-              HEAP32[((start + attribute.offset + bytes*j)>>2) + k] = HEAP32[(attribute.pointer>>2) + j*size4 + k];
+          var attr = attributes[i];
+          var srcStride = Math.max(attr.sizeBytes, attr.stride);
+          if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
+            var size4 = attr.sizeBytes>>2;
+            var srcStride4 = Math.max(attr.sizeBytes, attr.stride)>>2;
+            for (var j = 0; j < count; j++) {
+              for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
+                HEAP32[((start + attr.offset + bytes*j)>>2) + k] = HEAP32[(attr.pointer>>2) + j*srcStride4 + k];
+              }
+            }
+          } else {
+            for (var j = 0; j < count; j++) {
+              for (var k = 0; k < attr.sizeBytes; k++) { // source data was not aligned to multiples of 4, must copy byte by byte.
+                HEAP8[start + attr.offset + bytes*j + k] = HEAP8[attr.pointer + j*srcStride + k];
+              }
             }
           }
-          attribute.pointer = start + attribute.offset;
+          attr.pointer = start + attr.offset;
         }
+        GLImmediate.stride = bytes;
+        GLImmediate.vertexPointer = start;
       } else {
-        // normal situation, everything is strided and in the same buffer
+        // case (2): fast path, all data is interleaved to a single vertex array so we can get away with a single VBO upload.
+        if (GL.currArrayBuffer) {
+          GLImmediate.vertexPointer = 0;
+        } else {
+          GLImmediate.vertexPointer = clientStartPointer;
+        }
         for (var i = 0; i < attributes.length; i++) {
-          var attribute = attributes[i];
-          if (!attribute) break;
-          attribute.offset = attribute.pointer - start;
-          if (attribute.offset > bytes) { // ensure we start where we should
-#if ASSERTIONS
-            assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
-#endif
-            bytes += attribute.offset - bytes;
-          }
-          bytes += attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
-          if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
+          var attr = attributes[i];
+          attr.offset = attr.pointer - clientStartPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
-#if ASSERTIONS
-        assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
-#endif
-        if (bytes < stride) { // ensure the size is that of the stride
-          bytes = stride;
-        }
+        GLImmediate.stride = Math.max(maxStride, bytes);
       }
-      GLImmediate.stride = bytes;
-
       if (!beginEnd) {
-        bytes *= count;
-        if (!GL.currArrayBuffer) {
-          GLImmediate.vertexPointer = start;
+#if GL_ASSERTIONS
+        if ((GLImmediate.stride & 3) != 0) {
+          Runtime.warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
         }
-        GLImmediate.vertexCounter = bytes / 4; // XXX assuming float
+#endif
+        GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
       }
     },
 
