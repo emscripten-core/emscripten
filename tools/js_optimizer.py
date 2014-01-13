@@ -26,7 +26,7 @@ class Minifier:
   '''
     asm.js minification support. We calculate minification of
     globals here, then pass that into the parallel js-optimizer.js runners which
-    during registerize perform minification of locals.
+    perform minification of locals.
   '''
 
   def __init__(self, js, js_engine):
@@ -117,9 +117,9 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
 
   know_generated = suffix or start_funcs >= 0
 
-  minify_globals = 'registerizeAndMinify' in passes and 'asm' in passes
+  minify_globals = 'minifyNames' in passes and 'asm' in passes
   if minify_globals:
-    passes = map(lambda p: p if p != 'registerizeAndMinify' else 'registerize', passes)
+    passes = map(lambda p: p if p != 'minifyNames' else 'minifyLocals', passes)
     start_asm = js.find(start_asm_marker)
     end_asm = js.rfind(end_asm_marker)
     assert (start_asm >= 0) == (end_asm >= 0)
