@@ -510,6 +510,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_cube2md5(self):
     if self.emcc_args == None: return self.skip('needs emcc')
+    if not self.is_le32(): return self.skip('le32 needed for accurate math')
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), os.path.join(self.get_dir(), 'cube2md5.txt'))
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())

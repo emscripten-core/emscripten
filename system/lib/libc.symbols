@@ -89,6 +89,7 @@
          W pvalloc
          W realloc
          W realloc_in_place
+         T scalbn
          T scalbnl
          T strtod
          W strtod_l

@@ -1456,6 +1456,7 @@ try:
          'shgetc.c',
         ]],
         ['math', [
+         'scalbn.c',
          'scalbnl.c',
         ]],
         ['stdio', [
@@ -1556,7 +1557,6 @@ try:
           'lgammaf.c',
           'lgammaf_r.c',
           'lgammal.c',
-          'scalbn.c',
           'scalbnf.c',
           'signgam.c',
           'tgamma.c',

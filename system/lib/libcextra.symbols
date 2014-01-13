@@ -81,7 +81,6 @@
          T regerror
          T regexec
          T regfree
-         T scalbn
          T scalbnf
          D signgam
          T strcasecmp_l
