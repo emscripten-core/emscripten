@@ -1950,9 +1950,9 @@ LibraryManager.library = {
         }
 
         // Handle precision.
-        var precisionSet = false;
+        var precisionSet = false, precision = -1;
         if (next == {{{ charCode('.') }}}) {
-          var precision = 0;
+          precision = 0;
           precisionSet = true;
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
@@ -1969,9 +1969,8 @@ LibraryManager.library = {
             }
           }
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-        } else {
-          var precision = 6; // Standard default.
         }
+        if (precision === -1) precision = 6; // Standard default.
 
         // Handle integer sizes. WARNING: These assume a 32-bit architecture!
         var argSize;
