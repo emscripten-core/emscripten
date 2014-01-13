@@ -11,10 +11,6 @@ define linkonce_odr i32 @main() align 2 {
 label555:                                     ; preds = %0
   br label %label569 ; branch should ignore all code after it in the block
                                               ; No predecessors!
-  %aa472 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
-          cleanup
-  %aa473 = extractvalue { i8*, i32 } %aa472, 0
-  %aa474 = extractvalue { i8*, i32 } %aa472, 1
   br label %label569
 
 label569:                                     ; preds = %0
@@ -23,10 +19,6 @@ label569:                                     ; preds = %0
 label990:
   ret i32 0 ; ret should ignore all code after it in the block
                                               ; No predecessors!
-  %a472 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
-          cleanup
-  %a473 = extractvalue { i8*, i32 } %a472, 0
-  %a474 = extractvalue { i8*, i32 } %a472, 1
   br label %label569
 
 label999:                                     ; preds = %555
