@@ -284,9 +284,33 @@ f.close()
     if WINDOWS:
       generators = ['MinGW Makefiles', 'NMake Makefiles']
     else:
-      generators = ['Unix Makefiles']
+      generators = ['Unix Makefiles', 'Ninja', 'Eclipse CDT4 - Ninja']
 
-    make_commands = { 'MinGW Makefiles': ['mingw32-make'], 'NMake Makefiles': ['nmake', '/NOLOGO'], 'Unix Makefiles': ['make'] }
+    def nmake_detect_error(configuration):
+      if Building.which(configuration['build'][0]):
+        return None
+      else:
+        return 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
+
+    def check_makefile(configuration, dirname):
+      assert os.path.exists(dirname + '/Makefile'), 'CMake call did not produce a Makefile!'
+
+    configurations = { 'MinGW Makefiles'     : { 'prebuild': check_makefile,
+                                                 'build'   : ['mingw32-make'],
+                                                 
+                       },
+                       'NMake Makefiles'     : { 'detect'  : nmake_detect_error,
+                                                 'prebuild': check_makefile,
+                                                 'build'   : ['nmake', '/NOLOGO'],
+                       },
+                       'Unix Makefiles'      : { 'prebuild': check_makefile,
+                                                 'build'   : ['make'],
+                       },
+                       'Ninja'               : { 'build'   : ['ninja'],
+                       },
+                       'Eclipse CDT4 - Ninja': { 'build'   : ['ninja'],
+                       }
+    }
 
     if os.name == 'nt':
       emconfigure = path_from_root('emconfigure.bat')
@@ -294,11 +318,37 @@ f.close()
       emconfigure = path_from_root('emconfigure')
 
     for generator in generators:
-      if generator == 'NMake Makefiles' and not Building.which('nmake'):
-        print >> sys.stderr, 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
+      conf = configurations[generator]
+
+      make = conf['build']
+
+      try:
+        detector = conf['detect']
+      except KeyError:
+        detector = None
+
+      if detector:
+        error = detector(conf)
+      elif len(make) == 1 and not Building.which(make[0]):
+        # Use simple test if applicable
+        error = 'Skipping %s test for CMake support, since it could not be detected.' % generator
+      else:
+        error = None
+
+      if error:
+        print >> sys.stderr, error
         continue
 
-      make = make_commands[generator]
+      try:
+        prebuild = conf['prebuild']
+      except KeyError:
+        prebuild = None
+
+      try:
+        postbuild = conf['postbuild']
+      except KeyError:
+        postbuild = None
+
       cmake_cases = ['target_js', 'target_html']
       cmake_outputs = ['test_cmake.js', 'hello_world_gles.html']
       for i in range(0, 2):
@@ -331,7 +381,9 @@ f.close()
                 logging.error('Failed command: ' + ' '.join(cmd))
                 logging.error('Result:\n' + ret[1])
                 raise Exception('cmake call failed!')
-              assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
+
+              if prebuild:
+                prebuild(configuration, tempdirname)
 
               # Build
               cmd = make + (['VERBOSE=1'] if verbose_level >= 3 else [])
@@ -343,6 +395,9 @@ f.close()
                 logging.error('Result:\n' + ret[0])
                 raise Exception('make failed!')
               assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
+
+              if postbuild:
+                postbuild(configuration, tempdirname)
 
               # Run through node, if CMake produced a .js file.
               if cmake_outputs[i].endswith('.js'):
