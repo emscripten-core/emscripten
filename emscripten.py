@@ -873,6 +873,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
 
+  # Add named globals
+  named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])
+  pre = pre.replace('// === Body ===', '// === Body ===\n' + named_globals + '\n')
+
   #if DEBUG: outfile.write('// pre\n')
   outfile.write(pre)
   pre = None
