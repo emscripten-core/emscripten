@@ -3585,6 +3585,7 @@ ok
         printf("%g\n", strtod("123e-250", &endptr));
         printf("%g\n", strtod("123e-450", &endptr));
         printf("%g\n", strtod("0x6", &endptr));
+        printf("%g\n", strtod("-0x0p+0", &endptr));
 
         char str[] = "  12.34e56end";
         printf("%g\n", strtod(str, &endptr));
@@ -3618,6 +3619,7 @@ ok
       1.23e-248
       0
       6
+      -0
       1.234e+57
       10
       inf
