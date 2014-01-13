@@ -1191,6 +1191,7 @@ void Relooper::SetOutputBuffer(char *Buffer, int Size) {
 }
 
 void Relooper::MakeOutputBuffer(int Size) {
+  if (OutputBufferRoot && OutputBufferSize >= Size && OutputBufferOwned) return;
   OutputBufferRoot = OutputBuffer = (char*)malloc(Size);
   OutputBufferSize = Size;
   OutputBufferOwned = true;
