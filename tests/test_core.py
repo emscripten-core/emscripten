@@ -1336,8 +1336,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, 'success')
 
   def test_typed_exceptions(self):
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
       src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
