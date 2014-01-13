@@ -872,6 +872,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   for key in metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys(): # XXX perf
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
+  implemented_functions = set(metadata['implementedFunctions'])
 
   # Add named globals
   named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])
@@ -925,7 +926,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         Counter.j += 1
         newline = Counter.j % 30 == 29
         if item == '0': return bad if not newline else (bad + '\n')
-        if item not in metadata['implementedFunctions']:
+        if item not in implemented_functions:
           # this is imported into asm, we must wrap it
           call_ident = item
           if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
@@ -1025,7 +1026,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       pass
     # If no named globals, only need externals
     global_vars = metadata['externs'] #+ forwarded_json['Variables']['globals']
-    global_funcs = list(set(['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(set(metadata['implementedFunctions'])))
+    global_funcs = list(set(['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
