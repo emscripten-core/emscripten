@@ -9,4 +9,5 @@ Differences from upstream musl include:
 * We flag __assert_fail as _Noreturn.
 * Disable FLOCK, FUNLOCK and FFINALLOCK
 * Simplify fputwc to not rely on musl stream internals
+* signgam is no longer a weak alias of __signgam.
 
