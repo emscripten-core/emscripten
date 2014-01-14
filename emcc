@@ -1441,19 +1441,14 @@ try:
         'dlmalloc.c',
         os.path.join('libcxx', 'new.cpp'),
         os.path.join('libc', 'stdlib', 'getopt_long.c'),
-        os.path.join('libc', 'gen', 'err.c'),
-        os.path.join('libc', 'gen', 'errx.c'),
-        os.path.join('libc', 'gen', 'warn.c'),
-        os.path.join('libc', 'gen', 'warnx.c'),
-        os.path.join('libc', 'gen', 'verr.c'),
-        os.path.join('libc', 'gen', 'verrx.c'),
-        os.path.join('libc', 'gen', 'vwarn.c'),
-        os.path.join('libc', 'gen', 'vwarnx.c'),
       ]
       musl_files = [
         ['internal', [
          'floatscan.c',
          'shgetc.c',
+        ]],
+        ['legacy', [
+         'err.c',
         ]],
         ['math', [
          'scalbn.c',
