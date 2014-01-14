@@ -1449,9 +1449,25 @@ try:
         os.path.join('libc', 'gen', 'verrx.c'),
         os.path.join('libc', 'gen', 'vwarn.c'),
         os.path.join('libc', 'gen', 'vwarnx.c'),
-        os.path.join('libc', 'stdlib', 'strtod.c'),
       ]
       musl_files = [
+        ['internal', [
+         'floatscan.c',
+         'shgetc.c',
+        ]],
+        ['math', [
+         'scalbn.c',
+         'scalbnl.c',
+        ]],
+        ['stdio', [
+         '__overflow.c',
+         '__toread.c',
+         '__uflow.c',
+        ]],
+        ['stdlib', [
+         'atof.c',
+         'strtod.c',
+        ]]
       ]
       for directory, sources in musl_files:
         libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
@@ -1492,6 +1508,9 @@ try:
           'wctrans.c',
           'wcwidth.c',
          ]],
+         ['internal', [
+          'intscan.c',
+         ]],
          ['locale', [
           'iconv.c',
           'iswalnum_l.c',
@@ -1507,7 +1526,9 @@ try:
           'iswspace_l.c',
           'iswupper_l.c',
           'iswxdigit_l.c',
+          'strcasecmp_l.c',
           'strfmon.c',
+          'strncasecmp_l.c',
           'strxfrm.c',
           'towctrans_l.c',
           'towlower_l.c',
@@ -1518,6 +1539,29 @@ try:
           'wcsxfrm_l.c',
           'wctrans_l.c',
           'wctype_l.c',
+         ]],
+         ['math', [
+          '__cosdf.c',
+          '__sindf.c',
+          'ilogb.c',
+          'ilogbf.c',
+          'ilogbl.c',
+          'ldexp.c',
+          'ldexpf.c',
+          'ldexpl.c',
+          'logb.c',
+          'logbf.c',
+          'logbl.c',
+          'lgamma.c',
+          'lgamma_r.c',
+          'lgammaf.c',
+          'lgammaf_r.c',
+          'lgammal.c',
+          'scalbnf.c',
+          'signgam.c',
+          'tgamma.c',
+          'tgammaf.c',
+          'tgammal.c'
          ]],
          ['multibyte', [
           'btowc.c',
@@ -1554,8 +1598,20 @@ try:
            'ecvt.c',
            'fcvt.c',
            'gcvt.c',
+           'wcstod.c',
+           'wcstol.c',
          ]],
          ['string', [
+           'memccpy.c',
+           'memmem.c',
+           'mempcpy.c',
+           'memrchr.c',
+           'strcasestr.c',
+           'strchrnul.c',
+           'strlcat.c',
+           'strlcpy.c',
+           'strsep.c',
+           'strverscmp.c',
            'wcpcpy.c',
            'wcpncpy.c',
            'wcscasecmp.c',
