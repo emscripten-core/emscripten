@@ -4090,6 +4090,12 @@ def process(filename):
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
+  def test_wprintf(self):
+    if self.emcc_args is None: return self.skip('requires libcxx')
+    test_path = path_from_root('tests', 'core', 'test_wprintf')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 

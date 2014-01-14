@@ -7,3 +7,6 @@ Differences from upstream musl include:
   ino_t, dev_t, blkcnt_t, fsblkcnt_t, fsfilcnt_t, rlim_t.
 * We don't define _POSIX_SHARED_MEMORY_OBJECTS.
 * We flag __assert_fail as _Noreturn.
+* Disable FLOCK, FUNLOCK and FFINALLOCK
+* Simplify fputwc to not rely on musl stream internals
+

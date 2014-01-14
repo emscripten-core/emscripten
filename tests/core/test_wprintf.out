@@ -1,0 +1,8 @@
+Characters: a A 
+Decimals: 1977 650000
+Preceding with blanks:       1977 
+Preceding with zeros: 0000001977 
+Some different radixes: 100 64 144 0x64 0144 
+floats: 3.14 +3e+00 3.141600E+00 
+Width trick:    10 
+A wide string 

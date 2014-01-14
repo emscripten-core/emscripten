@@ -1593,6 +1593,7 @@ try:
           'vswprintf.c',
           'vwprintf.c',
           'wprintf.c',
+          'fputwc.c',
          ]],
          ['stdlib', [
            'ecvt.c',

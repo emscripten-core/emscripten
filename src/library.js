@@ -9172,6 +9172,10 @@ LibraryManager.library = {
     tempRet0 = 0;
     return (high >>> (bits - 32))|0;
   },
+
+  // misc shims for musl
+  __lockfile: function() { return 1 },
+  __unlockfile: function(){},
 };
 
 function autoAddDeps(object, name) {
@@ -9184,7 +9188,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose', 'fputwc', '__lockfile', '__unlockfile'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
 });
 
