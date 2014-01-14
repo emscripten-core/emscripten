@@ -52,8 +52,6 @@
          T atof
          W bulk_free
          W calloc
-         T err
-         T errx
          W free
          W independent_calloc
          W independent_comalloc
@@ -81,9 +79,3 @@
          T strtold
          W strtold_l
          W valloc
-         T verr
-         T verrx
-         T vwarn
-         T vwarnx
-         T warn
-         T warnx

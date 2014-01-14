@@ -1446,9 +1446,6 @@ try:
          'floatscan.c',
          'shgetc.c',
         ]],
-        ['legacy', [
-         'err.c',
-        ]],
         ['math', [
          'scalbn.c',
          'scalbnl.c',
@@ -1505,6 +1502,9 @@ try:
          ]],
          ['internal', [
           'intscan.c',
+         ]],
+         ['legacy', [
+          'err.c',
          ]],
          ['locale', [
           'iconv.c',
