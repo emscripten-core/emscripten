@@ -336,7 +336,7 @@ f.close()
         error = None
 
       if error:
-        print >> sys.stderr, error
+        logging.warning(error)
         continue
 
       try:
