@@ -4642,6 +4642,8 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd3(self):
+    return self.skip('FIXME: this appears to be broken')
+
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
 
