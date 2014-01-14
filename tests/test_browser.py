@@ -1746,4 +1746,8 @@ keydown(100);keyup(100); // trigger the end
     # Now run test in browser
     self.btest(path_from_root('tests', 'uuid', 'test.c'), '1')
 
-
+  def test_glew(self):
+    self.btest(path_from_root('tests', 'glew.c'), expected='1')
+    self.btest(path_from_root('tests', 'glew.c'), args=['-s', 'LEGACY_GL_EMULATION=1'], expected='1')
+    self.btest(path_from_root('tests', 'glew.c'), args=['-DGLEW_MX'], expected='1')
+    self.btest(path_from_root('tests', 'glew.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-DGLEW_MX'], expected='1')

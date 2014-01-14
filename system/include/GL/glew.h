@@ -1,6 +1,839 @@
+/* GLEW 1.10.0 emulation include header
+ * this include file provides neccessary stuff to function with most GLEW programs.
+ * library_glew.js is also provided to support extensions and error strings
+ *
+ * This file is based on GLEW (1.10.0) and linaro fork generated include files.
+ *
+ * What it lacks:
+ * - Some constants and function declarations that are in GLEW 1.10.0 might be missing.
+ * - The real glew-es fork also includes normal GL constants and function pointers, this does not.
+ *
+ * Authors:
+ * - Jari Vetoniemi <mailroxas@gmail.com>
+ */
 
-// Basically do nothing, just use existing symbols
+#ifndef __glew_h__
+#define __glew_h__
+#define __GLEW_H__
 
-#include "SDL/SDL_opengl.h"
-#define glewInit() {}
+/* linaro fork (glew-es) support */
+#ifndef GLEW_USE_LIB_ES11
+#  define __GLEW_VERSION_ES11 0
+#else
+#  define __GLEW_VERSION_ES11 1
+#  include <SDL/SDL_opengles.h>
+#endif
 
+#ifndef GLEW_USE_LIB_ES20
+#  define __GLEW_VERSION_ES20 0
+#else
+#  define __GLEW_VERSION_ES20 1
+#  include <SDL/SDL_opengles2.h>
+#endif
+
+#if !__GLEW_VERSION_ES11 && !__GLEW_VERSION_ES20
+#  define __GLEW_NOT_ES 1
+#  include <SDL/SDL_opengl.h>
+#else
+#  define __GLEW_NOT_ES 0
+#endif
+
+/* report us up to GLEW_VERSION_2_1, when no GLEW_USE_LIB_ESXX is specified.
+ * in source, it's possible to #undef and redefine these constants, for
+ * better OpenGL path suitable for emscripten. */
+#define GLEW_VERSION_1_1 __GLEW_NOT_ES
+#define GLEW_VERSION_1_2 __GLEW_NOT_ES
+#define GLEW_VERSION_1_2_1 __GLEW_NOT_ES
+#define GLEW_VERSION_1_3 __GLEW_NOT_ES
+#define GLEW_VERSION_1_4 __GLEW_NOT_ES
+#define GLEW_VERSION_1_5 __GLEW_NOT_ES
+#define GLEW_VERSION_2_0 __GLEW_NOT_ES
+#define GLEW_VERSION_2_1 __GLEW_NOT_ES
+#define GLEW_VERSION_3_0 0
+#define GLEW_VERSION_3_1 0
+#define GLEW_VERSION_3_2 0
+#define GLEW_VERSION_3_3 0
+#define GLEW_VERSION_4_0 0
+#define GLEW_VERSION_4_1 0
+#define GLEW_VERSION_4_2 0
+#define GLEW_VERSION_4_3 0
+#define GLEW_VERSION_4_4 0
+
+/* linaro-fork (glew-es) version constants */
+#define GLEW_ES_VERSION_1_0 __GLEW_VERSION_ES11
+#define GLEW_ES_VERSION_2_0 __GLEW_VERSION_ES20
+
+/* string codes */
+#define GLEW_VERSION 1
+#define GLEW_VERSION_MAJOR 2
+#define GLEW_VERSION_MINOR 3
+#define GLEW_VERSION_MICRO 4
+
+/* error codes */
+#define GLEW_OK 0
+#define GLEW_NO_ERROR 0
+#define GLEW_ERROR_NO_GL_VERSION 1  /* missing GL version */
+#define GLEW_ERROR_GL_VERSION_10_ONLY 2  /* Need at least OpenGL 1.1 */
+#define GLEW_ERROR_GLX_VERSION_11_ONLY 3  /* Need at least GLX 1.2 */
+
+/* linaro-fork (glew-es) error codes */
+#define GLEW_ERROR_NOT_GLES_VERSION 4   /* Need to be OpenGL ES version */
+#define GLEW_ERROR_GLES_VERSION 5   /* Need to be desktop OpenGL version */
+#define GLEW_ERROR_NO_EGL_VERSION 6  /* missing EGL version */
+#define GLEW_ERROR_EGL_VERSION_10_ONLY 7 /* need at least EGL 1.1 */
+
+/* maps to glewGetExtension */
+#define GLEW_GET_VAR(x) glewGetExtension(#x)
+
+/* support GLEW constants, wrangling is done by SDL_opengl.h */
+#define GLEW_3DFX_multisample GLEW_GET_VAR(GL_3DFX_multisample)
+#define GLEW_3DFX_tbuffer GLEW_GET_VAR(GL_3DFX_tbuffer)
+#define GLEW_3DFX_texture_compression_FXT1 GLEW_GET_VAR(GL_3DFX_texture_compression_FXT1)
+#define GLEW_AMD_blend_minmax_factor GLEW_GET_VAR(GL_AMD_blend_minmax_factor)
+#define GLEW_AMD_conservative_depth GLEW_GET_VAR(GL_AMD_conservative_depth)
+#define GLEW_AMD_debug_output GLEW_GET_VAR(GL_AMD_debug_output)
+#define GLEW_AMD_depth_clamp_separate GLEW_GET_VAR(GL_AMD_depth_clamp_separate)
+#define GLEW_AMD_draw_buffers_blend GLEW_GET_VAR(GL_AMD_draw_buffers_blend)
+#define GLEW_AMD_interleaved_elements GLEW_GET_VAR(GL_AMD_interleaved_elements)
+#define GLEW_AMD_multi_draw_indirect GLEW_GET_VAR(GL_AMD_multi_draw_indirect)
+#define GLEW_AMD_name_gen_delete GLEW_GET_VAR(GL_AMD_name_gen_delete)
+#define GLEW_AMD_performance_monitor GLEW_GET_VAR(GL_AMD_performance_monitor)
+#define GLEW_AMD_pinned_memory GLEW_GET_VAR(GL_AMD_pinned_memory)
+#define GLEW_AMD_query_buffer_object GLEW_GET_VAR(GL_AMD_query_buffer_object)
+#define GLEW_AMD_sample_positions GLEW_GET_VAR(GL_AMD_sample_positions)
+#define GLEW_AMD_seamless_cubemap_per_texture GLEW_GET_VAR(GL_AMD_seamless_cubemap_per_texture)
+#define GLEW_AMD_shader_atomic_counter_ops GLEW_GET_VAR(GL_AMD_shader_atomic_counter_ops)
+#define GLEW_AMD_shader_stencil_export GLEW_GET_VAR(GL_AMD_shader_stencil_export)
+#define GLEW_AMD_shader_trinary_minmax GLEW_GET_VAR(GL_AMD_shader_trinary_minmax)
+#define GLEW_AMD_sparse_texture GLEW_GET_VAR(GL_AMD_sparse_texture)
+#define GLEW_AMD_stencil_operation_extended GLEW_GET_VAR(GL_AMD_stencil_operation_extended)
+#define GLEW_AMD_texture_texture4 GLEW_GET_VAR(GL_AMD_texture_texture4)
+#define GLEW_AMD_transform_feedback3_lines_triangles GLEW_GET_VAR(GL_AMD_transform_feedback3_lines_triangles)
+#define GLEW_AMD_vertex_shader_layer GLEW_GET_VAR(GL_AMD_vertex_shader_layer)
+#define GLEW_AMD_vertex_shader_tessellator GLEW_GET_VAR(GL_AMD_vertex_shader_tessellator)
+#define GLEW_AMD_vertex_shader_viewport_index GLEW_GET_VAR(GL_AMD_vertex_shader_viewport_index)
+#define GLEW_ANGLE_depth_texture GLEW_GET_VAR(GL_ANGLE_depth_texture)
+#define GLEW_ANGLE_framebuffer_blit GLEW_GET_VAR(GL_ANGLE_framebuffer_blit)
+#define GLEW_ANGLE_framebuffer_multisample GLEW_GET_VAR(GL_ANGLE_framebuffer_multisample)
+#define GLEW_ANGLE_instanced_arrays GLEW_GET_VAR(GL_ANGLE_instanced_arrays)
+#define GLEW_ANGLE_pack_reverse_row_order GLEW_GET_VAR(GL_ANGLE_pack_reverse_row_order)
+#define GLEW_ANGLE_program_binary GLEW_GET_VAR(GL_ANGLE_program_binary)
+#define GLEW_ANGLE_texture_compression_dxt1 GLEW_GET_VAR(GL_ANGLE_texture_compression_dxt1)
+#define GLEW_ANGLE_texture_compression_dxt3 GLEW_GET_VAR(GL_ANGLE_texture_compression_dxt3)
+#define GLEW_ANGLE_texture_compression_dxt5 GLEW_GET_VAR(GL_ANGLE_texture_compression_dxt5)
+#define GLEW_ANGLE_texture_usage GLEW_GET_VAR(GL_ANGLE_texture_usage)
+#define GLEW_ANGLE_timer_query GLEW_GET_VAR(GL_ANGLE_timer_query)
+#define GLEW_ANGLE_translated_shader_source GLEW_GET_VAR(GL_ANGLE_translated_shader_source)
+#define GLEW_APPLE_aux_depth_stencil GLEW_GET_VAR(GL_APPLE_aux_depth_stencil)
+#define GLEW_APPLE_client_storage GLEW_GET_VAR(GL_APPLE_client_storage)
+#define GLEW_APPLE_element_array GLEW_GET_VAR(GL_APPLE_element_array)
+#define GLEW_APPLE_fence GLEW_GET_VAR(GL_APPLE_fence)
+#define GLEW_APPLE_float_pixels GLEW_GET_VAR(GL_APPLE_float_pixels)
+#define GLEW_APPLE_flush_buffer_range GLEW_GET_VAR(GL_APPLE_flush_buffer_range)
+#define GLEW_APPLE_object_purgeable GLEW_GET_VAR(GL_APPLE_object_purgeable)
+#define GLEW_APPLE_pixel_buffer GLEW_GET_VAR(GL_APPLE_pixel_buffer)
+#define GLEW_APPLE_rgb_422 GLEW_GET_VAR(GL_APPLE_rgb_422)
+#define GLEW_APPLE_row_bytes GLEW_GET_VAR(GL_APPLE_row_bytes)
+#define GLEW_APPLE_specular_vector GLEW_GET_VAR(GL_APPLE_specular_vector)
+#define GLEW_APPLE_texture_range GLEW_GET_VAR(GL_APPLE_texture_range)
+#define GLEW_APPLE_transform_hint GLEW_GET_VAR(GL_APPLE_transform_hint)
+#define GLEW_APPLE_vertex_array_object GLEW_GET_VAR(GL_APPLE_vertex_array_object)
+#define GLEW_APPLE_vertex_array_range GLEW_GET_VAR(GL_APPLE_vertex_array_range)
+#define GLEW_APPLE_vertex_program_evaluators GLEW_GET_VAR(GL_APPLE_vertex_program_evaluators)
+#define GLEW_APPLE_ycbcr_422 GLEW_GET_VAR(GL_APPLE_ycbcr_422)
+#define GLEW_ARB_ES2_compatibility GLEW_GET_VAR(GL_ARB_ES2_compatibility)
+#define GLEW_ARB_ES3_compatibility GLEW_GET_VAR(GL_ARB_ES3_compatibility)
+#define GLEW_ARB_arrays_of_arrays GLEW_GET_VAR(GL_ARB_arrays_of_arrays)
+#define GLEW_ARB_base_instance GLEW_GET_VAR(GL_ARB_base_instance)
+#define GLEW_ARB_bindless_texture GLEW_GET_VAR(GL_ARB_bindless_texture)
+#define GLEW_ARB_blend_func_extended GLEW_GET_VAR(GL_ARB_blend_func_extended)
+#define GLEW_ARB_buffer_storage GLEW_GET_VAR(GL_ARB_buffer_storage)
+#define GLEW_ARB_cl_event GLEW_GET_VAR(GL_ARB_cl_event)
+#define GLEW_ARB_clear_buffer_object GLEW_GET_VAR(GL_ARB_clear_buffer_object)
+#define GLEW_ARB_clear_texture GLEW_GET_VAR(GL_ARB_clear_texture)
+#define GLEW_ARB_color_buffer_float GLEW_GET_VAR(GL_ARB_color_buffer_float)
+#define GLEW_ARB_compatibility GLEW_GET_VAR(GL_ARB_compatibility)
+#define GLEW_ARB_compressed_texture_pixel_storage GLEW_GET_VAR(GL_ARB_compressed_texture_pixel_storage)
+#define GLEW_ARB_compute_shader GLEW_GET_VAR(GL_ARB_compute_shader)
+#define GLEW_ARB_compute_variable_group_size GLEW_GET_VAR(GL_ARB_compute_variable_group_size)
+#define GLEW_ARB_conservative_depth GLEW_GET_VAR(GL_ARB_conservative_depth)
+#define GLEW_ARB_copy_buffer GLEW_GET_VAR(GL_ARB_copy_buffer)
+#define GLEW_ARB_copy_image GLEW_GET_VAR(GL_ARB_copy_image)
+#define GLEW_ARB_debug_output GLEW_GET_VAR(GL_ARB_debug_output)
+#define GLEW_ARB_depth_buffer_float GLEW_GET_VAR(GL_ARB_depth_buffer_float)
+#define GLEW_ARB_depth_clamp GLEW_GET_VAR(GL_ARB_depth_clamp)
+#define GLEW_ARB_depth_texture GLEW_GET_VAR(GL_ARB_depth_texture)
+#define GLEW_ARB_draw_buffers GLEW_GET_VAR(GL_ARB_draw_buffers)
+#define GLEW_ARB_draw_buffers_blend GLEW_GET_VAR(GL_ARB_draw_buffers_blend)
+#define GLEW_ARB_draw_elements_base_vertex GLEW_GET_VAR(GL_ARB_draw_elements_base_vertex)
+#define GLEW_ARB_draw_indirect GLEW_GET_VAR(GL_ARB_draw_indirect)
+#define GLEW_ARB_draw_instanced GLEW_GET_VAR(GL_ARB_draw_instanced)
+#define GLEW_ARB_enhanced_layouts GLEW_GET_VAR(GL_ARB_enhanced_layouts)
+#define GLEW_ARB_explicit_attrib_location GLEW_GET_VAR(GL_ARB_explicit_attrib_location)
+#define GLEW_ARB_explicit_uniform_location GLEW_GET_VAR(GL_ARB_explicit_uniform_location)
+#define GLEW_ARB_fragment_coord_conventions GLEW_GET_VAR(GL_ARB_fragment_coord_conventions)
+#define GLEW_ARB_fragment_layer_viewport GLEW_GET_VAR(GL_ARB_fragment_layer_viewport)
+#define GLEW_ARB_fragment_program GLEW_GET_VAR(GL_ARB_fragment_program)
+#define GLEW_ARB_fragment_program_shadow GLEW_GET_VAR(GL_ARB_fragment_program_shadow)
+#define GLEW_ARB_fragment_shader GLEW_GET_VAR(GL_ARB_fragment_shader)
+#define GLEW_ARB_framebuffer_no_attachments GLEW_GET_VAR(GL_ARB_framebuffer_no_attachments)
+#define GLEW_ARB_framebuffer_object GLEW_GET_VAR(GL_ARB_framebuffer_object)
+#define GLEW_ARB_framebuffer_sRGB GLEW_GET_VAR(GL_ARB_framebuffer_sRGB)
+#define GLEW_ARB_geometry_shader4 GLEW_GET_VAR(GL_ARB_geometry_shader4)
+#define GLEW_ARB_get_program_binary GLEW_GET_VAR(GL_ARB_get_program_binary)
+#define GLEW_ARB_gpu_shader5 GLEW_GET_VAR(GL_ARB_gpu_shader5)
+#define GLEW_ARB_gpu_shader_fp64 GLEW_GET_VAR(GL_ARB_gpu_shader_fp64)
+#define GLEW_ARB_half_float_pixel GLEW_GET_VAR(GL_ARB_half_float_pixel)
+#define GLEW_ARB_half_float_vertex GLEW_GET_VAR(GL_ARB_half_float_vertex)
+#define GLEW_ARB_imaging GLEW_GET_VAR(GL_ARB_imaging)
+#define GLEW_ARB_indirect_parameters GLEW_GET_VAR(GL_ARB_indirect_parameters)
+#define GLEW_ARB_instanced_arrays GLEW_GET_VAR(GL_ARB_instanced_arrays)
+#define GLEW_ARB_internalformat_query GLEW_GET_VAR(GL_ARB_internalformat_query)
+#define GLEW_ARB_internalformat_query2 GLEW_GET_VAR(GL_ARB_internalformat_query2)
+#define GLEW_ARB_invalidate_subdata GLEW_GET_VAR(GL_ARB_invalidate_subdata)
+#define GLEW_ARB_map_buffer_alignment GLEW_GET_VAR(GL_ARB_map_buffer_alignment)
+#define GLEW_ARB_map_buffer_range GLEW_GET_VAR(GL_ARB_map_buffer_range)
+#define GLEW_ARB_matrix_palette GLEW_GET_VAR(GL_ARB_matrix_palette)
+#define GLEW_ARB_multi_bind GLEW_GET_VAR(GL_ARB_multi_bind)
+#define GLEW_ARB_multi_draw_indirect GLEW_GET_VAR(GL_ARB_multi_draw_indirect)
+#define GLEW_ARB_multisample GLEW_GET_VAR(GL_ARB_multisample)
+#define GLEW_ARB_multitexture GLEW_GET_VAR(GL_ARB_multitexture)
+#define GLEW_ARB_occlusion_query GLEW_GET_VAR(GL_ARB_occlusion_query)
+#define GLEW_ARB_occlusion_query2 GLEW_GET_VAR(GL_ARB_occlusion_query2)
+#define GLEW_ARB_pixel_buffer_object GLEW_GET_VAR(GL_ARB_pixel_buffer_object)
+#define GLEW_ARB_point_parameters GLEW_GET_VAR(GL_ARB_point_parameters)
+#define GLEW_ARB_point_sprite GLEW_GET_VAR(GL_ARB_point_sprite)
+#define GLEW_ARB_program_interface_query GLEW_GET_VAR(GL_ARB_program_interface_query)
+#define GLEW_ARB_provoking_vertex GLEW_GET_VAR(GL_ARB_provoking_vertex)
+#define GLEW_ARB_query_buffer_object GLEW_GET_VAR(GL_ARB_query_buffer_object)
+#define GLEW_ARB_robust_buffer_access_behavior GLEW_GET_VAR(GL_ARB_robust_buffer_access_behavior)
+#define GLEW_ARB_robustness GLEW_GET_VAR(GL_ARB_robustness)
+#define GLEW_ARB_robustness_application_isolation GLEW_GET_VAR(GL_ARB_robustness_application_isolation)
+#define GLEW_ARB_robustness_share_group_isolation GLEW_GET_VAR(GL_ARB_robustness_share_group_isolation)
+#define GLEW_ARB_sample_shading GLEW_GET_VAR(GL_ARB_sample_shading)
+#define GLEW_ARB_sampler_objects GLEW_GET_VAR(GL_ARB_sampler_objects)
+#define GLEW_ARB_seamless_cube_map GLEW_GET_VAR(GL_ARB_seamless_cube_map)
+#define GLEW_ARB_seamless_cubemap_per_texture GLEW_GET_VAR(GL_ARB_seamless_cubemap_per_texture)
+#define GLEW_ARB_separate_shader_objects GLEW_GET_VAR(GL_ARB_separate_shader_objects)
+#define GLEW_ARB_shader_atomic_counters GLEW_GET_VAR(GL_ARB_shader_atomic_counters)
+#define GLEW_ARB_shader_bit_encoding GLEW_GET_VAR(GL_ARB_shader_bit_encoding)
+#define GLEW_ARB_shader_draw_parameters GLEW_GET_VAR(GL_ARB_shader_draw_parameters)
+#define GLEW_ARB_shader_group_vote GLEW_GET_VAR(GL_ARB_shader_group_vote)
+#define GLEW_ARB_shader_image_load_store GLEW_GET_VAR(GL_ARB_shader_image_load_store)
+#define GLEW_ARB_shader_image_size GLEW_GET_VAR(GL_ARB_shader_image_size)
+#define GLEW_ARB_shader_objects GLEW_GET_VAR(GL_ARB_shader_objects)
+#define GLEW_ARB_shader_precision GLEW_GET_VAR(GL_ARB_shader_precision)
+#define GLEW_ARB_shader_stencil_export GLEW_GET_VAR(GL_ARB_shader_stencil_export)
+#define GLEW_ARB_shader_storage_buffer_object GLEW_GET_VAR(GL_ARB_shader_storage_buffer_object)
+#define GLEW_ARB_shader_subroutine GLEW_GET_VAR(GL_ARB_shader_subroutine)
+#define GLEW_ARB_shader_texture_lod GLEW_GET_VAR(GL_ARB_shader_texture_lod)
+#define GLEW_ARB_shading_language_100 GLEW_GET_VAR(GL_ARB_shading_language_100)
+#define GLEW_ARB_shading_language_420pack GLEW_GET_VAR(GL_ARB_shading_language_420pack)
+#define GLEW_ARB_shading_language_include GLEW_GET_VAR(GL_ARB_shading_language_include)
+#define GLEW_ARB_shading_language_packing GLEW_GET_VAR(GL_ARB_shading_language_packing)
+#define GLEW_ARB_shadow GLEW_GET_VAR(GL_ARB_shadow)
+#define GLEW_ARB_shadow_ambient GLEW_GET_VAR(GL_ARB_shadow_ambient)
+#define GLEW_ARB_sparse_texture GLEW_GET_VAR(GL_ARB_sparse_texture)
+#define GLEW_ARB_stencil_texturing GLEW_GET_VAR(GL_ARB_stencil_texturing)
+#define GLEW_ARB_sync GLEW_GET_VAR(GL_ARB_sync)
+#define GLEW_ARB_tessellation_shader GLEW_GET_VAR(GL_ARB_tessellation_shader)
+#define GLEW_ARB_texture_border_clamp GLEW_GET_VAR(GL_ARB_texture_border_clamp)
+#define GLEW_ARB_texture_buffer_object GLEW_GET_VAR(GL_ARB_texture_buffer_object)
+#define GLEW_ARB_texture_buffer_object_rgb32 GLEW_GET_VAR(GL_ARB_texture_buffer_object_rgb32)
+#define GLEW_ARB_texture_buffer_range GLEW_GET_VAR(GL_ARB_texture_buffer_range)
+#define GLEW_ARB_texture_compression GLEW_GET_VAR(GL_ARB_texture_compression)
+#define GLEW_ARB_texture_compression_bptc GLEW_GET_VAR(GL_ARB_texture_compression_bptc)
+#define GLEW_ARB_texture_compression_rgtc GLEW_GET_VAR(GL_ARB_texture_compression_rgtc)
+#define GLEW_ARB_texture_cube_map GLEW_GET_VAR(GL_ARB_texture_cube_map)
+#define GLEW_ARB_texture_cube_map_array GLEW_GET_VAR(GL_ARB_texture_cube_map_array)
+#define GLEW_ARB_texture_env_add GLEW_GET_VAR(GL_ARB_texture_env_add)
+#define GLEW_ARB_texture_env_combine GLEW_GET_VAR(GL_ARB_texture_env_combine)
+#define GLEW_ARB_texture_env_crossbar GLEW_GET_VAR(GL_ARB_texture_env_crossbar)
+#define GLEW_ARB_texture_env_dot3 GLEW_GET_VAR(GL_ARB_texture_env_dot3)
+#define GLEW_ARB_texture_float GLEW_GET_VAR(GL_ARB_texture_float)
+#define GLEW_ARB_texture_gather GLEW_GET_VAR(GL_ARB_texture_gather)
+#define GLEW_ARB_texture_mirror_clamp_to_edge GLEW_GET_VAR(GL_ARB_texture_mirror_clamp_to_edge)
+#define GLEW_ARB_texture_mirrored_repeat GLEW_GET_VAR(GL_ARB_texture_mirrored_repeat)
+#define GLEW_ARB_texture_multisample GLEW_GET_VAR(GL_ARB_texture_multisample)
+#define GLEW_ARB_texture_non_power_of_two GLEW_GET_VAR(GL_ARB_texture_non_power_of_two)
+#define GLEW_ARB_texture_query_levels GLEW_GET_VAR(GL_ARB_texture_query_levels)
+#define GLEW_ARB_texture_query_lod GLEW_GET_VAR(GL_ARB_texture_query_lod)
+#define GLEW_ARB_texture_rectangle GLEW_GET_VAR(GL_ARB_texture_rectangle)
+#define GLEW_ARB_texture_rg GLEW_GET_VAR(GL_ARB_texture_rg)
+#define GLEW_ARB_texture_rgb10_a2ui GLEW_GET_VAR(GL_ARB_texture_rgb10_a2ui)
+#define GLEW_ARB_texture_stencil8 GLEW_GET_VAR(GL_ARB_texture_stencil8)
+#define GLEW_ARB_texture_storage GLEW_GET_VAR(GL_ARB_texture_storage)
+#define GLEW_ARB_texture_storage_multisample GLEW_GET_VAR(GL_ARB_texture_storage_multisample)
+#define GLEW_ARB_texture_swizzle GLEW_GET_VAR(GL_ARB_texture_swizzle)
+#define GLEW_ARB_texture_view GLEW_GET_VAR(GL_ARB_texture_view)
+#define GLEW_ARB_timer_query GLEW_GET_VAR(GL_ARB_timer_query)
+#define GLEW_ARB_transform_feedback2 GLEW_GET_VAR(GL_ARB_transform_feedback2)
+#define GLEW_ARB_transform_feedback3 GLEW_GET_VAR(GL_ARB_transform_feedback3)
+#define GLEW_ARB_transform_feedback_instanced GLEW_GET_VAR(GL_ARB_transform_feedback_instanced)
+#define GLEW_ARB_transpose_matrix GLEW_GET_VAR(GL_ARB_transpose_matrix)
+#define GLEW_ARB_uniform_buffer_object GLEW_GET_VAR(GL_ARB_uniform_buffer_object)
+#define GLEW_ARB_vertex_array_bgra GLEW_GET_VAR(GL_ARB_vertex_array_bgra)
+#define GLEW_ARB_vertex_array_object GLEW_GET_VAR(GL_ARB_vertex_array_object)
+#define GLEW_ARB_vertex_attrib_64bit GLEW_GET_VAR(GL_ARB_vertex_attrib_64bit)
+#define GLEW_ARB_vertex_attrib_binding GLEW_GET_VAR(GL_ARB_vertex_attrib_binding)
+#define GLEW_ARB_vertex_blend GLEW_GET_VAR(GL_ARB_vertex_blend)
+#define GLEW_ARB_vertex_buffer_object GLEW_GET_VAR(GL_ARB_vertex_buffer_object)
+#define GLEW_ARB_vertex_program GLEW_GET_VAR(GL_ARB_vertex_program)
+#define GLEW_ARB_vertex_shader GLEW_GET_VAR(GL_ARB_vertex_shader)
+#define GLEW_ARB_vertex_type_10f_11f_11f_rev GLEW_GET_VAR(GL_ARB_vertex_type_10f_11f_11f_rev)
+#define GLEW_ARB_vertex_type_2_10_10_10_rev GLEW_GET_VAR(GL_ARB_vertex_type_2_10_10_10_rev)
+#define GLEW_ARB_viewport_array GLEW_GET_VAR(GL_ARB_viewport_array)
+#define GLEW_ARB_window_pos GLEW_GET_VAR(GL_ARB_window_pos)
+#define GLEW_ATIX_point_sprites GLEW_GET_VAR(GL_ATIX_point_sprites)
+#define GLEW_ATIX_texture_env_combine3 GLEW_GET_VAR(GL_ATIX_texture_env_combine3)
+#define GLEW_ATIX_texture_env_route GLEW_GET_VAR(GL_ATIX_texture_env_route)
+#define GLEW_ATIX_vertex_shader_output_point_size GLEW_GET_VAR(GL_ATIX_vertex_shader_output_point_size)
+#define GLEW_ATI_draw_buffers GLEW_GET_VAR(GL_ATI_draw_buffers)
+#define GLEW_ATI_element_array GLEW_GET_VAR(GL_ATI_element_array)
+#define GLEW_ATI_envmap_bumpmap GLEW_GET_VAR(GL_ATI_envmap_bumpmap)
+#define GLEW_ATI_fragment_shader GLEW_GET_VAR(GL_ATI_fragment_shader)
+#define GLEW_ATI_map_object_buffer GLEW_GET_VAR(GL_ATI_map_object_buffer)
+#define GLEW_ATI_meminfo GLEW_GET_VAR(GL_ATI_meminfo)
+#define GLEW_ATI_pn_triangles GLEW_GET_VAR(GL_ATI_pn_triangles)
+#define GLEW_ATI_separate_stencil GLEW_GET_VAR(GL_ATI_separate_stencil)
+#define GLEW_ATI_shader_texture_lod GLEW_GET_VAR(GL_ATI_shader_texture_lod)
+#define GLEW_ATI_text_fragment_shader GLEW_GET_VAR(GL_ATI_text_fragment_shader)
+#define GLEW_ATI_texture_compression_3dc GLEW_GET_VAR(GL_ATI_texture_compression_3dc)
+#define GLEW_ATI_texture_env_combine3 GLEW_GET_VAR(GL_ATI_texture_env_combine3)
+#define GLEW_ATI_texture_float GLEW_GET_VAR(GL_ATI_texture_float)
+#define GLEW_ATI_texture_mirror_once GLEW_GET_VAR(GL_ATI_texture_mirror_once)
+#define GLEW_ATI_vertex_array_object GLEW_GET_VAR(GL_ATI_vertex_array_object)
+#define GLEW_ATI_vertex_attrib_array_object GLEW_GET_VAR(GL_ATI_vertex_attrib_array_object)
+#define GLEW_ATI_vertex_streams GLEW_GET_VAR(GL_ATI_vertex_streams)
+#define GLEW_EXT_422_pixels GLEW_GET_VAR(GL_EXT_422_pixels)
+#define GLEW_EXT_Cg_shader GLEW_GET_VAR(GL_EXT_Cg_shader)
+#define GLEW_EXT_abgr GLEW_GET_VAR(GL_EXT_abgr)
+#define GLEW_EXT_bgra GLEW_GET_VAR(GL_EXT_bgra)
+#define GLEW_EXT_bindable_uniform GLEW_GET_VAR(GL_EXT_bindable_uniform)
+#define GLEW_EXT_blend_color GLEW_GET_VAR(GL_EXT_blend_color)
+#define GLEW_EXT_blend_equation_separate GLEW_GET_VAR(GL_EXT_blend_equation_separate)
+#define GLEW_EXT_blend_func_separate GLEW_GET_VAR(GL_EXT_blend_func_separate)
+#define GLEW_EXT_blend_logic_op GLEW_GET_VAR(GL_EXT_blend_logic_op)
+#define GLEW_EXT_blend_minmax GLEW_GET_VAR(GL_EXT_blend_minmax)
+#define GLEW_EXT_blend_subtract GLEW_GET_VAR(GL_EXT_blend_subtract)
+#define GLEW_EXT_clip_volume_hint GLEW_GET_VAR(GL_EXT_clip_volume_hint)
+#define GLEW_EXT_cmyka GLEW_GET_VAR(GL_EXT_cmyka)
+#define GLEW_EXT_color_subtable GLEW_GET_VAR(GL_EXT_color_subtable)
+#define GLEW_EXT_compiled_vertex_array GLEW_GET_VAR(GL_EXT_compiled_vertex_array)
+#define GLEW_EXT_convolution GLEW_GET_VAR(GL_EXT_convolution)
+#define GLEW_EXT_coordinate_frame GLEW_GET_VAR(GL_EXT_coordinate_frame)
+#define GLEW_EXT_copy_texture GLEW_GET_VAR(GL_EXT_copy_texture)
+#define GLEW_EXT_cull_vertex GLEW_GET_VAR(GL_EXT_cull_vertex)
+#define GLEW_EXT_debug_label GLEW_GET_VAR(GL_EXT_debug_label)
+#define GLEW_EXT_debug_marker GLEW_GET_VAR(GL_EXT_debug_marker)
+#define GLEW_EXT_depth_bounds_test GLEW_GET_VAR(GL_EXT_depth_bounds_test)
+#define GLEW_EXT_direct_state_access GLEW_GET_VAR(GL_EXT_direct_state_access)
+#define GLEW_EXT_draw_buffers2 GLEW_GET_VAR(GL_EXT_draw_buffers2)
+#define GLEW_EXT_draw_instanced GLEW_GET_VAR(GL_EXT_draw_instanced)
+#define GLEW_EXT_draw_range_elements GLEW_GET_VAR(GL_EXT_draw_range_elements)
+#define GLEW_EXT_fog_coord GLEW_GET_VAR(GL_EXT_fog_coord)
+#define GLEW_EXT_fragment_lighting GLEW_GET_VAR(GL_EXT_fragment_lighting)
+#define GLEW_EXT_framebuffer_blit GLEW_GET_VAR(GL_EXT_framebuffer_blit)
+#define GLEW_EXT_framebuffer_multisample GLEW_GET_VAR(GL_EXT_framebuffer_multisample)
+#define GLEW_EXT_framebuffer_multisample_blit_scaled GLEW_GET_VAR(GL_EXT_framebuffer_multisample_blit_scaled)
+#define GLEW_EXT_framebuffer_object GLEW_GET_VAR(GL_EXT_framebuffer_object)
+#define GLEW_EXT_framebuffer_sRGB GLEW_GET_VAR(GL_EXT_framebuffer_sRGB)
+#define GLEW_EXT_geometry_shader4 GLEW_GET_VAR(GL_EXT_geometry_shader4)
+#define GLEW_EXT_gpu_program_parameters GLEW_GET_VAR(GL_EXT_gpu_program_parameters)
+#define GLEW_EXT_gpu_shader4 GLEW_GET_VAR(GL_EXT_gpu_shader4)
+#define GLEW_EXT_histogram GLEW_GET_VAR(GL_EXT_histogram)
+#define GLEW_EXT_index_array_formats GLEW_GET_VAR(GL_EXT_index_array_formats)
+#define GLEW_EXT_index_func GLEW_GET_VAR(GL_EXT_index_func)
+#define GLEW_EXT_index_material GLEW_GET_VAR(GL_EXT_index_material)
+#define GLEW_EXT_index_texture GLEW_GET_VAR(GL_EXT_index_texture)
+#define GLEW_EXT_light_texture GLEW_GET_VAR(GL_EXT_light_texture)
+#define GLEW_EXT_misc_attribute GLEW_GET_VAR(GL_EXT_misc_attribute)
+#define GLEW_EXT_multi_draw_arrays GLEW_GET_VAR(GL_EXT_multi_draw_arrays)
+#define GLEW_EXT_multisample GLEW_GET_VAR(GL_EXT_multisample)
+#define GLEW_EXT_packed_depth_stencil GLEW_GET_VAR(GL_EXT_packed_depth_stencil)
+#define GLEW_EXT_packed_float GLEW_GET_VAR(GL_EXT_packed_float)
+#define GLEW_EXT_packed_pixels GLEW_GET_VAR(GL_EXT_packed_pixels)
+#define GLEW_EXT_paletted_texture GLEW_GET_VAR(GL_EXT_paletted_texture)
+#define GLEW_EXT_pixel_buffer_object GLEW_GET_VAR(GL_EXT_pixel_buffer_object)
+#define GLEW_EXT_pixel_transform GLEW_GET_VAR(GL_EXT_pixel_transform)
+#define GLEW_EXT_pixel_transform_color_table GLEW_GET_VAR(GL_EXT_pixel_transform_color_table)
+#define GLEW_EXT_point_parameters GLEW_GET_VAR(GL_EXT_point_parameters)
+#define GLEW_EXT_polygon_offset GLEW_GET_VAR(GL_EXT_polygon_offset)
+#define GLEW_EXT_provoking_vertex GLEW_GET_VAR(GL_EXT_provoking_vertex)
+#define GLEW_EXT_rescale_normal GLEW_GET_VAR(GL_EXT_rescale_normal)
+#define GLEW_EXT_scene_marker GLEW_GET_VAR(GL_EXT_scene_marker)
+#define GLEW_EXT_secondary_color GLEW_GET_VAR(GL_EXT_secondary_color)
+#define GLEW_EXT_separate_shader_objects GLEW_GET_VAR(GL_EXT_separate_shader_objects)
+#define GLEW_EXT_separate_specular_color GLEW_GET_VAR(GL_EXT_separate_specular_color)
+#define GLEW_EXT_shader_image_load_store GLEW_GET_VAR(GL_EXT_shader_image_load_store)
+#define GLEW_EXT_shader_integer_mix GLEW_GET_VAR(GL_EXT_shader_integer_mix)
+#define GLEW_EXT_shadow_funcs GLEW_GET_VAR(GL_EXT_shadow_funcs)
+#define GLEW_EXT_shared_texture_palette GLEW_GET_VAR(GL_EXT_shared_texture_palette)
+#define GLEW_EXT_stencil_clear_tag GLEW_GET_VAR(GL_EXT_stencil_clear_tag)
+#define GLEW_EXT_stencil_two_side GLEW_GET_VAR(GL_EXT_stencil_two_side)
+#define GLEW_EXT_stencil_wrap GLEW_GET_VAR(GL_EXT_stencil_wrap)
+#define GLEW_EXT_subtexture GLEW_GET_VAR(GL_EXT_subtexture)
+#define GLEW_EXT_texture GLEW_GET_VAR(GL_EXT_texture)
+#define GLEW_EXT_texture3D GLEW_GET_VAR(GL_EXT_texture3D)
+#define GLEW_EXT_texture_array GLEW_GET_VAR(GL_EXT_texture_array)
+#define GLEW_EXT_texture_buffer_object GLEW_GET_VAR(GL_EXT_texture_buffer_object)
+#define GLEW_EXT_texture_compression_dxt1 GLEW_GET_VAR(GL_EXT_texture_compression_dxt1)
+#define GLEW_EXT_texture_compression_latc GLEW_GET_VAR(GL_EXT_texture_compression_latc)
+#define GLEW_EXT_texture_compression_rgtc GLEW_GET_VAR(GL_EXT_texture_compression_rgtc)
+#define GLEW_EXT_texture_compression_s3tc GLEW_GET_VAR(GL_EXT_texture_compression_s3tc)
+#define GLEW_EXT_texture_cube_map GLEW_GET_VAR(GL_EXT_texture_cube_map)
+#define GLEW_EXT_texture_edge_clamp GLEW_GET_VAR(GL_EXT_texture_edge_clamp)
+#define GLEW_EXT_texture_env GLEW_GET_VAR(GL_EXT_texture_env)
+#define GLEW_EXT_texture_env_add GLEW_GET_VAR(GL_EXT_texture_env_add)
+#define GLEW_EXT_texture_env_combine GLEW_GET_VAR(GL_EXT_texture_env_combine)
+#define GLEW_EXT_texture_env_dot3 GLEW_GET_VAR(GL_EXT_texture_env_dot3)
+#define GLEW_EXT_texture_filter_anisotropic GLEW_GET_VAR(GL_EXT_texture_filter_anisotropic)
+#define GLEW_EXT_texture_integer GLEW_GET_VAR(GL_EXT_texture_integer)
+#define GLEW_EXT_texture_lod_bias GLEW_GET_VAR(GL_EXT_texture_lod_bias)
+#define GLEW_EXT_texture_mirror_clamp GLEW_GET_VAR(GL_EXT_texture_mirror_clamp)
+#define GLEW_EXT_texture_object GLEW_GET_VAR(GL_EXT_texture_object)
+#define GLEW_EXT_texture_perturb_normal GLEW_GET_VAR(GL_EXT_texture_perturb_normal)
+#define GLEW_EXT_texture_rectangle GLEW_GET_VAR(GL_EXT_texture_rectangle)
+#define GLEW_EXT_texture_sRGB GLEW_GET_VAR(GL_EXT_texture_sRGB)
+#define GLEW_EXT_texture_sRGB_decode GLEW_GET_VAR(GL_EXT_texture_sRGB_decode)
+#define GLEW_EXT_texture_shared_exponent GLEW_GET_VAR(GL_EXT_texture_shared_exponent)
+#define GLEW_EXT_texture_snorm GLEW_GET_VAR(GL_EXT_texture_snorm)
+#define GLEW_EXT_texture_swizzle GLEW_GET_VAR(GL_EXT_texture_swizzle)
+#define GLEW_EXT_timer_query GLEW_GET_VAR(GL_EXT_timer_query)
+#define GLEW_EXT_transform_feedback GLEW_GET_VAR(GL_EXT_transform_feedback)
+#define GLEW_EXT_vertex_array GLEW_GET_VAR(GL_EXT_vertex_array)
+#define GLEW_EXT_vertex_array_bgra GLEW_GET_VAR(GL_EXT_vertex_array_bgra)
+#define GLEW_EXT_vertex_attrib_64bit GLEW_GET_VAR(GL_EXT_vertex_attrib_64bit)
+#define GLEW_EXT_vertex_shader GLEW_GET_VAR(GL_EXT_vertex_shader)
+#define GLEW_EXT_vertex_weighting GLEW_GET_VAR(GL_EXT_vertex_weighting)
+#define GLEW_EXT_x11_sync_object GLEW_GET_VAR(GL_EXT_x11_sync_object)
+#define GLEW_GREMEDY_frame_terminator GLEW_GET_VAR(GL_GREMEDY_frame_terminator)
+#define GLEW_GREMEDY_string_marker GLEW_GET_VAR(GL_GREMEDY_string_marker)
+#define GLEW_HP_convolution_border_modes GLEW_GET_VAR(GL_HP_convolution_border_modes)
+#define GLEW_HP_image_transform GLEW_GET_VAR(GL_HP_image_transform)
+#define GLEW_HP_occlusion_test GLEW_GET_VAR(GL_HP_occlusion_test)
+#define GLEW_HP_texture_lighting GLEW_GET_VAR(GL_HP_texture_lighting)
+#define GLEW_IBM_cull_vertex GLEW_GET_VAR(GL_IBM_cull_vertex)
+#define GLEW_IBM_multimode_draw_arrays GLEW_GET_VAR(GL_IBM_multimode_draw_arrays)
+#define GLEW_IBM_rasterpos_clip GLEW_GET_VAR(GL_IBM_rasterpos_clip)
+#define GLEW_IBM_static_data GLEW_GET_VAR(GL_IBM_static_data)
+#define GLEW_IBM_texture_mirrored_repeat GLEW_GET_VAR(GL_IBM_texture_mirrored_repeat)
+#define GLEW_IBM_vertex_array_lists GLEW_GET_VAR(GL_IBM_vertex_array_lists)
+#define GLEW_INGR_color_clamp GLEW_GET_VAR(GL_INGR_color_clamp)
+#define GLEW_INGR_interlace_read GLEW_GET_VAR(GL_INGR_interlace_read)
+#define GLEW_INTEL_fragment_shader_ordering GLEW_GET_VAR(GL_INTEL_fragment_shader_ordering)
+#define GLEW_INTEL_map_texture GLEW_GET_VAR(GL_INTEL_map_texture)
+#define GLEW_INTEL_parallel_arrays GLEW_GET_VAR(GL_INTEL_parallel_arrays)
+#define GLEW_INTEL_texture_scissor GLEW_GET_VAR(GL_INTEL_texture_scissor)
+#define GLEW_KHR_debug GLEW_GET_VAR(GL_KHR_debug)
+#define GLEW_KHR_texture_compression_astc_hdr GLEW_GET_VAR(GL_KHR_texture_compression_astc_hdr)
+#define GLEW_KHR_texture_compression_astc_ldr GLEW_GET_VAR(GL_KHR_texture_compression_astc_ldr)
+#define GLEW_KTX_buffer_region GLEW_GET_VAR(GL_KTX_buffer_region)
+#define GLEW_MESAX_texture_stack GLEW_GET_VAR(GL_MESAX_texture_stack)
+#define GLEW_MESA_pack_invert GLEW_GET_VAR(GL_MESA_pack_invert)
+#define GLEW_MESA_resize_buffers GLEW_GET_VAR(GL_MESA_resize_buffers)
+#define GLEW_MESA_window_pos GLEW_GET_VAR(GL_MESA_window_pos)
+#define GLEW_MESA_ycbcr_texture GLEW_GET_VAR(GL_MESA_ycbcr_texture)
+#define GLEW_NVX_conditional_render GLEW_GET_VAR(GL_NVX_conditional_render)
+#define GLEW_NVX_gpu_memory_info GLEW_GET_VAR(GL_NVX_gpu_memory_info)
+#define GLEW_NV_bindless_multi_draw_indirect GLEW_GET_VAR(GL_NV_bindless_multi_draw_indirect)
+#define GLEW_NV_bindless_texture GLEW_GET_VAR(GL_NV_bindless_texture)
+#define GLEW_NV_blend_equation_advanced GLEW_GET_VAR(GL_NV_blend_equation_advanced)
+#define GLEW_NV_blend_equation_advanced_coherent GLEW_GET_VAR(GL_NV_blend_equation_advanced_coherent)
+#define GLEW_NV_blend_square GLEW_GET_VAR(GL_NV_blend_square)
+#define GLEW_NV_compute_program5 GLEW_GET_VAR(GL_NV_compute_program5)
+#define GLEW_NV_conditional_render GLEW_GET_VAR(GL_NV_conditional_render)
+#define GLEW_NV_copy_depth_to_color GLEW_GET_VAR(GL_NV_copy_depth_to_color)
+#define GLEW_NV_copy_image GLEW_GET_VAR(GL_NV_copy_image)
+#define GLEW_NV_deep_texture3D GLEW_GET_VAR(GL_NV_deep_texture3D)
+#define GLEW_NV_depth_buffer_float GLEW_GET_VAR(GL_NV_depth_buffer_float)
+#define GLEW_NV_depth_clamp GLEW_GET_VAR(GL_NV_depth_clamp)
+#define GLEW_NV_depth_range_unclamped GLEW_GET_VAR(GL_NV_depth_range_unclamped)
+#define GLEW_NV_draw_texture GLEW_GET_VAR(GL_NV_draw_texture)
+#define GLEW_NV_evaluators GLEW_GET_VAR(GL_NV_evaluators)
+#define GLEW_NV_explicit_multisample GLEW_GET_VAR(GL_NV_explicit_multisample)
+#define GLEW_NV_fence GLEW_GET_VAR(GL_NV_fence)
+#define GLEW_NV_float_buffer GLEW_GET_VAR(GL_NV_float_buffer)
+#define GLEW_NV_fog_distance GLEW_GET_VAR(GL_NV_fog_distance)
+#define GLEW_NV_fragment_program GLEW_GET_VAR(GL_NV_fragment_program)
+#define GLEW_NV_fragment_program2 GLEW_GET_VAR(GL_NV_fragment_program2)
+#define GLEW_NV_fragment_program4 GLEW_GET_VAR(GL_NV_fragment_program4)
+#define GLEW_NV_fragment_program_option GLEW_GET_VAR(GL_NV_fragment_program_option)
+#define GLEW_NV_framebuffer_multisample_coverage GLEW_GET_VAR(GL_NV_framebuffer_multisample_coverage)
+#define GLEW_NV_geometry_program4 GLEW_GET_VAR(GL_NV_geometry_program4)
+#define GLEW_NV_geometry_shader4 GLEW_GET_VAR(GL_NV_geometry_shader4)
+#define GLEW_NV_gpu_program4 GLEW_GET_VAR(GL_NV_gpu_program4)
+#define GLEW_NV_gpu_program5 GLEW_GET_VAR(GL_NV_gpu_program5)
+#define GLEW_NV_gpu_program5_mem_extended GLEW_GET_VAR(GL_NV_gpu_program5_mem_extended)
+#define GLEW_NV_gpu_program_fp64 GLEW_GET_VAR(GL_NV_gpu_program_fp64)
+#define GLEW_NV_gpu_shader5 GLEW_GET_VAR(GL_NV_gpu_shader5)
+#define GLEW_NV_half_float GLEW_GET_VAR(GL_NV_half_float)
+#define GLEW_NV_light_max_exponent GLEW_GET_VAR(GL_NV_light_max_exponent)
+#define GLEW_NV_multisample_coverage GLEW_GET_VAR(GL_NV_multisample_coverage)
+#define GLEW_NV_multisample_filter_hint GLEW_GET_VAR(GL_NV_multisample_filter_hint)
+#define GLEW_NV_occlusion_query GLEW_GET_VAR(GL_NV_occlusion_query)
+#define GLEW_NV_packed_depth_stencil GLEW_GET_VAR(GL_NV_packed_depth_stencil)
+#define GLEW_NV_parameter_buffer_object GLEW_GET_VAR(GL_NV_parameter_buffer_object)
+#define GLEW_NV_parameter_buffer_object2 GLEW_GET_VAR(GL_NV_parameter_buffer_object2)
+#define GLEW_NV_path_rendering GLEW_GET_VAR(GL_NV_path_rendering)
+#define GLEW_NV_pixel_data_range GLEW_GET_VAR(GL_NV_pixel_data_range)
+#define GLEW_NV_point_sprite GLEW_GET_VAR(GL_NV_point_sprite)
+#define GLEW_NV_present_video GLEW_GET_VAR(GL_NV_present_video)
+#define GLEW_NV_primitive_restart GLEW_GET_VAR(GL_NV_primitive_restart)
+#define GLEW_NV_register_combiners GLEW_GET_VAR(GL_NV_register_combiners)
+#define GLEW_NV_register_combiners2 GLEW_GET_VAR(GL_NV_register_combiners2)
+#define GLEW_NV_shader_atomic_counters GLEW_GET_VAR(GL_NV_shader_atomic_counters)
+#define GLEW_NV_shader_atomic_float GLEW_GET_VAR(GL_NV_shader_atomic_float)
+#define GLEW_NV_shader_buffer_load GLEW_GET_VAR(GL_NV_shader_buffer_load)
+#define GLEW_NV_shader_storage_buffer_object GLEW_GET_VAR(GL_NV_shader_storage_buffer_object)
+#define GLEW_NV_tessellation_program5 GLEW_GET_VAR(GL_NV_tessellation_program5)
+#define GLEW_NV_texgen_emboss GLEW_GET_VAR(GL_NV_texgen_emboss)
+#define GLEW_NV_texgen_reflection GLEW_GET_VAR(GL_NV_texgen_reflection)
+#define GLEW_NV_texture_barrier GLEW_GET_VAR(GL_NV_texture_barrier)
+#define GLEW_NV_texture_compression_vtc GLEW_GET_VAR(GL_NV_texture_compression_vtc)
+#define GLEW_NV_texture_env_combine4 GLEW_GET_VAR(GL_NV_texture_env_combine4)
+#define GLEW_NV_texture_expand_normal GLEW_GET_VAR(GL_NV_texture_expand_normal)
+#define GLEW_NV_texture_multisample GLEW_GET_VAR(GL_NV_texture_multisample)
+#define GLEW_NV_texture_rectangle GLEW_GET_VAR(GL_NV_texture_rectangle)
+#define GLEW_NV_texture_shader GLEW_GET_VAR(GL_NV_texture_shader)
+#define GLEW_NV_texture_shader2 GLEW_GET_VAR(GL_NV_texture_shader2)
+#define GLEW_NV_texture_shader3 GLEW_GET_VAR(GL_NV_texture_shader3)
+#define GLEW_NV_transform_feedback GLEW_GET_VAR(GL_NV_transform_feedback)
+#define GLEW_NV_transform_feedback2 GLEW_GET_VAR(GL_NV_transform_feedback2)
+#define GLEW_NV_vdpau_interop GLEW_GET_VAR(GL_NV_vdpau_interop)
+#define GLEW_NV_vertex_array_range GLEW_GET_VAR(GL_NV_vertex_array_range)
+#define GLEW_NV_vertex_array_range2 GLEW_GET_VAR(GL_NV_vertex_array_range2)
+#define GLEW_NV_vertex_attrib_integer_64bit GLEW_GET_VAR(GL_NV_vertex_attrib_integer_64bit)
+#define GLEW_NV_vertex_buffer_unified_memory GLEW_GET_VAR(GL_NV_vertex_buffer_unified_memory)
+#define GLEW_NV_vertex_program GLEW_GET_VAR(GL_NV_vertex_program)
+#define GLEW_NV_vertex_program1_1 GLEW_GET_VAR(GL_NV_vertex_program1_1)
+#define GLEW_NV_vertex_program2 GLEW_GET_VAR(GL_NV_vertex_program2)
+#define GLEW_NV_vertex_program2_option GLEW_GET_VAR(GL_NV_vertex_program2_option)
+#define GLEW_NV_vertex_program3 GLEW_GET_VAR(GL_NV_vertex_program3)
+#define GLEW_NV_vertex_program4 GLEW_GET_VAR(GL_NV_vertex_program4)
+#define GLEW_NV_video_capture GLEW_GET_VAR(GL_NV_video_capture)
+#define GLEW_OES_byte_coordinates GLEW_GET_VAR(GL_OES_byte_coordinates)
+#define GLEW_OES_compressed_paletted_texture GLEW_GET_VAR(GL_OES_compressed_paletted_texture)
+#define GLEW_OES_read_format GLEW_GET_VAR(GL_OES_read_format)
+#define GLEW_OES_single_precision GLEW_GET_VAR(GL_OES_single_precision)
+#define GLEW_OML_interlace GLEW_GET_VAR(GL_OML_interlace)
+#define GLEW_OML_resample GLEW_GET_VAR(GL_OML_resample)
+#define GLEW_OML_subsample GLEW_GET_VAR(GL_OML_subsample)
+#define GLEW_PGI_misc_hints GLEW_GET_VAR(GL_PGI_misc_hints)
+#define GLEW_PGI_vertex_hints GLEW_GET_VAR(GL_PGI_vertex_hints)
+#define GLEW_REGAL_ES1_0_compatibility GLEW_GET_VAR(GL_REGAL_ES1_0_compatibility)
+#define GLEW_REGAL_ES1_1_compatibility GLEW_GET_VAR(GL_REGAL_ES1_1_compatibility)
+#define GLEW_REGAL_enable GLEW_GET_VAR(GL_REGAL_enable)
+#define GLEW_REGAL_error_string GLEW_GET_VAR(GL_REGAL_error_string)
+#define GLEW_REGAL_extension_query GLEW_GET_VAR(GL_REGAL_extension_query)
+#define GLEW_REGAL_log GLEW_GET_VAR(GL_REGAL_log)
+#define GLEW_REND_screen_coordinates GLEW_GET_VAR(GL_REND_screen_coordinates)
+#define GLEW_S3_s3tc GLEW_GET_VAR(GL_S3_s3tc)
+#define GLEW_SGIS_color_range GLEW_GET_VAR(GL_SGIS_color_range)
+#define GLEW_SGIS_detail_texture GLEW_GET_VAR(GL_SGIS_detail_texture)
+#define GLEW_SGIS_fog_function GLEW_GET_VAR(GL_SGIS_fog_function)
+#define GLEW_SGIS_generate_mipmap GLEW_GET_VAR(GL_SGIS_generate_mipmap)
+#define GLEW_SGIS_multisample GLEW_GET_VAR(GL_SGIS_multisample)
+#define GLEW_SGIS_pixel_texture GLEW_GET_VAR(GL_SGIS_pixel_texture)
+#define GLEW_SGIS_point_line_texgen GLEW_GET_VAR(GL_SGIS_point_line_texgen)
+#define GLEW_SGIS_sharpen_texture GLEW_GET_VAR(GL_SGIS_sharpen_texture)
+#define GLEW_SGIS_texture4D GLEW_GET_VAR(GL_SGIS_texture4D)
+#define GLEW_SGIS_texture_border_clamp GLEW_GET_VAR(GL_SGIS_texture_border_clamp)
+#define GLEW_SGIS_texture_edge_clamp GLEW_GET_VAR(GL_SGIS_texture_edge_clamp)
+#define GLEW_SGIS_texture_filter4 GLEW_GET_VAR(GL_SGIS_texture_filter4)
+#define GLEW_SGIS_texture_lod GLEW_GET_VAR(GL_SGIS_texture_lod)
+#define GLEW_SGIS_texture_select GLEW_GET_VAR(GL_SGIS_texture_select)
+#define GLEW_SGIX_async GLEW_GET_VAR(GL_SGIX_async)
+#define GLEW_SGIX_async_histogram GLEW_GET_VAR(GL_SGIX_async_histogram)
+#define GLEW_SGIX_async_pixel GLEW_GET_VAR(GL_SGIX_async_pixel)
+#define GLEW_SGIX_blend_alpha_minmax GLEW_GET_VAR(GL_SGIX_blend_alpha_minmax)
+#define GLEW_SGIX_clipmap GLEW_GET_VAR(GL_SGIX_clipmap)
+#define GLEW_SGIX_convolution_accuracy GLEW_GET_VAR(GL_SGIX_convolution_accuracy)
+#define GLEW_SGIX_depth_texture GLEW_GET_VAR(GL_SGIX_depth_texture)
+#define GLEW_SGIX_flush_raster GLEW_GET_VAR(GL_SGIX_flush_raster)
+#define GLEW_SGIX_fog_offset GLEW_GET_VAR(GL_SGIX_fog_offset)
+#define GLEW_SGIX_fog_texture GLEW_GET_VAR(GL_SGIX_fog_texture)
+#define GLEW_SGIX_fragment_specular_lighting GLEW_GET_VAR(GL_SGIX_fragment_specular_lighting)
+#define GLEW_SGIX_framezoom GLEW_GET_VAR(GL_SGIX_framezoom)
+#define GLEW_SGIX_interlace GLEW_GET_VAR(GL_SGIX_interlace)
+#define GLEW_SGIX_ir_instrument1 GLEW_GET_VAR(GL_SGIX_ir_instrument1)
+#define GLEW_SGIX_list_priority GLEW_GET_VAR(GL_SGIX_list_priority)
+#define GLEW_SGIX_pixel_texture GLEW_GET_VAR(GL_SGIX_pixel_texture)
+#define GLEW_SGIX_pixel_texture_bits GLEW_GET_VAR(GL_SGIX_pixel_texture_bits)
+#define GLEW_SGIX_reference_plane GLEW_GET_VAR(GL_SGIX_reference_plane)
+#define GLEW_SGIX_resample GLEW_GET_VAR(GL_SGIX_resample)
+#define GLEW_SGIX_shadow GLEW_GET_VAR(GL_SGIX_shadow)
+#define GLEW_SGIX_shadow_ambient GLEW_GET_VAR(GL_SGIX_shadow_ambient)
+#define GLEW_SGIX_sprite GLEW_GET_VAR(GL_SGIX_sprite)
+#define GLEW_SGIX_tag_sample_buffer GLEW_GET_VAR(GL_SGIX_tag_sample_buffer)
+#define GLEW_SGIX_texture_add_env GLEW_GET_VAR(GL_SGIX_texture_add_env)
+#define GLEW_SGIX_texture_coordinate_clamp GLEW_GET_VAR(GL_SGIX_texture_coordinate_clamp)
+#define GLEW_SGIX_texture_lod_bias GLEW_GET_VAR(GL_SGIX_texture_lod_bias)
+#define GLEW_SGIX_texture_multi_buffer GLEW_GET_VAR(GL_SGIX_texture_multi_buffer)
+#define GLEW_SGIX_texture_range GLEW_GET_VAR(GL_SGIX_texture_range)
+#define GLEW_SGIX_texture_scale_bias GLEW_GET_VAR(GL_SGIX_texture_scale_bias)
+#define GLEW_SGIX_vertex_preclip GLEW_GET_VAR(GL_SGIX_vertex_preclip)
+#define GLEW_SGIX_vertex_preclip_hint GLEW_GET_VAR(GL_SGIX_vertex_preclip_hint)
+#define GLEW_SGIX_ycrcb GLEW_GET_VAR(GL_SGIX_ycrcb)
+#define GLEW_SGI_color_matrix GLEW_GET_VAR(GL_SGI_color_matrix)
+#define GLEW_SGI_color_table GLEW_GET_VAR(GL_SGI_color_table)
+#define GLEW_SGI_texture_color_table GLEW_GET_VAR(GL_SGI_texture_color_table)
+#define GLEW_SUNX_constant_data GLEW_GET_VAR(GL_SUNX_constant_data)
+#define GLEW_SUN_convolution_border_modes GLEW_GET_VAR(GL_SUN_convolution_border_modes)
+#define GLEW_SUN_global_alpha GLEW_GET_VAR(GL_SUN_global_alpha)
+#define GLEW_SUN_mesh_array GLEW_GET_VAR(GL_SUN_mesh_array)
+#define GLEW_SUN_read_video_pixels GLEW_GET_VAR(GL_SUN_read_video_pixels)
+#define GLEW_SUN_slice_accum GLEW_GET_VAR(GL_SUN_slice_accum)
+#define GLEW_SUN_triangle_list GLEW_GET_VAR(GL_SUN_triangle_list)
+#define GLEW_SUN_vertex GLEW_GET_VAR(GL_SUN_vertex)
+#define GLEW_WIN_phong_shading GLEW_GET_VAR(GL_WIN_phong_shading)
+#define GLEW_WIN_specular_fog GLEW_GET_VAR(GL_WIN_specular_fog)
+#define GLEW_WIN_swap_hint GLEW_GET_VAR(GL_WIN_swap_hint)
+
+/* and from linaro glew-oes fork */
+#define GLEW_OES_byte_coordinates GLEW_GET_VAR(GL_OES_byte_coordinates)
+#define GLEW_OES_compressed_paletted_texture GLEW_GET_VAR(GL_OES_compressed_paletted_texture)
+#define GLEW_OES_read_format GLEW_GET_VAR(GL_OES_read_format)
+#define GLEW_OES_single_precision GLEW_GET_VAR(GL_OES_single_precision)
+#define GLEW_OES_EGL_image GLEW_GET_VAR(GL_OES_EGL_image)
+#define GLEW_OES_EGL_image_external GLEW_GET_VAR(GL_OES_EGL_image_external)
+#define GLEW_OES_EGL_sync GLEW_GET_VAR(GL_OES_EGL_sync)
+#define GLEW_OES_blend_equation_separate GLEW_GET_VAR(GL_OES_blend_equation_separate)
+#define GLEW_OES_blend_func_separate GLEW_GET_VAR(GL_OES_blend_func_separate)
+#define GLEW_OES_blend_subtract GLEW_GET_VAR(GL_OES_blend_subtract)
+#define GLEW_OES_compressed_ETC1_RGB8_texture GLEW_GET_VAR(GL_OES_compressed_ETC1_RGB8_texture)
+#define GLEW_OES_depth24 GLEW_GET_VAR(GL_OES_depth24)
+#define GLEW_OES_depth32 GLEW_GET_VAR(GL_OES_depth32)
+#define GLEW_OES_depth_texture GLEW_GET_VAR(GL_OES_depth_texture)
+#define GLEW_OES_depth_texture_cube_map GLEW_GET_VAR(GL_OES_depth_texture_cube_map)
+#define GLEW_OES_draw_texture GLEW_GET_VAR(GL_OES_draw_texture)
+#define GLEW_OES_element_index_uint GLEW_GET_VAR(GL_OES_element_index_uint)
+#define GLEW_OES_extended_matrix_palette GLEW_GET_VAR(GL_OES_extended_matrix_palette)
+#define GLEW_OES_fbo_render_mipmap GLEW_GET_VAR(GL_OES_fbo_render_mipmap)
+#define GLEW_OES_fragment_precision_high GLEW_GET_VAR(GL_OES_fragment_precision_high)
+#define GLEW_OES_framebuffer_object GLEW_GET_VAR(GL_OES_framebuffer_object)
+#define GLEW_OES_get_program_binary GLEW_GET_VAR(GL_OES_get_program_binary)
+#define GLEW_OES_mapbuffer GLEW_GET_VAR(GL_OES_mapbuffer)
+#define GLEW_OES_matrix_get GLEW_GET_VAR(GL_OES_matrix_get)
+#define GLEW_OES_matrix_palette GLEW_GET_VAR(GL_OES_matrix_palette)
+#define GLEW_OES_packed_depth_stencil GLEW_GET_VAR(GL_OES_packed_depth_stencil)
+#define GLEW_OES_point_size_array GLEW_GET_VAR(GL_OES_point_size_array)
+#define GLEW_OES_point_sprite GLEW_GET_VAR(GL_OES_point_sprite)
+#define GLEW_OES_required_internalformat GLEW_GET_VAR(GL_OES_required_internalformat)
+#define GLEW_OES_rgb8_rgba8 GLEW_GET_VAR(GL_OES_rgb8_rgba8)
+#define GLEW_OES_standard_derivatives GLEW_GET_VAR(GL_OES_standard_derivatives)
+#define GLEW_OES_stencil1 GLEW_GET_VAR(GL_OES_stencil1)
+#define GLEW_OES_stencil4 GLEW_GET_VAR(GL_OES_stencil4)
+#define GLEW_OES_stencil8 GLEW_GET_VAR(GL_OES_stencil8)
+#define GLEW_OES_surfaceless_context GLEW_GET_VAR(GL_OES_surfaceless_context)
+#define GLEW_OES_texture_3D GLEW_GET_VAR(GL_OES_texture_3D)
+#define GLEW_OES_texture_cube_map GLEW_GET_VAR(GL_OES_texture_cube_map)
+#define GLEW_OES_texture_env_crossbar GLEW_GET_VAR(GL_OES_texture_env_crossbar)
+#define GLEW_OES_texture_mirrored_repeat GLEW_GET_VAR(GL_OES_texture_mirrored_repeat)
+#define GLEW_OES_texture_npot GLEW_GET_VAR(GL_OES_texture_npot)
+#define GLEW_OES_vertex_array_object GLEW_GET_VAR(GL_OES_vertex_array_object)
+#define GLEW_OES_vertex_half_float GLEW_GET_VAR(GL_OES_vertex_half_float)
+#define GLEW_OES_vertex_type_10_10_10_2 GLEW_GET_VAR(GL_OES_vertex_type_10_10_10_2)
+
+/* some of the missing constants in SDL_opengl.h
+ * XXX: Most likely doesn't have all. */
+
+#ifndef GL_KHR_debug
+#define GL_KHR_debug 1
+
+#define GL_CONTEXT_FLAG_DEBUG_BIT 0x00000002
+#define GL_STACK_OVERFLOW 0x0503
+#define GL_STACK_UNDERFLOW 0x0504
+#define GL_DEBUG_OUTPUT_SYNCHRONOUS 0x8242
+#define GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH 0x8243
+#define GL_DEBUG_CALLBACK_FUNCTION 0x8244
+#define GL_DEBUG_CALLBACK_USER_PARAM 0x8245
+#define GL_DEBUG_SOURCE_API 0x8246
+#define GL_DEBUG_SOURCE_WINDOW_SYSTEM 0x8247
+#define GL_DEBUG_SOURCE_SHADER_COMPILER 0x8248
+#define GL_DEBUG_SOURCE_THIRD_PARTY 0x8249
+#define GL_DEBUG_SOURCE_APPLICATION 0x824A
+#define GL_DEBUG_SOURCE_OTHER 0x824B
+#define GL_DEBUG_TYPE_ERROR 0x824C
+#define GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR 0x824D
+#define GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR 0x824E
+#define GL_DEBUG_TYPE_PORTABILITY 0x824F
+#define GL_DEBUG_TYPE_PERFORMANCE 0x8250
+#define GL_DEBUG_TYPE_OTHER 0x8251
+#define GL_DEBUG_TYPE_MARKER 0x8268
+#define GL_DEBUG_TYPE_PUSH_GROUP 0x8269
+#define GL_DEBUG_TYPE_POP_GROUP 0x826A
+#define GL_DEBUG_SEVERITY_NOTIFICATION 0x826B
+#define GL_MAX_DEBUG_GROUP_STACK_DEPTH 0x826C
+#define GL_DEBUG_GROUP_STACK_DEPTH 0x826D
+#define GL_BUFFER 0x82E0
+#define GL_SHADER 0x82E1
+#define GL_PROGRAM 0x82E2
+#define GL_QUERY 0x82E3
+#define GL_PROGRAM_PIPELINE 0x82E4
+#define GL_SAMPLER 0x82E6
+#define GL_DISPLAY_LIST 0x82E7
+#define GL_MAX_LABEL_LENGTH 0x82E8
+#define GL_MAX_DEBUG_MESSAGE_LENGTH 0x9143
+#define GL_MAX_DEBUG_LOGGED_MESSAGES 0x9144
+#define GL_DEBUG_LOGGED_MESSAGES 0x9145
+#define GL_DEBUG_SEVERITY_HIGH 0x9146
+#define GL_DEBUG_SEVERITY_MEDIUM 0x9147
+#define GL_DEBUG_SEVERITY_LOW 0x9148
+#define GL_DEBUG_OUTPUT 0x92E0
+
+#endif /* GL_KHR_debug */
+
+#ifndef GL_ARB_shader_storage_buffer_object
+#define GL_ARB_shader_storage_buffer_object 1
+
+#define GL_SHADER_STORAGE_BARRIER_BIT 0x2000
+#define GL_MAX_COMBINED_SHADER_OUTPUT_RESOURCES 0x8F39
+#define GL_SHADER_STORAGE_BUFFER 0x90D2
+#define GL_SHADER_STORAGE_BUFFER_BINDING 0x90D3
+#define GL_SHADER_STORAGE_BUFFER_START 0x90D4
+#define GL_SHADER_STORAGE_BUFFER_SIZE 0x90D5
+#define GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS 0x90D6
+#define GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS 0x90D7
+#define GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS 0x90D8
+#define GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS 0x90D9
+#define GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS 0x90DA
+#define GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS 0x90DB
+#define GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS 0x90DC
+#define GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS 0x90DD
+#define GL_MAX_SHADER_STORAGE_BLOCK_SIZE 0x90DE
+#define GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT 0x90DF
+
+#endif /* GL_ARB_shader_storage_buffer_object */
+
+#ifndef GL_ARB_shader_atomic_counters
+#define GL_ARB_shader_atomic_counters 1
+
+#define GL_ATOMIC_COUNTER_BUFFER 0x92C0
+#define GL_ATOMIC_COUNTER_BUFFER_BINDING 0x92C1
+#define GL_ATOMIC_COUNTER_BUFFER_START 0x92C2
+#define GL_ATOMIC_COUNTER_BUFFER_SIZE 0x92C3
+#define GL_ATOMIC_COUNTER_BUFFER_DATA_SIZE 0x92C4
+#define GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTERS 0x92C5
+#define GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTER_INDICES 0x92C6
+#define GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_VERTEX_SHADER 0x92C7
+#define GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_TESS_CONTROL_SHADER 0x92C8
+#define GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_TESS_EVALUATION_SHADER 0x92C9
+#define GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_GEOMETRY_SHADER 0x92CA
+#define GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_FRAGMENT_SHADER 0x92CB
+#define GL_MAX_VERTEX_ATOMIC_COUNTER_BUFFERS 0x92CC
+#define GL_MAX_TESS_CONTROL_ATOMIC_COUNTER_BUFFERS 0x92CD
+#define GL_MAX_TESS_EVALUATION_ATOMIC_COUNTER_BUFFERS 0x92CE
+#define GL_MAX_GEOMETRY_ATOMIC_COUNTER_BUFFERS 0x92CF
+#define GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS 0x92D0
+#define GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS 0x92D1
+#define GL_MAX_VERTEX_ATOMIC_COUNTERS 0x92D2
+#define GL_MAX_TESS_CONTROL_ATOMIC_COUNTERS 0x92D3
+#define GL_MAX_TESS_EVALUATION_ATOMIC_COUNTERS 0x92D4
+#define GL_MAX_GEOMETRY_ATOMIC_COUNTERS 0x92D5
+#define GL_MAX_FRAGMENT_ATOMIC_COUNTERS 0x92D6
+#define GL_MAX_COMBINED_ATOMIC_COUNTERS 0x92D7
+#define GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE 0x92D8
+#define GL_ACTIVE_ATOMIC_COUNTER_BUFFERS 0x92D9
+#define GL_UNIFORM_ATOMIC_COUNTER_BUFFER_INDEX 0x92DA
+#define GL_UNSIGNED_INT_ATOMIC_COUNTER 0x92DB
+#define GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS 0x92DC
+
+#endif /* GL_ARB_shader_atomic_counters */
+
+#ifndef GL_ARB_shader_image_load_store
+#define GL_ARB_shader_image_load_store 1
+
+#define GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT 0x00000001
+#define GL_ELEMENT_ARRAY_BARRIER_BIT 0x00000002
+#define GL_UNIFORM_BARRIER_BIT 0x00000004
+#define GL_TEXTURE_FETCH_BARRIER_BIT 0x00000008
+#define GL_SHADER_IMAGE_ACCESS_BARRIER_BIT 0x00000020
+#define GL_COMMAND_BARRIER_BIT 0x00000040
+#define GL_PIXEL_BUFFER_BARRIER_BIT 0x00000080
+#define GL_TEXTURE_UPDATE_BARRIER_BIT 0x00000100
+#define GL_BUFFER_UPDATE_BARRIER_BIT 0x00000200
+#define GL_FRAMEBUFFER_BARRIER_BIT 0x00000400
+#define GL_TRANSFORM_FEEDBACK_BARRIER_BIT 0x00000800
+#define GL_ATOMIC_COUNTER_BARRIER_BIT 0x00001000
+#define GL_MAX_IMAGE_UNITS 0x8F38
+#define GL_MAX_COMBINED_IMAGE_UNITS_AND_FRAGMENT_OUTPUTS 0x8F39
+#define GL_IMAGE_BINDING_NAME 0x8F3A
+#define GL_IMAGE_BINDING_LEVEL 0x8F3B
+#define GL_IMAGE_BINDING_LAYERED 0x8F3C
+#define GL_IMAGE_BINDING_LAYER 0x8F3D
+#define GL_IMAGE_BINDING_ACCESS 0x8F3E
+#define GL_IMAGE_1D 0x904C
+#define GL_IMAGE_2D 0x904D
+#define GL_IMAGE_3D 0x904E
+#define GL_IMAGE_2D_RECT 0x904F
+#define GL_IMAGE_CUBE 0x9050
+#define GL_IMAGE_BUFFER 0x9051
+#define GL_IMAGE_1D_ARRAY 0x9052
+#define GL_IMAGE_2D_ARRAY 0x9053
+#define GL_IMAGE_CUBE_MAP_ARRAY 0x9054
+#define GL_IMAGE_2D_MULTISAMPLE 0x9055
+#define GL_IMAGE_2D_MULTISAMPLE_ARRAY 0x9056
+#define GL_INT_IMAGE_1D 0x9057
+#define GL_INT_IMAGE_2D 0x9058
+#define GL_INT_IMAGE_3D 0x9059
+#define GL_INT_IMAGE_2D_RECT 0x905A
+#define GL_INT_IMAGE_CUBE 0x905B
+#define GL_INT_IMAGE_BUFFER 0x905C
+#define GL_INT_IMAGE_1D_ARRAY 0x905D
+#define GL_INT_IMAGE_2D_ARRAY 0x905E
+#define GL_INT_IMAGE_CUBE_MAP_ARRAY 0x905F
+#define GL_INT_IMAGE_2D_MULTISAMPLE 0x9060
+#define GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY 0x9061
+#define GL_UNSIGNED_INT_IMAGE_1D 0x9062
+#define GL_UNSIGNED_INT_IMAGE_2D 0x9063
+#define GL_UNSIGNED_INT_IMAGE_3D 0x9064
+#define GL_UNSIGNED_INT_IMAGE_2D_RECT 0x9065
+#define GL_UNSIGNED_INT_IMAGE_CUBE 0x9066
+#define GL_UNSIGNED_INT_IMAGE_BUFFER 0x9067
+#define GL_UNSIGNED_INT_IMAGE_1D_ARRAY 0x9068
+#define GL_UNSIGNED_INT_IMAGE_2D_ARRAY 0x9069
+#define GL_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY 0x906A
+#define GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE 0x906B
+#define GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY 0x906C
+#define GL_MAX_IMAGE_SAMPLES 0x906D
+#define GL_IMAGE_BINDING_FORMAT 0x906E
+#define GL_IMAGE_FORMAT_COMPATIBILITY_TYPE 0x90C7
+#define GL_IMAGE_FORMAT_COMPATIBILITY_BY_SIZE 0x90C8
+#define GL_IMAGE_FORMAT_COMPATIBILITY_BY_CLASS 0x90C9
+#define GL_MAX_VERTEX_IMAGE_UNIFORMS 0x90CA
+#define GL_MAX_TESS_CONTROL_IMAGE_UNIFORMS 0x90CB
+#define GL_MAX_TESS_EVALUATION_IMAGE_UNIFORMS 0x90CC
+#define GL_MAX_GEOMETRY_IMAGE_UNIFORMS 0x90CD
+#define GL_MAX_FRAGMENT_IMAGE_UNIFORMS 0x90CE
+#define GL_MAX_COMBINED_IMAGE_UNIFORMS 0x90CF
+#define GL_ALL_BARRIER_BITS 0xFFFFFFFF
+
+#endif /* GL_ARB_shader_image_load_store */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* API */
+#ifdef GLEW_MX
+
+#define glewContextInit(x) glewInit()
+#define glewContextIsSupported(x, y) glewIsSupported(y)
+
+#endif /* GLEW_MX */
+
+GLenum glewInit (void);
+GLboolean glewIsSupported (const char *name);
+#define glewIsExtensionSupported(x) glewIsSupported(x)
+
+GLboolean glewExperimental;
+GLboolean glewGetExtension (const char *name);
+const GLubyte * glewGetErrorString (GLenum error);
+const GLubyte * glewGetString (GLenum name);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __glew_h__ */
