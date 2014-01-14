@@ -41,32 +41,18 @@
          W _ZnwjRKSt9nothrow_t
          T __floatscan
          T __overflow
-         T __seek_on_exit
          T __shgetc
          T __shlim
          W __strtod_l
          W __strtof_l
          W __strtold_l
          T __toread
-         W __towrite_used
+         T __towrite
          T __uflow
-         T _err
-         T _errx
-         T _verr
-         T _verrx
-         T _vwarn
-         T _vwarnx
-         T _warn
-         T _warnx
          T atof
          W bulk_free
          W calloc
-         W err
-         W errx
          W free
-         T getopt
-         T getopt_long
-         T getopt_long_only
          W independent_calloc
          W independent_comalloc
          W mallinfo
@@ -80,11 +66,6 @@
          W malloc_usable_size
          W mallopt
          W memalign
-         C optarg
-         D opterr
-         D optind
-         D optopt
-         C optreset
          W posix_memalign
          W pvalloc
          W realloc
@@ -92,15 +73,9 @@
          T scalbn
          T scalbnl
          T strtod
-         W strtod_l
+         T strtod_l
          T strtof
-         W strtof_l
+         T strtof_l
          T strtold
-         W strtold_l
+         T strtold_l
          W valloc
-         W verr
-         W verrx
-         W vwarn
-         W vwarnx
-         W warn
-         W warnx

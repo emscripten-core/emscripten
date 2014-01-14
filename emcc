@@ -1440,15 +1440,6 @@ try:
       libc_files = [
         'dlmalloc.c',
         os.path.join('libcxx', 'new.cpp'),
-        os.path.join('libc', 'stdlib', 'getopt_long.c'),
-        os.path.join('libc', 'gen', 'err.c'),
-        os.path.join('libc', 'gen', 'errx.c'),
-        os.path.join('libc', 'gen', 'warn.c'),
-        os.path.join('libc', 'gen', 'warnx.c'),
-        os.path.join('libc', 'gen', 'verr.c'),
-        os.path.join('libc', 'gen', 'verrx.c'),
-        os.path.join('libc', 'gen', 'vwarn.c'),
-        os.path.join('libc', 'gen', 'vwarnx.c'),
       ]
       musl_files = [
         ['internal', [
@@ -1462,6 +1453,7 @@ try:
         ['stdio', [
          '__overflow.c',
          '__toread.c',
+         '__towrite.c',
          '__uflow.c',
         ]],
         ['stdlib', [
@@ -1510,6 +1502,9 @@ try:
          ]],
          ['internal', [
           'intscan.c',
+         ]],
+         ['legacy', [
+          'err.c',
          ]],
          ['locale', [
           'iconv.c',
@@ -1562,6 +1557,10 @@ try:
           'tgamma.c',
           'tgammaf.c',
           'tgammal.c'
+         ]],
+         ['misc', [
+          'getopt.c',
+          'getopt_long.c',
          ]],
          ['multibyte', [
           'btowc.c',

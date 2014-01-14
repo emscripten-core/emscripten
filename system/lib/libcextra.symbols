@@ -1,10 +1,14 @@
          T __cosdf
+         T __fputwc_unlocked
          T __intscan
          W __iswctype_l
          T __lgamma_r
          T __lgammaf_r
          T __lgammal_r
          T __memrchr
+         C __optpos
+         D __optreset
+         W __posix_getopt
          T __sindf
          T __strchrnul
          T __strxfrm_l
@@ -18,9 +22,16 @@
          W __wctype_l
          T btowc
          T ecvt
+         T err
+         T errx
          T fcvt
+         T fputwc
+         W fputwc_unlocked
          T fwprintf
          T gcvt
+         T getopt
+         T getopt_long
+         T getopt_long_only
          T iconv
          T iconv_close
          T iconv_open
@@ -77,6 +88,12 @@
          T memmem
          T mempcpy
          W memrchr
+         C optarg
+         D opterr
+         D optind
+         C optopt
+         W optreset
+         W putwc_unlocked
          T regcomp
          T regerror
          T regexec
@@ -105,9 +122,15 @@
          T towlower_l
          T towupper
          T towupper_l
+         T verr
+         T verrx
          T vfwprintf
          T vswprintf
+         T vwarn
+         T vwarnx
          T vwprintf
+         T warn
+         T warnx
          T wcpcpy
          T wcpncpy
          T wcrtomb
