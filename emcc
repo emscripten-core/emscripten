@@ -1462,6 +1462,7 @@ try:
         ['stdio', [
          '__overflow.c',
          '__toread.c',
+         '__towrite.c',
          '__uflow.c',
         ]],
         ['stdlib', [

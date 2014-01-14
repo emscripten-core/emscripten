@@ -41,14 +41,13 @@
          W _ZnwjRKSt9nothrow_t
          T __floatscan
          T __overflow
-         T __seek_on_exit
          T __shgetc
          T __shlim
          W __strtod_l
          W __strtof_l
          W __strtold_l
          T __toread
-         W __towrite_used
+         T __towrite
          T __uflow
          T _err
          T _errx

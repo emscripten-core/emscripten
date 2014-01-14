@@ -12,13 +12,3 @@ int __toread(FILE *f)
 	f->rpos = f->rend = f->buf;
 	return 0;
 }
-
-static const int dummy = 0;
-weak_alias(dummy, __towrite_used);
-
-void __stdio_exit(void);
-
-void __seek_on_exit()
-{
-	if (!__towrite_used) __stdio_exit();
-}

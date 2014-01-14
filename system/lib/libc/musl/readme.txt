@@ -10,4 +10,4 @@ Differences from upstream musl include:
 * Disable FLOCK, FUNLOCK and FFINALLOCK
 * Simplify fputwc to not rely on musl stream internals
 * signgam is no longer a weak alias of __signgam.
-
+* __toread and __towrite have had shutdown functionality removed.
