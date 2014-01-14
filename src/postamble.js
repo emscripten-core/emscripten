@@ -121,12 +121,13 @@ function run(args) {
   if (Module['calledRun']) return; // run may have just been called through dependencies being fulfilled just in this very frame
 
   function doRun() {
+    if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
+    Module['calledRun'] = true;
+
     ensureInitRuntime();
 
     preMain();
 
-    assert(!Module['calledRun']);
-    Module['calledRun'] = true;
     if (Module['_main'] && shouldRunNow) {
       Module['callMain'](args);
     }
