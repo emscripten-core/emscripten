@@ -29,6 +29,7 @@ static size_t sw_write(FILE *f, const unsigned char *s, size_t l)
 
 int vswprintf(wchar_t *restrict s, size_t n, const wchar_t *restrict fmt, va_list ap)
 {
+#if 0 // XXX EMSCRIPTEN
 	int r;
 	FILE f;
 	unsigned char buf[256];
@@ -50,4 +51,16 @@ int vswprintf(wchar_t *restrict s, size_t n, const wchar_t *restrict fmt, va_lis
 	r = vfwprintf(&f, fmt, ap);
 	sw_write(&f, 0, 0);
 	return r>=n ? -1 : r;
+#else
+  // XXX EMSCRIPTEN: use memfs through libc fs
+  #define TEMPFILE "emscripten.vswprintf.temp.buffer"
+  FILE *f = fopen(TEMPFILE, "wb");
+  int r = vfwprintf(f, fmt, ap);
+  fclose(f);
+  f = fopen(TEMPFILE, "rb");
+  fread(s, 1, (r>=n ? n : r)*4, f);
+  fclose(f);
+  remove(TEMPFILE);
+  return r>=n ? -1 : r;
+#endif
 }

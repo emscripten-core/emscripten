@@ -26,6 +26,11 @@ typedef struct __va_list * __isoc_va_list;
 
 #endif
 
+/*
+#undef __WCHAR_TYPE__
+#define __WCHAR_TYPE__ short
+*/
+
 #ifndef __cplusplus
 #ifdef __WCHAR_TYPE__
 #if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)

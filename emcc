@@ -1594,6 +1594,7 @@ try:
           'vwprintf.c',
           'wprintf.c',
           'fputwc.c',
+          'fputws.c',
          ]],
          ['stdlib', [
            'ecvt.c',

@@ -328,7 +328,7 @@ static int wprintf_core(FILE *f, const wchar_t *fmt, va_list *ap, union arg *nl_
 			l = fprintf(f, charfmt, w, p, arg.f);
 			break;
 		case 'd': case 'i': case 'o': case 'u': case 'x': case 'p':
-			l = fprintf(f, charfmt, w, p, arg.i);
+			l = fprintf(f, charfmt, w, p, arg.i); // XXX this fprintf emits non-widechar. does the stream need to be in "widechar mode"?
 			break;
 		}
 	}

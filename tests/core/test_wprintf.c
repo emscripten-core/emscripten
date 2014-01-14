@@ -1,7 +1,33 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
 #include <wchar.h>
 
-int main()
+void PrintWide ( const wchar_t * format, ... )
 {
+  wchar_t buffer[256];
+  memset(buffer, 0, 256);
+  va_list args;
+  va_start ( args, format );
+  wprintf(L"format    starts with 0x%x\n", *(int*)format);
+  wprintf(L"fmt    continues with 0x%x\n", *(((int*)format) + 1));
+  wprintf(L"fmt    continues with 0x%x\n", *(((int*)format) + 2));
+  vswprintf ( buffer, 256, format, args );
+  wprintf(L"vswoutput st-rts with 0x%x\n", *(int*)buffer);
+  wprintf(L"vsw    continues with 0x%x\n", *(((int*)buffer) + 1));
+  wprintf(L"vsw    continues with 0x%x\n", *(((int*)buffer) + 2));
+  wprintf(buffer);
+  va_end ( args );
+}
+
+int main ()
+{
+   wchar_t str[] = L"test string has %d wide characters.\n";
+   wprintf(L"str starts with 0x%x\n", *(int*)str);
+   wprintf(L"str continues with 0x%x\n", *(((int*)str) + 1));
+   wprintf(L"str continues with 0x%x\n", *(((int*)str) + 2));
+   PrintWide ( str, wcslen(str) );
+
    wprintf (L"Characters: %lc %lc \n", L'a', 65);
    wprintf (L"Decimals: %d %ld\n", 1977, 650000L);
    wprintf (L"Preceding with blanks: %10d \n", 1977);
@@ -10,6 +36,16 @@ int main()
    wprintf (L"floats: %4.2f %+.0e %E \n", 3.1416, 3.1416, 3.1416);
    wprintf (L"Width trick: %*d \n", 5, 10);
    wprintf (L"%ls \n", L"A wide string");
+
+   wchar_t buffer [100];
+   memset(buffer, 0, sizeof(buffer));
+   int cx;
+   cx = swprintf(buffer, 100, L"The half of %d is %d", 80, 80/2);
+   for (int i = 0; i < 10; i++) wprintf(L"pre %d\n", ((int*)buffer)[i]);
+   swprintf (buffer+cx, 100-cx-1, L", and the half of that is %d.\n", 80/2/2);
+   for (int i = 0; i < 10; i++) wprintf(L"post %d\n", ((int*)buffer)[i]);
+   wprintf(buffer);
+
    return 0;
 }
 
