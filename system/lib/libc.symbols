@@ -73,9 +73,9 @@
          T scalbn
          T scalbnl
          T strtod
-         W strtod_l
+         T strtod_l
          T strtof
-         W strtof_l
+         T strtof_l
          T strtold
-         W strtold_l
+         T strtold_l
          W valloc
