@@ -1,9 +1,15 @@
+         T _ZNKSt16bad_array_length4whatEv
          T _ZNKSt20bad_array_new_length4whatEv
          T _ZNKSt9bad_alloc4whatEv
+         T _ZNSt16bad_array_lengthC1Ev
+         T _ZNSt16bad_array_lengthC2Ev
+         T _ZNSt16bad_array_lengthD0Ev
+         T _ZNSt16bad_array_lengthD1Ev
+         T _ZNSt16bad_array_lengthD2Ev
          T _ZNSt20bad_array_new_lengthC1Ev
          T _ZNSt20bad_array_new_lengthC2Ev
          T _ZNSt20bad_array_new_lengthD0Ev
-         ? _ZNSt20bad_array_new_lengthD1Ev
+         T _ZNSt20bad_array_new_lengthD1Ev
          T _ZNSt20bad_array_new_lengthD2Ev
          T _ZNSt9bad_allocC1Ev
          T _ZNSt9bad_allocC2Ev
@@ -14,10 +20,15 @@
          T _ZSt15set_new_handlerPFvvE
          T _ZSt17__throw_bad_allocv
          D _ZSt7nothrow
+         D _ZTISt16bad_array_length
          D _ZTISt20bad_array_new_length
          D _ZTISt9bad_alloc
+         C _ZTISt9exception
+         D _ZTSSt16bad_array_length
          D _ZTSSt20bad_array_new_length
          D _ZTSSt9bad_alloc
+         C _ZTSSt9exception
+         D _ZTVSt16bad_array_length
          D _ZTVSt20bad_array_new_length
          D _ZTVSt9bad_alloc
          W _ZdaPv
@@ -28,6 +39,17 @@
          W _ZnajRKSt9nothrow_t
          W _Znwj
          W _ZnwjRKSt9nothrow_t
+         T __floatscan
+         T __overflow
+         T __seek_on_exit
+         T __shgetc
+         T __shlim
+         W __strtod_l
+         W __strtof_l
+         W __strtold_l
+         T __toread
+         W __towrite_used
+         T __uflow
          T _err
          T _errx
          T _verr
@@ -67,11 +89,14 @@
          W pvalloc
          W realloc
          W realloc_in_place
+         T scalbn
+         T scalbnl
          T strtod
-         T strtod_l
+         W strtod_l
          T strtof
+         W strtof_l
          T strtold
-         T strtold_l
+         W strtold_l
          W valloc
          W verr
          W verrx

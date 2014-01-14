@@ -4827,15 +4827,6 @@ LibraryManager.library = {
   llvm_log_f64: 'Math_log',
   llvm_exp_f32: 'Math_exp',
   llvm_exp_f64: 'Math_exp',
-  ldexp: function(x, exp_) {
-    return x * Math.pow(2, exp_);
-  },
-  ldexpf: 'ldexp',
-  scalb: 'ldexp',
-  scalbn: 'ldexp',
-  scalbnf: 'ldexp',
-  scalbln: 'ldexp',
-  scalblnf: 'ldexp',
   cbrt: function(x) {
     return Math.pow(x, 1/3);
   },
@@ -9190,7 +9181,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose', 'fputwc', '__lockfile', '__unlockfile'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose', 'fputwc', '__lockfile', '__unlockfile'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
 });
 

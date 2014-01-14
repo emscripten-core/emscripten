@@ -477,6 +477,14 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output)
 
+  def test_literal_negative_zero(self):
+    if self.emcc_args == None: return self.skip('needs emcc')
+
+    test_path = path_from_root('tests', 'core', 'test_literal_negative_zero')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_llvm_intrinsics(self):
     if self.emcc_args == None: return self.skip('needs ta2')
 
@@ -502,6 +510,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_cube2md5(self):
     if self.emcc_args == None: return self.skip('needs emcc')
+    if not self.is_le32(): return self.skip('le32 needed for accurate math')
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), os.path.join(self.get_dir(), 'cube2md5.txt'))
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
@@ -828,6 +837,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
       self.do_run(src, expected)
+
+  def test_math_lgamma(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      if not self.is_le32(): return self.skip('le32 needed for accurate math')
+
+      test_path = path_from_root('tests', 'math', 'lgamma')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
 
   def test_frexp(self):
       test_path = path_from_root('tests', 'core', 'test_frexp')
@@ -1280,6 +1298,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
+
 
   def test_white_list_exception(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
@@ -3536,6 +3555,7 @@ ok
 
   def test_strtod(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
+      if not self.is_le32(): return self.skip('le32 needed for accurate math')
 
     src = r'''
       #include <stdio.h>
@@ -3565,6 +3585,8 @@ ok
         printf("%g\n", strtod("123e-50", &endptr));
         printf("%g\n", strtod("123e-250", &endptr));
         printf("%g\n", strtod("123e-450", &endptr));
+        printf("%g\n", strtod("0x6", &endptr));
+        printf("%g\n", strtod("-0x0p+0", &endptr));
 
         char str[] = "  12.34e56end";
         printf("%g\n", strtod(str, &endptr));
@@ -3597,6 +3619,8 @@ ok
       1.23e-48
       1.23e-248
       0
+      6
+      -0
       1.234e+57
       10
       inf
@@ -3681,6 +3705,7 @@ ok
 
   def test_sscanf(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
+    if not self.is_le32(): return self.skip('le32 needed for accurate math')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf')
     src, output = (test_path + s for s in ('.in', '.out'))
