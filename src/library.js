@@ -1970,7 +1970,10 @@ LibraryManager.library = {
           }
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         }
-        if (precision === -1) precision = 6; // Standard default.
+        if (precision === -1) {
+          precision = 6; // Standard default.
+          precisionSet = false;
+        }
 
         // Handle integer sizes. WARNING: These assume a 32-bit architecture!
         var argSize;
