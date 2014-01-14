@@ -4105,11 +4105,11 @@ var LibraryGL = {
       };
 
       _glGetTexEnviv = function _glGetTexEnviv(target, pname, param) {
-        GL.immediate.TexEnvJIT.hook_getTexEnviv(target, pname, param);
+        GLImmediate.TexEnvJIT.hook_getTexEnviv(target, pname, param);
       };
 
       _glGetTexEnvfv = function _glGetTexEnvfv(target, pname, param) {
-        GL.immediate.TexEnvJIT.hook_getTexEnvfv(target, pname, param);
+        GLImmediate.TexEnvJIT.hook_getTexEnvfv(target, pname, param);
       };
 
       var glGetIntegerv = _glGetIntegerv;
