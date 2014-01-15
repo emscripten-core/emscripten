@@ -1,3 +1,4 @@
+         T __cos
          T __cosdf
          T __fputwc_unlocked
          T __intscan
@@ -9,6 +10,7 @@
          C __optpos
          D __optreset
          W __posix_getopt
+         T __sin
          T __sindf
          T __strchrnul
          T __strxfrm_l
