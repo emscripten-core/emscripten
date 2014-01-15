@@ -1536,7 +1536,9 @@ try:
           'wctype_l.c',
          ]],
          ['math', [
+          '__cos.c',
           '__cosdf.c',
+          '__sin.c',
           '__sindf.c',
           'ilogb.c',
           'ilogbf.c',
