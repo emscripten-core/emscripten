@@ -2742,14 +2742,6 @@ var LibraryGL = {
           this.key0 = -1; // The key of this texture unit must be recomputed when rendering the next time.
           GLImmediate.currentRenderer = null; // The currently used renderer must be re-evaluated at next render.
         }
-        this.traverseState = function(keyView) {
-          if (this.key0 == -1) {
-            this.recomputeKey();
-          }
-          keyView.next(this.key0);
-          keyView.next(this.key1);
-          keyView.next(this.key2);
-        };
       }
 
       function CTexUnit() {
@@ -2758,18 +2750,26 @@ var LibraryGL = {
         this.enabled_tex2D   = false;
         this.enabled_tex3D   = false;
         this.enabled_texCube = false;
+        this.texTypesEnabled = 0; // A bitfield combination of the four flags above, used for fast access to operations.
 
         this.traverseState = function CTexUnit_traverseState(keyView) {
-          var texUnitType = this.getTexType();
-          keyView.next(texUnitType);
-          if (!texUnitType) return;
-          this.env.traverseState(keyView);
+          if (this.texTypesEnabled) {
+            if (this.env.key0 == -1) {
+              this.env.recomputeKey();
+            }
+            keyView.next(this.texTypesEnabled | (this.env.key0 << 4));
+            keyView.next(this.env.key1);
+            keyView.next(this.env.key2);
+          } else {
+            // For correctness, must traverse a zero value, theoretically a subsequent integer key could collide with this value otherwise.
+            keyView.next(0);
+          }
         };
       };
 
       // Class impls:
       CTexUnit.prototype.enabled = function CTexUnit_enabled() {
-        return this.getTexType() != 0;
+        return this.texTypesEnabled;
       }
 
       CTexUnit.prototype.genPassLines = function CTexUnit_genPassLines(passOutputVar, passInputVar, texUnitID) {
@@ -3084,12 +3084,7 @@ var LibraryGL = {
 
         traverseState: function(keyView) {
           for (var i = 0; i < s_texUnits.length; i++) {
-            var texUnit = s_texUnits[i];
-            var enabled = texUnit.enabled();
-            keyView.next(enabled);
-            if (enabled) {
-              texUnit.traverseState(keyView);
-            }
+            s_texUnits[i].traverseState(keyView);
           }
         },
 
@@ -3113,24 +3108,28 @@ var LibraryGL = {
               if (!cur.enabled_tex1D) {
                 GLImmediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
                 cur.enabled_tex1D = true;
+                cur.texTypesEnabled |= 1;
               }
               break;
             case GL_TEXTURE_2D:
               if (!cur.enabled_tex2D) {
                 GLImmediate.currentRenderer = null;
                 cur.enabled_tex2D = true;
+                cur.texTypesEnabled |= 2;
               }
               break;
             case GL_TEXTURE_3D:
               if (!cur.enabled_tex3D) {
                 GLImmediate.currentRenderer = null;
                 cur.enabled_tex3D = true;
+                cur.texTypesEnabled |= 4;
               }
               break;
             case GL_TEXTURE_CUBE_MAP:
               if (!cur.enabled_texCube) {
                 GLImmediate.currentRenderer = null;
                 cur.enabled_texCube = true;
+                cur.texTypesEnabled |= 8;
               }
               break;
           }
@@ -3143,24 +3142,28 @@ var LibraryGL = {
               if (cur.enabled_tex1D) {
                 GLImmediate.currentRenderer = null; // Renderer state changed, and must be recreated or looked up again.
                 cur.enabled_tex1D = false;
+                cur.texTypesEnabled &= ~1;
               }
               break;
             case GL_TEXTURE_2D:
               if (cur.enabled_tex2D) {
                 GLImmediate.currentRenderer = null;
                 cur.enabled_tex2D = false;
+                cur.texTypesEnabled &= ~2;
               }
               break;
             case GL_TEXTURE_3D:
               if (cur.enabled_tex3D) {
                 GLImmediate.currentRenderer = null;
                 cur.enabled_tex3D = false;
+                cur.texTypesEnabled &= ~4;
               }
               break;
             case GL_TEXTURE_CUBE_MAP:
               if (cur.enabled_texCube) {
                 GLImmediate.currentRenderer = null;
                 cur.enabled_texCube = false;
+                cur.texTypesEnabled &= ~8;
               }
               break;
           }
@@ -3434,7 +3437,6 @@ var LibraryGL = {
       // we maintain a cache of renderers, optimized to not generate garbage
       var attributes = GLImmediate.liveClientAttributes;
       var cacheMap = GLImmediate.rendererCache;
-      var temp;
       var keyView = cacheMap.getStaticKeyView().reset();
 
       // By attrib state:
@@ -3442,7 +3444,6 @@ var LibraryGL = {
       for (var i = 0; i < attributes.length; i++) {
         enabledAttributesKey |= 1 << attributes[i].name;
       }
-      keyView.next(enabledAttributesKey);
 
       // By fog state:
       var fogParam = 0;
@@ -3459,13 +3460,17 @@ var LibraryGL = {
             break;
         }
       }
-      keyView.next(fogParam);
+      keyView.next((enabledAttributesKey << 2) | fogParam);
 
+#if !GL_FFP_ONLY
       // By cur program:
       keyView.next(GL.currProgram);
       if (!GL.currProgram) {
+#endif
         GLImmediate.TexEnvJIT.traverseState(keyView);
+#if !GL_FFP_ONLY
       }
+#endif
 
       // If we don't already have it, create it.
       var renderer = keyView.get();
@@ -4028,11 +4033,12 @@ var LibraryGL = {
 
       if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
 
-      GLImmediate.TexEnvJIT.init(GLctx);
-
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
       GLImmediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS);
+
+      GLImmediate.TexEnvJIT.init(GLctx, GLImmediate.MAX_TEXTURES);
+
       GLImmediate.NUM_ATTRIBUTES = 3 /*pos+normal+color attributes*/ + GLImmediate.MAX_TEXTURES;
       GLImmediate.clientAttributes = [];
       GLEmulation.enabledClientAttribIndices = [];
