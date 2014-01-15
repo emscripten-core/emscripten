@@ -8,16 +8,17 @@ wint_t __fputwc_unlocked(wchar_t c, FILE *f)
 	char mbc[MB_LEN_MAX];
 	int l;
 
+#if 0 // XXX EMSCRIPTEN
 	f->mode |= f->mode+1;
 
 	if (isascii(c)) {
-#if 0 // XXX EMSCRIPTEN
 		c = putc_unlocked(c, f);
 	} else if (f->wpos + MB_LEN_MAX < f->wend) {
 		l = wctomb((void *)f->wpos, c);
 		if (l < 0) c = WEOF;
 		else f->wpos += l;
 #else
+	if (isascii(c)) {
 		c = fputc(c, f);
 #endif
 	} else {
