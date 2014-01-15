@@ -413,19 +413,61 @@ class sockets(BrowserCore):
 
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
-    # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      # Websockify doesn't seem to like ws.WebSocket clients TODO check if this is a ws issue or Websockify issue
-      #(WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49162), 1)
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160)),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161)),
     ]
 
-    for harness, datagram in harnesses:
+    # Basic test of node client against both a Websockified and compiled echo server.
+    for harness in harnesses:
       with harness:
         Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', path_from_root('tests', 'sockets', 'client.js'), '-DSOCKK=%d' % harness.listen_port, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
 
-        self.assertContained('do_msg_read: read 14 bytes', run_js(path_from_root('tests', 'sockets', 'client.js'), engine=NODE_JS))
+        out = run_js(path_from_root('tests', 'sockets', 'client.js'), engine=NODE_JS, full_output=True)
+        self.assertContained('do_msg_read: read 14 bytes', out)
+
+        # Tidy up files that might have been created by this test.
+        try_delete(path_from_root('tests', 'sockets', 'client.js'))
+        try_delete(path_from_root('tests', 'sockets', 'client.js.map'))
+
+    # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
+    # server because as long as the subprotocol list contains binary it will configure itself to accept binary
+    # This test also checks that the connect url contains the correct subprotocols.
+    for harness in [
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160)
+    ]:
+      with harness:
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', path_from_root('tests', 'sockets', 'client.js'), '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=49160', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+
+        out = run_js(path_from_root('tests', 'sockets', 'client.js'), engine=NODE_JS, full_output=True)
+        self.assertContained('do_msg_read: read 14 bytes', out)
+        self.assertContained('connect: ws://127.0.0.1:49160, base64,binary', out)
+
+        # Tidy up files that might have been created by this test.
+        try_delete(path_from_root('tests', 'sockets', 'client.js'))
+        try_delete(path_from_root('tests', 'sockets', 'client.js.map'))
+
+    # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
+    # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
+    # the connection would fail without us specifying a valid WebSocket URL in the configuration.
+    for harness in [
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49163)
+    ]:
+      with harness:
+        open(os.path.join(self.get_dir(), 'websocket_pre.js'), 'w').write('''
+        var Module = {
+          websocket: {
+            url: 'ws://localhost:49163/testA/testB',
+            subprotocol: 'text, base64, binary',
+          }
+        };
+        ''')
+
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', path_from_root('tests', 'sockets', 'client.js'), '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+
+        out = run_js(path_from_root('tests', 'sockets', 'client.js'), engine=NODE_JS, full_output=True)
+        self.assertContained('do_msg_read: read 14 bytes', out)
+        self.assertContained('connect: ws://localhost:49163/testA/testB, text,base64,binary', out)
 
         # Tidy up files that might have been created by this test.
         try_delete(path_from_root('tests', 'sockets', 'client.js'))
