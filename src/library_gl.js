@@ -2835,8 +2835,29 @@ var LibraryGL = {
         if (!this.enabled()) {
           return ["vec4 " + passOutputVar + " = " + passInputVar + ";"];
         }
+        var lines = this.env.genPassLines(passOutputVar, passInputVar, texUnitID).join('\n');
 
-        return this.env.genPassLines(passOutputVar, passInputVar, texUnitID);
+        var texLoadLines = '';
+        var texLoadRegex = /(texture.*?\(.*?\))/g;
+        var loadCounter = 0;
+        var load;
+
+        // As an optimization, merge duplicate identical texture loads to one var.
+        while(load = texLoadRegex.exec(lines)) {
+          var texLoadExpr = load[1];
+          var secondOccurrence = lines.slice(load.index+1).indexOf(texLoadExpr);
+          if (secondOccurrence != -1) { // And also has a second occurrence of same load expression..
+            // Create new var to store the common load.
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
+            var texLoadVar = prefix + 'texload' + loadCounter++;
+            var texLoadLine = 'vec4 ' + texLoadVar + ' = ' + texLoadExpr + ';\n';
+            texLoadLines += texLoadLine + '\n'; // Store the generated texture load statements in a temp string to not confuse regex search in progress.
+            lines = lines.split(texLoadExpr).join(texLoadVar);
+            // Reset regex search, since we modified the string.
+            texLoadRegex = /(texture.*\(.*\))/g;
+          }
+        }
+        return [texLoadLines + lines];
       }
 
       CTexUnit.prototype.getTexType = function CTexUnit_getTexType() {
@@ -2957,13 +2978,18 @@ var LibraryGL = {
             var alphaLines = this.genCombinerLines(false, alphaVar,
                                                    passInputVar, texUnitID,
                                                    this.alphaCombiner, this.alphaSrc, this.alphaOp);
+
+            // Generate scale, but avoid generating an identity op that multiplies by one.
+            var scaledColor = (this.colorScale == 1) ? colorVar : (colorVar + " * " + valToFloatLiteral(this.colorScale));
+            var scaledAlpha = (this.alphaScale == 1) ? alphaVar : (alphaVar + " * " + valToFloatLiteral(this.alphaScale));
+
             var line = [
               "vec4 " + passOutputVar,
               " = ",
                 "vec4(",
-                    colorVar + " * " + valToFloatLiteral(this.colorScale),
+                    scaledColor,
                     ", ",
-                    alphaVar + " * " + valToFloatLiteral(this.alphaScale),
+                    scaledAlpha,
                 ")",
               ";",
             ].join("");
