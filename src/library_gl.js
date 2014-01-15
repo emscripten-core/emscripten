@@ -57,6 +57,7 @@ var LibraryGL = {
     unpackAlignment: 4, // default alignment is 4 bytes
 
     init: function() {
+      GL.createLog2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
       Browser.moduleContextCreatedCallbacks.push(GL.initExtensions);
     },
 
@@ -81,36 +82,58 @@ var LibraryGL = {
     miniTempBuffer: null,
     miniTempBufferViews: [0], // index i has the view of size i+1
 
-    // Large temporary buffers
+    // When user GL code wants to render from client-side memory, we need to upload the vertex data to a temp VBO
+    // for rendering. Maintain a set of temp VBOs that are created-on-demand to appropriate sizes, and never destroyed.
+    // Also, for best performance the VBOs are double-buffered, i.e. every second frame we switch the set of VBOs we
+    // upload to, so that rendering from the previous frame is not disturbed by uploading from new data to it, which
+    // could cause a GPU-CPU pipeline stall.
+    // Note that index buffers are not double-buffered (at the moment) in this manner.
     MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
-    tempBufferIndexLookup: null,
-    tempVertexBuffers: null,
-    tempIndexBuffers: null,
+    tempVertexBuffers1: [],
+    tempVertexBufferCounters1: [],
+    tempVertexBuffers2: [],
+    tempVertexBufferCounters2: [],
+    // Maximum number of temp VBOs of one size to maintain, after that we start reusing old ones, which is safe but can give
+    // a performance impact. If CPU-GPU stalls are a problem, increasing this might help.
+    numTempVertexBuffersPerSize: 64, // (const)
+    tempIndexBuffers: [],
     tempQuadIndexBuffer: null,
 
+    // Precompute a lookup table for the function ceil(log2(x)), i.e. how many bits are needed to represent x, or,
+    // if x was rounded up to next pow2, which index is the single '1' bit at?
+    // Then log2ceilLookup[x] returns ceil(log2(x)).
+    log2ceilLookup: null,
+    createLog2ceilLookup: function(maxValue) {
+      GL.log2ceilLookup = new Uint8Array(maxValue+1);
+      var log2 = 0;
+      var pow2 = 1;
+      GL.log2ceilLookup[0] = 0;
+      for(var i = 1; i <= maxValue; ++i) {
+        if (i > pow2) {
+          pow2 <<= 1;
+          ++log2;
+        }
+        GL.log2ceilLookup[i] = log2;
+      }
+    },
+
     generateTempBuffers: function(quads) {
-      GL.tempBufferIndexLookup = new Uint8Array(GL.MAX_TEMP_BUFFER_SIZE+1);
-      GL.tempVertexBuffers = [];
-      GL.tempIndexBuffers = [];
-      var last = -1, curr = -1;
-      var size = 1;
-      for (var i = 0; i <= GL.MAX_TEMP_BUFFER_SIZE; i++) {
-        if (i > size) {
-          size <<= 1;
+      var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
+      GL.tempVertexBufferCounters1.length = GL.tempVertexBufferCounters2.length = largestIndex+1;
+      GL.tempVertexBuffers1.length = GL.tempVertexBuffers2.length = largestIndex+1;
+      GL.tempIndexBuffers.length = largestIndex+1;
+      for(var i = 0; i <= largestIndex; ++i) {
+        GL.tempIndexBuffers[i] = null; // Created on-demand
+        GL.tempVertexBufferCounters1[i] = GL.tempVertexBufferCounters2[i] = 0;
+        var ringbufferLength = GL.numTempVertexBuffersPerSize;
+        GL.tempVertexBuffers1[i] = [];
+        GL.tempVertexBuffers2[i] = [];
+        var ringbuffer1 = GL.tempVertexBuffers1[i];
+        var ringbuffer2 = GL.tempVertexBuffers2[i];
+        ringbuffer1.length = ringbuffer2.length = ringbufferLength;
+        for(var j = 0; j < ringbufferLength; ++j) {
+          ringbuffer1[j] = ringbuffer2[j] = null; // Created on-demand
         }
-        if (size != last) {
-          curr++;
-          GL.tempVertexBuffers[curr] = GLctx.createBuffer();
-          GLctx.bindBuffer(GLctx.ARRAY_BUFFER, GL.tempVertexBuffers[curr]);
-          GLctx.bufferData(GLctx.ARRAY_BUFFER, size, GLctx.DYNAMIC_DRAW);
-          GLctx.bindBuffer(GLctx.ARRAY_BUFFER, null);
-          GL.tempIndexBuffers[curr] = GLctx.createBuffer();
-          GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.tempIndexBuffers[curr]);
-          GLctx.bufferData(GLctx.ELEMENT_ARRAY_BUFFER, size, GLctx.DYNAMIC_DRAW);
-          GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, null);
-          last = size;
-        }
-        GL.tempBufferIndexLookup[i] = curr;
       }
 
       if (quads) {
@@ -137,6 +160,53 @@ var LibraryGL = {
         }
         GLctx.bufferData(GLctx.ELEMENT_ARRAY_BUFFER, quadIndexes, GLctx.STATIC_DRAW);
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, null);
+      }
+    },
+
+    getTempVertexBuffer: function getTempVertexBuffer(sizeBytes) {
+      var idx = GL.log2ceilLookup[sizeBytes];
+      var ringbuffer = GL.tempVertexBuffers1[idx];
+      var nextFreeBufferIndex = GL.tempVertexBufferCounters1[idx];
+      GL.tempVertexBufferCounters1[idx] = (GL.tempVertexBufferCounters1[idx]+1) & (GL.numTempVertexBuffersPerSize-1);
+      var vbo = ringbuffer[nextFreeBufferIndex];
+      if (vbo) {
+        return vbo;
+      }
+      var prevVBO = GLctx.getParameter(GLctx.ARRAY_BUFFER_BINDING);
+      ringbuffer[nextFreeBufferIndex] = GLctx.createBuffer();
+      GLctx.bindBuffer(GLctx.ARRAY_BUFFER, ringbuffer[nextFreeBufferIndex]);
+      GLctx.bufferData(GLctx.ARRAY_BUFFER, 1 << idx, GLctx.DYNAMIC_DRAW);
+      GLctx.bindBuffer(GLctx.ARRAY_BUFFER, prevVBO);
+      return ringbuffer[nextFreeBufferIndex];
+    },
+
+    getTempIndexBuffer: function getTempIndexBuffer(sizeBytes) {
+      var idx = GL.log2ceilLookup[sizeBytes];
+      var ibo = GL.tempIndexBuffers[idx];
+      if (ibo) {
+        return ibo;
+      }
+      var prevIBO = GLctx.getParameter(GLctx.ELEMENT_ARRAY_BUFFER_BINDING);
+      GL.tempIndexBuffers[idx] = GLctx.createBuffer();
+      GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.tempIndexBuffers[idx]);
+      GLctx.bufferData(GLctx.ELEMENT_ARRAY_BUFFER, 1 << idx, GLctx.DYNAMIC_DRAW);
+      GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, prevIBO);
+      return GL.tempIndexBuffers[idx];
+    },
+
+    // Called at start of each new WebGL rendering frame. This swaps the doublebuffered temp VB memory pointers,
+    // so that every second frame utilizes different set of temp buffers. The aim is to keep the set of buffers
+    // being rendered, and the set of buffers being updated disjoint.
+    newRenderingFrameStarted: function newRenderingFrameStarted() {
+      var vb = GL.tempVertexBuffers1;
+      GL.tempVertexBuffers1 = GL.tempVertexBuffers2;
+      GL.tempVertexBuffers2 = vb;
+      vb = GL.tempVertexBufferCounters1;
+      GL.tempVertexBufferCounters1 = GL.tempVertexBufferCounters2;
+      GL.tempVertexBufferCounters2 = vb;
+      var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
+      for(var i = 0; i <= largestIndex; ++i) {
+        GL.tempVertexBufferCounters1[i] = 0;
       }
     },
 
@@ -446,9 +516,6 @@ var LibraryGL = {
     preDrawHandleClientVertexAttribBindings: function preDrawHandleClientVertexAttribBindings(count) {
       GL.resetBufferBinding = false;
 
-      var used = GL.usedTempBuffers;
-      used.length = 0;
-
       // TODO: initial pass to detect ranges we need to upload, might not need an upload per attrib
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
         var cb = GL.clientBuffers[i];
@@ -457,15 +524,7 @@ var LibraryGL = {
         GL.resetBufferBinding = true;
 
         var size = GL.calcBufLength(cb.size, cb.type, cb.stride, count);
-        var index = GL.tempBufferIndexLookup[size];
-        var buf;
-        do {
-#if ASSERTIONS
-          assert(index < GL.tempVertexBuffers.length);
-#endif
-          buf = GL.tempVertexBuffers[index++];
-        } while (used.indexOf(buf) >= 0);
-        used.push(buf);
+        var buf = GL.getTempVertexBuffer(size);
         GLctx.bindBuffer(GLctx.ARRAY_BUFFER, buf);
         GLctx.bufferSubData(GLctx.ARRAY_BUFFER,
                                  0,
@@ -3725,7 +3784,7 @@ var LibraryGL = {
 #if ASSERTIONS
             assert(end <= GL.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
 #endif
-            arrayBuffer = GL.tempVertexBuffers[GL.tempBufferIndexLookup[end]];
+            arrayBuffer = GL.getTempVertexBuffer(end);
             // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
           } else {
             arrayBuffer = GL.currArrayBuffer;
@@ -4227,7 +4286,7 @@ var LibraryGL = {
 #if ASSERTIONS
           assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
 #endif
-          var indexBuffer = GL.tempIndexBuffers[GL.tempBufferIndexLookup[numProvidedIndexes << 1]];
+          var indexBuffer = GL.getTempIndexBuffer(numProvidedIndexes << 1);
           GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
           GLctx.bufferSubData(GLctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + (numProvidedIndexes << 1)') }}});
           ptr = 0;
@@ -4992,7 +5051,7 @@ var LibraryGL = {
     var buf;
     if (!GL.currElementArrayBuffer) {
       var size = GL.calcBufLength(1, type, 0, count);
-      buf = GL.tempIndexBuffers[GL.tempBufferIndexLookup[size]];
+      buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, buf);
       GLctx.bufferSubData(GLctx.ELEMENT_ARRAY_BUFFER,
                                0,
