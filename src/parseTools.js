@@ -2150,9 +2150,9 @@ function makeRounding(value, bits, signed, floatConversion) {
       }
     }
     // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
-    if (!correctRoundings() || !signed) return 'Math_floor(' + value + ')';
+    if (!correctRoundings() || !signed) return '(+Math_floor(' + value + '))';
     // We are left with >32 bits
-    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math_floor(VALUE) : Math_ceil(VALUE)', value, 'tempBigIntR');
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? +Math_floor(VALUE) : +Math_ceil(VALUE)', value, 'tempBigIntR');
   }
 }
 
