@@ -3117,8 +3117,8 @@ function aggressiveVariableEliminationInternal(func, asmData) {
       var name = node[1];
       if (name in trivials) {
         var value = values[name];
-        if (!value) throw 'missing value: ' + [func[1], name, values[name]] + ' - faulty reliance on asm zero-init?';
-        return copy(value); // must copy, or else the same object can be used multiple times
+        if (value) return copy(value); // must copy, or else the same object can be used multiple times
+        else return emptyNode();
       }
     }
   });
