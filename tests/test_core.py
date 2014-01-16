@@ -1606,6 +1606,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_alloca(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('non-ta2 may have unaligned allocas')
+
     test_path = path_from_root('tests', 'core', 'test_alloca')
     src, output = (test_path + s for s in ('.in', '.out'))
 
