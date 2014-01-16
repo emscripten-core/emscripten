@@ -149,8 +149,6 @@ LibraryManager.library = {
     }
     return {{{ makeGetValue(0, '_readdir.result', 'i8*') }}};
   },
-  __01readdir64_: 'readdir',
-  // TODO: Check if we need to link any other aliases.
 
   // ==========================================================================
   // utime.h
@@ -398,11 +396,6 @@ LibraryManager.library = {
   stat64: 'stat',
   fstat64: 'fstat',
   lstat64: 'lstat',
-  __01fstat64_: 'fstat',
-  __01stat64_: 'stat',
-  __01lstat64_: 'lstat',
-
-  // TODO: Check if other aliases are needed.
 
   // ==========================================================================
   // sys/statvfs.h
@@ -433,8 +426,6 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009604499/functions/statvfs.html
     return _statvfs(0, buf);
   },
-  __01statvfs64_: 'statvfs',
-  __01fstatvfs64_: 'fstatvfs',
 
   // ==========================================================================
   // fcntl.h
@@ -1568,11 +1559,6 @@ LibraryManager.library = {
   open64: 'open',
   lseek64: 'lseek',
   ftruncate64: 'ftruncate',
-  __01open64_: 'open',
-  __01lseek64_: 'lseek',
-  __01truncate64_: 'truncate',
-  __01ftruncate64_: 'ftruncate',
-  // TODO: Check if any other aliases are needed.
 
   // ==========================================================================
   // stdio.h
@@ -2898,11 +2884,6 @@ LibraryManager.library = {
 #endif
 
   fopen64: 'fopen',
-  __01fopen64_: 'fopen',
-  __01freopen64_: 'freopen',
-  __01fseeko64_: 'fseek',
-  __01ftello64_: 'ftell',
-  __01tmpfile64_: 'tmpfile',
   __isoc99_fscanf: 'fscanf',
   // TODO: Check if any other aliases are needed.
   _IO_getc: 'getc',
@@ -2950,7 +2931,6 @@ LibraryManager.library = {
     _mmap.mappings[ptr] = { malloc: ptr, num: num, allocated: allocated };
     return ptr;
   },
-  __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
     if (!_mmap.mappings) _mmap.mappings = {};
@@ -6871,7 +6851,6 @@ LibraryManager.library = {
     // int setrlimit(int resource, const struct rlimit *rlp)
     return 0;
   },
-  __01getrlimit64_: 'getrlimit',
 
   // TODO: Implement for real. We just do time used, and no useful data
   getrusage: function(resource, rlp) {
