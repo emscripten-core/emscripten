@@ -2322,7 +2322,7 @@ function eliminate(ast, memSafe) {
     var memoryInvalidated = false;
     var callsInvalidated = false;
     function track(name, value, defNode) { // add a potential that has just been defined to the tracked list, we hope to eliminate it
-      var usesGlobals = false, usesMemory = false, deps = {}, doesCall = false;
+      var usesGlobals = false, usesMemory = false, deps = {}, doesCall = false, hasDeps = false;
       var ignoreName = false; // one-time ignorings of names, as first op in sub and call
       traverse(value, function(node, type) {
         if (type === 'name') {
@@ -2333,6 +2333,7 @@ function eliminate(ast, memSafe) {
             }
             if (!(name in potentials)) { // deps do not matter for potentials - they are defined once, so no complexity
               deps[name] = 1;
+              hasDeps = true;
             }
           } else {
             ignoreName = false;
@@ -2354,6 +2355,7 @@ function eliminate(ast, memSafe) {
         usesMemory: usesMemory,
         defNode: defNode,
         deps: deps,
+        hasDeps: hasDeps,
         doesCall: doesCall
       };
       globalsInvalidated = false;
@@ -2426,7 +2428,7 @@ function eliminate(ast, memSafe) {
       function traverseInOrder(node, ignoreSub, ignoreName) {
         if (abort) return;
         //nesting++; // printErr-related
-        //printErr(spaces(2*(nesting+1)) + 'trav: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked) + ' : ' + [allowTracking, ignoreSub, ignoreName]);
+        //printErr(JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked) + ' : ' + [allowTracking, ignoreSub, ignoreName]);
         var type = node[0];
         if (type === 'assign') {
           var target = node[2];
@@ -2602,6 +2604,8 @@ function eliminate(ast, memSafe) {
           traverseInOrder(node[3]);
         } else if (type === 'switch') {
           traverseInOrder(node[1]);
+          var originalTracked = {};
+          for (var o in tracked) originalTracked[o] = 1;
           var cases = node[2];
           for (var i = 0; i < cases.length; i++) {
             var c = cases[i];
@@ -2609,6 +2613,15 @@ function eliminate(ast, memSafe) {
             var stats = c[1];
             for (var j = 0; j < stats.length; j++) {
               traverseInOrder(stats[j]);
+            }
+            // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
+            for (var t in tracked) {
+              if (!(t in originalTracked)) {
+                var info = tracked[t];
+                if (info.usesGlobals || info.usesMemory || info.hasDeps) {
+                  delete tracked[t];
+                }
+              }
             }
           }
         } else {

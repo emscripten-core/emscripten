@@ -304,4 +304,510 @@ function binary(x) {
  memset(f(x)) | 0;
  +dmemset(f(x));
 }
+function cute($this, $outImage) {
+ $this = $this | 0;
+ $outImage = $outImage | 0;
+ var $retval = 0, $outImage_addr = 0, $width = 0, $height = 0, $bit_depth = 0, $color_type = 0, $data = 0, $bpl = 0, $y = 0, $i = 0, $y76 = 0, $p = 0, $end = 0, $this1 = 0, $call = 0, $call7 = 0, $call8 = 0, $3 = 0, $call17 = 0, $10 = 0, $call32 = 0, $call33 = 0, $17$0 = 0, $call34 = 0, $add_ptr = 0, $32 = 0, $call42 = 0, $35 = 0, $call45 = 0, $41 = 0, $call51 = 0, $43 = 0, $call55 = 0, $call57 = 0, $49 = 0, $call72 = 0, $call75 = 0, label = 0, setjmpLabel = 0, setjmpTable = 0, sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 32 | 0;
+ label = 1;
+ setjmpLabel = 0;
+ setjmpTable = STACKTOP;
+ STACKTOP = STACKTOP + 168 | 0;
+ HEAP32[setjmpTable >> 2] = 0;
+ while (1) switch (label | 0) {
+ case 1:
+  $width = sp | 0;
+  $height = sp + 8 | 0;
+  $bit_depth = sp + 16 | 0;
+  $color_type = sp + 24 | 0;
+  $outImage_addr = $outImage;
+  $this1 = $this;
+  if ((HEAP32[($this1 + 32 | 0) >> 2] | 0 | 0) == 3) {
+   label = 2;
+   break;
+  } else {
+   label = 3;
+   break;
+  }
+ case 2:
+  $retval = 0;
+  label = 37;
+  break;
+ case 3:
+  if ((HEAP32[($this1 + 32 | 0) >> 2] | 0 | 0) == 0) {
+   label = 4;
+   break;
+  } else {
+   label = 6;
+   break;
+  }
+ case 4:
+  $call = invoke_ii(900, $this1 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  if ($call) {
+   label = 6;
+   break;
+  } else {
+   label = 5;
+   break;
+  }
+ case 5:
+  HEAP32[($this1 + 32 | 0) >> 2] = 3;
+  $retval = 0;
+  label = 37;
+  break;
+ case 6:
+  HEAP32[($this1 + 28 | 0) >> 2] = 0;
+  $call7 = invoke_iiii(30, HEAP32[($this1 + 16 | 0) >> 2] | 0 | 0, 2638 | 0, 156 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $call8 = _saveSetjmp($call7 | 0 | 0, label, setjmpTable) | 0;
+  label = 38;
+  break;
+ case 38:
+  if (($call8 | 0) != 0) {
+   label = 7;
+   break;
+  } else {
+   label = 10;
+   break;
+  }
+ case 7:
+  invoke_viii(640, $this1 + 16 | 0 | 0, $this1 + 20 | 0 | 0, $this1 + 24 | 0 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $3 = HEAP32[($this1 + 28 | 0) >> 2] | 0;
+  if (($3 | 0) == 0) {
+   label = 9;
+   break;
+  } else {
+   label = 8;
+   break;
+  }
+ case 8:
+  invoke_vi(926, $3 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  label = 9;
+  break;
+ case 9:
+  HEAP32[($this1 + 16 | 0) >> 2] = 0;
+  HEAP32[($this1 + 32 | 0) >> 2] = 3;
+  $retval = 0;
+  label = 37;
+  break;
+ case 10:
+  invoke_viiif(2, $outImage_addr | 0, HEAP32[($this1 + 16 | 0) >> 2] | 0 | 0, HEAP32[($this1 + 20 | 0) >> 2] | 0 | 0, +(+HEAPF32[($this1 | 0) >> 2]));
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $call17 = invoke_ii(832, $outImage_addr | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  if ($call17) {
+   label = 11;
+   break;
+  } else {
+   label = 14;
+   break;
+  }
+ case 11:
+  invoke_viii(640, $this1 + 16 | 0 | 0, $this1 + 20 | 0 | 0, $this1 + 24 | 0 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $10 = HEAP32[($this1 + 28 | 0) >> 2] | 0;
+  if (($10 | 0) == 0) {
+   label = 13;
+   break;
+  } else {
+   label = 12;
+   break;
+  }
+ case 12:
+  invoke_vi(926, $10 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  label = 13;
+  break;
+ case 13:
+  HEAP32[($this1 + 16 | 0) >> 2] = 0;
+  HEAP32[($this1 + 32 | 0) >> 2] = 3;
+  $retval = 0;
+  label = 37;
+  break;
+ case 14:
+  invoke_iiiiiiiiii(2, HEAP32[($this1 + 16 | 0) >> 2] | 0 | 0, HEAP32[($this1 + 20 | 0) >> 2] | 0 | 0, $width | 0, $height | 0, $bit_depth | 0, $color_type | 0, 0 | 0, 0 | 0, 0 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $call32 = invoke_ii(850, $outImage_addr | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $data = $call32;
+  $call33 = invoke_ii(284, $outImage_addr | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $bpl = $call33;
+  $17$0 = invoke_iii(860, HEAP32[$height >> 2] | 0 | 0, 4 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $call34 = invoke_ii(550, (tempRet0 ? -1 : $17$0) | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  HEAP32[($this1 + 28 | 0) >> 2] = $call34;
+  $y = 0;
+  label = 15;
+  break;
+ case 15:
+  if ($y >>> 0 < (HEAP32[$height >> 2] | 0) >>> 0) {
+   label = 16;
+   break;
+  } else {
+   label = 18;
+   break;
+  }
+ case 16:
+  $add_ptr = $data + (Math_imul($y, $bpl) | 0) | 0;
+  HEAP32[((HEAP32[($this1 + 28 | 0) >> 2] | 0) + ($y << 2) | 0) >> 2] = $add_ptr;
+  label = 17;
+  break;
+ case 17:
+  $y = $y + 1 | 0;
+  label = 15;
+  break;
+ case 18:
+  invoke_vii(858, HEAP32[($this1 + 16 | 0) >> 2] | 0 | 0, HEAP32[($this1 + 28 | 0) >> 2] | 0 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $32 = $outImage_addr;
+  $call42 = invoke_iii(690, HEAP32[($this1 + 16 | 0) >> 2] | 0 | 0, HEAP32[($this1 + 20 | 0) >> 2] | 0 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  invoke_vii(1890, $32 | 0, $call42 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $35 = $outImage_addr;
+  $call45 = invoke_iii(256, HEAP32[($this1 + 16 | 0) >> 2] | 0 | 0, HEAP32[($this1 + 20 | 0) >> 2] | 0 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  invoke_vii(2126, $35 | 0, $call45 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  HEAP32[($this1 + 32 | 0) >> 2] = 2;
+  invoke_vii(36, HEAP32[($this1 + 16 | 0) >> 2] | 0 | 0, HEAP32[($this1 + 24 | 0) >> 2] | 0 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  invoke_vii(2752, $this1 | 0, HEAP32[($this1 + 24 | 0) >> 2] | 0 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $i = 0;
+  label = 19;
+  break;
+ case 19:
+  $41 = $i;
+  $call51 = invoke_ii(618, $this1 + 12 | 0 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  if (($41 | 0) < ($call51 - 1 | 0 | 0)) {
+   label = 20;
+   break;
+  } else {
+   label = 22;
+   break;
+  }
+ case 20:
+  $43 = $outImage_addr;
+  $call55 = invoke_iii(502, $this1 + 12 | 0 | 0, $i | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $call57 = invoke_iii(502, $this1 + 12 | 0 | 0, $i + 1 | 0 | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  invoke_viii(550, $43 | 0, $call55 | 0, $call57 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  label = 21;
+  break;
+ case 21:
+  $i = $i + 2 | 0;
+  label = 19;
+  break;
+ case 22:
+  invoke_viii(640, $this1 + 16 | 0 | 0, $this1 + 20 | 0 | 0, $this1 + 24 | 0 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $49 = HEAP32[($this1 + 28 | 0) >> 2] | 0;
+  if (($49 | 0) == 0) {
+   label = 24;
+   break;
+  } else {
+   label = 23;
+   break;
+  }
+ case 23:
+  invoke_vi(926, $49 | 0);
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  label = 24;
+  break;
+ case 24:
+  HEAP32[($this1 + 16 | 0) >> 2] = 0;
+  HEAP32[($this1 + 32 | 0) >> 2] = 0;
+  if ((HEAP32[$color_type >> 2] | 0 | 0) == 3) {
+   label = 25;
+   break;
+  } else {
+   label = 36;
+   break;
+  }
+ case 25:
+  $call72 = invoke_ii(926, $outImage_addr | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  if (($call72 | 0) == 3) {
+   label = 26;
+   break;
+  } else {
+   label = 36;
+   break;
+  }
+ case 26:
+  $call75 = invoke_ii(860, $outImage_addr | 0) | 0;
+  if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
+   setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
+   if ((setjmpLabel | 0) > 0) {
+    label = -1;
+    break;
+   } else return 0 | 0;
+  }
+  __THREW__ = threwValue = 0;
+  $y76 = 0;
+  label = 27;
+  break;
+ case 27:
+  if (($y76 | 0) < (HEAP32[$height >> 2] | 0 | 0)) {
+   label = 28;
+   break;
+  } else {
+   label = 35;
+   break;
+  }
+ case 28:
+  $p = $data + (Math_imul($y76, $bpl) | 0) | 0;
+  $end = $p + (HEAP32[$width >> 2] | 0) | 0;
+  label = 29;
+  break;
+ case 29:
+  if ($p >>> 0 < $end >>> 0) {
+   label = 30;
+   break;
+  } else {
+   label = 33;
+   break;
+  }
+ case 30:
+  if (((HEAP8[$p] | 0) & 255 | 0) >= ($call75 | 0)) {
+   label = 31;
+   break;
+  } else {
+   label = 32;
+   break;
+  }
+ case 31:
+  HEAP8[$p] = 0;
+  label = 32;
+  break;
+ case 32:
+  $p = $p + 1 | 0;
+  label = 29;
+  break;
+ case 33:
+  label = 34;
+  break;
+ case 34:
+  $y76 = $y76 + 1 | 0;
+  label = 27;
+  break;
+ case 35:
+  label = 36;
+  break;
+ case 36:
+  $retval = 1;
+  label = 37;
+  break;
+ case 37:
+  STACKTOP = sp;
+  return $retval | 0;
+ case -1:
+  if ((setjmpLabel | 0) == 6) {
+   $call8 = threwValue;
+   label = 38;
+  }
+  __THREW__ = threwValue = 0;
+  break;
+ }
+ return 0;
+}
 
