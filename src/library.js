@@ -3830,6 +3830,7 @@ LibraryManager.library = {
   },
 
   strnlen: function(ptr, num) {
+    num = num >>> 0;
     for (var i = 0; i < num; i++) {
       if ({{{ makeGetValue('ptr', 0, 'i8') }}} == 0) return i;
       ptr++;
