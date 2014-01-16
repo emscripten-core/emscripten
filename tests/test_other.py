@@ -2221,7 +2221,6 @@ mergeInto(LibraryManager.library, {
     process.communicate()
     assert(os.path.isfile(outdir + 'hello_world.obj'))
 
-
   def test_doublestart_bug(self):
     open('code.cpp', 'w').write(r'''
 #include <stdio.h>
@@ -2252,4 +2251,21 @@ Module["preRun"].push(function () {
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'), engine=NODE_JS)
 
     assert output.count('This should only appear once.') == 1, '\n'+output
+
+  def test_module_print(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdio.h>
+int main(void) {
+  printf("123456789\n");
+  return 0;
+}
+''')
+
+    open('pre.js', 'w').write(r'''
+var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
+''')
+
+    Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js']).communicate()
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
+    assert r'<{(123456789)}>' in output, output
 

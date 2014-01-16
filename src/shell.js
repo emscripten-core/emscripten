@@ -38,10 +38,10 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
-  Module['print'] = function print(x) {
+  if (!Module['print']) Module['print'] = function print(x) {
     process['stdout'].write(x + '\n');
   };
-  Module['printErr'] = function printErr(x) {
+  if (!Module['printErr']) Module['printErr'] = function printErr(x) {
     process['stderr'].write(x + '\n');
   };
 
@@ -71,7 +71,7 @@ if (ENVIRONMENT_IS_NODE) {
   module['exports'] = Module;
 }
 else if (ENVIRONMENT_IS_SHELL) {
-  Module['print'] = print;
+  if (!Module['print']) Module['print'] = print;
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
   if (typeof read != 'undefined') {
@@ -107,16 +107,16 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   if (typeof console !== 'undefined') {
-    Module['print'] = function print(x) {
+    if (!Module['print']) Module['print'] = function print(x) {
       console.log(x);
     };
-    Module['printErr'] = function printErr(x) {
+    if (!Module['printErr']) Module['printErr'] = function printErr(x) {
       console.log(x);
     };
   } else {
     // Probably a worker, and without console.log. We can do very little here...
     var TRY_USE_DUMP = false;
-    Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
+    if (!Module['print']) Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
       dump(x);
     }) : (function(x) {
       // self.postMessage(x); // enable this if you want stdout to be sent as messages
