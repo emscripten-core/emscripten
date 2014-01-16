@@ -3705,6 +3705,11 @@ ok
 
     self.do_run_from_file(src, output)
 
+  def test_fnmatch(self):
+    test_path = path_from_root('tests', 'core', 'fnmatch')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
   def test_sscanf(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
     if not self.is_le32(): return self.skip('le32 needed for accurate math')

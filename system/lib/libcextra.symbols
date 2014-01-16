@@ -187,3 +187,4 @@
          T wmemmove
          T wmemset
          T wprintf
+         T fnmatch
