@@ -4318,21 +4318,36 @@ LibraryManager.library = {
   _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
 #endif
 
+  // We store an extra header in front of the exception data provided
+  // by the user.
+  // This header is:
+  // * type
+  // * destructor function pointer
+  // This is then followed by the actual exception data.
+  __cxa_exception_header_size: 8,
+  __cxa_last_thrown_exception: 0,
+  __cxa_caught_exceptions: [],
+
   // Exceptions
+  __cxa_allocate_exception__deps: ['__cxa_exception_header_size'],
   __cxa_allocate_exception: function(size) {
-    return _malloc(size);
+    var ptr = _malloc(size + ___cxa_exception_header_size);
+    return ptr + ___cxa_exception_header_size;
   },
+  __cxa_free_exception__deps: ['__cxa_exception_header_size'],
   __cxa_free_exception: function(ptr) {
     try {
-      return _free(ptr);
+      return _free(ptr - ___cxa_exception_header_size);
     } catch(e) { // XXX FIXME
 #if ASSERTIONS
       Module.printErr('exception during cxa_free_exception: ' + e);
 #endif
     }
   },
+  // Here, we throw an exception after recording a couple of values that we need to remember
+  // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
+  __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '__cxa_exception_header_size', '__cxa_last_thrown_exception'],
   __cxa_throw: function(ptr, type, destructor) {
     if (!___cxa_throw.initialized) {
       try {
@@ -4349,28 +4364,34 @@ LibraryManager.library = {
 #if EXCEPTION_DEBUG
     Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + stackTrace());
 #endif
-    {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}};
-    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}};
-    {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'destructor', 'void*') }}};
+    var header = ptr - ___cxa_exception_header_size;
+    {{{ makeSetValue('header', 0, 'type', 'void*') }}}
+    {{{ makeSetValue('header', 4, 'destructor', 'void*') }}}
+    ___cxa_last_thrown_exception = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
       __ZSt18uncaught_exceptionv.uncaught_exception = 1;
     } else {
       __ZSt18uncaught_exceptionv.uncaught_exception++;
     }
-    {{{ makeThrow('ptr') }}};
+    {{{ makeThrow('ptr') }}}
   },
-  __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
+  // This exception will be caught twice, but while begin_catch runs twice,
+  // we early-exit from end_catch when the exception has been rethrown, so
+  // pop that here from the caught exceptions.
+  __cxa_rethrow__deps: ['__cxa_end_catch', '__cxa_caught_exceptions'],
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
-    {{{ makeThrow(makeGetValue('_llvm_eh_exception.buf', '0', 'void*')) }}};
+    var ptr = ___cxa_caught_exceptions.pop();
+    {{{ makeThrow('ptr') }}}
   },
-  llvm_eh_exception__postset: '_llvm_eh_exception.buf = allocate(12, "void*", ALLOC_STATIC);',
+  llvm_eh_exception__deps: ['__cxa_last_thrown_exception'],
   llvm_eh_exception: function() {
-    return {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    return ___cxa_last_thrown_exception;
   },
   llvm_eh_selector__jsargs: true,
+  llvm_eh_selector__deps: ['__cxa_last_thrown_exception'],
   llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = {{{ makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') }}}
+    var type = ___cxa_last_thrown_exception;
     for (var i = 2; i < arguments.length; i++) {
       if (arguments[i] ==  type) return type;
     }
@@ -4379,12 +4400,22 @@ LibraryManager.library = {
   llvm_eh_typeid_for: function(type) {
     return type;
   },
-  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv'],
+  // Note that we push the last thrown exception here rather than the ptr.
+  // This is because if the exception is a pointer (as in test 3 of test_exceptions_typed),
+  // we don't actually get the value that we allocated, but something else. Easiest
+  // to remember that the last exception thrown is going to be the first to be caught,
+  // so just use that value instead as it is what we're really looking for.
+  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions'],
   __cxa_begin_catch: function(ptr) {
     __ZSt18uncaught_exceptionv.uncaught_exception--;
+    ___cxa_caught_exceptions.push(___cxa_last_thrown_exception);
     return ptr;
   },
-  __cxa_end_catch__deps: ['llvm_eh_exception', '__cxa_free_exception'],
+  // We're done with a catch. Now, we can run the destructor if there is one
+  // and free the exception. Note that if the dynCall on the destructor fails
+  // due to calling apply on undefined, that means that the destructor is
+  // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
+  __cxa_end_catch__deps: ['__cxa_free_exception', '__cxa_last_thrown_exception', '___cxa_exception_header_size', '__cxa_caught_exceptions'],
   __cxa_end_catch: function() {
     if (___cxa_end_catch.rethrown) {
       ___cxa_end_catch.rethrown = false;
@@ -4396,22 +4427,20 @@ LibraryManager.library = {
 #else
     __THREW__ = 0;
 #endif
-    // Clear type.
-    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, '0', 'void*') }}};
     // Call destructor if one is registered then clear it.
-    var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
-    var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'void*') }}};
-    if (destructor) {
-      Runtime.dynCall('vi', destructor, [ptr]);
-      {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}};
-    }
-    // Free ptr if it isn't null.
+    var ptr = ___cxa_caught_exceptions.pop();
     if (ptr) {
+      header = ptr - ___cxa_exception_header_size;
+      var destructor = {{{ makeGetValue('header', 4, 'void*') }}};
+      if (destructor) {
+        Runtime.dynCall('vi', destructor, [ptr]);
+        {{{ makeSetValue('header', 4, '0', 'i32') }}}
+      }
       ___cxa_free_exception(ptr);
-      {{{ makeSetValue('_llvm_eh_exception.buf', '0', '0', 'void*') }}};
+      ___cxa_last_thrown_exception = 0;
     }
   },
-  __cxa_get_exception_ptr__deps: ['llvm_eh_exception'],
+  __cxa_get_exception_ptr__deps: ['___cxa_last_thrown_exception'],
   __cxa_get_exception_ptr: function(ptr) {
     return ptr;
   },
@@ -4431,7 +4460,7 @@ LibraryManager.library = {
 
   terminate: '__cxa_call_unexpected',
 
-  __gxx_personality_v0__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
+  __gxx_personality_v0__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
   __gxx_personality_v0: function() {
   },
 
@@ -4464,10 +4493,11 @@ LibraryManager.library = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type', '__resumeException'],
+  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type', '__resumeException', '__cxa_last_thrown_exception', '__cxa_exception_header_size'],
   __cxa_find_matching_catch: function(thrown, throwntype) {
-    if (thrown == -1) thrown = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
-    if (throwntype == -1) throwntype = {{{ makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') }}};
+    if (thrown == -1) thrown = ___cxa_last_thrown_exception;
+    header = thrown - ___cxa_exception_header_size;
+    if (throwntype == -1) throwntype = {{{ makeGetValue('header', 0, 'void*') }}};
     var typeArray = Array.prototype.slice.call(arguments, 2);
 
     // If throwntype is a pointer, this means a pointer has been
@@ -4498,8 +4528,8 @@ LibraryManager.library = {
 #if EXCEPTION_DEBUG
     Module.print("Resuming exception");
 #endif
-    if ({{{ makeGetValue('_llvm_eh_exception.buf', 0, 'void*') }}} == 0) {{{ makeSetValue('_llvm_eh_exception.buf', 0, 'ptr', 'void*') }}};
-    {{{ makeThrow('ptr') }}};
+    if (!___cxa_last_thrown_exception) { ___cxa_last_thrown_exception = ptr; }
+    {{{ makeThrow('ptr') }}}
   },
 
   // Recursively walks up the base types of 'possibilityType'
