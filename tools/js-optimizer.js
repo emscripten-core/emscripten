@@ -3888,6 +3888,104 @@ function outline(ast) {
   });
 }
 
+function safeHeap(ast) {
+  function fixPtr(ptr, heap) {
+    switch (heap) {
+      case 'HEAP8':   case 'HEAPU8': break;
+      case 'HEAP16':  case 'HEAPU16': {
+        if (ptr[0] === 'binary') {
+          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1);
+          ptr = ptr[2]; // skip the shift
+        } else {
+          ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
+        }
+        break;
+      }
+      case 'HEAP32':  case 'HEAPU32': {
+        if (ptr[0] === 'binary') {
+          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
+          ptr = ptr[2]; // skip the shift
+        } else {
+          ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+        }
+        break;
+      }
+      case 'HEAPF32': {
+        if (ptr[0] === 'binary') {
+          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
+          ptr = ptr[2]; // skip the shift
+        } else {
+          ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+        }
+        break;
+      }
+      case 'HEAPF64': {
+        if (ptr[0] === 'binary') {
+          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3);
+          ptr = ptr[2]; // skip the shift
+        } else {
+          ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
+        }
+        break;
+      }
+      default: throw 'bad heap ' + heap;
+    }
+    ptr = ['binary', '|', ptr, ['num', 0]];
+    return ptr;
+  }
+  traverseGenerated(ast, function(node, type) {
+    if (type === 'assign') {
+      if (node[1] === true && node[2][0] === 'sub') {
+        var heap = node[2][1][1];
+        var ptr = fixPtr(node[2][2], heap);
+        var value = node[3];
+        // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
+        switch (heap) {
+          case 'HEAP8':   case 'HEAPU8': {
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1], ['num', '0']]];
+          }
+          case 'HEAP16':  case 'HEAPU16': {
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 2], ['num', '0']]];
+          }
+          case 'HEAP32':  case 'HEAPU32': {
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 4], ['num', '0']]];
+          }
+          case 'HEAPF32': {
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_FLOAT), ['num', 4], ['num', '1']]];
+          }
+          case 'HEAPF64': {
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 8], ['num', '1']]];
+          }
+          default: throw 'bad heap ' + heap;
+        }
+      }
+    } else if (type === 'sub') {
+      var heap = node[1][1];
+      if (heap[0] !== 'H') return;
+      var ptr = fixPtr(node[2], heap);
+      // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
+      switch (heap) {
+        case 'HEAP8':   case 'HEAPU8': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', '0']]], ASM_INT);
+        }
+        case 'HEAP16':  case 'HEAPU16': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', '0']]], ASM_INT);
+        }
+        case 'HEAP32':  case 'HEAPU32': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '0']]], ASM_INT);
+        }
+        case 'HEAPF32': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '1']]], ASM_FLOAT);
+        }
+        case 'HEAPF64': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 8], ['num', '1']]], ASM_DOUBLE);
+        }
+        default: throw 'bad heap ' + heap;
+      }
+    }
+  });
+}
+
 // Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
@@ -3978,6 +4076,7 @@ function asmLastOpts(ast) {
 var minifyWhitespace = false, printMetadata = true, asm = false, last = false;
 
 var passes = {
+  // passes
   dumpAst: dumpAst,
   dumpSrc: dumpSrc,
   unGlobalize: unGlobalize,
@@ -3996,6 +4095,9 @@ var passes = {
   minifyLocals: minifyLocals,
   relocate: relocate,
   outline: outline,
+  safeHeap: safeHeap,
+
+  // flags
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },

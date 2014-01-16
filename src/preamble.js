@@ -21,6 +21,7 @@ Module.print = Module.printErr = function(){};
 #endif
 
 #if SAFE_HEAP
+#if ASM_JS == 0
 //========================================
 // Debugging tools - Heap
 //========================================
@@ -166,6 +167,38 @@ function SAFE_HEAP_FILL_HISTORY(from, to, type) {
 }
 
 //==========================================
+#else
+// ASM_JS safe heap
+
+function getSafeHeapType(bytes, isFloat) {
+  switch (bytes) {
+    case 1: return 'i8';
+    case 2: return 'i16';
+    case 4: return isFloat ? 'float' : 'i32';
+    case 8: return 'double';
+    default: assert(0);
+  }
+}
+
+function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat]);
+#endif
+  assert(dest > 0, 'segmentation fault');
+  assert(dest % bytes === 0);
+  setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
+}
+
+function SAFE_HEAP_LOAD(dest, bytes, isFloat) {
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP load: ' + [dest, bytes, isFloat]);
+#endif
+  assert(dest > 0, 'segmentation fault');
+  assert(dest % bytes === 0);
+  return getValue(dest, getSafeHeapType(bytes, isFloat), 1);
+}
+
+#endif
 #endif
 
 #if CHECK_HEAP_ALIGN

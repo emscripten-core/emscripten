@@ -49,7 +49,7 @@ var RuntimeGenerator = {
   stackExit: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     var ret = '';
-    if (SAFE_HEAP) {
+    if (SAFE_HEAP && !ASM_JS) {
       ret += 'var i = sp; while ((i|0) < (STACKTOP|0)) { SAFE_HEAP_CLEAR(i|0); i = (i+1)|0 }';
     }
     return ret += 'STACKTOP=sp';

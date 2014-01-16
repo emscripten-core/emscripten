@@ -1196,7 +1196,6 @@ try:
     shared.Settings.ASM_JS = 1
     assert shared.Settings.ALLOW_MEMORY_GROWTH == 0, 'memory growth not supported in fastcomp yet'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
-    assert shared.Settings.SAFE_HEAP == 0, 'safe heap not supported in fastcomp yet'
     assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp yet'
     assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
     assert shared.Settings.RESERVED_FUNCTION_POINTERS == 0, 'reserved function pointers not supported in fastcomp'
@@ -1229,6 +1228,9 @@ try:
       logging.warning('setting CORRECT_OVERFLOWS to 1 for asm.js code generation')
       shared.Settings.CORRECT_OVERFLOWS = 1
     assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
+
+    if shared.Settings.SAFE_HEAP and not js_opts:
+      logging.warning('asm.js+SAFE_HEAP requires js opts to be run (-O1 or above by default)')
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
@@ -1991,6 +1993,8 @@ try:
     if DEBUG: save_intermediate('closure')
 
   if js_opts:
+    if shared.Settings.ASM_JS and shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
+
     if shared.Settings.OUTLINING_LIMIT > 0 and shared.Settings.ASM_JS:
       js_optimizer_queue += ['outline']
       js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
