@@ -1838,7 +1838,7 @@ function registerize(ast) {
         regTypes[ret] = type;
       }
       if (ret in allVars) {
-        assert(ret in localVars, 'register shadows non-local name: ' + ret);
+        assert(ret in localVars, 'register shadows non-local name');
       }
       return ret;
     }
@@ -2867,6 +2867,7 @@ function minifyLocals(ast) {
       while (1) {
         ensureMinifiedNames(nextMinifiedName);
         minified = minifiedNames[nextMinifiedName++];
+        // TODO: we can probably remove !isLocalName here
         if (!usedNames[minified] && !isLocalName(minified)) {
           return minified;
         }
@@ -2877,7 +2878,7 @@ function minifyLocals(ast) {
       assert(fun[1]);
     }
     if (fun[2]) {
-      for (var i=0; i<fun[2].length; i++) {
+      for (var i = 0; i < fun[2].length; i++) {
         var minified = getNextMinifiedName();
         newNames[fun[2][i]] = minified;
         fun[2][i] = minified;
@@ -2900,7 +2901,7 @@ function minifyLocals(ast) {
           if (!(name in newNames)) {
             newNames[name] = getNextMinifiedName();
           }
-          defn[0] = newNames[name]
+          defn[0] = newNames[name];
         });
       }
     });
