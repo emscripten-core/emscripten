@@ -91,7 +91,7 @@
   }
   default: {
    var $x_1 = $x_0; 
-   label = 8;
+   label = 7;
    break L1;
   }
   }
@@ -106,7 +106,7 @@
   }
   }
  }
- if (label == 8) {
+ if (label == 7) {
   // code 7
  }
  // code 4

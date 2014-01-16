@@ -391,8 +391,8 @@ Relooper::~Relooper() {
   for (unsigned i = 0; i < Shapes.size(); i++) delete Shapes[i];
 }
 
-void Relooper::AddBlock(Block *New) {
-  New->Id = BlockIdCounter++;
+void Relooper::AddBlock(Block *New, int Id) {
+  New->Id = Id == -1 ? BlockIdCounter++ : Id;
   Blocks.push_back(New);
 }
 
@@ -446,8 +446,7 @@ void Relooper::Calculate(Block *Entry) {
         for (BlockSet::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
           Block *Prior = *iter;
           Block *Split = new Block(Original->Code, Original->BranchVar);
-          Parent->AddBlock(Split);
-          PrintDebug("  to %d\n", Split->Id);
+          Parent->AddBlock(Split, Original->Id);
           Split->BranchesIn.insert(Prior);
           Branch *Details = Prior->BranchesOut[Original];
           Prior->BranchesOut[Split] = new Branch(Details->Condition, Details->Code);

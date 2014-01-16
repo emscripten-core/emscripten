@@ -57,7 +57,7 @@ struct Block {
   BlockBranchMap ProcessedBranchesOut;
   BlockSet ProcessedBranchesIn;
   Shape *Parent; // The shape we are directly inside
-  int Id; // A unique identifier, defined when added to relooper
+  int Id; // A unique identifier, defined when added to relooper. Note that this uniquely identifies a *logical* block - if we split it, the two instances have the same content *and* the same Id
   const char *Code; // The string representation of the code in this block. Owning pointer (we copy the input)
   const char *BranchVar; // If we have more than one branch out, the variable whose value determines where we go
   bool IsCheckedMultipleEntry; // If true, we are a multiple entry, so reaching us requires setting the label variable
@@ -191,7 +191,7 @@ struct Relooper {
   Relooper();
   ~Relooper();
 
-  void AddBlock(Block *New);
+  void AddBlock(Block *New, int Id=-1);
 
   // Calculates the shapes
   void Calculate(Block *Entry);
