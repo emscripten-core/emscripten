@@ -12,12 +12,12 @@ Current trunk code
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
     https://github.com/kripken/emscripten/compare/1.8.2...incoming
 
-v1.8.2: 1/4/2013
+v1.8.2: 1/4/2014
 ------------------
  - Fixed glGetFramebufferAttachmentParameteriv and an issue with glGetXXX when the returned value was null.
  - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.1...1.8.2
 
-v1.8.1: 1/3/2013
+v1.8.1: 1/3/2014
 ------------------
  - Added support for WebGL hardware instancing extension.
  - Improved fastcomp native LLVM backend support.
