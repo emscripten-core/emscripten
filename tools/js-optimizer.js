@@ -2846,7 +2846,7 @@ function minifyLocals(ast) {
     // Analyse the asmjs to figure out local variable names,
     // but operate on the original source tree so that we don't
     // miss any global names in e.g. variable initializers.
-    var asmData = normalizeAsm(fun); denormalizeAsm(fun, asmData);
+    var asmData = normalizeAsm(fun); denormalizeAsm(fun, asmData); // TODO: we can avoid modifying at all here - we just need a list of local vars+params
     var newNames = {};
     var usedNames = {};
 
