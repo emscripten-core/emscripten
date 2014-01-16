@@ -49,7 +49,8 @@ function preprocess(text) {
             showStack.push(ident in this && this[ident] > 0);
           }
         } else if (line[2] == 'n') { // include
-          ret += '\n' + read(line.substr(line.indexOf(' ')+1)) + '\n'
+          var included = read(line.substr(line.indexOf(' ')+1));
+          ret += '\n' + preprocess(included) + '\n'
         }
       } else if (line[2] == 'l') { // else
         showStack.push(!showStack.pop());
@@ -462,7 +463,7 @@ function parseParamTokens(params) {
       // handle 'byval' and 'byval align X'. We store the alignment in 'byVal'
       byVal = QUANTUM_SIZE;
       segment.splice(1, 1);
-      if (segment[1] && segment[1].text === 'nocapture') {
+      if (segment[1] && (segment[1].text === 'nocapture' || segment[1].text === 'readonly')) {
         segment.splice(1, 1);
       }
       if (segment[1] && segment[1].text === 'align') {
@@ -471,7 +472,7 @@ function parseParamTokens(params) {
         segment.splice(1, 2);
       }
     }
-    if (segment[1] && segment[1].text === 'nocapture') {
+    if (segment[1] && (segment[1].text === 'nocapture' || segment[1].text === 'readonly')) {
       segment.splice(1, 1);
     }
     if (segment.length == 1) {
@@ -627,7 +628,7 @@ function parseLLVMSegment(segment) {
 }
 
 function cleanSegment(segment) {
-  while (segment.length >= 2 && ['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext'].indexOf(segment[1].text) != -1) {
+  while (segment.length >= 2 && ['noalias', 'sret', 'nocapture', 'nest', 'zeroext', 'signext', 'readnone'].indexOf(segment[1].text) != -1) {
     segment.splice(1, 1);
   }
   return segment;
@@ -961,8 +962,13 @@ function parseNumerical(value, type) {
   }
   if (isNumber(value)) {
     var ret = parseFloat(value); // will change e.g. 5.000000e+01 to 50
+    // type may be undefined here, like when this is called from makeConst with a single argument.
+    // but if it is a number, then we can safely assume that this should handle negative zeros
+    // correctly.
+    if (type === undefined || type === 'double' || type === 'float') {
+      if (value[0] === '-' && ret === 0) { return '-.0'; } // fix negative 0, toString makes it 0
+    }
     if (type === 'double' || type === 'float') {
-      if (value[0] === '-' && ret === 0) return '-.0'; // fix negative 0, toString makes it 0
       if (!RUNNING_JS_OPTS) ret = asmEnsureFloat(ret, type);
     }
     return ret.toString();
@@ -1639,7 +1645,10 @@ function getFastValue(a, op, b, type) {
 }
 
 function getFastValues(list, op, type) {
-  assert(op == '+');
+  assert(op === '+' && type === 'i32');
+  for (var i = 0; i < list.length; i++) {
+    if (isNumber(list[i])) list[i] = (list[i]|0) + '';
+  }
   var changed = true;
   while (changed) {
     changed = false;
@@ -1647,6 +1656,7 @@ function getFastValues(list, op, type) {
       var fast = getFastValue(list[i], op, list[i+1], type);
       var raw = list[i] + op + list[i+1];
       if (fast.length < raw.length || fast.indexOf(op) < 0) {
+        if (isNumber(fast)) fast = (fast|0) + '';
         list[i] = fast;
         list.splice(i+1, 1);
         i--;
@@ -2140,9 +2150,9 @@ function makeRounding(value, bits, signed, floatConversion) {
       }
     }
     // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
-    if (!correctRoundings() || !signed) return 'Math_floor(' + value + ')';
+    if (!correctRoundings() || !signed) return '(+Math_floor(' + value + '))';
     // We are left with >32 bits
-    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math_floor(VALUE) : Math_ceil(VALUE)', value, 'tempBigIntR');
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? +Math_floor(VALUE) : +Math_ceil(VALUE)', value, 'tempBigIntR');
   }
 }
 

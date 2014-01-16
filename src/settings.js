@@ -123,6 +123,7 @@ var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 6
                      // 2: Model C++ floats precisely using Math.fround if available in the JS engine, otherwise
                      //    use an empty polyfill. This will have less of a speed penalty than using the full
                      //    polyfill in cases where engine support is not present.
+var SIMD = 0; // Whether to emit SIMD code ( https://github.com/johnmccutchan/ecmascript_simd )
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -155,6 +156,8 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // throughput. It is hard to say what values to start testing
                          // with, but something around 20,000 to 100,000 might make sense.
                          // (The unit size is number of AST nodes.)
+
+var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear

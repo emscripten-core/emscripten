@@ -89,11 +89,11 @@ struct Block {
 //            setjmp returns, etc.)
 //
 
-class SimpleShape;
-class LabeledShape;
-class MultipleShape;
-class LoopShape;
-class EmulatedShape;
+struct SimpleShape;
+struct LabeledShape;
+struct MultipleShape;
+struct LoopShape;
+struct EmulatedShape;
 
 struct Shape {
   int Id; // A unique identifier. Used to identify loops, labels are Lx where x is the Id. Defined when added to relooper
@@ -200,10 +200,15 @@ struct Relooper {
   void Render();
 
   // Sets the global buffer all printing goes to. Must call this or MakeOutputBuffer.
+  // XXX: this is deprecated, see MakeOutputBuffer
   static void SetOutputBuffer(char *Buffer, int Size);
 
-  // Creates an output buffer. Must call this or SetOutputBuffer.
+  // Creates an internal output buffer. Must call this or SetOutputBuffer. Size is
+  // a hint for the initial size of the buffer, it can be resized later one demand.
+  // For that reason this is more recommended than SetOutputBuffer.
   static void MakeOutputBuffer(int Size);
+
+  static char *GetOutputBuffer();
 
   // Sets asm.js mode on or off (default is off)
   static void SetAsmJSMode(int On);

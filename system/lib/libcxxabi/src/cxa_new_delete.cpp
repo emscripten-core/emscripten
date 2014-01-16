@@ -9,6 +9,8 @@
 // This file implements the new and delete operators.
 //===----------------------------------------------------------------------===//
 
+#define _LIBCPP_BUILDING_NEW
+
 #include <new>
 #include <cstdlib>
 
@@ -228,15 +230,33 @@ bad_array_new_length::what() const _NOEXCEPT
     return "bad_array_new_length";
 }
 
-#ifdef __EMSCRIPTEN__
-// We don't build the new.cpp from libcxx, so we need to define this.
-void
-__throw_bad_alloc()
+// bad_array_length
+
+#ifndef _LIBCPP_BAD_ARRAY_LENGTH_DEFINED
+
+class _LIBCPP_EXCEPTION_ABI bad_array_length
+    : public bad_alloc
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-    throw bad_alloc();
-#endif
+public:
+    bad_array_length() _NOEXCEPT;
+    virtual ~bad_array_length() _NOEXCEPT;
+    virtual const char* what() const _NOEXCEPT;
+};
+
+#endif  // _LIBCPP_BAD_ARRAY_LENGTH_DEFINED
+
+bad_array_length::bad_array_length() _NOEXCEPT
+{
 }
-#endif
+
+bad_array_length::~bad_array_length() _NOEXCEPT
+{
+}
+
+const char*
+bad_array_length::what() const _NOEXCEPT
+{
+    return "bad_array_length";
+}
 
 }  // std

@@ -197,7 +197,7 @@ Options that are modified or new in %s include:
         #(['-O2', '-g4'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'same as -g3 for now'),
         (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
         (['-O3', '-s', 'INLINING_LIMIT=0', '--closure', '0'], lambda generated: 'function _dump' not in generated, 'lto/inlining'),
-        (['-Os', '--llvm-lto', '1', '-s', 'ASM_JS=0'], lambda generated: 'function _dump' in generated, '-Os disables inlining'),
+        (['-Os', '--llvm-lto', '1', '-s', 'ASM_JS=0', '-g2'], lambda generated: 'function _dump' in generated, '-Os disables inlining'),
         (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
         (['-s', 'USE_TYPED_ARRAYS=1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
         ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
@@ -209,6 +209,7 @@ Options that are modified or new in %s include:
       ]:
         print params, text
         self.clear()
+        if os.environ.get('EMCC_FAST_COMPILER') == '1' and ['disable typed arrays', 'typed arrays 1 selected']: continue
         output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -1735,6 +1736,8 @@ f.close()
        ['asm', 'outline']),
       (path_from_root('tools', 'test-js-optimizer-asm-minlast.js'), open(path_from_root('tools', 'test-js-optimizer-asm-minlast-output.js')).read(),
        ['asm', 'minifyWhitespace', 'last']),
+      (path_from_root('tools', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tools', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
+       ['asm', 'aggressiveVariableElimination']),
     ]:
       print input
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
@@ -2149,10 +2152,19 @@ int main()
       self.assertContained('File size: 722', out)
 
   def test_simd(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if get_clang_version() == '3.2':
+      simd_args = ['-O3', '-vectorize', '-vectorize-loops']
+    elif get_clang_version() == '3.3':
+      simd_args = ['-O3', '-vectorize-loops', '-vectorize-slp-aggressive', '-bb-vectorize-aligned-only'] # XXX this generates <2 x float> , '-vectorize-slp']
+    elif get_clang_version() == '3.4':
+      simd_args = ['-O3'] # vectorization on by default, SIMD=1 makes us not disable it
+    else:
+      raise Exception('unknown llvm version')
+
+    simd_args += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
 
     self.clear()
-    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-DSP', '--llvm-opts', '''['-O3', '-vectorize', '-vectorize-loops', '-bb-vectorize-vector-bits=128', '-force-vector-width=4']''']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '--llvm-opts', str(simd_args)]).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
   def test_dependency_file(self):
@@ -2208,3 +2220,36 @@ mergeInto(LibraryManager.library, {
     process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'], stdout=PIPE, stderr=PIPE)
     process.communicate()
     assert(os.path.isfile(outdir + 'hello_world.obj'))
+
+
+  def test_doublestart_bug(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <emscripten.h>
+
+void main_loop(void) {
+    static int cnt = 0;
+    if (++cnt >= 10) emscripten_cancel_main_loop();
+}
+
+int main(void) {
+    printf("This should only appear once.\n");
+    emscripten_set_main_loop(main_loop, 10, 0);
+    return 0;
+}
+''')
+
+    open('pre.js', 'w').write(r'''
+if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
+if (!Module['preRun']) Module['preRun'] = [];
+Module["preRun"].push(function () {
+    Module['addRunDependency']('test_run_dependency');
+    Module['removeRunDependency']('test_run_dependency');
+});
+''')
+
+    Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js']).communicate()
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'), engine=NODE_JS)
+
+    assert output.count('This should only appear once.') == 1, '\n'+output
+

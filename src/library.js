@@ -1950,9 +1950,9 @@ LibraryManager.library = {
         }
 
         // Handle precision.
-        var precisionSet = false;
+        var precisionSet = false, precision = -1;
         if (next == {{{ charCode('.') }}}) {
-          var precision = 0;
+          precision = 0;
           precisionSet = true;
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
@@ -1969,8 +1969,10 @@ LibraryManager.library = {
             }
           }
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-        } else {
-          var precision = 6; // Standard default.
+        }
+        if (precision === -1) {
+          precision = 6; // Standard default.
+          precisionSet = false;
         }
 
         // Handle integer sizes. WARNING: These assume a 32-bit architecture!
@@ -4455,6 +4457,7 @@ LibraryManager.library = {
 
   terminate: '__cxa_call_unexpected',
 
+  __gxx_personality_v0__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
   __gxx_personality_v0: function() {
   },
 
@@ -4827,15 +4830,6 @@ LibraryManager.library = {
   llvm_log_f64: 'Math_log',
   llvm_exp_f32: 'Math_exp',
   llvm_exp_f64: 'Math_exp',
-  ldexp: function(x, exp_) {
-    return x * Math.pow(2, exp_);
-  },
-  ldexpf: 'ldexp',
-  scalb: 'ldexp',
-  scalbn: 'ldexp',
-  scalbnf: 'ldexp',
-  scalbln: 'ldexp',
-  scalblnf: 'ldexp',
   cbrt: function(x) {
     return Math.pow(x, 1/3);
   },
@@ -9178,6 +9172,10 @@ LibraryManager.library = {
     tempRet0 = 0;
     return (high >>> (bits - 32))|0;
   },
+
+  // misc shims for musl
+  __lockfile: function() { return 1 },
+  __unlockfile: function(){},
 };
 
 function autoAddDeps(object, name) {
@@ -9190,7 +9188,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose', 'fputwc', '__lockfile', '__unlockfile'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
 });
 

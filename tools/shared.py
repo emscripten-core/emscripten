@@ -272,9 +272,17 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 EXPECTED_LLVM_VERSION = (3,2)
 
+actual_clang_version = None
+
+def get_clang_version():
+  global actual_clang_version
+  if actual_clang_version is None:
+    actual_clang_version = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0].split(' ')[2]
+  return actual_clang_version
+
 def check_clang_version():
-  expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
-  actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
+  expected = '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  actual = get_clang_version()
   if expected in actual:
     return True
   logging.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
@@ -337,10 +345,10 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.8.2'
+EMSCRIPTEN_VERSION = '1.9.0'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
+  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
 
 def check_sanity(force=False):
   try:
@@ -1163,6 +1171,8 @@ class Building:
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
+    if get_clang_version() == '3.4' and not Settings.SIMD:
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4 has these on by default
     logging.debug('emcc: LLVM opts: ' + str(opts))
     target = out or (filename + '.opt.bc')
     output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
@@ -1404,6 +1414,8 @@ class Building:
     if not os.path.exists(CLOSURE_COMPILER):
       raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
 
+    CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
+
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
     args = [JAVA,
@@ -1411,6 +1423,7 @@ class Building:
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--language_in', 'ECMASCRIPT5',
+            '--externs', CLOSURE_EXTERNS,
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if pretty: args += ['--formatting', 'PRETTY_PRINT']

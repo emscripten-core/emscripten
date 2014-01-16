@@ -319,7 +319,7 @@ mergeInto(LibraryManager.library, {
         }, false);
       }
       if (setInModule) {
-        Module.ctx = ctx;
+        GLctx = Module.ctx = ctx;
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
         Browser.init();
@@ -478,19 +478,30 @@ mergeInto(LibraryManager.library, {
         // in the coordinates.
         var rect = Module["canvas"].getBoundingClientRect();
         var x, y;
+        
+        // Neither .scrollX or .pageXOffset are defined in a spec, but
+        // we prefer .scrollX because it is currently in a spec draft.
+        // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
+        var scrollX = ((typeof window.scrollX !== 'undefined') ? window.scrollX : window.pageXOffset);
+        var scrollY = ((typeof window.scrollY !== 'undefined') ? window.scrollY : window.pageYOffset);
+#if ASSERTIONS
+        // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
+        // and we have no viable fallback.
+        assert((typeof scrollX !== 'undefined') && (typeof scrollY !== 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
+#endif
         if (event.type == 'touchstart' ||
             event.type == 'touchend' ||
             event.type == 'touchmove') {
           var t = event.touches.item(0);
           if (t) {
-            x = t.pageX - (window.scrollX + rect.left);
-            y = t.pageY - (window.scrollY + rect.top);
+            x = t.pageX - (scrollX + rect.left);
+            y = t.pageY - (scrollY + rect.top);
           } else {
             return;
           }
         } else {
-          x = event.pageX - (window.scrollX + rect.left);
-          y = event.pageY - (window.scrollY + rect.top);
+          x = event.pageX - (scrollX + rect.left);
+          y = event.pageY - (scrollY + rect.top);
         }
 
         // the canvas might be CSS-scaled compared to its backbuffer;
@@ -763,6 +774,15 @@ mergeInto(LibraryManager.library, {
         Browser.mainLoop.shouldPause = false;
         return;
       }
+
+      // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
+      // VBO double-buffering and reduce GPU stalls.
+#if FULL_ES2
+      GL.newRenderingFrameStarted();
+#endif
+#if LEGACY_GL_EMULATION
+      GL.newRenderingFrameStarted();
+#endif
 
       if (Module['preMainLoop']) {
         Module['preMainLoop']();

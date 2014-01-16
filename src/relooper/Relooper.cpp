@@ -40,27 +40,56 @@ static void PutIndented(const char *String);
 static char *OutputBufferRoot = NULL;
 static char *OutputBuffer = NULL;
 static int OutputBufferSize = 0;
+static int OutputBufferOwned = false;
+
+static int LeftInOutputBuffer() {
+  return OutputBufferSize - (OutputBuffer - OutputBufferRoot);
+}
+
+static bool EnsureOutputBuffer(int Needed) { // ensures the output buffer is sufficient. returns true is no problem happened
+  Needed++; // ensure the trailing \0 is not forgotten
+  int Left = LeftInOutputBuffer();
+  if (!OutputBufferOwned) {
+    assert(Needed < Left);
+  } else {
+    // we own the buffer, and can resize if necessary
+    if (Needed >= Left) {
+      int Offset = OutputBuffer - OutputBufferRoot;
+      int TotalNeeded = OutputBufferSize + Needed - Left + 10240;
+      int NewSize = OutputBufferSize;
+      while (NewSize < TotalNeeded) NewSize = NewSize + (NewSize/2);
+      //printf("resize %d => %d\n", OutputBufferSize, NewSize);
+      OutputBufferRoot = (char*)realloc(OutputBufferRoot, NewSize);
+      OutputBuffer = OutputBufferRoot + Offset;
+      OutputBufferSize = NewSize;
+      return false;
+    }
+  }
+  return true;
+}
 
 void PrintIndented(const char *Format, ...) {
   assert(OutputBuffer);
-  assert(OutputBuffer + Indenter::CurrIndent*INDENTATION - OutputBufferRoot < OutputBufferSize);
+  EnsureOutputBuffer(Indenter::CurrIndent*INDENTATION);
   for (int i = 0; i < Indenter::CurrIndent*INDENTATION; i++, OutputBuffer++) *OutputBuffer = ' ';
-  va_list Args;
-  va_start(Args, Format);
-  int left = OutputBufferSize - (OutputBuffer - OutputBufferRoot);
-  int written = vsnprintf(OutputBuffer, left, Format, Args);
-  assert(written < left);
-  OutputBuffer += written;
-  va_end(Args);
+  int Written;
+  while (1) { // write and potentially resize buffer until we have enough room
+    int Left = LeftInOutputBuffer();
+    va_list Args;
+    va_start(Args, Format);
+    Written = vsnprintf(OutputBuffer, Left, Format, Args);
+    va_end(Args);
+    if (EnsureOutputBuffer(Written)) break;
+  }
+  OutputBuffer += Written;
 }
 
 void PutIndented(const char *String) {
   assert(OutputBuffer);
-  assert(OutputBuffer + Indenter::CurrIndent*INDENTATION - OutputBufferRoot < OutputBufferSize);
+  EnsureOutputBuffer(Indenter::CurrIndent*INDENTATION);
   for (int i = 0; i < Indenter::CurrIndent*INDENTATION; i++, OutputBuffer++) *OutputBuffer = ' ';
-  int left = OutputBufferSize - (OutputBuffer - OutputBufferRoot);
-  int needed = strlen(String)+1;
-  assert(needed < left);
+  int Needed = strlen(String)+1;
+  EnsureOutputBuffer(Needed);
   strcpy(OutputBuffer, String);
   OutputBuffer += strlen(String);
   *OutputBuffer++ = '\n';
@@ -308,7 +337,7 @@ void MultipleShape::Render(bool InLoop) {
   }
   RenderLoopPostfix();
   if (Next) Next->Render(InLoop);
-};
+}
 
 // LoopShape
 
@@ -323,7 +352,7 @@ void LoopShape::Render(bool InLoop) {
   Indenter::Unindent();
   PrintIndented("}\n");
   if (Next) Next->Render(InLoop);
-};
+}
 
 // EmulatedShape
 
@@ -350,7 +379,7 @@ void EmulatedShape::Render(bool InLoop) {
   Indenter::Unindent();
   PrintIndented("}\n");
   if (Next) Next->Render(InLoop);
-};
+}
 
 // Relooper
 
@@ -358,8 +387,8 @@ Relooper::Relooper() : Root(NULL), Emulate(false), BlockIdCounter(1), ShapeIdCou
 }
 
 Relooper::~Relooper() {
-  for (int i = 0; i < Blocks.size(); i++) delete Blocks[i];
-  for (int i = 0; i < Shapes.size(); i++) delete Shapes[i];
+  for (unsigned i = 0; i < Blocks.size(); i++) delete Blocks[i];
+  for (unsigned i = 0; i < Shapes.size(); i++) delete Shapes[i];
 }
 
 void Relooper::AddBlock(Block *New) {
@@ -399,7 +428,7 @@ void Relooper::Calculate(Block *Entry) {
     // RAII cleanup. Without splitting, we will be forced to introduce labelled loops to allow
     // reaching the final block
     void SplitDeadEnds() {
-      int TotalCodeSize = 0;
+      unsigned TotalCodeSize = 0;
       for (BlockSet::iterator iter = Live.begin(); iter != Live.end(); iter++) {
         Block *Curr = *iter;
         TotalCodeSize += strlen(Curr->Code);
@@ -451,7 +480,7 @@ void Relooper::Calculate(Block *Entry) {
   Pre.FindLive(Entry);
 
   // Add incoming branches from live blocks, ignoring dead code
-  for (int i = 0; i < Blocks.size(); i++) {
+  for (unsigned i = 0; i < Blocks.size(); i++) {
     Block *Curr = Blocks[i];
     if (!contains(Pre.Live, Curr)) continue;
     for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
@@ -1158,11 +1187,18 @@ void Relooper::Render() {
 void Relooper::SetOutputBuffer(char *Buffer, int Size) {
   OutputBufferRoot = OutputBuffer = Buffer;
   OutputBufferSize = Size;
+  OutputBufferOwned = false;
 }
 
 void Relooper::MakeOutputBuffer(int Size) {
+  if (OutputBufferRoot && OutputBufferSize >= Size && OutputBufferOwned) return;
   OutputBufferRoot = OutputBuffer = (char*)malloc(Size);
   OutputBufferSize = Size;
+  OutputBufferOwned = true;
+}
+
+char *Relooper::GetOutputBuffer() {
+  return OutputBufferRoot;
 }
 
 void Relooper::SetAsmJSMode(int On) {

@@ -1102,7 +1102,9 @@ mergeInto(LibraryManager.library, {
           }
         }
         this.message = ERRNO_MESSAGES[errno];
-        this.stack = stackTrace();
+#if ASSERTIONS
+        if (this.stack) this.stack = demangleAll(this.stack);
+#endif
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;

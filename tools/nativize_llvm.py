@@ -23,7 +23,7 @@ libs = sys.argv[2:] # e.g.: dl for dlopen/dlclose, util for openpty/forkpty
 print 'bc => clean bc'
 Popen([LLVM_OPT, filename, '-strip-debug', '-o', filename + '.clean.bc']).communicate()[0]
 print 'bc => s'
-for params in [[], ['-march=x86-64']]: # try x86, then x86-64 FIXME
+for params in [['-march=x86'], ['-march=x86-64']]: # try x86, then x86-64 FIXME
   print 'params', params
   Popen([LLVM_COMPILER] + params + [filename + '.clean.bc', '-o', filename + '.s']).communicate()[0]
   print 's => o'

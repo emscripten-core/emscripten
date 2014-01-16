@@ -1061,5 +1061,17 @@
                 "patch"
             ]
         }
+    },
+    {
+        "file": "uuid/uuid.h", 
+        "defines": [
+            "UUID_VARIANT_NCS", 
+            "UUID_VARIANT_DCE",
+            "UUID_VARIANT_MICROSOFT", 
+            "UUID_VARIANT_OTHER",
+            "UUID_TYPE_DCE_TIME",
+            "UUID_TYPE_DCE_RANDOM" 
+        ],
+        "structs": {}
     }
 ]

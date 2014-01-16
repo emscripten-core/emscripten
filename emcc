@@ -687,7 +687,7 @@ if os.environ.get('EMMAKEN_CXX'):
 CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
 
 EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += shlex.split(EMMAKEN_CFLAGS)
+if EMMAKEN_CFLAGS: sys.argv += shlex.split(EMMAKEN_CFLAGS)
 
 # ---------------- Utilities ---------------
 
@@ -1194,9 +1194,6 @@ try:
 
   if fastcomp:
     shared.Settings.ASM_JS = 1
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 0:
-      logging.warning('disabling exception catching since not supported in fastcomp yet')
-      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     assert shared.Settings.ALLOW_MEMORY_GROWTH == 0, 'memory growth not supported in fastcomp yet'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.SAFE_HEAP == 0, 'safe heap not supported in fastcomp yet'
@@ -1210,10 +1207,15 @@ try:
     assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
     assert shared.Settings.TARGET_LE32 == 1, 'fastcomp requires le32'
+    assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
     assert not bind, 'embind not supported in fastcomp yet'
     if jcache:
       logging.warning('jcache is not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
+
+    fastcomp_opts = ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+    if not shared.Settings.DISABLE_EXCEPTION_CATCHING:
+      fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
 
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
@@ -1438,18 +1440,26 @@ try:
       libc_files = [
         'dlmalloc.c',
         os.path.join('libcxx', 'new.cpp'),
-        os.path.join('libc', 'stdlib', 'getopt_long.c'),
-        os.path.join('libc', 'gen', 'err.c'),
-        os.path.join('libc', 'gen', 'errx.c'),
-        os.path.join('libc', 'gen', 'warn.c'),
-        os.path.join('libc', 'gen', 'warnx.c'),
-        os.path.join('libc', 'gen', 'verr.c'),
-        os.path.join('libc', 'gen', 'verrx.c'),
-        os.path.join('libc', 'gen', 'vwarn.c'),
-        os.path.join('libc', 'gen', 'vwarnx.c'),
-        os.path.join('libc', 'stdlib', 'strtod.c'),
       ]
       musl_files = [
+        ['internal', [
+         'floatscan.c',
+         'shgetc.c',
+        ]],
+        ['math', [
+         'scalbn.c',
+         'scalbnl.c',
+        ]],
+        ['stdio', [
+         '__overflow.c',
+         '__toread.c',
+         '__towrite.c',
+         '__uflow.c',
+        ]],
+        ['stdlib', [
+         'atof.c',
+         'strtod.c',
+        ]]
       ]
       for directory, sources in musl_files:
         libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
@@ -1490,6 +1500,12 @@ try:
           'wctrans.c',
           'wcwidth.c',
          ]],
+         ['internal', [
+          'intscan.c',
+         ]],
+         ['legacy', [
+          'err.c',
+         ]],
          ['locale', [
           'iconv.c',
           'iswalnum_l.c',
@@ -1505,7 +1521,9 @@ try:
           'iswspace_l.c',
           'iswupper_l.c',
           'iswxdigit_l.c',
+          'strcasecmp_l.c',
           'strfmon.c',
+          'strncasecmp_l.c',
           'strxfrm.c',
           'towctrans_l.c',
           'towlower_l.c',
@@ -1516,6 +1534,35 @@ try:
           'wcsxfrm_l.c',
           'wctrans_l.c',
           'wctype_l.c',
+         ]],
+         ['math', [
+          '__cos.c',
+          '__cosdf.c',
+          '__sin.c',
+          '__sindf.c',
+          'ilogb.c',
+          'ilogbf.c',
+          'ilogbl.c',
+          'ldexp.c',
+          'ldexpf.c',
+          'ldexpl.c',
+          'logb.c',
+          'logbf.c',
+          'logbl.c',
+          'lgamma.c',
+          'lgamma_r.c',
+          'lgammaf.c',
+          'lgammaf_r.c',
+          'lgammal.c',
+          'scalbnf.c',
+          'signgam.c',
+          'tgamma.c',
+          'tgammaf.c',
+          'tgammal.c'
+         ]],
+         ['misc', [
+          'getopt.c',
+          'getopt_long.c',
          ]],
          ['multibyte', [
           'btowc.c',
@@ -1547,13 +1594,27 @@ try:
           'vswprintf.c',
           'vwprintf.c',
           'wprintf.c',
+          'fputwc.c',
+          'fputws.c',
          ]],
          ['stdlib', [
            'ecvt.c',
            'fcvt.c',
            'gcvt.c',
+           'wcstod.c',
+           'wcstol.c',
          ]],
          ['string', [
+           'memccpy.c',
+           'memmem.c',
+           'mempcpy.c',
+           'memrchr.c',
+           'strcasestr.c',
+           'strchrnul.c',
+           'strlcat.c',
+           'strlcpy.c',
+           'strsep.c',
+           'strverscmp.c',
            'wcpcpy.c',
            'wcpncpy.c',
            'wcscasecmp.c',
@@ -1743,7 +1804,6 @@ try:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
-
     if (not save_bc and not fastcomp) or AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
@@ -1753,13 +1813,13 @@ try:
     else:
       if fastcomp and not save_bc:
         # Simplify LLVM bitcode for fastcomp
-        link_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+        link_opts += fastcomp_opts
       shared.Building.llvm_opt(final, link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
         shutil.copyfile(final, save_bc)
         if fastcomp:
-          shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
+          shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
           final += '.adsimp.bc'
           if DEBUG: save_intermediate('adsimp', 'bc')
 
@@ -1779,7 +1839,7 @@ try:
 
   # Simplify bitcode after autodebug
   if fastcomp and (AUTODEBUG or LEAVE_INPUTS_RAW):
-    shared.Building.llvm_opt(final, ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt'], final + '.adsimp.bc')
+    shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
     final += '.adsimp.bc'
     if DEBUG: save_intermediate('adsimp', 'bc')
 
@@ -1915,6 +1975,9 @@ try:
 
     js_optimizer_queue += [get_eliminate()]
 
+    if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
+      js_optimizer_queue += ['aggressiveVariableElimination']
+
     if opt_level >= 2:
       js_optimizer_queue += ['simplifyExpressions']
 
@@ -1973,6 +2036,11 @@ try:
       if debug_level >= 4:
         generate_source_map(target)
       shutil.move(final, js_target)
+      # TODO: use an async blob, which would allow code rewriting on the client:
+      #   var blob = new Blob([codeString]);
+      #   var script = document.createElement('script');
+      #   script.src = URL.createObjectURL(blob);
+      #   document.body.appendChild(script);
       script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
       html.write(shell.replace('{{{ SCRIPT }}}', script_tag))
     else:

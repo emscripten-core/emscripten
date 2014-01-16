@@ -477,6 +477,14 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output)
 
+  def test_literal_negative_zero(self):
+    if self.emcc_args == None: return self.skip('needs emcc')
+
+    test_path = path_from_root('tests', 'core', 'test_literal_negative_zero')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_llvm_intrinsics(self):
     if self.emcc_args == None: return self.skip('needs ta2')
 
@@ -502,6 +510,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_cube2md5(self):
     if self.emcc_args == None: return self.skip('needs emcc')
+    if not self.is_le32(): return self.skip('le32 needed for accurate math')
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), os.path.join(self.get_dir(), 'cube2md5.txt'))
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
@@ -829,6 +838,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
+  def test_math_lgamma(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      if not self.is_le32(): return self.skip('le32 needed for accurate math')
+
+      test_path = path_from_root('tests', 'math', 'lgamma')
+      src, output = (test_path + s for s in ('.in', '.out'))
+
+      self.do_run_from_file(src, output)
+
   def test_frexp(self):
       test_path = path_from_root('tests', 'core', 'test_frexp')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -936,6 +954,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       for named in (0, 1):
         print named
+
+        if os.environ.get('EMCC_FAST_COMPILER') == '1' and named: continue # no named globals in fastcomp
 
         Settings.NAMED_GLOBALS = named
         self.do_run_from_file(src, output, ['wowie', 'too', '74'])
@@ -1184,7 +1204,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_exceptions(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
       if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.EXCEPTION_DEBUG = 1
 
@@ -1273,13 +1292,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_exception_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
     test_path = path_from_root('tests', 'core', 'test_exception_2')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
+
 
   def test_white_list_exception(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
@@ -1298,7 +1317,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_uncaught_exception(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
 
@@ -1337,8 +1355,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, 'success')
 
   def test_typed_exceptions(self):
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
       src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
@@ -1357,7 +1373,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_std_exception(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
@@ -1367,8 +1382,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_async_exit(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
     open('main.c', 'w').write(r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -3542,6 +3555,7 @@ ok
 
   def test_strtod(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
+    if not self.is_le32(): return self.skip('le32 needed for accurate math')
 
     src = r'''
       #include <stdio.h>
@@ -3571,6 +3585,8 @@ ok
         printf("%g\n", strtod("123e-50", &endptr));
         printf("%g\n", strtod("123e-250", &endptr));
         printf("%g\n", strtod("123e-450", &endptr));
+        printf("%g\n", strtod("0x6", &endptr));
+        printf("%g\n", strtod("-0x0p+0", &endptr));
 
         char str[] = "  12.34e56end";
         printf("%g\n", strtod(str, &endptr));
@@ -3603,6 +3619,8 @@ ok
       1.23e-48
       1.23e-248
       0
+      6
+      -0
       1.234e+57
       10
       inf
@@ -3687,6 +3705,7 @@ ok
 
   def test_sscanf(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
+    if not self.is_le32(): return self.skip('le32 needed for accurate math')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4070,6 +4089,12 @@ def process(filename):
 
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
+
+  def test_wprintf(self):
+    if self.emcc_args is None: return self.skip('requires libcxx')
+    test_path = path_from_root('tests', 'core', 'test_wprintf')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
 
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
@@ -4602,7 +4627,6 @@ return malloc(size);
   def test_simd(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4611,7 +4635,6 @@ return malloc(size);
 
   def test_simd2(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4619,9 +4642,10 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd3(self):
+    return self.skip('FIXME: this appears to be broken')
+
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4650,12 +4674,15 @@ return malloc(size);
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
-    self.do_run('',
-                'hello lua world!\n17\n1\n2\n3\n4\n7',
-                args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
-                includes=[path_from_root('tests', 'lua')],
-                output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
+    for aggro in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args else [0]):
+      print aggro
+      Settings.AGGRESSIVE_VARIABLE_ELIMINATION = aggro
+      self.do_run('',
+                  'hello lua world!\n17\n1\n2\n3\n4\n7',
+                  args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
+                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                  includes=[path_from_root('tests', 'lua')],
+                  output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
   def get_freetype(self):
     Settings.DEAD_FUNCTIONS += ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_']
@@ -5033,7 +5060,7 @@ def process(filename):
           '2xi40', # pnacl limitations in ExpandGetElementPtr
           'legalizer_ta2', '514_ta2', # pnacl limitation in not legalizing i104, i96, etc.
           'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_phi', 'longjmp_tiny_phi2', 'longjmp_tiny_invoke_phi', 'indirectbrphi', 'ptrtoint_blockaddr', 'quoted', # current fastcomp limitations FIXME
-          'sillyfuncast', 'sillyfuncast2', 'sillybitcast', 'atomicrmw_unaligned' # TODO XXX
+          'sillyfuncast2', 'sillybitcast', 'atomicrmw_unaligned' # TODO XXX
         ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
           print self.skip('case "%s" only relevant for ta2' % shortname)

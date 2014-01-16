@@ -1059,11 +1059,35 @@ var LibrarySDL = {
       var src = buffer >> 2;
       var dst = 0;
       var isScreen = surf == SDL.screen;
-      var data32 = new Uint32Array(data.buffer);
-      var num = data32.length;
-      while (dst < num) {
-        // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-        data32[dst++] = HEAP32[src++] | (isScreen ? 0xff000000 : 0);
+      var num;
+      if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) {
+        // IE10/IE11: ImageData objects are backed by the deprecated CanvasPixelArray,
+        // not UInt8ClampedArray. These don't have buffers, so we need to revert
+        // to copying a byte at a time. We do the undefined check because modern
+        // browsers do not define CanvasPixelArray anymore.
+        num = data.length;
+        while (dst < num) {
+          var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+          data[dst  ] = val & 0xff;
+          data[dst+1] = (val >> 8) & 0xff;
+          data[dst+2] = (val >> 16) & 0xff;
+          data[dst+3] = isScreen ? 0xff : ((val >> 24) & 0xff);
+          src++;
+          dst += 4;
+        }
+      } else {
+        var data32 = new Uint32Array(data.buffer);
+        num = data32.length;
+        if (isScreen) {
+          while (dst < num) {
+            // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+            data32[dst++] = HEAP32[src++] | 0xff000000;
+          }
+        } else {
+          while (dst < num) {
+            data32[dst++] = HEAP32[src++];
+          }
+        }
       }
 #else
       var num = surfData.image.data.length;

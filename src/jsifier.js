@@ -18,7 +18,7 @@ var INDENTATION = ' ';
 var functionStubSigs = {};
 
 // JSifier
-function JSify(data, functionsOnly, givenFunctions) {
+function JSify(data, functionsOnly) {
   //B.start('jsifier');
   var mainPass = !functionsOnly;
 
@@ -109,7 +109,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
                                  ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
       if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
-      JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true, Functions);
+      JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true);
       if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
     }
     currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
@@ -215,6 +215,9 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   function parseConst(value, type, ident) {
     var constant = makeConst(value, type);
+    // Sadly, we've thrown away type information in makeConst, so we're not
+    // passing correct type info to parseNumerical which works around this
+    // lack.
     constant = flatten(constant).map(function(x) { return parseNumerical(x) })
     return constant;
   }
@@ -625,8 +628,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
-    if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
     if (!ASM_JS) {
+      if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
       func.JS += INDENTATION + 'var label=0;\n';
     }
 
@@ -878,8 +881,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   function makeAssign(item) {
     var valueJS = item.JS;
     item.JS = '';
-    if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
     if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED) { // asm only needs non-allocas
+      if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
       item.JS += ((ASM_JS || item.overrideSSA) ? '' : 'var ') + toNiceIdent(item.assignTo);
     }
     var value = parseNumerical(valueJS);
@@ -1796,7 +1799,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
         });
       }
-      JSify(globalsData, true, Functions);
+      JSify(globalsData, true);
       globalsData = null;
       data.unparsedGlobalss = null;
 
@@ -1871,7 +1874,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
       print('var i64Math = null;');
     }
-    if (Types.usesSIMD) {
+    if (Types.usesSIMD || SIMD) {
       print(read('simd.js'));
     }
 

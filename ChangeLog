@@ -10,7 +10,40 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    https://github.com/kripken/emscripten/compare/1.7.8...incoming
+    https://github.com/kripken/emscripten/compare/1.8.2...incoming
+
+v1.8.2: 1/4/2013
+------------------
+ - Fixed glGetFramebufferAttachmentParameteriv and an issue with glGetXXX when the returned value was null.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.1...1.8.2
+
+v1.8.1: 1/3/2013
+------------------
+ - Added support for WebGL hardware instancing extension.
+ - Improved fastcomp native LLVM backend support.
+ - Added support for #include filename.js to JS libraries.
+ - Deprecated --compression emcc command line parameter that manually compressed output JS files, due to performance issues. Instead, it is best to rely on the web server to serve compressed JS files.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.0...1.8.1
+
+v1.8.0: 12/28/2013
+------------------
+ - Fix two issues with function outliner and relooper.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.9...1.8.0
+
+v1.7.9: 12/27/2013
+------------------
+ - Added new command line parameter --em-config that allows specifying a custom location for the .emscripten configuration file.
+ - Reintroduced relaxed asm.js heap sizes, which no longer need to be power of 2, but a multiple of 16MB is sufficient.
+ - Added emrun command line tool that allows launching .html pages from command line on desktop and Android as if they were native applications. See https://groups.google.com/forum/#!topic/emscripten-discuss/t2juu3q1H8E . Adds --emrun compiler link flag.
+ - Began initial work on the "fastcomp" compiler toolchain, a rewrite of the previous JS LLVM AST parsing and codegen via a native LLVM backend.
+ - Added --exclude-file command line flag to emcc and a matching --exclude command line flag to file packager, which allows specifying files and directories that should be excluded while packaging a VFS data blob.
+ - Improved GLES2 and EGL support libraries to be more spec-conformant.
+ - Optimized legacy GL emulation code path. Added new GL_FFP_ONLY optimization path to fixed function pipeline emulation.
+ - Added new core functions emscripten_log() and emscripten_get_callstack() that allow printing out log messages with demangled and source-mapped callstack information.
+ - Improved BSD Sockets support. Implemented getprotobyname() for BSD Sockets library.
+ - Fixed issues with simd support.
+ - Various bugfixes: #1573, #1846, #1886, #1908, #1918, #1930, #1931, #1942, #1948, ..
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.8...1.7.9
 
 v1.7.8: 11/19/2013
 ------------------

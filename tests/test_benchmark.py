@@ -58,7 +58,7 @@ class NativeBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.parent = parent
-    if lib_builder: native_args += lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
+    if lib_builder: native_args = native_args + lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
@@ -67,7 +67,6 @@ class NativeBenchmarker(Benchmarker):
         print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([compiler, '-O2', filename, '-o', filename+'.native']), process.returncode)
         print "Output: " + output[0]
     else:
-      print '(using clang)'
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
 
@@ -90,7 +89,8 @@ class JSBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.filename = filename
-    if lib_builder: emcc_args += lib_builder('js', native=False, env_init={})
+    llvm_root = self.env.get('LLVM') or LLVM_ROOT
+    if lib_builder: emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env)
 
     open('hardcode.py', 'w').write('''
 def process(filename):
@@ -119,16 +119,27 @@ process(sys.argv[1])
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
 
 # Benchmarkers
-benchmarkers = [
-  NativeBenchmarker('clang', CLANG_CC, CLANG),
-  #NativeBenchmarker('gcc', 'gcc', 'g++'),
-  #JSBenchmarker('sm-f32',       SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-  JSBenchmarker('sm',           SPIDERMONKEY_ENGINE),
-  #JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
-  #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
-  #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
-  #JSBenchmarker('v8',           V8_ENGINE)
-]
+try:
+  benchmarkers_error = ''
+  benchmarkers = [
+    #NativeBenchmarker('clang', CLANG_CC, CLANG),
+    NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
+    #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
+    #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
+    #NativeBenchmarker('gcc', 'gcc', 'g++'),
+    JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+    #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
+    #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
+    #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
+    #JSBenchmarker('sm-f32-3.4', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
+    #JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
+    #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
+    #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
+    #JSBenchmarker('v8',           V8_ENGINE)
+  ]
+except Exception, e:
+  benchmarkers_error = str(e)
+  benchmarkers = []
 
 class benchmark(RunnerCore):
   save_dir = True
@@ -166,6 +177,8 @@ class benchmark(RunnerCore):
     Building.COMPILER_TEST_OPTS = []
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
+    if len(benchmarkers) == 0: raise Exception('error, no benchmarkers: ' + benchmarkers_error)
+
     args = args or [DEFAULT_ARG]
     if args_processor: args = args_processor(args)
 
@@ -458,17 +471,15 @@ class benchmark(RunnerCore):
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
-    #shutil.copyfile(path_from_root('tests', 'lua', 'binarytrees.lua'), 'binarytrees.lua')
-    #shutil.copyfile(path_from_root('tests', 'lua', 'scimark.lua'), 'scimark.lua')
-    emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
-                ['--embed-file', benchmark + '.lua']
-                #['--embed-file', 'binarytrees.lua', '--embed-file', 'scimark.lua'] + ['--minify', '0']
-    shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
-    emcc_args[0] += '.bc'
-    native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
-
+    def lib_builder(name, native, env_init):
+      ret = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      if native: return ret
+      shutil.copyfile(ret[0], ret[0] + '.bc')
+      ret[0] += '.bc'
+      return ret
     self.do_benchmark('lua_' + benchmark, '', expected,
-                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG], emcc_args=['--embed-file', benchmark + '.lua'],
+                      lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
   def test_zzz_lua_scimark(self):

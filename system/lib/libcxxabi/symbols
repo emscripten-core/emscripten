@@ -31,7 +31,6 @@
          T _ZN10__cxxabiv129__pointer_to_member_type_infoD0Ev
          T _ZN10__cxxabiv129__pointer_to_member_type_infoD1Ev
          T _ZN10__cxxabiv129__pointer_to_member_type_infoD2Ev
-         C _ZN10__cxxabiv18is_equalEPKSt9type_infoS2_b
          T _ZNK10__cxxabiv116__enum_type_info9can_catchEPKNS_16__shim_type_infoERPv
          T _ZNK10__cxxabiv116__shim_type_info5noop1Ev
          T _ZNK10__cxxabiv116__shim_type_info5noop2Ev
@@ -127,6 +126,7 @@
          D _ZTIPy
          D _ZTISt10bad_typeid
          D _ZTISt8bad_cast
+         C _ZTISt9exception
          D _ZTISt9type_info
          D _ZTIa
          D _ZTIb
@@ -201,6 +201,7 @@
          D _ZTSPy
          D _ZTSSt10bad_typeid
          D _ZTSSt8bad_cast
+         C _ZTSSt9exception
          D _ZTSSt9type_info
          D _ZTSa
          D _ZTSb
