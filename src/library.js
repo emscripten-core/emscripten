@@ -7344,6 +7344,12 @@ LibraryManager.library = {
   // netdb.h
   // ==========================================================================
 
+  __h_errno_state: 'allocate(1, "i32", ALLOC_STATIC)',
+  __h_errno_location__deps: ['__h_errno_state'],
+  __h_errno_location: function() {
+    return ___h_errno_state;
+  },
+
   // We can't actually resolve hostnames in the browser, so instead
   // we're generating fake IP addresses with lookup_name that we can
   // resolve later on with lookup_addr.
@@ -7399,6 +7405,7 @@ LibraryManager.library = {
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
       ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+      // TODO: set h_errno
       return null;
     }
     addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
