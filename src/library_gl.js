@@ -3872,11 +3872,9 @@ var LibraryGL = {
 #if GL_FFP_ONLY
           if (!GL.currArrayBuffer) {
             GLctx.vertexAttribPointer(GLImmediate.VERTEX, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
-            GL.enableVertexAttribArray(GLImmediate.VERTEX);
             if (this.hasNormal) {
               var normalAttr = clientAttributes[GLImmediate.NORMAL];
               GLctx.vertexAttribPointer(GLImmediate.NORMAL, normalAttr.size, normalAttr.type, true, GLImmediate.stride, normalAttr.offset);
-              GL.enableVertexAttribArray(GLImmediate.NORMAL);
             }
           }
 #else
@@ -3899,11 +3897,9 @@ var LibraryGL = {
                 var texAttr = clientAttributes[attribLoc];
                 if (texAttr.size) {
                   GLctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GLImmediate.stride, texAttr.offset);
-                  GL.enableVertexAttribArray(attribLoc);
                 } else {
                   // These two might be dangerous, but let's try them.
                   GLctx.vertexAttrib4f(attribLoc, 0, 0, 0, 1);
-                  GL.disableVertexAttribArray(attribLoc);
                 }
               }
 #else
@@ -3938,21 +3934,18 @@ var LibraryGL = {
 #if GL_FFP_ONLY
             if (!GL.currArrayBuffer) {
               GLctx.vertexAttribPointer(GLImmediate.COLOR, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
-              GL.enableVertexAttribArray(GLImmediate.COLOR);
             }
 #else
             GLctx.vertexAttribPointer(this.colorLocation, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
             GLctx.enableVertexAttribArray(this.colorLocation);
 #endif
-          } else if (this.hasColor) {
-#if GL_FFP_ONLY
-            GL.disableVertexAttribArray(GLImmediate.COLOR);
-            GLctx.vertexAttrib4fv(GLImmediate.COLOR, GLImmediate.clientColor);
-#else
+          }
+#if !GL_FFP_ONLY
+          else if (this.hasColor) {
             GLctx.disableVertexAttribArray(this.colorLocation);
             GLctx.vertexAttrib4fv(this.colorLocation, GLImmediate.clientColor);
-#endif
           }
+#endif
           if (this.hasFog) {
             if (this.fogColorLocation) GLctx.uniform4fv(this.fogColorLocation, GLEmulation.fogColor);
             if (this.fogEndLocation) GLctx.uniform1f(this.fogEndLocation, GLEmulation.fogEnd);
@@ -4461,6 +4454,9 @@ var LibraryGL = {
       GLImmediate.clientColor[1] = g;
       GLImmediate.clientColor[2] = b;
       GLImmediate.clientColor[3] = a;
+#if GL_FFP_ONLY
+      GLctx.vertexAttrib4fv(GLImmediate.COLOR, GLImmediate.clientColor);
+#endif
     }
   },
   glColor4d: 'glColor4f',
@@ -4608,6 +4604,10 @@ var LibraryGL = {
       GLImmediate.enabledClientAttributes[attrib] = true;
       GLImmediate.totalEnabledClientAttributes++;
       GLImmediate.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
+#if GL_FFP_ONLY
+      // In GL_FFP_ONLY mode, attributes are bound to the same index in each FFP emulation shader, so we can immediately apply the change here.
+      GL.enableVertexAttribArray(attrib);
+#endif
       if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
       GLImmediate.modifiedClientAttributes = true;
     }
@@ -4624,6 +4624,10 @@ var LibraryGL = {
       GLImmediate.enabledClientAttributes[attrib] = false;
       GLImmediate.totalEnabledClientAttributes--;
       GLImmediate.currentRenderer = null; // Will need to change current renderer, since the set of active vertex pointers changed.
+#if GL_FFP_ONLY
+      // In GL_FFP_ONLY mode, attributes are bound to the same index in each FFP emulation shader, so we can immediately apply the change here.
+      GL.disableVertexAttribArray(attrib);
+#endif
       if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
       GLImmediate.modifiedClientAttributes = true;
     }
@@ -4635,7 +4639,6 @@ var LibraryGL = {
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
       GLctx.vertexAttribPointer(GLImmediate.VERTEX, size, type, false, stride, pointer);
-      GL.enableVertexAttribArray(GLImmediate.VERTEX);
     }
 #endif
   },
@@ -4645,7 +4648,6 @@ var LibraryGL = {
     if (GL.currArrayBuffer) {
       var loc = GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture;
       GLctx.vertexAttribPointer(loc, size, type, false, stride, pointer);
-      GL.enableVertexAttribArray(loc);
     }
 #endif
   },
@@ -4654,7 +4656,6 @@ var LibraryGL = {
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
       GLctx.vertexAttribPointer(GLImmediate.NORMAL, size, type, true, stride, pointer);
-      GL.enableVertexAttribArray(GLImmediate.NORMAL);
     }
 #endif
   },
@@ -4663,7 +4664,6 @@ var LibraryGL = {
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
       GLctx.vertexAttribPointer(GLImmediate.COLOR, size, type, true, stride, pointer);
-      GL.enableVertexAttribArray(GLImmediate.COLOR);
     }
 #endif
   },
