@@ -1913,9 +1913,7 @@ try:
       shared.try_delete(memfile)
       def repl(m):
         # handle chunking of the memory initializer
-        s = re.sub('[\[\]\n\(\)\. ]', '', m.groups(0)[0])
-        s = s.replace('concat', ',')
-        if s[-1] == ',': s = s[:-1]
+        s = m.groups(0)[0][1:-1]
         open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
         if DEBUG:
           # Copy into temp dir as well, so can be run there too

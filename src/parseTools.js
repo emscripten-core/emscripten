@@ -1789,31 +1789,12 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
     types = 'i8';
   }
 
-  // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
-  var chunkSize = JS_CHUNK_SIZE;
-  function chunkify(array) {
-    // break very large slabs into parts
-    var ret = '';
-    var index = 0;
-    while (index < array.length) {
-      ret = (ret ? ret + '.concat(' : '') + '[' + array.slice(index, index + chunkSize).map(JSON.stringify) + ']' + (ret ? ')\n' : '');
-      index += chunkSize;
-    }
-    return ret;
-  }
-  if (typeof slab == 'object' && slab.length > chunkSize) {
-    slab = chunkify(slab);
-  }
   if (typeof types == 'object') {
     while (types.length < slab.length) types.push(0);
   }
-  if (typeof types != 'string' && types.length > chunkSize) {
-    types = chunkify(types);
-  } else {
-    types = JSON.stringify(types);
-  }
+  types = JSON.stringify(types);
   if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
-  return 'allocate(' + slab + ', ' + types + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ')';
+  return 'allocate(' + slab + ', ' + types + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ');';
 }
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
