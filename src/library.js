@@ -4427,14 +4427,6 @@ LibraryManager.library = {
     throw exception;
   },
 
-  _Unwind_Resume_or_Rethrow: function(ptr) {
-    {{{ makeThrow('ptr') }}};
-  },
-  _Unwind_RaiseException: function(ptr) {
-    {{{ makeThrow('ptr') }}};
-  },
-  _Unwind_DeleteException: function(ptr) {},
-
   terminate: '__cxa_call_unexpected',
 
   __gxx_personality_v0__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
