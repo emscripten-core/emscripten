@@ -725,7 +725,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     outfile: The file where the output is written.
   """
 
-  assert(settings['ASM_JS']) # TODO: apply ASM_JS even in -O0 for fastcomp
+  assert(settings['ASM_JS'])
 
   # Overview:
   #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
