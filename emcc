@@ -781,6 +781,14 @@ def filename_type_ending(filename):
   suffix = filename_type_suffix(filename)
   return '' if not suffix else ('.' + suffix)
 
+# Log out times for emcc stages
+log_time_last = time.time()
+def log_time(name):
+  global log_time_last
+  now = time.time()
+  logging.debug('emcc step "%s" took %.2f seconds' % (name, now - log_time_last))
+  log_time_last = now
+
 try:
   call = CXX if use_cxx else CC
 
@@ -1297,6 +1305,8 @@ try:
 
   temp_files = []
 
+  log_time('parse arguments and setup')
+
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
     file_ending = filename_type_ending(input_file)
@@ -1335,6 +1345,8 @@ try:
       else:
         logging.error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
         sys.exit(1)
+
+  log_time('bitcodeize inputs')
 
   if not LEAVE_INPUTS_RAW:
     assert len(temp_files) == len(input_files)
@@ -1381,6 +1393,8 @@ try:
         logging.debug('link: ' + str(temp_files) + specified_target)
         shared.Building.link(temp_files, specified_target)
     exit(0)
+
+  log_time('bitcodeize inputs')
 
   ## Continue on to create JavaScript
 
@@ -1755,15 +1769,14 @@ try:
           libfile = shared.Cache.get(name, create)
           extra_files_to_link.append(libfile)
 
+  log_time('calculate system libraries')
+
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_ENDINGS or suffix(temp_files[0]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
-    t0 = time.time()
     shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents = len(filter(lambda temp: not temp.endswith(STATICLIB_ENDINGS), temp_files)) == 0)
-    t1 = time.time()
-    logging.debug('    linking took %.2f seconds' % (t1 - t0))
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
@@ -1773,19 +1786,16 @@ try:
       final = in_temp(input_files[0])
       shutil.copyfile(input_files[0], final)
 
+  log_time('link')
+
   if DEBUG:
     logging.debug('saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR)
 
     intermediate_counter = 0
-    intermediate_time = None
     def save_intermediate(name=None, suffix='js'):
-      global intermediate_counter, intermediate_time
+      global intermediate_counter
       shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
-      now = time.time()
-      if intermediate_time:
-        logging.debug('    step took %.2f seconds' % (now - intermediate_time))
-      intermediate_time = now
 
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
 
@@ -1846,12 +1856,16 @@ try:
     final += '.adsimp.bc'
     if DEBUG: save_intermediate('adsimp', 'bc')
 
+  log_time('post-link')
+
   # Emscripten
   logging.debug('LLVM => JS')
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
   if jcache: extra_args.append('--jcache')
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
+
+  log_time('emscript (llvm=>js)')
 
   # Embed and preload files
   if len(preload_files) + len(embed_files) > 0:
@@ -1942,6 +1956,8 @@ try:
       final += '.mem.js'
       src = None
 
+  log_time('source transforms')
+
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
   js_optimizer_extra_info = {}
@@ -2021,6 +2037,8 @@ try:
     if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
 
     flush_js_optimizer_queue()
+
+  log_time('js opts')
 
   # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
   src = open(final).read()
@@ -2127,6 +2145,8 @@ try:
       if debug_level >= 4: generate_source_map(target)
       # copy final JS to output
       shutil.move(final, target)
+
+  log_time('final emitting')
 
   if DEBUG: logging.debug('total time: %.2f seconds' % (time.time() - start_time))
 
