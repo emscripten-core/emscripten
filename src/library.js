@@ -3307,7 +3307,7 @@ LibraryManager.library = {
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
                         'i8*', ALLOC_STATIC);
-      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
+      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
       {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
     } else {
       envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
