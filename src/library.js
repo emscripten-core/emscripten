@@ -100,7 +100,7 @@ LibraryManager.library = {
       return FS.handleFSError(e);
     }
     if (stream.position < 0 || stream.position >= entries.length) {
-      {{{ makeSetValue('result', '0', '0', 'i8*') }}}
+      {{{ makeSetValue('result', '0', '0', 'i8*') }}};
       return 0;
     }
     var id;
@@ -118,15 +118,15 @@ LibraryManager.library = {
              FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
              8;                             // DT_REG, regular file.
     }
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}}
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'offset', 'i32') }}}
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, 'name.length + 1', 'i32') }}}
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'offset', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, 'name.length + 1', 'i32') }}};
     for (var i = 0; i < name.length; i++) {
-      {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', 'name.charCodeAt(i)', 'i8') }}}
+      {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', 'name.charCodeAt(i)', 'i8') }}};
     }
-    {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', '0', 'i8') }}}
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'type', 'i8') }}}
-    {{{ makeSetValue('result', '0', 'entry', 'i8*') }}}
+    {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', '0', 'i8') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
+    {{{ makeSetValue('result', '0', 'entry', 'i8*') }}};
     stream.position++;
     return 0;
   },
@@ -205,13 +205,13 @@ LibraryManager.library = {
       var length = i;
       if (allSlashes) {
         // All slashes result in a single slash.
-        {{{ makeSetValue('path', '1', '0', 'i8') }}}
+        {{{ makeSetValue('path', '1', '0', 'i8') }}};
         return [path, -1];
       } else {
         // Strip trailing slashes.
         while (slashPositions.length &&
                slashPositions[slashPositions.length - 1] == length - 1) {
-          {{{ makeSetValue('path', 'slashPositions.pop(i)', '0', 'i8') }}}
+          {{{ makeSetValue('path', 'slashPositions.pop(i)', '0', 'i8') }}};
           length--;
         }
         return [path, slashPositions.pop()];
@@ -232,9 +232,9 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/dirname.html
     var result = ___libgenSplitName(path);
     if (result[1] == 0) {
-      {{{ makeSetValue('result[0]', 1, '0', 'i8') }}}
+      {{{ makeSetValue('result[0]', 1, '0', 'i8') }}};
     } else if (result[1] !== -1) {
-      {{{ makeSetValue('result[0]', 'result[1]', '0', 'i8') }}}
+      {{{ makeSetValue('result[0]', 'result[1]', '0', 'i8') }}};
     }
     return result[0];
   },
@@ -255,22 +255,22 @@ LibraryManager.library = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.__st_dev_padding, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}}
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.__st_rdev_padding, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(stat.atime.getTime() / 1000)', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(stat.mtime.getTime() / 1000)', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(stat.ctime.getTime() / 1000)', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}}
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}}
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(stat.atime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(stat.mtime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(stat.ctime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -407,17 +407,17 @@ LibraryManager.library = {
     // int statvfs(const char *restrict path, struct statvfs *restrict buf);
     // NOTE: None of the constants here are true. We're just returning safe and
     //       sane values.
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_bsize, '4096', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_frsize, '4096', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_blocks, '1000000', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_bfree, '500000', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_bavail, '500000', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_files, 'FS.nextInode', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_ffree, '1000000', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_favail, '1000000', 'i32') }}}
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_fsid, '42', 'i32') }}}
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_bsize, '4096', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_frsize, '4096', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_blocks, '1000000', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_bfree, '500000', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_bavail, '500000', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_files, 'FS.nextInode', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_ffree, '1000000', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_favail, '1000000', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_fsid, '42', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_flag, '2', 'i32') }}}  // ST_NOSUID
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_namemax, '255', 'i32') }}}
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_namemax, '255', 'i32') }}};
     return 0;
   },
   fstatvfs__deps: ['statvfs'],
@@ -506,7 +506,7 @@ LibraryManager.library = {
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
         var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
-        {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16') }}}
+        {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16') }}};
         return 0;
       case {{{ cDefine('F_SETLK') }}}:
       case {{{ cDefine('F_SETLKW') }}}:
@@ -585,7 +585,7 @@ LibraryManager.library = {
       }
       mask &= events | {{{ cDefine('POLLERR') }}} | {{{ cDefine('POLLHUP') }}};
       if (mask) nonzero++;
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}}
+      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
     }
     return nonzero;
   },
@@ -1165,7 +1165,7 @@ LibraryManager.library = {
     } else {
       var length = Math.min(len, value.length);
       for (var i = 0; i < length; i++) {
-        {{{ makeSetValue('buf', 'i', 'value.charCodeAt(i)', 'i8') }}}
+        {{{ makeSetValue('buf', 'i', 'value.charCodeAt(i)', 'i8') }}};
       }
       if (len > length) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}}
       return i;
@@ -1214,9 +1214,9 @@ LibraryManager.library = {
     // int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
     // http://linux.die.net/man/2/getresuid
     // We have just one process/group/user, all with ID 0.
-    {{{ makeSetValue('ruid', '0', '0', 'i32') }}}
-    {{{ makeSetValue('euid', '0', '0', 'i32') }}}
-    {{{ makeSetValue('suid', '0', '0', 'i32') }}}
+    {{{ makeSetValue('ruid', '0', '0', 'i32') }}};
+    {{{ makeSetValue('euid', '0', '0', 'i32') }}};
+    {{{ makeSetValue('suid', '0', '0', 'i32') }}};
     return 0;
   },
   getresgid: 'getresuid',
@@ -1228,7 +1228,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     } else {
-      {{{ makeSetValue('grouplist', '0', '0', 'i32') }}}
+      {{{ makeSetValue('grouplist', '0', '0', 'i32') }}};
       return 1;
     }
   },
@@ -1261,10 +1261,10 @@ LibraryManager.library = {
     }
     var length = Math.min(namelen, host.length);
     for (var i = 0; i < length; i++) {
-      {{{ makeSetValue('name', 'i', 'host.charCodeAt(i)', 'i8') }}}
+      {{{ makeSetValue('name', 'i', 'host.charCodeAt(i)', 'i8') }}};
     }
     if (namelen > length) {
-      {{{ makeSetValue('name', 'i', '0', 'i8') }}}
+      {{{ makeSetValue('name', 'i', '0', 'i8') }}};
       return 0;
     } else {
       ___setErrNo(ERRNO_CODES.ENAMETOOLONG);
@@ -1381,8 +1381,8 @@ LibraryManager.library = {
     for (var i = 0; i < nbytes; i += 2) {
       var first = {{{ makeGetValue('src', 'i', 'i8') }}};
       var second = {{{ makeGetValue('src', 'i + 1', 'i8') }}};
-      {{{ makeSetValue('dest', 'i', 'second', 'i8') }}}
-      {{{ makeSetValue('dest', 'i + 1', 'first', 'i8') }}}
+      {{{ makeSetValue('dest', 'i', 'second', 'i8') }}};
+      {{{ makeSetValue('dest', 'i + 1', 'first', 'i8') }}};
     }
   },
   tcgetpgrp: function(fildes) {
@@ -1790,7 +1790,7 @@ LibraryManager.library = {
             break;
           case 'X':
           case 'x':
-            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
+            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}};
             break;
           case 'F':
           case 'f':
@@ -1801,15 +1801,15 @@ LibraryManager.library = {
           case 'E':
             // fallthrough intended
             if (long_) {
-              {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'double') }}}
+              {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'double') }}};
             } else {
-              {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'float') }}}
+              {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'float') }}};
             }
             break;
           case 's':
             var array = intArrayFromString(text);
             for (var j = 0; j < array.length; j++) {
-              {{{ makeSetValue('argPtr', 'j', 'array[j]', 'i8') }}}
+              {{{ makeSetValue('argPtr', 'j', 'array[j]', 'i8') }}};
             }
             break;
         }
@@ -2245,7 +2245,7 @@ LibraryManager.library = {
           case 'n': {
             // Write the length written so far to the next parameter.
             var ptr = getNextArg('i32*');
-            {{{ makeSetValue('ptr', '0', 'ret.length', 'i32') }}}
+            {{{ makeSetValue('ptr', '0', 'ret.length', 'i32') }}};
             break;
           }
           case '%': {
@@ -2372,9 +2372,9 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ESPIPE);
       return -1;
     }
-    {{{ makeSetValue('pos', '0', 'stream.position', 'i32') }}}
+    {{{ makeSetValue('pos', '0', 'stream.position', 'i32') }}};
     var state = (stream.eof ? 1 : 0) + (stream.error ? 2 : 0);
-    {{{ makeSetValue('pos', Runtime.getNativeTypeSize('i32'), 'state', 'i32') }}}
+    {{{ makeSetValue('pos', Runtime.getNativeTypeSize('i32'), 'state', 'i32') }}};
     return 0;
   },
   fgets__deps: ['fgetc'],
@@ -2391,9 +2391,9 @@ LibraryManager.library = {
         if (streamObj.error || (streamObj.eof && i == 0)) return 0;
         else if (streamObj.eof) break;
       }
-      {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}}
+      {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}};
     }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}}
+    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
     return s;
   },
   gets__deps: ['fgets'],
@@ -2457,7 +2457,7 @@ LibraryManager.library = {
     // int fputc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputc.html
     var chr = unSign(c & 0xFF);
-    {{{ makeSetValue('_fputc.ret', '0', 'chr', 'i8') }}}
+    {{{ makeSetValue('_fputc.ret', '0', 'chr', 'i8') }}};
     var ret = _write(stream, _fputc.ret, 1);
     if (ret == -1) {
       var streamObj = FS.getStream(stream);
@@ -2511,7 +2511,7 @@ LibraryManager.library = {
       return 0;
     }
     while (streamObj.ungotten.length && bytesToRead > 0) {
-      {{{ makeSetValue('ptr++', '0', 'streamObj.ungotten.pop()', 'i8') }}}
+      {{{ makeSetValue('ptr++', '0', 'streamObj.ungotten.pop()', 'i8') }}};
       bytesToRead--;
       bytesRead++;
     }
@@ -3127,7 +3127,7 @@ LibraryManager.library = {
 
     // Set end pointer.
     if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}};
     }
 
     // Unsign if needed.
@@ -3213,7 +3213,7 @@ LibraryManager.library = {
 
     // Set end pointer.
     if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}};
     }
 
     try {
@@ -3431,7 +3431,7 @@ LibraryManager.library = {
     var limit = Math.min(nelem, 3);
     var doubleSize = {{{ Runtime.getNativeTypeSize('double') }}};
     for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}}
+      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
     }
     return limit;
   },
@@ -3460,9 +3460,9 @@ LibraryManager.library = {
     } else {
       var size = Math.min(4095, absolute.path.length);  // PATH_MAX - 1.
       for (var i = 0; i < size; i++) {
-        {{{ makeSetValue('resolved_name', 'i', 'absolute.path.charCodeAt(i)', 'i8') }}}
+        {{{ makeSetValue('resolved_name', 'i', 'absolute.path.charCodeAt(i)', 'i8') }}};
       }
-      {{{ makeSetValue('resolved_name', 'size', '0', 'i8') }}}
+      {{{ makeSetValue('resolved_name', 'size', '0', 'i8') }}};
       return resolved_name;
     }
   },
@@ -3670,7 +3670,7 @@ LibraryManager.library = {
     var padding = 0, curr = 0, i = 0;
     while ((i|0) < (num|0)) {
       curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
-      {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
+      {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}};
       padding = padding ? 1 : ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
       i = (i+1)|0;
     }
@@ -3723,7 +3723,7 @@ LibraryManager.library = {
       if ({{{ makeGetValue('pdest', 'len+i', 'i8') }}} == 0) break;
       i ++;
       if (i == num) {
-        {{{ makeSetValue('pdest', 'len+i', 0, 'i8') }}}
+        {{{ makeSetValue('pdest', 'len+i', 0, 'i8') }}};
         break;
       }
     }
@@ -4091,7 +4091,7 @@ LibraryManager.library = {
       var i16size = {{{ Runtime.getNativeTypeSize('i16') }}};
       var arr = _malloc(values.length * i16size);
       for (var i = 0; i < values.length; i++) {
-        {{{ makeSetValue('arr', 'i * i16size', 'values[i]', 'i16') }}}
+        {{{ makeSetValue('arr', 'i * i16size', 'values[i]', 'i16') }}};
       }
       me.ret = allocate([arr + 128 * i16size], 'i16*', ALLOC_NORMAL);
     }
@@ -4119,7 +4119,7 @@ LibraryManager.library = {
       var i32size = {{{ Runtime.getNativeTypeSize('i32') }}};
       var arr = _malloc(values.length * i32size);
       for (var i = 0; i < values.length; i++) {
-        {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
+        {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}};
       }
       me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_NORMAL);
     }
@@ -4146,7 +4146,7 @@ LibraryManager.library = {
       var i32size = {{{ Runtime.getNativeTypeSize('i32') }}};
       var arr = _malloc(values.length * i32size);
       for (var i = 0; i < values.length; i++) {
-        {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}}
+        {{{ makeSetValue('arr', 'i * i32size', 'values[i]', 'i32') }}};
       }
       me.ret = allocate([arr + 128 * i32size], 'i32*', ALLOC_NORMAL);
     }
@@ -4348,9 +4348,9 @@ LibraryManager.library = {
 #if EXCEPTION_DEBUG
     Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + stackTrace());
 #endif
-    {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}}
-    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}}
-    {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'destructor', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', '0', 'ptr', 'void*') }}};
+    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'type', 'void*') }}};
+    {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'destructor', 'void*') }}};
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
       __ZSt18uncaught_exceptionv.uncaught_exception = 1;
     } else {
@@ -4396,18 +4396,18 @@ LibraryManager.library = {
     __THREW__ = 0;
 #endif
     // Clear type.
-    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, '0', 'void*') }}}
+    {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, '0', 'void*') }}};
     // Call destructor if one is registered then clear it.
     var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
     var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'void*') }}};
     if (destructor) {
       Runtime.dynCall('vi', destructor, [ptr]);
-      {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}}
+      {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}};
     }
     // Free ptr if it isn't null.
     if (ptr) {
       ___cxa_free_exception(ptr);
-      {{{ makeSetValue('_llvm_eh_exception.buf', '0', '0', 'void*') }}}
+      {{{ makeSetValue('_llvm_eh_exception.buf', '0', '0', 'void*') }}};
     }
   },
   __cxa_get_exception_ptr__deps: ['llvm_eh_exception'],
@@ -4818,11 +4818,11 @@ LibraryManager.library = {
   cbrtl: 'cbrt',
 
   modf: function(x, intpart) {
-    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}}
+    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}};
     return x - {{{ makeGetValue('intpart', 0, 'double') }}};
   },
   modff: function(x, intpart) {
-    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'float') }}}
+    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'float') }}};
     return x - {{{ makeGetValue('intpart', 0, 'float') }}};
   },
   frexp: function(x, exp_addr) {
@@ -4838,7 +4838,7 @@ LibraryManager.library = {
       if (exp_ === raw_exp) exp_ += 1;
       sig = sign*x/Math.pow(2, exp_);
     }
-    {{{ makeSetValue('exp_addr', 0, 'exp_', 'i32') }}}
+    {{{ makeSetValue('exp_addr', 0, 'exp_', 'i32') }}};
     return sig;
   },
   frexpf: 'frexp',
@@ -5346,7 +5346,7 @@ LibraryManager.library = {
   time: function(ptr) {
     var ret = Math.floor(Date.now()/1000);
     if (ptr) {
-      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}}
+      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
     }
     return ret;
   },
@@ -5373,9 +5373,9 @@ LibraryManager.library = {
                              {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
                              {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
                              0).getTime() / 1000;
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'new Date(timestamp).getDay()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'new Date(timestamp).getDay()', 'i32') }}};
     var yday = Math.round((timestamp - (new Date(year, 0, 1)).getTime()) / (1000 * 60 * 60 * 24));
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     return timestamp;
   },
   timelocal: 'mktime',
@@ -5388,15 +5388,15 @@ LibraryManager.library = {
   gmtime_r__deps: ['__tm_timezone'],
   gmtime_r: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getUTCDate()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getUTCDate()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
     var start = new Date(date); // define date using UTC, start from Jan 01 00:00:00 UTC
     start.setUTCDate(1);
     start.setUTCMonth(0);
@@ -5405,8 +5405,8 @@ LibraryManager.library = {
     start.setUTCSeconds(0);
     start.setUTCMilliseconds(0);
     var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
 
     return tmPtr;
   },
@@ -5429,23 +5429,23 @@ LibraryManager.library = {
   localtime_r: function(time, tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getDate()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getFullYear()-1900', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getDate()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getFullYear()-1900', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
 
     var start = new Date(date.getFullYear(), 0, 1);
     var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}}
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, 'start.getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, 'start.getTimezoneOffset() * 60', 'i32') }}};
 
     var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}}
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
 
     return tmPtr;
   },
@@ -5463,9 +5463,9 @@ LibraryManager.library = {
     var timePart = formatted.match(/\d{2}:\d{2}:\d{2}/)[0];
     formatted = datePart + timePart + ' ' + date.getFullYear() + '\n';
     formatted.split('').forEach(function(chr, index) {
-      {{{ makeSetValue('buf', 'index', 'chr.charCodeAt(0)', 'i8') }}}
+      {{{ makeSetValue('buf', 'index', 'chr.charCodeAt(0)', 'i8') }}};
     });
-    {{{ makeSetValue('buf', '25', '0', 'i8') }}}
+    {{{ makeSetValue('buf', '25', '0', 'i8') }}};
     return buf;
   },
 
@@ -5495,18 +5495,18 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue(makeGlobalUse('_daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('_daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
     var winterName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | winter.toString().match(/\(([A-Z]+)\)/)[1];
     var summerName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}}
-    {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
+    {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],
@@ -6076,15 +6076,15 @@ LibraryManager.library = {
       */
 
       var fullDate = new Date(date.year, date.month, date.day, date.hour, date.min, date.sec, 0);
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_sec, 'fullDate.getSeconds()', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_min, 'fullDate.getMinutes()', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_hour, 'fullDate.getHours()', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mday, 'fullDate.getDate()', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mon, 'fullDate.getMonth()', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_year, 'fullDate.getFullYear()-1900', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, '__arraySum(__isLeapYear(fullDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}}
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}}
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_sec, 'fullDate.getSeconds()', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_min, 'fullDate.getMinutes()', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_hour, 'fullDate.getHours()', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mday, 'fullDate.getDate()', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mon, 'fullDate.getMonth()', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_year, 'fullDate.getFullYear()-1900', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, '__arraySum(__isLeapYear(fullDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
 
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
@@ -6115,8 +6115,8 @@ LibraryManager.library = {
     var seconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_sec, 'i32') }}};
     var nanoseconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     if (rmtp !== 0) {
-      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}}
-      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}}
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}};
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}};
     }
     return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
@@ -6147,7 +6147,7 @@ LibraryManager.library = {
     } else {
       nsec = _emscripten_get_now_res();
     }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '1', 'i32') }}}
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '1', 'i32') }}};
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is milliseconds
     return 0;
   },
@@ -6828,7 +6828,7 @@ LibraryManager.library = {
   __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}};',
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
-    {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}}
+    {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}};
     return value;
   },
   __errno_location__deps: ['__setErrNo'],
@@ -6856,10 +6856,10 @@ LibraryManager.library = {
   // TODO: Implement for real. We just do time used, and no useful data
   getrusage: function(resource, rlp) {
     // int getrusage(int resource, struct rusage *rlp);
-    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i32') }}}
-    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_utime.tv_usec, '2', 'i32') }}}
-    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_stime.tv_sec, '3', 'i32') }}}
-    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_stime.tv_usec, '4', 'i32') }}}
+    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i32') }}};
+    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_utime.tv_usec, '2', 'i32') }}};
+    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_stime.tv_sec, '3', 'i32') }}};
+    {{{ makeSetValue('rlp', C_STRUCTS.rusage.ru_stime.tv_usec, '4', 'i32') }}};
     return 0;
   },
 
@@ -6923,8 +6923,8 @@ LibraryManager.library = {
        void **restrict stackaddr, size_t *restrict stacksize); */
     /*FIXME: assumes that there is only one thread, and that attr is the
       current thread*/
-    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}}
-    {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}}
+    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}};
+    {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}};
     return 0;
   },
 
@@ -6942,7 +6942,7 @@ LibraryManager.library = {
     if (key == 0) {
       return ERRNO_CODES.EINVAL;
     }
-    {{{ makeSetValue('key', '0', 'PTHREAD_SPECIFIC_NEXT_KEY', 'i32*') }}}
+    {{{ makeSetValue('key', '0', 'PTHREAD_SPECIFIC_NEXT_KEY', 'i32*') }}};
     // values start at 0
     PTHREAD_SPECIFIC[PTHREAD_SPECIFIC_NEXT_KEY] = 0;
     PTHREAD_SPECIFIC_NEXT_KEY++;
@@ -7000,7 +7000,7 @@ LibraryManager.library = {
   posix_memalign__deps: ['memalign'],
   posix_memalign: function(memptr, alignment, size) {
     var ptr = _memalign(alignment, size);
-    {{{ makeSetValue('memptr', '0', 'ptr', 'i8*') }}}
+    {{{ makeSetValue('memptr', '0', 'ptr', 'i8*') }}};
     return 0;
   },
 
@@ -7042,7 +7042,7 @@ LibraryManager.library = {
     if (addr === null) {
       return 0;
     }
-    {{{ makeSetValue('inp', '0', 'addr', 'i32') }}}
+    {{{ makeSetValue('inp', '0', 'addr', 'i32') }}};
     return 1;
   },
 
@@ -7201,7 +7201,7 @@ LibraryManager.library = {
     if (ret === null) {
       return 0;
     }
-    {{{ makeSetValue('dst', '0', 'ret', 'i32') }}}
+    {{{ makeSetValue('dst', '0', 'ret', 'i32') }}};
     return 1;
   },
   _inet_pton6_raw__deps: ['htons'],
@@ -7406,18 +7406,18 @@ LibraryManager.library = {
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
     var nameBuf = _malloc(name.length+1);
     writeStringToMemory(name, nameBuf);
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}}
+    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}};
     var aliasesBuf = _malloc(4);
-    {{{ makeSetValue('aliasesBuf', '0', '0', 'i8*') }}}
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_aliases, 'aliasesBuf', 'i8**') }}}
+    {{{ makeSetValue('aliasesBuf', '0', '0', 'i8*') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_aliases, 'aliasesBuf', 'i8**') }}};
     var afinet = {{{ cDefine('AF_INET') }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addrtype, 'afinet', 'i32') }}}
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_length, '4', 'i32') }}}
+    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addrtype, 'afinet', 'i32') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_length, '4', 'i32') }}};
     var addrListBuf = _malloc(12);
-    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}}
-    {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}}
-    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(DNS.lookup_name(name))', 'i32') }}}
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addr_list, 'addrListBuf', 'i8**') }}}
+    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}};
+    {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}};
+    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(DNS.lookup_name(name))', 'i32') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addr_list, 'addrListBuf', 'i8**') }}};
     return ret;
   },
 

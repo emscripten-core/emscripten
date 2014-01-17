@@ -232,17 +232,17 @@ var LibrarySDL = {
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', 'void*') }}}      // SDL_Surface.pixels
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect, '0', 'i32*') }}}      // SDL_Surface.offset
 
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}}
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.palette, '0', 'i32') }}} // TODO
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}}
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}};
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}};
 
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Rmask, 'rmask || 0x000000ff', 'i32') }}}
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Gmask, 'gmask || 0x0000ff00', 'i32') }}}
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Bmask, 'bmask || 0x00ff0000', 'i32') }}}
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Amask, 'amask || 0xff000000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Rmask, 'rmask || 0x000000ff', 'i32') }}};
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Gmask, 'gmask || 0x0000ff00', 'i32') }}};
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Bmask, 'bmask || 0x00ff0000', 'i32') }}};
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Amask, 'amask || 0xff000000', 'i32') }}};
 
       // Decide if we want to use WebGL or not
       var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
@@ -592,19 +592,19 @@ var LibrarySDL = {
             scan = SDL.scanCodes[key] || key;
           }
 
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.state, 'down ? 1 : 0', 'i8') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.state, 'down ? 1 : 0', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.repeat, '0', 'i8') }}} // TODO
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.scancode, 'scan', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.sym, 'key', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.mod, 'SDL.modState', 'i16') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.scancode, 'scan', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.sym, 'key', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.mod, 'SDL.modState', 'i16') }}};
           // some non-character keys (e.g. backspace and tab) won't have keypressCharCode set, fill in with the keyCode.
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.unicode, 'event.keypressCharCode || key', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.unicode, 'event.keypressCharCode || key', 'i32') }}};
 
           break;
         }
         case 'keypress': {
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           // Not filling in windowID for now
           var cStr = intArrayFromString(String.fromCharCode(event.charCode));
           for (var i = 0; i < cStr.length; ++i) {
@@ -819,9 +819,9 @@ var LibrarySDL = {
   SDL_Linked_Version: function() {
     if (SDL.version === null) {
       SDL.version = _malloc({{{ C_STRUCTS.SDL_version.__size__ }}});
-      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.major, '0', '1', 'i8') }}}
-      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.minor, '0', '3', 'i8') }}}
-      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.patch, '0', '0', 'i8') }}}
+      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.major, '0', '1', 'i8') }}};
+      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.minor, '0', '3', 'i8') }}};
+      {{{ makeSetValue('SDL.version + ' + C_STRUCTS.SDL_version.patch, '0', '0', 'i8') }}};
     }
     return SDL.version;
   },
@@ -881,9 +881,9 @@ var LibrarySDL = {
     var ret = _malloc(5*Runtime.QUANTUM_SIZE);
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module["canvas"].width', 'i32') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module["canvas"].height', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}};
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module["canvas"].width', 'i32') }}};
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module["canvas"].height', 'i32') }}};
     return ret;
   },
 
