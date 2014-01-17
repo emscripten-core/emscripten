@@ -47,12 +47,36 @@ mergeInto(LibraryManager.library, {
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
     workers: [],
+    
+    // Results of browser detection (in init()).
+    // For cases where feature detection is not enough.
+    isFirefox: false,
+    isChrome: false,
+    isSafari: false,
+    isOpera: false,
+    isIE: false,
 
     init: function() {
       if (!Module["preloadPlugins"]) Module["preloadPlugins"] = []; // needs to exist even in workers
 
       if (Browser.initted || ENVIRONMENT_IS_WORKER) return;
       Browser.initted = true;
+
+      // Browser detection.
+      // Currently based on navigator.userAgent string: http://www.useragentstring.com
+      if (/Firefox/i.test(navigator.userAgent)) {
+        Browser.isFirefox = true;
+      } else if (/Chrome/i.test(navigator.userAgent)) {
+        // Chrome also has "Safari" in its navigator.userAgent string,
+        // so it must be checked before Safari.
+        Browser.isChrome = true;
+      } else if (/Safari/i.test(navigator.userAgent)) {
+        Browser.isSafari = true;
+      } else if (/Opera/i.test(navigator.userAgent)) {
+        Browser.isOpera = true;
+      } else if (/MSIE/i.test(navigator.userAgent)) {
+        Browser.isIE = true;
+      }
 
       try {
         new Blob();
@@ -430,6 +454,52 @@ mergeInto(LibraryManager.library, {
       window.getUserMedia(func);
     },
 
+
+    // Return a normalized KeyboardEvent.keyCode value across browsers.
+    getKeyCode: function(event) {
+      // A list of incompatible keyCodes is given at http://www.javascripter.net/faq/keycodes.htm
+      // Internet Explorer, Chrome and Safari share the same keycodes.
+      // Firefox and Opera keycodes will be translated to them.
+      var mapping;
+      if (Browser.isOpera) {
+        mapping = {
+          219: 91, // Windows key
+          0: 93, // Windows menu key
+          
+          48: 96, // Numpad 0
+          49: 97, // Numpad 1
+          50: 98, // Numpad 2
+          51: 99, // Numpad 3
+          52: 100, // Numpad 4
+          53: 101, // Numpad 5
+          54: 102, // Numpad 6
+          55: 103, // Numpad 7
+          56: 104, // Numpad 8
+          57: 105, // Numpad 9
+          42: 106, // Numpad *
+          43: 107, // Numpad +
+          // 45: 109, // Numpad - -- Discarded, because 45 is also Insert.
+          // 78: 110, // Numpad . -- Discarded, because 78 is also N.
+          47: 111, // Numpad /
+          
+          59: 186, // ; :
+          61: 187, // = +
+          109: 189 // - _
+        };
+      } else if (Browser.isFirefox) {
+        mapping = {
+          59: 186, // ; :
+          107: 187, // = +
+          109: 189 // - _
+        };
+      }
+      // Return the mapped keycode, if it exists,
+      // or else the original event.keyCode.
+      return (mapping && mapping[event.keyCode]) !== undefined ?
+             mapping[event.keyCode] :
+             event.keyCode;
+    },
+    
 
     getMovementX: function(event) {
       return event['movementX'] ||
