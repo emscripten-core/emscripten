@@ -2041,9 +2041,9 @@ try:
   log_time('js opts')
 
   # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
-  src = open(final).read()
-  src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-  open(final, 'w').write(src)
+  #src = open(final).read()
+  #src = re.sub(r'\n+[ \n]*\n+', '\n', src)
+  #open(final, 'w').write(src)
 
   def generate_source_map(map_file_base_name, offset=0):
     jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
