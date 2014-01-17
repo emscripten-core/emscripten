@@ -3706,6 +3706,7 @@ ok
     self.do_run_from_file(src, output)
 
   def test_fnmatch(self):
+    if self.emcc_args is None: return self.skip('requires linking in libc++')
     test_path = path_from_root('tests', 'core', 'fnmatch')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
