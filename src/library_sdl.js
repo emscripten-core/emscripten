@@ -83,29 +83,26 @@ var LibrarySDL = {
     DOMEventToSDLEvent: {},
 
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
-      46: 127, // SDLK_DEL == '\177'
-      38:  1106, // up arrow
-      40:  1105, // down arrow
-      37:  1104, // left arrow
-      39:  1103, // right arrow
-
-      33: 1099, // pagedup
-      34: 1102, // pagedown
-
-      17:  1248, // control (right, or left)
-      18:  1250, // alt
-      16:  1249, // shift
+      // 8: 8, // backspace
+      // 9: 9, // tab
+      // 13: 13, // enter
+      // 27: 27, // esc
       
-      96: 88 | 1<<10, // keypad 0
-      97: 89 | 1<<10, // keypad 1
-      98: 90 | 1<<10, // keypad 2
-      99: 91 | 1<<10, // keypad 3
-      100: 92 | 1<<10, // keypad 4
-      101: 93 | 1<<10, // keypad 5
-      102: 94 | 1<<10, // keypad 6
-      103: 95 | 1<<10, // keypad 7
-      104: 96 | 1<<10, // keypad 8
-      105: 97 | 1<<10, // keypad 9
+      222: 39, // apostrophe (')
+      188: 44, // comma (,)
+      189: 45, // minus (-)
+      190: 46, // period (.)
+      191: 47, // slash (/)
+      186: 59, // semicolon (;)
+      187: 61, // equals (=)
+      219: 91, // left bracket ([)
+      220: 92, // backslash (\)
+      221: 93, // right bracket (])
+      192: 96, // backtick/backquote (`)
+
+      46: 127, // delete
+
+      20: 57 | 1<<10, // caps lock
 
       112: 58 | 1<<10, // F1
       113: 59 | 1<<10, // F2
@@ -120,32 +117,44 @@ var LibrarySDL = {
       122: 68 | 1<<10, // F11
       123: 69 | 1<<10, // F12
 
-      188: 44, // comma
-      190: 46, // period
-      191: 47, // slash (/)
-      192: 96, // backtick/backquote (`)
+      44: 70 | 1<<10, // print screen
+      145: 71 | 1<<10, // scroll lock
+      19: 72 | 1<<10, // pause
       
-      219: 91, // left bracket ([)
-      220: 92, // backslash (\)
-      221: 93, // right bracket (])
+      45: 73 | 1<<10, // insert
+      36: 74 | 1<<10, // home
+      33: 75 | 1<<10, // page up
+      35: 77 | 1<<10, // end
+      34: 78 | 1<<10, // page down
+      39: 79 | 1<<10, // right arrow
+      37: 80 | 1<<10, // left arrow
+      40: 81 | 1<<10, // down arrow
+      38: 82 | 1<<10, // up arrow
+      
+      144: 83 | 1<<10, // num lock
 
-      // Next 3 keycodes may vary across browsers, as seen in:
-      // http://www.javascripter.net/faq/keycodes.htm
-      // and might need to be determined programmatically.
-      // Keycodes common to MSIE, Safari and Chrome:
-      186: 59, // semicolon (;)
-      187: 61, // equals (=)
-      189: 45, // minus (-)
-      /*
-      // Keycodes in Firefox:
-      59: 59, // semicolon (;)
-      107: 61, // equals (=)
-      109: 45, // minus (-)
-      // Keycodes in Opera:
-      59: 59, // semicolon (;)
-      61: 61, // equals (=)
-      109: 45, // minus (-)
-      */
+      111: 84 | 1<<10, // keypad /
+      106: 85 | 1<<10, // keypad *
+      109: 86 | 1<<10, // keypad -
+      107: 87 | 1<<10, // keypad +
+      97: 89 | 1<<10, // keypad 1
+      98: 90 | 1<<10, // keypad 2
+      99: 91 | 1<<10, // keypad 3
+      100: 92 | 1<<10, // keypad 4
+      101: 93 | 1<<10, // keypad 5
+      102: 94 | 1<<10, // keypad 6
+      103: 95 | 1<<10, // keypad 7
+      104: 96 | 1<<10, // keypad 8
+      105: 97 | 1<<10, // keypad 9
+      96: 98 | 1<<10, // keypad 0
+      110: 99 | 1<<10, // keypad .
+
+      17: 224 | 1<<10, // control (right, or left)
+      16: 225 | 1<<10, // shift
+      18: 226 | 1<<10, // alt
+      91: 227 | 1<<10, // windows key
+      93: 231 | 1<<10, // windows menu key
+
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
@@ -549,11 +558,12 @@ var LibrarySDL = {
       switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          var code = event.keyCode;
+          var normalizedKeyCode = Browser.getKeyCode(event);
+          var code = normalizedKeyCode;
           if (code >= 65 && code <= 90) {
             code += 32; // make lowercase for SDL
           } else {
-            code = SDL.keyCodes[event.keyCode] || event.keyCode;
+            code = SDL.keyCodes[normalizedKeyCode] || normalizedKeyCode;
           }
 
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
@@ -563,7 +573,7 @@ var LibrarySDL = {
             ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
 
           if (down) {
-            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
+            SDL.keyboardMap[code] = normalizedKeyCode; // save the DOM input, which we can use to unpress it during blur
           } else {
             delete SDL.keyboardMap[code];
           }
@@ -600,11 +610,12 @@ var LibrarySDL = {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           //Module.print('Received key event: ' + event.keyCode);
-          var key = event.keyCode;
+          var normalizedKeyCode = Browser.getKeyCode(event); // Cross-browser.
+          var key = normalizedKeyCode;
           if (key >= 65 && key <= 90) {
             key += 32; // make lowercase for SDL
           } else {
-            key = SDL.keyCodes[event.keyCode] || event.keyCode;
+            key = SDL.keyCodes[normalizedKeyCode] || normalizedKeyCode;
           }
           var scan;
           if (key >= 1024) {
