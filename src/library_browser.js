@@ -50,11 +50,13 @@ mergeInto(LibraryManager.library, {
     
     // Results of browser detection (in init()).
     // For cases where feature detection is not enough.
-    isFirefox: false,
-    isChrome: false,
-    isSafari: false,
-    isOpera: false,
-    isIE: false,
+    // The property matching the browser (if any)
+    // receives a string with browser's version (e.g. "1.4.31a").
+    isFirefox: "",
+    isChrome: "",
+    isSafari: "",
+    isOpera: "",
+    isIE: "",
 
     init: function() {
       if (!Module["preloadPlugins"]) Module["preloadPlugins"] = []; // needs to exist even in workers
@@ -64,18 +66,35 @@ mergeInto(LibraryManager.library, {
 
       // Browser detection.
       // Currently based on navigator.userAgent string: http://www.useragentstring.com
-      if (/Firefox/i.test(navigator.userAgent)) {
-        Browser.isFirefox = true;
-      } else if (/Chrome/i.test(navigator.userAgent)) {
-        // Chrome also has "Safari" in its navigator.userAgent string,
-        // so it must be checked before Safari.
-        Browser.isChrome = true;
-      } else if (/Safari/i.test(navigator.userAgent)) {
-        Browser.isSafari = true;
-      } else if (/Opera/i.test(navigator.userAgent)) {
-        Browser.isOpera = true;
-      } else if (/MSIE/i.test(navigator.userAgent)) {
-        Browser.isIE = true;
+      var match;
+      
+      // OPERA:
+      // Some Operas have "MSIE", "Firefox" etc. in its user agent string,
+      // so it must be checked before these.
+      // Opera 15 switched to WebKit. "OPR" replaced "Opera" in user agent string.
+      // Get version after string "Version/" if present.
+      if (match = navigator.userAgent.match(/\b(Opera|OPR)[\/ ](.*\bVersion\/)?([.\w]+)/i)) {
+        Browser.isOpera = match[3];
+      } else
+      // FIREFOX:
+              if (match = navigator.userAgent.match(/\bFirefox\/([.\w]+)/i)) {
+        Browser.isFirefox = match[1];
+      } else
+      // CHROME:
+      // Chrome also has "Safari" in its user agent string,
+      // so it must be checked before Safari.
+             if (match = navigator.userAgent.match(/\bChrome\/([.\w]+)/i)) {
+        Browser.isChrome = match[1];
+      } else
+      // SAFARI:
+             if (match = navigator.userAgent.match(/\bSafari\/([.\w]+)/i)) {
+        Browser.isSafari = match[1];
+      } else
+      // INTERNET EXPLORER:
+      // IE 11 dropped "MSIE" in user agent string;
+      // "Trident" remains, with version after string "rv:".
+             if (match = navigator.userAgent.match(/\b(MSIE |Trident\b.+\brv:\s*)([.\w]+)/i)) {
+        Browser.isIE = match[2];
       }
 
       try {
