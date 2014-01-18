@@ -416,7 +416,7 @@ LibraryManager.library = {
     {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_ffree, '1000000', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_favail, '1000000', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_fsid, '42', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_flag, '2', 'i32') }}}  // ST_NOSUID
+    {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_flag, '2', 'i32') }}};  // ST_NOSUID
     {{{ makeSetValue('buf', C_STRUCTS.statvfs.f_namemax, '255', 'i32') }}};
     return 0;
   },
