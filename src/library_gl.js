@@ -2380,7 +2380,7 @@ var LibraryGL = {
   // GL Immediate mode
 
   // See comment in GLEmulation.init()
-#if FULL_ES2 == 0
+#if !FULL_ES2
   $GLImmediate__postset: 'GLImmediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GLImmediate.init() });',
 #endif
   $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
@@ -3547,13 +3547,13 @@ var LibraryGL = {
       }
       keyView.next((enabledAttributesKey << 2) | fogParam);
 
-#if GL_FFP_ONLY == 0
+#if !GL_FFP_ONLY
       // By cur program:
       keyView.next(GL.currProgram);
       if (!GL.currProgram) {
 #endif
         GLImmediate.TexEnvJIT.traverseState(keyView);
-#if GL_FFP_ONLY == 0
+#if !GL_FFP_ONLY
       }
 #endif
 
@@ -3940,7 +3940,7 @@ var LibraryGL = {
             GLctx.enableVertexAttribArray(this.colorLocation);
 #endif
           }
-#if GL_FFP_ONLY == 0
+#if !GL_FFP_ONLY
           else if (this.hasColor) {
             GLctx.disableVertexAttribArray(this.colorLocation);
             GLctx.vertexAttrib4fv(this.colorLocation, GLImmediate.clientColor);
@@ -3955,7 +3955,7 @@ var LibraryGL = {
         },
 
         cleanup: function cleanup() {
-#if GL_FFP_ONLY == 0
+#if !GL_FFP_ONLY
           GLctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
@@ -4342,8 +4342,8 @@ var LibraryGL = {
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
 
-#if GL_UNSAFE_OPTS == 0
-#if GL_FFP_ONLY == 0
+#if !GL_UNSAFE_OPTS
+#if !GL_FFP_ONLY
       renderer.cleanup();
 #endif
 #endif

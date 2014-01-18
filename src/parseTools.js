@@ -46,7 +46,11 @@ function preprocess(text) {
               error('unsupported preprecessor op ' + op);
             }
           } else {
-            showStack.push(ident in this && this[ident] > 0);
+            if (ident[0] === '!') {
+              showStack.push(!(this[ident.substr(1)] > 0));
+            } else {
+              showStack.push(ident in this && this[ident] > 0);
+            }
           }
         } else if (line[2] == 'n') { // include
           var included = read(line.substr(line.indexOf(' ')+1));
