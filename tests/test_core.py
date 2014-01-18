@@ -6058,6 +6058,7 @@ def process(filename):
       # optimizer can deal with both types.
       out_file = re.sub(' *//@.*$', '', out_file, flags=re.MULTILINE)
       def clean(code):
+        code = re.sub(r'\n+[ \n]*\n+', '\n', code)
         code = code.replace('{\n}', '{}')
         return '\n'.join(sorted(code.split('\n')))
       self.assertIdentical(clean(no_maps_file), clean(out_file))
