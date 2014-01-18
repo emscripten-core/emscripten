@@ -225,7 +225,6 @@ LibraryManager.library = {
     var result = ___libgenSplitName(path);
     return result[0] + result[1] + 1;
   },
-  __xpg_basename: 'basename',
   dirname__deps: ['__libgenSplitName'],
   dirname: function(path) {
     // char *dirname(char *path);
@@ -2882,17 +2881,6 @@ LibraryManager.library = {
     return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
 #endif
-
-  fopen64: 'fopen',
-  __isoc99_fscanf: 'fscanf',
-  // TODO: Check if any other aliases are needed.
-  _IO_getc: 'getc',
-  _IO_putc: 'putc',
-  _ZNSo3putEc: 'putchar',
-  _ZNSo5flushEv__deps: ['fflush', 'stdout'],
-  _ZNSo5flushEv: function() {
-    _fflush({{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}});
-  },
 
   // ==========================================================================
   // sys/mman.h
