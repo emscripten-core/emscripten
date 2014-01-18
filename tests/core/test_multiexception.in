@@ -22,9 +22,9 @@ void setjmp_func(jmp_state* s, int level) {
     s->jmp = c_jmp;
     setjmp_func(s, level + 1);
   }
-  catch (int catched_eid) {
-    printf("caught %d\n", catched_eid);
-    if (catched_eid == c_jmp) {
+  catch (int caught_eid) {
+    printf("caught %d\n", caught_eid);
+    if (caught_eid == c_jmp) {
       printf("setjmp exception execution path, level: %d, prev_jmp: %d\n",
              level, prev_jmp);
       if (prev_jmp != -1) {

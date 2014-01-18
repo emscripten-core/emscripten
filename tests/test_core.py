@@ -1269,7 +1269,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           }
           catch (MyException & e)
           {
-              std::cout << "Catched...";
+              std::cout << "Caught...";
           }
 
           try
@@ -1278,7 +1278,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           }
           catch (MyException e)
           {
-              std::cout << "Catched...";
+              std::cout << "Caught...";
           }
 
           return 0;
@@ -1288,7 +1288,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       if '-O2' in self.emcc_args:
         self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
-      self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
+      self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
   def test_exception_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
