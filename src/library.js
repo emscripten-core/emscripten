@@ -558,6 +558,25 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // nl_types.h
+  // ==========================================================================
+
+  catopen: function(name, oflag) {
+    // nl_catd catopen (const char *name, int oflag)
+    return -1;
+  },
+
+  catgets: function(catd, set_id, msg_id, s) {
+    // char *catgets (nl_catd catd, int set_id, int msg_id, const char *s)
+    return s;
+  },
+
+  catclose: function(catd) {
+    // int catclose (nl_catd catd)
+    return 0;
+  },
+
+  // ==========================================================================
   // poll.h
   // ==========================================================================
 
@@ -9155,7 +9174,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
 });
 

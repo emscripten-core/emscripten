@@ -4294,6 +4294,12 @@ def process(filename):
 
     self.do_run_from_file(src, output)
 
+  def test_nl_types(self):
+    test_path = path_from_root('tests', 'core', 'test_nl_types')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_799(self):
     src = open(path_from_root('tests', '799.cpp'), 'r').read()
     self.do_run(src, '''Set PORT family: 0, port: 3979
