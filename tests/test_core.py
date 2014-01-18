@@ -4628,6 +4628,7 @@ return malloc(size);
     assert 'asm1' in test_modes
     if self.run_name == 'asm1':
       generated = open('src.cpp.o.js').read()
+      generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
       main = generated[generated.find('function runPostSets'):]
       main = main[:main.find('\n}')]
       assert main.count('\n') == 7, 'must not emit too many postSets: %d' % main.count('\n')
