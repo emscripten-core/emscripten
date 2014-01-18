@@ -1290,24 +1290,24 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
       self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
-  def test_exception_2(self):
+  def test_exceptions_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
-    test_path = path_from_root('tests', 'core', 'test_exception_2')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_2')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
 
-  def test_white_list_exception(self):
+  def test_exceptions_white_list(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
 
-    test_path = path_from_root('tests', 'core', 'test_white_list_exception')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
@@ -1315,7 +1315,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.EXCEPTION_CATCHING_WHITELIST = []
 
-  def test_uncaught_exception(self):
+  def test_exceptions_uncaught(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
@@ -1354,29 +1354,31 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       '''
       self.do_run(src, 'success')
 
-  def test_typed_exceptions(self):
-      Settings.DISABLE_EXCEPTION_CATCHING = 0
-      Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
-      src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
-      expected = open(path_from_root('tests', 'exceptions', 'output.txt'), 'r').read()
-      self.do_run(src, expected)
-
-  def test_multiexception(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
+  def test_exceptions_typed(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
+    Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
 
-    test_path = path_from_root('tests', 'core', 'test_multiexception')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_typed')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
-  def test_std_exception(self):
+  def test_exceptions_multi(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+
+    test_path = path_from_root('tests', 'core', 'test_exceptions_multi')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
+  def test_exceptions_std(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
-    test_path = path_from_root('tests', 'core', 'test_std_exception')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_std')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
