@@ -3965,20 +3965,29 @@ function safeHeap(ast) {
       var ptr = fixPtr(node[2], heap);
       // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
       switch (heap) {
-        case 'HEAP8':   case 'HEAPU8': {
-          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', '0']]], ASM_INT);
+        case 'HEAP8': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', '0'], ['num', '0']]], ASM_INT);
         }
-        case 'HEAP16':  case 'HEAPU16': {
-          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', '0']]], ASM_INT);
+        case 'HEAPU8': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', '0'], ['num', '1']]], ASM_INT);
         }
-        case 'HEAP32':  case 'HEAPU32': {
-          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '0']]], ASM_INT);
+        case 'HEAP16': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', '0'], ['num', '0']]], ASM_INT);
+        }
+        case 'HEAPU16': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', '0'], ['num', '1']]], ASM_INT);
+        }
+        case 'HEAP32': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '0'], ['num', '0']]], ASM_INT);
+        }
+        case 'HEAPU32': {
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '0'], ['num', '1']]], ASM_INT);
         }
         case 'HEAPF32': {
-          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '1']]], ASM_DOUBLE);
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '1'], ['num', '0']]], ASM_DOUBLE);
         }
         case 'HEAPF64': {
-          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 8], ['num', '1']]], ASM_DOUBLE);
+          return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 8], ['num', '1'], ['num', '0']]], ASM_DOUBLE);
         }
         default: throw 'bad heap ' + heap;
       }

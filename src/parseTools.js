@@ -1328,7 +1328,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (ASM_JS) {
-      if (!ignore) return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Runtime.FLOAT_TYPES)|0) + ')', type);
+      if (!ignore) return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Runtime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
       // else fall through
     } else {
       return asmCoercion('SAFE_HEAP_LOAD(' + offset + ', ' + (ASM_JS ? 0 : printType) + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')', type);
