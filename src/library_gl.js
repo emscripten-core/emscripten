@@ -3547,13 +3547,13 @@ var LibraryGL = {
       }
       keyView.next((enabledAttributesKey << 2) | fogParam);
 
-#if !GL_FFP_ONLY
+#if GL_FFP_ONLY == 0
       // By cur program:
       keyView.next(GL.currProgram);
       if (!GL.currProgram) {
 #endif
         GLImmediate.TexEnvJIT.traverseState(keyView);
-#if !GL_FFP_ONLY
+#if GL_FFP_ONLY == 0
       }
 #endif
 
@@ -3940,7 +3940,7 @@ var LibraryGL = {
             GLctx.enableVertexAttribArray(this.colorLocation);
 #endif
           }
-#if !GL_FFP_ONLY
+#if GL_FFP_ONLY == 0
           else if (this.hasColor) {
             GLctx.disableVertexAttribArray(this.colorLocation);
             GLctx.vertexAttrib4fv(this.colorLocation, GLImmediate.clientColor);
@@ -3955,7 +3955,7 @@ var LibraryGL = {
         },
 
         cleanup: function cleanup() {
-#if !GL_FFP_ONLY
+#if GL_FFP_ONLY == 0
           GLctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
@@ -4342,7 +4342,7 @@ var LibraryGL = {
       }
 
 #if GL_UNSAFE_OPTS == 0
-#if !GL_FFP_ONLY
+#if GL_FFP_ONLY == 0
       renderer.cleanup();
 #endif
 #endif
