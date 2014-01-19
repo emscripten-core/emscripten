@@ -393,7 +393,17 @@ var Runtime = {
     for (var i = 0; i < numArgs; i++) {
       args.push(String.fromCharCode(36) + i); // $0, $1 etc
     }
-    return Runtime.asmConstCache[code] = eval('(function(' + args.join(',') + '){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
+    code = Pointer_stringify(code);
+    if (code[0] === '"') {
+      // tolerate EM_ASM("..code..") even though EM_ASM(..code..) is correct
+      if (code.indexOf('"', 1) === code.length-1) {
+        code = code.substr(1, code.length-2);
+      } else {
+        // something invalid happened, e.g. EM_ASM("..code($0)..", input)
+        abort('invalid EM_ASM input |' + code + '|. Please use EM_ASM(..code..) (no quotes) or EM_ASM({ ..code($0).. }, input) (to input values)');
+      }
+    }
+    return Runtime.asmConstCache[code] = eval('(function(' + args.join(',') + '){ ' + code + ' })'); // new Function does not allow upvars in node
   },
 
   warnOnce: function(text) {

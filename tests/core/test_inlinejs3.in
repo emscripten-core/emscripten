@@ -3,7 +3,7 @@
 
 int main(int argc, char **argv) {
   EM_ASM(Module.print('hello dere1'));
-  EM_ASM(Module.print('hello dere2'););
+  EM_ASM("Module.print('hello dere2');");
   for (int i = 0; i < 3; i++) {
     EM_ASM(Module.print('hello dere3'); Module.print('hello dere' + 4););
   }
