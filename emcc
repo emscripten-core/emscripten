@@ -1240,6 +1240,10 @@ try:
     if shared.Settings.SAFE_HEAP and not js_opts:
       logging.warning('asm.js+SAFE_HEAP requires js opts to be run (-O1 or above by default)')
 
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
+      logging.error('Cannot enable ALLOW_MEMORY_GROWTH with asm.js, build with -s ASM_JS=0 if you need a growable heap');
+      sys.exit(1);
+
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
 

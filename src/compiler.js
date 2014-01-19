@@ -183,9 +183,6 @@ if (SAFE_HEAP) USE_BSS = 0; // must initialize heap for safe heap
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
-if (ASM_JS) {
-  assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
-}
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have named globals');
 
 // Output some info and warnings based on settings
