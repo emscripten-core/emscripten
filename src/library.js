@@ -225,7 +225,6 @@ LibraryManager.library = {
     var result = ___libgenSplitName(path);
     return result[0] + result[1] + 1;
   },
-  __xpg_basename: 'basename',
   dirname__deps: ['__libgenSplitName'],
   dirname: function(path) {
     // char *dirname(char *path);
@@ -393,9 +392,6 @@ LibraryManager.library = {
     _umask.cmask = newMask;
     return oldMask;
   },
-  stat64: 'stat',
-  fstat64: 'fstat',
-  lstat64: 'lstat',
 
   // ==========================================================================
   // sys/statvfs.h
@@ -558,6 +554,25 @@ LibraryManager.library = {
   flock: function(fd, operation) {
     // int flock(int fd, int operation);
     // Pretend to succeed
+    return 0;
+  },
+
+  // ==========================================================================
+  // nl_types.h
+  // ==========================================================================
+
+  catopen: function(name, oflag) {
+    // nl_catd catopen (const char *name, int oflag)
+    return -1;
+  },
+
+  catgets: function(catd, set_id, msg_id, s) {
+    // char *catgets (nl_catd catd, int set_id, int msg_id, const char *s)
+    return s;
+  },
+
+  catclose: function(catd) {
+    // int catclose (nl_catd catd)
     return 0;
   },
 
@@ -1556,9 +1571,6 @@ LibraryManager.library = {
     if (bytes != 0) self.alloc(bytes);
     return ret;  // Previous break location.
   },
-  open64: 'open',
-  lseek64: 'lseek',
-  ftruncate64: 'ftruncate',
 
   // ==========================================================================
   // stdio.h
@@ -2554,7 +2566,6 @@ LibraryManager.library = {
     return 0;
   },
   fseeko: 'fseek',
-  fseeko64: 'fseek',
   fsetpos__deps: ['$FS', 'lseek', '__setErrNo', '$ERRNO_CODES'],
   fsetpos: function(stream, pos) {
     // int fsetpos(FILE *stream, const fpos_t *pos);
@@ -2591,7 +2602,6 @@ LibraryManager.library = {
     }
   },
   ftello: 'ftell',
-  ftello64: 'ftell',
   fwrite__deps: ['$FS', 'write'],
   fwrite: function(ptr, size, nitems, stream) {
     // size_t fwrite(const void *restrict ptr, size_t size, size_t nitems, FILE *restrict stream);
@@ -2882,17 +2892,6 @@ LibraryManager.library = {
     return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
 #endif
-
-  fopen64: 'fopen',
-  __isoc99_fscanf: 'fscanf',
-  // TODO: Check if any other aliases are needed.
-  _IO_getc: 'getc',
-  _IO_putc: 'putc',
-  _ZNSo3putEc: 'putchar',
-  _ZNSo5flushEv__deps: ['fflush', 'stdout'],
-  _ZNSo5flushEv: function() {
-    _fflush({{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}});
-  },
 
   // ==========================================================================
   // sys/mman.h
@@ -9175,7 +9174,7 @@ function autoAddDeps(object, name) {
 }
 
 // Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach', 'catgets', 'catopen', 'catclose'].forEach(function(aborter) {
+['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach'].forEach(function(aborter) {
   LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
 });
 
