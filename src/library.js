@@ -6287,6 +6287,10 @@ LibraryManager.library = {
     throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
 #endif
   },
+  emscripten_longjmp__deps: ['longjmp'],
+  emscripten_longjmp: function(env, value) {
+    _longjmp(env, value);
+  },
 
   // ==========================================================================
   // signal.h
