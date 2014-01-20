@@ -4539,7 +4539,20 @@ LibraryManager.library = {
     }
   },
 
-  _ZNSt9exceptionD2Ev: function(){}, // XXX a dependency of dlmalloc, but not actually needed if libcxx is not anyhow included
+  // Destructors for std::exception since we don't have them implemented in libcxx as we aren't using libcxxabi.
+  // These are also needed for the dlmalloc tests.
+  _ZNSt9exceptionD1Ev: function() {},
+  _ZNSt9exceptionD2Ev: function() {},
+
+  _ZNKSt9exception4whatEv__deps: ['_malloc'],
+  _ZNKSt9exception4whatEv: function() {
+    if (!__ZNKSt9exception4whatEv.buffer) {
+      var name = "std::exception";
+      __ZNKSt9exception4whatEv.buffer = _malloc(name.length + 1);
+      writeStringToMemory(name, __ZNKSt9exception4whatEv.buffer);
+    }
+    return __ZNKSt9exception4whatEv.buffer;
+  },
 
   _ZNSt9type_infoD2Ev: function(){},
 
