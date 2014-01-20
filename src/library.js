@@ -6230,9 +6230,6 @@ LibraryManager.library = {
     label = label|0;
     table = table|0;
     var i = 0;
-#if ASSERTIONS
-    if ((label|0) == 0) abort(121);
-#endif
     setjmpId = (setjmpId+1)|0;
     {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
     while ((i|0) < {{{ 2*MAX_SETJMPS }}}) {
