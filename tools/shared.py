@@ -809,12 +809,6 @@ class Settings2(type):
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['RELOOP'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
-      if opt_level >= 3:
-        # Aside from these, -O3 also runs closure compiler and llvm lto
-        self.attrs['FORCE_ALIGNED_MEMORY'] = 1
-        self.attrs['DOUBLE_MODE'] = 0
-        self.attrs['PRECISE_I64_MATH'] = 0
-        if noisy: logging.warning('Applying some potentially unsafe optimizations! (Use -O2 if this fails.)')
 
     def __getattr__(self, attr):
       if attr in self.attrs:

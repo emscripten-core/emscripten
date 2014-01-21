@@ -146,7 +146,7 @@ Options that are modified or new in %s include:
 
                            This is the recommended setting when you want a
                            reasonably optimized build that is generated as
-                           quickly as possible (it is much faster than -O2).
+                           quickly as possible (it builds much faster than -O2).
 
                            (Note: for details on the affects of different
                            opt levels, see apply_opt_level() in
@@ -158,20 +158,8 @@ Options that are modified or new in %s include:
                            time in return for the smallest and fastest
                            output.
 
-  -O3                      As -O2, plus dangerous optimizations that may
-                           break the generated code! This adds
-
-                              -s FORCE_ALIGNED_MEMORY=1
-                              -s DOUBLE_MODE=0
-                              -s PRECISE_I64_MATH=0
-                              --closure 1
-                              --llvm-lto 3
-
-                           This is not recommended at all. A better idea
-                           is to try each of these separately on top of
-                           -O2 to see what works. See the wiki and
-                           src/settings.js (for the -s options) for more
-                           information.
+                           For tips on optimizing your code, see
+                           https://github.com/kripken/emscripten/wiki/Optimizing-Code
 
   -s OPTION=VALUE          JavaScript code generation option passed
                            into the emscripten compiler. For the
@@ -267,8 +255,7 @@ Options that are modified or new in %s include:
                            code size and may in some cases increase
                            runtime speed (although the opposite can also
                            occur). Note that it takes time to run, and
-                           may require some changes to the code. This
-                           is run by default in -O3.
+                           may require some changes to the code.
 
                            In asm.js mode, closure will only be used on the
                            'shell' code around the compiled code (the
@@ -1037,9 +1024,7 @@ try:
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if llvm_lto is None and opt_level >= 3: llvm_lto = 3
   if opt_level == 0: debug_level = 4
-  if closure is None and opt_level == 3: closure = True
 
   if llvm_lto is None and bind:
     logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
