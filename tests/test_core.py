@@ -4665,7 +4665,7 @@ return malloc(size);
   def test_lua(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': Settings.DISABLE_EXCEPTION_CATCHING = 1
 
     for aggro in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args else [0]):
       print aggro
@@ -4686,7 +4686,7 @@ return malloc(size);
   def test_freetype(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': Settings.DISABLE_EXCEPTION_CATCHING = 1
 
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
@@ -4832,7 +4832,7 @@ def process(filename):
 
   def test_poppler(self):
     if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': Settings.DISABLE_EXCEPTION_CATCHING = 1
 
     Settings.CORRECT_OVERFLOWS = 1
     Settings.CORRECT_SIGNS = 1
