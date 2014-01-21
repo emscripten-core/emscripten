@@ -9,7 +9,7 @@ target triple = "i386-pc-linux-gnu"
 define i32 @main() {
   %retval = alloca i32, align 4
   store i32 0, i32* %retval
-  %call = invoke i32 @setjmp(i16* getelementptr inbounds ([20 x i16]* @_ZL3buf, i32 0, i32 0)) returns_twice, !dbg !20
+  %call = invoke i32 @setjmp(i16* getelementptr inbounds ([20 x i16]* @_ZL3buf, i32 0, i32 0)) returns_twice
           to label %allgood unwind label %awful
 
 allgood:
