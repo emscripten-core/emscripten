@@ -827,7 +827,9 @@ GLenum glewInit (void);
 GLboolean glewIsSupported (const char *name);
 #define glewIsExtensionSupported(x) glewIsSupported(x)
 
-GLboolean glewExperimental;
+//GLboolean glewExperimental;
+static GLboolean glewExperimental; // XXX Emscripten Added 'static' to work around a linkage issue. See https://github.com/kripken/emscripten/issues/2025
+
 GLboolean glewGetExtension (const char *name);
 const GLubyte * glewGetErrorString (GLenum error);
 const GLubyte * glewGetString (GLenum name);
