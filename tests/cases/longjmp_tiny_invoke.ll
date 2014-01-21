@@ -29,8 +29,12 @@ if.end:                                           ; preds = %if.else, %if.then
   ret i32 0, !dbg !28
 
 awful:
+  %Z = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+       cleanup
   ret i32 1
 }
+
+declare i32 @__gxx_personality_v0(...)
 
 declare i32 @setjmp(i16*) returns_twice
 
