@@ -1281,7 +1281,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output)
 
-
   def test_exceptions_white_list(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
@@ -1346,13 +1345,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_exceptions_multi(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-
     test_path = path_from_root('tests', 'core', 'test_exceptions_multi')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.do_run_from_file(src, output)
 
   def test_exceptions_std(self):
@@ -4077,7 +4072,6 @@ def process(filename):
   def test_utf32(self):
     if self.emcc_args is None: return self.skip('need libc for wcslen()')
     if not self.is_le32(): return self.skip('this test uses inline js, which requires le32')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])

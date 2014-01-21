@@ -16,11 +16,11 @@ int main() {
 	if (sizeof(wchar_t) == 4) {
 		utf32 *memory = new utf32[wstr.length()+1];
 
-		asm("var str = Module.UTF32ToString(%0);"
-			"Module.print(str);"
-			"Module.stringToUTF32(str, %1);"
-		:
-		: "r"(wstr.c_str()), "r"(memory));
+		EM_ASM_INT({
+      var str = Module.UTF32ToString($0);
+			Module.print(str);
+			Module.stringToUTF32(str, $1);
+		}, wstr.c_str(), memory);
 
 		// Compare memory to confirm that the string is intact after taking a route through JS side.
 		const utf32 *srcPtr = reinterpret_cast<const utf32 *>(wstr.c_str());
@@ -33,11 +33,11 @@ int main() {
 	} else { // sizeof(wchar_t) == 2, and we're building with -fshort-wchar.
 		utf16 *memory = new utf16[2*wstr.length()+1];
 
-		asm("var str = Module.UTF16ToString(%0);"
-			"Module.print(str);"
-			"Module.stringToUTF16(str, %1);"
-		:
-		: "r"(wstr.c_str()), "r"(memory));
+		EM_ASM_INT({
+      var str = Module.UTF16ToString($0);
+			Module.print(str);
+			Module.stringToUTF16(str, $1);
+    }, wstr.c_str(), memory);
 
 		// Compare memory to confirm that the string is intact after taking a route through JS side.
 		const utf16 *srcPtr = reinterpret_cast<const utf16 *>(wstr.c_str());
