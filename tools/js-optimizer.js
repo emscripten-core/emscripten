@@ -2870,7 +2870,6 @@ function minifyLocals(ast) {
       }
     });
 
-    // Traverse and minify all names.
     // The first time we encounter a local name, we assign it a
     // minified name that's not currently in use.  Allocating on
     // demand means they're processed in a predicatable order,
@@ -2887,6 +2886,17 @@ function minifyLocals(ast) {
         }
       }
     }
+
+    // We can also minify loop labels, using a separate namespace
+    // to the variable declarations.
+    var newLabels = {};
+    var nextMinifiedLabel = 0;
+    function getNextMinifiedLabel() {
+      ensureMinifiedNames(nextMinifiedLabel);
+      return minifiedNames[nextMinifiedLabel++];
+    }
+
+    // Traverse and minify all names.
     if (fun[1] in extraInfo.globals) {
       fun[1] = extraInfo.globals[fun[1]];
       assert(fun[1]);
@@ -2917,6 +2927,15 @@ function minifyLocals(ast) {
           }
           defn[0] = newNames[name];
         });
+      } else if (type === 'label') {
+        if (!newLabels[node[1]]) {
+          newLabels[node[1]] = getNextMinifiedLabel();
+        }
+        node[1] = newLabels[node[1]];
+      } else if (type === 'break' || type === 'continue') {
+        if (node[1]) {
+          node[1] = newLabels[node[1]];
+        }
       }
     });
 
