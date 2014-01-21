@@ -1603,6 +1603,7 @@ function normalizeAsm(func) {
     node = node[1];
     var name = node[2][1];
     if (func[2] && func[2].indexOf(name) < 0) break; // not an assign into a parameter, but a global
+    if (name in data.params) break; // already done that param, must be starting function body
     data.params[name] = detectAsmCoercion(node[3]);
     stats[i] = emptyNode();
     i++;
