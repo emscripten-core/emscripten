@@ -4291,6 +4291,8 @@ LibraryManager.library = {
     abort('trap!');
   },
 
+  llvm_prefetch: function(){},
+
   __assert_fail: function(condition, filename, line, func) {
     ABORT = true;
     throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + stackTrace();
