@@ -2306,8 +2306,8 @@ function registerizeHarder(ast) {
         node.push(newNode[i]);
         i++;
       }
-      if (i < node.length) {
-        node.splice(i);
+      if (node.length > newNode.length) {
+        node.length = newNode.length;
       }
     }
 
