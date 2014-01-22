@@ -2017,7 +2017,7 @@ try:
       js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
     if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
-      if shared.Settings.ASM_JS and opt_level >= 3:
+      if shared.Settings.ASM_JS and opt_level >= 3 and shared.Settings.OUTLINING_LIMIT == 0:
         js_optimizer_queue += ['registerizeHarder']
       else:
         js_optimizer_queue += ['registerize']
