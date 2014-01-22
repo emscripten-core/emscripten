@@ -134,13 +134,13 @@ Options that are modified or new in %s include:
         (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
         (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
         (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
-        (['-o', 'something.js', '-O3', '-s', 'ASM_JS=0'], 3, None, 1, 1),
+        (['-o', 'something.js', '-O3', '-s', 'ASM_JS=0'], 3, None, 0, 1),
         # and, test compiling to bitcode first
         (['-o', 'something.bc'], 0, [],      0, 0),
         (['-o', 'something.bc', '-O0'], 0, [], 0, 0),
         (['-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
         (['-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
-        (['-o', 'something.bc', '-O3'], 3, ['-O3', '-s', 'ASM_JS=0'], 1, 0),
+        (['-o', 'something.bc', '-O3'], 3, ['-O3', '-s', 'ASM_JS=0'], 0, 0),
         (['-O1', '-o', 'something.bc'], 1, [], 0, 0),
       ]:
         print params, opt_level, bc_params, closure, has_malloc
@@ -157,7 +157,6 @@ Options that are modified or new in %s include:
           print '....', bc_args
           output = Popen(bc_args, stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('something.js'), output[1]
-        assert ('Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
         self.assertContained('hello, world!', run_js('something.js'))
 
         # Verify optimization level etc. in the generated code
@@ -196,7 +195,6 @@ Options that are modified or new in %s include:
         (['-O2', '-g3'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize is cancelled by -g3'),
         #(['-O2', '-g4'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'same as -g3 for now'),
         (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
-        (['-O3', '-s', 'INLINING_LIMIT=0', '--closure', '0'], lambda generated: 'function _dump' not in generated, 'lto/inlining'),
         (['-Os', '--llvm-lto', '1', '-s', 'ASM_JS=0', '-g2'], lambda generated: 'function _dump' in generated, '-Os disables inlining'),
         (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
         (['-s', 'USE_TYPED_ARRAYS=1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
