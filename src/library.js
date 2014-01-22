@@ -9168,6 +9168,28 @@ LibraryManager.library = {
   // misc shims for musl
   __lockfile: function() { return 1 },
   __unlockfile: function(){},
+
+  // misc definitions to avoid unnecessary unresolved symbols from fastcomp
+  emscripten_prep_setjmp: true,
+  emscripten_check_longjmp: true,
+  emscripten_get_longjmp_result: true,
+  emscripten_setjmp: true,
+  emscripten_preinvoke: true,
+  emscripten_postinvoke: true,
+  emscripten_resume: true,
+  emscripten_landingpad: true,
+  getHigh32: true,
+  setHigh32: true,
+  FPtoILow: true,
+  FPtoIHigh: true,
+  BDtoILow: true,
+  BDtoIHigh: true,
+  SItoF: true,
+  UItoF: true,
+  SItoD: true,
+  UItoD: true,
+  BItoD: true,
+  llvm_dbg_value: true,
 };
 
 function autoAddDeps(object, name) {
