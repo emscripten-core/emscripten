@@ -1073,5 +1073,187 @@
             "UUID_TYPE_DCE_RANDOM" 
         ],
         "structs": {}
+    },
+    // ===========================================
+    // emscripten events library
+    // ===========================================
+    {
+        "file": "emscripten/events.h",
+        "defines": [
+            "EMSCRIPTEN_EVENT_KEYPRESS",
+            "EMSCRIPTEN_EVENT_KEYDOWN",
+            "EMSCRIPTEN_EVENT_KEYUP",
+            "EMSCRIPTEN_EVENT_CLICK",
+            "EMSCRIPTEN_EVENT_MOUSEDOWN",
+            "EMSCRIPTEN_EVENT_MOUSEUP",
+            "EMSCRIPTEN_EVENT_DBLCLICK",
+            "EMSCRIPTEN_EVENT_MOUSEMOVE",
+            "EMSCRIPTEN_EVENT_WHEEL",
+            "EMSCRIPTEN_EVENT_RESIZE",
+            "EMSCRIPTEN_EVENT_SCROLL",
+            "EMSCRIPTEN_EVENT_BLUR",
+            "EMSCRIPTEN_EVENT_FOCUS",
+            "EMSCRIPTEN_EVENT_FOCUSIN",
+            "EMSCRIPTEN_EVENT_FOCUSOUT",
+            "EMSCRIPTEN_EVENT_DEVICEORIENTATION",
+            "EMSCRIPTEN_EVENT_DEVICEMOTION",
+            "EMSCRIPTEN_EVENT_ORIENTATIONCHANGE",
+            "EMSCRIPTEN_EVENT_FULLSCREENCHANGE",
+            "EMSCRIPTEN_EVENT_POINTERLOCKCHANGE",
+            "EMSCRIPTEN_EVENT_VISIBILITYCHANGE",
+            "EMSCRIPTEN_EVENT_TOUCHSTART",
+            "EMSCRIPTEN_EVENT_TOUCHEND",
+            "EMSCRIPTEN_EVENT_TOUCHMOVE",
+            "EMSCRIPTEN_EVENT_TOUCHCANCEL",
+            "EMSCRIPTEN_EVENT_GAMEPADCONNECTED",
+            "EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED",
+            "EMSCRIPTEN_EVENT_BEFOREUNLOAD",
+            "EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE",
+            "EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE",
+            "EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST",
+            "EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED",
+
+            "EMSCRIPTEN_RESULT_SUCCESS",
+            "EMSCRIPTEN_RESULT_DEFERRED",
+            "EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED",
+            "EMSCRIPTEN_RESULT_INVALID_TARGET",
+            "EMSCRIPTEN_RESULT_INVALID_PARAM",
+            "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
+            "EMSCRIPTEN_RESULT_FAILED",
+            "EMSCRIPTEN_RESULT_NO_DATA"
+        ],
+        "structs": {
+            "emscripten_KeyboardEvent": [
+              "key",
+              "code",
+              "location",
+              "ctrlKey",
+              "shiftKey",
+              "altKey",
+              "metaKey",
+              "repeat",
+              "locale",
+              "charValue",
+              "charCode",
+              "keyCode",
+              "which"
+            ],
+            "emscripten_MouseEvent": [
+              "timestamp",
+              "screenX",
+              "screenY",
+              "clientX",
+              "clientY",
+              "ctrlKey",
+              "shiftKey",
+              "altKey",
+              "metaKey",
+              "button",
+              "buttons",
+              "movementX",
+              "movementY",
+              "canvasX",
+              "canvasY"
+            ],
+            "emscripten_WheelEvent": [
+              "mouse",
+              "deltaX",
+              "deltaY",
+              "deltaZ",
+              "deltaMode"
+            ],
+            "emscripten_UiEvent": [
+              "detail",
+              "documentBodyClientWidth",
+              "documentBodyClientHeight",
+              "windowInnerWidth",
+              "windowInnerHeight",
+              "windowOuterWidth",
+              "windowOuterHeight",
+              "scrollTop",
+              "scrollLeft"
+            ],
+            "emscripten_FocusEvent": [
+              "nodeName",
+              "id"
+            ],
+            "emscripten_DeviceOrientationEvent": [
+              "timestamp",
+              "alpha",
+              "beta",
+              "gamma",
+              "absolute"
+            ],
+            "emscripten_DeviceMotionEvent": [
+              "timestamp",
+              "accelerationX",
+              "accelerationY",
+              "accelerationZ",
+              "accelerationIncludingGravityX",
+              "accelerationIncludingGravityY",
+              "accelerationIncludingGravityZ",
+              "rotationRateAlpha",
+              "rotationRateBeta",
+              "rotationRateGamma"
+            ],
+            "emscripten_OrientationChangeEvent": [
+              "orientationIndex",
+              "orientationAngle"
+            ],
+            "emscripten_FullscreenChangeEvent": [
+              "isFullscreen",
+              "fullscreenEnabled",
+              "nodeName",
+              "id"
+            ],
+            "emscripten_PointerlockChangeEvent": [
+              "isActive",
+              "nodeName",
+              "id"
+            ],
+            "emscripten_VisibilityChangeEvent": [
+              "hidden",
+              "visibilityState"
+            ],
+            "emscripten_TouchPoint": [
+              "identifier",
+              "screenX",
+              "screenY",
+              "clientX",
+              "clientY",
+              "pageX",
+              "pageY",
+              "isChanged",
+              "onTarget",
+              "canvasX",
+              "canvasY"
+            ],
+            "emscripten_TouchEvent": [
+              "numTouches",
+              "ctrlKey",
+              "shiftKey",
+              "altKey",
+              "metaKey",
+              "touches"
+            ],
+            "emscripten_GamepadEvent": [
+              "timestamp",
+              "axis",
+              "analogButton",
+              "digitalButton",
+              "connected",
+              "index",
+              "numAxes",
+              "numButtons",
+              "id",
+              "mapping"
+            ],
+            "emscripten_BatteryEvent": [
+              "chargingTime",
+              "dischargingTime",
+              "level",
+              "charging"
+            ]
+        }
     }
-]
+ ]
