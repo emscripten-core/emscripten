@@ -2133,7 +2133,7 @@ function registerizeHarder(ast) {
 
     var junctions = [];
     var blocks = [];
-    var curEntryJunction = null;
+    var currEntryJunction = null;
     var nextBasicBlock = null;
     var isInExpr = 0;
     var activeLabels = [{}];
@@ -2165,22 +2165,22 @@ function registerizeHarder(ast) {
       // Set the next entry junction to the given id.
       // This can be used to enter at a previously-declared point.
       assert(nextBasicBlock.nodes.length === 0, 'refusing to abandon an in-progress basic block')
-      curEntryJunction = id;
+      currEntryJunction = id;
     }
 
     function joinJunction(id) {
       // Complete the pending basic block by exiting at this position.
       // This can be used to exit at a previously-declared point.
-      if (curEntryJunction !== null) {
+      if (currEntryJunction !== null) {
         nextBasicBlock.id = blocks.length;
-        nextBasicBlock.entry = curEntryJunction;
+        nextBasicBlock.entry = currEntryJunction;
         nextBasicBlock.exit = id;
-        junctions[curEntryJunction].outblocks[nextBasicBlock.id] = 1;
+        junctions[currEntryJunction].outblocks[nextBasicBlock.id] = 1;
         junctions[id].inblocks[nextBasicBlock.id] = 1;
         blocks.push(nextBasicBlock);
       } 
       nextBasicBlock = { id: null, entry: null, exit: null, pre: {}, nodes: [], isexpr: [], use: {}, kill: {} };
-      curEntryJunction = id;
+      currEntryJunction = id;
       return id;
     }
 
@@ -2319,7 +2319,7 @@ function registerizeHarder(ast) {
   
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
-      if (curEntryJunction === null && junctions.length > 0) {
+      if (currEntryJunction === null && junctions.length > 0) {
         morphNode(node, ['block', []]);
         return;
       }
