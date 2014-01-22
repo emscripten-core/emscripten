@@ -158,6 +158,9 @@ Options that are modified or new in %s include:
                            time in return for the smallest and fastest
                            output.
 
+  -O3                      As -O2, plus additional optimizations that can
+                           take a significant amount of compilation time.
+
                            For tips on optimizing your code, see
                            https://github.com/kripken/emscripten/wiki/Optimizing-Code
 
