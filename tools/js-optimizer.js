@@ -2478,7 +2478,7 @@ function registerizeHarder(ast) {
           var jPrevCaseExit = jCheckExit;
           var jPrevBodyExit = jCheckExit;
           for (var i=0; i<node[2].length; i++) {
-            // In the gerneral case we'll need a basic block for the case clause.
+            // In the general case we'll need a basic block for the case clause.
             // Try to avoid it for common, simple, non-var-using cases.
             if (!node[2][i][0]) {
               hasDefault = true;
