@@ -106,7 +106,7 @@ process(sys.argv[1])
     final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.js'
     try_delete(final)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
-                    '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
+                    '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     #'--closure', '1',
