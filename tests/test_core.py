@@ -6343,7 +6343,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     if self.emcc_args is not None:
       Settings.load(self.emcc_args)
       Building.LLVM_OPTS = 0
-      if '-O2' in self.emcc_args:
+      if '-O2' in self.emcc_args or '-O3' in self.emcc_args:
         Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
       #Building.COMPILER_TEST_OPTS += self.emcc_args
       for arg in self.emcc_args:
@@ -6397,6 +6397,7 @@ o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "J
 # asm.js
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
+asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
 asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-O2", "-s", "PRECISE_F32=1"])
 if os.environ.get('EMCC_FAST_COMPILER') == '1':
   asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "SAFE_HEAP=1"])
