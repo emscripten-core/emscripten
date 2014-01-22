@@ -3501,6 +3501,11 @@ var LibraryGL = {
         GLImmediate.enabledClientAttributes[name] = true;
         GLImmediate.setClientAttribute(name, size, type, 0, GLImmediate.rendererComponentPointer);
         GLImmediate.rendererComponentPointer += size * GL.byteSizeByType[type - GL.byteSizeByTypeRoot];
+#if GL_FFP_ONLY
+        // We can enable the correct attribute stream index immediately here, since the same attribute in each shader
+        // will be bound to this same index.
+        GL.enableVertexAttribArray(name);
+#endif
       } else {
         GLImmediate.rendererComponents[name]++;
       }
@@ -3760,7 +3765,7 @@ var LibraryGL = {
               this.texCoordLocations[i] = GLctx.getAttribLocation(this.program, aTexCoordPrefix + i);
             }
           }
-
+          this.colorLocation = GLctx.getAttribLocation(this.program, 'a_color');
           if (!useCurrProgram) {
             // Temporarily switch to the program so we can set our sampler uniforms early.
             var prevBoundProg = GLctx.getParameter(GLctx.CURRENT_PROGRAM);
@@ -3772,6 +3777,9 @@ var LibraryGL = {
                 GLctx.uniform1i(texSamplerLoc, texUnitID);
               }
             }
+            // The default color attribute value is not the same as the default for all other attribute streams (0,0,0,1) but (1,1,1,1),
+            // so explicitly set it right at start.
+            GLctx.vertexAttrib4fv(this.colorLocation, [1,1,1,1]);
             GLctx.useProgram(prevBoundProg);
           }
 
@@ -3779,7 +3787,6 @@ var LibraryGL = {
           for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             this.textureMatrixLocations[i] = GLctx.getUniformLocation(this.program, 'u_textureMatrix' + i);
           }
-          this.colorLocation = GLctx.getAttribLocation(this.program, 'a_color');
           this.normalLocation = GLctx.getAttribLocation(this.program, 'a_normal');
 
           this.modelViewLocation = GLctx.getUniformLocation(this.program, 'u_modelView');

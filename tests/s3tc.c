@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
 
-    // Render the last item using oldschool glBegin etc
+	// Render the last item using oldschool glBegin etc
     glBegin( GL_TRIANGLE_STRIP );
         glTexCoord2i( 0, 0 ); glVertex3f( 100, 300, 0 );
         glTexCoord2i( 1, 0 ); glVertex3f( 300, 300, 0 );
