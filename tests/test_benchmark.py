@@ -51,20 +51,21 @@ class Benchmarker:
       print
 
 class NativeBenchmarker(Benchmarker):
-  def __init__(self, name, cc, cxx):
+  def __init__(self, name, cc, cxx, args=['-O2']):
     self.name = name
     self.cc = cc
     self.cxx = cxx
+    self.args = args
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.parent = parent
     if lib_builder: native_args = native_args + lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
-      process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
+      process = Popen([compiler, '-fno-math-errno', filename, '-o', filename+'.native'] + self.args + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
       output = process.communicate()
       if process.returncode is not 0:
-        print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([compiler, '-O2', filename, '-o', filename+'.native']), process.returncode)
+        print >> sys.stderr, "Building native executable with command failed"
         print "Output: " + output[0]
     else:
       shutil.copyfile(native_exec, filename + '.native')
@@ -124,6 +125,7 @@ try:
   benchmarkers = [
     #NativeBenchmarker('clang', CLANG_CC, CLANG),
     NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
+    #NativeBenchmarker('clang-3.2-O3', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++'), ['-O3']),
     #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
