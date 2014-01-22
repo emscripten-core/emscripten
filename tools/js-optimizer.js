@@ -2670,8 +2670,8 @@ function registerizeHarder(ast) {
         junctions[block.exit].inblocks[block.id] = 1;
       }
     }
-    delete labelledBlocks;
-    delete labelledJumps;
+    labelledBlocks = null;
+    labelledJumps = null;
 
     // Do a backwards data-flow analysis to determine the set of live
     // variables at each junction, and to use this information to eliminate
