@@ -2460,55 +2460,40 @@ function registerizeHarder(ast) {
           buildFlowGraph(node[2]);
           break;
         case 'switch':
-          // This is horrific.  It need to capture the default flow-through
-          // logic of sequential case bodies, as well as the theoretical
-          // sequential evaluation of each case clause.
-          // TODO: simplify based on asmjs switch-statement restrictions.
+          // Emscripten generates switch statements of a very limited
+          // form: all case clauses are numeric literals, and all
+          // case bodies end with a break.  So it's basically equivalent
+          // to a multi-way 'if' statement.
           isInExpr++;
           buildFlowGraph(node[1]);
           isInExpr--;
           var jCheckExit = markJunction();
           var jExit = addJunction();
           pushActiveLabels(null, jExit);
-          // Process all cases as a sequential chain of checks.
-          // Process all case bodies as one big flow-through statement.
-          // They might break themselves out of it but this implements the
-          // default fall-through case logic.
           var hasDefault = false;
-          var jPrevCaseExit = jCheckExit;
-          var jPrevBodyExit = jCheckExit;
           for (var i=0; i<node[2].length; i++) {
-            // In the general case we'll need a basic block for the case clause.
-            // Try to avoid it for common, simple, non-var-using cases.
+            setJunction(jCheckExit);
             if (!node[2][i][0]) {
               hasDefault = true;
             } else {
               if (node[2][i][0][0] !== 'num') {
-                setJunction(jPrevCaseExit);
-                isInExpr++;
-                buildFlowGraph(node[2][i][0]);
-                isInExpr--;
-                jPrevCaseExit = markJunction();
+                if (node[2][i][0][0] !== 'unary-prefix' || node[2][i][0][2][0] !== 'num') {
+                  assert(false, 'non-numeric switch case clause');
+                }
               }
-            }
-            // The next case body flows from the exit of the prev one,
-            // or may be entered directly from the case statement exit.
-            setJunction(jPrevCaseExit);
-            if (jPrevBodyExit !== jCheckExit) {
-              joinJunction(jPrevBodyExit);
+              addPreCondTrue(['binary', '==', node[1], node[2][i][0]]);
             }
             for (var j = 0; j < node[2][i][1].length; j++) {
               buildFlowGraph(node[2][i][1][j]);
             }
-            jPrevBodyExit = markJunction();
+            if (currEntryJunction !== null, 'switch case body did not break');
+          }
+          // If there was no default case, we also need an empty block
+          // linking straight from the test evaluation to the exit.
+          if (!hasDefault) {
+            setJunction(jCheckExit);
           }
           markJunction(jExit);
-          // If there was no default case, we also need an empty block
-          // linking straight from entry to exit.
-          if (!hasDefault && jCheckExit !== jPrevBodyExit) {
-            setJunction(jCheckExit);
-            joinJunction(jExit);
-          }
           popActiveLabels()
           break;
         case 'return':

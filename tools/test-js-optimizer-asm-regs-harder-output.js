@@ -37,31 +37,29 @@ function switchey(d1, i2) {
  }
 }
 function switchey2() {
- var i1 = 0, i2 = 0, i3 = 0, i4 = 0, i5 = 0, i6 = 0, d7 = +0, d8 = +0;
+ var i1 = 0, i2 = 0, i3 = 0, i4 = 0, i5 = 0, d6 = +0, d7 = +0;
  i2 = STACKTOP;
  STACKTOP = STACKTOP + 8 | 0;
- i6 = 1;
- while (1) switch (i6 | 0) {
+ i3 = 1;
+ while (1) switch (i3 | 0) {
  case 1:
   i1 = i2 | 0;
   __ZN6RandomC1Ev(i1);
   i4 = 0;
-  i3 = 0;
-  i6 = 2;
+  i5 = 0;
+  i3 = 2;
   break;
  case 2:
-  d8 = +__ZN6Random3getEf(8, +1);
-  d7 = +__ZN6Random3getEf(i1, +1);
-  _printf(24, (tempInt = STACKTOP, STACKTOP = STACKTOP + 16 | 0, HEAPF64[CHECK_ALIGN_8(tempInt | 0) >> 3] = d8, HEAPF64[CHECK_ALIGN_8(tempInt + 8 | 0) >> 3] = d7, tempInt) | 0);
-  i5 = (d8 != d7 & 1) + i3 | 0;
-  i6 = i4 + 1 | 0;
-  if ((i6 | 0) < 100) {
-   i4 = i6;
-   i3 = i5;
-   i6 = 2;
+  d7 = +__ZN6Random3getEf(8, +1);
+  d6 = +__ZN6Random3getEf(i1, +1);
+  _printf(24, (tempInt = STACKTOP, STACKTOP = STACKTOP + 16 | 0, HEAPF64[CHECK_ALIGN_8(tempInt | 0) >> 3] = d7, HEAPF64[CHECK_ALIGN_8(tempInt + 8 | 0) >> 3] = d6, tempInt) | 0);
+  i5 = (d7 != d6 & 1) + i5 | 0;
+  i4 = i4 + 1 | 0;
+  if ((i4 | 0) < 100) {
+   i3 = 2;
    break;
   } else {
-   i6 = 3;
+   i3 = 3;
    break;
   }
  case 3:
