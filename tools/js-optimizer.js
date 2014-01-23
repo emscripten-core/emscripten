@@ -2597,6 +2597,7 @@ function registerizeHarder(ast) {
       if (labelCond && labelCond[0] === '==') {
         // If there are multiple blocks with the same label, all bets are off.
         // This seems to happen sometimes for short blocks that end with a return.
+        // TODO: it should be safe to merge the duplicates if they're identical.
         if (labelCond[1] in labelledBlocks) {
           labelledBlocks = {};
           labelledJumps = [];
