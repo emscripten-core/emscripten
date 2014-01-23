@@ -600,6 +600,7 @@ function headlessCanvas() {
     style: {},
     eventListeners: {},
     addEventListener: function(){},
+    removeEventListener: function(){},
     requestFullScreen: function() {
       document.fullscreenElement = document.getElementById('canvas');
       window.setTimeout(function() {
