@@ -201,12 +201,15 @@ var LibraryOpenAL = {
     }
 
     if (ctx) {
+      var gain = ctx.createGain();
+      gain.connect(ctx.destination);
       var context = {
         ctx: ctx,
         err: 0,
         src: [],
         buf: [],
-        interval: setInterval(function() { AL.updateSources(context); }, AL.QUEUE_INTERVAL)
+        interval: setInterval(function() { AL.updateSources(context); }, AL.QUEUE_INTERVAL),
+        gain: gain
       };
       AL.contexts.push(context);
       return AL.contexts.length;
@@ -254,7 +257,7 @@ var LibraryOpenAL = {
     }
     for (var i = 0; i < count; ++i) {
       var gain = AL.currentContext.ctx.createGain();
-      gain.connect(AL.currentContext.ctx.destination);
+      gain.connect(AL.currentContext.gain);
       AL.currentContext.src.push({
         state: 0x1011 /* AL_INITIAL */,
         queue: [],
@@ -838,6 +841,85 @@ var LibraryOpenAL = {
     }
   },
 
+  alGetListenerf: function(pname, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetListenerf called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    case 0x100A /* AL_GAIN */:
+      {{{ makeSetValue('value', '0', 'AL.currentContext.gain.gain', 'float') }}}
+      break;
+    default:
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+
+  },
+
+  alGetListenerfv: function(pname, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetListenerfv called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    case 0x1004 /* AL_POSITION */:
+      var position = AL.currentContext.ctx.listener._position || [0,0,0];
+      {{{ makeSetValue('values', '0', 'position[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'position[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'position[2]', 'float') }}}
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      var velocity = AL.currentContext.ctx.listener._velocity || [0,0,0];
+      {{{ makeSetValue('values', '0', 'velocity[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'velocity[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'velocity[2]', 'float') }}}
+      break;
+    case 0x100F /* AL_ORIENTATION */:
+      var orientation = AL.currentContext.ctx.listener._orientation || [0,0,0,0,0,0];
+      {{{ makeSetValue('values', '0', 'orientation[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'orientation[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'orientation[2]', 'float') }}}
+      {{{ makeSetValue('values', '12', 'orientation[3]', 'float') }}}
+      {{{ makeSetValue('values', '16', 'orientation[4]', 'float') }}}
+      {{{ makeSetValue('values', '20', 'orientation[5]', 'float') }}}
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.log("alGetListenerfv with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
+  alGetListeneri: function(pname, values) {
+  },
+
+  alListenerf: function(param, value) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alListenerf called without a valid context");
+#endif
+      return;
+    }
+    switch (param) {
+    case 0x100A /* AL_GAIN */:
+      AL.currentContext.gain.value = value;
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.log("alListenerf with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
   alListenerfv: function(param, values) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -847,28 +929,28 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1004 /* AL_POSITION */:
-      AL.currentContext.ctx.listener.setPosition(
-          {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '4', 'float') }}},
-          {{{ makeGetValue('values', '8', 'float') }}}
-        );
+      var x = {{{ makeGetValue('value', '0', 'float') }}};
+      var y = {{{ makeGetValue('value', '4', 'float') }}};
+      var z = {{{ makeGetValue('value', '8', 'float') }}};
+      AL.currentContext.ctx.listener._position = [x,y,z];
+      AL.currentContext.ctx.listener.setPosition(x, y, z);
       break;
     case 0x1006 /* AL_VELOCITY */:
-      AL.currentContext.ctx.listener.setVelocity(
-          {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '4', 'float') }}},
-          {{{ makeGetValue('values', '8', 'float') }}}
-        );
+      var x = {{{ makeGetValue('value', '0', 'float') }}};
+      var y = {{{ makeGetValue('value', '4', 'float') }}};
+      var z = {{{ makeGetValue('value', '8', 'float') }}};
+      AL.currentContext.ctx.listener._velocity = [x,y,z];
+      AL.currentContext.ctx.listener.setVelocity(x, y, z);
       break;
     case 0x100F /* AL_ORIENTATION */:
-      AL.currentContext.ctx.listener.setOrientation(
-          {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '4', 'float') }}},
-          {{{ makeGetValue('values', '8', 'float') }}},
-          {{{ makeGetValue('values', '12', 'float') }}},
-          {{{ makeGetValue('values', '16', 'float') }}},
-          {{{ makeGetValue('values', '20', 'float') }}}
-        );
+      var x = {{{ makeGetValue('value', '0', 'float') }}};
+      var y = {{{ makeGetValue('value', '4', 'float') }}};
+      var z = {{{ makeGetValue('value', '8', 'float') }}};
+      var x2 = {{{ makeGetValue('value', '12', 'float') }}};
+      var y2 = {{{ makeGetValue('value', '16', 'float') }}};
+      var z2 = {{{ makeGetValue('value', '20', 'float') }}};
+      AL.currentContext.ctx.listener._orientation = [x,y,z, x2, y2, z2];
+      AL.currentContext.ctx.listener.setOrientation(x,y,z,x2,y2,z2);
       break;
     default:
 #if OPENAL_DEBUG
