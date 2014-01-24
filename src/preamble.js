@@ -6,6 +6,8 @@
 
 {{RUNTIME}}
 
+Module['Runtime'] = Runtime;
+
 #if ASM_JS
 #if RESERVED_FUNCTION_POINTERS
 function jsCall() {
