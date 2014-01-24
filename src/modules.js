@@ -426,7 +426,20 @@ var LibraryManager = {
 
     var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js', 'library_uuid.js', 'library_glew.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
-      eval(processMacros(preprocess(read(libraries[i]))));
+      var filename = libraries[i];
+      var src = read(filename);
+      try {
+        var processed = processMacros(preprocess(src));
+        eval(processed);
+      } catch(e) {
+        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];
+        if (processed) {
+          error('failure to execute js library "' + filename + '": ' + details + '\npreprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============\n');
+        } else {
+          error('failure to process js library "' + filename + '": ' + details + '\noriginal source:\n=============\n' + src + '\n=============\n');
+        }
+        throw e;
+      }
     }
 
     /*
