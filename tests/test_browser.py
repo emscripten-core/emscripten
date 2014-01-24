@@ -588,7 +588,7 @@ If manually bisecting:
     open(os.path.join(self.get_dir(), 'subdirr', 'data1.txt'), 'w').write('''1214141516171819''')
     # change the file package base dir to look in a "cdn". note that normally you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
-    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackageURL: "cdn/", '))
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "cdn/", '))
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
       #include <stdio.h>
       #include <string.h>
@@ -615,8 +615,8 @@ If manually bisecting:
 
     test()
 
-    # TODO: CORS, test using a full url for filePackageURL
-    #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackageURL: "http:/localhost:8888/cdn/", '))
+    # TODO: CORS, test using a full url for filePackagePrefixURL
+    #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
     #test()
 
   def test_compressed_file(self):

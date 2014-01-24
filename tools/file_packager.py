@@ -471,7 +471,7 @@ if has_preloaded:
       PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
     }
     var PACKAGE_NAME = '%s';
-    var REMOTE_PACKAGE_NAME = (Module['filePackageURL'] || '') + '%s';
+    var REMOTE_PACKAGE_NAME = (Module['filePackagePrefixURL'] || '') + '%s';
     var PACKAGE_UUID = '%s';
   ''' % (data_target, remote_package_name, package_uuid)
 
