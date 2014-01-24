@@ -597,6 +597,21 @@ var LibraryOpenAL = {
     }
   },
 
+  alIsBuffer: function(bufferId) {
+    if (!AL.currentContext) {
+      return false;
+    }
+    if (bufferId > AL.currentContext.buf.length) {
+      return false;
+    }
+
+    if (!AL.currentContext.buf[bufferId]) {
+      return false;
+    } else {
+      return true;
+    }
+  },
+
   alBufferData: function(buffer, format, data, size, freq) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
