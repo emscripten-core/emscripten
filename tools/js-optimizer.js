@@ -2460,55 +2460,40 @@ function registerizeHarder(ast) {
           buildFlowGraph(node[2]);
           break;
         case 'switch':
-          // This is horrific.  It need to capture the default flow-through
-          // logic of sequential case bodies, as well as the theoretical
-          // sequential evaluation of each case clause.
-          // TODO: simplify based on asmjs switch-statement restrictions.
+          // Emscripten generates switch statements of a very limited
+          // form: all case clauses are numeric literals, and all
+          // case bodies end with a break.  So it's basically equivalent
+          // to a multi-way 'if' statement.
           isInExpr++;
           buildFlowGraph(node[1]);
           isInExpr--;
           var jCheckExit = markJunction();
           var jExit = addJunction();
           pushActiveLabels(null, jExit);
-          // Process all cases as a sequential chain of checks.
-          // Process all case bodies as one big flow-through statement.
-          // They might break themselves out of it but this implements the
-          // default fall-through case logic.
           var hasDefault = false;
-          var jPrevCaseExit = jCheckExit;
-          var jPrevBodyExit = jCheckExit;
           for (var i=0; i<node[2].length; i++) {
-            // In the general case we'll need a basic block for the case clause.
-            // Try to avoid it for common, simple, non-var-using cases.
+            setJunction(jCheckExit);
             if (!node[2][i][0]) {
               hasDefault = true;
             } else {
               if (node[2][i][0][0] !== 'num') {
-                setJunction(jPrevCaseExit);
-                isInExpr++;
-                buildFlowGraph(node[2][i][0]);
-                isInExpr--;
-                jPrevCaseExit = markJunction();
+                if (node[2][i][0][0] !== 'unary-prefix' || node[2][i][0][2][0] !== 'num') {
+                  assert(false, 'non-numeric switch case clause');
+                }
               }
-            }
-            // The next case body flows from the exit of the prev one,
-            // or may be entered directly from the case statement exit.
-            setJunction(jPrevCaseExit);
-            if (jPrevBodyExit !== jCheckExit) {
-              joinJunction(jPrevBodyExit);
+              addPreCondTrue(['binary', '==', node[1], node[2][i][0]]);
             }
             for (var j = 0; j < node[2][i][1].length; j++) {
               buildFlowGraph(node[2][i][1][j]);
             }
-            jPrevBodyExit = markJunction();
+            if (currEntryJunction !== null, 'switch case body did not break');
+          }
+          // If there was no default case, we also need an empty block
+          // linking straight from the test evaluation to the exit.
+          if (!hasDefault) {
+            setJunction(jCheckExit);
           }
           markJunction(jExit);
-          // If there was no default case, we also need an empty block
-          // linking straight from entry to exit.
-          if (!hasDefault && jCheckExit !== jPrevBodyExit) {
-            setJunction(jCheckExit);
-            joinJunction(jExit);
-          }
           popActiveLabels()
           break;
         case 'return':
@@ -2612,6 +2597,7 @@ function registerizeHarder(ast) {
       if (labelCond && labelCond[0] === '==') {
         // If there are multiple blocks with the same label, all bets are off.
         // This seems to happen sometimes for short blocks that end with a return.
+        // TODO: it should be safe to merge the duplicates if they're identical.
         if (labelCond[1] in labelledBlocks) {
           labelledBlocks = {};
           labelledJumps = [];
@@ -2711,6 +2697,7 @@ function registerizeHarder(ast) {
       var link = {};
       var lastUseLoc = {};
       var firstDeadLoc = {};
+      var firstKillLoc = {};
       var lastKillLoc = {};
       for (var name in live) {
         link[name] = name;
@@ -2735,6 +2722,7 @@ function registerizeHarder(ast) {
             delete use[name];
             delete live[name];
             firstDeadLoc[name] = j;
+            firstKillLoc[name] = j;
             if (lastUseLoc[name] === undefined) {
               lastUseLoc[name] = j;
             }
@@ -2759,6 +2747,9 @@ function registerizeHarder(ast) {
             function removeUnusedNodes(j, n) {
               for (var name in lastUseLoc) {
                 lastUseLoc[name] -= n;
+              }
+              for (var name in firstKillLoc) {
+                firstKillLoc[name] -= n;
               }
               for (var name in lastKillLoc) {
                 lastKillLoc[name] -= n;
@@ -2791,6 +2782,7 @@ function registerizeHarder(ast) {
       block.link = link;
       block.lastUseLoc = lastUseLoc;
       block.firstDeadLoc = firstDeadLoc;
+      block.firstKillLoc = firstKillLoc;
       block.lastKillLoc = lastKillLoc;
     }
 
@@ -2975,47 +2967,41 @@ function registerizeHarder(ast) {
       if (block.nodes.length === 0) continue;
       var jEnter = junctions[block.entry];
       var jExit = junctions[block.exit];
-      // Calculate the full internal liveness states for this block.
-      var liveness = [{}];
+      // Mark the point at which each input reg becomes dead.
+      // Variables alive before this point must not be assigned
+      // to that register.
+      var inputVars = {}
+      var inputDeadLoc = {};
+      var inputVarsByReg = {};
       for (var name in jExit.live) {
-        liveness[0][name] = 1;
-      }
-      for (var j=block.nodes.length-1; j>=0; j--) {
-        var node = block.nodes[j];
-        liveness.unshift(copy(liveness[0]));
-        if (node[0] === 'assign') {
-          var name = node[2][1];
-          delete liveness[0][name];
-        } else if (node[0] === 'name') {
-          var name = node[1];
-          liveness[0][name] = 1;
-        } else {
-          assert(false, 'unexpected node type: ' + node[0]);
+        if (!(name in block.kill)) {
+          inputVars[name] = 1;
+          var reg = junctionVariables[name].reg;
+          assert(reg !== null, 'input variable doesnt have a register');
+          inputDeadLoc[reg] = block.firstDeadLoc[name];
+          inputVarsByReg[reg] = name;
         }
       }
-      assert(liveness.length == block.nodes.length + 1);
-      assert(setSize(setSub(liveness[0], jEnter.live)) == 0);
-      // Mark the point at which each output reg gets assigned.
-      // Variables that live past this point must not be assigned
-      // to that register.
-      var outputAssignLoc = {};
-      var outputVars = {};
-      for (var name in jExit.live) {
-        var reg = junctionVariables[name].reg;
-        assert(reg !== null, 'output variable doesnt have a register');
-        outputAssignLoc[reg] = block.lastKillLoc[name];
-        outputVars[reg] = name;
+      for (var name in block.use) {
+        if (!(name in inputVars)) {
+          inputVars[name] = 1;
+          var reg = junctionVariables[name].reg;
+          assert(reg !== null, 'input variable doesnt have a register');
+          inputDeadLoc[reg] = block.firstDeadLoc[name];
+          inputVarsByReg[reg] = name;
+        }
       }
-      // Scan through in execution order, allocating registers on demand.
-      // Be careful to avoid conflicts with the output registers.
+      assert(setSize(setSub(inputVars, jEnter.live)) == 0);
+      // Scan through backwards, allocating registers on demand.
+      // Be careful to avoid conflicts with the input registers.
       // We consume free registers in last-used order, which helps to
       // eliminate "x=y" assignments that are the last use of "y".
       var assignedRegs = {};
       var freeRegsByType = copy(allRegsByType);
-      // Begin with all live vars assigned per the entry-point.
-      for (var name in liveness[0]) {
+      // Begin with all live vars assigned per the exit junction.
+      for (var name in jExit.live) {
         var reg = junctionVariables[name].reg;
-        assert(reg !== null, 'input variable doesnt have a register');
+        assert(reg !== null, 'output variable doesnt have a register');
         assignedRegs[name] = reg;
         delete freeRegsByType[localVars[name]][reg];
       }
@@ -3023,66 +3009,71 @@ function registerizeHarder(ast) {
         freeRegsByType[j] = keys(freeRegsByType[j]);
       }
       // Scan through the nodes in sequence, modifying each node in-place
-      // and freeing registers according to the calculated liveness info.
-      for (var j = 0; j < block.nodes.length; j++) {
+      // and grabbing/freeing registers as needed.
+      var maybeRemoveNodes = [];
+      for (var j = block.nodes.length - 1; j >= 0; j--) {
         var node = block.nodes[j];
         var name = node[0] === 'assign' ? node[2][1] : node[1];
         var allRegs = allRegsByType[localVars[name]];
         var freeRegs = freeRegsByType[localVars[name]];
         var reg = assignedRegs[name];
         if (node[0] === 'name') {
-          // A use.  It should already be in a register.
-          assert(liveness[j][name], 'use node, but name was not alive?')
-          assert(reg, 'live variable did not have a reg?')
-          node[1] = allRegs[reg];
-        } else {
-          // A kill. This should assign it a new register.
-          assert(!liveness[j][name], 'kill node, but name was alive?')
-          assert(!reg, 'non-live variable still had a reg?')
-          if (name in jExit.live && j === block.lastKillLoc[name]) {
-            // Assignment to an output variable, must use pre-assigned reg.
-            reg = junctionVariables[name].reg;
-            assignedRegs[name] = reg;
-            for (var k = freeRegs.length - 1; k >= 0; k--) {
-              if (freeRegs[k] === reg) {
+          // A use.  Grab a register if it doesn't have one.
+          if (!reg) {
+            if (name in inputVars && j <= block.firstDeadLoc[name]) {
+              // Assignment to an input variable, must use pre-assigned reg.
+              reg = junctionVariables[name].reg;
+              assignedRegs[name] = reg;
+              for (var k = freeRegs.length - 1; k >= 0; k--) {
+                if (freeRegs[k] === reg) {
+                  freeRegs.splice(k, 1);
+                  break;
+                }
+              }
+            } else {
+              // Try to use one of the existing free registers.
+              // It must not conflict with an input register.
+              for (var k = freeRegs.length - 1; k >= 0; k--) {
+                reg = freeRegs[k];
+                // Check for conflict with input registers.
+                if (block.firstKillLoc[name] <= inputDeadLoc[reg]) {
+                  if (name !== inputVarsByReg[reg]) {
+                    continue;
+                  }
+                }
+                // Found one!
+                assignedRegs[name] = reg;
                 freeRegs.splice(k, 1);
                 break;
               }
-            }
-          } else {
-            // Try to use one of the existing free registers.
-            // It must not conflict with an output register.
-            for (var k = freeRegs.length - 1; k >= 0; k--) {
-              reg = freeRegs[k];
-              // Check for conflict with output registers.
-              if (block.lastUseLoc[name] > outputAssignLoc[reg]) {
-                if (name !== outputVars[reg]) {
-                  continue;
-                }
+              // If we didn't find a suitable register, create a new one.
+              if (!assignedRegs[name]) {
+                reg = createReg(name);
+                assignedRegs[name] = reg;
               }
-              // Found one!
-              assignedRegs[name] = reg;
-              freeRegs.splice(k, 1);
-              break;
-            }
-            // If we didn't find a suitable register, create a new one.
-            if (!assignedRegs[name]) {
-              reg = createReg(name);
-              assignedRegs[name] = reg;
             }
           }
-          // Modify assignment to use the new name.
-          // If we happen to create a "x=x" type do-nothing assignment,
-          // we can safely morph it into a no-op.
+          node[1] = allRegs[reg];
+        } else {
+          // A kill. This frees the assigned register.
+          assert(reg, 'live variable doesnt have a reg?')
           node[2][1] = allRegs[reg];
-          if (node[3][0] === 'name' && node[3][1] === node[2][1]) {
-            morphNode(node, ['block', []]);
+          freeRegs.push(reg);
+          delete assignedRegs[name];
+          if (node[3][0] === 'name' && node[3][1] in localVars) {
+            maybeRemoveNodes.push([j, node]);
           }
         }
-        // Free the reg if it's not live in the next step.
-        if (!liveness[j+1][name]) {
-          delete assignedRegs[name];
-          freeRegs.push(reg);
+      }
+      // If we managed to create an "x=x" assignments, remove them.
+      for (var j = 0; j < maybeRemoveNodes.length; j++) {
+        var node = maybeRemoveNodes[j][1];
+        if (node[2][1] === node[3][1]) {
+          if (block.isexpr[maybeRemoveNodes[j][0]]) {
+            morphNode(node, node[2]);
+          } else {
+            morphNode(node, ['block', []]);
+          }
         }
       }
     }
