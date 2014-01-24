@@ -957,7 +957,11 @@ var LibraryGL = {
         usage = 0x88E8; // GL_DYNAMIC_DRAW
         break;
     }
-    GLctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
+    if (!data) {
+      GLctx.bufferData(target, size, usage);
+    } else {
+      GLctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
+    }
   },
 
   glBufferSubData__sig: 'viiii',
