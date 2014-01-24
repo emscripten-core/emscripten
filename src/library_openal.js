@@ -935,6 +935,12 @@ var LibraryOpenAL = {
     }
   },
 
+  alEnable: function(param) {
+  },
+
+  alDisable: function(param) {
+  },
+
   alListenerfv: function(param, values) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
