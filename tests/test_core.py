@@ -6267,6 +6267,9 @@ def process(filename):
       self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*')
       Settings.CORRECT_SIGNS = 0
 
+  def test_float_literals(self):
+    self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))
+
   def test_exit_status(self):
     if self.emcc_args is None: return self.skip('need emcc')
     src = r'''
