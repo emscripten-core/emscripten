@@ -462,7 +462,7 @@ if has_preloaded:
 
   package_uuid = uuid.uuid4();
   remote_package_name = os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
-  code += r'''
+  ret += r'''
     var PACKAGE_PATH;
     if (typeof window === 'object') {
       PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
@@ -471,7 +471,7 @@ if has_preloaded:
       PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
     }
     var PACKAGE_NAME = '%s';
-    var REMOTE_PACKAGE_NAME = '%s';
+    var REMOTE_PACKAGE_NAME = (Module['filePackageURL'] || '') + '%s';
     var PACKAGE_UUID = '%s';
   ''' % (data_target, remote_package_name, package_uuid)
 
@@ -666,7 +666,7 @@ if has_preloaded:
     # Only tricky bit is the fetch is async, but also when runWithFS is called is async, so we handle both orderings.
     ret += r'''
       var fetched = null, fetchedCallback = null;
-      fetchRemotePackage('%s', function(data) {
+      fetchRemotePackage(REMOTE_PACKAGE_NAME, function(data) {
         if (fetchedCallback) {
           fetchedCallback(data);
           fetchedCallback = null;
@@ -674,7 +674,7 @@ if has_preloaded:
           fetched = data;
         }
       }, handleError);
-    ''' % os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
+    '''
 
     code += r'''
       Module.preloadResults[PACKAGE_NAME] = {fromCache: false};

@@ -580,6 +580,45 @@ If manually bisecting:
     shutil.rmtree(os.path.join(self.get_dir(), 'subdirr'))
     self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
+  def test_custom_file_package_url(self):
+    # a few files inside a directory
+    self.clear()
+    os.makedirs(os.path.join(self.get_dir(), 'subdirr'));
+    os.makedirs(os.path.join(self.get_dir(), 'cdn'));
+    open(os.path.join(self.get_dir(), 'subdirr', 'data1.txt'), 'w').write('''1214141516171819''')
+    # change the file package base dir to look in a "cdn". note that normally you would add this in your own custom html file etc., and not by
+    # modifying the existing shell in this manner
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackageURL: "cdn/", '))
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        char buf[17];
+
+        FILE *f = fopen("subdirr/data1.txt", "r");
+        fread(buf, 1, 16, f);
+        buf[16] = 0;
+        fclose(f);
+        printf("|%s|\n", buf);
+        int result = !strcmp("1214141516171819", buf);
+
+        REPORT_RESULT();
+        return 0;
+      }
+    '''))
+
+    def test():
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '--preload-file', 'subdirr/data1.txt', '-o', 'test.html']).communicate()
+      shutil.move('test.data', os.path.join('cdn', 'test.data'))
+      self.run_browser('test.html', '', '/report_result?1')
+
+    test()
+
+    # TODO: CORS, test using a full url for filePackageURL
+    #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackageURL: "http:/localhost:8888/cdn/", '))
+    #test()
+
   def test_compressed_file(self):
     open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('compress this please' + (2000*'.'))
     open(os.path.join(self.get_dir(), 'datafile2.txt'), 'w').write('moar' + (100*'!'))
