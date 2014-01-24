@@ -1813,3 +1813,5 @@ Module["preRun"].push(function () {
 
     self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
 
+  def test_html5(self):
+    self.btest(path_from_root('tests', 'test_html5.c'), expected='0')
