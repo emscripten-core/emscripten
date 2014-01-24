@@ -1075,10 +1075,10 @@
         "structs": {}
     },
     // ===========================================
-    // emscripten events library
+    // emscripten html5 library
     // ===========================================
     {
-        "file": "emscripten/events.h",
+        "file": "emscripten/html5.h",
         "defines": [
             "EMSCRIPTEN_EVENT_KEYPRESS",
             "EMSCRIPTEN_EVENT_KEYDOWN",
@@ -1117,13 +1117,14 @@
             "EMSCRIPTEN_RESULT_DEFERRED",
             "EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED",
             "EMSCRIPTEN_RESULT_INVALID_TARGET",
+            "EMSCRIPTEN_RESULT_UNKNOWN_TARGET",
             "EMSCRIPTEN_RESULT_INVALID_PARAM",
             "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
             "EMSCRIPTEN_RESULT_FAILED",
             "EMSCRIPTEN_RESULT_NO_DATA"
         ],
         "structs": {
-            "emscripten_KeyboardEvent": [
+            "EmscriptenKeyboardEvent": [
               "key",
               "code",
               "location",
@@ -1138,7 +1139,7 @@
               "keyCode",
               "which"
             ],
-            "emscripten_MouseEvent": [
+            "EmscriptenMouseEvent": [
               "timestamp",
               "screenX",
               "screenY",
@@ -1155,14 +1156,14 @@
               "canvasX",
               "canvasY"
             ],
-            "emscripten_WheelEvent": [
+            "EmscriptenWheelEvent": [
               "mouse",
               "deltaX",
               "deltaY",
               "deltaZ",
               "deltaMode"
             ],
-            "emscripten_UiEvent": [
+            "EmscriptenUiEvent": [
               "detail",
               "documentBodyClientWidth",
               "documentBodyClientHeight",
@@ -1173,18 +1174,18 @@
               "scrollTop",
               "scrollLeft"
             ],
-            "emscripten_FocusEvent": [
+            "EmscriptenFocusEvent": [
               "nodeName",
               "id"
             ],
-            "emscripten_DeviceOrientationEvent": [
+            "EmscriptenDeviceOrientationEvent": [
               "timestamp",
               "alpha",
               "beta",
               "gamma",
               "absolute"
             ],
-            "emscripten_DeviceMotionEvent": [
+            "EmscriptenDeviceMotionEvent": [
               "timestamp",
               "accelerationX",
               "accelerationY",
@@ -1196,26 +1197,26 @@
               "rotationRateBeta",
               "rotationRateGamma"
             ],
-            "emscripten_OrientationChangeEvent": [
+            "EmscriptenOrientationChangeEvent": [
               "orientationIndex",
               "orientationAngle"
             ],
-            "emscripten_FullscreenChangeEvent": [
+            "EmscriptenFullscreenChangeEvent": [
               "isFullscreen",
               "fullscreenEnabled",
               "nodeName",
               "id"
             ],
-            "emscripten_PointerlockChangeEvent": [
+            "EmscriptenPointerlockChangeEvent": [
               "isActive",
               "nodeName",
               "id"
             ],
-            "emscripten_VisibilityChangeEvent": [
+            "EmscriptenVisibilityChangeEvent": [
               "hidden",
               "visibilityState"
             ],
-            "emscripten_TouchPoint": [
+            "EmscriptenTouchPoint": [
               "identifier",
               "screenX",
               "screenY",
@@ -1228,7 +1229,7 @@
               "canvasX",
               "canvasY"
             ],
-            "emscripten_TouchEvent": [
+            "EmscriptenTouchEvent": [
               "numTouches",
               "ctrlKey",
               "shiftKey",
@@ -1236,7 +1237,7 @@
               "metaKey",
               "touches"
             ],
-            "emscripten_GamepadEvent": [
+            "EmscriptenGamepadEvent": [
               "timestamp",
               "axis",
               "analogButton",
@@ -1248,7 +1249,7 @@
               "id",
               "mapping"
             ],
-            "emscripten_BatteryEvent": [
+            "EmscriptenBatteryEvent": [
               "chargingTime",
               "dischargingTime",
               "level",
