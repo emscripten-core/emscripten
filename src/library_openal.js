@@ -848,6 +848,43 @@ var LibraryOpenAL = {
     }
   },
 
+  alGetSourcefv: function(source, param, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetSourcefv called without a valid context");
+#endif
+      return;
+    }
+    var src = AL.currentContext.src[source - 1];
+    if (!src) {
+#if OPENAL_DEBUG
+      console.error("alGetSourcefv called with an invalid source");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      var position = src.position;
+      {{{ makeSetValue('values', '0', 'position[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'position[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'position[2]', 'float') }}}
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      var velocity = src.velocity;
+      {{{ makeSetValue('values', '0', 'velocity[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'velocity[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'velocity[2]', 'float') }}}
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.log("alGetSourcefv with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
   alDistanceModel: function(model) {
     if (model !== 0 /* AL_NONE */) {
 #if OPENAL_DEBUG
