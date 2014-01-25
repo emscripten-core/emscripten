@@ -878,7 +878,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      console.log("alGetSourcefv with param " + param + " not implemented yet");
+      console.error("alGetSourcefv with param " + param + " not implemented yet");
 #endif
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
       break;
@@ -905,6 +905,9 @@ var LibraryOpenAL = {
       {{{ makeSetValue('value', '0', 'AL.currentContext.gain.gain', 'float') }}}
       break;
     default:
+#if OPENAL_DEBUG
+      console.error("alGetListenerf with param " + pname + " not implemented yet");
+#endif
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
       break;
     }
@@ -942,14 +945,28 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      console.log("alGetListenerfv with param " + param + " not implemented yet");
+      console.error("alGetListenerfv with param " + pname + " not implemented yet");
 #endif
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
       break;
     }
   },
 
-  alGetListeneri: function(pname, values) {
+  alGetListeneri: function(pname, value) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetListeneri called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    default:
+#if OPENAL_DEBUG
+      console.error("alGetListeneri with param " + pname + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
   },
 
   alListenerf: function(param, value) {
@@ -965,7 +982,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      console.log("alListenerf with param " + param + " not implemented yet");
+      console.error("alListenerf with param " + param + " not implemented yet");
 #endif
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
       break;
@@ -973,9 +990,37 @@ var LibraryOpenAL = {
   },
 
   alEnable: function(param) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alEnable called without a valid context");
+#endif
+      return;
+    }
+    switch (param) {
+    default:
+#if OPENAL_DEBUG
+      console.error("alEnable with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
   },
 
   alDisable: function(param) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alDisable called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    default:
+#if OPENAL_DEBUG
+      console.error("alDisable with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
   },
 
   alListenerfv: function(param, values) {
@@ -1012,7 +1057,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      console.log("alListenerfv with param " + param + " not implemented yet");
+      console.error("alListenerfv with param " + param + " not implemented yet");
 #endif
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
       break;
