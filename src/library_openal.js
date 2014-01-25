@@ -297,6 +297,34 @@ var LibraryOpenAL = {
           this._velocity = val;
           if (this.panner) this.panner.setVelocity(val[0], val[1], val[2]);
         },
+        get direction() {
+          return this._direction || [0, 0, 0];
+        },
+        set direction(val) {
+          this._direction = val;
+          if (this.panner) this.panner.setOrientation(val[0], val[1], val[2]);
+        },
+        get coneOuterGain() {
+          return this._coneOuterGain || 0.0;
+        },
+        set coneOuterGain(val) {
+          this._coneOuterGain = val;
+          if (this.panner) this.panner.coneOuterGain = val;
+        },
+        get coneInnerAngle() {
+          return this._coneInnerAngle || 360.0;
+        },
+        set coneInnerAngle(val) {
+          this._coneInnerAngle = val;
+          if (this.panner) this.panner.coneInnerAngle = val;
+        },
+        get coneOuterAngle() {
+          return this._coneOuterAngle || 360.0;
+        },
+        set coneOuterAngle(val) {
+          this._coneOuterAngle = val;
+          if (this.panner) this.panner.coneOuterAngle = val;
+        },
         gain: gain,
         panner: null,
         buffersPlayed: 0,
@@ -323,6 +351,12 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      src.coneInnerAngle = value;
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      src.coneOuterAngle = value;
+      break;
     case 0x1007 /* AL_LOOPING */:
       src.loop = (value === 1 /* AL_TRUE */);
       break;
@@ -409,12 +443,15 @@ var LibraryOpenAL = {
     case 0x1021 /* AL_ROLLOFF_FACTOR */:
       src.rolloffFactor = value;
       break;
-    // case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    //   break;
-    // case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    //   break;
-    // case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    //   break;
+    case 0x1022 /* AL_CONE_OUTER_GAIN */:
+      src.coneOuterGain = value;
+      break;
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      src.coneInnerAngle = value;
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      src.coneOuterAngle = value;
+      break;
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
       src.refDistance = value;
       break;
@@ -445,6 +482,9 @@ var LibraryOpenAL = {
     switch (param) {
     case 0x1004 /* AL_POSITION */:
       src.position = [v1, v2, v3];
+      break;
+    case 0x1005 /* AL_DIRECTION */:
+      src.direction = [v1, v2, v3];
       break;
     case 0x1006 /* AL_VELOCITY */:
       src.velocity = [v1, v2, v3];
@@ -761,6 +801,12 @@ var LibraryOpenAL = {
     case 0x202 /* AL_SOURCE_RELATIVE */:
       {{{ makeSetValue('value', '0', 'src.panner ? 1 : 0', 'i32') }}};
       break;
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneInnerAngle', 'i32') }}};
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneOuterAngle', 'i32') }}};
+      break;
     case 0x1009 /* AL_BUFFER */:
       if (!src.queue.length) {
         {{{ makeSetValue('value', '0', '0', 'i32') }}};
@@ -827,12 +873,15 @@ var LibraryOpenAL = {
     case 0x1021 /* AL_ROLLOFF_FACTOR */:
       {{{ makeSetValue('value', '0', 'src.rolloffFactor', 'float') }}}
       break;
-    // case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    //   break;
-    // case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    //   break;
-    // case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    //   break;
+    case 0x1022 /* AL_CONE_OUTER_GAIN */:
+      {{{ makeSetValue('value', '0', 'src.coneOuterGain', 'float') }}}
+      break;
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneInnerAngle', 'float') }}}
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneOuterAngle', 'float') }}}
+      break;
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
       {{{ makeSetValue('value', '0', 'src.refDistance', 'float') }}}
       break;
@@ -869,6 +918,12 @@ var LibraryOpenAL = {
       {{{ makeSetValue('values', '0', 'position[0]', 'float') }}}
       {{{ makeSetValue('values', '4', 'position[1]', 'float') }}}
       {{{ makeSetValue('values', '8', 'position[2]', 'float') }}}
+      break;
+    case 0x1005 /* AL_DIRECTION */:
+      var direction = src.direction;
+      {{{ makeSetValue('values', '0', 'direction[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'direction[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'direction[2]', 'float') }}}
       break;
     case 0x1006 /* AL_VELOCITY */:
       var velocity = src.velocity;
