@@ -605,7 +605,7 @@ var LibraryOpenAL = {
       return false;
     }
 
-    if (!AL.currentContext.buf[bufferId]) {
+    if (!AL.currentContext.buf[bufferId - 1]) {
       return false;
     } else {
       return true;
