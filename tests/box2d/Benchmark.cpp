@@ -25,6 +25,10 @@ typedef struct {
 #include <time.h>
 #include <math.h>
 
+#if EMSCRIPTEN
+#include <emscripten.h>
+#endif
+
 #include "Box2D/Box2D.h"
 
 using namespace std;
@@ -53,6 +57,10 @@ result_t measure(clock_t *times) {
 }
 
 int main(int argc, char **argv) {
+#if EMSCRIPTEN
+  emscripten_run_script("if (Module.reportStartedUp) Module.reportStartedUp()");
+#endif
+
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {
     case 0: return 0; break;
@@ -63,6 +71,10 @@ int main(int argc, char **argv) {
     case 5: WARMUP = 10*64; FRAMES = 17*333; break;
     default: printf("error: %d\\n", arg); return -1;
   }
+
+  // do not split out warmup, do not ignore initial stalls
+  FRAMES += WARMUP;
+  WARMUP = 0;
 
 	// Define the gravity vector.
 	b2Vec2 gravity(0.0f, -10.0f);
@@ -115,12 +127,15 @@ int main(int argc, char **argv) {
 		world.Step(1.0f/60.0f, 3, 3);
   }
 
-	clock_t times[FRAMES]; 
+	clock_t times[FRAMES], min = CLOCKS_PER_SEC * 1000 * 100, max = -1;
 	for (int32 i = 0; i < FRAMES; ++i) {
 		clock_t start = clock();
 		world.Step(1.0f/60.0f, 3, 3);
 		clock_t end = clock();
-		times[i] = end - start;
+    clock_t curr = end - start;
+		times[i] = curr;
+    if (curr < min) min = curr;
+    if (curr > max) max = curr;
 #if DEBUG
     printf("%f :: ", topBody->GetPosition().y);
 		printf("%f\n", (float32)(end - start) / CLOCKS_PER_SEC * 1000);
@@ -129,7 +144,7 @@ int main(int argc, char **argv) {
 
   result_t result = measure(times);
 
-  printf("frame averages: %.3f +- %.3f\n", result.mean, result.stddev);
+  printf("frame averages: %.3f +- %.3f, range: %.3f to %.3f \n", result.mean, result.stddev, float(min)/CLOCKS_PER_SEC * 1000, float(max)/CLOCKS_PER_SEC * 1000);
 
   return 0;
 }
