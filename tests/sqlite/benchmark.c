@@ -2,8 +2,13 @@
 #include <stdio.h>
 #include <sqlite3.h>
 
+#include <emscripten.h>
+
+int print = 1;
+
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
   int i;
+  if (!print) return 0;
   for(i=0; i<argc; i++){
     printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
   }
@@ -44,11 +49,15 @@ int test(){
   return 0;
 }
 
-int main(){
+int main(int argc, char **argv){
   sqlite3 *db;
   char *zErrMsg = 0;
   int rc, i;
   clock_t t;
+  int n, m;
+
+  n = argc > 1 ? atoi(argv[1]) : 5000;
+  m = argc > 2 ? atoi(argv[2]) : 1;
 
   rc = sqlite3_open(":memory:", &db);
   if( rc ){
@@ -69,20 +78,21 @@ int main(){
 
   #define TIME(msg) \
     { \
-      printf(msg " : took %d ms\n", (1000*(clock()-t))/CLOCKS_PER_SEC); \
-      t = clock(); \
+      int now = emscripten_get_now(); \
+      printf(msg " : took %d ms\n", (int)(now - t)); \
+      t = now; \
     }
 
   t = clock();
-  TIME("'startup'");
+  TIME("'startup' - IGNORE THIS VALUE, it is an artifact");
 
   RUN("CREATE TABLE t1(a INTEGER, b INTEGER, c VARCHAR(100));");
   TIME("create table");
 
   RUN("BEGIN;");
 
-  // 25000 INSERTs in a transaction
-  for (i = 0; i < 5000; i++) {
+  // n*5 INSERTs in a transaction
+  for (i = 0; i < n; i++) {
     RUN("INSERT INTO t1 VALUES(1,12345,'one 1 one 1 one 1');");
     RUN("INSERT INTO t1 VALUES(2,23422,'two two two two');");
     RUN("INSERT INTO t1 VALUES(3,31233,'three three 33333333333 three');");
@@ -95,10 +105,13 @@ int main(){
   TIME("commit");
 
   // Counts
-  RUN("SELECT count(*) FROM t1;");
-  RUN("SELECT count(*) FROM t1 WHERE a == 4");
-  RUN("SELECT count(*) FROM t1 WHERE b > 20000 AND b < 50000;");
-  RUN("SELECT count(*) FROM t1 WHERE c like '%three%';");
+  for (i = 0; i < m; i++) {
+    print = i == 0;
+    RUN("SELECT count(*) FROM t1;");
+    RUN("SELECT count(*) FROM t1 WHERE a == 4");
+    RUN("SELECT count(*) FROM t1 WHERE b > 20000 AND b < 50000;");
+    RUN("SELECT count(*) FROM t1 WHERE c like '%three%';");
+  }
   TIME("selects");
 
   // Index
@@ -106,8 +119,11 @@ int main(){
   RUN("CREATE INDEX iibb ON t1(b);");
   TIME("create indexes");
 
-  RUN("SELECT count(*) FROM t1 WHERE a == 4");
-  RUN("SELECT count(*) FROM t1 WHERE b > 20000 AND b < 50000;");
+  for (i = 0; i < m; i++) {
+    print = i == 0;
+    RUN("SELECT count(*) FROM t1 WHERE a == 4");
+    RUN("SELECT count(*) FROM t1 WHERE b > 20000 AND b < 50000;");
+  }
   TIME("selects with indexes");
 
   sqlite3_close(db);
