@@ -201,12 +201,15 @@ var LibraryOpenAL = {
     }
 
     if (ctx) {
+      var gain = ctx.createGain();
+      gain.connect(ctx.destination);
       var context = {
         ctx: ctx,
         err: 0,
         src: [],
         buf: [],
-        interval: setInterval(function() { AL.updateSources(context); }, AL.QUEUE_INTERVAL)
+        interval: setInterval(function() { AL.updateSources(context); }, AL.QUEUE_INTERVAL),
+        gain: gain
       };
       AL.contexts.push(context);
       return AL.contexts.length;
@@ -254,7 +257,7 @@ var LibraryOpenAL = {
     }
     for (var i = 0; i < count; ++i) {
       var gain = AL.currentContext.ctx.createGain();
-      gain.connect(AL.currentContext.ctx.destination);
+      gain.connect(AL.currentContext.gain);
       AL.currentContext.src.push({
         state: 0x1011 /* AL_INITIAL */,
         queue: [],
@@ -294,6 +297,34 @@ var LibraryOpenAL = {
           this._velocity = val;
           if (this.panner) this.panner.setVelocity(val[0], val[1], val[2]);
         },
+        get direction() {
+          return this._direction || [0, 0, 0];
+        },
+        set direction(val) {
+          this._direction = val;
+          if (this.panner) this.panner.setOrientation(val[0], val[1], val[2]);
+        },
+        get coneOuterGain() {
+          return this._coneOuterGain || 0.0;
+        },
+        set coneOuterGain(val) {
+          this._coneOuterGain = val;
+          if (this.panner) this.panner.coneOuterGain = val;
+        },
+        get coneInnerAngle() {
+          return this._coneInnerAngle || 360.0;
+        },
+        set coneInnerAngle(val) {
+          this._coneInnerAngle = val;
+          if (this.panner) this.panner.coneInnerAngle = val;
+        },
+        get coneOuterAngle() {
+          return this._coneOuterAngle || 360.0;
+        },
+        set coneOuterAngle(val) {
+          this._coneOuterAngle = val;
+          if (this.panner) this.panner.coneOuterAngle = val;
+        },
         gain: gain,
         panner: null,
         buffersPlayed: 0,
@@ -320,6 +351,12 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      src.coneInnerAngle = value;
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      src.coneOuterAngle = value;
+      break;
     case 0x1007 /* AL_LOOPING */:
       src.loop = (value === 1 /* AL_TRUE */);
       break;
@@ -406,12 +443,15 @@ var LibraryOpenAL = {
     case 0x1021 /* AL_ROLLOFF_FACTOR */:
       src.rolloffFactor = value;
       break;
-    // case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    //   break;
-    // case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    //   break;
-    // case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    //   break;
+    case 0x1022 /* AL_CONE_OUTER_GAIN */:
+      src.coneOuterGain = value;
+      break;
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      src.coneInnerAngle = value;
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      src.coneOuterAngle = value;
+      break;
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
       src.refDistance = value;
       break;
@@ -442,6 +482,9 @@ var LibraryOpenAL = {
     switch (param) {
     case 0x1004 /* AL_POSITION */:
       src.position = [v1, v2, v3];
+      break;
+    case 0x1005 /* AL_DIRECTION */:
+      src.direction = [v1, v2, v3];
       break;
     case 0x1006 /* AL_VELOCITY */:
       src.velocity = [v1, v2, v3];
@@ -594,6 +637,21 @@ var LibraryOpenAL = {
     }
   },
 
+  alIsBuffer: function(bufferId) {
+    if (!AL.currentContext) {
+      return false;
+    }
+    if (bufferId > AL.currentContext.buf.length) {
+      return false;
+    }
+
+    if (!AL.currentContext.buf[bufferId - 1]) {
+      return false;
+    } else {
+      return true;
+    }
+  },
+
   alBufferData: function(buffer, format, data, size, freq) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -743,6 +801,12 @@ var LibraryOpenAL = {
     case 0x202 /* AL_SOURCE_RELATIVE */:
       {{{ makeSetValue('value', '0', 'src.panner ? 1 : 0', 'i32') }}};
       break;
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneInnerAngle', 'i32') }}};
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneOuterAngle', 'i32') }}};
+      break;
     case 0x1009 /* AL_BUFFER */:
       if (!src.queue.length) {
         {{{ makeSetValue('value', '0', '0', 'i32') }}};
@@ -809,12 +873,15 @@ var LibraryOpenAL = {
     case 0x1021 /* AL_ROLLOFF_FACTOR */:
       {{{ makeSetValue('value', '0', 'src.rolloffFactor', 'float') }}}
       break;
-    // case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    //   break;
-    // case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    //   break;
-    // case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    //   break;
+    case 0x1022 /* AL_CONE_OUTER_GAIN */:
+      {{{ makeSetValue('value', '0', 'src.coneOuterGain', 'float') }}}
+      break;
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneInnerAngle', 'float') }}}
+      break;
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      {{{ makeSetValue('value', '0', 'src.coneOuterAngle', 'float') }}}
+      break;
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
       {{{ makeSetValue('value', '0', 'src.refDistance', 'float') }}}
       break;
@@ -830,11 +897,184 @@ var LibraryOpenAL = {
     }
   },
 
+  alGetSourcefv: function(source, param, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetSourcefv called without a valid context");
+#endif
+      return;
+    }
+    var src = AL.currentContext.src[source - 1];
+    if (!src) {
+#if OPENAL_DEBUG
+      console.error("alGetSourcefv called with an invalid source");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      var position = src.position;
+      {{{ makeSetValue('values', '0', 'position[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'position[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'position[2]', 'float') }}}
+      break;
+    case 0x1005 /* AL_DIRECTION */:
+      var direction = src.direction;
+      {{{ makeSetValue('values', '0', 'direction[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'direction[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'direction[2]', 'float') }}}
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      var velocity = src.velocity;
+      {{{ makeSetValue('values', '0', 'velocity[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'velocity[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'velocity[2]', 'float') }}}
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alGetSourcefv with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
   alDistanceModel: function(model) {
     if (model !== 0 /* AL_NONE */) {
 #if OPENAL_DEBUG
       console.log("Only alDistanceModel(AL_NONE) is currently supported");
 #endif
+    }
+  },
+
+  alGetListenerf: function(pname, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetListenerf called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    case 0x100A /* AL_GAIN */:
+      {{{ makeSetValue('value', '0', 'AL.currentContext.gain.gain', 'float') }}}
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alGetListenerf with param " + pname + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+
+  },
+
+  alGetListenerfv: function(pname, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetListenerfv called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    case 0x1004 /* AL_POSITION */:
+      var position = AL.currentContext.ctx.listener._position || [0,0,0];
+      {{{ makeSetValue('values', '0', 'position[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'position[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'position[2]', 'float') }}}
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      var velocity = AL.currentContext.ctx.listener._velocity || [0,0,0];
+      {{{ makeSetValue('values', '0', 'velocity[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'velocity[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'velocity[2]', 'float') }}}
+      break;
+    case 0x100F /* AL_ORIENTATION */:
+      var orientation = AL.currentContext.ctx.listener._orientation || [0,0,0,0,0,0];
+      {{{ makeSetValue('values', '0', 'orientation[0]', 'float') }}}
+      {{{ makeSetValue('values', '4', 'orientation[1]', 'float') }}}
+      {{{ makeSetValue('values', '8', 'orientation[2]', 'float') }}}
+      {{{ makeSetValue('values', '12', 'orientation[3]', 'float') }}}
+      {{{ makeSetValue('values', '16', 'orientation[4]', 'float') }}}
+      {{{ makeSetValue('values', '20', 'orientation[5]', 'float') }}}
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alGetListenerfv with param " + pname + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
+  alGetListeneri: function(pname, value) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetListeneri called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    default:
+#if OPENAL_DEBUG
+      console.error("alGetListeneri with param " + pname + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
+  alListenerf: function(param, value) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alListenerf called without a valid context");
+#endif
+      return;
+    }
+    switch (param) {
+    case 0x100A /* AL_GAIN */:
+      AL.currentContext.gain.value = value;
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alListenerf with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
+  alEnable: function(param) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alEnable called without a valid context");
+#endif
+      return;
+    }
+    switch (param) {
+    default:
+#if OPENAL_DEBUG
+      console.error("alEnable with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
+  alDisable: function(param) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alDisable called without a valid context");
+#endif
+      return;
+    }
+    switch (pname) {
+    default:
+#if OPENAL_DEBUG
+      console.error("alDisable with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
     }
   },
 
@@ -847,32 +1087,32 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1004 /* AL_POSITION */:
-      AL.currentContext.ctx.listener.setPosition(
-          {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '4', 'float') }}},
-          {{{ makeGetValue('values', '8', 'float') }}}
-        );
+      var x = {{{ makeGetValue('value', '0', 'float') }}};
+      var y = {{{ makeGetValue('value', '4', 'float') }}};
+      var z = {{{ makeGetValue('value', '8', 'float') }}};
+      AL.currentContext.ctx.listener._position = [x,y,z];
+      AL.currentContext.ctx.listener.setPosition(x, y, z);
       break;
     case 0x1006 /* AL_VELOCITY */:
-      AL.currentContext.ctx.listener.setVelocity(
-          {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '4', 'float') }}},
-          {{{ makeGetValue('values', '8', 'float') }}}
-        );
+      var x = {{{ makeGetValue('value', '0', 'float') }}};
+      var y = {{{ makeGetValue('value', '4', 'float') }}};
+      var z = {{{ makeGetValue('value', '8', 'float') }}};
+      AL.currentContext.ctx.listener._velocity = [x,y,z];
+      AL.currentContext.ctx.listener.setVelocity(x, y, z);
       break;
     case 0x100F /* AL_ORIENTATION */:
-      AL.currentContext.ctx.listener.setOrientation(
-          {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '4', 'float') }}},
-          {{{ makeGetValue('values', '8', 'float') }}},
-          {{{ makeGetValue('values', '12', 'float') }}},
-          {{{ makeGetValue('values', '16', 'float') }}},
-          {{{ makeGetValue('values', '20', 'float') }}}
-        );
+      var x = {{{ makeGetValue('value', '0', 'float') }}};
+      var y = {{{ makeGetValue('value', '4', 'float') }}};
+      var z = {{{ makeGetValue('value', '8', 'float') }}};
+      var x2 = {{{ makeGetValue('value', '12', 'float') }}};
+      var y2 = {{{ makeGetValue('value', '16', 'float') }}};
+      var z2 = {{{ makeGetValue('value', '20', 'float') }}};
+      AL.currentContext.ctx.listener._orientation = [x,y,z, x2, y2, z2];
+      AL.currentContext.ctx.listener.setOrientation(x,y,z,x2,y2,z2);
       break;
     default:
 #if OPENAL_DEBUG
-      console.log("alListenerfv with param " + param + " not implemented yet");
+      console.error("alListenerfv with param " + param + " not implemented yet");
 #endif
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
       break;
