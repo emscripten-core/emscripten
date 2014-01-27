@@ -5,6 +5,9 @@ var LibraryOpenAL = {
   $AL: {
     contexts: [],
     currentContext: null,
+
+    stringCache: {},
+
     QUEUE_INTERVAL: 25,
     QUEUE_LOOKAHEAD: 100,
 
@@ -1168,7 +1171,48 @@ var LibraryOpenAL = {
   },
 
   alGetString: function(param) {
-    return allocate(intArrayFromString('NA'), 'i8', ALLOC_NORMAL);
+    if (AL.stringCache[param]) return AL.stringCache[param];
+    var ret;
+    switch (param)
+    {
+    case 0 /* AL_NO_ERROR */:
+      ret = allocate(intArrayFromString('No Error'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xA001 /* AL_INVALID_NAME */:
+      ret = allocate(intArrayFromString('Invalid Name'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xA002 /* AL_INVALID_ENUM */:
+      ret = allocate(intArrayFromString('Invalid Enum'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xA003 /* AL_INVALID_VALUE */:
+      ret = allocate(intArrayFromString('Invalid Value'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xA004 /* AL_INVALID_OPERATION */:
+      ret = allocate(intArrayFromString('Invalid Operation'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xA005 /* AL_OUT_OF_MEMORY */:
+      ret = allocate(intArrayFromString('Out of Memory'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xB001 /* AL_VENDOR */:
+      ret = allocate(intArrayFromString('Emscripten'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xB002 /* AL_VERSION */:
+      ret = allocate(intArrayFromString('1.1'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xB003 /* AL_RENDERER */:
+      ret = allocate(intArrayFromString('WebAudio'), 'i8', ALLOC_NORMAL);
+      break;
+    case 0xB004 /* AL_EXTENSIONS */:
+      ret = allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL);
+      break;
+    default:
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      return 0;
+    }
+
+    AL.stringCache[param] = ret;
+
+    return ret;
   },
 
   alGetProcAddress: function(fname) {
