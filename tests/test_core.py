@@ -2809,6 +2809,46 @@ def process(filename):
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\n',
                 post_build=self.dlfcn_post_build)
 
+  def test_dlfcn_i64(self):
+    if not self.can_dlfcn(): return
+    if not Settings.ASM_JS: return self.skip('TODO')
+
+    self.prep_dlfcn_lib()
+    Settings.EXPORTED_FUNCTIONS = ['_foo']
+    lib_src = '''
+      int foo(int x) {
+        return (long long)x / (long long)1234;
+      }
+      '''
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build(lib_src, dirname, filename)
+    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    self.prep_dlfcn_main()
+    Settings.EXPORTED_FUNCTIONS = ['_main']
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <dlfcn.h>
+
+      typedef int (*intfunc)(int);
+
+      void *p;
+
+      int main() {
+        p = malloc(1024);
+        void *lib_handle = dlopen("liblib.so", 0);
+        printf("load %p\n", lib_handle);
+        intfunc x = (intfunc)dlsym(lib_handle, "foo");
+        printf("foo func %p\n", x);
+        if (p == 0) return 1;
+        printf("|%d|\n", x(81234567));
+        return 0;
+      }
+      '''
+    self.do_run(src, '|65830|', post_build=self.dlfcn_post_build)
+
   def test_dlfcn_qsort(self):
     if not self.can_dlfcn(): return
 
