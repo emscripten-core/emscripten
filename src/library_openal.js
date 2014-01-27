@@ -1087,28 +1087,28 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1004 /* AL_POSITION */:
-      var x = {{{ makeGetValue('value', '0', 'float') }}};
-      var y = {{{ makeGetValue('value', '4', 'float') }}};
-      var z = {{{ makeGetValue('value', '8', 'float') }}};
-      AL.currentContext.ctx.listener._position = [x,y,z];
+      var x = {{{ makeGetValue('values', '0', 'float') }}};
+      var y = {{{ makeGetValue('values', '4', 'float') }}};
+      var z = {{{ makeGetValue('values', '8', 'float') }}};
+      AL.currentContext.ctx.listener._position = [x, y, z];
       AL.currentContext.ctx.listener.setPosition(x, y, z);
       break;
     case 0x1006 /* AL_VELOCITY */:
-      var x = {{{ makeGetValue('value', '0', 'float') }}};
-      var y = {{{ makeGetValue('value', '4', 'float') }}};
-      var z = {{{ makeGetValue('value', '8', 'float') }}};
-      AL.currentContext.ctx.listener._velocity = [x,y,z];
+      var x = {{{ makeGetValue('values', '0', 'float') }}};
+      var y = {{{ makeGetValue('values', '4', 'float') }}};
+      var z = {{{ makeGetValue('values', '8', 'float') }}};
+      AL.currentContext.ctx.listener._velocity = [x, y, z];
       AL.currentContext.ctx.listener.setVelocity(x, y, z);
       break;
     case 0x100F /* AL_ORIENTATION */:
-      var x = {{{ makeGetValue('value', '0', 'float') }}};
-      var y = {{{ makeGetValue('value', '4', 'float') }}};
-      var z = {{{ makeGetValue('value', '8', 'float') }}};
-      var x2 = {{{ makeGetValue('value', '12', 'float') }}};
-      var y2 = {{{ makeGetValue('value', '16', 'float') }}};
-      var z2 = {{{ makeGetValue('value', '20', 'float') }}};
-      AL.currentContext.ctx.listener._orientation = [x,y,z, x2, y2, z2];
-      AL.currentContext.ctx.listener.setOrientation(x,y,z,x2,y2,z2);
+      var x = {{{ makeGetValue('values', '0', 'float') }}};
+      var y = {{{ makeGetValue('values', '4', 'float') }}};
+      var z = {{{ makeGetValue('values', '8', 'float') }}};
+      var x2 = {{{ makeGetValue('values', '12', 'float') }}};
+      var y2 = {{{ makeGetValue('values', '16', 'float') }}};
+      var z2 = {{{ makeGetValue('values', '20', 'float') }}};
+      AL.currentContext.ctx.listener._orientation = [x, y, z, x2, y2, z2];
+      AL.currentContext.ctx.listener.setOrientation(x, y, z, x2, y2, z2);
       break;
     default:
 #if OPENAL_DEBUG
