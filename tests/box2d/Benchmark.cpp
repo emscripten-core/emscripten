@@ -56,11 +56,15 @@ result_t measure(clock_t *times) {
   return r;
 }
 
-int main(int argc, char **argv) {
-#if EMSCRIPTEN
-  emscripten_run_script("if (Module.reportStartedUp) Module.reportStartedUp()");
-#endif
+b2World *world;
+clock_t *times, minn = CLOCKS_PER_SEC * 1000 * 100, maxx = -1;
+b2Body* topBody;
+int32 frameCounter = 0;
+int responsive_main_loop;
 
+void iter();
+
+int main(int argc, char **argv) {
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {
     case 0: return 0; break;
@@ -76,23 +80,23 @@ int main(int argc, char **argv) {
   FRAMES += WARMUP;
   WARMUP = 0;
 
+  times = new clock_t[FRAMES];
+
 	// Define the gravity vector.
 	b2Vec2 gravity(0.0f, -10.0f);
 
 	// Construct a world object, which will hold and simulate the rigid bodies.
-	b2World world(gravity);
-  world.SetAllowSleeping(false);
+	world = new b2World(gravity);
+  world->SetAllowSleeping(false);
 
 	{
 		b2BodyDef bd;
-		b2Body* ground = world.CreateBody(&bd);
+		b2Body* ground = world->CreateBody(&bd);
 
 		b2EdgeShape shape;
 		shape.Set(b2Vec2(-40.0f, 0.0f), b2Vec2(40.0f, 0.0f));
 		ground->CreateFixture(&shape, 0.0f);
 	}
-
-  b2Body* topBody;
 
 	{
 		float32 a = 0.5f;
@@ -111,7 +115,7 @@ int main(int argc, char **argv) {
 				b2BodyDef bd;
 				bd.type = b2_dynamicBody;
 				bd.position = y;
-				b2Body* body = world.CreateBody(&bd);
+				b2Body* body = world->CreateBody(&bd);
 				body->CreateFixture(&shape, 5.0f);
 
         topBody = body;
@@ -124,28 +128,54 @@ int main(int argc, char **argv) {
 	}
 
 	for (int32 i = 0; i < WARMUP; ++i) {
-		world.Step(1.0f/60.0f, 3, 3);
+		world->Step(1.0f/60.0f, 3, 3);
   }
 
-	clock_t times[FRAMES], min = CLOCKS_PER_SEC * 1000 * 100, max = -1;
-	for (int32 i = 0; i < FRAMES; ++i) {
-		clock_t start = clock();
-		world.Step(1.0f/60.0f, 3, 3);
-		clock_t end = clock();
+#if EMSCRIPTEN
+  responsive_main_loop = argc > 2 ? argv[2][0] - '0' : 0;
+  if (responsive_main_loop) {
+    printf("responsive main loop\n");
+    emscripten_set_main_loop(iter, 60, 1);
+  } else {
+#endif
+    do {
+      iter();
+    } while (frameCounter <= FRAMES);
+#if EMSCRIPTEN
+  }
+#endif
+
+  return 0;
+}
+
+void iter() {
+  if (frameCounter < FRAMES) {
+	  clock_t start = clock();
+	  world->Step(1.0f/60.0f, 3, 3);
+	  clock_t end = clock();
     clock_t curr = end - start;
-		times[i] = curr;
-    if (curr < min) min = curr;
-    if (curr > max) max = curr;
+	  times[frameCounter] = curr;
+    if (curr < minn) minn = curr;
+    if (curr > maxx) maxx = curr;
 #if DEBUG
     printf("%f :: ", topBody->GetPosition().y);
-		printf("%f\n", (float32)(end - start) / CLOCKS_PER_SEC * 1000);
+	  printf("%f\n", (float32)(end - start) / CLOCKS_PER_SEC * 1000);
 #endif
-	}
+    frameCounter++;
+    return;
+  }
+
+  // that's it!
+
+  frameCounter++;
 
   result_t result = measure(times);
 
-  printf("frame averages: %.3f +- %.3f, range: %.3f to %.3f \n", result.mean, result.stddev, float(min)/CLOCKS_PER_SEC * 1000, float(max)/CLOCKS_PER_SEC * 1000);
+  printf("frame averages: %.3f +- %.3f, range: %.3f to %.3f \n", result.mean, result.stddev, float(minn)/CLOCKS_PER_SEC * 1000, float(maxx)/CLOCKS_PER_SEC * 1000);
 
-  return 0;
+#if EMSCRIPTEN
+  emscripten_run_script("if (Module.reportCompletion) Module.reportCompletion()");
+  if (responsive_main_loop) emscripten_cancel_main_loop();
+#endif
 }
 
