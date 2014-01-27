@@ -235,6 +235,34 @@ var LibraryOpenAL = {
     return _alGetError();
   },
 
+  alcGetIntegerv: function(device, param, size, data) {
+    if (size == 0 || !data) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+
+    switch(param) {
+    case 0x1000 /* ALC_MAJOR_VERSION */:
+      {{{ makeSetValue('data', '0', '1', 'i32') }}};
+      break;
+    case 0x1001 /* ALC_MINOR_VERSION */:
+      {{{ makeSetValue('data', '0', '1', 'i32') }}};
+      break;
+    case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
+      {{{ makeSetValue('data', '0', '1', 'i32') }}};
+      break;
+    case 0x1003 /* ALC_ALL_ATTRIBUTES */:
+      {{{ makeSetValue('data', '0', '0', 'i32') }}};
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.log("alcGetIntegerv with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
   alDeleteSources: function(count, sources) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
