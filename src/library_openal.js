@@ -334,6 +334,18 @@ var LibraryOpenAL = {
     }
   },
 
+  alIsSource: function(sourceId) {
+    if (!AL.currentContext) {
+      return false;
+    }
+
+    if (!AL.currentContext.src[sourceId - 1]) {
+      return false;
+    } else {
+      return true;
+    }
+  },
+
   alSourcei__deps: ['updateSource'],
   alSourcei: function(source, param, value) {
     if (!AL.currentContext) {
