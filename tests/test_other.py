@@ -2343,3 +2343,11 @@ int main() {
     output = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
     assert '|5|' in output, output
 
+    # also verify that the gch is actually used
+    err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
+    assert '*** PCH/Modules Loaded:\nModule: header.h.gch' in err[1], err[1]
+    # and sanity check it is not mentioned when not
+    try_delete('header.h.gch')
+    err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
+    assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1], err[1]
+
