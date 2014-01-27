@@ -2324,3 +2324,22 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
     assert r'<{(123456789)}>' in output, output
 
+  def test_precompiled_headers(self):
+    self.clear()
+
+    open('header.h', 'w').write('#define X 5\n')
+    Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-c']).communicate()
+    assert os.path.exists('header.h.gch')
+
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+int main() {
+  printf("|%d|\n", X);
+  return 0;
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h']).communicate()
+
+    output = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
+    assert '|5|' in output, output
+
