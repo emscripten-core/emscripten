@@ -1278,10 +1278,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    for safe in [0,1]:
+      print safe
+      Settings.SAFE_HEAP = safe
+      test_path = path_from_root('tests', 'core', 'test_exceptions_2')
+      src, output = (test_path + s for s in ('.in', '.out'))
+      self.do_run_from_file(src, output)
 
   def test_exceptions_white_list(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')

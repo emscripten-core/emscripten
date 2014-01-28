@@ -162,7 +162,7 @@ LibraryManager.library = {
     if (times) {
       // NOTE: We don't keep track of access timestamps.
       var offset = {{{ C_STRUCTS.utimbuf.modtime }}};
-      time = {{{ makeGetValue('times', 'offset', 'i32') }}}
+      time = {{{ makeGetValue('times', 'offset', 'i32') }}};
       time *= 1000;
     } else {
       time = Date.now();
@@ -1182,7 +1182,7 @@ LibraryManager.library = {
       for (var i = 0; i < length; i++) {
         {{{ makeSetValue('buf', 'i', 'value.charCodeAt(i)', 'i8') }}};
       }
-      if (len > length) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}}
+      if (len > length) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}};
       return i;
     }
   },
@@ -4365,8 +4365,8 @@ LibraryManager.library = {
     Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + stackTrace());
 #endif
     var header = ptr - ___cxa_exception_header_size;
-    {{{ makeSetValue('header', 0, 'type', 'void*') }}}
-    {{{ makeSetValue('header', 4, 'destructor', 'void*') }}}
+    {{{ makeSetValue('header', 0, 'type', 'void*') }}};
+    {{{ makeSetValue('header', 4, 'destructor', 'void*') }}};
     ___cxa_last_thrown_exception = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
       __ZSt18uncaught_exceptionv.uncaught_exception = 1;
@@ -4434,7 +4434,7 @@ LibraryManager.library = {
       var destructor = {{{ makeGetValue('header', 4, 'void*') }}};
       if (destructor) {
         Runtime.dynCall('vi', destructor, [ptr]);
-        {{{ makeSetValue('header', 4, '0', 'i32') }}}
+        {{{ makeSetValue('header', 4, '0', 'i32') }}};
       }
       ___cxa_free_exception(ptr);
       ___cxa_last_thrown_exception = 0;
@@ -7630,7 +7630,7 @@ LibraryManager.library = {
     node = DNS.lookup_name(node);
     addr = __inet_pton4_raw(node);
     if (family === {{{ cDefine('AF_UNSPEC') }}}) {
-      family = {{{ cDefine('AF_INET') }}}
+      family = {{{ cDefine('AF_INET') }}};
     } else if (family === {{{ cDefine('AF_INET6') }}}) {
       addr = [0, 0, _htonl(0xffff), addr];
     }
