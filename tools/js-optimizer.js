@@ -2486,7 +2486,7 @@ function registerizeHarder(ast) {
             for (var j = 0; j < node[2][i][1].length; j++) {
               buildFlowGraph(node[2][i][1][j]);
             }
-            if (currEntryJunction !== null, 'switch case body did not break');
+            assert(currEntryJunction === null, 'switch case body did not break');
           }
           // If there was no default case, we also need an empty block
           // linking straight from the test evaluation to the exit.
