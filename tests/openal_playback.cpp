@@ -95,8 +95,20 @@ int main() {
 
   alBufferData(buffers[0], format, &buffer[offset], size - offset, frequency);
 
+  ALint val;
+  alGetBufferi(buffers[0], AL_FREQUENCY, &val);
+  assert(val == frequency);
+  alGetBufferi(buffers[0], AL_SIZE, &val);
+  assert(val == size - offset);
+  alGetBufferi(buffers[0], AL_BITS, &val);
+  assert(val == bits);
+  alGetBufferi(buffers[0], AL_CHANNELS, &val);
+  assert(val == channels);
+
   ALuint sources[1];
   alGenSources(1, sources);
+
+  assert(alIsSource(sources[0]));
 
   alSourcei(sources[0], AL_BUFFER, buffers[0]);
 
