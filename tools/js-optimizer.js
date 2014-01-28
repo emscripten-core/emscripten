@@ -1593,6 +1593,7 @@ function normalizeAsm(func) {
     params: {}, // ident => ASM_* type
     vars: {}, // ident => ASM_* type
     inlines: [], // list of inline assembly copies
+    ret: undefined,
   };
   // process initial params
   var stats = func[3];
@@ -1629,7 +1630,7 @@ function normalizeAsm(func) {
     }
     i++;
   }
-  // finally, look for other var definitions and collect them
+  // look for other var definitions and collect them
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type === 'var') {
@@ -1657,6 +1658,11 @@ function normalizeAsm(func) {
       }
     });
     i++;
+  }
+  // look for final 'return' statement to get return type.
+  var retStmt = stats[stats.length - 1];
+  if (retStmt && retStmt[0] === 'return' && retStmt[1]) {
+    data.ret = detectAsmCoercion(retStmt[1]);
   }
   //printErr('normalized \n\n' + astToSrc(func) + '\n\nwith: ' + JSON.stringify(data));
   return data;
@@ -1709,6 +1715,17 @@ function denormalizeAsm(func, data) {
         node[1] = data.inlines[i++]; // swap back in the body
       }
     });
+  }
+  // ensure that there's a final 'return' statement if needed.
+  if (data.ret !== undefined) {
+    var retStmt = stats[stats.length - 1];
+    if (!retStmt || retStmt[0] !== 'return') {
+      var retVal = ['num', 0];
+      if (data.ret !== ASM_INT) {
+        retVal = makeAsmCoercion(retVal, data.ret);
+      }
+      stats.push(['return', retVal]);
+    }
   }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
@@ -2050,6 +2067,7 @@ function registerize(ast) {
         params: {},
         vars: {},
         inlines: asmData.inlines,
+        ret: asmData.ret,
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
@@ -3096,6 +3114,7 @@ function registerizeHarder(ast) {
       params: {},
       vars: {},
       inlines: asmData.inlines,
+      ret: asmData.ret,
     };
     for (var i = 1; i < nextReg; i++) {
       var reg;

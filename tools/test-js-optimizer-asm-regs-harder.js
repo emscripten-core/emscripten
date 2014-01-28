@@ -143,6 +143,9 @@ function linkedVars() {
    outer1 = inner1_1;
    outer2 = inner2_1;
   }
+  if (outer1 < outer2) {
+    break;
+  }
  }
  return outer1 + outer2;
 }

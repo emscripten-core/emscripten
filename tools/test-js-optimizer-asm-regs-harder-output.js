@@ -123,6 +123,9 @@ function linkedVars() {
     i1 = i1 - 1;
    }
   }
+  if (i2 < i1) {
+   break;
+  }
  }
  return i2 + i1;
 }
