@@ -1157,6 +1157,16 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  def test_longjmp_throw(self):
+    if self.run_name == 'asm3': return self.skip('issue 2069') # FIXME
+
+    for disable_throw in [0, 1]:
+      print disable_throw
+      Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
+      test_path = path_from_root('tests', 'core', 'test_longjmp_throw')
+      src, output = (test_path + s for s in ('.cpp', '.out'))
+      self.do_run_from_file(src, output)
+
   def test_setjmp_many(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp: make MAX_SETJMPS take effect')
 
