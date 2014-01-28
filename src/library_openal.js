@@ -7,6 +7,7 @@ var LibraryOpenAL = {
     currentContext: null,
 
     stringCache: {},
+    alcStringCache: {},
 
     QUEUE_INTERVAL: 25,
     QUEUE_LOOKAHEAD: 100,
@@ -1220,8 +1221,67 @@ var LibraryOpenAL = {
     return 0;
   },
 
-  alcGetString: function(param) {
-    return allocate(intArrayFromString('NA'), 'i8', ALLOC_NORMAL);
+  alcGetString: function(device, param) {
+    if (AL.alcStringCache[param]) return AL.alcStringCache[param];
+    var ret;
+    switch (param) {
+    case 0 /* ALC_NO_ERROR */:
+      ret = 'No Error';
+      break;
+    case 0xA001 /* ALC_INVALID_DEVICE */:
+      ret = 'Invalid Device';
+      break;
+    case 0xA002 /* ALC_INVALID_CONTEXT */:
+      ret = 'Invalid Context';
+      break;
+    case 0xA003 /* ALC_INVALID_ENUM */:
+      ret = 'Invalid Enum';
+      break;
+    case 0xA004 /* ALC_INVALID_VALUE */:
+      ret = 'Invalid Value';
+      break;
+    case 0xA005 /* ALC_OUT_OF_MEMORY */:
+      ret = 'Out of Memory';
+      break;
+    case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
+      if (typeof(AudioContext) == "function" ||
+          typeof(webkitAudioContext) == "function") {
+        ret = 'Device';
+      } else {
+        return 0;
+      }
+      break;
+    case 0x1005 /* ALC_DEVICE_SPECIFIER */:
+      if (typeof(AudioContext) == "function" ||
+          typeof(webkitAudioContext) == "function") {
+        ret = 'Device\0';
+      } else {
+        ret = '\0';
+      }
+      break;
+    case 0x311 /* ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER */:
+      return 0;
+      break;
+    case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
+      ret = '\0'
+      break;
+    case 0x1006 /* ALC_EXTENSIONS */:
+      if (!device) {
+        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      ret = '';
+      break;
+    default:
+      AL.currentContext.err = 0xA003 /* ALC_INVALID_ENUM */;
+      return 0;
+    }
+
+    ret = allocate(intArrayFromString(ret), 'i8', ALLOC_NORMAL);
+
+    AL.alcStringCache[param] = ret;
+
+    return ret;
   },
 
   alcGetProcAddress: function(device, fname) {
