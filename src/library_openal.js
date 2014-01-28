@@ -743,6 +743,7 @@ var LibraryOpenAL = {
     }
     try {
       AL.currentContext.buf[buffer - 1] = AL.currentContext.ctx.createBuffer(channels, size / (bytes * channels), freq);
+      AL.currentContext.buf[buffer - 1].bytesPerSample =  bytes;
     } catch (e) {
       AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
       return;
@@ -764,6 +765,41 @@ var LibraryOpenAL = {
           break;
         }
       }
+    }
+  },
+
+  alGetBufferi: function(buffer, param, value)
+  {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetBufferi called without a valid context");
+#endif
+      return;
+    }
+    var buf = AL.currentContext.buf[buffer - 1];
+    if (!buf) {
+#if OPENAL_DEBUG
+      console.error("alGetBufferi called with an invalid buffer");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return;
+    }
+    switch (param) {
+    case 0x2001 /* AL_FREQUENCY */:
+      {{{ makeSetValue('value', '0', 'buf.sampleRate', 'i32') }}};
+      break;
+    case 0x2002 /* AL_BITS */:
+      {{{ makeSetValue('value', '0', 'buf.bytesPerSample * 8', 'i32') }}};
+      break;
+    case 0x2003 /* AL_CHANNELS */:
+      {{{ makeSetValue('value', '0', 'buf.numberOfChannels', 'i32') }}};
+      break;
+    case 0x2004 /* AL_SIZE */:
+      {{{ makeSetValue('value', '0', 'buf.length * buf.bytesPerSample * buf.numberOfChannels', 'i32') }}};
+      break;
+    default:
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
     }
   },
 
