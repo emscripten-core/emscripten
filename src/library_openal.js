@@ -253,16 +253,24 @@ var LibraryOpenAL = {
       {{{ makeSetValue('data', '0', '1', 'i32') }}};
       break;
     case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
+      if (!device) {
+        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
       {{{ makeSetValue('data', '0', '1', 'i32') }}};
       break;
     case 0x1003 /* ALC_ALL_ATTRIBUTES */:
+      if (!device) {
+        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
       {{{ makeSetValue('data', '0', '0', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
       console.log("alcGetIntegerv with param " + param + " not implemented yet");
 #endif
-      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentContext.err = 0xA003 /* ALC_INVALID_ENUM */;
       break;
     }
   },
