@@ -2175,18 +2175,24 @@ function registerizeHarder(ast) {
       if (id === undefined || id === null) {
         id = addJunction();
       }
-      joinJunction(id);
+      joinJunction(id, true);
       return id;
     }
 
-    function setJunction(id) {
+    function setJunction(id, force) {
       // Set the next entry junction to the given id.
       // This can be used to enter at a previously-declared point.
+      // You can't return to a junction with no incoming blocks
+      // unless the 'force' parameter is specified.
       assert(nextBasicBlock.nodes.length === 0, 'refusing to abandon an in-progress basic block')
-      currEntryJunction = id;
+      if (force || setSize(junctions[id].inblocks) > 0) {
+        currEntryJunction = id;
+      } else {
+        currEntryJunction = null;
+      }
     }
 
-    function joinJunction(id) {
+    function joinJunction(id, force) {
       // Complete the pending basic block by exiting at this position.
       // This can be used to exit at a previously-declared point.
       if (currEntryJunction !== null) {
@@ -2198,7 +2204,7 @@ function registerizeHarder(ast) {
         blocks.push(nextBasicBlock);
       } 
       nextBasicBlock = { id: null, entry: null, exit: null, pre: {}, nodes: [], isexpr: [], use: {}, kill: {} };
-      currEntryJunction = id;
+      setJunction(id, force);
       return id;
     }
 
@@ -2238,7 +2244,7 @@ function registerizeHarder(ast) {
           assert(false, 'unknown jump node type');
         }
       }
-      setJunction(null);
+      currEntryJunction = null;
     }
 
     function addUseNode(node) {
@@ -2359,11 +2365,12 @@ function registerizeHarder(ast) {
           buildFlowGraph(node[1]);
           isInExpr--;
           var jEnter = markJunction();
+          var jExit = addJunction();
           addPreCondTrue(node[1]);
           if (node[2]) {
             buildFlowGraph(node[2]);
           }
-          var jExit = markJunction();
+          joinJunction(jExit);
           setJunction(jEnter);
           addPreCondFalse(node[1]);
           if (node[3]) {
@@ -2375,11 +2382,12 @@ function registerizeHarder(ast) {
           isInExpr++;
           buildFlowGraph(node[1]);
           var jEnter = markJunction();
+          var jExit = addJunction();
           addPreCondTrue(node[1]);
           if (node[2]) {
             buildFlowGraph(node[2]);
           }
-          var jExit = markJunction();
+          joinJunction(jExit);
           setJunction(jEnter);
           addPreCondFalse(node[1]);
           if (node[3]) {
@@ -2511,7 +2519,7 @@ function registerizeHarder(ast) {
           if (!hasDefault) {
             setJunction(jCheckExit);
           }
-          markJunction(jExit);
+          joinJunction(jExit);
           popActiveLabels()
           break;
         case 'return':
