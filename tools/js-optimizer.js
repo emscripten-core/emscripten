@@ -2490,8 +2490,8 @@ function registerizeHarder(ast) {
         case 'switch':
           // Emscripten generates switch statements of a very limited
           // form: all case clauses are numeric literals, and all
-          // case bodies end with a break.  So it's basically equivalent
-          // to a multi-way 'if' statement.
+          // case bodies end with a (maybe implicit) break.  So it's
+          // basically equivalent to a multi-way 'if' statement.
           isInExpr++;
           buildFlowGraph(node[1]);
           isInExpr--;
@@ -2501,20 +2501,22 @@ function registerizeHarder(ast) {
           var hasDefault = false;
           for (var i=0; i<node[2].length; i++) {
             setJunction(jCheckExit);
+            // All case clauses are either 'default' or a numeric literal.
             if (!node[2][i][0]) {
               hasDefault = true;
-            } else {
-              if (node[2][i][0][0] !== 'num') {
-                if (node[2][i][0][0] !== 'unary-prefix' || node[2][i][0][2][0] !== 'num') {
-                  assert(false, 'non-numeric switch case clause');
-                }
-              }
-              addPreCondTrue(['binary', '==', node[1], node[2][i][0]]);
             }
             for (var j = 0; j < node[2][i][1].length; j++) {
               buildFlowGraph(node[2][i][1][j]);
             }
-            assert(currEntryJunction === null, 'switch case body did not break');
+            // Control flow will never actually reach the end of the case body.
+            // If there's live code here, assume it jumps to case exit.
+            if (currEntryJunction !== null && nextBasicBlock.nodes.length > 0) {
+              if (node[2][i][0]) {
+                markNonLocalJump('return');
+              } else {
+                joinJunction(jExit);
+              }
+            }
           }
           // If there was no default case, we also need an empty block
           // linking straight from the test evaluation to the exit.
