@@ -1158,8 +1158,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_longjmp_throw(self):
-    if self.run_name == 'asm3': return self.skip('issue 2069') # FIXME
-
     for disable_throw in [0, 1]:
       print disable_throw
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw

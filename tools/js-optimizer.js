@@ -140,6 +140,8 @@ var ALTER_FLOW = set('break', 'continue', 'return');
 var BREAK_CAPTURERS = set('do', 'while', 'for', 'switch');
 var CONTINUE_CAPTURERS = LOOP;
 
+var FUNCTIONS_THAT_ALWAYS_THROW = set('abort', '___resumeException', '___cxa_throw', '___cxa_rethrow');
+
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
 var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
@@ -2579,6 +2581,13 @@ function registerizeHarder(ast) {
             }
           }
           isInExpr--;
+          // If the call is statically known to throw,
+          // treat it as a jump to function exit.
+          if (!isInExpr && node[1][0] === 'name') {
+            if (node[1][1] in FUNCTIONS_THAT_ALWAYS_THROW) {
+              markNonLocalJump('return');
+            }
+          }
           break;
         case 'seq':
         case 'sub':
