@@ -565,7 +565,7 @@ function getRuntime() {
 
 // Converts a value we have as signed, into an unsigned value. For
 // example, -1 in int32 would be a very large number as unsigned.
-function unSign(value, bits, ignore, sig) {
+function unSign(value, bits, ignore) {
   if (value >= 0) {
     return value;
   }
@@ -578,7 +578,7 @@ function unSign(value, bits, ignore, sig) {
 
 // Converts a value we have as unsigned, into a signed value. For
 // example, 200 in a uint8 would be a negative number.
-function reSign(value, bits, ignore, sig) {
+function reSign(value, bits, ignore) {
   if (value <= 0) {
     return value;
   }
