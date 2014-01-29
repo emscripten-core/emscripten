@@ -107,7 +107,11 @@ for arg in sys.argv[2:]:
     jsoutput = arg.split('=')[1] if '=' in arg else None
     leading = ''
   elif arg.startswith('--crunch'):
-    from shared import CRUNCH
+    try:
+      from shared import CRUNCH
+    except Exception, e:
+      print >> sys.stderr, 'count not import CRUNCH (make sure it is defined properly in ~/.emscripten)'
+      raise e
     crunch = arg.split('=')[1] if '=' in arg else '128'
     leading = ''
   elif arg.startswith('--plugin'):
