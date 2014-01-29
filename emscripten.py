@@ -1204,7 +1204,7 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 
   if DEBUG: logging.debug('  emscript: final python processing took %s seconds' % (time.time() - t))
 
-if os.environ.get('EMCC_FAST_COMPILER'):
+if os.environ.get('EMCC_FAST_COMPILER') == '1':
   emscript = emscript_fast
 
 def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE):
