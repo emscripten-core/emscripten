@@ -19,7 +19,10 @@ define internal fastcc void @f1(%struct.c_s* nocapture %tp) nounwind {
   call fastcc void @f2(%struct.c_s* sret %1)
   %2 = bitcast %struct.c_s* %1 to i96*
   %srcval1 = load i96* %2, align 8
-  %3 = lshr i96 %srcval1, 4
+  %small = trunc i96 %srcval1 to i64
+  %large = zext i64 %small to i96
+  %return = or i96 %srcval1, %large
+  %3 = lshr i96 %return, 4
   %4 = shl i96 %3, 2
   %5 = bitcast %struct.c_s* %tp to i96*
   store i96 %4, i96* %5, align 4
