@@ -1276,6 +1276,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_exceptions_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
+    if self.run_name == 'asm2x86': return self.skip('TODO')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
     for safe in [0,1]:
