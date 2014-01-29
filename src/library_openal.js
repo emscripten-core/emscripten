@@ -5,6 +5,10 @@ var LibraryOpenAL = {
   $AL: {
     contexts: [],
     currentContext: null,
+
+    stringCache: {},
+    alcStringCache: {},
+
     QUEUE_INTERVAL: 25,
     QUEUE_LOOKAHEAD: 100,
 
@@ -235,6 +239,42 @@ var LibraryOpenAL = {
     return _alGetError();
   },
 
+  alcGetIntegerv: function(device, param, size, data) {
+    if (size == 0 || !data) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+
+    switch(param) {
+    case 0x1000 /* ALC_MAJOR_VERSION */:
+      {{{ makeSetValue('data', '0', '1', 'i32') }}};
+      break;
+    case 0x1001 /* ALC_MINOR_VERSION */:
+      {{{ makeSetValue('data', '0', '1', 'i32') }}};
+      break;
+    case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
+      if (!device) {
+        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', '1', 'i32') }}};
+      break;
+    case 0x1003 /* ALC_ALL_ATTRIBUTES */:
+      if (!device) {
+        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', '0', 'i32') }}};
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.log("alcGetIntegerv with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA003 /* ALC_INVALID_ENUM */;
+      break;
+    }
+  },
+
   alDeleteSources: function(count, sources) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -331,6 +371,18 @@ var LibraryOpenAL = {
         bufferPosition: 0
       });
       {{{ makeSetValue('sources', 'i*4', 'AL.currentContext.src.length', 'i32') }}};
+    }
+  },
+
+  alIsSource: function(sourceId) {
+    if (!AL.currentContext) {
+      return false;
+    }
+
+    if (!AL.currentContext.src[sourceId - 1]) {
+      return false;
+    } else {
+      return true;
     }
   },
 
@@ -691,6 +743,7 @@ var LibraryOpenAL = {
     }
     try {
       AL.currentContext.buf[buffer - 1] = AL.currentContext.ctx.createBuffer(channels, size / (bytes * channels), freq);
+      AL.currentContext.buf[buffer - 1].bytesPerSample =  bytes;
     } catch (e) {
       AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
       return;
@@ -712,6 +765,41 @@ var LibraryOpenAL = {
           break;
         }
       }
+    }
+  },
+
+  alGetBufferi: function(buffer, param, value)
+  {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetBufferi called without a valid context");
+#endif
+      return;
+    }
+    var buf = AL.currentContext.buf[buffer - 1];
+    if (!buf) {
+#if OPENAL_DEBUG
+      console.error("alGetBufferi called with an invalid buffer");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return;
+    }
+    switch (param) {
+    case 0x2001 /* AL_FREQUENCY */:
+      {{{ makeSetValue('value', '0', 'buf.sampleRate', 'i32') }}};
+      break;
+    case 0x2002 /* AL_BITS */:
+      {{{ makeSetValue('value', '0', 'buf.bytesPerSample * 8', 'i32') }}};
+      break;
+    case 0x2003 /* AL_CHANNELS */:
+      {{{ makeSetValue('value', '0', 'buf.numberOfChannels', 'i32') }}};
+      break;
+    case 0x2004 /* AL_SIZE */:
+      {{{ makeSetValue('value', '0', 'buf.length * buf.bytesPerSample * buf.numberOfChannels', 'i32') }}};
+      break;
+    default:
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
     }
   },
 
@@ -1128,15 +1216,116 @@ var LibraryOpenAL = {
   },
 
   alGetString: function(param) {
-    return allocate(intArrayFromString('NA'), 'i8', ALLOC_NORMAL);
+    if (AL.stringCache[param]) return AL.stringCache[param];
+    var ret;
+    switch (param) {
+    case 0 /* AL_NO_ERROR */:
+      ret = 'No Error';
+      break;
+    case 0xA001 /* AL_INVALID_NAME */:
+      ret = 'Invalid Name';
+      break;
+    case 0xA002 /* AL_INVALID_ENUM */:
+      ret = 'Invalid Enum';
+      break;
+    case 0xA003 /* AL_INVALID_VALUE */:
+      ret = 'Invalid Value';
+      break;
+    case 0xA004 /* AL_INVALID_OPERATION */:
+      ret = 'Invalid Operation';
+      break;
+    case 0xA005 /* AL_OUT_OF_MEMORY */:
+      ret = 'Out of Memory';
+      break;
+    case 0xB001 /* AL_VENDOR */:
+      ret = 'Emscripten';
+      break;
+    case 0xB002 /* AL_VERSION */:
+      ret = '1.1';
+      break;
+    case 0xB003 /* AL_RENDERER */:
+      ret = 'WebAudio';
+      break;
+    case 0xB004 /* AL_EXTENSIONS */:
+      ret = '';
+      break;
+    default:
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      return 0;
+    }
+
+    ret = allocate(intArrayFromString(ret), 'i8', ALLOC_NORMAL);
+
+    AL.stringCache[param] = ret;
+
+    return ret;
   },
 
   alGetProcAddress: function(fname) {
     return 0;
   },
 
-  alcGetString: function(param) {
-    return allocate(intArrayFromString('NA'), 'i8', ALLOC_NORMAL);
+  alcGetString: function(device, param) {
+    if (AL.alcStringCache[param]) return AL.alcStringCache[param];
+    var ret;
+    switch (param) {
+    case 0 /* ALC_NO_ERROR */:
+      ret = 'No Error';
+      break;
+    case 0xA001 /* ALC_INVALID_DEVICE */:
+      ret = 'Invalid Device';
+      break;
+    case 0xA002 /* ALC_INVALID_CONTEXT */:
+      ret = 'Invalid Context';
+      break;
+    case 0xA003 /* ALC_INVALID_ENUM */:
+      ret = 'Invalid Enum';
+      break;
+    case 0xA004 /* ALC_INVALID_VALUE */:
+      ret = 'Invalid Value';
+      break;
+    case 0xA005 /* ALC_OUT_OF_MEMORY */:
+      ret = 'Out of Memory';
+      break;
+    case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
+      if (typeof(AudioContext) == "function" ||
+          typeof(webkitAudioContext) == "function") {
+        ret = 'Device';
+      } else {
+        return 0;
+      }
+      break;
+    case 0x1005 /* ALC_DEVICE_SPECIFIER */:
+      if (typeof(AudioContext) == "function" ||
+          typeof(webkitAudioContext) == "function") {
+        ret = 'Device\0';
+      } else {
+        ret = '\0';
+      }
+      break;
+    case 0x311 /* ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER */:
+      return 0;
+      break;
+    case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
+      ret = '\0'
+      break;
+    case 0x1006 /* ALC_EXTENSIONS */:
+      if (!device) {
+        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      ret = '';
+      break;
+    default:
+      AL.currentContext.err = 0xA003 /* ALC_INVALID_ENUM */;
+      return 0;
+    }
+
+    ret = allocate(intArrayFromString(ret), 'i8', ALLOC_NORMAL);
+
+    AL.alcStringCache[param] = ret;
+
+    return ret;
   },
 
   alcGetProcAddress: function(device, fname) {

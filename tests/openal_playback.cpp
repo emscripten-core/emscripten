@@ -3,11 +3,15 @@
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <assert.h>
+#include <stdint.h>
+#include <unistd.h>
+#ifdef EMSCRIPTEN
 #include <emscripten.h>
+#endif
 
 void playSource(void* arg)
 {
-  ALuint source = reinterpret_cast<ALuint>(arg);
+  ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
   ALint state;
   alGetSourcei(source, AL_SOURCE_STATE, &state);
   assert(state == AL_PLAYING);
@@ -21,14 +25,31 @@ void playSource(void* arg)
   alGetSourcei(source, AL_SOURCE_STATE, &state);
   assert(state == AL_STOPPED);
 
+#ifdef EMSCRIPTEN
   int result = 1;
   REPORT_RESULT();
+#endif
 }
 
 int main() {
+  int major, minor;
+  alcGetIntegerv(NULL, ALC_MAJOR_VERSION, 1, &major);
+  alcGetIntegerv(NULL, ALC_MAJOR_VERSION, 1, &minor);
+
+  assert(major == 1);
+
+  printf("ALC version: %i.%i\n", major, minor);
+  printf("Default device: %s\n", alcGetString(NULL, ALC_DEFAULT_DEVICE_SPECIFIER));
+
   ALCdevice* device = alcOpenDevice(NULL);
   ALCcontext* context = alcCreateContext(device, NULL);
   alcMakeContextCurrent(context);
+
+  assert(alGetString(AL_VERSION));
+
+  printf("OpenAL version: %s\n", alGetString(AL_VERSION));
+  printf("OpenAL vendor: %s\n", alGetString(AL_VENDOR));
+  printf("OpenAL renderer: %s\n", alGetString(AL_RENDERER));
 
   ALfloat listenerPos[] = {0.0, 0.0, 0.0};
   ALfloat listenerVel[] = {0.0, 0.0, 0.0};
@@ -42,7 +63,11 @@ int main() {
 
   alGenBuffers(1, buffers);
 
+#ifdef EMSCRIPTEN
   FILE* source = fopen("audio.wav", "rb");
+#else
+  FILE* source = fopen("sounds/audio.wav", "rb");
+#endif
   fseek(source, 0, SEEK_END);
   int size = ftell(source);
   fseek(source, 0, SEEK_SET);
@@ -95,8 +120,20 @@ int main() {
 
   alBufferData(buffers[0], format, &buffer[offset], size - offset, frequency);
 
+  ALint val;
+  alGetBufferi(buffers[0], AL_FREQUENCY, &val);
+  assert(val == frequency);
+  alGetBufferi(buffers[0], AL_SIZE, &val);
+  assert(val == size - offset);
+  alGetBufferi(buffers[0], AL_BITS, &val);
+  assert(val == bits);
+  alGetBufferi(buffers[0], AL_CHANNELS, &val);
+  assert(val == channels);
+
   ALuint sources[1];
   alGenSources(1, sources);
+
+  assert(alIsSource(sources[0]));
 
   alSourcei(sources[0], AL_BUFFER, buffers[0]);
 
@@ -109,7 +146,12 @@ int main() {
   alGetSourcei(sources[0], AL_SOURCE_STATE, &state);
   assert(state == AL_PLAYING);
 
+#ifdef EMSCRIPTEN
   emscripten_async_call(playSource, reinterpret_cast<void*>(sources[0]), 700);
+#else
+  usleep(700000);
+  playSource(reinterpret_cast<void*>(sources[0]));
+#endif
 
   return 0;
 }
