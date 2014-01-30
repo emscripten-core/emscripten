@@ -3462,7 +3462,7 @@ LibraryManager.library = {
     var c = 31010991;
     var ch = c >> 16;
     var cl = c & 0xffff;
-    val = (((valh * cl + vall * ch) << 16) + vall * cl + 0x676e6177) & 0x7fffffff;
+    val = (((valh * cl + vall * ch) << 16) + vall * cl + 0x676e6177) & 0xffffffff;
     {{{ makeSetValue('seedp', 0, 'val', 'i32') }}};
     return val;
   },
