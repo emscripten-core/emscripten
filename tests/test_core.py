@@ -3550,48 +3550,43 @@ ok
 ''', post_build=self.dlfcn_post_build)
 
   def test_rand(self):
-    return self.skip('rand() is now random') # FIXME
-
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      int main() {
-        printf("%d\n", rand());
+    src = r'''#include <stdlib.h>
+#include <stdio.h>
+int main()
+{
+    srand(0xdeadbeef);
+    for(int i = 0; i < 10; ++i)
         printf("%d\n", rand());
 
-        srand(123);
-        printf("%d\n", rand());
-        printf("%d\n", rand());
-        srand(123);
-        printf("%d\n", rand());
-        printf("%d\n", rand());
+    unsigned int seed = 0xdeadbeef;
+    for(int i = 0; i < 10; ++i)
+        printf("%d\n", rand_r(&seed));
 
-        unsigned state = 0;
-        int r;
-        r = rand_r(&state);
-        printf("%d, %u\n", r, state);
-        r = rand_r(&state);
-        printf("%d, %u\n", r, state);
-        state = 0;
-        r = rand_r(&state);
-        printf("%d, %u\n", r, state);
-
-        return 0;
-      }
-      '''
-    expected = '''
-      1250496027
-      1116302336
-      440917656
-      1476150784
-      440917656
-      1476150784
-      12345, 12345
-      1406932606, 3554416254
-      12345, 12345
-      '''
-    self.do_run(src, re.sub(r'(^|\n)\s+', r'\1', expected))
+    return 0;
+}
+'''
+    expected = '''2073540312
+730128159
+1365227432
+1337224527
+792390264
+1952655743
+983994184
+1982845871
+1210574360
+1479617503
+2073540312
+730128159
+1365227432
+1337224527
+792390264
+1952655743
+983994184
+1982845871
+1210574360
+1479617503
+'''
+    self.do_run(src, expected)
 
   def test_strtod(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
