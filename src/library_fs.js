@@ -975,6 +975,9 @@ mergeInto(LibraryManager.library, {
       opts = opts || {};
       opts.flags = opts.flags || 'r';
       opts.encoding = opts.encoding || 'binary';
+      if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
+        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+      }
       var ret;
       var stream = FS.open(path, opts.flags);
       var stat = FS.stat(path);
@@ -989,8 +992,6 @@ mergeInto(LibraryManager.library, {
         }
       } else if (opts.encoding === 'binary') {
         ret = buf;
-      } else {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
       FS.close(stream);
       return ret;
@@ -999,15 +1000,16 @@ mergeInto(LibraryManager.library, {
       opts = opts || {};
       opts.flags = opts.flags || 'w';
       opts.encoding = opts.encoding || 'utf8';
+      if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
+        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+      }
       var stream = FS.open(path, opts.flags, opts.mode);
       if (opts.encoding === 'utf8') {
         var utf8 = new Runtime.UTF8Processor();
         var buf = new Uint8Array(utf8.processJSString(data));
-        FS.write(stream, buf, 0, buf.length, 0);
+        FS.write(stream, buf, 0, buf.length, 0, opts.canOwn);
       } else if (opts.encoding === 'binary') {
-        FS.write(stream, data, 0, data.length, 0);
-      } else {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+        FS.write(stream, data, 0, data.length, 0, opts.canOwn);
       }
       FS.close(stream);
     },
