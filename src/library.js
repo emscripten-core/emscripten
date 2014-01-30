@@ -3454,7 +3454,6 @@ LibraryManager.library = {
   },
   rand_r__sig: 'ii',
   rand_r__asm: true,
-  rand_r__deps: ['__rand_seed'],
   rand_r: function(seedp) {
     seedp = seedp|0; 
     var val = 0;
@@ -3462,9 +3461,11 @@ LibraryManager.library = {
     {{{ makeSetValueAsm('seedp', 0, 'val', 'i32') }}};
     return val|0;
   },
-  rand__deps: ['rand_r'],
+  rand__sig: 'i',
+  rand__asm: true,
+  rand__deps: ['rand_r', '__rand_seed'],
   rand: function() {
-    return _rand_r(___rand_seed);
+    return _rand_r(___rand_seed)|0;
   },
 
   drand48: function() {
