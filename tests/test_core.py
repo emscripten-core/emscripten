@@ -2071,7 +2071,6 @@ def process(filename):
 
   def test_bigswitch(self):
     if self.run_name != 'default': return self.skip('TODO: issue #781')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
