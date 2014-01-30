@@ -1299,8 +1299,16 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output)
 
-    Settings.DISABLE_EXCEPTION_CATCHING = 0
-    Settings.EXCEPTION_CATCHING_WHITELIST = []
+  def test_exceptions_white_list_2(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+
+    Settings.DISABLE_EXCEPTION_CATCHING = 2
+    Settings.EXCEPTION_CATCHING_WHITELIST = ["_main"]
+    Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
+
+    test_path = path_from_root('tests', 'core', 'test_exceptions_white_list_2')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
 
   def test_exceptions_uncaught(self):
       if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
