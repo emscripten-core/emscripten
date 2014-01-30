@@ -59,7 +59,7 @@ void main_loop(void *arg) {
   FD_ZERO(&fdw);
   FD_SET(server.fd, &fdr);
   FD_SET(server.fd, &fdw);
-#if !USE_UDP
+#if !TEST_DGRAM
   if (client.fd) FD_SET(client.fd, &fdr);
   if (client.fd) FD_SET(client.fd, &fdw);
 #endif
@@ -69,7 +69,7 @@ void main_loop(void *arg) {
     exit(EXIT_SUCCESS);
   }
 
-#if !USE_UDP
+#if !TEST_DGRAM
   // for TCP sockets, we may need to accept a connection
   if (FD_ISSET(server.fd, &fdr)) {
 #if TEST_ACCEPT_ADDR
@@ -86,7 +86,7 @@ void main_loop(void *arg) {
   }
 #endif
 
-#if !USE_UDP
+#if !TEST_DGRAM
     int fd = client.fd;
 #else
     int fd = server.fd;
@@ -99,13 +99,15 @@ void main_loop(void *arg) {
     }
 
     res = do_msg_read(fd, &client.msg, client.read, 0, (struct sockaddr *)&client.addr, &addrlen);
-    if (res == 0) {
+    if (res == -1) {
+      return;
+    } else if (res == 0) {
       // client disconnected
       memset(&client, 0, sizeof(client_t));
       return;
-    } else if (res != -1) {
-      client.read += res;
     }
+
+    client.read += res;
 
     // once we've read the entire message, echo it back
     if (client.read >= client.msg.length) {
@@ -118,13 +120,15 @@ void main_loop(void *arg) {
     }
 
     res = do_msg_write(fd, &client.msg, client.wrote, 0, (struct sockaddr *)&client.addr, sizeof(client.addr));
-    if (res == 0) {
+    if (res == -1) {
+      return;
+    } else if (res == 0) {
       // client disconnected
       memset(&client, 0, sizeof(client_t));
       return;
-    } else if (res != -1) {
-      client.wrote += res;
     }
+
+    client.wrote += res;
 
     if (client.wrote >= client.msg.length) {
       client.wrote = 0;
@@ -149,7 +153,7 @@ int main() {
   memset(&client, 0, sizeof(client_t));
 
   // create the socket and set to non-blocking
-#if !USE_UDP
+#if !TEST_DGRAM
   server.fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 #else
   server.fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -174,7 +178,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-#if !USE_UDP
+#if !TEST_DGRAM
   res = listen(server.fd, 50);
   if (res == -1) {
     perror("listen failed");
