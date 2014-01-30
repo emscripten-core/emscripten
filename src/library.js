@@ -3452,12 +3452,15 @@ LibraryManager.library = {
   srand: function(seed) {
     {{{ makeSetValue('___rand_seed', 0, 'seed', 'i32') }}}
   },
+  rand_r__sig: 'ii',
+  rand_r__asm: true,
   rand_r__deps: ['__rand_seed'],
-  rand_r: function(seedp) { 
-    var val = {{{ makeGetValue('seedp', 0, 'i32') }}};
-    val = (Math.imul(val, 31010991) + 0x676e6177)|0;
-    {{{ makeSetValue('seedp', 0, 'val', 'i32') }}};
-    return val;
+  rand_r: function(seedp) {
+    seedp = seedp|0; 
+    var val = 0;
+    val = (Math_imul({{{ makeGetValueAsm('seedp', 0, 'i32') }}}, 31010991)|0) + 0x676e6177 | 0;
+    {{{ makeSetValueAsm('seedp', 0, 'val', 'i32') }}};
+    return val|0;
   },
   rand__deps: ['rand_r'],
   rand: function() {
