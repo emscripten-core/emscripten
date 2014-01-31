@@ -2066,15 +2066,36 @@ try:
       html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename) + '</script>'))
       shutil.move(final, js_target)
     elif not Compression.on:
+      # Normal code generation path
       if debug_level >= 4:
         generate_source_map(target)
       shutil.move(final, js_target)
-      # TODO: use an async blob, which would allow code rewriting on the client:
-      #   var blob = new Blob([codeString]);
-      #   var script = document.createElement('script');
-      #   script.src = URL.createObjectURL(blob);
-      #   document.body.appendChild(script);
-      script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
+      if 1:
+        # Non-modifiable code, just load the code directly
+        script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
+      else:
+        # Potentially-modifiable code, load as text, modify, then execute
+        code = '''
+// Load the code as text, and execute it asynchronously. This keeps everything
+// async and responsive, while also making it possible to modify the code on
+// the client, if necessary.
+var codeXHR = new XMLHttpRequest();
+codeXHR.open('GET', '%s', true);
+codeXHR.onload = function() {
+  var code = codeXHR.responseText;
+  var blob = new Blob([code], { type: 'text/javascript' });
+  codeXHR = null;
+  var src = URL.createObjectURL(blob);
+  var script = document.createElement('script');
+  script.src = URL.createObjectURL(blob);
+  script.onload = function() {
+    URL.revokeObjectURL(script.src);
+  };
+  document.body.appendChild(script);
+};
+codeXHR.send(null);
+''' % base_js_target
+        script_tag = '''<script>%s</script>''' % code
       html.write(shell.replace('{{{ SCRIPT }}}', script_tag))
     else:
       # Compress the main code
