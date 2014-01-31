@@ -980,18 +980,23 @@ var LibraryJSEvents = {
     if (allowedOrientations & 2) orientations.push("portrait-secondary");
     if (allowedOrientations & 4) orientations.push("landscape-primary");
     if (allowedOrientations & 8) orientations.push("landscape-secondary");
+    var succeeded;
     if (window.screen.lockOrientation) {
-      window.screen.lockOrientation(orientations);
+      succeeded = window.screen.lockOrientation(orientations);
     } else if (window.screen.mozLockOrientation) {
-      window.screen.mozLockOrientation(orientations);
+      succeeded = window.screen.mozLockOrientation(orientations);
     } else if (window.screen.webkitLockOrientation) {
-      window.screen.webkitLockOrientation(orientations);
+      succeeded = window.screen.webkitLockOrientation(orientations);
     } else if (window.screen.msLockOrientation) {
-      window.screen.msLockOrientation(orientations);
+      succeeded = window.screen.msLockOrientation(orientations);
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    if (succeeded) {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    } else {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED') }}};
+    }
   },
   
   emscripten_unlock_orientation: function() {
