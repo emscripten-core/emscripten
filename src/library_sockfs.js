@@ -131,7 +131,7 @@ mergeInto(LibraryManager.library, {
             port = parseInt(result[2], 10);
           }
         } else {
-          // Create the actual websocket object and connect.
+          // create the actual websocket object and connect
           try {
             // runtimeConfig gets set to true if WebSocket runtime configuration is available.
             var runtimeConfig = (Module['websocket'] && ('object' === typeof Module['websocket']));

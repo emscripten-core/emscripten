@@ -221,7 +221,8 @@ var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets.
 // Module['websocket'] = {subprotocol: 'base64, binary, text'};
 // Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
 // Run time configuration may be useful as it lets an application select multiple different services.
-var WEBSOCKET_URL = 'ws://'; // A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete URL.
+var WEBSOCKET_URL = 'ws://'; // A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete
+                             // RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
                              // In the (default) case of only a prefix being specified the URL will be constructed from
                              // prefix + addr + ':' + port
                              // where addr and port are derived from the socket connect/bind/accept calls.
