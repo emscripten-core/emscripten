@@ -3853,7 +3853,6 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_6(self):
     test_path = path_from_root('tests', 'core', 'test_sscanf_6')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.do_run_from_file(src, output)
 
   def test_sscanf_skip(self):
