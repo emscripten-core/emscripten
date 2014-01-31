@@ -2145,11 +2145,11 @@ function registerizeHarder(ast) {
     // For each block we store:
     //    * a single entry junction
     //    * a single exit junction
-    //    * any preconditions satisfied at entry to the block
     //    * a 'use' and 'kill' set of names for the block
     //    * full sequence of 'name' and 'assign' nodes in the block
     //    * whether each such node appears as part of a larger expression
     //      (and therefore cannot be safely eliminated)
+    //    * set of labels that can be used to jump to this block
 
     var junctions = [];
     var blocks = [];
@@ -2205,7 +2205,7 @@ function registerizeHarder(ast) {
         junctions[id].inblocks[nextBasicBlock.id] = 1;
         blocks.push(nextBasicBlock);
       } 
-      nextBasicBlock = { id: null, entry: null, exit: null, pre: {}, nodes: [], isexpr: [], use: {}, kill: {} };
+      nextBasicBlock = { id: null, entry: null, exit: null, labels: {}, nodes: [], isexpr: [], use: {}, kill: {} };
       setJunction(id, force);
       return id;
     }
@@ -2285,29 +2285,10 @@ function registerizeHarder(ast) {
       return node;
     }
 
-    function addPreCondTrue(node) {
-      // Add pre-conditions implied by truth of the
-      // given node to the current basic block.
-      assert(nextBasicBlock.nodes.length === 0, 'cant add preconditions to an in-progress basic block')
-      if (node[0] === 'binary' && node[1] === '==') {
-        var lhs = lookThroughCasts(node[2]);
-        var rhs = lookThroughCasts(node[3]);
-        if (lhs[0] === 'name' && rhs[0] === 'num') {
-          nextBasicBlock.pre[lhs[1]] = ['==', rhs[1]];
-        }
-      }
-    }
-
-    function addPreCondFalse(node) {
-      // Add pre-conditions implied by falsehood of the
-      // given node to the current basic block.
-      assert(nextBasicBlock.nodes.length === 0, 'cant add preconditions to an in-progress basic block')
-      if (node[0] === 'binary' && node[1] === '==') {
-        var lhs = lookThroughCasts(node[2]);
-        var rhs = lookThroughCasts(node[3]);
-        if (lhs[0] === 'name' && rhs[0] === 'num') {
-          nextBasicBlock.pre[lhs[1]] = ['!=', rhs[1]];
-        }
+    function addBlockLabel(node) {
+      assert(nextBasicBlock.nodes.length === 0, 'cant add label to an in-progress basic block')
+      if (node[0] === 'num') {
+        nextBasicBlock.labels[node[1]] = 1;
       }
     }
 
@@ -2368,13 +2349,18 @@ function registerizeHarder(ast) {
           isInExpr--;
           var jEnter = markJunction();
           var jExit = addJunction();
-          addPreCondTrue(node[1]);
           if (node[2]) {
+            // Detect and mark "if (label == N) { <labelled block> }".
+            if (node[1][0] === 'binary' && node[1][1] === '==') {
+              var lhs = lookThroughCasts(node[1][2]);
+              if (lhs[0] === 'name' && lhs[1] === 'label') {
+                addBlockLabel(lookThroughCasts(node[1][3]));
+              }
+            }
             buildFlowGraph(node[2]);
           }
           joinJunction(jExit);
           setJunction(jEnter);
-          addPreCondFalse(node[1]);
           if (node[3]) {
             buildFlowGraph(node[3]);
           }
@@ -2385,13 +2371,11 @@ function registerizeHarder(ast) {
           buildFlowGraph(node[1]);
           var jEnter = markJunction();
           var jExit = addJunction();
-          addPreCondTrue(node[1]);
           if (node[2]) {
             buildFlowGraph(node[2]);
           }
           joinJunction(jExit);
           setJunction(jEnter);
-          addPreCondFalse(node[1]);
           if (node[3]) {
             buildFlowGraph(node[3]);
           }
@@ -2418,7 +2402,6 @@ function registerizeHarder(ast) {
             isInExpr--;
             joinJunction(jLoop);
             pushActiveLabels(jCond, jExit);
-            addPreCondTrue(node[1]);
             buildFlowGraph(node[2]);
             popActiveLabels();
             joinJunction(jCond);
@@ -2495,6 +2478,7 @@ function registerizeHarder(ast) {
           isInExpr++;
           buildFlowGraph(node[1]);
           isInExpr--;
+          var condition = lookThroughCasts(node[1]);
           var jCheckExit = markJunction();
           var jExit = addJunction();
           pushActiveLabels(null, jExit);
@@ -2504,6 +2488,11 @@ function registerizeHarder(ast) {
             // All case clauses are either 'default' or a numeric literal.
             if (!node[2][i][0]) {
               hasDefault = true;
+            } else {
+              // Detect switches dispatching to labelled blocks.
+              if (condition[0] === 'name' && condition[1] === 'label') {
+                addBlockLabel(lookThroughCasts(node[2][i][0]));
+              }
             }
             for (var j = 0; j < node[2][i][1].length; j++) {
               buildFlowGraph(node[2][i][1][j]);
@@ -2629,18 +2618,17 @@ function registerizeHarder(ast) {
     FINDLABELLEDBLOCKS:
     for (var i = 0; i < blocks.length; i++) {
       var block = blocks[i];
-      // Does it have a specific label value as precondition?
-      var labelCond = block.pre['label'];
-      if (labelCond && labelCond[0] === '==') {
+      // Does it have any labels as preconditions to its entry?
+      for (var labelVal in block.labels) {
         // If there are multiple blocks with the same label, all bets are off.
         // This seems to happen sometimes for short blocks that end with a return.
         // TODO: it should be safe to merge the duplicates if they're identical.
-        if (labelCond[1] in labelledBlocks) {
+        if (labelVal in labelledBlocks) {
           labelledBlocks = {};
           labelledJumps = [];
           break FINDLABELLEDBLOCKS;
         }
-        labelledBlocks[labelCond[1]] = block;
+        labelledBlocks[labelVal] = block;
       }
       // Does it assign a specific label value at exit?
       if ('label' in block.kill) {
