@@ -210,6 +210,7 @@ var LibraryGL = {
       }
     },
 
+#if LEGACY_GL_EMULATION
     // Find a token in a shader source string
     findToken: function(source, token) {
       function isIdentChar(ch) {
@@ -238,6 +239,7 @@ var LibraryGL = {
       } while (true);
       return false;
     },
+#endif
 
     getSource: function(shader, count, string, length) {
       var source = '';
@@ -255,6 +257,7 @@ var LibraryGL = {
         }
         source += frag;
       }
+#if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
       type = GLctx.getShaderParameter(GL.shaders[shader], 0x8B4F /* GL_SHADER_TYPE */);
       if (type == 0x8B30 /* GL_FRAGMENT_SHADER */) {
@@ -270,6 +273,7 @@ var LibraryGL = {
 #endif
         }
       }
+#endif
       return source;
     },
 
