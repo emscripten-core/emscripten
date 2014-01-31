@@ -141,7 +141,9 @@
     }, 
     {
         "file": "libc/stdlib.h", 
-        "defines": [],
+        "defines": [
+            "RAND_MAX"
+        ],
         "structs": {
             // NOTE: The hash sign at the end of this name is a hint to the processor that it mustn't prefix "struct " to the name to reference this struct.
             // It will be stripped away when writing the compiled JSON file. You can just refer to it as C_STRUCTS.div_t when using it in the JS code.
