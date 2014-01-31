@@ -414,15 +414,15 @@ class sockets(BrowserCore):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160)),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161)),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49161))
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49162), 1)
     ]
 
     # Basic test of node client against both a Websockified and compiled echo server.
-    for harness in harnesses:
+    for harness, datagram in harnesses:
       with harness:
-        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', path_from_root('tests', 'sockets', 'client.js'), '-DSOCKK=%d' % harness.listen_port, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', path_from_root('tests', 'sockets', 'client.js'), '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
 
         out = run_js(path_from_root('tests', 'sockets', 'client.js'), engine=NODE_JS, full_output=True)
         self.assertContained('do_msg_read: read 14 bytes', out)
