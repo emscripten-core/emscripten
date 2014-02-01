@@ -6166,7 +6166,9 @@ def process(filename):
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
   def test_emscripten_log(self):
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE] # XXX, emscripten_log is broken in spidermonkey currently, issue #1970
+    if Settings.ASM_JS:
+      # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
+      self.banned_js_engines = [SPIDERMONKEY_ENGINE] 
     if self.emcc_args is None: return self.skip('This test needs libc.')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     self.do_run('#define RUN_FROM_JS_SHELL\n' + open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
