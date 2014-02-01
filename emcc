@@ -2074,7 +2074,12 @@ try:
         # Non-modifiable code, just load the code directly
         script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
       else:
-        # Potentially-modifiable code, load as text, modify, then execute
+        # Potentially-modifiable code, load as text, modify, then execute. This lets you
+        # patch the code on the client machine right before it is executed, perhaps based
+        # on information about the client. For example,
+        #   code = code.replace(/Math_fround\(/g, '(');
+        # could be used to remove Math.fround optimization (in an unminified build), if
+        # the client does not support Math.fround natively.
         code = '''
 // Load the code as text, and execute it asynchronously. This keeps everything
 // async and responsive, while also making it possible to modify the code on
