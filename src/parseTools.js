@@ -1181,7 +1181,7 @@ function getHeapOffset(offset, type, forceAsm) {
 }
 
 function makeVarDef(js) {
-  if (!ASM_JS) js = 'var ' + js;
+  if (!ASM_JS && (Framework.currItem && !Framework.currItem.funcData.async)) js = 'var ' + js;
   return js;
 }
 

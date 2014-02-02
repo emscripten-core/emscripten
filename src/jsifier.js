@@ -17,6 +17,15 @@ var INDENTATION = ' ';
 
 var functionStubSigs = {};
 
+// constants for async functions
+var ASYNC_CALLBACK = 'async_callback';
+var ASYNC_RETURN_VALUE = 'async_return_value';
+function getAsyncFunctionName(funcName) {
+  // the inner function of async C functions
+  // need a name similar as the original name, will be useful in stack trace
+  return 'async_' + funcName; 
+}
+
 // JSifier
 function JSify(data, functionsOnly) {
   //B.start('jsifier');
@@ -77,7 +86,7 @@ function JSify(data, functionsOnly) {
         assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
         libFuncsToInclude = [];
         for (var key in LibraryManager.library) {
-          if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
+          if (!key.match(/__(deps|postset|inline|asm|sig|async)$/)) {
             libFuncsToInclude.push(key);
           }
         }
@@ -588,6 +597,9 @@ function JSify(data, functionsOnly) {
     
     if (DLOPEN_SUPPORT) Functions.getIndex(func.ident);
 
+    if(func.async)
+      paramIdents.unshift(ASYNC_CALLBACK);
+
     func.JS += 'function ' + func.ident + '(' + paramIdents.join(',') + '){\n';
 
     if (PGO) {
@@ -626,9 +638,28 @@ function JSify(data, functionsOnly) {
           }).join(',') + ';\n';
         }
       }
-    }
-
-    if (!ASM_JS) {
+    } else if (func.async) {
+      // similar as above
+      addVariable('label', 'i32', func);
+      var vars = values(func.variables).filter(function(v) {
+        return v.origin !== 'funcparam' &&
+               (!isIllegalType(getImplementationType(v)) || v.ident.indexOf('$', 1) > 0); 
+      });
+      if (vars.length > 0) {
+        var chunkSize = 20;
+        var chunks = [];
+        var i = 0;
+        while (i < vars.length) {
+          chunks.push(vars.slice(i, i+chunkSize));
+          i += chunkSize;
+        }
+        for (i = 0; i < chunks.length; i++) {
+          func.JS += INDENTATION + 'var ' + chunks[i].map(function(v) {
+            return v.ident;
+          }).join(',') + ';\n';
+        }
+      }
+    } else {
       if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
       func.JS += INDENTATION + 'var label=0;\n';
     }
@@ -730,14 +761,29 @@ function JSify(data, functionsOnly) {
               ret += makeSetValue('setjmpTable', '0', '0', 'i32') + ';'; // initialize first entry to 0
             }
           }
+
+          if(func.async) {
+            // define the closure
+            ret += indent + '(function ' + getAsyncFunctionName(func.ident) + '(' + ASYNC_RETURN_VALUE + '){\n';
+          }
+
           ret += indent + 'while(1)';
           if (func.setjmpTable && !ASM_JS) {
             ret += 'try { ';
           }
           ret += 'switch(' + asmCoercion('label', 'i32') + '){\n';
           ret += block.labels.map(function(label) {
-            return INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
-                          + getLabelLines(label);
+            var ret = INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n';
+            // TODO: make this the 'asyncCleanup' field
+            if(label.assignAsyncReturnValueTo) {
+              // retrieve the return value
+              ret += INDENTATION + label.assignAsyncReturnValueTo + '=' + ASYNC_RETURN_VALUE + ';\n';
+            }
+            if(label.restoreVarArgsStack) {
+              ret += INDENTATION + 'STACKTOP=tempVarArgs;\n';
+            }
+            ret += getLabelLines(label);
+            return ret;
           }).join('\n') + '\n';
           if (func.setjmpTable && ASM_JS) {
             // emit a label in which we write to the proper local variable, before jumping to the actual label
@@ -755,6 +801,11 @@ function JSify(data, functionsOnly) {
             ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
           }
           if (ASM_JS && func.returnType !== 'void') ret += '  return ' + asmInitializer(func.returnType) + ';\n'; // Add a return
+
+          if(func.async) {
+            // close the closure
+            ret += indent + '})();';
+          }
         } else {
           ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0]);
         }
@@ -881,9 +932,9 @@ function JSify(data, functionsOnly) {
   function makeAssign(item) {
     var valueJS = item.JS;
     item.JS = '';
-    if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED) { // asm only needs non-allocas
+    if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED || item.funcData.async) { // asm only needs non-allocas
       if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
-      item.JS += ((ASM_JS || item.overrideSSA) ? '' : 'var ') + toNiceIdent(item.assignTo);
+      item.JS += ((ASM_JS || item.overrideSSA || item.funcData.async) ? '' : 'var ') + toNiceIdent(item.assignTo);
     }
     var value = parseNumerical(valueJS);
     var impl = getVarImpl(item.funcData, item.assignTo);
@@ -922,7 +973,7 @@ function JSify(data, functionsOnly) {
     return ';';
   }
   function varHandler(item) { // assigns into phis become simple vars
-    return ASM_JS ? ';' : ('var ' + item.ident + ';');
+    return (ASM_JS || item.funcData.async) ? ';' : ('var ' + item.ident + ';');
   }
   function storeHandler(item) {
     var value = finalizeLLVMParameter(item.value);
@@ -1027,9 +1078,10 @@ function JSify(data, functionsOnly) {
     label = getOldLabel(label);
     if (!phiSets[label]) return '';
     var labelSets = phiSets[label];
+    var isAsync = Framework.currItem.funcData.async;
     // FIXME: Many of the |var |s here are not needed, but without them we get slowdowns with closure compiler. TODO: remove this workaround.
     if (labelSets.length == 1) {
-      return (ASM_JS ? '' : 'var ') + labelSets[0].ident + '=' + labelSets[0].valueJS + ';';
+      return (ASM_JS || isAsync ? '' : 'var ') + labelSets[0].ident + '=' + labelSets[0].valueJS + ';';
     }
     // TODO: eliminate unneeded sets (to undefined etc.)
     var deps = {}; // for each ident we will set, which others it depends on
@@ -1200,11 +1252,19 @@ function JSify(data, functionsOnly) {
           +  "INDENT = INDENT.substr(0, INDENT.length-2);";
     }
     ret += 'return';
+
+    if(item.funcData.async)
+      ret += ' ' + ASYNC_CALLBACK + '(';
+
     var value = item.value ? finalizeLLVMParameter(item.value) : null;
     if (!value && item.funcData.returnType != 'void') value = '0'; // no-value returns must become value returns if function returns
     if (value) {
       ret += ' ' + asmCoercion(value, item.type);
     }
+
+    if(item.funcData.async)
+      ret += ')';
+
     return ret + ';';
   }
   function resumeHandler(item) {
@@ -1246,13 +1306,16 @@ function JSify(data, functionsOnly) {
           + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
           + 'return null } })();';
     }
-    ret = makeVarArgsCleanup(ret);
+
+    // TODO: make it 'asyncCleanup'
+    if(!item.async)
+      ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
       var illegal = USE_TYPED_ARRAYS == 2 && isIllegalType(item.type);
       var assignTo = illegal ? item.assignTo + '$r' : item.assignTo;
       ret = makeVarDef(assignTo) + '=' + ret;
-      if (ASM_JS) addVariable(assignTo, item.type);
+      if (ASM_JS || item.async) addVariable(assignTo, item.type);
       if (illegal) {
         var bits = getBits(item.type);
         for (var i = 0; i < bits/32; i++) {
@@ -1625,7 +1688,18 @@ function JSify(data, functionsOnly) {
       if (!ASM_JS || functionTableCall) callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }
 
-    var ret = callIdent + '(' + args.join(',') + ')';
+    var ret = '';
+
+    // prepend the async callback
+    var args1 = args;
+    if(item.async) {
+      // setup the label for callback
+      // and make sure we return 
+      ret += 'label = ' + item.asyncReturnLabel + ';return ';
+      args1.unshift(getAsyncFunctionName(item.funcData.ident)); 
+    }
+
+    ret += callIdent + '(' + args1.join(',') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
       if (ffiCall) {
         ret = asmFFICoercion(ret, returnType);
@@ -1662,7 +1736,7 @@ function JSify(data, functionsOnly) {
   function callHandler(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
     var ret = makeFunctionCall(item, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
-    return makeVarArgsCleanup(ret);
+    return item.async ? ret : makeVarArgsCleanup(ret);
   }
 
   function unreachableHandler(item) {
@@ -1928,6 +2002,65 @@ function JSify(data, functionsOnly) {
 
     PassManager.serialize();
   }
+  
+  // check if any async functions are used, mark them if any
+  function checkAsyncFunctions() {
+    var asyncLibFunctions = []; 
+    data.functionStubs.forEach(function(func) {
+      // check only the functions used by C
+      // do not check __deps: a sync function may depend on async functions
+      if (LibraryManager.library[LibraryManager.getRootIdent(func.ident.substr(1)) + '__async']) {
+        asyncLibFunctions.push(func.ident);
+      }
+    });
+
+    // nothing to do if no async function is used
+    if(asyncLibFunctions.length == 0)
+      return;
+
+    // let runtime know
+    print('Module["async"] = true;\n');
+
+
+    /*
+     * analyze the call graph and mark async functions
+     * we have callee's dumped from emscripten.py
+     */
+    
+    // create call graph
+    // b in callGraph[a] <=> b calls a
+    var callGraph = {};
+    data.unparsedFunctions.forEach(function(func) {
+      var caller = func.ident;
+      // ignore the first and the last line, which are function definitions
+      for(var i = 1, l = func.lines.length - 1; i < l; ++i) {
+        var callee = toNiceIdent(func.lines[i].replace(/^\s+|\s+$/g, ''));
+        if (!(callee in callGraph))
+          callGraph[callee] = {};
+        callGraph[callee][caller] = true;
+      }
+    });
+    // perform DFS on the graph, search for all async functions
+    var asyncFunctions = {};
+    var functionsToCheck = asyncLibFunctions;
+
+    while(functionsToCheck.length > 0) {
+      var func = functionsToCheck.pop();
+      asyncFunctions[func] = true;
+      // check all the functions that call func
+      var callers = callGraph[func];
+      if (callers) {
+        for (var caller in callers) {
+          if(!(caller in asyncFunctions)) {
+            asyncFunctions[caller] = true;
+            functionsToCheck.push(caller);
+          }
+        }
+      }
+    }
+
+    Functions.asyncFunctions = asyncFunctions;
+  }
 
   // Data
 
@@ -1937,6 +2070,7 @@ function JSify(data, functionsOnly) {
       data.unparsedFunctions.forEach(function(func) {
         Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
       });
+      checkAsyncFunctions();
     }
     data.functionStubs.forEach(functionStubHandler);
     assert(data.functions.length == 0);

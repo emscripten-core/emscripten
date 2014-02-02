@@ -109,6 +109,12 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     meta = ''
     meta_start = -1
 
+  # extract callees
+  # do not care about function pointers
+  call_iter = re.finditer('\n\s*(?:[%@][^ ]*\s+=\s+)?(?:(?:tail\s+)?call|invoke)[^\(\n]*?(@[^\(]+)\(', ll)
+  last_call_idx = -1
+  last_call_match = None
+
   start = ll.find('\n') if ll[0] == ';' else 0 # ignore first line, which contains ; ModuleID = '/dir name'
 
   func_start = start
@@ -125,7 +131,19 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     end = ll.find('\n}', func_start)
     last = end+3
     funcs.append((header, ll[func_start+1:last]))
-    pre.append(header + '}\n')
+    pre.append(header)
+    # dump callees for call graph analysis
+    try:
+      while last_call_idx < func_start:
+        last_call_match = call_iter.next()
+        last_call_idx = last_call_match.start()
+      while last_call_idx < end:
+        pre.append('  ' + last_call_match.group(1)+ '\n')
+        last_call_match = call_iter.next()
+        last_call_idx = last_call_match.start()
+    except StopIteration:
+      last_call_idx = len(ll)
+    pre.append('}\n')
     func_start = last
   ll = None
 

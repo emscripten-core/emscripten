@@ -6377,6 +6377,76 @@ def process(filename):
 
     self.do_run_from_file(src, output)
 
+  # TODO: where shall I put this test?
+  def test_async_transform(self):
+    if self.emcc_args is None: return self.skip('need emcc')
+    if Settings.ASM_JS: return self.skip('async transform does not work with ASM.js currently')
+
+    open(os.path.join(self.get_dir(), 'tmp_lib.js'), 'w').write('''
+      mergeInto(LibraryManager.library, {
+        async_sleep__async: true,
+        async_sleep: function (callback, msec) {
+          setTimeout(callback, msec);
+        },
+      });
+    ''')
+
+    open(os.path.join(self.get_dir(), 'tmp.c'), 'w').write('''
+      #include <stdio.h>
+      #include <setjmp.h>
+      static jmp_buf buf;
+      void async_sleep(int);
+      void work1() {
+         // no return
+         async_sleep(100);
+      }
+      int work(int i) {
+        switch(i) {
+          case 0:
+            // normal async call
+            printf("hello");
+            async_sleep(100);
+            printf("world");
+            break;
+          case 1:
+            // fake async call
+            printf("hello");
+            printf("world");
+            break;
+          case 2:
+            // return early
+            printf("hello");
+            work1();
+            printf("world");
+            return 1024;
+            break;
+          case 3:
+            // setjmp / longjmp
+            printf("hello");
+            longjmp(buf, 1);
+            printf("world");
+            return 1024;
+        }
+        return 1024;
+      }
+      int main() {
+        if(!setjmp(buf)) 
+        {
+            for(int i = 0; i < 4; ++i)
+              printf("%d", work(i));
+            fflush(stdout);
+        } else {
+            printf("jmp");
+        }
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'tmp.c'), '--js-library', os.path.join(self.get_dir(), 'tmp_lib.js')]).communicate()
+    self.assertIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')).strip(), ('helloworld1024helloworld1024helloworld1024hellojmp').strip())
+
+
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):

@@ -1763,6 +1763,68 @@ function analyzer(data, sidePass) {
     });
   }
 
+  // perform transformations if async functions are used
+  function asyncTransformer() {
+    if(!Functions.asyncFunctions || keys(Functions.asyncFunctions).length == 0)
+      return;
+
+    function isAsync(ident) {
+      // currently we mark all C functions as async
+      return (ident in Functions.asyncFunctions);
+    }
+
+    // mark async functions definitions and calls
+    item.functions.forEach(function(func) {
+      if(!isAsync(func.ident))
+        return;
+
+      func.async = true;
+
+      for (var i = 0; i < func.labels.length; ++i) {
+        var label = func.labels[i];
+        for (var j = 0; j < label.lines.length; ++j) {
+          var line = label.lines[j];
+          if ((line.intertype == 'call') && isAsync(line.ident)) {
+            line.async = true;
+            // split a new label, simliar as handling setjmp
+            // TODO: setjmp may be implemented as an async function ?
+            var newLabelId = line.asyncReturnLabel = func.labelIdCounter++;
+            var newLabelLines = label.lines.slice(j+1);
+
+            var newLabel = {
+              intertype: 'label',
+              ident: newLabelId,
+              lineNum: label.lineNum + 0.5,
+              lines: label.lines.slice(j+1)
+            };
+
+            // TODO: 
+            // handle this in the 'call' line, mark then as 'asyncCleanup'
+            // link this label to the 'call' and add 'asyncCleanup' when generating JS
+            
+            // handle return value
+            if (line.assignTo) {
+              newLabel.assignAsyncReturnValueTo = line.assignTo;
+              delete line.assignTo;
+            }
+
+            // handle stack for varargs
+            if (isVarArgsFunctionType(line.type))
+              newLabel.restoreVarArgsStack = true;
+            
+
+            func.labels.splice(i+1, 0, newLabel);
+
+            func.labelsDict[newLabelId] = func.labels[i+1];
+            label.lines = label.lines.slice(0, j+1);
+
+            // TODO: fix phi?
+          }
+        }
+      }
+    });
+  }
+
   // main
   castAway();
   legalizer();
@@ -1774,6 +1836,7 @@ function analyzer(data, sidePass) {
   labelAnalyzer();
   stackAnalyzer();
   relooper();
+  asyncTransformer();
 
   //B.stop('analyzer');
   return item;
