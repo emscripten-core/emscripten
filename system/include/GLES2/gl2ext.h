@@ -493,22 +493,22 @@ typedef void (GL_APIENTRYP PFNGLFRAMEBUFFERTEXTURE3DOES) (GLenum target, GLenum 
 
 /* GL_OES_texture_float */
 #ifndef GL_OES_texture_float
-#define GL_OES_texture_float 1
+#define GL_OES_texture_float 0
 #endif
 
 /* GL_OES_texture_float_linear */
 #ifndef GL_OES_texture_float_linear
-#define GL_OES_texture_float_linear 1
+#define GL_OES_texture_float_linear 0
 #endif
 
 /* GL_OES_texture_half_float */
 #ifndef GL_OES_texture_half_float
-#define GL_OES_texture_half_float 1
+#define GL_OES_texture_half_float 0
 #endif
 
 /* GL_OES_texture_half_float_linear */
 #ifndef GL_OES_texture_half_float_linear
-#define GL_OES_texture_half_float_linear 1
+#define GL_OES_texture_half_float_linear 0
 #endif
 
 /* GL_OES_texture_npot */
