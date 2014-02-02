@@ -5109,7 +5109,7 @@ def process(filename):
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
         if os.environ.get('EMCC_FAST_COMPILER') == '1' and os.path.basename(shortname) in [
-          'structparam', 'uadd_overflow_ta2', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', 'phientryimplicit', 'phiself', 'invokebitcast', # invalid ir
+          'structparam', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', 'phientryimplicit', 'phiself', 'invokebitcast', # invalid ir
           'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
           '2xi40', # pnacl limitations in ExpandGetElementPtr
           'legalizer_ta2', # pnacl limitation in not legalizing i104, i96, etc.
