@@ -150,7 +150,7 @@ mergeInto(LibraryManager.library, {
           return callback(new Error('node type not supported'));
         }
 
-        FS.utime(path, { timestamp: entry.timestamp });
+        FS.utime(path, entry.timestamp, entry.timestamp);
       } catch (e) {
         return callback(e);
       }
