@@ -3552,8 +3552,13 @@ ok
   def test_rand(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 int main()
 {
+    // we need RAND_MAX to be a bitmask (power of 2 minus 1). this assertions guarantees
+    // if RAND_MAX changes the test failure will focus attention on that issue here.
+    assert(RAND_MAX == 0x7fffffff);
+
     srand(0xdeadbeef);
     for(int i = 0; i < 10; ++i)
         printf("%d\n", rand());

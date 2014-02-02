@@ -3458,7 +3458,7 @@ LibraryManager.library = {
   rand_r: function(seedp) {
     seedp = seedp|0; 
     var val = 0;
-    val = ((Math_imul({{{ makeGetValueAsm('seedp', 0, 'i32') }}}, 31010991)|0) + 0x676e6177 ) & {{{ cDefine('RAND_MAX') }}};
+    val = ((Math_imul({{{ makeGetValueAsm('seedp', 0, 'i32') }}}, 31010991)|0) + 0x676e6177 ) & {{{ cDefine('RAND_MAX') }}}; // assumes RAND_MAX is in bit mask form (power of 2 minus 1)
     {{{ makeSetValueAsm('seedp', 0, 'val', 'i32') }}};
     return val|0;
   },
