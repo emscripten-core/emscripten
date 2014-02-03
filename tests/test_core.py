@@ -1927,7 +1927,7 @@ def process(filename):
 
   def test_inlinejs(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp only supports EM_ASM')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -1940,7 +1940,7 @@ def process(filename):
 
   def test_inlinejs2(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp only supports EM_ASM')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs2')
       src, output = (test_path + s for s in ('.in', '.out'))
