@@ -4642,7 +4642,16 @@ return malloc(size);
 
     self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('skipping extra parts in fastcomp')
+    assert 'asm1' in test_modes
+    if self.run_name == 'asm1':
+      print 'verifing postsets'
+      generated = open('src.cpp.o.js').read()
+      generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
+      main = generated[generated.find('function runPostSets'):]
+      main = main[:main.find('\n}')]
+      assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
+
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp always aliases pointers')
 
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
@@ -4660,14 +4669,6 @@ return malloc(size);
       assert ' & 3]()' not in final, 'small function table does not exist'
       assert ' & 255]()' not in original, 'big function table does not exist'
       assert ' & 255]()' in final, 'big function table exists'
-
-    assert 'asm1' in test_modes
-    if self.run_name == 'asm1':
-      generated = open('src.cpp.o.js').read()
-      generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
-      main = generated[generated.find('function runPostSets'):]
-      main = main[:main.find('\n}')]
-      assert main.count('\n') == 7, 'must not emit too many postSets: %d' % main.count('\n')
 
   def test_simd(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
