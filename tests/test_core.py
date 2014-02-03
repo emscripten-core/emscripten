@@ -4699,7 +4699,7 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '1': Settings.NAMED_GLOBALS = 1 # test coverage for this
+    if os.environ.get('EMCC_FAST_COMPILER') != '1': Settings.NAMED_GLOBALS = 1 # test coverage for this; fastcomp never names globals
 
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
