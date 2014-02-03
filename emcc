@@ -1206,8 +1206,10 @@ try:
       jcache = False
 
     fastcomp_opts = ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
-    if not shared.Settings.DISABLE_EXCEPTION_CATCHING:
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
       fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
+      if len(shared.Settings.EXCEPTION_CATCHING_WHITELIST) > 0:
+        fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST)]
 
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'

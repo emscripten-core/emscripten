@@ -251,8 +251,8 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
                                     //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
 
-var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in listed functions if
-                                        // DISABLE_EXCEPTION_CATCHING = 2 set
+var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
+                                        // DISABLE_EXCEPTION_CATCHING = 2 is set
 
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
