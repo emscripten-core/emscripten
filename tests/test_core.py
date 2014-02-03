@@ -1480,7 +1480,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_segfault(self):
     if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
-    if os.environ.get('EMCC_FAST_COMPILER') == '1' and '-O2' not in self.emcc_args: return self.skip('todo in non-jsopts-enabled fastcomp')
 
     Settings.SAFE_HEAP = 1
 
