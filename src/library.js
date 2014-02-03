@@ -1641,8 +1641,8 @@ LibraryManager.library = {
             for (var i = 0; i < maxx; i++) {
               next = get();
               {{{ makeSetValue('argPtr++', 0, 'next', 'i8') }}};
+              if (next === 0) return i > 0 ? fields : fields-1; // we failed to read the full length of this field
             }
-            if (next === 0) return fields-1; // we failed to read this field
             formatIndex += nextC - formatIndex + 1;
             continue;
           }
