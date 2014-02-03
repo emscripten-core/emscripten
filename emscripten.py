@@ -737,14 +737,15 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
   #     JS library dependencies, etc.
 
-  if DEBUG:
-    logging.debug('emscript: llvm backend')
-    t = time.time()
-
   temp_js = temp_files.get('.4.js').name
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  shared.jsrun.timeout_run(subprocess.Popen([backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js], stdout=subprocess.PIPE))
-
+  backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
+  if settings['PRECISE_F32']:
+    backend_args += ['-emscripten-precise-f32']
+  if DEBUG:
+    logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
+    t = time.time()
+  shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
   if DEBUG:
     logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
     t = time.time()
