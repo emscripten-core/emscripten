@@ -1892,8 +1892,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output, [], lambda x, err: x.replace('\n', '*'))
 
   def test_llvm_used(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('pnacl kills llvm_used')
-
     Building.LLVM_OPTS = 3
 
     test_path = path_from_root('tests', 'core', 'test_llvm_used')
