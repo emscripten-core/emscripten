@@ -6368,6 +6368,11 @@ def process(filename):
 
     self.do_run_from_file(src, output)
 
+  def test_minmax(self):
+    if self.emcc_args == None: return self.skip('needs emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') != '1': return self.skip('this test will not pass in the old compiler')
+    self.do_run(open(path_from_root('tests', 'test_minmax.c')).read(), 'NAN != NAN\nSuccess!')
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
