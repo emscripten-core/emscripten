@@ -104,6 +104,9 @@ var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fu
                               // for ways to help find places in your code where unaligned reads/writes are done -
                               // you might be able to refactor your codebase to prevent them, which leads to
                               // smaller and faster code, or even the option to turn this flag on.
+var WARN_UNALIGNED = 1; // Warn at compile time about instructions that LLVM tells us are not fully aligned.
+                        // This is useful to find places in your code where you might refactor to ensure proper
+                        // alignment. (this option is fastcomp-only)
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // Note that we do not catch 32-bit multiplication by default (which must be done in

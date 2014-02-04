@@ -742,6 +742,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
   if settings['PRECISE_F32']:
     backend_args += ['-emscripten-precise-f32']
+  if settings['WARN_UNALIGNED']:
+    backend_args += ['-emscripten-warn-unaligned']
   if DEBUG:
     logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
     t = time.time()

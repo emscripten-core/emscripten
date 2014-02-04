@@ -2353,3 +2353,24 @@ int main() {
     err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
     assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1], err[1]
 
+  def test_warn_unaligned(self):
+    if os.environ.get('EMCC_FAST_COMPILER') != '1': return self.skip('need fastcomp')
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+static const double grid[4][2] = {{-3 / 3., -1 / 3.},
+                                  {+1 / 3., -3 / 3.},
+                                  {-1 / 3., +3 / 3.},
+                                  {+3 / 3., +1 / 3.}};
+int main() {
+  for (int i = 0; i < 4; i++)
+    printf("%d:%.2f,%.2f ", i, grid[i][0], grid[i][1]);
+  printf("\n");
+  return 0;
+}
+''')
+    output = Popen([PYTHON, EMCC, 'src.cpp', '-O1', '-s', 'WARN_UNALIGNED=1'], stderr=PIPE).communicate()
+    assert 'emcc: warning: unaligned store' in output[1]
+    output = Popen([PYTHON, EMCC, 'src.cpp', '-s', 'WARN_UNALIGNED=1', '-g'], stderr=PIPE).communicate()
+    assert 'emcc: warning: unaligned store' in output[1]
+    assert '@line 9 "src.cpp"' in output[1]
+
