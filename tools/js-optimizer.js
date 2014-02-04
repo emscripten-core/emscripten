@@ -1143,7 +1143,9 @@ function optimizeShiftsAggressive(ast) {
 // or such. Simplifying these saves space and time.
 function simplifyNotCompsDirect(node) {
   if (node[0] === 'unary-prefix' && node[1] === '!') {
-    if (node[2][0] === 'binary') {
+    // de-morgan's laws do not work on floats, due to nans >:(
+    if (node[2][0] === 'binary' && (!asm || (((node[2][2][0] === 'binary' && node[2][2][1] === '|') || node[2][2][0] === 'num') &&
+                                             ((node[2][3][0] === 'binary' && node[2][3][1] === '|') || node[2][3][0] === 'num')))) {
       switch(node[2][1]) {
         case '<': return ['binary', '>=', node[2][2], node[2][3]];
         case '>': return ['binary', '<=', node[2][2], node[2][3]];

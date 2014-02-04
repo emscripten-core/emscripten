@@ -540,4 +540,14 @@ function badf2() {
  $9 = (HEAPF32[tempDoublePtr>>2]=$8,HEAP32[tempDoublePtr>>2]|0);
  HEAP32[$gep23_asptr>>2] = $9;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2"]
+function fcomp() {
+  // de-morgan's laws are not valid on floats, due to NaNs >:(
+ if (!($y < $x)) return 5;
+ if (!(5 < $x)) return 5;
+ if (!($y < 5)) return 5;
+ if (!(($a|0) < ($b|0))) return 5;
+ if (!(($a|0) < 5)) return 5;
+ if (!(5 < ($b|0))) return 5;
+ if (!(5 < 5)) return 5;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp"]

@@ -39,7 +39,7 @@ function looop() {
  } while (!condition());
  do {
   do_it();
- } while (a <= b);
+ } while (!(a > b));
  do {
   do_it();
  } while (x());
