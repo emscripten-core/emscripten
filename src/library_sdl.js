@@ -215,7 +215,6 @@ var LibrarySDL = {
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
       var surf = _malloc({{{ C_STRUCTS.SDL_Surface.__size__ }}});  // SDL_Surface has 15 fields of quantum size
-      var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
       var pixelFormat = _malloc({{{ C_STRUCTS.SDL_PixelFormat.__size__ }}});
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
 
@@ -229,7 +228,7 @@ var LibrarySDL = {
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.h, 'height', 'i32') }}};       // SDL_Surface.h
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pitch, 'width * bpp', 'i32') }}};      // SDL_Surface.pitch, assuming RGBA or indexed for now,
                                                                                // since that is what ImageData gives us in browsers
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', 'void*') }}};     // SDL_Surface.pixels
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, '0', 'void*') }}};     // SDL_Surface.pixels, lazily initialized inside of SDL_LockSurface
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect, '0', 'i32*') }}};     // SDL_Surface.offset
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
@@ -274,7 +273,7 @@ var LibrarySDL = {
         canvas: canvas,
         ctx: ctx,
         surf: surf,
-        buffer: buffer,
+        buffer: 0,
         pixelFormat: pixelFormat,
         alpha: 255,
         flags: flags,
@@ -337,7 +336,7 @@ var LibrarySDL = {
 
       var info = SDL.surfaces[surf];
       if (!info.usePageCanvas && info.canvas) SDL.canvasPool.push(info.canvas);
-      _free(info.buffer);
+      if (info.buffer) _free(info.buffer);
       _free(info.pixelFormat);
       _free(surf);
       SDL.surfaces[surf] = null;
@@ -985,6 +984,11 @@ var LibrarySDL = {
 
     surfData.locked++;
     if (surfData.locked > 1) return 0;
+
+    if (!surfData.buffer) {
+      surfData.buffer = _malloc(surfData.width * surfData.height * 4);
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'surfData.buffer', 'void*') }}};
+    }
 
     // Mark in C/C++-accessible SDL structure
     // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
