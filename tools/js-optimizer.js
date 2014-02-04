@@ -709,10 +709,6 @@ function simplifyExpressions(ast) {
             }
           }
         });
-        var hasFloat = false;
-        for (var v in asmData.vars) {
-          if (asmData.vars[v] === ASM_FLOAT) hasFloat = true;
-        }
         for (var v in bitcastVars) {
           var info = bitcastVars[v];
           // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
@@ -726,7 +722,7 @@ function simplifyExpressions(ast) {
               if (correct === 'HEAP32') {
                 define[3] = ['binary', '|', define[3], ['num', 0]];
               } else {
-                define[3] = ['unary-prefix', '+', define[3]];
+                define[3] = makeAsmCoercion(define[3], asmPreciseF32 ? ASM_FLOAT : ASM_DOUBLE);
               }
               // do we want a simplifybitops on the new values here?
             });
@@ -735,7 +731,7 @@ function simplifyExpressions(ast) {
             });
             var correctType;
             switch(asmData.vars[v]) {
-              case ASM_INT: correctType = hasFloat ? ASM_FLOAT : ASM_DOUBLE; break;
+              case ASM_INT: correctType = asmPreciseF32 ? ASM_FLOAT : ASM_DOUBLE; break;
               case ASM_FLOAT: case ASM_DOUBLE: correctType = ASM_INT; break;
             }
             asmData.vars[v] = correctType;
@@ -5162,7 +5158,7 @@ function asmLastOpts(ast) {
 
 // Passes table
 
-var minifyWhitespace = false, printMetadata = true, asm = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, last = false;
 
 var passes = {
   // passes
@@ -5191,6 +5187,7 @@ var passes = {
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
+  asmPreciseF32: function() { asmPreciseF32 = true },
   last: function() { last = true },
 };
 
