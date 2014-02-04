@@ -1727,6 +1727,7 @@ var LibrarySDL = {
         SDL.audio.pushAudio=function(ptr,sizeBytes) {
           try {
             --SDL.audio.numAudioTimersPending;
+            if (SDL.audio.paused) return;
 
             var sizeSamples = sizeBytes / SDL.audio.bytesPerSample; // How many samples fit in the callback buffer?
             var sizeSamplesPerChannel = sizeSamples / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
@@ -1777,18 +1778,18 @@ var LibrarySDL = {
             SDL.audio.soundSource[SDL.audio.nextSoundSource]['start'](playtime);
             var buffer_duration = sizeSamplesPerChannel / SDL.audio.freq;
             SDL.audio.nextPlayTime = playtime + buffer_duration;
-            SDL.audio.nextSoundSource = (SDL.audio.nextSoundSource + 1) % 4;
+            // Timer will be scheduled before the buffer completed playing.
+            // Extra buffers are needed to avoid disturbing playing buffer.
+            SDL.audio.nextSoundSource = (SDL.audio.nextSoundSource + 1) % (SDL.audio.numSimultaneouslyQueuedBuffers + 2);
             var secsUntilNextCall = playtime-curtime;
             
             // Queue the next audio frame push to be performed when the previously queued buffer has finished playing.
-            if (SDL.audio.numAudioTimersPending == 0) {
-              var preemptBufferFeedMSecs = buffer_duration/2.0;
-              SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*secsUntilNextCall-preemptBufferFeedMSecs));
-              ++SDL.audio.numAudioTimersPending;
-            }
+            var preemptBufferFeedMSecs = 1000*buffer_duration/2.0;
+            SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*secsUntilNextCall-preemptBufferFeedMSecs));
+            ++SDL.audio.numAudioTimersPending;
 
             // If we are risking starving, immediately queue extra buffers.
-            if (secsUntilNextCall <= buffer_duration && SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
+            if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
               ++SDL.audio.numAudioTimersPending;
               Browser.safeSetTimeout(SDL.audio.caller, 1.0);
             }
