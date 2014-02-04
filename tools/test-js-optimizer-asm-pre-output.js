@@ -519,4 +519,14 @@ function _main($argc, $argv) {
  STACKTOP = __stackBase__;
  return $_0 | 0;
 }
+function badf() {
+ var $9 = 0;
+ $9 = $8 | 0;
+ HEAP32[$gep23_asptr >> 2] = $9;
+}
+function badf2() {
+ var $9 = +0;
+ $9 = +$8;
+ HEAPF32[$gep23_asptr >> 2] = $9;
+}
 

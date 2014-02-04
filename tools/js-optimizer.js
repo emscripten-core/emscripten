@@ -709,6 +709,10 @@ function simplifyExpressions(ast) {
             }
           }
         });
+        var hasFloat = false;
+        for (var v in asmData.vars) {
+          if (asmData.vars[v] === ASM_FLOAT) hasFloat = true;
+        }
         for (var v in bitcastVars) {
           var info = bitcastVars[v];
           // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
@@ -729,7 +733,12 @@ function simplifyExpressions(ast) {
             info.uses.forEach(function(use) {
               use[2][1][1] = correct;
             });
-            asmData.vars[v] = 1 - asmData.vars[v];
+            var correctType;
+            switch(asmData.vars[v]) {
+              case ASM_INT: correctType = hasFloat ? ASM_FLOAT : ASM_DOUBLE; break;
+              case ASM_FLOAT: case ASM_DOUBLE: correctType = ASM_INT; break;
+            }
+            asmData.vars[v] = correctType;
           }
         }
         denormalizeAsm(ast, asmData);
@@ -1577,7 +1586,7 @@ function makeAsmVarDef(v, type) {
     case ASM_INT: return [v, ['num', 0]];
     case ASM_DOUBLE: return [v, ['unary-prefix', '+', ['num', 0]]];
     case ASM_FLOAT: return [v, ['call', ['name', 'Math_fround'], [['num', 0]]]];
-    default: throw 'wha?';
+    default: throw 'wha? ' + JSON.stringify([node, type]) + new Error().stack;
   }
 }
 
