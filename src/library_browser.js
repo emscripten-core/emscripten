@@ -68,32 +68,28 @@ mergeInto(LibraryManager.library, {
       // Currently based on navigator.userAgent string: http://www.useragentstring.com
       var match;
       
-      // OPERA:
-      // Some Operas have "MSIE", "Firefox" etc. in its user agent string,
-      // so it must be checked before these.
-      // Opera 15 switched to WebKit. "OPR" replaced "Opera" in user agent string.
-      // Get version after string "Version/" if present.
       if (match = navigator.userAgent.match(/\b(Opera|OPR)[\/ ](.*\bVersion\/)?([.\w]+)/i)) {
+        // OPERA:
+        // Some Operas have "MSIE", "Firefox" etc. in its user agent string,
+        // so it must be checked before these.
+        // Opera 15 switched to WebKit. "OPR" replaced "Opera" in user agent string.
+        // Get version after string "Version/" if present.
         Browser.isOpera = match[3];
-      } else
-      // FIREFOX:
-              if (match = navigator.userAgent.match(/\bFirefox\/([.\w]+)/i)) {
+      } else if (match = navigator.userAgent.match(/\bFirefox\/([.\w]+)/i)) {
+        // FIREFOX:
         Browser.isFirefox = match[1];
-      } else
-      // CHROME:
-      // Chrome also has "Safari" in its user agent string,
-      // so it must be checked before Safari.
-             if (match = navigator.userAgent.match(/\bChrome\/([.\w]+)/i)) {
+      } else if (match = navigator.userAgent.match(/\bChrome\/([.\w]+)/i)) {
+        // CHROME:
+        // Chrome also has "Safari" in its user agent string,
+        // so it must be checked before Safari.
         Browser.isChrome = match[1];
-      } else
-      // SAFARI:
-             if (match = navigator.userAgent.match(/\bSafari\/([.\w]+)/i)) {
+      } else if (match = navigator.userAgent.match(/\bSafari\/([.\w]+)/i)) {
+        // SAFARI:
         Browser.isSafari = match[1];
-      } else
-      // INTERNET EXPLORER:
-      // IE 11 dropped "MSIE" in user agent string;
-      // "Trident" remains, with version after string "rv:".
-             if (match = navigator.userAgent.match(/\b(MSIE |Trident\b.+\brv:\s*)([.\w]+)/i)) {
+      } else if (match = navigator.userAgent.match(/\b(MSIE |Trident\b.+\brv:\s*)([.\w]+)/i)) {
+        // INTERNET EXPLORER:
+        // IE 11 dropped "MSIE" in user agent string;
+        // "Trident" remains, with version after string "rv:".
         Browser.isIE = match[2];
       }
 
@@ -481,36 +477,9 @@ mergeInto(LibraryManager.library, {
       // Firefox and Opera keycodes will be translated to them.
       var mapping;
       if (Browser.isOpera) {
-        mapping = {
-          219: 91, // Windows key
-          0: 93, // Windows menu key
-          
-          48: 96, // Numpad 0
-          49: 97, // Numpad 1
-          50: 98, // Numpad 2
-          51: 99, // Numpad 3
-          52: 100, // Numpad 4
-          53: 101, // Numpad 5
-          54: 102, // Numpad 6
-          55: 103, // Numpad 7
-          56: 104, // Numpad 8
-          57: 105, // Numpad 9
-          42: 106, // Numpad *
-          43: 107, // Numpad +
-          // 45: 109, // Numpad - -- Discarded, because 45 is also Insert.
-          // 78: 110, // Numpad . -- Discarded, because 78 is also N.
-          47: 111, // Numpad /
-          
-          59: 186, // ; :
-          61: 187, // = +
-          109: 189 // - _
-        };
+        mapping = Browser.keyCodeMapping.opera;
       } else if (Browser.isFirefox) {
-        mapping = {
-          59: 186, // ; :
-          107: 187, // = +
-          109: 189 // - _
-        };
+        mapping = Browser.keyCodeMapping.firefox;
       }
       // Return the mapped keycode, if it exists,
       // or else the original event.keyCode.
@@ -518,7 +487,38 @@ mergeInto(LibraryManager.library, {
              mapping[event.keyCode] :
              event.keyCode;
     },
-    
+    keyCodeMapping: {
+      opera: {
+        219: 91, // Windows key
+        0: 93, // Windows menu key
+        
+        48: 96, // Numpad 0
+        49: 97, // Numpad 1
+        50: 98, // Numpad 2
+        51: 99, // Numpad 3
+        52: 100, // Numpad 4
+        53: 101, // Numpad 5
+        54: 102, // Numpad 6
+        55: 103, // Numpad 7
+        56: 104, // Numpad 8
+        57: 105, // Numpad 9
+        42: 106, // Numpad *
+        43: 107, // Numpad +
+        // 45: 109, // Numpad - -- Discarded, because 45 is also Insert.
+        // 78: 110, // Numpad . -- Discarded, because 78 is also N.
+        47: 111, // Numpad /
+        
+        59: 186, // ; :
+        61: 187, // = +
+        109: 189 // - _
+      },
+      firefox: {
+        59: 186, // ; :
+        107: 187, // = +
+        109: 189 // - _
+      }
+    },
+
 
     getMovementX: function(event) {
       return event['movementX'] ||
