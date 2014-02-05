@@ -2089,15 +2089,20 @@ try:
         # Potentially-modifiable code, load as text, modify, then execute. This lets you
         # patch the code on the client machine right before it is executed, perhaps based
         # on information about the client.
+        checks = []
         mods = []
         if shared.Settings.PRECISE_F32 == 2:
+          checks.append('!Math.fround')
           if 'minifyNames' not in js_optimizer_queue_history:
             # simple dumb replace
-            mods.append('''if (!Math.fround) { console.log('optimizing out Math.fround calls'); code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'") }''')
+            mods.append('''
+console.log('optimizing out Math.fround calls');
+code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'")
+''')
           else:
             # minified, not quite so simple - TODO
             mods.append('''
-if (!Math.fround) try {
+try {
   console.log('optimizing out Math.fround calls');
   var m = /var ([^=]+)=global\.Math\.fround;/.exec(code);
   var minified = m[1];
@@ -2113,27 +2118,36 @@ if (!Math.fround) try {
   code = code.replace("'use asm'", "'almost asm'");
 } catch(e) { console.log('failed to optimize out Math.fround calls ' + e) }
 ''')
-        code = '''
-// Load the code as text, and execute it asynchronously. This keeps everything
-// async and responsive, while also making it possible to modify the code on
-// the client, if necessary.
-var codeXHR = new XMLHttpRequest();
-codeXHR.open('GET', '%s', true);
-codeXHR.onload = function() {
-  var code = codeXHR.responseText;
-  %s
-  var blob = new Blob([code], { type: 'text/javascript' });
-  codeXHR = null;
-  var src = URL.createObjectURL(blob);
+
+        fixes = ''
+        for i in range(len(checks)):
+          fixes += 'if (' + checks[i] + ') { ' + mods[i] + ' }\n'
+
+        # if all the checks are negative, just emit a script tag normally, that's better.
+        # otherwise, do an xhr to get the code as text, modify, and load asynchronously
+        code = 'if (!(' + ' || '.join(checks) + ''')) {
   var script = document.createElement('script');
-  script.src = URL.createObjectURL(blob);
-  script.onload = function() {
-    URL.revokeObjectURL(script.src);
-  };
+  script.src = "''' + base_js_target + '''";
   document.body.appendChild(script);
-};
-codeXHR.send(null);
-''' % (base_js_target, '\n  '.join(mods))
+} else {
+  var codeXHR = new XMLHttpRequest();
+  codeXHR.open('GET', '%s', true);
+  codeXHR.onload = function() {
+    var code = codeXHR.responseText;
+    %s
+    var blob = new Blob([code], { type: 'text/javascript' });
+    codeXHR = null;
+    var src = URL.createObjectURL(blob);
+    var script = document.createElement('script');
+    script.src = URL.createObjectURL(blob);
+    script.onload = function() {
+      URL.revokeObjectURL(script.src);
+    };
+    document.body.appendChild(script);
+  };
+  codeXHR.send(null);
+}
+''' % (base_js_target, fixes)
         script_tag = '''<script>%s</script>''' % code
       html.write(shell.replace('{{{ SCRIPT }}}', script_tag))
     else:
