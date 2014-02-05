@@ -4376,6 +4376,11 @@ PORT: 3979
 
     self.do_run_from_file(src, output)
 
+  def test_netinet_in(self):
+    src = open(path_from_root('tests', 'netinet', 'in.cpp'), 'r').read()
+    expected = open(path_from_root('tests', 'netinet', 'in.out'), 'r').read()
+    self.do_run(src, expected)
+
   # libc++ tests
 
   def test_iostream(self):
