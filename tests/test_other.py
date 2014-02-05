@@ -1808,6 +1808,7 @@ f.close()
       assert 'error' not in err, 'Unexpected stderr: ' + err
 
   def test_chunking(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('not relevant for fastcomp, only checks js compiler chunking')
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     if os.environ.get('EMCC_CORES'): return self.skip('cannot run if cores are altered')
     if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
