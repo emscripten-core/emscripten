@@ -124,8 +124,11 @@ var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 6
                      // 1: Model C++ floats precisely, using Math.fround, polyfilling when necessary. This
                      //    can be slow if the polyfill is used on heavy float32 computation.
                      // 2: Model C++ floats precisely using Math.fround if available in the JS engine, otherwise
-                     //    use an empty polyfill. This will have less of a speed penalty than using the full
-                     //    polyfill in cases where engine support is not present.
+                     //    use an empty polyfill. This will have much less of a speed penalty than using the full
+                     //    polyfill in cases where engine support is not present. In addition, we can
+                     //    remove the empty polyfill calls themselves on the client when generating html,
+                     //    which should mean that this gives you the best of both worlds of 0 and 1, and is
+                     //    therefore recommended.
 var SIMD = 0; // Whether to emit SIMD code ( https://github.com/johnmccutchan/ecmascript_simd )
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure

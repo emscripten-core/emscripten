@@ -1962,8 +1962,9 @@ try:
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
   js_optimizer_extra_info = {}
+  js_optimizer_queue_history = []
   def flush_js_optimizer_queue():
-    global final, js_optimizer_queue, js_optimizer_extra_info
+    global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
     if len(js_optimizer_extra_info) == 0:
       js_optimizer_extra_info = None
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
@@ -1990,6 +1991,7 @@ try:
           final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info)
           js_transform_tempfiles.append(final)
           save_intermediate(name)
+      js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
 
@@ -2079,16 +2081,38 @@ try:
       if debug_level >= 4:
         generate_source_map(target)
       shutil.move(final, js_target)
-      if 1:
+      need_mods = shared.Settings.PRECISE_F32 == 2
+      if not need_mods:
         # Non-modifiable code, just load the code directly
         script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
       else:
         # Potentially-modifiable code, load as text, modify, then execute. This lets you
         # patch the code on the client machine right before it is executed, perhaps based
-        # on information about the client. For example,
-        #   code = code.replace(/Math_fround\(/g, '(');
-        # could be used to remove Math.fround optimization (in an unminified build), if
-        # the client does not support Math.fround natively.
+        # on information about the client.
+        mods = []
+        if shared.Settings.PRECISE_F32 == 2:
+          if 'minifyNames' not in js_optimizer_queue_history:
+            # simple dumb replace
+            mods.append('''if (!Math.fround) { console.log('optimizing out Math.fround calls'); code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'") }''')
+          else:
+            # minified, not quite so simple - TODO
+            mods.append('''
+if (!Math.fround) try {
+  console.log('optimizing out Math.fround calls');
+  var m = /var ([^=]+)=global\.Math\.fround;/.exec(code);
+  var minified = m[1];
+  if (!minified) throw 'fail';
+  var startAsm = code.indexOf('// EMSCRIPTEN_START_FUNCS');
+  var endAsm = code.indexOf('// EMSCRIPTEN_END_FUNCS');
+  var asm = code.substring(startAsm, endAsm);
+  do {
+    var moar = false; // we need to re-do, as x(x( will not be fixed
+    asm = asm.replace(new RegExp('[^a-zA-Z0-9\\\\$\\\\_]' + minified + '\\\\(', 'g'), function(s) { moar = true; return s[0] + '(' });
+  } while (moar);
+  code = code.substring(0, startAsm) + asm + code.substring(endAsm);
+  code = code.replace("'use asm'", "'almost asm'");
+} catch(e) { console.log('failed to optimize out Math.fround calls ' + e) }
+''')
         code = '''
 // Load the code as text, and execute it asynchronously. This keeps everything
 // async and responsive, while also making it possible to modify the code on
@@ -2097,6 +2121,7 @@ var codeXHR = new XMLHttpRequest();
 codeXHR.open('GET', '%s', true);
 codeXHR.onload = function() {
   var code = codeXHR.responseText;
+  %s
   var blob = new Blob([code], { type: 'text/javascript' });
   codeXHR = null;
   var src = URL.createObjectURL(blob);
@@ -2108,7 +2133,7 @@ codeXHR.onload = function() {
   document.body.appendChild(script);
 };
 codeXHR.send(null);
-''' % base_js_target
+''' % (base_js_target, '\n  '.join(mods))
         script_tag = '''<script>%s</script>''' % code
       html.write(shell.replace('{{{ SCRIPT }}}', script_tag))
     else:
