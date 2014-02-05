@@ -100,7 +100,13 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  * Set a C function as the main event loop. The JS environment
  * will call that function at a specified number of frames per
  * second. Setting 0 or a negative value as the fps will use
- * the browser's requestAnimationFrame mechanism.
+ * the browser's requestAnimationFrame mechanism. This is
+ * *HIGHLY* recommended if you are doing rendering, as
+ * the browser's requestAnimationFrame will make sure you
+ * render at a proper smooth rate that lines up with the
+ * the browser and monitor in a proper way. (If you do not
+ * render at all in your application, then you should pick a
+ * specific frame rate that makes sense for your code.)
  *
  * Pausing and resuming the main loop is useful if your app
  * needs to perform some synchronous operation, for example
