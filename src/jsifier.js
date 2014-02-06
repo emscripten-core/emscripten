@@ -224,6 +224,7 @@ function JSify(data, functionsOnly) {
 
   // globalVariable
   function globalVariableHandler(item) {
+
     function needsPostSet(value) {
       if (typeof value !== 'string') return false;
       // (' is ok, as it is something we can indexize later into a concrete int: ('{{ FI_ ...
@@ -274,7 +275,9 @@ function JSify(data, functionsOnly) {
       constant = Runtime.alignMemory(calcAllocatedSize(item.type));
     } else {
       if (item.external) {
-        if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+        if (LibraryManager.library[item.ident.slice(1)]) {
+          constant = LibraryManager.library[item.ident.slice(1)];
+        } else if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
           constant = zeros(Runtime.getNativeFieldSize(item.type));
         } else {
           constant = makeEmptyStruct(item.type);
@@ -282,22 +285,23 @@ function JSify(data, functionsOnly) {
       } else {
         constant = parseConst(item.value, item.type, item.ident);
       }
-      assert(typeof constant === 'object');//, [typeof constant, JSON.stringify(constant), item.external]);
 
       // This is a flattened object. We need to find its idents, so they can be assigned to later
-      var structTypes = null;
-      constant.forEach(function(value, i) {
-        if (needsPostSet(value)) { // ident, or expression containing an ident
-          if (!structTypes) structTypes = generateStructTypes(item.type);
-          itemsDict.GlobalVariablePostSet.push({
-            intertype: 'GlobalVariablePostSet',
-            JS: makeSetValue(makeGlobalUse(item.ident), i, value, structTypes[i], false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
-          });
-          constant[i] = '0';
-        } else {
-          if (typeof value === 'string') constant[i] = deParenCarefully(value);
-        }
-      });
+      if (typeof constant === 'object') {
+        var structTypes = null;
+        constant.forEach(function(value, i) {
+          if (needsPostSet(value)) { // ident, or expression containing an ident
+            if (!structTypes) structTypes = generateStructTypes(item.type);
+            itemsDict.GlobalVariablePostSet.push({
+              intertype: 'GlobalVariablePostSet',
+              JS: makeSetValue(makeGlobalUse(item.ident), i, value, structTypes[i], false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+            });
+            constant[i] = '0';
+          } else {
+            if (typeof value === 'string') constant[i] = deParenCarefully(value);
+          }
+        });
+      }
 
       if (item.external) {
         // External variables in shared libraries should not be declared as
@@ -312,14 +316,18 @@ function JSify(data, functionsOnly) {
       }
 
       // ensure alignment
-      var extra = Runtime.alignMemory(constant.length) - constant.length;
-      if (item.ident.substr(0, 5) == '__ZTV') extra += Runtime.alignMemory(QUANTUM_SIZE);
-      while (extra-- > 0) constant.push(0);
+      if (typeof constant === 'object') {
+        var extra = Runtime.alignMemory(constant.length) - constant.length;
+        if (item.ident.substr(0, 5) == '__ZTV') extra += Runtime.alignMemory(QUANTUM_SIZE);
+        while (extra-- > 0) constant.push(0);
+      }
     }
 
     // NOTE: This is the only place that could potentially create static
     //       allocations in a shared library.
-    constant = makePointer(constant, null, allocator, item.type, index);
+    if (typeof constant === 'object') {
+      constant = makePointer(constant, null, allocator, item.type, index);
+    }
 
     var js = (index !== null ? '' : item.ident + '=') + constant;
     if (js) js += ';';
