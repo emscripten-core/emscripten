@@ -2071,7 +2071,6 @@ def process(filename):
 
   def test_bigswitch(self):
     if self.run_name != 'default': return self.skip('TODO: issue #781')
-
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
@@ -2588,6 +2587,12 @@ The current type of b is: 9
       src, output = (test_path + s for s in ('.in', '.out'))
 
       self.do_run_from_file(src, output)
+
+  def test_memcpy3(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
+    test_path = path_from_root('tests', 'core', 'test_memcpy3')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
 
   def test_getopt(self):
       if self.emcc_args is None: return self.skip('needs emcc for libc')
