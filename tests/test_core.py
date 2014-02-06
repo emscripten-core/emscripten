@@ -2594,6 +2594,12 @@ The current type of b is: 9
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
+  def test_memset(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
+    test_path = path_from_root('tests', 'core', 'test_memset')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
   def test_getopt(self):
       if self.emcc_args is None: return self.skip('needs emcc for libc')
 
