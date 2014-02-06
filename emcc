@@ -1476,6 +1476,13 @@ try:
         ['stdlib', [
          'atof.c',
          'strtod.c',
+        ]],
+        ['string', [
+         'memcmp.c',
+         'strcasecmp.c',
+         'strcmp.c',
+         'strncasecmp.c',
+         'strncmp.c',
         ]]
       ]
       for directory, sources in musl_files:
