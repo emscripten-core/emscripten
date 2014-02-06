@@ -74,6 +74,9 @@
          T scalbnl
          T memcpy
          T strtod
+         T strcoll
+         T __strcoll_l
+         W strcoll_l
          T strcmp
          T strncmp
          T strcasecmp

@@ -3754,13 +3754,6 @@ LibraryManager.library = {
     return pdest;
   },
 
-  // We always assume ASCII locale.
-  strcoll: 'strcmp',
-  strcoll_l__deps: ['strcoll'],
-  strcoll_l: function(px, py) {
-    return _strcoll(px, py); // no locale support yet
-  },
-
   memchr: function(ptr, chr, num) {
     chr = unSign(chr);
     for (var i = 0; i < num; i++) {

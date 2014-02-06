@@ -1545,6 +1545,7 @@ try:
           'iswspace_l.c',
           'iswupper_l.c',
           'iswxdigit_l.c',
+          'strcoll.c',
           'strcasecmp_l.c',
           'strfmon.c',
           'strncasecmp_l.c',
