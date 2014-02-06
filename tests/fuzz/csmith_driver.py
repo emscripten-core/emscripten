@@ -35,7 +35,7 @@ notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
 fails = 0
 
 while 1:
-  opts = '-O' + str(random.randint(0, 2))
+  opts = '-O' + str(random.randint(0, 3))
   print 'opt level:', opts
 
   print 'Tried %d, notes: %s' % (tried, notes)
