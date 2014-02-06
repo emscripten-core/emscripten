@@ -3510,11 +3510,18 @@ LibraryManager.library = {
     return ret;
   },
 
+  emscripten_memcpy_big: function(dest, src, num) {
+    HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
+    return dest;
+  },
+
   memcpy__asm: true,
   memcpy__sig: 'iiii',
+  memcpy__deps: ['emscripten_memcpy_big'],
   memcpy: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
+    if ((num|0) >= 4096) return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
     ret = dest|0;
     if ((dest&3) == (src&3)) {
       while (dest & 3) {
