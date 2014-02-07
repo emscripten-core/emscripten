@@ -47,7 +47,7 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
-import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
+import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging, json
 from subprocess import PIPE, STDOUT
 from tools import shared, jsrun
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS
@@ -1745,18 +1745,15 @@ try:
     # added to here, because our deps go only one way (each library here is checked, then we check the next
     # in order - libcxx, libcxextra, etc. - and then we run the JS compiler and provide extra symbols from
     # library*.js files. But we cannot then go back to the C libraries if a new dep was added!
-    def add_back_needs(need):
-      back_needs = {
-        'uuid_compare': ['memcmp'],
-        'SDL_Init': ['malloc', 'free'],
-      }
-      for ident, deps in back_needs.iteritems():
+    deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
+    def add_back_deps(need):
+      for ident, deps in deps_info.iteritems():
         if ident in need.undefs:
           for dep in deps:
             need.undefs.add(dep)
             shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     for symbols in symbolses:
-      add_back_needs(symbols)
+      add_back_deps(symbols)
 
     all_needed = set()
     for symbols in symbolses:

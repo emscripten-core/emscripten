@@ -1,0 +1,5 @@
+{
+  "uuid_compare": ["memcmp"],
+  "SDL_Init": ["malloc", "free"]
+}
+
