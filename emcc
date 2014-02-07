@@ -1748,8 +1748,20 @@ try:
     force_all = force == '1'
 
     # Scan symbols
-    all_needed = set()
     symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
+
+    # Add in some hacks for js libraries. If a js lib depends on a symbol provided by a C library, it must be
+    # added to here, because our deps go only one way (each library here is checked, then we check the next
+    # in order - libcxx, libcxextra, etc. - and then we run the JS compiler and provide extra symbols from
+    # library*.js files. But we cannot then go back to the C libraries if a new dep was added!
+    def add_back_needs(need):
+      if 'uuid_compare' in need.undefs:
+        need.undefs.add('memcmp')
+        shared.Settings.EXPORTED_FUNCTIONS.append('_memcmp')
+    for symbols in symbolses:
+      add_back_needs(symbols)
+
+    all_needed = set()
     for symbols in symbolses:
       all_needed.update(symbols.undefs)
     for symbols in symbolses:
