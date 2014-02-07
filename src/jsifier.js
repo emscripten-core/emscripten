@@ -325,7 +325,7 @@ function JSify(data, functionsOnly) {
 
     // NOTE: This is the only place that could potentially create static
     //       allocations in a shared library.
-    if (typeof constant === 'object') {
+    if (typeof constant !== 'string') {
       constant = makePointer(constant, null, allocator, item.type, index);
     }
 
