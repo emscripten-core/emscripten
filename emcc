@@ -1745,6 +1745,8 @@ try:
     # added to here, because our deps go only one way (each library here is checked, then we check the next
     # in order - libcxx, libcxextra, etc. - and then we run the JS compiler and provide extra symbols from
     # library*.js files. But we cannot then go back to the C libraries if a new dep was added!
+    # TODO: Move all __deps from src/library*.js to deps_info.json, and use that single source of info
+    #       both here and in the JS compiler.
     deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
     def add_back_deps(need):
       for ident, deps in deps_info.iteritems():
