@@ -311,6 +311,13 @@ Options that are modified or new in %s include:
                            If a directory is passed here, its entire
                            contents will be embedded.
 
+                           Note: Embedding files is much less
+                                 efficient than preloading them. You
+                                 should only use it for small amounts
+                                 of small files. Instead, use
+                                 --preload-file which emits efficient
+                                 binary data.
+
   --preload-file <name>    A file to preload before running the
                            compiled code asynchronously. Otherwise
                            similar to --embed-file, except that this
