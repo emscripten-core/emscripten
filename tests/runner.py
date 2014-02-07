@@ -138,7 +138,11 @@ class RunnerCore(unittest.TestCase):
       post1 = post_build
       post2 = None
 
-    if self.emcc_args is None:
+    emcc_args = self.emcc_args
+    if emcc_args is None:
+      emcc_args = []
+
+    if emcc_args is None: # legacy testing mode, no longer used
       Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
       if post1:
         exec post1 in locals()
@@ -160,7 +164,7 @@ process(sys.argv[1])
 ''')
         transform.close()
         transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
-      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+      Building.emcc(filename + '.o.ll', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
       if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
