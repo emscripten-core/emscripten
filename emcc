@@ -1428,7 +1428,6 @@ try:
     # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
     #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
     libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
-    sdl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'sdl.symbols'))
     libcextra_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcextra.symbols'))
     libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
     libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
@@ -1734,14 +1733,6 @@ try:
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
       return True
 
-    # SDL. We include code that demands malloc/free if not already required, so we have proper malloc/free from JS SDL code.
-    # Note that the Force instance here can be optimized out, but we still export malloc/free, so they will be kept alive.
-    def create_sdl():
-      return build_libcxx(os.path.join('system', 'lib'), 'sdl.bc', ['sdl.cpp'])
-
-    def apply_sdl(need):
-      return 'SDL_Init' in all_needed and ('malloc' not in all_needed or 'free' not in all_needed)
-
     # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
     # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
     force = os.environ.get('EMCC_FORCE_STDLIBS')
@@ -1755,9 +1746,15 @@ try:
     # in order - libcxx, libcxextra, etc. - and then we run the JS compiler and provide extra symbols from
     # library*.js files. But we cannot then go back to the C libraries if a new dep was added!
     def add_back_needs(need):
-      if 'uuid_compare' in need.undefs:
-        need.undefs.add('memcmp')
-        shared.Settings.EXPORTED_FUNCTIONS.append('_memcmp')
+      back_needs = {
+        'uuid_compare': ['memcmp'],
+        'SDL_Init': ['malloc', 'free'],
+      }
+      for ident, deps in back_needs.iteritems():
+        if ident in need.undefs:
+          for dep in deps:
+            need.undefs.add(dep)
+            shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     for symbols in symbolses:
       add_back_needs(symbols)
 
@@ -1773,7 +1770,6 @@ try:
     for name, create, apply_, library_symbols in [('libcxx',    create_libcxx,    apply_libcxx,    libcxx_symbols),
                                                   ('libcextra', create_libcextra, lambda x: True,  libcextra_symbols),
                                                   ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols),
-                                                  ('sdl',       create_sdl,       apply_sdl,       sdl_symbols),
                                                   ('libc',      create_libc,      apply_libc,      libc_symbols)]:
       force_this = force_all or force == name
       if not force_this:
