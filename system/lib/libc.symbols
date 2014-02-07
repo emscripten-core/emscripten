@@ -72,7 +72,16 @@
          W realloc_in_place
          T scalbn
          T scalbnl
+         T memcmp
+         T memcpy
          T strtod
+         T strcoll
+         T __strcoll_l
+         W strcoll_l
+         T strcmp
+         T strncmp
+         T strcasecmp
+         T strncasecmp
          T strtod_l
          T strtof
          T strtof_l

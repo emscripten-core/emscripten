@@ -1476,6 +1476,13 @@ try:
         ['stdlib', [
          'atof.c',
          'strtod.c',
+        ]],
+        ['string', [
+         'memcmp.c',
+         'strcasecmp.c',
+         'strcmp.c',
+         'strncasecmp.c',
+         'strncmp.c',
         ]]
       ]
       for directory, sources in musl_files:
@@ -1538,6 +1545,7 @@ try:
           'iswspace_l.c',
           'iswupper_l.c',
           'iswxdigit_l.c',
+          'strcoll.c',
           'strcasecmp_l.c',
           'strfmon.c',
           'strncasecmp_l.c',

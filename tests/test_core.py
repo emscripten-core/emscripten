@@ -3264,6 +3264,7 @@ def process(filename):
       #include <assert.h>
       #include <stdio.h>
       #include <dlfcn.h>
+      #include <string.h>
 
       typedef int (*FUNCTYPE)(const char *);
 
@@ -3273,6 +3274,10 @@ def process(filename):
         char str[128];
 
         snprintf(str, sizeof(str), "foobar");
+
+        // HACK: Use strcmp in the main executable so that it doesn't get optimized out and the dynamic library
+        //       is able to use it.
+        assert(!strcmp(str, "foobar"));
 
         lib_handle = dlopen("liblib.so", RTLD_NOW);
         assert(lib_handle != NULL);
@@ -3286,7 +3291,7 @@ def process(filename):
         return 0;
       }
       '''
-    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_strcmp']
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_funcs(self):
