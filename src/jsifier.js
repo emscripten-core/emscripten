@@ -1852,7 +1852,7 @@ function JSify(data, functionsOnly) {
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
     if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
-      if (!INCLUDE_FULL_LIBRARY && !SIDE_MODULE) {
+      if (!INCLUDE_FULL_LIBRARY && !SIDE_MODULE && !BUILD_AS_SHARED_LIB) {
         // first row are utilities called from generated code, second are needed from fastLong
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
          'llvm_ctlz_i32', 'llvm_cttz_i32'].forEach(function(func) {
