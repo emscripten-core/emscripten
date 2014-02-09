@@ -5354,7 +5354,7 @@ if (LEGACY_GL_EMULATION) {
 // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
 keys(LibraryGL).forEach(function(x) {
   if (x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return;
-  var original = x;
+  while (typeof LibraryGL[x] === 'string') LibraryGL[x] = LibraryGL[LibraryGL[x]]; // resolve aliases right here, simpler for fastcomp
   var y = 'emscripten_' + x;
   LibraryGL[y] = LibraryGL[x];
   LibraryGL[y + '__deps'] = LibraryGL[x + '__deps']; // note that we might want to rename in the deps as well
