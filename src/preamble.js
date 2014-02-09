@@ -997,6 +997,7 @@ function callRuntimeCallbacks(callbacks) {
   }
 }
 
+var __ATPREINIT__ = []; // functions called before prerun
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
 var __ATMAIN__    = []; // functions called when main() is to be run
@@ -1005,41 +1006,58 @@ var __ATPOSTRUN__ = []; // functions called after the runtime has exited
 
 var runtimeInitialized = false;
 
+// compatibility - merge in any startup tasks from the Module object at this time
+if (Module['preInit']) {
+  if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
+  __ATPREINIT__.push.apply(__ATPREINIT__, Module['preInit']);
+}
+
+if (Module['preRun']) {
+  if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
+  __ATPRERUN__.push.apply(__ATPRERUN__, Module['preRun']);
+}
+
+if (Module['postRun']) {
+  if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
+  __ATPOSTRUN__.push.apply(__ATPOSTRUN__, Module['postRun']);
+}
+
+function preInit() {
+  callRuntimeCallbacks(__ATPREINIT__);
+}
+Module['preInit'] = Module.preInit = preInit;
+
 function preRun() {
-  // compatibility - merge in anything from Module['preRun'] at this time
-  if (Module['preRun']) {
-    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    while (Module['preRun'].length) {
-      addOnPreRun(Module['preRun'].shift());
-    }
-  }
   callRuntimeCallbacks(__ATPRERUN__);
 }
+Module['preRun'] = Module.preRun = preRun;
 
 function ensureInitRuntime() {
   if (runtimeInitialized) return;
   runtimeInitialized = true;
   callRuntimeCallbacks(__ATINIT__);
 }
+Module['initRuntime'] = Module.initRuntime = ensureInitRuntime;
 
 function preMain() {
   callRuntimeCallbacks(__ATMAIN__);
 }
+Module['preMain'] = Module.preMain = preMain;
 
 function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
 }
+Module['exitRuntime'] = Module.exitRuntime = exitRuntime;
 
 function postRun() {
-  // compatibility - merge in anything from Module['postRun'] at this time
-  if (Module['postRun']) {
-    if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-    while (Module['postRun'].length) {
-      addOnPostRun(Module['postRun'].shift());
-    }
-  }
   callRuntimeCallbacks(__ATPOSTRUN__);
 }
+Module['postRun'] = Module.postRun = postRun;
+
+function addOnPreInit(cb) {
+  __ATPREINIT__.unshift(cb);
+}
+Module['addOnPreInit'] = Module.addOnPreInit = addOnPreInit;
 
 function addOnPreRun(cb) {
   __ATPRERUN__.unshift(cb);
