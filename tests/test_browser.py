@@ -1152,8 +1152,6 @@ keydown(100);keyup(100); // trigger the end
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_beeps(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo c++ exceptions in fastcomp')
-
     open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
