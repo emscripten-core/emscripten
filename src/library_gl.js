@@ -2316,6 +2316,7 @@ var LibraryGL = {
   glGetShaderPrecisionFormat__sig: 'v',
   glGetShaderPrecisionFormat: function() { throw 'glGetShaderPrecisionFormat: TODO' },
 
+  glDeleteObject__deps: ['glDeleteProgram', 'glDeleteShader'],
   glDeleteObject__sig: 'vi',
   glDeleteObject: function(id) {
     if (GL.programs[id]) {
@@ -2329,6 +2330,7 @@ var LibraryGL = {
   glDeleteObjectARB: 'glDeleteObject',
 
   glGetObjectParameteriv__sig: 'viii',
+  glGetObjectParameteriv__deps: ['glGetProgramiv', 'glGetShaderiv'],
   glGetObjectParameteriv: function(id, type, result) {
     if (GL.programs[id]) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
@@ -2351,6 +2353,7 @@ var LibraryGL = {
   },
   glGetObjectParameterivARB: 'glGetObjectParameteriv',
 
+  glGetInfoLog__deps: ['glGetProgramInfoLog', 'glGetShaderInfoLog'],
   glGetInfoLog__sig: 'viiii',
   glGetInfoLog: function(id, maxLength, length, infoLog) {
     if (GL.programs[id]) {
@@ -5356,11 +5359,23 @@ keys(LibraryGL).forEach(function(x) {
   if (x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return;
   while (typeof LibraryGL[x] === 'string') LibraryGL[x] = LibraryGL[LibraryGL[x]]; // resolve aliases right here, simpler for fastcomp
   var y = 'emscripten_' + x;
+  LibraryGL[x + '__deps'] = LibraryGL[x + '__deps'].map(function(dep) {
+    // prefix dependencies as well
+    if (typeof dep === 'string' && dep[0] == 'g' && dep[1] == 'l' && LibraryGL[dep]) {
+      var orig = dep;
+      dep = 'emscripten_' + dep;
+      var fixed = LibraryGL[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
+      fixed = fixed.substr(0, 9) + '_' + y + fixed.substr(9);
+      LibraryGL[x] = eval('(function() { return ' + fixed + ' })()');
+    }
+    return dep;
+  });
+  // copy it
   LibraryGL[y] = LibraryGL[x];
-  LibraryGL[y + '__deps'] = LibraryGL[x + '__deps']; // note that we might want to rename in the deps as well
   LibraryGL[y + '__postset'] = LibraryGL[x + '__postset'];
   LibraryGL[y + '__sig'] = LibraryGL[x + '__sig'];
   LibraryGL[y + '__asm'] = LibraryGL[x + '__asm'];
+  LibraryGL[y + '__deps'] = LibraryGL[x + '__deps'].slice(0);
 });
 
 // Final merge
