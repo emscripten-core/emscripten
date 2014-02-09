@@ -1549,7 +1549,8 @@ void *getBindBuffer() {
   return glBindBuffer;
 }
 ''')
-    self.btest('cubegeom_proc.c', reference='cubegeom.png', args=['side.c', '-s', 'LEGACY_GL_EMULATION=1'])
+    for opts in [0, 1]:
+      self.btest('cubegeom_proc.c', reference='cubegeom.png', args=['-O' + str(opts), 'side.c', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_glew(self):
     self.btest('cubegeom_glew.c', reference='cubegeom.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
