@@ -89,6 +89,11 @@ void setShaders() {
 
 	glCompileShader_(v);
   glGetObjectParameteriv_(v, GL_OBJECT_COMPILE_STATUS_ARB, &ok);
+  if (!ok) {
+    char msg[512];
+    glGetShaderInfoLog(v, sizeof msg, NULL, msg);
+    printf("shader compilation issue: %s\n", msg);
+  }
   assert(ok);
 
 	glCompileShader_(f);
