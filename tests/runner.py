@@ -653,7 +653,6 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
       args=[], outfile='test.html', message='.'): # TODO: use in all other tests
-    if os.environ.get('EMCC_FAST_COMPILER') == '1' and 'LEGACY_GL_EMULATION=1' in args: return self.skip('no legacy gl emulation in fastcomp')
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
