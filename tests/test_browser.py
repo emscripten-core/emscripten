@@ -143,6 +143,8 @@ If manually bisecting:
       os.chdir(cwd)
 
   def test_split(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('no --split in fastcomp, deprecated')
+
     # test HTML generation.
     self.reftest(path_from_root('tests', 'htmltest.png'))
     output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
@@ -235,6 +237,8 @@ If manually bisecting:
     self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
   def test_split_in_source_filenames(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('no --split in fastcomp, deprecated')
+
     self.reftest(path_from_root('tests', 'htmltest.png'))
     output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
     assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'

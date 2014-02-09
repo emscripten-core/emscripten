@@ -391,6 +391,9 @@ Options that are modified or new in %s include:
                               The main file resides in the base directory and
                               has the suffix ".js".
 
+                           Note: this option is deprecated (modern JS debuggers
+                                 should work ok even on large files)
+
   --bind                   Compiles the source code using the "embind"
                            bindings approach, which connects C/C++ and JS.
 
@@ -1206,6 +1209,7 @@ try:
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
     assert shared.Settings.TARGET_LE32 == 1, 'fastcomp requires le32'
     assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
+    assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
     assert not bind, 'embind not supported in fastcomp yet'
     if jcache:
       logging.warning('jcache is not supported in fastcomp (you should not need it anyhow), disabling')
