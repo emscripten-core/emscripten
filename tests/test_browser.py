@@ -1537,6 +1537,20 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1'])
 
+  def test_cubegeom_proc(self):
+    open('side.c', 'w').write(r'''
+
+extern void* SDL_GL_GetProcAddress(const char *);
+
+void *glBindBuffer = 0; // same name as the gl function, to check that the collision does not break us
+
+void *getBindBuffer() {
+  if (!glBindBuffer) glBindBuffer = SDL_GL_GetProcAddress("glBindBuffer");
+  return glBindBuffer;
+}
+''')
+    self.btest('cubegeom_proc.c', reference='cubegeom.png', args=['side.c', '-s', 'LEGACY_GL_EMULATION=1'])
+
   def test_cubegeom_glew(self):
     self.btest('cubegeom_glew.c', reference='cubegeom.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
 
