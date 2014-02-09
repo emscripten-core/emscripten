@@ -1,7 +1,8 @@
 import os, json, logging
 import shared
+from tools.shared import execute
 
-def calculate(temp_files):
+def calculate(temp_files, in_temp, stdout, stderr):
   # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
   # compile a malloc implementation and stdlibc++.)
 

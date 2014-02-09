@@ -1411,7 +1411,7 @@ try:
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-    extra_files_to_link = system_libs.calculate(temp_files)
+    extra_files_to_link = system_libs.calculate(temp_files, in_temp, stdout, stderr)
   else:
     extra_files_to_link = []
 
