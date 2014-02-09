@@ -555,7 +555,7 @@ var LibraryEGL = {
 
   eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
   eglGetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(Pointer_stringify(name_));
+    return _emscripten_GetProcAddress(name_);
   },
 };
 

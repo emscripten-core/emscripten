@@ -2325,6 +2325,7 @@ var LibraryGL = {
       Module.printErr('WARNING: deleteObject received invalid id: ' + id);
     }
   },
+  glDeleteObjectARB: 'glDeleteObject',
 
   glGetObjectParameteriv__sig: 'viii',
   glGetObjectParameteriv: function(id, type, result) {
@@ -2347,6 +2348,7 @@ var LibraryGL = {
       Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
     }
   },
+  glGetObjectParameterivARB: 'glGetObjectParameteriv',
 
   glGetInfoLog__sig: 'viiii',
   glGetInfoLog: function(id, maxLength, length, infoLog) {
@@ -2358,6 +2360,7 @@ var LibraryGL = {
       Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
     }
   },
+  glGetInfoLogARB: 'glGetInfoLog',
 
   glBindProgram__sig: 'vii',
   glBindProgram: function(type, id) {
@@ -2365,6 +2368,7 @@ var LibraryGL = {
     assert(id == 0);
 #endif
   },
+  glBindProgramARB: 'glBindProgram',
 
   glGetPointerv: function(name, p) {
     var attribute;
@@ -5031,39 +5035,11 @@ var LibraryGL = {
 
 #else // LEGACY_GL_EMULATION
 
-  // Warn if code tries to use various emulation stuff, when emulation is disabled
-  // (do not warn if INCLUDE_FULL_LIBRARY is one, because then likely the gl code will
-  // not be called anyhow, leave only the runtime aborts)
-  glVertexPointer__deps: [function() {
-#if INCLUDE_FULL_LIBRARY == 0
-    warn('Legacy GL function (glVertexPointer) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
-#endif
-  }],
-  glVertexPointer: function(){ throw 'Legacy GL function (glVertexPointer) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
-  glGenVertexArrays__deps: [function() {
-#if INCLUDE_FULL_LIBRARY == 0
-    warn('Legacy GL function (glGenVertexArrays) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
-#endif
-  }],
-  glGenVertexArrays: function(){ throw 'Legacy GL function (glGenVertexArrays) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
-  glMatrixMode__deps: [function() {
-#if INCLUDE_FULL_LIBRARY == 0
-    warn('Legacy GL function (glMatrixMode) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
-#endif
-  }],
-  glMatrixMode: function(){ throw 'Legacy GL function (glMatrixMode) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
-  glBegin__deps: [function() {
-#if INCLUDE_FULL_LIBRARY == 0
-    warn('Legacy GL function (glBegin) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
-#endif
-  }],
-  glBegin: function(){ throw 'Legacy GL function (glBegin) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
-  glLoadIdentity__deps: [function() {
-#if INCLUDE_FULL_LIBRARY == 0
-    warn('Legacy GL function (glLoadIdentity) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
-#endif
-  }],
-  glLoadIdentity: function(){ throw 'Legacy GL function (glLoadIdentity) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
+  glVertexPointer: function(){ throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
+  glGenVertexArrays: function(){ throw 'Legacy GL function (glGenVertexArrays) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
+  glMatrixMode: function(){ throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
+  glBegin: function(){ throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
+  glLoadIdentity: function(){ throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
 
 #endif // LEGACY_GL_EMULATION
 
@@ -5374,52 +5350,17 @@ if (LEGACY_GL_EMULATION) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$GLEmulation');
 }
 
-// GL proc address retrieval
-LibraryGL.emscripten_GetProcAddress__deps = [function() {
-  // ProcAddress is used, so include everything in GL. This runs before we go to the $ProcAddressTable object,
-  // and we fill its deps just in time, and create the lookup table
-  var table = {};
-  LibraryManager.library.emscripten_procAddressTable__deps = keys(LibraryGL).map(function(x) {
-    if (x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return null;
-    var original = x;
-    if (('_' + x) in Functions.implementedFunctions) {
-      // a user-implemented function aliases this one, but we still want it to be accessible by name, so rename it
-      var y = x + '__procTable';
-      LibraryManager.library[y] = LibraryManager.library[x];
-      LibraryManager.library[y + '__deps'] = LibraryManager.library[x + '__deps'];
-      LibraryManager.library[y + '__postset'] = LibraryManager.library[x + '__postset'];
-      LibraryManager.library[y + '__sig'] = LibraryManager.library[x + '__sig'];//|| Functions.implementedFunctions['_' + x];
-      LibraryManager.library[y + '__asm'] = LibraryManager.library[x + '__asm'];
-      x = y;
-      assert(!(y in Functions.implementedFunctions) && !Functions.unimplementedFunctions['_' + y]);
-    }
-    var longX = '_' + x;
-    var sig = LibraryManager.library[x + '__sig'] || functionStubSigs[longX];
-    if (sig) {
-      table[original] = Functions.getIndex(longX, sig);
-      if (!(longX in Functions.implementedFunctions)) Functions.unimplementedFunctions[longX] = sig;
-    }
-    return x;
-  }).filter(function(x) { return x !== null });
-  // convert table into function with switch, to not confuse closure compiler
-  var tableImpl = 'switch(name) {\n';
-  for (var x in table) tableImpl += 'case "' + x + '": return ' + table[x] + '; break;\n';
-  tableImpl += '}\nreturn 0;';
-  LibraryManager.library.emscripten_procAddressTable = new Function('name', tableImpl);
-}, 'emscripten_procAddressTable'];
-LibraryGL.emscripten_GetProcAddress = function _LibraryGL_emscripten_GetProcAddress(name) {
-  name = name.replace('EXT', '').replace('ARB', '');
-  switch(name) { // misc renamings
-    case 'glCreateProgramObject': name = 'glCreateProgram'; break;
-    case 'glUseProgramObject': name = 'glUseProgram'; break;
-    case 'glCreateShaderObject': name = 'glCreateShader'; break;
-    case 'glAttachObject': name = 'glAttachShader'; break;
-    case 'glDetachObject': name = 'glDetachShader'; break;
-  }
-  var ret = _emscripten_procAddressTable(name);
-  if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
-  return ret;
-}
+// GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
+keys(LibraryGL).forEach(function(x) {
+  if (x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return;
+  var original = x;
+  var y = 'emscripten_' + x;
+  LibraryGL[y] = LibraryGL[x];
+  LibraryGL[y + '__deps'] = LibraryGL[x + '__deps']; // note that we might want to rename in the deps as well
+  LibraryGL[y + '__postset'] = LibraryGL[x + '__postset'];
+  LibraryGL[y + '__sig'] = LibraryGL[x + '__sig'];
+  LibraryGL[y + '__asm'] = LibraryGL[x + '__asm'];
+});
 
 // Final merge
 mergeInto(LibraryManager.library, LibraryGL);

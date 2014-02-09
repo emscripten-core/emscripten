@@ -20,6 +20,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
   libcextra_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcextra.symbols'))
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
+  gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
@@ -322,6 +323,15 @@ def calculate(temp_files, in_temp, stdout, stderr):
     #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
     return True
 
+  # gl
+  def create_gl():
+    prev_cxx = os.environ.get('EMMAKEN_CXX')
+    if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
+    o = in_temp('gl.o')
+    execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
+    if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
+    return o
+
   # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
   force = os.environ.get('EMCC_FORCE_STDLIBS')
@@ -359,6 +369,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
   for name, create, apply_, library_symbols in [('libcxx',    create_libcxx,    apply_libcxx,    libcxx_symbols),
                                                 ('libcextra', create_libcextra, lambda x: True,  libcextra_symbols),
                                                 ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols),
+                                                ('gl',        create_gl,        lambda x: True,  gl_symbols),
                                                 ('libc',      create_libc,      apply_libc,      libc_symbols)]:
     force_this = force_all or force == name
     if not force_this:
