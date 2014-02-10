@@ -4613,6 +4613,8 @@ LibraryManager.library = {
   _ZTIv: [0], // void
   _ZTIPv: [0], // void*
 
+  _ZTISt9exception: [0], // typeinfo for std::exception
+
   llvm_uadd_with_overflow_i8: function(x, y) {
     x = x & 0xff;
     y = y & 0xff;
