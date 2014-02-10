@@ -5356,10 +5356,21 @@ if (LEGACY_GL_EMULATION) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$GLEmulation');
 }
 
+function copyLibEntry(a, b) {
+  LibraryGL[a] = LibraryGL[b];
+  LibraryGL[a + '__postset'] = LibraryGL[b + '__postset'];
+  LibraryGL[a + '__sig'] = LibraryGL[b + '__sig'];
+  LibraryGL[a + '__asm'] = LibraryGL[b + '__asm'];
+  LibraryGL[a + '__deps'] = LibraryGL[b + '__deps'].slice(0);
+}
+
 // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
 keys(LibraryGL).forEach(function(x) {
   if (x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return;
-  while (typeof LibraryGL[x] === 'string') LibraryGL[x] = LibraryGL[LibraryGL[x]]; // resolve aliases right here, simpler for fastcomp
+  while (typeof LibraryGL[x] === 'string') {
+    // resolve aliases right here, simpler for fastcomp
+    copyLibEntry(x, LibraryGL[x]);
+  }
   var y = 'emscripten_' + x;
   LibraryGL[x + '__deps'] = LibraryGL[x + '__deps'].map(function(dep) {
     // prefix dependencies as well
@@ -5373,11 +5384,7 @@ keys(LibraryGL).forEach(function(x) {
     return dep;
   });
   // copy it
-  LibraryGL[y] = LibraryGL[x];
-  LibraryGL[y + '__postset'] = LibraryGL[x + '__postset'];
-  LibraryGL[y + '__sig'] = LibraryGL[x + '__sig'];
-  LibraryGL[y + '__asm'] = LibraryGL[x + '__asm'];
-  LibraryGL[y + '__deps'] = LibraryGL[x + '__deps'].slice(0);
+  copyLibEntry(y, x);
 });
 
 // Final merge
