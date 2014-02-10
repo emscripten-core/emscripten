@@ -16,7 +16,7 @@ mergeInto(LibraryManager.library, {
     root: null,
     mounts: [],
     devices: [null],
-    streams: [null],
+    streams: [],
     nextInode: 1,
     nameTable: null,
     currentPath: '/',
@@ -358,7 +358,7 @@ mergeInto(LibraryManager.library, {
     //
     MAX_OPEN_FDS: 4096,
     nextfd: function(fd_start, fd_end) {
-      fd_start = fd_start || 1;
+      fd_start = fd_start || 0;
       fd_end = fd_end || FS.MAX_OPEN_FDS;
       for (var fd = fd_start; fd <= fd_end; fd++) {
         if (!FS.streams[fd]) {
@@ -411,6 +411,22 @@ mergeInto(LibraryManager.library, {
     },
     closeStream: function(fd) {
       FS.streams[fd] = null;
+    },
+
+    //
+    // file pointers
+    //
+    // instead of maintaining a separate mapping from FILE* to file descriptors,
+    // we employ a simple trick: the pointer to a stream is its fd plus 1.  This
+    // means that all valid streams have a valid non-zero pointer while allowing
+    // the fs for stdin to be the standard value of zero.
+    // 
+    //
+    getStreamFromPtr: function(ptr) {
+      return FS.streams[ptr - 1];
+    },
+    getPtrForStream: function(stream) {
+      return stream ? stream.fd + 1 : 0;
     },
 
     //
@@ -1166,16 +1182,16 @@ mergeInto(LibraryManager.library, {
 
       // open default streams for the stdin, stdout and stderr devices
       var stdin = FS.open('/dev/stdin', 'r');
-      {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 'stdin.fd', 'void*') }}};
-      assert(stdin.fd === 1, 'invalid handle for stdin (' + stdin.fd + ')');
+      {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 'FS.getPtrForStream(stdin)', 'void*') }}};
+      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
 
       var stdout = FS.open('/dev/stdout', 'w');
-      {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 'stdout.fd', 'void*') }}};
-      assert(stdout.fd === 2, 'invalid handle for stdout (' + stdout.fd + ')');
+      {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 'FS.getPtrForStream(stdout)', 'void*') }}};
+      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
 
       var stderr = FS.open('/dev/stderr', 'w');
-      {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 'stderr.fd', 'void*') }}};
-      assert(stderr.fd === 3, 'invalid handle for stderr (' + stderr.fd + ')');
+      {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 'FS.getPtrForStream(stderr)', 'void*') }}};
+      assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
