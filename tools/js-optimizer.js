@@ -140,6 +140,8 @@ var ALTER_FLOW = set('break', 'continue', 'return');
 var BREAK_CAPTURERS = set('do', 'while', 'for', 'switch');
 var CONTINUE_CAPTURERS = LOOP;
 
+var FUNCTIONS_THAT_ALWAYS_THROW = set('abort', '___resumeException', '___cxa_throw', '___cxa_rethrow');
+
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
 var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
@@ -1600,6 +1602,7 @@ function normalizeAsm(func) {
     params: {}, // ident => ASM_* type
     vars: {}, // ident => ASM_* type
     inlines: [], // list of inline assembly copies
+    ret: undefined,
   };
   // process initial params
   var stats = func[3];
@@ -1636,7 +1639,7 @@ function normalizeAsm(func) {
     }
     i++;
   }
-  // finally, look for other var definitions and collect them
+  // look for other var definitions and collect them
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type === 'var') {
@@ -1664,6 +1667,11 @@ function normalizeAsm(func) {
       }
     });
     i++;
+  }
+  // look for final 'return' statement to get return type.
+  var retStmt = stats[stats.length - 1];
+  if (retStmt && retStmt[0] === 'return' && retStmt[1]) {
+    data.ret = detectAsmCoercion(retStmt[1]);
   }
   //printErr('normalized \n\n' + astToSrc(func) + '\n\nwith: ' + JSON.stringify(data));
   return data;
@@ -1716,6 +1724,17 @@ function denormalizeAsm(func, data) {
         node[1] = data.inlines[i++]; // swap back in the body
       }
     });
+  }
+  // ensure that there's a final 'return' statement if needed.
+  if (data.ret !== undefined) {
+    var retStmt = stats[stats.length - 1];
+    if (!retStmt || retStmt[0] !== 'return') {
+      var retVal = ['num', 0];
+      if (data.ret !== ASM_INT) {
+        retVal = makeAsmCoercion(retVal, data.ret);
+      }
+      stats.push(['return', retVal]);
+    }
   }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
@@ -2057,6 +2076,7 @@ function registerize(ast) {
         params: {},
         vars: {},
         inlines: asmData.inlines,
+        ret: asmData.ret,
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
@@ -2132,11 +2152,11 @@ function registerizeHarder(ast) {
     // For each block we store:
     //    * a single entry junction
     //    * a single exit junction
-    //    * any preconditions satisfied at entry to the block
     //    * a 'use' and 'kill' set of names for the block
     //    * full sequence of 'name' and 'assign' nodes in the block
     //    * whether each such node appears as part of a larger expression
     //      (and therefore cannot be safely eliminated)
+    //    * set of labels that can be used to jump to this block
 
     var junctions = [];
     var blocks = [];
@@ -2164,18 +2184,24 @@ function registerizeHarder(ast) {
       if (id === undefined || id === null) {
         id = addJunction();
       }
-      joinJunction(id);
+      joinJunction(id, true);
       return id;
     }
 
-    function setJunction(id) {
+    function setJunction(id, force) {
       // Set the next entry junction to the given id.
       // This can be used to enter at a previously-declared point.
+      // You can't return to a junction with no incoming blocks
+      // unless the 'force' parameter is specified.
       assert(nextBasicBlock.nodes.length === 0, 'refusing to abandon an in-progress basic block')
-      currEntryJunction = id;
+      if (force || setSize(junctions[id].inblocks) > 0) {
+        currEntryJunction = id;
+      } else {
+        currEntryJunction = null;
+      }
     }
 
-    function joinJunction(id) {
+    function joinJunction(id, force) {
       // Complete the pending basic block by exiting at this position.
       // This can be used to exit at a previously-declared point.
       if (currEntryJunction !== null) {
@@ -2186,8 +2212,8 @@ function registerizeHarder(ast) {
         junctions[id].inblocks[nextBasicBlock.id] = 1;
         blocks.push(nextBasicBlock);
       } 
-      nextBasicBlock = { id: null, entry: null, exit: null, pre: {}, nodes: [], isexpr: [], use: {}, kill: {} };
-      currEntryJunction = id;
+      nextBasicBlock = { id: null, entry: null, exit: null, labels: {}, nodes: [], isexpr: [], use: {}, kill: {} };
+      setJunction(id, force);
       return id;
     }
 
@@ -2227,7 +2253,7 @@ function registerizeHarder(ast) {
           assert(false, 'unknown jump node type');
         }
       }
-      setJunction(null);
+      currEntryJunction = null;
     }
 
     function addUseNode(node) {
@@ -2266,29 +2292,10 @@ function registerizeHarder(ast) {
       return node;
     }
 
-    function addPreCondTrue(node) {
-      // Add pre-conditions implied by truth of the
-      // given node to the current basic block.
-      assert(nextBasicBlock.nodes.length === 0, 'cant add preconditions to an in-progress basic block')
-      if (node[0] === 'binary' && node[1] === '==') {
-        var lhs = lookThroughCasts(node[2]);
-        var rhs = lookThroughCasts(node[3]);
-        if (lhs[0] === 'name' && rhs[0] === 'num') {
-          nextBasicBlock.pre[lhs[1]] = ['==', rhs[1]];
-        }
-      }
-    }
-
-    function addPreCondFalse(node) {
-      // Add pre-conditions implied by falsehood of the
-      // given node to the current basic block.
-      assert(nextBasicBlock.nodes.length === 0, 'cant add preconditions to an in-progress basic block')
-      if (node[0] === 'binary' && node[1] === '==') {
-        var lhs = lookThroughCasts(node[2]);
-        var rhs = lookThroughCasts(node[3]);
-        if (lhs[0] === 'name' && rhs[0] === 'num') {
-          nextBasicBlock.pre[lhs[1]] = ['!=', rhs[1]];
-        }
+    function addBlockLabel(node) {
+      assert(nextBasicBlock.nodes.length === 0, 'cant add label to an in-progress basic block')
+      if (node[0] === 'num') {
+        nextBasicBlock.labels[node[1]] = 1;
       }
     }
 
@@ -2348,13 +2355,19 @@ function registerizeHarder(ast) {
           buildFlowGraph(node[1]);
           isInExpr--;
           var jEnter = markJunction();
-          addPreCondTrue(node[1]);
+          var jExit = addJunction();
           if (node[2]) {
+            // Detect and mark "if (label == N) { <labelled block> }".
+            if (node[1][0] === 'binary' && node[1][1] === '==') {
+              var lhs = lookThroughCasts(node[1][2]);
+              if (lhs[0] === 'name' && lhs[1] === 'label') {
+                addBlockLabel(lookThroughCasts(node[1][3]));
+              }
+            }
             buildFlowGraph(node[2]);
           }
-          var jExit = markJunction();
+          joinJunction(jExit);
           setJunction(jEnter);
-          addPreCondFalse(node[1]);
           if (node[3]) {
             buildFlowGraph(node[3]);
           }
@@ -2364,13 +2377,12 @@ function registerizeHarder(ast) {
           isInExpr++;
           buildFlowGraph(node[1]);
           var jEnter = markJunction();
-          addPreCondTrue(node[1]);
+          var jExit = addJunction();
           if (node[2]) {
             buildFlowGraph(node[2]);
           }
-          var jExit = markJunction();
+          joinJunction(jExit);
           setJunction(jEnter);
-          addPreCondFalse(node[1]);
           if (node[3]) {
             buildFlowGraph(node[3]);
           }
@@ -2397,7 +2409,6 @@ function registerizeHarder(ast) {
             isInExpr--;
             joinJunction(jLoop);
             pushActiveLabels(jCond, jExit);
-            addPreCondTrue(node[1]);
             buildFlowGraph(node[2]);
             popActiveLabels();
             joinJunction(jCond);
@@ -2469,38 +2480,46 @@ function registerizeHarder(ast) {
         case 'switch':
           // Emscripten generates switch statements of a very limited
           // form: all case clauses are numeric literals, and all
-          // case bodies end with a break.  So it's basically equivalent
-          // to a multi-way 'if' statement.
+          // case bodies end with a (maybe implicit) break.  So it's
+          // basically equivalent to a multi-way 'if' statement.
           isInExpr++;
           buildFlowGraph(node[1]);
           isInExpr--;
+          var condition = lookThroughCasts(node[1]);
           var jCheckExit = markJunction();
           var jExit = addJunction();
           pushActiveLabels(null, jExit);
           var hasDefault = false;
           for (var i=0; i<node[2].length; i++) {
             setJunction(jCheckExit);
+            // All case clauses are either 'default' or a numeric literal.
             if (!node[2][i][0]) {
               hasDefault = true;
             } else {
-              if (node[2][i][0][0] !== 'num') {
-                if (node[2][i][0][0] !== 'unary-prefix' || node[2][i][0][2][0] !== 'num') {
-                  assert(false, 'non-numeric switch case clause');
-                }
+              // Detect switches dispatching to labelled blocks.
+              if (condition[0] === 'name' && condition[1] === 'label') {
+                addBlockLabel(lookThroughCasts(node[2][i][0]));
               }
-              addPreCondTrue(['binary', '==', node[1], node[2][i][0]]);
             }
             for (var j = 0; j < node[2][i][1].length; j++) {
               buildFlowGraph(node[2][i][1][j]);
             }
-            if (currEntryJunction !== null, 'switch case body did not break');
+            // Control flow will never actually reach the end of the case body.
+            // If there's live code here, assume it jumps to case exit.
+            if (currEntryJunction !== null && nextBasicBlock.nodes.length > 0) {
+              if (node[2][i][0]) {
+                markNonLocalJump('return');
+              } else {
+                joinJunction(jExit);
+              }
+            }
           }
           // If there was no default case, we also need an empty block
           // linking straight from the test evaluation to the exit.
           if (!hasDefault) {
             setJunction(jCheckExit);
           }
-          markJunction(jExit);
+          joinJunction(jExit);
           popActiveLabels()
           break;
         case 'return':
@@ -2560,6 +2579,13 @@ function registerizeHarder(ast) {
             }
           }
           isInExpr--;
+          // If the call is statically known to throw,
+          // treat it as a jump to function exit.
+          if (!isInExpr && node[1][0] === 'name') {
+            if (node[1][1] in FUNCTIONS_THAT_ALWAYS_THROW) {
+              markNonLocalJump('return');
+            }
+          }
           break;
         case 'seq':
         case 'sub':
@@ -2599,18 +2625,17 @@ function registerizeHarder(ast) {
     FINDLABELLEDBLOCKS:
     for (var i = 0; i < blocks.length; i++) {
       var block = blocks[i];
-      // Does it have a specific label value as precondition?
-      var labelCond = block.pre['label'];
-      if (labelCond && labelCond[0] === '==') {
+      // Does it have any labels as preconditions to its entry?
+      for (var labelVal in block.labels) {
         // If there are multiple blocks with the same label, all bets are off.
         // This seems to happen sometimes for short blocks that end with a return.
         // TODO: it should be safe to merge the duplicates if they're identical.
-        if (labelCond[1] in labelledBlocks) {
+        if (labelVal in labelledBlocks) {
           labelledBlocks = {};
           labelledJumps = [];
           break FINDLABELLEDBLOCKS;
         }
-        labelledBlocks[labelCond[1]] = block;
+        labelledBlocks[labelVal] = block;
       }
       // Does it assign a specific label value at exit?
       if ('label' in block.kill) {
@@ -3103,6 +3128,7 @@ function registerizeHarder(ast) {
       params: {},
       vars: {},
       inlines: asmData.inlines,
+      ret: asmData.ret,
     };
     for (var i = 1; i < nextReg; i++) {
       var reg;
