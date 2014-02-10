@@ -187,6 +187,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
        ]],
        ['multibyte', [
         'btowc.c',
+        'internal.c',
         'mblen.c',
         'mbrlen.c',
         'mbrtowc.c',
