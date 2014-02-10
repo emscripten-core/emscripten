@@ -499,12 +499,8 @@ function JSify(data, functionsOnly) {
       if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
         else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) warn('unresolved symbol: ' + shortident);
-        if (ASM_JS) {
-          // emit a stub that will fail during runtime. this allows asm validation to succeed.
-          LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
-        } else {
-          cancel = true; // emit nothing, not even  var X = undefined;
-        }
+        // emit a stub that will fail at runtime
+        LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
       }
       item.JS = cancel ? ';' : addFromLibrary(shortident);
     }
