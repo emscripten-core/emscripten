@@ -1198,7 +1198,7 @@ try:
   fastcomp = os.environ.get('EMCC_FAST_COMPILER') == '1'
 
   if fastcomp:
-    shared.Settings.ASM_JS = 1
+    shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
     assert shared.Settings.ALLOW_MEMORY_GROWTH == 0, 'memory growth not supported in fastcomp yet'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp yet'
