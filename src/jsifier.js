@@ -395,6 +395,13 @@ function JSify(data, functionsOnly) {
       // Note: We don't return the dependencies here. Be careful not to end up where this matters
       if (('_' + ident) in Functions.implementedFunctions) return '';
 
+      if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+        if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
+        else if (VERBOSE || (WARN_ON_UNDEFINED_SYMBOLS && !LINKABLE)) warn('unresolved symbol: ' + ident);
+        // emit a stub that will fail at runtime
+        LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
+      }
+
       var snippet = LibraryManager.library[ident];
       var redirectedIdent = null;
       var deps = LibraryManager.library[ident + '__deps'] || [];
@@ -456,7 +463,7 @@ function JSify(data, functionsOnly) {
       } else {
         ident = '_' + ident;
       }
-      if (VERBOSE) printErr('adding ' + ident + ' and deps ' + deps);
+      if (VERBOSE) printErr('adding ' + ident + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText = isFunction ? snippet : ('var ' + ident + '=' + snippet + ';');
       if (ASM_JS) {
@@ -486,7 +493,6 @@ function JSify(data, functionsOnly) {
       item.JS = '';
     } else {
       // If this is not linkable, anything not in the library is definitely missing
-      var cancel = false;
       if (item.ident in DEAD_FUNCTIONS) {
         if (LibraryManager.library[shortident + '__asm']) {
           warn('cannot kill asm library function ' + item.ident);
@@ -496,13 +502,7 @@ function JSify(data, functionsOnly) {
           delete LibraryManager.library[shortident + '__deps'];
         }
       }
-      if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
-        if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
-        else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) warn('unresolved symbol: ' + shortident);
-        // emit a stub that will fail at runtime
-        LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
-      }
-      item.JS = cancel ? ';' : addFromLibrary(shortident);
+      item.JS = addFromLibrary(shortident);
     }
   }
 
