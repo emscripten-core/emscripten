@@ -700,6 +700,29 @@ var LibrarySDL = {
       return ret;
     },
 
+    fillWebAudioBufferFromHeap: function(heapPtr, sizeSamplesPerChannel, dstAudioBuffer) {
+      // The input audio data is interleaved across the channels, i.e. [L, R, L, R, L, R, ...] and is either 8-bit or 16-bit as
+      // supported by the SDL API. The output audio wave data for Web Audio API must be in planar buffers of [-1,1]-normalized Float32 data,
+      // so perform a buffer conversion for the data.
+      var numChannels = SDL.audio.channels;
+      for(var c = 0; c < numChannels; ++c) {
+        var channelData = dstAudioBuffer['getChannelData'](c);
+        if (channelData.length != sizeSamplesPerChannel) {
+          throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
+        }
+        if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
+          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+            channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16', 0, 0) }}}) / 0x8000;
+          }
+        } else if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
+          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+            var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8', 0, 0) }}});
+            channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
+          }
+        }
+      }
+    },
+
     // Debugging
 
     debugSurface: function(surfData) {
@@ -1748,26 +1771,7 @@ var LibrarySDL = {
             var soundBuffer = SDL.audioContext['createBuffer'](SDL.audio.channels,sizeSamplesPerChannel,SDL.audio.freq);
             SDL.audio.soundSource[SDL.audio.nextSoundSource]['connect'](SDL.audioContext['destination']);
 
-            // The input audio data is interleaved across the channels, i.e. [L, R, L, R, L, R, ...] and is either 8-bit or 16-bit as
-            // supported by the SDL API. The output audio wave data for Web Audio API must be in planar buffers of [-1,1]-normalized Float32 data,
-            // so perform a buffer conversion for the data.
-            var numChannels = SDL.audio.channels;
-            for(var i = 0; i < numChannels; ++i) {
-              var channelData = soundBuffer['getChannelData'](i);
-              if (channelData.length != sizeSamplesPerChannel) {
-                throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
-              }
-              if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
-                for(var j = 0; j < sizeSamplesPerChannel; ++j) {
-                  channelData[j] = ({{{ makeGetValue('ptr', '(j*numChannels + i)*2', 'i16', 0, 0) }}}) / 0x8000;
-                }
-              } else if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
-                for(var j = 0; j < sizeSamplesPerChannel; ++j) {
-                  var v = ({{{ makeGetValue('ptr', 'j*numChannels + i', 'i8', 0, 0) }}});
-                  channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
-                }
-              }
-            }
+            SDL.fillWebAudioBufferFromHeap(ptr, sizeSamplesPerChannel, soundBuffer);
             // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
             source['buffer'] = soundBuffer;
             
@@ -1846,11 +1850,27 @@ var LibrarySDL = {
         SDL.audio.numAudioTimersPending = 0;
         SDL.audio.timer = undefined;
       }
-    } else if (!SDL.audio.timer) {
-      // Start the audio playback timer callback loop.
-      SDL.audio.numAudioTimersPending = 1;
-      SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
-      SDL.audio.startTime = Date.now() / 1000.0; // Only used for Mozilla Audio Data API. Not needed for Web Audio API.
+      if (SDL.audio.scriptProcessorNode !== undefined) {
+        SDL.audio.scriptProcessorNode['disconnect']();
+        SDL.audio.scriptProcessorNode = undefined;
+      }
+    } else if (!SDL.audio.timer && !SDL.audio.scriptProcessorNode) {
+      // If we are using the same sampling frequency as the native sampling rate of the Web Audio graph is using, we can feed our buffers via
+      // Web Audio ScriptProcessorNode, which is a pull-mode API that calls back to our code to get audio data.
+      if (SDL.audio.freq == SDL.audioContext['sampleRate']) {
+        var sizeSamplesPerChannel = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
+        SDL.audio.scriptProcessorNode = SDL.audioContext['createScriptProcessor'](sizeSamplesPerChannel, 0, SDL.audio.channels);
+        SDL.audio.scriptProcessorNode['onaudioprocess'] = function (e) {
+          Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
+          SDL.fillWebAudioBufferFromHeap(SDL.audio.buffer, sizeSamplesPerChannel, e['outputBuffer']);
+        }
+        SDL.audio.scriptProcessorNode['connect'](SDL.audioContext['destination']);
+      } else { // If we are using a different sampling rate, must manually queue audio data to the graph via timers.
+        // Start the audio playback timer callback loop.
+        SDL.audio.numAudioTimersPending = 1;
+        SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
+        SDL.audio.startTime = Date.now() / 1000.0; // Only used for Mozilla Audio Data API. Not needed for Web Audio API.
+      }
     }
     SDL.audio.paused = pauseOn;
   },
