@@ -1224,6 +1224,11 @@ var LibrarySDL = {
     return SDL.errorMessage;
   },
 
+  SDL_SetError: function() {},
+
+  SDL_Malloc: 'malloc',
+  SDL_Free: 'free',
+
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
   },
@@ -2681,6 +2686,14 @@ var LibrarySDL = {
     }
   },
 
+  SDL_GetNumAudioDrivers: function() { return 1 },
+  SDL_GetCurrentAudioDriver: function() {
+    return allocate(intArrayFromString('Emscripten Audio'), 'i8', ALLOC_NORMAL);
+  },
+
+  SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],
+  SDL_GetAudioDriver: function(index) { return _SDL_GetCurrentAudioDriver() },
+
   SDL_EnableUNICODE: function(on) {
     var ret = SDL.unicode || 0;
     SDL.unicode = on;
@@ -2710,6 +2723,9 @@ var LibrarySDL = {
   SDL_WM_IconifyWindow: function() { throw 'SDL_WM_IconifyWindow TODO' },
 
   Mix_SetPostMix: function() { Runtime.warnOnce('Mix_SetPostMix: TODO') },
+
+  Mix_VolumeChunk: function(chunk, volume) { throw 'Mix_VolumeChunk: TODO' },
+  Mix_SetPosition: function(channel, angle, distance) { throw 'Mix_SetPosition: TODO' },
   Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
   Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
