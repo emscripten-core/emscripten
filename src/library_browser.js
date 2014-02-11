@@ -675,6 +675,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_prepare: function(file, onload, onerror) {
+    Module['noExitRuntime'] = true;
+
     var _file = Pointer_stringify(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
@@ -694,6 +696,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_prepare_data: function(data, size, suffix, arg, onload, onerror) {
+    Module['noExitRuntime'] = true;
+
     var _suffix = Pointer_stringify(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
