@@ -8,4 +8,10 @@ function badf2() {
  $9 = (HEAPF32[tempDoublePtr>>2]=$8,HEAP32[tempDoublePtr>>2]|0);
  HEAP32[$gep23_asptr>>2] = $9;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2"]
+function dupe() {
+ x = Math_fround(x);
+ x = Math_fround(Math_fround(x));
+ x = Math_fround(Math_fround(Math_fround(x)));
+ x = Math_fround(Math_fround(Math_fround(Math_fround(x))));
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["badf", "badf2", "dupe"]
