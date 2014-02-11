@@ -4618,7 +4618,7 @@ LibraryManager.library = {
   _ZTIv: [0], // void
   _ZTIPv: [0], // void*
 
-  _ZTISt9exception: [0], // typeinfo for std::exception
+  _ZTISt9exception: 'allocate([allocate([1,0,0,0,0,0,0], "i8", ALLOC_STATIC)+8, 0], "i32", ALLOC_STATIC)', // typeinfo for std::exception
 
   llvm_uadd_with_overflow_i8: function(x, y) {
     x = x & 0xff;
