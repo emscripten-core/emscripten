@@ -1,5 +1,5 @@
 /* zconf.h -- configuration of the zlib compression library
- * Copyright (C) 1995-2010 Jean-loup Gailly.
+ * Copyright (C) 1995-2012 Jean-loup Gailly.
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -15,6 +15,7 @@
  * this permanently in zconf.h using "./configure --zprefix".
  */
 #ifdef Z_PREFIX     /* may be set to #if 1 by ./configure */
+#  define Z_PREFIX_SET
 
 /* all linked symbols */
 #  define _dist_code            z__dist_code
@@ -27,9 +28,11 @@
 #  define adler32               z_adler32
 #  define adler32_combine       z_adler32_combine
 #  define adler32_combine64     z_adler32_combine64
-#  define compress              z_compress
-#  define compress2             z_compress2
-#  define compressBound         z_compressBound
+#  ifndef Z_SOLO
+#    define compress              z_compress
+#    define compress2             z_compress2
+#    define compressBound         z_compressBound
+#  endif
 #  define crc32                 z_crc32
 #  define crc32_combine         z_crc32_combine
 #  define crc32_combine64       z_crc32_combine64
@@ -40,44 +43,52 @@
 #  define deflateInit2_         z_deflateInit2_
 #  define deflateInit_          z_deflateInit_
 #  define deflateParams         z_deflateParams
+#  define deflatePending        z_deflatePending
 #  define deflatePrime          z_deflatePrime
 #  define deflateReset          z_deflateReset
+#  define deflateResetKeep      z_deflateResetKeep
 #  define deflateSetDictionary  z_deflateSetDictionary
 #  define deflateSetHeader      z_deflateSetHeader
 #  define deflateTune           z_deflateTune
 #  define deflate_copyright     z_deflate_copyright
 #  define get_crc_table         z_get_crc_table
-#  define gz_error              z_gz_error
-#  define gz_intmax             z_gz_intmax
-#  define gz_strwinerror        z_gz_strwinerror
-#  define gzbuffer              z_gzbuffer
-#  define gzclearerr            z_gzclearerr
-#  define gzclose               z_gzclose
-#  define gzclose_r             z_gzclose_r
-#  define gzclose_w             z_gzclose_w
-#  define gzdirect              z_gzdirect
-#  define gzdopen               z_gzdopen
-#  define gzeof                 z_gzeof
-#  define gzerror               z_gzerror
-#  define gzflush               z_gzflush
-#  define gzgetc                z_gzgetc
-#  define gzgets                z_gzgets
-#  define gzoffset              z_gzoffset
-#  define gzoffset64            z_gzoffset64
-#  define gzopen                z_gzopen
-#  define gzopen64              z_gzopen64
-#  define gzprintf              z_gzprintf
-#  define gzputc                z_gzputc
-#  define gzputs                z_gzputs
-#  define gzread                z_gzread
-#  define gzrewind              z_gzrewind
-#  define gzseek                z_gzseek
-#  define gzseek64              z_gzseek64
-#  define gzsetparams           z_gzsetparams
-#  define gztell                z_gztell
-#  define gztell64              z_gztell64
-#  define gzungetc              z_gzungetc
-#  define gzwrite               z_gzwrite
+#  ifndef Z_SOLO
+#    define gz_error              z_gz_error
+#    define gz_intmax             z_gz_intmax
+#    define gz_strwinerror        z_gz_strwinerror
+#    define gzbuffer              z_gzbuffer
+#    define gzclearerr            z_gzclearerr
+#    define gzclose               z_gzclose
+#    define gzclose_r             z_gzclose_r
+#    define gzclose_w             z_gzclose_w
+#    define gzdirect              z_gzdirect
+#    define gzdopen               z_gzdopen
+#    define gzeof                 z_gzeof
+#    define gzerror               z_gzerror
+#    define gzflush               z_gzflush
+#    define gzgetc                z_gzgetc
+#    define gzgetc_               z_gzgetc_
+#    define gzgets                z_gzgets
+#    define gzoffset              z_gzoffset
+#    define gzoffset64            z_gzoffset64
+#    define gzopen                z_gzopen
+#    define gzopen64              z_gzopen64
+#    ifdef _WIN32
+#      define gzopen_w              z_gzopen_w
+#    endif
+#    define gzprintf              z_gzprintf
+#    define gzputc                z_gzputc
+#    define gzputs                z_gzputs
+#    define gzread                z_gzread
+#    define gzrewind              z_gzrewind
+#    define gzseek                z_gzseek
+#    define gzseek64              z_gzseek64
+#    define gzsetparams           z_gzsetparams
+#    define gztell                z_gztell
+#    define gztell64              z_gztell64
+#    define gzungetc              z_gzungetc
+#    define gzwrite               z_gzwrite
+#  endif
 #  define inflate               z_inflate
 #  define inflateBack           z_inflateBack
 #  define inflateBackEnd        z_inflateBackEnd
@@ -95,13 +106,18 @@
 #  define inflateSync           z_inflateSync
 #  define inflateSyncPoint      z_inflateSyncPoint
 #  define inflateUndermine      z_inflateUndermine
+#  define inflateResetKeep      z_inflateResetKeep
 #  define inflate_copyright     z_inflate_copyright
 #  define inflate_fast          z_inflate_fast
 #  define inflate_table         z_inflate_table
-#  define uncompress            z_uncompress
+#  ifndef Z_SOLO
+#    define uncompress            z_uncompress
+#  endif
 #  define zError                z_zError
-#  define zcalloc               z_zcalloc
-#  define zcfree                z_zcfree
+#  ifndef Z_SOLO
+#    define zcalloc               z_zcalloc
+#    define zcfree                z_zcfree
+#  endif
 #  define zlibCompileFlags      z_zlibCompileFlags
 #  define zlibVersion           z_zlibVersion
 
@@ -111,7 +127,9 @@
 #  define alloc_func            z_alloc_func
 #  define charf                 z_charf
 #  define free_func             z_free_func
-#  define gzFile                z_gzFile
+#  ifndef Z_SOLO
+#    define gzFile                z_gzFile
+#  endif
 #  define gz_header             z_gz_header
 #  define gz_headerp            z_gz_headerp
 #  define in_func               z_in_func
@@ -197,6 +215,12 @@
 #  endif
 #endif
 
+#if defined(ZLIB_CONST) && !defined(z_const)
+#  define z_const const
+#else
+#  define z_const
+#endif
+
 /* Some Mac compilers merge all .h files incorrectly: */
 #if defined(__MWERKS__)||defined(applec)||defined(THINK_C)||defined(__SC__)
 #  define NO_DUMMY_DECL
@@ -240,6 +264,14 @@
 #    define OF(args)  args
 #  else
 #    define OF(args)  ()
+#  endif
+#endif
+
+#ifndef Z_ARG /* function prototypes for stdarg */
+#  if defined(STDC) || defined(Z_HAVE_STDARG_H)
+#    define Z_ARG(args)  args
+#  else
+#    define Z_ARG(args)  ()
 #  endif
 #endif
 
@@ -356,12 +388,45 @@ typedef uLong FAR uLongf;
    typedef Byte       *voidp;
 #endif
 
-#if 1    /* was set to #if 1 by ./configure */
+/* ./configure may #define Z_U4 here */
+
+#if !defined(Z_U4) && !defined(Z_SOLO) && defined(STDC)
+#  include <limits.h>
+#  if (UINT_MAX == 0xffffffffUL)
+#    define Z_U4 unsigned
+#  else
+#    if (ULONG_MAX == 0xffffffffUL)
+#      define Z_U4 unsigned long
+#    else
+#      if (USHRT_MAX == 0xffffffffUL)
+#        define Z_U4 unsigned short
+#      endif
+#    endif
+#  endif
+#endif
+
+#ifdef Z_U4
+   typedef Z_U4 z_crc_t;
+#else
+   typedef unsigned long z_crc_t;
+#endif
+
+#ifdef HAVE_UNISTD_H    /* may be set to #if 1 by ./configure */
 #  define Z_HAVE_UNISTD_H
 #endif
 
+#ifdef HAVE_STDARG_H    /* may be set to #if 1 by ./configure */
+#  define Z_HAVE_STDARG_H
+#endif
+
 #ifdef STDC
-#  include <sys/types.h>    /* for off_t */
+#  ifndef Z_SOLO
+#    include <sys/types.h>      /* for off_t */
+#  endif
+#endif
+
+#ifdef _WIN32
+#  include <stddef.h>           /* for wchar_t */
 #endif
 
 /* a little trick to accommodate both "#define _LARGEFILE64_SOURCE" and
@@ -370,21 +435,38 @@ typedef uLong FAR uLongf;
  * both "#undef _LARGEFILE64_SOURCE" and "#define _LARGEFILE64_SOURCE 0" as
  * equivalently requesting no 64-bit operations
  */
-#if -_LARGEFILE64_SOURCE - -1 == 1
+#if defined(LARGEFILE64_SOURCE) && -_LARGEFILE64_SOURCE - -1 == 1
 #  undef _LARGEFILE64_SOURCE
 #endif
 
-#if defined(Z_HAVE_UNISTD_H) || defined(_LARGEFILE64_SOURCE)
-#  include <unistd.h>       /* for SEEK_* and off_t */
-#  ifdef VMS
-#    include <unixio.h>     /* for off_t */
-#  endif
-#  ifndef z_off_t
-#    define z_off_t off_t
+#if defined(__WATCOMC__) && !defined(Z_HAVE_UNISTD_H)
+#  define Z_HAVE_UNISTD_H
+#endif
+#ifndef Z_SOLO
+#  if defined(Z_HAVE_UNISTD_H) || defined(LARGEFILE64_SOURCE)
+#    include <unistd.h>         /* for SEEK_*, off_t, and _LFS64_LARGEFILE */
+#    ifdef VMS
+#      include <unixio.h>       /* for off_t */
+#    endif
+#    ifndef z_off_t
+#      define z_off_t off_t
+#    endif
 #  endif
 #endif
 
-#ifndef SEEK_SET
+#if defined(_LFS64_LARGEFILE) && _LFS64_LARGEFILE-0
+#  define Z_LFS64
+#endif
+
+#if defined(_LARGEFILE64_SOURCE) && defined(Z_LFS64)
+#  define Z_LARGE64
+#endif
+
+#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS-0 == 64 && defined(Z_LFS64)
+#  define Z_WANT64
+#endif
+
+#if !defined(SEEK_SET) && !defined(Z_SOLO)
 #  define SEEK_SET        0       /* Seek from beginning of file.  */
 #  define SEEK_CUR        1       /* Seek from current position.  */
 #  define SEEK_END        2       /* Set file pointer to EOF plus "offset" */
@@ -394,18 +476,14 @@ typedef uLong FAR uLongf;
 #  define z_off_t long
 #endif
 
-#if defined(_LARGEFILE64_SOURCE) && _LFS64_LARGEFILE-0
+#if !defined(_WIN32) && defined(Z_LARGE64)
 #  define z_off64_t off64_t
 #else
-#  define z_off64_t z_off_t
-#endif
-
-#if defined(__OS400__)
-#  define NO_vsnprintf
-#endif
-
-#if defined(__MVS__)
-#  define NO_vsnprintf
+#  if defined(_WIN32) && !defined(__GNUC__) && !defined(Z_SOLO)
+#    define z_off64_t __int64
+#  else
+#    define z_off64_t z_off_t
+#  endif
 #endif
 
 /* MVS linker does not support external names larger than 8 bytes */
