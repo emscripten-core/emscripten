@@ -853,7 +853,11 @@ try:
         requested_level = 2
         settings_changes.append('INLINING_LIMIT=50')
       opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
-      newargs[i] = ''
+      # We leave the -O option in place so that the clang front-end runs in that
+      # optimization mode, but we disable the actual optimization passes, as we'll
+      # run them seperately.
+      newargs.append('-mllvm')
+      newargs.append('-disable-llvm-optzns');
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
       js_opts = eval(newargs[i+1])

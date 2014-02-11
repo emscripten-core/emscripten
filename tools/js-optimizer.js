@@ -5127,7 +5127,7 @@ function fixDotZero(js) {
 function asmLastOpts(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     traverse(fun, function(node, type) {
-      if (type === 'while' && node[1][0] === 'num' && node[1][1] === 1 && node[2][0] === 'block') {
+      if (type === 'while' && node[1][0] === 'num' && node[1][1] === 1 && node[2][0] === 'block' && node[2].length == 2) {
         // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
         // into shapes that might confuse other passes
 

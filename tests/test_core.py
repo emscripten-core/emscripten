@@ -4720,7 +4720,7 @@ return malloc(size);
   def test_gcc_unmangler(self):
     if os.environ.get('EMCC_FAST_COMPILER') != '1': Settings.NAMED_GLOBALS = 1 # test coverage for this; fastcomp never names globals
 
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party'), '-Wno-warn-absolute-paths']
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
@@ -4909,6 +4909,7 @@ def process(filename):
     Building.COMPILER_TEST_OPTS += [
       '-I' + path_from_root('tests', 'freetype', 'include'),
       '-I' + path_from_root('tests', 'poppler', 'include'),
+      '-Wno-warn-absolute-paths'
     ]
 
     Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
@@ -5164,7 +5165,7 @@ def process(filename):
   def test_fuzz(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
 
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz')]
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz'), '-Wno-warn-absolute-paths']
 
     def run_all(x):
       print x
