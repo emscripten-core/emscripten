@@ -958,6 +958,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
+    Module['noExitRuntime'] = true; // should we only do this if there is a callback?
+
     funcName = Pointer_stringify(funcName);
     var info = Browser.workers[id];
     var callbackId = -1;
