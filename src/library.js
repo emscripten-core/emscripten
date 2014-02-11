@@ -4424,7 +4424,7 @@ LibraryManager.library = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__cxa_free_exception', '__cxa_last_thrown_exception', '___cxa_exception_header_size', '__cxa_caught_exceptions'],
+  __cxa_end_catch__deps: ['__cxa_free_exception', '__cxa_last_thrown_exception', '__cxa_exception_header_size', '__cxa_caught_exceptions'],
   __cxa_end_catch: function() {
     if (___cxa_end_catch.rethrown) {
       ___cxa_end_catch.rethrown = false;
