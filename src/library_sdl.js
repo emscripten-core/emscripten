@@ -411,7 +411,7 @@ var LibrarySDL = {
           }
 
           if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
-            var button = (event.type == 'DOMMouseScroll' ? event.detail : -event.wheelDelta) > 0 ? 4 : 3;
+            var button = Browser.getMouseWheelDelta(event) > 0 ? 4 : 3;
             var event2 = {
               type: 'mousedown',
               button: button,

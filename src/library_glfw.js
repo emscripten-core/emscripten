@@ -197,13 +197,7 @@ var LibraryGLFW = {
     },
 
     onMouseWheel: function(event) {
-      if (event.detail > 0) {
-        GLFW.wheelPos++;
-      }
-
-      if (event.detail < 0) {
-        GLFW.wheelPos--;
-      }
+      GLFW.wheelPos += Browser.getMouseWheelDelta(event);
 
       if (GLFW.mouseWheelFunc && event.target == Module["canvas"]) {
         Runtime.dynCall('vi', GLFW.mouseWheelFunc, [GLFW.wheelPos]);
