@@ -1538,7 +1538,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           return 0;
         }
       '''.replace('COND', '==' if cond else '!=').replace('BODY', r'{ printf("all good\n"); }' if body else '')
-      self.do_run(src, 'dyncall error: vi' if not work else 'all good')
+      # typically we get the dyncall error message from SAFE_DYNCALLS, however llvm opts can devirtualize the
+      # call in -O2, leading to the much nicer error message specifically about the missing function
+      self.do_run(src, ('dyncall error: vi', 'missing function: _ZN2D14doItEv') if not work else 'all good')
 
   def test_dynamic_cast(self):
       if self.emcc_args is None: return self.skip('need libcxxabi')
