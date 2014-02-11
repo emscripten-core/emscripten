@@ -202,6 +202,10 @@ if (Module['noInitialRun']) {
   shouldRunNow = false;
 }
 
+#if NO_EXIT_RUNTIME
+Module["noExitRuntime"] = true;
+#endif
+
 run();
 
 // {{POST_RUN_ADDITIONS}}
