@@ -7517,6 +7517,7 @@ LibraryManager.library = {
       } else {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
       }
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_next, '0', 'i32') }}};
 
       return ai;
     }

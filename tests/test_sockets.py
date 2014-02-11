@@ -220,6 +220,7 @@ class sockets(BrowserCore):
     )
 
   def test_getaddrinfo(self):
+    self.emcc_args=[]
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
 
   def test_getnameinfo(self):
