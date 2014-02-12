@@ -162,7 +162,7 @@ function isArrayType(type) {
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (isArrayType(type)) return true;
-  if (/<?{ ?[^}]* ?}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
+  if (/<?\{ ?[^}]* ?\}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return type[0] == '%';
 }
@@ -172,7 +172,7 @@ function isVectorType(type) {
 }
 
 function isStructuralType(type) {
-  return /^{ ?[^}]* ?}$/.test(type); // { i32, i8 } etc. - anonymous struct types
+  return /^\{ ?[^}]* ?\}$/.test(type); // { i32, i8 } etc. - anonymous struct types
 }
 
 function getStructuralTypeParts(type) { // split { i32, i8 } etc. into parts
