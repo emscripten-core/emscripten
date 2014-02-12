@@ -631,7 +631,7 @@ var LibraryGL = {
                           GLctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
 
       GL.floatExt = GLctx.getExtension('OES_texture_float');
-      
+
       // Extension available from Firefox 26 and Google Chrome 30
       GL.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
       
@@ -648,7 +648,8 @@ var LibraryGL = {
                                              "OES_element_index_uint", "EXT_texture_filter_anisotropic", "ANGLE_instanced_arrays",
                                              "OES_texture_float_linear", "OES_texture_half_float_linear", "WEBGL_compressed_texture_atc",
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
-                                             "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources" ];
+                                             "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources",
+                                             "EXT_shader_texture_lod" ];
 
       function shouldEnableAutomatically(extension) {
         for(var i in automaticallyEnabledExtensions) {
