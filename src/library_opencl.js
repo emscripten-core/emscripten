@@ -41,9 +41,9 @@ var LibraryOpenCL = {
     init: function() {
       if (CL.cl_init == 0) {
 #if CL_VALIDATOR
-        console.log('%c WebCL-Translator + Validator V2.0 by Anthony Liot & Steven Eliuk ! ', 'background: #222; color: #bada55');
+        console.log('%c WebCL-Translator + Validator V2.0 ! ', 'background: #222; color: #bada55');
 #else        
-        console.log('%c WebCL-Translator V2.0 by Anthony Liot & Steven Eliuk ! ', 'background: #222; color: #bada55');
+        console.log('%c WebCL-Translator V2.0 ! ', 'background: #222; color: #bada55');
 #endif        
         var nodejs = (typeof window === 'undefined');
         if(nodejs) {
