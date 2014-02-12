@@ -7,9 +7,9 @@ extern "C" {
 
 #include <features.h>
 
-#define STDIN_FILENO  1
-#define STDOUT_FILENO 2
-#define STDERR_FILENO 3
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
 
 #define SEEK_SET 0
 #define SEEK_CUR 1

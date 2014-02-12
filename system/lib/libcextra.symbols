@@ -1,4 +1,18 @@
+         T __cos
+         T __cosdf
+         T __fputwc_unlocked
+         T __intscan
          W __iswctype_l
+         T __lgamma_r
+         T __lgammaf_r
+         T __lgammal_r
+         T __memrchr
+         C __optpos
+         D __optreset
+         W __posix_getopt
+         T __sin
+         T __sindf
+         T __strchrnul
          T __strxfrm_l
          W __towlower_l
          W __towupper_l
@@ -10,12 +24,22 @@
          W __wctype_l
          T btowc
          T ecvt
+         T err
+         T errx
          T fcvt
+         T fputwc
+         W fputwc_unlocked
          T fwprintf
          T gcvt
+         T getopt
+         T getopt_long
+         T getopt_long_only
          T iconv
          T iconv_close
          T iconv_open
+         T ilogb
+         T ilogbf
+         T ilogbl
          T iswalnum
          T iswalnum_l
          T iswalpha
@@ -42,6 +66,18 @@
          T iswupper_l
          T iswxdigit
          T iswxdigit_l
+         T ldexp
+         T ldexpf
+         T ldexpl
+         T lgamma
+         W lgamma_r
+         T lgammaf
+         W lgammaf_r
+         T lgammal
+         W lgammal_r
+         T logb
+         T logbf
+         T logbl
          T mblen
          T mbrlen
          T mbrtowc
@@ -50,24 +86,53 @@
          T mbsrtowcs
          T mbstowcs
          T mbtowc
+         T memccpy
+         T memmem
+         T mempcpy
+         W memrchr
+         C optarg
+         D opterr
+         D optind
+         C optopt
+         W optreset
+         W putwc_unlocked
          T regcomp
          T regerror
          T regexec
          T regfree
+         T scalbnf
+         D signgam
+         T strcasecmp_l
+         T strcasestr
+         W strchrnul
          T strfmon
          T strfmon_l
+         T strlcat
+         T strlcpy
+         T strncasecmp_l
+         T strsep
+         T strverscmp
          T strxfrm
          W strxfrm_l
          T swprintf
+         T tgamma
+         T tgammaf
+         T tgammal
          T towctrans
          T towctrans_l
          T towlower
          T towlower_l
          T towupper
          T towupper_l
+         T verr
+         T verrx
          T vfwprintf
          T vswprintf
+         T vwarn
+         T vwarnx
          T vwprintf
+         T warn
+         T warnx
          T wcpcpy
          T wcpncpy
          T wcrtomb
@@ -94,8 +159,17 @@
          T wcsrtombs
          T wcsspn
          T wcsstr
+         T wcstod
+         T wcstof
+         T wcstoimax
          T wcstok
+         T wcstol
+         T wcstold
+         T wcstoll
          T wcstombs
+         T wcstoul
+         T wcstoull
+         T wcstoumax
          T wcswcs
          T wcswidth
          T wcsxfrm
@@ -113,3 +187,4 @@
          T wmemmove
          T wmemset
          T wprintf
+         T fnmatch

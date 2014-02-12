@@ -49,7 +49,7 @@ var RuntimeGenerator = {
   stackExit: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     var ret = '';
-    if (SAFE_HEAP) {
+    if (SAFE_HEAP && !ASM_JS) {
       ret += 'var i = sp; while ((i|0) < (STACKTOP|0)) { SAFE_HEAP_CLEAR(i|0); i = (i+1)|0 }';
     }
     return ret += 'STACKTOP=sp';
@@ -185,8 +185,11 @@ var Runtime = {
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size, vararg) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
+#if TARGET_LE32 == 1
+    if (vararg) return 8;
+#endif
 #if TARGET_LE32
-    if (type == 'i64' || type == 'double' || vararg) return 8;
+    if (!vararg && (type == 'i64' || type == 'double')) return 8;
     if (!type) return Math.min(size, 8); // align structures internally to 64 bits
 #endif
     return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
@@ -247,7 +250,7 @@ var Runtime = {
       prev = curr;
       return curr;
     });
-    if (type.name_[0] === '[') {
+    if (type.name_ && type.name_[0] === '[') {
       // arrays have 2 elements, so we get the proper difference. then we scale here. that way we avoid
       // allocating a potentially huge array for [999999 x i8] etc.
       type.flatSize = parseInt(type.name_.substr(1))*type.flatSize/2;
@@ -379,6 +382,28 @@ var Runtime = {
     var table = FUNCTION_TABLE;
     table[index] = null;
 #endif
+  },
+
+  getAsmConst: function(code, numArgs) {
+    // code is a constant string on the heap, so we can cache these
+    if (!Runtime.asmConstCache) Runtime.asmConstCache = {};
+    var func = Runtime.asmConstCache[code];
+    if (func) return func;
+    var args = [];
+    for (var i = 0; i < numArgs; i++) {
+      args.push(String.fromCharCode(36) + i); // $0, $1 etc
+    }
+    code = Pointer_stringify(code);
+    if (code[0] === '"') {
+      // tolerate EM_ASM("..code..") even though EM_ASM(..code..) is correct
+      if (code.indexOf('"', 1) === code.length-1) {
+        code = code.substr(1, code.length-2);
+      } else {
+        // something invalid happened, e.g. EM_ASM("..code($0)..", input)
+        abort('invalid EM_ASM input |' + code + '|. Please use EM_ASM(..code..) (no quotes) or EM_ASM({ ..code($0).. }, input) (to input values)');
+      }
+    }
+    return Runtime.asmConstCache[code] = eval('(function(' + args.join(',') + '){ ' + code + ' })'); // new Function does not allow upvars in node
   },
 
   warnOnce: function(text) {
@@ -540,7 +565,7 @@ function getRuntime() {
 
 // Converts a value we have as signed, into an unsigned value. For
 // example, -1 in int32 would be a very large number as unsigned.
-function unSign(value, bits, ignore, sig) {
+function unSign(value, bits, ignore) {
   if (value >= 0) {
     return value;
   }
@@ -553,7 +578,7 @@ function unSign(value, bits, ignore, sig) {
 
 // Converts a value we have as unsigned, into a signed value. For
 // example, 200 in a uint8 would be a negative number.
-function reSign(value, bits, ignore, sig) {
+function reSign(value, bits, ignore) {
   if (value <= 0) {
     return value;
   }

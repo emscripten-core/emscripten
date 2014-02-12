@@ -33,5 +33,10 @@ function collideLocal(i1) {
  aGlobal(a); // multiple collisions, a and i1
  bGlobal(i1);
 }
+function collideLocal(i1) {
+ i1 = i1 | 0;
+ i1 = i1 + 4; // statement is of similar shape to a param coercion
+ aGlobal(i1);
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "names": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "i1", "cl"], "globals": { "aGlobal": "a", "bGlobal": "i1", "collideLocal": "cl" } }

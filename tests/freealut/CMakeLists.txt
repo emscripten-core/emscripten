@@ -72,20 +72,39 @@ ADD_DEFINE("__NO_CTYPE 1")
 ADD_DEFINITIONS(-DHAVE_CONFIG_H)
 ADD_DEFINITIONS(-DNDEBUG)
 
-FIND_LIBRARY(OPENAL_LIB NAMES openal openal32 PATHS /usr/lib /usr/local/lib ${OPENAL_LIB_DIR})
-IF(OPENAL_LIB MATCHES "NOTFOUND")
-  MESSAGE(FATAL_ERROR "OpenAL not installed, cannot build alut - aborting.")
-ENDIF(OPENAL_LIB MATCHES "NOTFOUND")
+if (EMSCRIPTEN)
+  # Emscripten cannot use FIND_LIBRARY, since that seaches for linkable library files, but Emscripten supports
+  # OpenAL in core and there are no library files to link against. Instead, use a custom OpenAL package finder
+  # provided by Emscripten.
+  FIND_PACKAGE(OpenAL)
 
-IF(UNIX)
- SET(ADD_LIBS ${ADD_LIBS} m)
-ENDIF(UNIX)
+  # All the include file checks bloew are no-ops for Emscripten, so for that platform, just define the flags we support.
+  SET(HAVE_STDINT_H 1)
+  SET(HAVE_STAT 1)
+  SET(HAVE_NANOSLEEP 1)
+  SET(HAVE_TIME_H 1)
+  ADD_DEFINITIONS(-DHAVE_STDINT_H=1 -DHAVE_STAT=1 -DHAVE_NANOSLEEP=1 -DHAVE_TIME_H=1)
+  SET(CMAKE_EXECUTABLE_SUFFIX ".bc")
+else()
+  FIND_LIBRARY(OPENAL_LIB NAMES openal openal32 PATHS /usr/lib /usr/local/lib ${OPENAL_LIB_DIR})
+
+  IF(OPENAL_LIB MATCHES "NOTFOUND")
+    MESSAGE(FATAL_ERROR "OpenAL not installed, cannot build alut - aborting.")
+  ENDIF(OPENAL_LIB MATCHES "NOTFOUND")
+
+  IF(UNIX)
+    SET(ADD_LIBS ${ADD_LIBS} m)
+  ENDIF(UNIX)
+endif()
 
 SET(CMAKE_REQUIRED_INCLUDES ${OPENAL_INCLUDE_DIR})
-CHECK_INCLUDE_FILES("AL/alc.h;AL/al.h" AL_HEADERS)
-IF(NOT AL_HEADERS)
-  MESSAGE(FATAL_ERROR "OpenAL header files not found - aborting.")
-ENDIF(NOT AL_HEADERS)
+
+if (NOT EMSCRIPTEN) # Emscripten is a cross-compiler and cannot verify paths of include files with CHECK_INCLUDE_FILES, since that requires building native executables.
+  CHECK_INCLUDE_FILES("AL/alc.h;AL/al.h" AL_HEADERS)
+  IF(NOT AL_HEADERS)
+    MESSAGE(FATAL_ERROR "OpenAL header files not found - aborting.")
+  ENDIF(NOT AL_HEADERS)
+endif()
 
 IF(DEFINED OPENAL_INCLUDE_DIR)
   INCLUDE_DIRECTORIES(${OPENAL_INCLUDE_DIR})
@@ -178,10 +197,18 @@ INSTALL_FILES(/lib/pkgconfig FILES admin/pkgconfig/freealut.pc)
 IF(BUILD_TESTS)
     # examples
     ADD_EXECUTABLE(hello_world examples/hello_world.c)
-    TARGET_LINK_LIBRARIES(hello_world ${OPENAL_LIB} ${ADD_LIBS} alut)
+    if (EMSCRIPTEN)
+      TARGET_LINK_LIBRARIES(hello_world ${OPENAL_LIB} ${ADD_LIBS} alut_static)
+    else()
+      TARGET_LINK_LIBRARIES(hello_world ${OPENAL_LIB} ${ADD_LIBS} alut)
+    endif()
 
     ADD_EXECUTABLE(playfile examples/playfile.c)
-    TARGET_LINK_LIBRARIES(playfile ${OPENAL_LIB} ${ADD_LIBS} alut)
+    if (EMSCRIPTEN)
+      TARGET_LINK_LIBRARIES(playfile ${OPENAL_LIB} ${ADD_LIBS} alut_static)
+    else()
+      TARGET_LINK_LIBRARIES(playfile ${OPENAL_LIB} ${ADD_LIBS} alut)
+    endif()
 
 
     SET(TESTS errorstuff

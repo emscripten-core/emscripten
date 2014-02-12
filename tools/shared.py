@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re, errno
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 from distutils.spawn import find_executable
@@ -176,13 +176,28 @@ if WINDOWS:
 else:
   logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
-# Emscripten configuration is done through the EM_CONFIG environment variable.
-# If the string value contained in this environment variable contains newline
-# separated definitions, then these definitions will be used to configure
+# Emscripten configuration is done through the --em-config command line option or
+# the EM_CONFIG environment variable. If the specified string value contains newline
+# or semicolon-separated definitions, then these definitions will be used to configure
 # Emscripten.  Otherwise, the string is understood to be a path to a settings
 # file that contains the required definitions.
 
-EM_CONFIG = os.environ.get('EM_CONFIG')
+try:
+  EM_CONFIG = sys.argv[sys.argv.index('--em-config')+1]
+  # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
+  # those child processes get the same configuration file by setting it to the currently active environment.
+  os.environ['EM_CONFIG'] = EM_CONFIG
+except:
+  EM_CONFIG = os.environ.get('EM_CONFIG')
+
+if EM_CONFIG and not os.path.isfile(EM_CONFIG):
+  if EM_CONFIG.startswith('-'):
+    raise Exception('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config EMSCRIPTEN_ROOT=/path/;LLVM_ROOT=/path;...')
+  if not '=' in EM_CONFIG:
+    raise Exception('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+  else:
+    EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:
@@ -257,9 +272,17 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 EXPECTED_LLVM_VERSION = (3,2)
 
+actual_clang_version = None
+
+def get_clang_version():
+  global actual_clang_version
+  if actual_clang_version is None:
+    actual_clang_version = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0].split(' ')[2]
+  return actual_clang_version
+
 def check_clang_version():
-  expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
-  actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
+  expected = '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  actual = get_clang_version()
   if expected in actual:
     return True
   logging.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
@@ -270,6 +293,21 @@ def check_llvm_version():
     check_clang_version()
   except Exception, e:
     logging.warning('Could not verify LLVM version: %s' % str(e))
+
+def check_fastcomp():
+  try:
+    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
+    pre, targets = llc_version_info.split('Registered Targets:')
+    if 'js' not in targets or 'JavaScript (asm.js, emscripten) backend' not in targets:
+      logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
+      print >> sys.stderr, '==========================================================================='
+      print >> sys.stderr, llc_version_info,
+      print >> sys.stderr, '==========================================================================='
+      return False
+    return True
+  except Exception, e:
+    logging.warning('cound not check fastcomp: %s' % str(e))
+    return True
 
 EXPECTED_NODE_VERSION = (0,8,0)
 
@@ -307,16 +345,16 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.7.7'
+EMSCRIPTEN_VERSION = '1.10.4'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
+  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
 
 def check_sanity(force=False):
   try:
     reason = None
     if not CONFIG_FILE:
-      if not force: return # config stored directly in EM_CONFIG => skip sanity checks
+      return # config stored directly in EM_CONFIG => skip sanity checks
     else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
@@ -338,9 +376,11 @@ def check_sanity(force=False):
       Cache.erase()
       force = False # the check actually failed, so definitely write out the sanity file, to avoid others later seeing failures too
 
-    # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
+    # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_llvm_version()
     check_node_version()
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+      fastcomp_ok = check_fastcomp()
 
     if os.environ.get('EM_IGNORE_SANITY'):
       logging.info('EM_IGNORE_SANITY set, ignoring sanity checks')
@@ -360,6 +400,11 @@ def check_sanity(force=False):
     for cmd in [CLANG, LINK_CMD[0], LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
+        sys.exit(1)
+
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+      if not fastcomp_ok:
+        logging.critical('failing sanity checks due to previous fastcomp failure')
         sys.exit(1)
 
     try:
@@ -456,6 +501,18 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
+def safe_ensure_dirs(dirname):
+  try:
+    os.makedirs(dirname)
+  except os.error, e:
+    # Ignore error for already existing dirname
+    if e.errno != errno.EEXIST:
+      raise e
+    # FIXME: Notice that this will result in a false positive,
+    # should the dirname be a file! There seems to no way to
+    # handle this atomically in Python 2.x.
+    # There is an additional option for Python 3.x, though.
+
 class Configuration:
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
@@ -480,10 +537,9 @@ class Configuration:
     if self.DEBUG:
       try:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
-        if not os.path.exists(self.EMSCRIPTEN_TEMP_DIR):
-          os.makedirs(self.EMSCRIPTEN_TEMP_DIR)
+        safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception, e:
-        logging.debug(e + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
+        logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -626,7 +682,7 @@ def check_engine(engine):
   try:
     if not CONFIG_FILE:
       return True # config stored directly in EM_CONFIG => skip engine check
-    return 'hello, world!' in run_js(path_from_root('tests', 'hello_world.js'), engine)
+    return 'hello, world!' in run_js(path_from_root('src', 'hello_world.js'), engine)
   except Exception, e:
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
@@ -656,7 +712,7 @@ def line_splitter(data):
 
   return out
 
-def limit_size(string, MAX=12000*20):
+def limit_size(string, MAX=800*20):
   if len(string) < MAX: return string
   return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
@@ -753,12 +809,6 @@ class Settings2(type):
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['RELOOP'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
-      if opt_level >= 3:
-        # Aside from these, -O3 also runs closure compiler and llvm lto
-        self.attrs['FORCE_ALIGNED_MEMORY'] = 1
-        self.attrs['DOUBLE_MODE'] = 0
-        self.attrs['PRECISE_I64_MATH'] = 0
-        if noisy: logging.warning('Applying some potentially unsafe optimizations! (Use -O2 if this fails.)')
 
     def __getattr__(self, attr):
       if attr in self.attrs:
@@ -915,7 +965,7 @@ class Building:
 
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None, native=False):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args='help', cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None, native=False):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers).
@@ -923,6 +973,8 @@ class Building:
 
     if type(generated_libs) is not list: generated_libs = [generated_libs]
     if source_dir is None: source_dir = path_from_root('tests', name.replace('_native', ''))
+    if make_args == 'help':
+      make_args = ['-j', str(multiprocessing.cpu_count())]
 
     temp_dir = build_dir
     if copy_project:
@@ -1017,8 +1069,7 @@ class Building:
         try:
           temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
           temp_dirs.append(temp_dir)
-          if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
+          safe_ensure_dirs(temp_dir)
           os.chdir(temp_dir)
           contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
           #print >> sys.stderr, '  considering archive', f, ':', contents
@@ -1027,9 +1078,9 @@ class Building:
           else:
             for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
               dirname = os.path.dirname(content)
-              if dirname and not os.path.exists(dirname):
-                os.makedirs(dirname)
-            Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+              if dirname:
+                safe_ensure_dirs(dirname)
+            Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
             contents = map(lambda content: os.path.join(temp_dir, content), contents)
             contents = filter(os.path.exists, map(os.path.abspath, contents))
             added_contents = set()
@@ -1067,7 +1118,7 @@ class Building:
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a respose file
     response_file = None
-    if WINDOWS and len(' '.join(link_cmd)) > 8192:
+    if len(' '.join(link_cmd)) > 8192:
       logging.debug('using response file for llvm-link')
       [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
 
@@ -1114,7 +1165,9 @@ class Building:
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
-    logging.debug('emcc: LLVM opts: ' + str(opts))
+    if get_clang_version() == '3.4' and not Settings.SIMD:
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4 has these on by default
+    logging.debug('emcc: LLVM opts: ' + ' '.join(opts))
     target = out or (filename + '.opt.bc')
     output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target), 'Failed to run llvm optimizations: ' + output
@@ -1355,6 +1408,8 @@ class Building:
     if not os.path.exists(CLOSURE_COMPILER):
       raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
 
+    CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
+
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
     args = [JAVA,
@@ -1362,6 +1417,7 @@ class Building:
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--language_in', 'ECMASCRIPT5',
+            '--externs', CLOSURE_EXTERNS,
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if pretty: args += ['--formatting', 'PRETTY_PRINT']
@@ -1411,6 +1467,10 @@ class Building:
   @staticmethod
   def ensure_relooper(relooper):
     if os.path.exists(relooper): return
+    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+      logging.debug('not building relooper to js, using it in c++ backend')
+      return
+
     Cache.ensure()
     curr = os.getcwd()
     try:
@@ -1482,6 +1542,8 @@ class Building:
       text = m.groups(0)[0]
       assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
       assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
+      if os.environ.get('EMCC_FAST_COMPILER') == '1': # fake it in fastcomp
+        return text.replace('emscripten_jcache_printf', 'printf')
       start = text.index('(')
       end = text.rindex(')')
       args = text[start+1:end].split(',')
@@ -1500,7 +1562,7 @@ JCache = cache.JCache(Cache)
 chunkify = cache.chunkify
 
 class JS:
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, ([\dRuntime\.GLOBAL_BASEH+]+)\)'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]+)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -1509,7 +1571,7 @@ class JS:
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
-    return ident.replace('%', '$').replace('@', '_')
+    return ident.replace('%', '$').replace('@', '_').replace('.', '_')
 
   @staticmethod
   def make_initializer(sig, settings=None):
@@ -1583,6 +1645,75 @@ class JS:
   def align(x, by):
     while x % by != 0: x += 1
     return x
+
+  INITIALIZER_CHUNK_SIZE = 10240
+
+  @staticmethod
+  def collect_initializers(src):
+    ret = []
+    max_offset = -1
+    for init in re.finditer(JS.memory_initializer_pattern, src):
+      contents = init.group(1).split(',')
+      offset = sum([int(x) if x[0] != 'R' else 0 for x in init.group(2).split('+')])
+      ret.append((offset, contents))
+      assert offset > max_offset
+      max_offset = offset
+    return ret
+
+  @staticmethod
+  def split_initializer(contents):
+    # given a memory initializer (see memory_initializer_pattern), split it up into multiple initializers to avoid long runs of zeros or a single overly-large allocator
+    ret = []
+    l = len(contents)
+    maxx = JS.INITIALIZER_CHUNK_SIZE
+    i = 0
+    start = 0
+    while 1:
+      if i - start >= maxx or (i > start and i == l):
+        #print >> sys.stderr, 'new', start, i-start
+        ret.append((start, contents[start:i]))
+        start = i
+      if i == l: break
+      if contents[i] != '0':
+        i += 1
+      else:
+        # look for a sequence of zeros
+        j = i + 1
+        while j < l and contents[j] == '0': j += 1
+        if j-i > maxx/10 or j-start >= maxx:
+          #print >> sys.stderr, 'skip', start, i-start, j-start
+          ret.append((start, contents[start:i])) # skip over the zeros starting at i and ending at j
+          start = j
+        i = j
+    return ret
+
+  @staticmethod
+  def replace_initializers(src, inits):
+    class State:
+      first = True
+    def rep(m):
+      if not State.first: return ''
+      # write out all the new initializers in place of the first old one
+      State.first = False
+      def gen_init(init):
+        offset, contents = init
+        return '/* memory initializer */ allocate([%s], "i8", ALLOC_NONE, Runtime.GLOBAL_BASE%s);' % (
+          ','.join(contents),
+          '' if offset == 0 else ('+%d' % offset)
+        )
+      return '\n'.join(map(gen_init, inits))
+    return re.sub(JS.memory_initializer_pattern, rep, src)
+
+  @staticmethod
+  def optimize_initializer(src):
+    inits = JS.collect_initializers(src)
+    if len(inits) == 0: return None
+    assert len(inits) == 1
+    init = inits[0]
+    offset, contents = init
+    assert offset == 0 # offset 0, singleton
+    if len(contents) <= JS.INITIALIZER_CHUNK_SIZE: return None
+    return JS.replace_initializers(src, JS.split_initializer(contents))
 
 # Compression of code and data for smaller downloads
 class Compression:

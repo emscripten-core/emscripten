@@ -1,0 +1,4 @@
+Normal execution path of first function!
+Exception execution path of first function! 0
+Calling longjmp the second time!
+Exception execution path of first function! 1

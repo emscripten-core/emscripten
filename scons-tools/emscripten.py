@@ -316,6 +316,11 @@ def generate(env):
 
     def depend_on_embedder(target, source, env):
         env.Depends(target, env['JS_EMBEDDER'])
+        files = []
+        for src in source:
+            for dirpath, dirnames, filenames in os.walk(str(src.srcnode())):
+                files.extend(map(lambda p: os.path.join(dirpath, p), filenames))
+        env.Depends(target, env.Value(sorted(files)))
         return target, source
 
     def embed_files_in_js(target, source, env, for_signature):

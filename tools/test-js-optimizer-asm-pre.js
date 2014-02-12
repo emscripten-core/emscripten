@@ -66,6 +66,10 @@ function b($this, $__n) {
  HEAP8[($38 + $40 | 0) & 16777215] = 0;
  // Eliminate the |0.
  HEAP32[$4] = ((~(HEAP32[$5]|0))|0);
+ // Eliminate the &255
+ HEAP8[$4] = HEAP32[$5]&255;
+ // Eliminate the &65535
+ HEAP16[$4] = HEAP32[$5]&65535;
  // Rewrite to ~.
  HEAP32[$4] = HEAP32[$5]^-1;
  // Rewrite to ~ and eliminate the |0.
@@ -526,4 +530,24 @@ function _main($argc, $argv) {
  STACKTOP = __stackBase__;
  return $_0 | 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main"]
+function badf() {
+ var $9 = Math_fround(0);
+ $9 = (HEAP32[tempDoublePtr>>2]=$8,Math_fround(HEAPF32[tempDoublePtr>>2]));
+ HEAPF32[$gep23_asptr>>2] = $9;
+}
+function badf2() {
+ var $9 = 0;
+ $9 = (HEAPF32[tempDoublePtr>>2]=$8,HEAP32[tempDoublePtr>>2]|0);
+ HEAP32[$gep23_asptr>>2] = $9;
+}
+function fcomp() {
+  // de-morgan's laws are not valid on floats, due to NaNs >:(
+ if (!($y < $x)) return 5;
+ if (!(5 < $x)) return 5;
+ if (!($y < 5)) return 5;
+ if (!(($a|0) < ($b|0))) return 5;
+ if (!(($a|0) < 5)) return 5;
+ if (!(5 < ($b|0))) return 5;
+ if (!(5 < 5)) return 5;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp"]

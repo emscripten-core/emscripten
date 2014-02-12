@@ -6122,4 +6122,15 @@ function intoCond() {
 function math(a, b, c, d) {
  print(Math_imul(d) + (Math_fround(c) + (a + Math_abs(b))));
 }
+function td(x, y) {
+ HEAP32[tempDoublePtr >> 2] = x;
+ var xf = HEAPF32[tempDoublePtr >> 2];
+ HEAP32[tempDoublePtr >> 2] = y;
+ func(xf, HEAPF32[tempDoublePtr >> 2]);
+ HEAPF64[tempDoublePtr >> 3] = x;
+ var xl = HEAP32[tempDoublePtr >> 2];
+ var xh = HEAP32[tempDoublePtr >> 2];
+ HEAPF64[tempDoublePtr >> 3] = y;
+ func(xl, xh, HEAP32[tempDoublePtr >> 2], HEAP32[tempDoublePtr >> 2]);
+}
 

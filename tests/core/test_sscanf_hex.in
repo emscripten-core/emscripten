@@ -1,0 +1,7 @@
+#include "stdio.h"
+
+int main() {
+  unsigned int a, b;
+  sscanf("0x12AB 12AB", "%x %x", &a, &b);
+  printf("%d %d\n", a, b);
+}

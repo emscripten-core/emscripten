@@ -7,6 +7,7 @@
 //
 // We'll call the on-the-wire type WireType.
 
+#include <stdio.h>
 #include <cstdlib>
 #include <memory>
 #include <string>
@@ -130,8 +131,6 @@ namespace emscripten {
             constexpr static type fromWireType(WireType v) {        \
                 return v;                                           \
             }                                                       \
-            static void destroy(WireType) {                         \
-            }                                                       \
         }
 
         EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(char);
@@ -160,8 +159,6 @@ namespace emscripten {
             static bool fromWireType(WireType wt) {
                 return wt;
             }
-            static void destroy(WireType) {
-            }
         };
 
         template<>
@@ -179,9 +176,6 @@ namespace emscripten {
             static std::string fromWireType(WireType v) {
                 return std::string(v->data, v->length);
             }
-            static void destroy(WireType v) {
-                free(v);
-            }
         };
 
         template<>
@@ -198,9 +192,6 @@ namespace emscripten {
             }
             static std::wstring fromWireType(WireType v) {
                 return std::wstring(v->data, v->length);
-            }
-            static void destroy(WireType v) {
-                free(v);
             }
         };
 
@@ -254,10 +245,6 @@ namespace emscripten {
             static ActualT& fromWireType(WireType p) {
                 return *p;
             }
-
-            static void destroy(WireType p) {
-                delete p;
-            }
         };
 
         // Is this necessary?
@@ -280,8 +267,6 @@ namespace emscripten {
             static Enum fromWireType(WireType v) {
                 return v;
             }
-            static void destroy(WireType) {
-            }
         };
 
         // catch-all generic binding
@@ -296,21 +281,6 @@ namespace emscripten {
         auto toWireType(T&& v) -> typename BindingType<T>::WireType {
             return BindingType<T>::toWireType(std::forward<T>(v));
         }
-
-        template<typename T>
-        struct WireDeleter {
-            typedef typename BindingType<T>::WireType WireType;
-            
-            WireDeleter(WireType wt)
-                : wt(wt)
-            {}
-            
-            ~WireDeleter() {
-                BindingType<T>::destroy(wt);
-            }
-            
-            WireType wt;
-        };
     }
 
     struct memory_view {

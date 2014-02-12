@@ -134,7 +134,7 @@ load('settings.js');
 var settings_file = arguments_[0];
 var ll_file = arguments_[1];
 phase = arguments_[2];
-if (phase == 'pre') {
+if (phase == 'pre' || phase == 'glue') {
   additionalLibraries = Array.prototype.slice.call(arguments_, 3);
 } else {
   var forwardedDataFile = arguments_[3];
@@ -183,9 +183,6 @@ if (SAFE_HEAP) USE_BSS = 0; // must initialize heap for safe heap
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
-if (ASM_JS) {
-  assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
-}
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have named globals');
 
 // Output some info and warnings based on settings
@@ -206,12 +203,12 @@ if (phase == 'pre') {
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
 // Load struct and define information.
-try {
+//try {
   var temp = JSON.parse(read(STRUCT_INFO));
-} catch(e) {
-  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
-  temp = JSON.parse(read('struct_info.compiled.json'));
-}
+//} catch(e) {
+//  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
+//  temp = JSON.parse(read('struct_info.compiled.json'));
+//}
 C_STRUCTS = temp.structs;
 C_DEFINES = temp.defines;
 
@@ -224,12 +221,12 @@ load('analyzer.js');
 load('jsifier.js');
 if (phase == 'funcs' && RELOOP) { // XXX handle !singlePhase
   RelooperModule = { TOTAL_MEMORY: ceilPowerOfTwo(2*RELOOPER_BUFFER_SIZE) };
-  try {
+  //try {
     load(RELOOPER);
-  } catch(e) {
-    printErr('cannot load relooper at ' + RELOOPER + ' : ' + e + ', trying in current dir');
-    load('relooper.js');
-  }
+  //} catch(e) {
+  //  printErr('cannot load relooper at ' + RELOOPER + ' : ' + e + ', trying in current dir');
+  //  load('relooper.js');
+  //}
   assert(typeof Relooper != 'undefined');
 }
 globalEval(processMacros(preprocess(read('runtime.js'))));
@@ -267,7 +264,7 @@ function compile(raw) {
   function runPhase(currPhase) {
     //printErr('// JS compiler in action, phase ' + currPhase + typeof lines + (lines === null));
     phase = currPhase;
-    if (phase != 'pre') {
+    if (phase != 'pre' && phase != 'glue') {
       if (singlePhase) PassManager.load(read(forwardedDataFile));
 
       if (phase == 'funcs') {
@@ -313,14 +310,16 @@ B = new Benchmarker();
 
 try {
   if (ll_file) {
-    if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
+    if (phase === 'glue') {
+      compile(';');
+    } else if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
       compile(read(ll_file));
     } else {
       compile(ll_file); // we are given raw .ll
     }
   }
 } catch(err) {
-  printErr('aborting from js compiler due to exception: ' + err);
+  printErr('aborting from js compiler due to exception: ' + err + ' | ' + err.stack);
 }
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });

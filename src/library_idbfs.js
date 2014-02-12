@@ -5,14 +5,12 @@ mergeInto(LibraryManager.library, {
     indexedDB: function() {
       return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
     },
-    DB_VERSION: 20,
+    DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
-    // reuse all of the core MEMFS functionality
     mount: function(mount) {
+      // reuse all of the core MEMFS functionality
       return MEMFS.mount.apply(null, arguments);
     },
-    // the only custom function IDBFS implements is to handle
-    // synchronizing the wrapped MEMFS with a backing IDB instance
     syncfs: function(mount, populate, callback) {
       IDBFS.getLocalSet(mount, function(err, local) {
         if (err) return callback(err);
@@ -27,103 +25,46 @@ mergeInto(LibraryManager.library, {
         });
       });
     },
-    reconcile: function(src, dst, callback) {
-      var total = 0;
-
-      var create = {};
-      for (var key in src.files) {
-        if (!src.files.hasOwnProperty(key)) continue;
-        var e = src.files[key];
-        var e2 = dst.files[key];
-        if (!e2 || e.timestamp > e2.timestamp) {
-          create[key] = e;
-          total++;
-        }
+    getDB: function(name, callback) {
+      // check the cache first
+      var db = IDBFS.dbs[name];
+      if (db) {
+        return callback(null, db);
       }
 
-      var remove = {};
-      for (var key in dst.files) {
-        if (!dst.files.hasOwnProperty(key)) continue;
-        var e = dst.files[key];
-        var e2 = src.files[key];
-        if (!e2) {
-          remove[key] = e;
-          total++;
-        }
+      var req;
+      try {
+        req = IDBFS.indexedDB().open(name, IDBFS.DB_VERSION);
+      } catch (e) {
+        return callback(e);
       }
+      req.onupgradeneeded = function(e) {
+        var db = e.target.result;
+        var transaction = e.target.transaction;
 
-      if (!total) {
-        // early out
-        return callback(null);
-      }
+        var fileStore;
 
-      var completed = 0;
-      function done(err) {
-        if (err) return callback(err);
-        if (++completed >= total) {
-          return callback(null);
+        if (db.objectStoreNames.contains(IDBFS.DB_STORE_NAME)) {
+          fileStore = transaction.objectStore(IDBFS.DB_STORE_NAME);
+        } else {
+          fileStore = db.createObjectStore(IDBFS.DB_STORE_NAME);
         }
+
+        fileStore.createIndex('timestamp', 'timestamp', { unique: false });
       };
+      req.onsuccess = function() {
+        db = req.result;
 
-      // create a single transaction to handle and IDB reads / writes we'll need to do
-      var db = src.type === 'remote' ? src.db : dst.db;
-      var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
-      transaction.onerror = function transaction_onerror() { callback(this.error); };
-      var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
-
-      for (var path in create) {
-        if (!create.hasOwnProperty(path)) continue;
-        var entry = create[path];
-
-        if (dst.type === 'local') {
-          // save file to local
-          try {
-            if (FS.isDir(entry.mode)) {
-              FS.mkdir(path, entry.mode);
-            } else if (FS.isFile(entry.mode)) {
-              var stream = FS.open(path, 'w+', 0666);
-              FS.write(stream, entry.contents, 0, entry.contents.length, 0, true /* canOwn */);
-              FS.close(stream);
-            }
-            done(null);
-          } catch (e) {
-            return done(e);
-          }
-        } else {
-          // save file to IDB
-          var req = store.put(entry, path);
-          req.onsuccess = function req_onsuccess() { done(null); };
-          req.onerror = function req_onerror() { done(this.error); };
-        }
-      }
-
-      for (var path in remove) {
-        if (!remove.hasOwnProperty(path)) continue;
-        var entry = remove[path];
-
-        if (dst.type === 'local') {
-          // delete file from local
-          try {
-            if (FS.isDir(entry.mode)) {
-              // TODO recursive delete?
-              FS.rmdir(path);
-            } else if (FS.isFile(entry.mode)) {
-              FS.unlink(path);
-            }
-            done(null);
-          } catch (e) {
-            return done(e);
-          }
-        } else {
-          // delete file from IDB
-          var req = store.delete(path);
-          req.onsuccess = function req_onsuccess() { done(null); };
-          req.onerror = function req_onerror() { done(this.error); };
-        }
-      }
+        // add to the cache
+        IDBFS.dbs[name] = db;
+        callback(null, db);
+      };
+      req.onerror = function() {
+        callback(this.error);
+      };
     },
     getLocalSet: function(mount, callback) {
-      var files = {};
+      var entries = {};
 
       function isRealDir(p) {
         return p !== '.' && p !== '..';
@@ -134,82 +75,191 @@ mergeInto(LibraryManager.library, {
         }
       };
 
-      var check = FS.readdir(mount.mountpoint)
-        .filter(isRealDir)
-        .map(toAbsolute(mount.mountpoint));
+      var check = FS.readdir(mount.mountpoint).filter(isRealDir).map(toAbsolute(mount.mountpoint));
 
       while (check.length) {
         var path = check.pop();
-        var stat, node;
+        var stat;
 
         try {
-          var lookup = FS.lookupPath(path);
-          node = lookup.node;
           stat = FS.stat(path);
         } catch (e) {
           return callback(e);
         }
 
         if (FS.isDir(stat.mode)) {
-          check.push.apply(check, FS.readdir(path)
-            .filter(isRealDir)
-            .map(toAbsolute(path)));
-
-          files[path] = { mode: stat.mode, timestamp: stat.mtime };
-        } else if (FS.isFile(stat.mode)) {
-          files[path] = { contents: node.contents, mode: stat.mode, timestamp: stat.mtime };
-        } else {
-          return callback(new Error('node type not supported'));
+          check.push.apply(check, FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
         }
+
+        entries[path] = { timestamp: stat.mtime };
       }
 
-      return callback(null, { type: 'local', files: files });
-    },
-    getDB: function(name, callback) {
-      // look it up in the cache
-      var db = IDBFS.dbs[name];
-      if (db) {
-        return callback(null, db);
-      }
-      var req;
-      try {
-        req = IDBFS.indexedDB().open(name, IDBFS.DB_VERSION);
-      } catch (e) {
-        return onerror(e);
-      }
-      req.onupgradeneeded = function req_onupgradeneeded() {
-        db = req.result;
-        db.createObjectStore(IDBFS.DB_STORE_NAME);
-      };
-      req.onsuccess = function req_onsuccess() {
-        db = req.result;
-        // add to the cache
-        IDBFS.dbs[name] = db;
-        callback(null, db);
-      };
-      req.onerror = function req_onerror() {
-        callback(this.error);
-      };
+      return callback(null, { type: 'local', entries: entries });
     },
     getRemoteSet: function(mount, callback) {
-      var files = {};
+      var entries = {};
 
       IDBFS.getDB(mount.mountpoint, function(err, db) {
         if (err) return callback(err);
 
         var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
-        transaction.onerror = function transaction_onerror() { callback(this.error); };
+        transaction.onerror = function() { callback(this.error); };
 
         var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
-        store.openCursor().onsuccess = function store_openCursor_onsuccess(event) {
+        var index = store.index('timestamp');
+
+        index.openKeyCursor().onsuccess = function(event) {
           var cursor = event.target.result;
+
           if (!cursor) {
-            return callback(null, { type: 'remote', db: db, files: files });
+            return callback(null, { type: 'remote', db: db, entries: entries });
           }
 
-          files[cursor.key] = cursor.value;
+          entries[cursor.primaryKey] = { timestamp: cursor.key };
+
           cursor.continue();
         };
+      });
+    },
+    loadLocalEntry: function(path, callback) {
+      var stat, node;
+
+      try {
+        var lookup = FS.lookupPath(path);
+        node = lookup.node;
+        stat = FS.stat(path);
+      } catch (e) {
+        return callback(e);
+      }
+
+      if (FS.isDir(stat.mode)) {
+        return callback(null, { timestamp: stat.mtime, mode: stat.mode });
+      } else if (FS.isFile(stat.mode)) {
+        return callback(null, { timestamp: stat.mtime, mode: stat.mode, contents: node.contents });
+      } else {
+        return callback(new Error('node type not supported'));
+      }
+    },
+    storeLocalEntry: function(path, entry, callback) {
+      try {
+        if (FS.isDir(entry.mode)) {
+          FS.mkdir(path, entry.mode);
+        } else if (FS.isFile(entry.mode)) {
+          FS.writeFile(path, entry.contents, { encoding: 'binary', canOwn: true });
+        } else {
+          return callback(new Error('node type not supported'));
+        }
+
+        FS.utime(path, entry.timestamp, entry.timestamp);
+      } catch (e) {
+        return callback(e);
+      }
+
+      callback(null);
+    },
+    removeLocalEntry: function(path, callback) {
+      try {
+        var lookup = FS.lookupPath(path);
+        var stat = FS.stat(path);
+
+        if (FS.isDir(stat.mode)) {
+          FS.rmdir(path);
+        } else if (FS.isFile(stat.mode)) {
+          FS.unlink(path);
+        }
+      } catch (e) {
+        return callback(e);
+      }
+
+      callback(null);
+    },
+    loadRemoteEntry: function(store, path, callback) {
+      var req = store.get(path);
+      req.onsuccess = function(event) { callback(null, event.target.result); };
+      req.onerror = function() { callback(this.error); };
+    },
+    storeRemoteEntry: function(store, path, entry, callback) {
+      var req = store.put(entry, path);
+      req.onsuccess = function() { callback(null); };
+      req.onerror = function() { callback(this.error); };
+    },
+    removeRemoteEntry: function(store, path, callback) {
+      var req = store.delete(path);
+      req.onsuccess = function() { callback(null); };
+      req.onerror = function() { callback(this.error); };
+    },
+    reconcile: function(src, dst, callback) {
+      var total = 0;
+
+      var create = [];
+      Object.keys(src.entries).forEach(function (key) {
+        var e = src.entries[key];
+        var e2 = dst.entries[key];
+        if (!e2 || e.timestamp > e2.timestamp) {
+          create.push(key);
+          total++;
+        }
+      });
+
+      var remove = [];
+      Object.keys(dst.entries).forEach(function (key) {
+        var e = dst.entries[key];
+        var e2 = src.entries[key];
+        if (!e2) {
+          remove.push(key);
+          total++;
+        }
+      });
+
+      if (!total) {
+        return callback(null);
+      }
+
+      var errored = false;
+      var completed = 0;
+      var db = src.type === 'remote' ? src.db : dst.db;
+      var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
+      var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+
+      function done(err) {
+        if (err) {
+          if (!done.errored) {
+            done.errored = true;
+            return callback(err);
+          }
+          return;
+        }
+        if (++completed >= total) {
+          return callback(null);
+        }
+      };
+
+      transaction.onerror = function() { done(this.error); };
+
+      // sort paths in ascending order so directory entries are created
+      // before the files inside them
+      create.sort().forEach(function (path) {
+        if (dst.type === 'local') {
+          IDBFS.loadRemoteEntry(store, path, function (err, entry) {
+            if (err) return done(err);
+            IDBFS.storeLocalEntry(path, entry, done);
+          });
+        } else {
+          IDBFS.loadLocalEntry(path, function (err, entry) {
+            if (err) return done(err);
+            IDBFS.storeRemoteEntry(store, path, entry, done);
+          });
+        }
+      });
+
+      // sort paths in descending order so files are deleted before their
+      // parent directories
+      remove.sort().reverse().forEach(function(path) {
+        if (dst.type === 'local') {
+          IDBFS.removeLocalEntry(path, done);
+        } else {
+          IDBFS.removeRemoteEntry(store, path, done);
+        }
       });
     }
   }

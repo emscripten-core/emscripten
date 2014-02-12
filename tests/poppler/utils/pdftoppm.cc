@@ -183,6 +183,10 @@ static void savePageSlice(PDFDoc *doc,
       bitmap->writePNMFile(ppmFile);
     }
   } else {
+#if EMSCRIPTEN // XXX EMSCRIPTEN: avoid writing to stdout, better for benchmarking
+    printf("avoiding writing to stdout\n");
+#else
+
 #ifdef _WIN32
     setmode(fileno(stdout), O_BINARY);
 #endif
@@ -194,6 +198,7 @@ static void savePageSlice(PDFDoc *doc,
     } else {
       bitmap->writePNMFile(stdout);
     }
+#endif
   }
 }
 

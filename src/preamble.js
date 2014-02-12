@@ -6,6 +6,8 @@
 
 {{RUNTIME}}
 
+Module['Runtime'] = Runtime;
+
 #if ASM_JS
 #if RESERVED_FUNCTION_POINTERS
 function jsCall() {
@@ -21,6 +23,7 @@ Module.print = Module.printErr = function(){};
 #endif
 
 #if SAFE_HEAP
+#if ASM_JS == 0
 //========================================
 // Debugging tools - Heap
 //========================================
@@ -166,6 +169,45 @@ function SAFE_HEAP_FILL_HISTORY(from, to, type) {
 }
 
 //==========================================
+#else
+// ASM_JS safe heap
+
+function getSafeHeapType(bytes, isFloat) {
+  switch (bytes) {
+    case 1: return 'i8';
+    case 2: return 'i16';
+    case 4: return isFloat ? 'float' : 'i32';
+    case 8: return 'double';
+    default: assert(0);
+  }
+}
+
+function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat]);
+#endif
+  assert(dest > 0, 'segmentation fault');
+  assert(dest % bytes === 0);
+  assert(dest < Math.max(DYNAMICTOP, STATICTOP));
+  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
+}
+
+function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP load: ' + [dest, bytes, isFloat, unsigned]);
+#endif
+  assert(dest > 0, 'segmentation fault');
+  assert(dest % bytes === 0);
+  assert(dest < Math.max(DYNAMICTOP, STATICTOP));
+  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  var type = getSafeHeapType(bytes, isFloat);
+  var ret = getValue(dest, type, 1);
+  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
+  return ret;
+}
+
+#endif
 #endif
 
 #if CHECK_HEAP_ALIGN
@@ -246,7 +288,7 @@ var EXITSTATUS = 0;
 var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
 // for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
-var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
+var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD, tempDouble, tempFloat;
 #if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
 var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;
@@ -585,16 +627,16 @@ function UTF16ToString(ptr) {
 }
 Module['UTF16ToString'] = UTF16ToString;
 
-// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF16LE form. The copy will require at most (str.length*2+1)*2 bytes of space in the HEAP.
 function stringToUTF16(str, outPtr) {
   for(var i = 0; i < str.length; ++i) {
     // charCodeAt returns a UTF-16 encoded code unit, so it can be directly written to the HEAP.
     var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
-    {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}}
+    {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}};
   }
   // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 'str.length*2', 0, 'i16') }}}
+  {{{ makeSetValue('outPtr', 'str.length*2', 0, 'i16') }}};
 }
 Module['stringToUTF16'] = stringToUTF16;
 
@@ -620,7 +662,7 @@ function UTF32ToString(ptr) {
 }
 Module['UTF32ToString'] = UTF32ToString;
 
-// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF32LE form. The copy will require at most (str.length+1)*4 bytes of space in the HEAP,
 // but can use less, since str.length does not return the number of characters in the string, but the number of UTF-16 code units in the string.
 function stringToUTF32(str, outPtr) {
@@ -632,16 +674,20 @@ function stringToUTF32(str, outPtr) {
       var trailSurrogate = str.charCodeAt(++iCodeUnit);
       codeUnit = 0x10000 + ((codeUnit & 0x3FF) << 10) | (trailSurrogate & 0x3FF);
     }
-    {{{ makeSetValue('outPtr', 'iChar*4', 'codeUnit', 'i32') }}}
+    {{{ makeSetValue('outPtr', 'iChar*4', 'codeUnit', 'i32') }}};
     ++iChar;
   }
   // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 'iChar*4', 0, 'i32') }}}
+  {{{ makeSetValue('outPtr', 'iChar*4', 0, 'i32') }}};
 }
 Module['stringToUTF32'] = stringToUTF32;
 
 function demangle(func) {
   try {
+    // Special-case the entry point, since its name differs from other name mangling.
+    if (func == 'Object._main' || func == '_main') {
+      return 'main()';
+    }
     if (typeof func === 'number') func = Pointer_stringify(func);
     if (func[0] !== '_') return func;
     if (func[1] !== '_') return func; // C function
@@ -862,6 +908,21 @@ var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
+#if ASM_JS
+var totalMemory = 4096;
+while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
+  if (totalMemory < 16*1024*1024) {
+    totalMemory *= 2;
+  } else {
+    totalMemory += 16*1024*1024
+  }
+}
+if (totalMemory !== TOTAL_MEMORY) {
+  Module.printErr('increasing TOTAL_MEMORY to ' + totalMemory + ' to be more reasonable');
+  TOTAL_MEMORY = totalMemory;
+}
+#endif
+
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
@@ -966,6 +1027,11 @@ function preMain() {
 }
 
 function exitRuntime() {
+#if ASSERTIONS
+  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+    Module.printErr('Exiting runtime. Any attempt to access the compiled C code may fail from now. If you want to keep the runtime alive, set Module["noExitRuntime"] = true or build with -s NO_EXIT_RUNTIME=1');
+  }
+#endif
   callRuntimeCallbacks(__ATEXIT__);
 }
 
@@ -1043,7 +1109,7 @@ function writeStringToMemory(string, buffer, dontAddNull) {
   var i = 0;
   while (i < array.length) {
     var chr = array[i];
-    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}}
+    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}};
     i = i + 1;
   }
 }
@@ -1061,9 +1127,9 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 #if ASSERTIONS
     assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
 #endif
-    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}}
+    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}};
   }
-  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}}
+  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}};
 }
 Module['writeAsciiToMemory'] = writeAsciiToMemory;
 
@@ -1071,7 +1137,8 @@ Module['writeAsciiToMemory'] = writeAsciiToMemory;
 {{{ reSign }}}
 
 #if PRECISE_I32_MUL
-if (!Math['imul']) Math['imul'] = function imul(a, b) {
+// check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
+if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
   var al = a & 0xffff;
   var bh  = b >>> 16;

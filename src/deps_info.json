@@ -1,0 +1,7 @@
+{
+  "uuid_compare": ["memcmp"],
+  "SDL_Init": ["malloc", "free"],
+  "SDL_GL_GetProcAddress": ["emscripten_GetProcAddress"],
+  "eglGetProcAddress": ["emscripten_GetProcAddress"]
+}
+

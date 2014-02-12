@@ -13,6 +13,7 @@ mergeInto(LibraryManager.library, {
   $Browser: {
     mainLoop: {
       scheduler: null,
+      method: '',
       shouldPause: false,
       paused: false,
       queue: [],
@@ -250,13 +251,24 @@ mergeInto(LibraryManager.library, {
           contextAttributes.preserveDrawingBuffer = true;
 #endif
 
-          ctx = canvas.getContext('experimental-webgl', contextAttributes);
+          var errorInfo = '?';
+          function onContextCreationError(event) {
+            errorInfo = event.statusMessage || errorInfo;
+          }
+          canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
+          try {
+            ['experimental-webgl', 'webgl'].some(function(webglId) {
+              return ctx = canvas.getContext(webglId, contextAttributes);
+            });
+          } finally {
+            canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
+          }
         } else {
           ctx = canvas.getContext('2d');
         }
         if (!ctx) throw ':(';
       } catch (e) {
-        Module.print('Could not create canvas - ' + e);
+        Module.print('Could not create canvas: ' + [errorInfo, e]);
         return null;
       }
       if (useWebGL) {
@@ -308,7 +320,7 @@ mergeInto(LibraryManager.library, {
         }, false);
       }
       if (setInModule) {
-        Module.ctx = ctx;
+        GLctx = Module.ctx = ctx;
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
         Browser.init();
@@ -434,6 +446,10 @@ mergeInto(LibraryManager.library, {
              0;
     },
 
+    getMouseWheelDelta: function(event) {
+      return Math.max(-1, Math.min(1, event.type === 'DOMMouseScroll' ? event.detail : -event.wheelDelta));
+    },
+
     mouseX: 0,
     mouseY: 0,
     mouseMovementX: 0,
@@ -467,19 +483,30 @@ mergeInto(LibraryManager.library, {
         // in the coordinates.
         var rect = Module["canvas"].getBoundingClientRect();
         var x, y;
+        
+        // Neither .scrollX or .pageXOffset are defined in a spec, but
+        // we prefer .scrollX because it is currently in a spec draft.
+        // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
+        var scrollX = ((typeof window.scrollX !== 'undefined') ? window.scrollX : window.pageXOffset);
+        var scrollY = ((typeof window.scrollY !== 'undefined') ? window.scrollY : window.pageYOffset);
+#if ASSERTIONS
+        // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
+        // and we have no viable fallback.
+        assert((typeof scrollX !== 'undefined') && (typeof scrollY !== 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
+#endif
         if (event.type == 'touchstart' ||
             event.type == 'touchend' ||
             event.type == 'touchmove') {
           var t = event.touches.item(0);
           if (t) {
-            x = t.pageX - (window.scrollX + rect.left);
-            y = t.pageY - (window.scrollY + rect.top);
+            x = t.pageX - (scrollX + rect.left);
+            y = t.pageY - (scrollY + rect.top);
           } else {
             return;
           }
         } else {
-          x = event.pageX - (window.scrollX + rect.left);
-          y = event.pageY - (window.scrollY + rect.top);
+          x = event.pageX - (scrollX + rect.left);
+          y = event.pageY - (scrollY + rect.top);
         }
 
         // the canvas might be CSS-scaled compared to its backbuffer;
@@ -652,6 +679,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_prepare: function(file, onload, onerror) {
+    Module['noExitRuntime'] = true;
+
     var _file = Pointer_stringify(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
@@ -671,6 +700,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_prepare_data: function(data, size, suffix, arg, onload, onerror) {
+    Module['noExitRuntime'] = true;
+
     var _suffix = Pointer_stringify(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
@@ -753,6 +784,20 @@ mergeInto(LibraryManager.library, {
         return;
       }
 
+      // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
+      // VBO double-buffering and reduce GPU stalls.
+#if FULL_ES2
+      GL.newRenderingFrameStarted();
+#endif
+#if LEGACY_GL_EMULATION
+      GL.newRenderingFrameStarted();
+#endif
+
+      if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
+        Module.printErr('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
+        Browser.mainLoop.method = ''; // just warn once per call to set main loop
+      }
+
       if (Module['preMainLoop']) {
         Module['preMainLoop']();
       }
@@ -783,11 +828,13 @@ mergeInto(LibraryManager.library, {
     if (fps && fps > 0) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
         setTimeout(Browser.mainLoop.runner, 1000/fps); // doing this each time means that on exception, we stop
-      }
+      };
+      Browser.mainLoop.method = 'timeout';
     } else {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
         Browser.requestAnimationFrame(Browser.mainLoop.runner);
-      }
+      };
+      Browser.mainLoop.method = 'rAF';
     }
     Browser.mainLoop.scheduler();
 
@@ -852,7 +899,7 @@ mergeInto(LibraryManager.library, {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
     for (var i = 0; i < rules.length; i++) {
-      if (rules[i].cssText.substr(0, 5) == 'canvas') {
+      if (rules[i].cssText.substr(0, 6) == 'canvas') {
         styleSheet.deleteRule(i);
         i--;
       }
@@ -915,6 +962,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
+    Module['noExitRuntime'] = true; // should we only do this if there is a callback?
+
     funcName = Pointer_stringify(funcName);
     var info = Browser.workers[id];
     var callbackId = -1;

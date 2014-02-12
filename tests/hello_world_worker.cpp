@@ -1,9 +1,17 @@
+#include <string.h>
 #include <stdio.h>
 #include <emscripten.h>
 
 int main()
 {
   printf("you should not see this text when in a worker!\n"); // this should not crash, but also should not show up anywhere if you are in a worker
-  emscripten_run_script("if (typeof postMessage !== 'undefined') { postMessage('hello from worker!') }");
+  FILE *f = fopen("file.dat", "r");
+  char buffer[100];
+  memset(buffer, 0, 100);
+  buffer[0] = 0;
+  fread(buffer, 10, 1, f);
+  char buffer2[100];
+  sprintf(buffer2, "if (typeof postMessage !== 'undefined') { postMessage('hello from worker, and |%s|') }", buffer);
+  emscripten_run_script(buffer2);
 }
 

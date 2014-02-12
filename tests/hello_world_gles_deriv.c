@@ -645,6 +645,7 @@ static const char vertex_shader[] =
 
 static const char fragment_shader[] =
 "#ifdef GL_ES\n"
+"#extension GL_OES_standard_derivatives : enable\n"
 "precision mediump float;\n"
 "#endif\n"
 "varying vec4 Color;\n"

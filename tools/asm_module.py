@@ -107,6 +107,9 @@ class AsmModule():
         all_imports[key] = value
       if (value_concrete or main_value_concrete) and key in all_sendings:
         del all_sendings[key] # import of external value no longer needed
+    for key in all_imports.keys():
+      if key in self.funcs:
+        del all_imports[key] # import in main, provided in side
     main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.iteritems()]) + '\n'
 
     # check for undefined references to global variables

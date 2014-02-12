@@ -11,9 +11,9 @@ def path_from_root(*pathelems):
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-NUM_CHUNKS_PER_CORE = 1.5
-MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 1024*1024) # configuring this is just for debugging purposes
-MAX_CHUNK_SIZE = 20*1024*1024
+NUM_CHUNKS_PER_CORE = 3
+MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512*1024) # configuring this is just for debugging purposes
+MAX_CHUNK_SIZE = 5*1024*1024
 
 WINDOWS = sys.platform.startswith('win')
 
@@ -24,41 +24,16 @@ import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
 class Minifier:
   '''
-    asm.js minification support. We calculate possible names and minification of
+    asm.js minification support. We calculate minification of
     globals here, then pass that into the parallel js-optimizer.js runners which
-    during registerize perform minification of locals.
+    perform minification of locals.
   '''
 
-  def __init__(self, js, js_engine, MAX_NAMES):
+  def __init__(self, js, js_engine):
     self.js = js
     self.js_engine = js_engine
-    MAX_NAMES = min(MAX_NAMES, 120000)
-
-    # Create list of valid short names
-
-    INVALID_2 = set(['do', 'if', 'in'])
-    INVALID_3 = set(['for', 'new', 'try', 'var', 'env', 'let'])
-
-    self.names = []
-    init_possibles = string.ascii_letters + '_$'
-    later_possibles = init_possibles + string.digits
-    for a in init_possibles:
-      if len(self.names) >= MAX_NAMES: break
-      self.names.append(a)
-    for a in init_possibles:
-      for b in later_possibles:
-        if len(self.names) >= MAX_NAMES: break
-        curr = a + b
-        if curr not in INVALID_2: self.names.append(curr)
-    for a in init_possibles:
-      for b in later_possibles:
-        for c in later_possibles:
-          if len(self.names) >= MAX_NAMES: break
-          curr = a + b + c
-          if curr not in INVALID_3: self.names.append(curr)
 
   def minify_shell(self, shell, minify_whitespace, source_map=False):
-    #print >> sys.stderr, "MINIFY SHELL 1111111111", shell, "\n222222222222222"
     # Run through js-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
@@ -91,7 +66,6 @@ class Minifier:
 
   def serialize(self):
     return {
-      'names': self.names,
       'globals': self.globs
     }
 
@@ -143,9 +117,9 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
 
   know_generated = suffix or start_funcs >= 0
 
-  minify_globals = 'registerizeAndMinify' in passes and 'asm' in passes
+  minify_globals = 'minifyNames' in passes and 'asm' in passes
   if minify_globals:
-    passes = map(lambda p: p if p != 'registerizeAndMinify' else 'registerize', passes)
+    passes = map(lambda p: p if p != 'minifyNames' else 'minifyLocals', passes)
     start_asm = js.find(start_asm_marker)
     end_asm = js.rfind(end_asm_marker)
     assert (start_asm >= 0) == (end_asm >= 0)
@@ -187,7 +161,7 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       # we assume there is a maximum of one new name per line
-      minifier = Minifier(js, js_engine, js.count('\n') + asm_shell.count('\n'))
+      minifier = Minifier(js, js_engine)
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
@@ -368,6 +342,7 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None):
+  js_engine = shared.listify(js_engine)
   return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info))
 
 if __name__ == '__main__':

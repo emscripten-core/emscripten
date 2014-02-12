@@ -54,9 +54,21 @@ int main(int argc, char *argv[])
 
     // Create a texture
 
+    GLuint boundTex = 123;
+    assert(!glGetError());
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
+    assert(!glGetError());
+    assert(boundTex == 0);
+
     GLuint texture;
     glGenTextures( 1, &texture );
     glBindTexture( GL_TEXTURE_2D, texture );
+
+    assert(!glGetError());
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
+    assert(!glGetError());
+    assert(boundTex == texture);
+
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     GLubyte textureData[16*16*4];

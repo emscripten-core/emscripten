@@ -1283,6 +1283,7 @@ std::shared_ptr<HeldBySmartPtr> takesHeldBySmartPtrSharedPtr(std::shared_ptr<Hel
 namespace emscripten {
     template<typename T>
     struct smart_ptr_trait<CustomSmartPtr<T>> {
+        typedef CustomSmartPtr<T> pointer_type;
         typedef T element_type;
 
         static sharing_policy get_sharing_policy() {
@@ -1296,6 +1297,10 @@ namespace emscripten {
         static CustomSmartPtr<T> share(const CustomSmartPtr<T>& r, T* ptr) {
             ++ptr->refcount; // implement an adopt API?
             return CustomSmartPtr<T>(ptr);
+        }
+
+        static pointer_type* construct_null() {
+            return new pointer_type;
         }
     };
 }
@@ -2210,8 +2215,20 @@ EMSCRIPTEN_BINDINGS(read_only_properties) {
         ;
 }
 
+struct StaticConstIntStruct {
+    static const int STATIC_CONST_INTEGER_VALUE_1;
+    static const int STATIC_CONST_INTEGER_VALUE_1000;
+};
+
+const int StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1 = 1;
+const int StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1000 = 1000;
+
 EMSCRIPTEN_BINDINGS(constants) {
     constant("INT_CONSTANT", 10);
+
+    constant("STATIC_CONST_INTEGER_VALUE_1", StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1);
+    constant("STATIC_CONST_INTEGER_VALUE_1000", StaticConstIntStruct::STATIC_CONST_INTEGER_VALUE_1000);
+
     constant("STRING_CONSTANT", std::string("some string"));
 
     TupleVector tv(1, 2, 3, 4);
@@ -2242,4 +2259,48 @@ void clear_StringHolder(StringHolder& sh) {
 
 EMSCRIPTEN_BINDINGS(references) {
     function("clear_StringHolder", &clear_StringHolder);
+}
+
+StringHolder return_StringHolder_copy(val func) {
+    return func.as<StringHolder>();
+}
+
+StringHolder call_StringHolder_func(val func) {
+    return func().as<StringHolder>();
+}
+
+EMSCRIPTEN_BINDINGS(return_values) {
+    function("return_StringHolder_copy", &return_StringHolder_copy);
+    function("call_StringHolder_func", &call_StringHolder_func);
+}
+
+
+struct Mixin {
+    int get10() const {
+        return 10;
+    }
+};
+
+template<typename ClassBinding>
+const ClassBinding& registerMixin(const ClassBinding& binding) {
+    // need a wrapper for implicit conversion from DerivedWithMixin to Mixin
+    struct Local {
+        static int get10(const typename ClassBinding::class_type& self) {
+            return self.get10();
+        }
+    };
+
+    return binding
+        .function("get10", &Local::get10)
+        ;
+}
+
+class DerivedWithMixin : public Base, public Mixin {
+};
+
+EMSCRIPTEN_BINDINGS(mixins) {
+    registerMixin(
+        class_<DerivedWithMixin, base<Base>>("DerivedWithMixin")
+            .constructor<>()
+    );
 }

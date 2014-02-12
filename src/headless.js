@@ -82,6 +82,16 @@ var window = {
     }
     listeners.push(func);
   },
+  removeEventListener: function(id, func) {
+    var listeners = this.eventListeners[id];
+    if (!listeners) return;
+    for (var i = 0; i < listeners.length; i++) {
+      if (listeners[i] === func) {
+        listeners.splice(i, 1);
+        return;
+      }
+    }
+  },
   callEventListeners: function(id) {
     var listeners = this.eventListeners[id];
     if (listeners) {
@@ -101,6 +111,7 @@ var document = {
   headless: true,
   eventListeners: {},
   addEventListener: window.addEventListener,
+  removeEventListener: window.removeEventListener,
   callEventListeners: window.callEventListeners,
   getElementById: function(id) {
     switch(id) {
@@ -144,6 +155,7 @@ var document = {
         },
         eventListeners: {},
         addEventListener: document.addEventListener,
+        removeEventListener: document.removeEventListener,
         callEventListeners: document.callEventListeners,
       };
     };

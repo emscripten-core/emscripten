@@ -16,7 +16,7 @@ so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat, string
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string
 
 # Setup
 
@@ -36,7 +36,10 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2f', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
+if os.environ.get('EMCC_FAST_COMPILER') == '1':
+  test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g']
+else:
+  test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):
@@ -138,7 +141,11 @@ class RunnerCore(unittest.TestCase):
       post1 = post_build
       post2 = None
 
-    if self.emcc_args is None:
+    emcc_args = self.emcc_args
+    if emcc_args is None:
+      emcc_args = []
+
+    if emcc_args is None: # legacy testing mode, no longer used
       Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
       if post1:
         exec post1 in locals()
@@ -160,7 +167,7 @@ process(sys.argv[1])
 ''')
         transform.close()
         transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
-      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+      Building.emcc(filename + '.o.ll', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
       if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
@@ -328,7 +335,10 @@ process(sys.argv[1])
       os.makedirs(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}, cache_name_extra='', native=False):
+  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args='help', cache=True, env_init={}, cache_name_extra='', native=False):
+    if make_args == 'help':
+      make_args = ['-j', str(multiprocessing.cpu_count())]
+
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
@@ -339,7 +349,7 @@ process(sys.argv[1])
 
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
-        print >> sys.stderr,  '<load %s from cache> ' % cache_name,
+        print >> sys.stderr,  '<load %s from cache> ' % cache_name
         generated_libs = []
         for basename, contents in self.library_cache[cache_name]:
           bc_file = os.path.join(build_dir, cache_name + '_' +  basename)
@@ -349,7 +359,7 @@ process(sys.argv[1])
           generated_libs.append(bc_file)
         return generated_libs
 
-    print >> sys.stderr, '<building and saving %s into cache> ' % cache_name,
+    print >> sys.stderr, '<building and saving %s into cache> ' % cache_name
 
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
                                   copy_project=True, env_init=env_init, native=native)
@@ -417,6 +427,12 @@ process(sys.argv[1])
       }
     '''
     return (main, supp)
+
+  def do_run_from_file(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
+    self.do_run(open(src).read(), open(expected_output).read(),
+                args, output_nicerizer, output_processor, no_build, main_file,
+                additional_files, js_engines, post_build, basename, libraries,
+                includes, force_c, build_ll_hook, extra_emscripten_args)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
@@ -491,22 +507,14 @@ def harness_server_func(q):
   httpd.serve_forever() # test runner will kill us
 
 def server_func(dir, q):
-  class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    def do_GET(s):
-      if 'report_' in s.path:
-        q.put(s.path)
+  class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    def do_GET(self):
+      if 'report_' in self.path:
+        q.put(self.path)
       else:
-        filename = s.path.split('?')[0][1:]
-        if os.path.exists(filename):
-          s.send_response(200)
-          s.send_header("Content-type", "text/html")
-          s.end_headers()
-          s.wfile.write(open(filename).read())
-          s.wfile.close()
-        else:
-          s.send_response(500)
-          s.send_header("Content-type", "text/html")
-          s.end_headers()
+        # Use SimpleHTTPServer default file serving operation for GET.
+        SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
@@ -790,6 +798,16 @@ an individual test with
 
   python tests/runner.py ALL.test_hello_world
 
+Debugging: You can run
+
+  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
+
+in order to save the test runner directory, in /tmp/emscripten_temp. All files
+created by the test will be present there. You can also use EMCC_DEBUG to
+further debug the compiler itself, which works outside of the test suite as
+well: EMCC_DEBUG=1 will emit emcc-* files in that temp dir for each stage
+of the compiler, while EMCC_DEBUG=2 will emit even more files, one for each
+js optimizer phase.
 ==============================================================================
 
 '''

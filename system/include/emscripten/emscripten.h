@@ -24,15 +24,40 @@ extern "C" {
  *    EM_ASM(window.alert('hai'));
  *
  * This also works with asm.js, as it outlines the code (it
- * does a function call to reach it).
+ * does a function call to reach it). It supports newlines,
  *
- * Notes: double-quotes (") are not supported, but you can use
+ *    EM_ASM(
+ *      window.alert('hai'));
+ *      window.alert('bai'));
+ *    )
+ *
+ * Notes: Double-quotes (") are not supported, but you can use
  *        single-quotes (') in js anyhow.
  *
- *        you can't access C variables with EM_ASM, use gcc
- *        inline asm for that, asm("code" : .. etc.)
+ *        You can't access C variables with EM_ASM, nor receive
+ *        a value back. use EM_ASM_INT or EM_ASM_DOUBLE for that
  */
 #define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
+
+/*
+ * Input-output versions of EM_ASM. EM_ASM_INT receives arguments of
+ * either int or double type and returns an int; EM_ASM_DOUBLE
+ * receives similar arguments (int or double) but returns a double.
+ * Arguments arrive as $0, $1 etc; output value should be returned:
+ *
+ *    int x = EM_ASM_INT({
+ *      console.log('I received: ' + [$0, $1]);
+ *      return $0 + $1;
+ *    }, calc(), otherCalc());
+ *
+ * Note the { and }. If you just want to receive an output value
+ * (int or double) but *not* to pass any values, you can use
+ * EM_ASM_INT_V and EM_ASM_DOUBLE_V respectively.
+ */
+#define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
+#define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, __VA_ARGS__)
+#define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)
+#define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double(#code)
 
 /*
  * Forces LLVM to not dead-code-eliminate a function. Note that
@@ -75,7 +100,13 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  * Set a C function as the main event loop. The JS environment
  * will call that function at a specified number of frames per
  * second. Setting 0 or a negative value as the fps will use
- * the browser's requestAnimationFrame mechanism.
+ * the browser's requestAnimationFrame mechanism. This is
+ * *HIGHLY* recommended if you are doing rendering, as
+ * the browser's requestAnimationFrame will make sure you
+ * render at a proper smooth rate that lines up with the
+ * the browser and monitor in a proper way. (If you do not
+ * render at all in your application, then you should pick a
+ * specific frame rate that makes sense for your code.)
  *
  * Pausing and resuming the main loop is useful if your app
  * needs to perform some synchronous operation, for example
@@ -206,7 +237,14 @@ void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
  * absolute time, and is only meaningful in comparison to
  * other calls to this function. The unit is ms.
  */
+#if EMSCRIPTEN
 double emscripten_get_now();
+#else
+#include <time.h>
+double emscripten_get_now() {
+  return (1000*clock())/(double)CLOCKS_PER_SEC;
+}
+#endif
 
 /*
  * Simple random number generation in [0, 1), maps to Math.random().
@@ -423,6 +461,72 @@ void emscripten_jcache_printf_(...); /* internal use */
 
 /* Helper API for EM_ASM - do not call this yourself */
 void emscripten_asm_const(const char *code);
+int emscripten_asm_const_int(const char *code, ...);
+double emscripten_asm_const_double(const char *code, ...);
+
+/* If specified, logs directly to the browser console/inspector 
+ * window. If not specified, logs via the application Module. */
+#define EM_LOG_CONSOLE   1
+/* If specified, prints a warning message. */
+#define EM_LOG_WARN      2
+/* If specified, prints an error message. If neither EM_LOG_WARN 
+ * or EM_LOG_ERROR is specified, an info message is printed.
+ * EM_LOG_WARN and EM_LOG_ERROR are mutually exclusive. */
+#define EM_LOG_ERROR     4
+/* If specified, prints a callstack that contains filenames referring 
+ * to original C sources using source map information. */
+#define EM_LOG_C_STACK   8
+/* If specified, prints a callstack that contains filenames referring
+ * to lines to the built .js/.html file along with the message. The 
+ * flags EM_LOG_C_STACK and EM_LOG_JS_STACK can be combined to output 
+ * both untranslated and translated file+line information. */
+#define EM_LOG_JS_STACK 16
+/* If specified, C/C++ function names are demangled before printing. 
+ * Otherwise, the mangled post-compilation JS function names are 
+ * displayed. */
+#define EM_LOG_DEMANGLE 32
+/* If specified, the pathnames of the file information in the call 
+ * stack will be omitted. */
+#define EM_LOG_NO_PATHS 64
+/* If specified, prints out the actual values of the parameters the 
+ * functions were invoked with. */
+#define EM_LOG_FUNC_PARAMS 128
+
+/*
+ * Prints out a message to the console, optionally with the 
+ * callstack information.
+ * @param flags A binary OR of items from the list of EM_LOG_xxx 
+ *                 flags that specify printing options.
+ * @param '...' A printf-style "format, ..." parameter list that 
+ *                 is parsed according to the printf formatting rules.
+ */
+void emscripten_log(int flags, ...);
+
+/*
+ * Programmatically obtains the current callstack.
+ * @param flags    A binary OR of items from the list of EM_LOG_xxx 
+ *                    flags that specify printing options. The 
+ *                    items EM_LOG_CONSOLE, EM_LOG_WARN and 
+ *                    EM_LOG_ERROR do not apply in this function and 
+ *                    are ignored.
+ * @param out      A pointer to a memory region where the callstack 
+ *                    string will be written to. The string outputted 
+ *                    by this function will always be null-terminated.
+ * @param maxbytes The maximum number of bytes that this function can
+ *                    write to the memory pointed to by 'out'. If 
+ *                    there is no enough space, the output will be 
+ *                    truncated (but always null-terminated).
+ * @return Returns the number of bytes written. (not number of 
+ *         characters, so this will also include the terminating zero)
+ 
+ * To query the amount of bytes needed for a callstack without writing 
+ * it, pass 0 to 'out' and 'maxbytes', in which case the function will
+ * return the number of bytes (including the terminating zero) that 
+ * will be needed to hold the full callstack. Note that this might be 
+ * fully accurate since subsequent calls will carry different line 
+ * numbers, so it is best to allocate a few bytes extra to be safe.
+ */
+int emscripten_get_callstack(int flags, char *out, int maxbytes);
 
 #ifdef __cplusplus
 }

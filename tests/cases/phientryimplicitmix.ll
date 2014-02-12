@@ -1,6 +1,6 @@
 ; ModuleID = 'tests/hello_world.bc'
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
-target triple = "i386-pc-linux-gnu"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
+target triple = "le32-unknown-nacl"
 
 ; Phi nodes can refer to the entry. And the entry might be unnamed, and doesn't even have a consistent implicit name!
 
@@ -9,20 +9,20 @@ target triple = "i386-pc-linux-gnu"
 ; [#uses=0]
 define i32 @main() {
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
-  %16 = trunc i32 1 to i1
-  br i1 %16, label %whoosh, label %26, !dbg !1269853  ; [debug line = 3920:5]
+  %1 = trunc i32 1 to i1
+  br i1 %1, label %whoosh, label %L26
 
 whoosh: ; preds = %1
-  %25 = trunc i32 1 to i1
-  br label %26
+  %a25 = trunc i32 1 to i1
+  br label %L26
 
-; <label>:26                                      ; preds = %17, %1
-  %27 = phi i1 [ false, %1 ], [ %25, %whoosh ]        ; [#uses=1 type=i1]
-  %28 = phi i1 [ true, %1 ], [ %25, %whoosh ]        ; [#uses=1 type=i1]
+L26:
+  %a27 = phi i1 [ false, %0 ], [ true, %whoosh ]        ; [#uses=1 type=i1]
+  %a28 = phi i1 [ true, %0 ], [ false, %whoosh ]        ; [#uses=1 type=i1]
   store i32 0, i32* %retval
   %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
-  %cal2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 %27) ; make sure %27 is used
-  %cal3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 %28) ; make sure %28 is used
+  %cal2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i1 %a27) ; make sure %27 is used
+  %cal3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i1 %a28) ; make sure %28 is used
   ret i32 1
 }
 

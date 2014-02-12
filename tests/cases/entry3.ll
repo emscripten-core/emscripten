@@ -1,25 +1,25 @@
 ; ModuleID = '/tmp/tmpKnA2D3/a.out.bc'
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
-target triple = "i386-pc-linux-gnu"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
+target triple = "le32-unknown-nacl"
 
 @.str = private unnamed_addr constant [11 x i8] c"getgid=%d\0A\00", align 1
 @.str1 = private unnamed_addr constant [6 x i8] c"f=%d\0A\00", align 1
 
 define internal i32 @_Z1fii(i32, i32) noinline {
 entry:
-  %3 = tail call i32 @getgid()
-  %4 = icmp eq i32 %3, 0
-  br i1 %4, label %cond.b, label %cond.a
+  %a3 = tail call i32 @getgid()
+  %a4 = icmp eq i32 %a3, 0
+  br i1 %a4, label %cond.b, label %cond.a
 
 cond.a:
-  %6 = tail call i32 @getgid()
+  %a6 = tail call i32 @getgid()
   br label %cond.end
 
 cond.b:
   br label %cond.end
 
 cond.end:
-  %.0 = phi i32 [ 0, %cond.b ], [ 1, %1 ]
+  %.0 = phi i32 [ 0, %cond.b ], [ 1, %cond.a ]
   ret i32 %.0
 }
 

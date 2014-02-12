@@ -1,0 +1,23 @@
+Pass: fnmatch(*, anything, 0) returned 0, expected 0
+Pass: fnmatch(*.txt, readme.txt, 0) returned 0, expected 0
+Pass: fnmatch(*.txt, readme.info, 0) returned 1, expected 1
+Pass: fnmatch(*.t?t, readme.txt, 0) returned 0, expected 0
+Pass: fnmatch(*.t?t, readme.tot, 0) returned 0, expected 0
+Pass: fnmatch(*.t?t, readme.txxt, 0) returned 1, expected 1
+Pass: fnmatch([a-g]1, c1, 0) returned 0, expected 0
+Pass: fnmatch([a-g]1, i1, 0) returned 1, expected 1
+Pass: fnmatch([!a-g]1, i1, 0) returned 0, expected 0
+Pass: fnmatch(a\*, anything, 0) returned 1, expected 1
+Pass: fnmatch(a\*, a*, 0) returned 0, expected 0
+Pass: fnmatch(a\*, a*, 2) returned 1, expected 1
+Pass: fnmatch(a\*, a\*, 2) returned 0, expected 0
+Pass: fnmatch(*readme, /etc/readme, 0) returned 0, expected 0
+Pass: fnmatch(*readme, /etc/readme, 1) returned 1, expected 1
+Pass: fnmatch(/*/readme, /etc/readme, 1) returned 0, expected 0
+Pass: fnmatch(*readme, /etc/.readme, 0) returned 0, expected 0
+Pass: fnmatch(*readme, .readme, 4) returned 1, expected 1
+Pass: fnmatch(*.readme, /etc/.readme, 4) returned 0, expected 0
+Pass: fnmatch(*.readme, /etc/.readme, 5) returned 1, expected 1
+Pass: fnmatch(/*/.readme, /etc/.readme, 5) returned 0, expected 0
+Pass: fnmatch(ReAdME, readme, 0) returned 1, expected 1
+All tests passed.

@@ -23,7 +23,8 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // Changing this from the default of 4 is deprecated.
 
 var TARGET_X86 = 0;  // For i386-pc-linux-gnu
-var TARGET_LE32 = 1; // For le32-unknown-nacl
+var TARGET_LE32 = 1; // For le32-unknown-nacl. 1 is normal, 2 is for the fastcomp llvm
+                     // backend using pnacl abi simplification
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
@@ -47,6 +48,8 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
                     // code in your own, and will call main() yourself at the right time (which you
                     // can do with Module.callMain(), with an optional parameter of commandline args).
+var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
+                         // run afterwards, for example from the browser main event loop).
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
@@ -103,6 +106,9 @@ var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fu
                               // for ways to help find places in your code where unaligned reads/writes are done -
                               // you might be able to refactor your codebase to prevent them, which leads to
                               // smaller and faster code, or even the option to turn this flag on.
+var WARN_UNALIGNED = 0; // Warn at compile time about instructions that LLVM tells us are not fully aligned.
+                        // This is useful to find places in your code where you might refactor to ensure proper
+                        // alignment. (this option is fastcomp-only)
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // Note that we do not catch 32-bit multiplication by default (which must be done in
@@ -120,8 +126,12 @@ var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 6
                      // 1: Model C++ floats precisely, using Math.fround, polyfilling when necessary. This
                      //    can be slow if the polyfill is used on heavy float32 computation.
                      // 2: Model C++ floats precisely using Math.fround if available in the JS engine, otherwise
-                     //    use an empty polyfill. This will have less of a speed penalty than using the full
-                     //    polyfill in cases where engine support is not present.
+                     //    use an empty polyfill. This will have much less of a speed penalty than using the full
+                     //    polyfill in cases where engine support is not present. In addition, we can
+                     //    remove the empty polyfill calls themselves on the client when generating html,
+                     //    which should mean that this gives you the best of both worlds of 0 and 1, and is
+                     //    therefore recommended.
+var SIMD = 0; // Whether to emit SIMD code ( https://github.com/johnmccutchan/ecmascript_simd )
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -154,6 +164,8 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // throughput. It is hard to say what values to start testing
                          // with, but something around 20,000 to 100,000 might make sense.
                          // (The unit size is number of AST nodes.)
+
+var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
@@ -223,6 +235,10 @@ var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL e
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL features. Incomplete but useful
                              // in some cases, see https://github.com/kripken/emscripten/wiki/OpenGL-support
+var GL_FFP_ONLY = 0; // If you specified LEGACY_GL_EMULATION = 1 and only use fixed function pipeline in your code,
+                     // you can also set this to 1 to signal the GL emulation layer that it can perform extra
+                     // optimizations by knowing that the user code does not use shaders at all. If 
+                     // LEGACY_GL_EMULATION = 0, this setting has no effect.
 
 var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain library for decoding images, allowing
                    // decoding of images without using the browser's built-in decoders. The benefit is that this
@@ -243,8 +259,8 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
                                     //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
 
-var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in listed functions if
-                                        // DISABLE_EXCEPTION_CATCHING = 2 set
+var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
+                                        // DISABLE_EXCEPTION_CATCHING = 2 is set
 
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.

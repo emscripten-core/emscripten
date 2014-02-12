@@ -1,44 +1,44 @@
-//19
-L1: do {
- switch (the_var) {
-  1  {
-  //20
+ //19
+ L1: do {
   switch (the_var) {
    1  {
+   //20
+   switch (the_var) {
+    1  {
+    break;
+   }
+   default: {
+    label = 4;
+    break L1;
+   }
+   }
+   //21
+   switch (the_var) {
+   default: {
+   }
+   }
    break;
   }
   default: {
    label = 4;
-   break L1;
   }
   }
-  //21
+ } while(0);
+ if (label == 4) {
+  //22
   switch (the_var) {
   default: {
   }
   }
+ }
+ //23
+ switch (the_var) {
+  1  {
+  //24
   break;
  }
  default: {
-  label = 4;
+  //28
  }
  }
-} while(0);
-if (label == 4) {
- //22
- switch (the_var) {
- default: {
- }
- }
-}
-//23
-switch (the_var) {
- 1  {
- //24
- break;
-}
-default: {
- //28
-}
-}
 

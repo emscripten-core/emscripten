@@ -238,9 +238,9 @@ static void draw() {
  
 }
 
-extern int webglAntialiasSupported();
-extern int webglDepthSupported();
-extern int webglStencilSupported();
+extern int webglAntialiasSupported(void);
+extern int webglDepthSupported(void);
+extern int webglStencilSupported(void);
 
 // Check attributes support in the WebGL implementation (see test_webgl_context_attributes function in test_browser.py)
 // Tests will succeed if they are not.

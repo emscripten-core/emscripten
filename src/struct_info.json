@@ -141,7 +141,9 @@
     }, 
     {
         "file": "libc/stdlib.h", 
-        "defines": [],
+        "defines": [
+            "RAND_MAX"
+        ],
         "structs": {
             // NOTE: The hash sign at the end of this name is a hint to the processor that it mustn't prefix "struct " to the name to reference this struct.
             // It will be stripped away when writing the compiled JSON file. You can just refer to it as C_STRUCTS.div_t when using it in the JS code.
@@ -1061,5 +1063,200 @@
                 "patch"
             ]
         }
+    },
+    {
+        "file": "uuid/uuid.h", 
+        "defines": [
+            "UUID_VARIANT_NCS", 
+            "UUID_VARIANT_DCE",
+            "UUID_VARIANT_MICROSOFT", 
+            "UUID_VARIANT_OTHER",
+            "UUID_TYPE_DCE_TIME",
+            "UUID_TYPE_DCE_RANDOM" 
+        ],
+        "structs": {}
+    },
+    // ===========================================
+    // emscripten html5 library
+    // ===========================================
+    {
+        "file": "emscripten/html5.h",
+        "defines": [
+            "EMSCRIPTEN_EVENT_KEYPRESS",
+            "EMSCRIPTEN_EVENT_KEYDOWN",
+            "EMSCRIPTEN_EVENT_KEYUP",
+            "EMSCRIPTEN_EVENT_CLICK",
+            "EMSCRIPTEN_EVENT_MOUSEDOWN",
+            "EMSCRIPTEN_EVENT_MOUSEUP",
+            "EMSCRIPTEN_EVENT_DBLCLICK",
+            "EMSCRIPTEN_EVENT_MOUSEMOVE",
+            "EMSCRIPTEN_EVENT_WHEEL",
+            "EMSCRIPTEN_EVENT_RESIZE",
+            "EMSCRIPTEN_EVENT_SCROLL",
+            "EMSCRIPTEN_EVENT_BLUR",
+            "EMSCRIPTEN_EVENT_FOCUS",
+            "EMSCRIPTEN_EVENT_FOCUSIN",
+            "EMSCRIPTEN_EVENT_FOCUSOUT",
+            "EMSCRIPTEN_EVENT_DEVICEORIENTATION",
+            "EMSCRIPTEN_EVENT_DEVICEMOTION",
+            "EMSCRIPTEN_EVENT_ORIENTATIONCHANGE",
+            "EMSCRIPTEN_EVENT_FULLSCREENCHANGE",
+            "EMSCRIPTEN_EVENT_POINTERLOCKCHANGE",
+            "EMSCRIPTEN_EVENT_VISIBILITYCHANGE",
+            "EMSCRIPTEN_EVENT_TOUCHSTART",
+            "EMSCRIPTEN_EVENT_TOUCHEND",
+            "EMSCRIPTEN_EVENT_TOUCHMOVE",
+            "EMSCRIPTEN_EVENT_TOUCHCANCEL",
+            "EMSCRIPTEN_EVENT_GAMEPADCONNECTED",
+            "EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED",
+            "EMSCRIPTEN_EVENT_BEFOREUNLOAD",
+            "EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE",
+            "EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE",
+            "EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST",
+            "EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED",
+
+            "EMSCRIPTEN_RESULT_SUCCESS",
+            "EMSCRIPTEN_RESULT_DEFERRED",
+            "EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED",
+            "EMSCRIPTEN_RESULT_INVALID_TARGET",
+            "EMSCRIPTEN_RESULT_UNKNOWN_TARGET",
+            "EMSCRIPTEN_RESULT_INVALID_PARAM",
+            "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
+            "EMSCRIPTEN_RESULT_FAILED",
+            "EMSCRIPTEN_RESULT_NO_DATA"
+        ],
+        "structs": {
+            "EmscriptenKeyboardEvent": [
+              "key",
+              "code",
+              "location",
+              "ctrlKey",
+              "shiftKey",
+              "altKey",
+              "metaKey",
+              "repeat",
+              "locale",
+              "charValue",
+              "charCode",
+              "keyCode",
+              "which"
+            ],
+            "EmscriptenMouseEvent": [
+              "timestamp",
+              "screenX",
+              "screenY",
+              "clientX",
+              "clientY",
+              "ctrlKey",
+              "shiftKey",
+              "altKey",
+              "metaKey",
+              "button",
+              "buttons",
+              "movementX",
+              "movementY",
+              "canvasX",
+              "canvasY"
+            ],
+            "EmscriptenWheelEvent": [
+              "mouse",
+              "deltaX",
+              "deltaY",
+              "deltaZ",
+              "deltaMode"
+            ],
+            "EmscriptenUiEvent": [
+              "detail",
+              "documentBodyClientWidth",
+              "documentBodyClientHeight",
+              "windowInnerWidth",
+              "windowInnerHeight",
+              "windowOuterWidth",
+              "windowOuterHeight",
+              "scrollTop",
+              "scrollLeft"
+            ],
+            "EmscriptenFocusEvent": [
+              "nodeName",
+              "id"
+            ],
+            "EmscriptenDeviceOrientationEvent": [
+              "timestamp",
+              "alpha",
+              "beta",
+              "gamma",
+              "absolute"
+            ],
+            "EmscriptenDeviceMotionEvent": [
+              "timestamp",
+              "accelerationX",
+              "accelerationY",
+              "accelerationZ",
+              "accelerationIncludingGravityX",
+              "accelerationIncludingGravityY",
+              "accelerationIncludingGravityZ",
+              "rotationRateAlpha",
+              "rotationRateBeta",
+              "rotationRateGamma"
+            ],
+            "EmscriptenOrientationChangeEvent": [
+              "orientationIndex",
+              "orientationAngle"
+            ],
+            "EmscriptenFullscreenChangeEvent": [
+              "isFullscreen",
+              "fullscreenEnabled",
+              "nodeName",
+              "id"
+            ],
+            "EmscriptenPointerlockChangeEvent": [
+              "isActive",
+              "nodeName",
+              "id"
+            ],
+            "EmscriptenVisibilityChangeEvent": [
+              "hidden",
+              "visibilityState"
+            ],
+            "EmscriptenTouchPoint": [
+              "identifier",
+              "screenX",
+              "screenY",
+              "clientX",
+              "clientY",
+              "pageX",
+              "pageY",
+              "isChanged",
+              "onTarget",
+              "canvasX",
+              "canvasY"
+            ],
+            "EmscriptenTouchEvent": [
+              "numTouches",
+              "ctrlKey",
+              "shiftKey",
+              "altKey",
+              "metaKey",
+              "touches"
+            ],
+            "EmscriptenGamepadEvent": [
+              "timestamp",
+              "axis",
+              "analogButton",
+              "digitalButton",
+              "connected",
+              "index",
+              "numAxes",
+              "numButtons",
+              "id",
+              "mapping"
+            ],
+            "EmscriptenBatteryEvent": [
+              "chargingTime",
+              "dischargingTime",
+              "level",
+              "charging"
+            ]
+        }
     }
-]
+ ]

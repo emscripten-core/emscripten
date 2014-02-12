@@ -13,8 +13,7 @@ class Cache:
     self.debug = debug
 
   def ensure(self):
-    if not os.path.exists(self.dirname):
-      os.makedirs(self.dirname)
+    shared.safe_ensure_dirs(self.dirname)
 
   def erase(self):
     tempfiles.try_delete(self.dirname)
@@ -48,11 +47,7 @@ class JCache:
 
   def ensure(self):
     self.cache.ensure()
-    if not os.path.exists(self.dirname):
-      try:
-        os.makedirs(self.dirname)
-      except (IOError, OSError):
-        pass
+    shared.safe_ensure_dirs(self.dirname)
 
   def get_shortkey(self, keys):
     if type(keys) not in [list, tuple]:
@@ -196,3 +191,6 @@ def chunkify(funcs, chunk_size, chunking_file, DEBUG=False):
     #      if previous_mapping.get(ident) != new_mapping.get(ident):
     #        print >> sys.stderr, 'mapping inconsistency', ident, previous_mapping.get(ident), new_mapping.get(ident)
   return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
+
+import shared
+

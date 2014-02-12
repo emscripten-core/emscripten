@@ -282,7 +282,12 @@ var Functions = {
         sig += Functions.getSignatureLetter(type);
       } else {
         var chunks = getNumIntChunks(type);
-        for (var j = 0; j < chunks; j++) sig += 'i';
+        if (chunks > 0) {
+          for (var j = 0; j < chunks; j++) sig += 'i';
+        } else if (type !== '...') {
+          // some special type like a SIMD vector (anything but varargs, which we handle below)
+          sig += Functions.getSignatureLetter(type);
+        }
       }
     }
     if (hasVarArgs) sig += 'i';
@@ -419,10 +424,43 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js', 'library_uuid.js', 'library_glew.js', 'library_html5.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
-      eval(processMacros(preprocess(read(libraries[i]))));
+      var filename = libraries[i];
+      var src = read(filename);
+      try {
+        var processed = processMacros(preprocess(src));
+        eval(processed);
+      } catch(e) {
+        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];
+        if (processed) {
+          error('failure to execute js library "' + filename + '": ' + details + '\npreprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============\n');
+        } else {
+          error('failure to process js library "' + filename + '": ' + details + '\noriginal source:\n=============\n' + src + '\n=============\n');
+        }
+        throw e;
+      }
     }
+
+    /*
+    // export code for CallHandlers.h
+    printErr('============================');
+    for (var x in this.library) {
+      var y = this.library[x];
+      if (typeof y === 'string' && x.indexOf('__sig') < 0 && x.indexOf('__postset') < 0 && y.indexOf(' ') < 0) {
+        printErr('DEF_REDIRECT_HANDLER(' + x + ', ' + y + ');');
+      }
+    }
+    printErr('============================');
+    for (var x in this.library) {
+      var y = this.library[x];
+      if (typeof y === 'string' && x.indexOf('__sig') < 0 && x.indexOf('__postset') < 0 && y.indexOf(' ') < 0) {
+        printErr('  SETUP_CALL_HANDLER(' + x + ');');
+      }
+    }
+    printErr('============================');
+    // end export code for CallHandlers.h
+    */
 
     this.loaded = true;
   },
@@ -483,6 +521,11 @@ var PassManager = {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Functions: { tables: Functions.tables }
       }));
+    } else if (phase == 'glue') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Functions: Functions,
+        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
+      }));
     }
   },
   load: function(json) {
@@ -496,6 +539,7 @@ var PassManager = {
     for (var i in data.Functions) {
       Functions[i] = data.Functions[i];
     }
+    EXPORTED_FUNCTIONS = data.EXPORTED_FUNCTIONS;
     /*
     print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
       Types: Types,

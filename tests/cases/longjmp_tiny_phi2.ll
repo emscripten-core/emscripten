@@ -24,7 +24,7 @@ if.then:                                          ; preds = %entry
   br label %if.end, !dbg !25
 
 if.end:                                           ; preds = %if.else, %if.then
-  %aaa = phi i32 [ -1, %if.then ], [ 1, %two ], [ 2, %entry ]
+  %aaa = phi i32 [ -1, %if.then ], [ 1, %two ]
   %call3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str2, i32 0, i32 0), i32 %aaa), !dbg !26
   ret i32 %aaa, !dbg !28
 }

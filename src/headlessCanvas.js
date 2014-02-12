@@ -446,6 +446,7 @@ function headlessCanvas() {
                 case /* GL_MAX_FRAGMENT_UNIFORM_VECTORS     */ 0x8DFD: return 4096;
                 case /* GL_MAX_VARYING_VECTORS              */ 0x8DFC: return 32;
                 case /* GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS */ 0x8B4D: return 32;
+                case /* GL_ARRAY_BUFFER_BINDING             */ 0x8894: return 0;
                 default: console.log('getParameter ' + pname + '?'); return 0;
               }
             },
@@ -600,6 +601,7 @@ function headlessCanvas() {
     style: {},
     eventListeners: {},
     addEventListener: function(){},
+    removeEventListener: function(){},
     requestFullScreen: function() {
       document.fullscreenElement = document.getElementById('canvas');
       window.setTimeout(function() {

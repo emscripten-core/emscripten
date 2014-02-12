@@ -3,7 +3,7 @@
 /*global new_*/
 /*global createNamedFunction*/
 /*global readLatin1String, writeStringToMemory*/
-/*global requireRegisteredType, throwBindingError*/
+/*global requireRegisteredType, throwBindingError, runDestructors*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 var Module = Module || {};
@@ -77,6 +77,12 @@ function __emval_decref(handle) {
         _emval_handle_array[handle] = undefined;
         _emval_free_list.push(handle);
     }
+}
+
+function __emval_run_destructors(handle) {
+    var destructors = _emval_handle_array[handle].value;
+    runDestructors(destructors);
+    __emval_decref(handle);
 }
 
 function __emval_new_array() {
@@ -199,11 +205,12 @@ function __emval_set_property(handle, key, value) {
     _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
 }
 
-function __emval_as(handle, returnType) {
+function __emval_as(handle, returnType, destructorsRef) {
     requireHandle(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
-    // caller owns destructing
+    var rd = __emval_register(destructors);
+    HEAP32[destructorsRef >> 2] = rd;
     return returnType['toWireType'](destructors, _emval_handle_array[handle].value);
 }
 
@@ -242,14 +249,20 @@ function lookupTypes(argCount, argTypes, argWireTypes) {
     return a;
 }
 
+function allocateDestructors(destructorsRef) {
+    var destructors = [];
+    HEAP32[destructorsRef >> 2] = __emval_register(destructors);
+    return destructors;
+}
+
 function __emval_get_method_caller(argCount, argTypes) {
     var types = lookupTypes(argCount, argTypes);
 
     var retType = types[0];
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
-    var args1 = ["addFunction", "createNamedFunction", "requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType"];
-    var args2 = [Runtime.addFunction, createNamedFunction, requireHandle, getStringOrSymbol, _emval_handle_array, retType];
+    var args1 = ["addFunction", "createNamedFunction", "requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType", "allocateDestructors"];
+    var args2 = [Runtime.addFunction, createNamedFunction, requireHandle, getStringOrSymbol, _emval_handle_array, retType, allocateDestructors];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
     var argsListWired = ""; // 'arg0Wired, ..., argNWired'
@@ -261,16 +274,17 @@ function __emval_get_method_caller(argCount, argTypes) {
     }
 
     var invokerFnBody =
-        "return addFunction(createNamedFunction('" + signatureName + "', function (handle, name" + argsListWired + ") {\n" +
-        "requireHandle(handle);\n" +
-        "name = getStringOrSymbol(name);\n";
+        "return addFunction(createNamedFunction('" + signatureName + "', function (handle, name, destructorsRef" + argsListWired + ") {\n" +
+        "    requireHandle(handle);\n" +
+        "    name = getStringOrSymbol(name);\n";
 
     for (var i = 0; i < argCount - 1; ++i) {
-        invokerFnBody += "var arg" + i + " = argType" + i + ".fromWireType(arg" + i + "Wired);\n";
+        invokerFnBody += "    var arg" + i + " = argType" + i + ".fromWireType(arg" + i + "Wired);\n";
     }
     invokerFnBody +=
-        "var obj = _emval_handle_array[handle].value;\n" +
-        "return retType.toWireType(null, obj[name](" + argsList + "));\n" + 
+        "    var obj = _emval_handle_array[handle].value;\n" +
+        "    var rv = obj[name](" + argsList + ");\n" +
+        "    return retType.toWireType(allocateDestructors(destructorsRef), rv);\n" +
         "}));\n";
 
     args1.push(invokerFnBody);

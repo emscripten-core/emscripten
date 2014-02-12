@@ -58,12 +58,14 @@ function b($this, $__n) {
  _memset($38 + $23 | 0, 0, $__n | 0, 1, 1213141516);
  $40 = $23 + $__n | 0;
  if ((HEAP8[$4 & 16777215] & 1) == 0) {
-  HEAP8[$4 & 16777215] = $40 << 1 & 255;
+  HEAP8[$4 & 16777215] = $40 << 1;
  } else {
   HEAP32[($this + 4 & 16777215) >> 2] = $40;
  }
  HEAP8[$38 + $40 & 16777215] = 0;
  HEAP32[$4] = ~HEAP32[$5];
+ HEAP8[$4] = HEAP32[$5];
+ HEAP16[$4] = HEAP32[$5];
  HEAP32[$4] = ~HEAP32[$5];
  HEAP32[$4] = ~HEAP32[$5];
  h(~~g ^ -1);
@@ -240,10 +242,10 @@ function _main($argc, $argv) {
   }
   if (($i_09_i_i | 0) > (HEAP32[9600 + ($j_08_i_i << 2) >> 2] | 0)) {
    $34 = $j_08_i_i + 1 | 0;
-   HEAP8[$i_09_i_i + 8952 | 0] = $34 & 255;
+   HEAP8[$i_09_i_i + 8952 | 0] = $34;
    $j_1_i_i = $34;
   } else {
-   HEAP8[$i_09_i_i + 8952 | 0] = $j_08_i_i & 255;
+   HEAP8[$i_09_i_i + 8952 | 0] = $j_08_i_i;
    $j_1_i_i = $j_08_i_i;
   }
   $38 = $i_09_i_i + 1 | 0;
@@ -516,5 +518,24 @@ function _main($argc, $argv) {
  $_0 = 0;
  STACKTOP = __stackBase__;
  return $_0 | 0;
+}
+function badf() {
+ var $9 = 0;
+ $9 = $8 | 0;
+ HEAP32[$gep23_asptr >> 2] = $9;
+}
+function badf2() {
+ var $9 = +0;
+ $9 = +$8;
+ HEAPF32[$gep23_asptr >> 2] = $9;
+}
+function fcomp() {
+ if (!($y < $x)) return 5;
+ if (!(5 < $x)) return 5;
+ if (!($y < 5)) return 5;
+ if (($a | 0) >= ($b | 0)) return 5;
+ if (($a | 0) >= 5) return 5;
+ if (5 >= ($b | 0)) return 5;
+ if (5 >= 5) return 5;
 }
 
