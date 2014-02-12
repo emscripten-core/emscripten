@@ -474,7 +474,7 @@ if has_preloaded:
     }
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = (Module['filePackagePrefixURL'] || '') + '%s';
-    var REMOTE_PACKAGE_SIZE = '%s';
+    var REMOTE_PACKAGE_SIZE = %d;
     var PACKAGE_UUID = '%s';
   ''' % (data_target, remote_package_name, remote_package_size, package_uuid)
 
@@ -577,15 +577,14 @@ if has_preloaded:
       xhr.onprogress = function(event) {
         var url = packageName;
         var size = packageSize;
-        if (event.total)
-          size = event.total;
+        if (event.total) size = event.total;
         if (event.loaded) {
           if (!xhr.addedTotal) {
             xhr.addedTotal = true;
             if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
             Module.dataFileDownloads[url] = {
               loaded: event.loaded,
-              total: packageSize
+              total: size
             };
           } else {
             Module.dataFileDownloads[url].loaded = event.loaded;
