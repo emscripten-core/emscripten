@@ -5099,6 +5099,17 @@ function safeHeap(ast) {
   });
 }
 
+function optimizeFrounds(ast) {
+  // collapse fround(fround(..)), which can happen due to elimination
+  function fix(node) {
+    traverseChildren(node, fix);
+    if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround' && node[2][0][0] === 'call' && node[2][0][1][0] === 'name' && node[2][0][1][1] === 'Math_fround') {
+      return node[2][0];
+    }
+  }
+  traverseChildren(ast, fix);
+}
+
 // Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
@@ -5210,6 +5221,7 @@ var passes = {
   relocate: relocate,
   outline: outline,
   safeHeap: safeHeap,
+  optimizeFrounds: optimizeFrounds,
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },

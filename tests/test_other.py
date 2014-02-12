@@ -1780,7 +1780,7 @@ f.close()
       (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(),
        ['asm', 'simplifyExpressions']),
       (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
-       ['asm', 'asmPreciseF32', 'simplifyExpressions']),
+       ['asm', 'asmPreciseF32', 'simplifyExpressions', 'optimizeFrounds']),
       (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
        ['asm', 'last']),
       (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),

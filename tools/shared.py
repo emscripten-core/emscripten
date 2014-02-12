@@ -1167,7 +1167,7 @@ class Building:
     #opts += ['-debug-pass=Arguments']
     if get_clang_version() == '3.4' and not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4 has these on by default
-    logging.debug('emcc: LLVM opts: ' + str(opts))
+    logging.debug('emcc: LLVM opts: ' + ' '.join(opts))
     target = out or (filename + '.opt.bc')
     output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target), 'Failed to run llvm optimizations: ' + output

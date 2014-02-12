@@ -446,6 +446,10 @@ mergeInto(LibraryManager.library, {
              0;
     },
 
+    getMouseWheelDelta: function(event) {
+      return Math.max(-1, Math.min(1, event.type === 'DOMMouseScroll' ? event.detail : -event.wheelDelta));
+    },
+
     mouseX: 0,
     mouseY: 0,
     mouseMovementX: 0,

@@ -229,7 +229,7 @@ var LibraryGLUT = {
 
       // cross-browser wheel delta
       var e = window.event || event; // old IE support
-      var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+      var delta = -Browser.getMouseWheelDelta(event);
 
       var button = 3; // wheel up
       if (delta < 0) {

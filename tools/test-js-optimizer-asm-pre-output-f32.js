@@ -8,4 +8,10 @@ function badf2() {
  $9 = Math_fround($8);
  HEAPF32[$gep23_asptr >> 2] = $9;
 }
+function dupe() {
+ x = Math_fround(x);
+ x = Math_fround(x);
+ x = Math_fround(x);
+ x = Math_fround(x);
+}
 
