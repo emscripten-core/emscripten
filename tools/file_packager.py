@@ -502,6 +502,8 @@ if has_preloaded:
 
   package_uuid = uuid.uuid4();
   remote_package_name = os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
+  statinfo = os.stat(remote_package_name)
+  remote_package_size = statinfo.st_size
   ret += r'''
     var PACKAGE_PATH;
     if (typeof window === 'object') {
@@ -512,8 +514,9 @@ if has_preloaded:
     }
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = (Module['filePackagePrefixURL'] || '') + '%s';
+    var REMOTE_PACKAGE_SIZE = %d;
     var PACKAGE_UUID = '%s';
-  ''' % (data_target, remote_package_name, package_uuid)
+  ''' % (data_target, remote_package_name, remote_package_size, package_uuid)
 
   if use_preload_cache:
     code += r'''
@@ -607,19 +610,21 @@ if has_preloaded:
     '''
 
   ret += r'''
-    function fetchRemotePackage(packageName, callback, errback) {
+    function fetchRemotePackage(packageName, packageSize, callback, errback) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', packageName, true);
       xhr.responseType = 'arraybuffer';
       xhr.onprogress = function(event) {
         var url = packageName;
-        if (event.loaded && event.total) {
+        var size = packageSize;
+        if (event.total) size = event.total;
+        if (event.loaded) {
           if (!xhr.addedTotal) {
             xhr.addedTotal = true;
             if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
             Module.dataFileDownloads[url] = {
               loaded: event.loaded,
-              total: event.total
+              total: size
             };
           } else {
             Module.dataFileDownloads[url].loaded = event.loaded;
@@ -671,7 +676,7 @@ if has_preloaded:
       function preloadFallback(error) {
         console.error(error);
         console.error('falling back to default preload behavior');
-        fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
       };
 
       openDatabase(
@@ -684,7 +689,7 @@ if has_preloaded:
                 fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, processPackageData, preloadFallback);
               } else {
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
-                fetchRemotePackage(REMOTE_PACKAGE_NAME,
+                fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, 
                   function(packageData) {
                     cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
                       function(error) {
@@ -706,7 +711,7 @@ if has_preloaded:
     # Only tricky bit is the fetch is async, but also when runWithFS is called is async, so we handle both orderings.
     ret += r'''
       var fetched = null, fetchedCallback = null;
-      fetchRemotePackage(REMOTE_PACKAGE_NAME, function(data) {
+      fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
         if (fetchedCallback) {
           fetchedCallback(data);
           fetchedCallback = null;
