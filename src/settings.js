@@ -1,5 +1,10 @@
 
 //
+//  settings.js
+//  Original from https://github.com/kripken/emscripten/blob/master/src/settings.js
+//
+//  Modified by Anthony Liot
+//
 // Various compiling-to-JS parameters. These are simply variables present when the
 // JS compiler runs. To set them, do something like
 //
@@ -225,6 +230,13 @@ var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets.
 
 var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
+
+var CL_DEBUG = 0; // Print out debugging information from our OpenCL implementation.
+var CL_VALIDATOR = 0; // Use validator on the kernel --preload-file-validator
+var CL_VAL_PARAM = []; // Add parameter to the validator
+var CL_GRAB_TRACE = 0 // Grab all the wecl call
+var CL_PRINT_TRACE = 0 // Print all the wecl call auto after each webcl call
+var CL_CHECK_VALID_OBJECT = 0 // Check if object is inside the hashmap
 
 var GL_ASSERTIONS = 0; // Adds extra checks for error situations in the GL library. Can impact performance.
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime

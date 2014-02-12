@@ -1,3 +1,9 @@
+#
+#  file_packager.py
+#  Original from https://github.com/kripken/emscripten/blob/master/tools/file_packager.py
+#
+#  Modified by Anthony Liot
+#
 '''
 A tool that generates FS API calls to generate a filesystem, and packages the files
 to work with that.
@@ -59,6 +65,7 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 
 data_target = sys.argv[1]
 
+OPENCL_SUFFIXES = ('.cl')
 IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
 AUDIO_MIMETYPES = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }
@@ -78,6 +85,9 @@ crunch = 0
 plugins = []
 jsoutput = None
 force = True
+in_validator = False
+validator_params = []
+
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
 # page loads can read the data from the offline cache instead.
 use_preload_cache = False
@@ -121,6 +131,10 @@ for arg in sys.argv[2:]:
     plugin = open(arg.split('=')[1], 'r').read()
     eval(plugin) # should append itself to plugins
     leading = ''
+  elif arg.startswith('--enable-validator'):
+    in_validator = True;
+    validator_params = ((arg.split('=')[1])[1:-1]).split(',')
+    leading = ''    
   elif leading == 'preload' or leading == 'embed':
     mode = leading
     if '@' in arg:
@@ -128,7 +142,11 @@ for arg in sys.argv[2:]:
     else:
       srcpath = dstpath = arg # Use source path as destination path.
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
-      data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode })
+      if in_validator and srcpath.endswith(OPENCL_SUFFIXES):
+        data_files.append({ 'srcpath': srcpath+'.validated', 'dstpath': dstpath, 'mode': mode })
+        print >> sys.stderr, 'Generating file "' + srcpath + '" with validator in path "' + srcpath+'.validated' + '".'
+      else:
+        data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode })
     else:
       print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
   elif leading == 'exclude':
@@ -335,6 +353,21 @@ for file_ in data_files:
       if partial not in partial_dirs:
         code += '''Module['FS_createPath']('/%s', '%s', true, true);\n''' % ('/'.join(parts[:i]), parts[i])
         partial_dirs.append(partial)
+
+# Call webcl-validator
+if in_validator:
+  VALIDATOR = os.path.join(shared.LLVM_VALIDATOR_ROOT,'webcl-validator')
+  for file_ in data_files:
+    if file_['srcpath'].endswith('.validated'):
+      fullname = os.path.join(curr_abspath , file_['srcpath'])
+      # Launch webcl-validator
+      args = [VALIDATOR, unsuffixed(fullname)] + validator_params
+      proc = Popen(args, stdout=PIPE)
+      out, err = proc.communicate()
+      # Write the output inside file
+      validated = open(fullname, 'wb')
+      validated.write(out)
+      validated.close()
 
 if has_preloaded:
   # Bundle all datafiles into one archive. Avoids doing lots of simultaneous XHRs which has overhead.
