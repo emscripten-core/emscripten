@@ -136,14 +136,10 @@ var LibraryOpenCL = {
      * @return 
      */
     cast_long: function(arg_size) {
-  
       var _sizelong = [];
-
       _sizelong.push(((arg_size & 0xFFFFFFFF00000000) >> 32));
       _sizelong.push((arg_size & 0xFFFFFFFF));
-      
       // var _origin = x << 32 | y;
-
       return new Int32Array(_sizelong);
     },
 
