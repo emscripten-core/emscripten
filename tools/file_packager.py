@@ -502,7 +502,7 @@ if has_preloaded:
 
   package_uuid = uuid.uuid4();
   remote_package_name = os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
-  statinfo = os.stat(remote_package_name)
+  statinfo = os.stat(data_target)
   remote_package_size = statinfo.st_size
   ret += r'''
     var PACKAGE_PATH;
