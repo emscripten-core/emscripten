@@ -5095,9 +5095,12 @@ def process(filename):
     else:
       bitcode = path_from_root('tests', 'python', 'python.small.bc')
 
-    self.do_ll_run(bitcode,
-                    'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
-                    args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
+    for lto in [0, 1]:
+      if lto == 1: self.emcc_args += ['--llvm-lto', '1']
+      print self.emcc_args
+      self.do_ll_run(bitcode,
+                      'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
+                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
   def test_lifetime(self):
     if self.emcc_args is None: return self.skip('test relies on emcc opts')
