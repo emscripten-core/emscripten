@@ -3,7 +3,7 @@
 # to find failures, then check those out with this script
 
 echo "builds"
-rm n1 n2 js ua sh fc fc-sh
+rm *.out *.bc *.js
 gcc $@ -I/home/alon/Dev/csmith/runtime -o n1.out &> /dev/null
 /home/alon/Dev/fastcomp/build/Release/bin/clang $@ -I/home/alon/Dev/csmith/runtime -o n2.out &> /dev/null
 /home/alon/Dev/fastcomp/build/Release/bin/clang $@ -I/home/alon/Dev/csmith/runtime -emit-llvm -c -o bc.bc &> o
