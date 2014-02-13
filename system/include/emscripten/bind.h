@@ -17,6 +17,8 @@ namespace emscripten {
         BY_EMVAL = 2,
     };
 
+#define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
+
     namespace internal {
         typedef long GenericEnumValue;
 
@@ -958,7 +960,7 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
@@ -973,7 +975,7 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
@@ -988,7 +990,7 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
-        const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
@@ -1003,7 +1005,7 @@ namespace emscripten {
         }
 
         template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-        const class_& property(const char* fieldName, const FieldType ClassType::*field) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const {
             using namespace internal;
 
             _embind_register_class_property(
@@ -1019,7 +1021,7 @@ namespace emscripten {
         }
 
         template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-        const class_& property(const char* fieldName, FieldType ClassType::*field) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const {
             using namespace internal;
 
             _embind_register_class_property(
@@ -1035,7 +1037,7 @@ namespace emscripten {
         }
 
         template<typename Getter>
-        const class_& property(const char* fieldName, Getter getter) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
             _embind_register_class_property(
@@ -1051,7 +1053,7 @@ namespace emscripten {
         }
 
         template<typename Getter, typename Setter>
-        const class_& property(const char* fieldName, Getter getter, Setter setter) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter) const {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
             typedef SetterPolicy<Setter> SP;
@@ -1068,7 +1070,7 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        const class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) const {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
