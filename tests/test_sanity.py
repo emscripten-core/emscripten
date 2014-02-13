@@ -414,7 +414,7 @@ fi
                 except:
                   pass
               assert ll
-              assert ll.count('\n!') < 10 # a few lines are left even in -O1 and -O2
+              assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']
 

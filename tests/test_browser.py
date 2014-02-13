@@ -1460,14 +1460,23 @@ keydown(100);keyup(100); // trigger the end
     self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']'''])
 
   def test_emscripten_api2(self):
-    open('script1.js', 'w').write('''
-      Module._set(456);
-    ''')
+    def setup():
+      open('script1.js', 'w').write('''
+        Module._set(456);
+      ''')
+      open('file1.txt', 'w').write('first');
+      open('file2.txt', 'w').write('second');
 
-    open('file1.txt', 'w').write('first');
-    open('file2.txt', 'w').write('second');
+    setup()
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w')).communicate()
+    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']'''])
 
+    # check using file packager to another dir
+    self.clear()
+    setup()
+    os.mkdir('sub')
+    Popen([PYTHON, FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w')).communicate()
+    shutil.copyfile(os.path.join('sub', 'test.data'), 'test.data')
     self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']'''])
 
   def test_emscripten_api_infloop(self):
