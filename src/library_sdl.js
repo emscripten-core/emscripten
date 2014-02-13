@@ -1864,7 +1864,7 @@ var LibrarySDL = {
     } else if (!SDL.audio.timer && !SDL.audio.scriptProcessorNode) {
       // If we are using the same sampling frequency as the native sampling rate of the Web Audio graph is using, we can feed our buffers via
       // Web Audio ScriptProcessorNode, which is a pull-mode API that calls back to our code to get audio data.
-      if (SDL.audio.freq == SDL.audioContext['sampleRate']) {
+      if (SDL.audioContext !== undefined && SDL.audio.freq == SDL.audioContext['sampleRate']) {
         var sizeSamplesPerChannel = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
         SDL.audio.scriptProcessorNode = SDL.audioContext['createScriptProcessor'](sizeSamplesPerChannel, 0, SDL.audio.channels);
         SDL.audio.scriptProcessorNode['onaudioprocess'] = function (e) {
