@@ -276,21 +276,6 @@ Options that are modified or new in %s include:
                            Note: Closure is only run if js opts are being
                            done (-O2 or above, or --js-opts 1).
 
-  --js-transform <cmd>     <cmd> will be called on the generated code
-                           before it is optimized. This lets you modify
-                           the JavaScript, for example adding some code
-                           or removing some code, in a way that those
-                           modifications will be optimized together with
-                           the generated code properly. <cmd> will be
-                           called with the filename of the generated
-                           code as a parameter; to modify the code, you
-                           can read the original data and then append to
-                           it or overwrite it with the modified data.
-                           <cmd> is interpreted as a space-separated
-                           list of arguments, for example, <cmd> of
-                           "python processor.py" will cause a python
-                           script to be run.
-
   --pre-js <file>          A file whose contents are added before the
                            generated code. This is done *before*
                            optimization, so it will be minified
@@ -349,6 +334,16 @@ Options that are modified or new in %s include:
                            --embed-file and --preload-file
                            wildcard is supported
 
+  --shell-file <path>      The path name to a skeleton HTML file used
+                           when generating HTML output. The shell file
+                           used needs to have this token inside it:
+                           {{{ SCRIPT }}}
+                           (see src/shell.html and
+                                src/shell_minimal.html for examples)
+                           Note that this argument is ignored if a
+                           target other than HTML is specified using
+                           the -o option.
+
   --compression <codec>    **THIS OPTION IS DEPRECATED**
 
                            Compress both the compiled code and embedded/
@@ -371,6 +366,21 @@ Options that are modified or new in %s include:
                            output HTML but with suffix .data.compress
 
   --minify 0               Identical to -g1
+
+  --js-transform <cmd>     <cmd> will be called on the generated code
+                           before it is optimized. This lets you modify
+                           the JavaScript, for example adding some code
+                           or removing some code, in a way that those
+                           modifications will be optimized together with
+                           the generated code properly. <cmd> will be
+                           called with the filename of the generated
+                           code as a parameter; to modify the code, you
+                           can read the original data and then append to
+                           it or overwrite it with the modified data.
+                           <cmd> is interpreted as a space-separated
+                           list of arguments, for example, <cmd> of
+                           "python processor.py" will cause a python
+                           script to be run.
 
   --split <size>           Splits the resulting javascript file into pieces
                            to ease debugging. This option only works if
@@ -407,15 +417,6 @@ Options that are modified or new in %s include:
                            which allows the build system to proceed without
                            errors. However, you will need to manually
                            link to the shared libraries later on yourself.
-
-  --shell-file <path>      The path name to a skeleton HTML file used
-                           when generating HTML output. The shell file
-                           used needs to have this token inside it:
-                           {{{ SCRIPT }}}
-                           (see src/shell.html for an example)
-                           Note that this argument is ignored if a
-                           target other than HTML is specified using
-                           the -o option.
 
   --js-library <lib>       A JavaScript library to use in addition to
                            those in Emscripten's src/library_*
