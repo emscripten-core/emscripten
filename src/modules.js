@@ -1,3 +1,9 @@
+//
+//  modules.js
+//  Original from https://github.com/kripken/emscripten/blob/master/src/modules.js
+//
+//  Modified by Anthony Liot
+//
 //"use strict";
 
 // Various namespace-like modules
@@ -424,7 +430,7 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js', 'library_uuid.js', 'library_glew.js', 'library_html5.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js', 'library_uuid.js', 'library_glew.js', 'library_html5.js', 'library_cuda.js', 'library_opencl.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];
       var src = read(filename);
