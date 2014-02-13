@@ -9,7 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging, shutil
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -1277,13 +1277,13 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
     settings.setdefault('RELOOPER', relooper)
     if not os.path.exists(relooper):
       shared.Building.ensure_relooper(relooper)
-  
+
   settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
-  
+
   if not os.path.exists(struct_info):
     shared.Building.ensure_struct_info(struct_info)
-  
+
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
