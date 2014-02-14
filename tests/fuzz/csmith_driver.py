@@ -14,7 +14,7 @@ sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 import shared
 
 engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
-engine2 = eval('shared.' + sys.argv[2]) if len(sys.argv) > 2 else None
+engine2 = shared.SPIDERMONKEY_ENGINE if os.path.exists(shared.SPIDERMONKEY_ENGINE[0]) else None
 
 print 'testing js engines', engine1, engine2
 
@@ -130,7 +130,7 @@ while 1:
   #    break
 
   # This is ok. Try in secondary JS engine too
-  if engine2 and normal:
+  if opts != '-O0' and engine2 and normal:
     try:
       js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2, full_output=True, check_timeout=True)
     except:
@@ -144,9 +144,5 @@ while 1:
       fails += 1
       shutil.copyfile(fullname, 'newfail%d.c' % fails)
       continue
-
-    js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
-
-    assert js2 == correct1 or js2 == correct2, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
-    print 'odin ok'
+    print '[asm.js validation ok]'
 
