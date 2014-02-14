@@ -42,22 +42,26 @@ while 1:
   print '1) Generate C'
   extra_args = []
   if random.random() < 0.5: extra_args += ['--no-math64']
+  suffix = '.c'
+  if random.random() < 0.5:
+    extra_args += ['--lang-cpp']
+    suffix += 'pp'
   print extra_args
+  fullname = filename + suffix
   check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
-                 stdout=open(filename + '.c', 'w'))
-  #shutil.copyfile(filename + '.c', 'testcase%d.c' % tried)
-  print '1) Generate C... %.2f K of C source' % (len(open(filename + '.c').read())/1024.)
+                 stdout=open(fullname, 'w'))
+  print '1) Generate source... %.2f K' % (len(open(fullname).read())/1024.)
 
   tried += 1
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  shared.check_execute([shared.CLANG_CC, opts, filename + '.c', '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
-  shared.check_execute([shared.CLANG_CC, opts, '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
+  shared.check_execute([shared.CLANG_CC, opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
+  shared.check_execute([shared.CLANG_CC, opts, '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
   shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'])
   shutil.move(filename + '.bc.run', filename + '2')
-  shared.check_execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS)
+  shared.check_execute([shared.CLANG_CC, fullname, '-o', filename + '3'] + CSMITH_CFLAGS)
   print '3) Run natively'
   try:
     correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
@@ -77,7 +81,7 @@ while 1:
   def try_js(args):
     shared.try_delete(filename + '.js')
     print '(compile)'
-    shared.check_execute([shared.EMCC, opts, filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args)
+    shared.check_execute([shared.EMCC, opts, fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args)
     assert os.path.exists(filename + '.js')
     print '(run)'
     js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1, check_timeout=True)
@@ -103,7 +107,7 @@ while 1:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
-    shutil.copyfile(filename + '.c', 'newfail%d.c' % fails)
+    shutil.copyfile(fullname, 'newfail%d.c' % fails)
     continue
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
@@ -130,7 +134,7 @@ while 1:
       print "ODIN VALIDATION BUG"
       notes['embug'] += 1
       fails += 1
-      shutil.copyfile(filename + '.c', 'newfail%d.c' % fails)
+      shutil.copyfile(fullname, 'newfail%d.c' % fails)
       continue
 
     js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
