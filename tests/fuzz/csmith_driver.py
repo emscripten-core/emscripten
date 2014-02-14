@@ -62,7 +62,7 @@ while 1:
   try:
     shared.check_execute([COMP, opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
   except Exception, e:
-    print 'Failed to compile natively using clang', e
+    print 'Failed to compile natively using clang'
     notes['invalid'] += 1
     continue
 
