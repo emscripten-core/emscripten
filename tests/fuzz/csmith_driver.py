@@ -60,7 +60,7 @@ while 1:
   print '2) Compile natively'
   shared.try_delete(filename)
   try:
-    shared.check_execute([COMP, opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
+    shared.check_execute([COMP, opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) #  + shared.EMSDK_OPTS
   except Exception, e:
     print 'Failed to compile natively using clang'
     notes['invalid'] += 1
