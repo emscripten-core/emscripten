@@ -39,14 +39,16 @@ while 1:
   print 'opt level:', opts
 
   print 'Tried %d, notes: %s' % (tried, notes)
-  print '1) Generate C'
+  print '1) Generate source'
   extra_args = []
   if random.random() < 0.5: extra_args += ['--no-math64']
   suffix = '.c'
+  COMP = shared.CLANG_CC
   if random.random() < 0.5:
     extra_args += ['--lang-cpp']
     suffix += 'pp'
-  print extra_args
+    COMP = shared.CLANG
+  print COMP, extra_args
   fullname = filename + suffix
   check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
@@ -57,11 +59,17 @@ while 1:
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  shared.check_execute([shared.CLANG_CC, opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
-  shared.check_execute([shared.CLANG_CC, opts, '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
+  try:
+    shared.check_execute([COMP, opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
+  except Exception, e:
+    print 'Failed to compile natively using clang', e
+    notes['invalid'] += 1
+    continue
+
+  shared.check_execute([COMP, opts, '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
   shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'])
   shutil.move(filename + '.bc.run', filename + '2')
-  shared.check_execute([shared.CLANG_CC, fullname, '-o', filename + '3'] + CSMITH_CFLAGS)
+  shared.check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS)
   print '3) Run natively'
   try:
     correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
