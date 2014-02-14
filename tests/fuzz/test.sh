@@ -43,5 +43,6 @@ diff fc js | grep -v warning
 echo "js/fc-sh"
 diff fc-sh js | grep -v warning
 echo "native/fc"
-diff n1 fc | grep -v warning
+grep -v warning fc > fclean
+diff n1 fclean | grep -v warning
 
