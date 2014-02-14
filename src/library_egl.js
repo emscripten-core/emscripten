@@ -548,7 +548,6 @@ var LibraryEGL = {
     return EGL.currentContext ? 62000 /* Magic ID for Emscripten 'default display' */ : 0;
   },
   
-  eglSwapBuffers__deps: ['glFlush', '$GL'],
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
   eglSwapBuffers: function() {
     if (!EGL.defaultDisplayInitialized) {
@@ -558,8 +557,10 @@ var LibraryEGL = {
     } else if (Module.ctx.isContextLost()) {
       EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
     } else {
-      // According to documentation this does an implicit flush
-      _glFlush();
+      // According to documentation this does an implicit flush.
+      // Due to discussion at https://github.com/kripken/emscripten/pull/1871
+      // the flush was removed since this _may_ result in slowing code down.
+      //_glFlush();
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       return 1; // EGL_TRUE
     }
