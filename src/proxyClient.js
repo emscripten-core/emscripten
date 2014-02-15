@@ -3,6 +3,29 @@
 
 Module.ctx = Module.canvas.getContext('2d');
 
+// render
+
+var renderFrameData = null;
+
+function renderFrame() {
+  var dst = Module.canvasData.data;
+  if (dst.set) {
+    dst.set(renderFrameData);
+  } else {
+    for (var i = 0; i < renderFrameData.length; i++) {
+      dst[i] = renderFrameData[i];
+    }
+  }
+  Module.ctx.putImageData(Module.canvasData, 0, 0);
+  renderFrameData = null;
+}
+
+window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                               window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
+                               renderFrame;
+
+// end render
+
 var worker = new Worker('{{{ filename }}}.js');
 
 worker.onmessage = function worker_onmessage(event) {
@@ -30,16 +53,14 @@ worker.onmessage = function worker_onmessage(event) {
           break;
         }
         case 'render': {
-          var src = data.image.data;
-          var dst = Module.canvasData.data;
-          if (dst.set) {
-            dst.set(src);
+          if (renderFrameData) {
+            // previous image was not rendered yet, just update image
+            renderFrameData = data.image.data;
           } else {
-            for (var i = 0; i < src.length; i++) {
-              dst[i] = src[i];
-            }
+            // previous image was rendered so update image and request another frame
+            renderFrameData = data.image.data;
+            window.requestAnimationFrame(renderFrame);
           }
-          Module.ctx.putImageData(Module.canvasData, 0, 0);
           break;
         }
         default: throw 'eh?';
