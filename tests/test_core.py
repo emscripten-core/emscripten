@@ -5140,6 +5140,9 @@ def process(filename):
         if '_le32' in shortname and not self.is_le32():
           print self.skip('case "%s" not relevant for non-le32 target' % shortname)
           continue
+        if '_fastcomp' in shortname and not os.environ.get('EMCC_FAST_COMPILER') == '1':
+          print self.skip('case "%s" not relevant for non-fastcomp' % shortname)
+          continue
         self.emcc_args = emcc_args
         if os.path.exists(shortname + '.emcc'):
           if not self.emcc_args: continue
