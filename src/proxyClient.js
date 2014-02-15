@@ -28,7 +28,14 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
 
 var worker = new Worker('{{{ filename }}}.js');
 
+var workerResponded = false;
+
 worker.onmessage = function worker_onmessage(event) {
+  if (!workerResponded) {
+    workerResponded = true;
+    if (Module.setStatus) Module.setStatus('');
+  }
+
   var data = event.data;
   switch (data.target) {
     case 'stdout': {
