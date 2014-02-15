@@ -49,7 +49,7 @@ worker.onmessage = function worker_onmessage(event) {
           Module.canvas.width = data.width;
           Module.canvas.height = data.height;
           Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
-          postMessage({ target: 'canvas', boundingClientRect: Module.canvas.getBoundingClientRect() });
+          worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()) });
           break;
         }
         case 'render': {
@@ -71,7 +71,7 @@ worker.onmessage = function worker_onmessage(event) {
   }
 };
 
-function cloneEvent(event) {
+function cloneObject(event) {
   var ret = {};
   for (var x in event) {
     if (x == x.toUpperCase()) continue;
@@ -83,20 +83,20 @@ function cloneEvent(event) {
 
 ['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
   document.addEventListener(event, function(event) {
-    worker.postMessage({ target: 'document', event: cloneEvent(event) });
+    worker.postMessage({ target: 'document', event: cloneObject(event) });
     event.preventDefault();
   });
 });
 
 ['unload'].forEach(function(event) {
   window.addEventListener(event, function(event) {
-    worker.postMessage({ target: 'window', event: cloneEvent(event) });
+    worker.postMessage({ target: 'window', event: cloneObject(event) });
   });
 });
 
 ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
   Module.canvas.addEventListener(event, function(event) {
-    worker.postMessage({ target: 'canvas', event: cloneEvent(event) });
+    worker.postMessage({ target: 'canvas', event: cloneObject(event) });
     event.preventDefault();
   }, true);
 });
