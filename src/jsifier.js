@@ -1419,7 +1419,7 @@ function JSify(data, functionsOnly) {
     
     // store current list offset in tempInt, advance list offset by STACK_ALIGN, return list entry stored at tempInt
     return '(tempInt=' + makeGetValue(ident, Runtime.QUANTUM_SIZE, '*') + ',' +
-                         makeSetValue(ident, Runtime.QUANTUM_SIZE, 'tempInt + ' + move, '*', null, null, null, null, ',') + ',' +
+                         makeSetValue(ident, Runtime.QUANTUM_SIZE, asmCoercion('tempInt + ' + move, 'i32'), '*', null, null, null, null, ',') + ',' +
                          makeGetValue(makeGetValue(ident, 0, '*'), 'tempInt', item.type) + ')';
   }
 
