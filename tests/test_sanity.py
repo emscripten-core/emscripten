@@ -3,7 +3,7 @@ from runner import RunnerCore, path_from_root
 from tools.shared import *
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
-commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
+commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 def restore():
   shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
@@ -421,12 +421,12 @@ fi
     restore()
 
     def ensure_cache():
-      self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+      self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
     # Manual cache clearing
     ensure_cache()
     assert os.path.exists(EMCC_CACHE)
-    output = self.do([EMCC, '--clear-cache'])
+    output = self.do([PYTHON, EMCC, '--clear-cache'])
     assert ERASING_MESSAGE in output
     assert not os.path.exists(EMCC_CACHE)
 
@@ -436,7 +436,7 @@ fi
     try:
       os.environ['LLVM'] = 'waka'
       assert os.path.exists(EMCC_CACHE)
-      output = self.do([EMCC])
+      output = self.do([PYTHON, EMCC])
       assert ERASING_MESSAGE in output
       assert not os.path.exists(EMCC_CACHE)
     finally:
@@ -594,7 +594,7 @@ fi
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
     os.chdir(temp_dir)
-    self.do([EMCC, '-O2', '--em-config', custom_config_filename, path_from_root('tests', 'hello_world.c')])
+    self.do([PYTHON, EMCC, '-O2', '--em-config', custom_config_filename, path_from_root('tests', 'hello_world.c')])
     result = run_js('a.out.js')
     
     # Clean up created temp files.
