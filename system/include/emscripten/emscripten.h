@@ -420,6 +420,27 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 #define EMSCRIPTEN_NETWORK_WEBRTC     1
 void emscripten_set_network_backend(int backend);
 
+/*
+ * Returns the value of a compiler setting. For example
+ *
+ *   emscripten_get_compiler_setting("PRECISE_F32")
+ *
+ * will return an integer representing the value of
+ * PRECISE_F32 during compilation. For values containing
+ * anything other than an integer, a string is returned
+ * (you will need to cast the int return value to a char*).
+ *
+ * Some useful things this can do is provide the
+ * version of emscripten ("EMSCRIPTEN_VERSION"), the optimization
+ * level ("OPT_LEVEL"), debug level ("DEBUG_LEVEL"), etc.
+ *
+ * For this command to work, you must build with
+ *   -s RETAIN_COMPILER_SETTINGS=1
+ * as otherwise we do not want to increase the build size
+ * with this metadata.
+ */
+int emscripten_get_compiler_setting(const char *name);
+
 /* Internal APIs. Be careful with these. */
 
 /*

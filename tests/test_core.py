@@ -1925,6 +1925,13 @@ def process(filename):
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
       self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
 
+  def test_emscripten_get_compiler_setting(self):
+    test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run(open(src).read(), 'You must build with -s RETAIN_COMPILER_SETTINGS=1')
+    Settings.RETAIN_COMPILER_SETTINGS = 1
+    self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
+
   def test_inlinejs(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
       if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp only supports EM_ASM')
@@ -5128,7 +5135,6 @@ def process(filename):
           'structparam', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', 'phientryimplicit', 'phiself', 'invokebitcast', 'funcptr', # invalid ir
           'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
           '2xi40', # pnacl limitations in ExpandGetElementPtr
-          'legalizer_ta2', # pnacl limitation in not legalizing i104, i96, etc.
           'indirectbrphi', 'ptrtoint_blockaddr', 'quoted', # current fastcomp limitations FIXME
           'sillyfuncast2', 'sillybitcast', 'atomicrmw_unaligned' # TODO XXX
         ]: continue
@@ -5140,6 +5146,9 @@ def process(filename):
           continue
         if '_le32' in shortname and not self.is_le32():
           print self.skip('case "%s" not relevant for non-le32 target' % shortname)
+          continue
+        if '_fastcomp' in shortname and not os.environ.get('EMCC_FAST_COMPILER') == '1':
+          print self.skip('case "%s" not relevant for non-fastcomp' % shortname)
           continue
         self.emcc_args = emcc_args
         if os.path.exists(shortname + '.emcc'):
