@@ -1308,6 +1308,10 @@ try:
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
 
+  shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
+  shared.Settings.OPT_LEVEL = opt_level
+  shared.Settings.DEBUG_LEVEL = debug_level
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')

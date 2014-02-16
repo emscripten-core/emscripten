@@ -9051,6 +9051,20 @@ LibraryManager.library = {
     _emscripten_log_js(flags, str);
   },
 
+  emscripten_get_compiler_setting: function(name) {
+    name = Pointer_stringify(name);
+
+    var ret = Runtime.getCompilerSetting(name);
+    if (typeof ret === 'number') return ret;
+
+    if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
+    var cache = _emscripten_get_compiler_setting.cache;
+    var fullname = name + '__str';
+    var fullret = cache[fullname];
+    if (fullret) return fullret;
+    return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
+  },
+
   //============================
   // emscripten vector ops
   //============================

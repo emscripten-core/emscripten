@@ -1925,6 +1925,13 @@ def process(filename):
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
       self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
 
+  def test_emscripten_get_compiler_setting(self):
+    test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run(open(src).read(), 'You must build with -s RETAIN_COMPILER_SETTINGS=1')
+    Settings.RETAIN_COMPILER_SETTINGS = 1
+    self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
+
   def test_inlinejs(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
       if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp only supports EM_ASM')

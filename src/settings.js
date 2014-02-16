@@ -315,6 +315,17 @@ var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
                          // is necessary to use the bindings generator with asm.js
+var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
+                                  // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
+                                  // To see what is retained, look for compilerSettings in the generated code.
+
+
+var EMSCRIPTEN_VERSION = ''; // this will contain the emscripten version. you should not modify it. This
+                             // and the following few settings are useful in combination with
+                             // RETAIN_COMPILER_SETTINGS
+var OPT_LEVEL = 0;           // this will contain the optimization level (-Ox). you should not modify it.
+var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you should not modify it.
+
 
 // JS library functions (C functions implemented in JS)
 // that we include by default. If you want to make sure

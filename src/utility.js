@@ -200,11 +200,11 @@ function dprint() {
   printErr(text);
 }
 
-var PROF_ORIGIN = Date.now();
-var PROF_TIME = PROF_ORIGIN;
+var _PROF_ORIGIN = Date.now();
+var _PROF_TIME = _PROF_ORIGIN;
 function PROF(pass) {
   if (!pass) {
-    dprint("Profiling: " + ((Date.now() - PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - PROF_ORIGIN)/1000));
+    dprint("Profiling: " + ((Date.now() - _PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - _PROF_ORIGIN)/1000));
   }
   PROF_TIME = Date.now();
 }
