@@ -1925,6 +1925,13 @@ def process(filename):
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
       self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
 
+  def test_emscripten_get_compiler_setting(self):
+    test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run(open(src).read(), 'You must build with -s RETAIN_COMPILER_SETTINGS=1')
+    Settings.RETAIN_COMPILER_SETTINGS = 1
+    self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
+
   def test_inlinejs(self):
       if not self.is_le32(): return self.skip('le32 needed for inline js')
       if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp only supports EM_ASM')
@@ -1954,8 +1961,7 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
-    if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
-    if Settings.ASM_JS: return self.skip('asm does not support memory growth yet')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
 
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
     # since we then need to enlarge the heap(s).

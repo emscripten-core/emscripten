@@ -487,6 +487,19 @@ var Runtime = {
     }
   },
 
+#if RETAIN_COMPILER_SETTINGS
+  compilerSettings: {},
+#endif
+
+  getCompilerSetting: function(name) {
+#if RETAIN_COMPILER_SETTINGS == 0
+    throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for Runtime.getCompilerSetting or emscripten_get_compiler_setting to work';
+#else
+    if (!(name in Runtime.compilerSettings)) return 'invalid compiler setting: ' + name;
+    return Runtime.compilerSettings[name];
+#endif
+  },
+
 #if RUNTIME_DEBUG
   debug: true, // Switch to false at runtime to disable logging at the right times
 
@@ -611,4 +624,13 @@ function reSign(value, bits, ignore) {
 // Then the stack.
 // Then 'dynamic' memory for sbrk.
 Runtime.GLOBAL_BASE = Runtime.alignMemory(1);
+
+if (RETAIN_COMPILER_SETTINGS) {
+  var blacklist = set('RELOOPER', 'STRUCT_INFO');
+  for (var x in this) {
+    try {
+      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) Runtime.compilerSettings[x] = this[x];
+    } catch(e){}
+  }
+}
 

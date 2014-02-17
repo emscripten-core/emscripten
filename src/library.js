@@ -9051,6 +9051,49 @@ LibraryManager.library = {
     _emscripten_log_js(flags, str);
   },
 
+  emscripten_get_compiler_setting: function(name) {
+    name = Pointer_stringify(name);
+
+    var ret = Runtime.getCompilerSetting(name);
+    if (typeof ret === 'number') return ret;
+
+    if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
+    var cache = _emscripten_get_compiler_setting.cache;
+    var fullname = name + '__str';
+    var fullret = cache[fullname];
+    if (fullret) return fullret;
+    return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
+  },
+
+#if ASM_JS
+#if ALLOW_MEMORY_GROWTH
+  emscripten_replace_memory__asm: true, // this is used inside the asm module
+  emscripten_replace_memory__sig: 'viiiiiiii', // bogus
+  emscripten_replace_memory: function(_HEAP8, _HEAP16, _HEAP32, _HEAPU8, _HEAPU16, _HEAPU32, _HEAPF32, _HEAPF64) {
+    _HEAP8 = _HEAP8; // fake asm coercions
+    _HEAP16 = _HEAP16;
+    _HEAP32 = _HEAP32;
+    _HEAPU8 = _HEAPU8;
+    _HEAPU16 = _HEAPU16;
+    _HEAPU32 = _HEAPU32;
+    _HEAPF32 = _HEAPF32;
+    _HEAPF64 = _HEAPF64;
+    HEAP8 = _HEAP8; // replace the memory views
+    HEAP16 = _HEAP16;
+    HEAP32 = _HEAP32;
+    HEAPU8 = _HEAPU8;
+    HEAPU16 = _HEAPU16;
+    HEAPU32 = _HEAPU32;
+    HEAPF32 = _HEAPF32;
+    HEAPF64 = _HEAPF64;
+  },
+  // this function is inside the asm block, but prevents validation as asm.js
+  // the codebase still benefits from being in the general asm.js shape,
+  // but should not declare itself as validating (which is prevented in ASM_JS == 2).
+  {{{ (assert(ASM_JS === 2), DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('emscripten_replace_memory'), '') }}}
+#endif
+#endif
+
   //============================
   // emscripten vector ops
   //============================
