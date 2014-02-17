@@ -352,8 +352,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       '''
       self.do_run(src, '*4903566027370624, 153236438355333*')
 
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not actually used'
 
