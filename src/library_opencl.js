@@ -567,7 +567,7 @@ var LibraryOpenCL = {
       console.info(_mini_kernel_string);
       console.info("--------------------------------------------------------------------");
 #endif
-//#if 0
+#if 0
       for (var name in CL.cl_kernels_sig) {
         var _length = CL.cl_kernels_sig[name].length;
         var _str = "";
@@ -616,7 +616,7 @@ var LibraryOpenCL = {
         console.info("\n\tStruct " + name + "(" + _length + ")");  
         console.info("\t\t" + _str);              
       }
-//#endif
+#endif
       return _mini_kernel_string;
 
     },
@@ -1542,6 +1542,9 @@ var LibraryOpenCL = {
         case 0x102C /*CL_DEVICE_VENDOR*/ :
           _info = "WEBCL_DEVICE_VENDOR";
         break;
+        case 0x100B /*CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE*/ :
+          _info = 0;
+        break;
         case 0x1030 /*CL_DEVICE_EXTENSIONS*/ :
           _info = webcl.getSupportedExtensions().join(' ') ; 
         break;
@@ -1585,8 +1588,7 @@ var LibraryOpenCL = {
 
     } else if(typeof(_info) == "string") {
 
-      _info += " ";
-
+      if (param_name != webcl.DEVICE_PROFILE) _info += " ";
       if (param_value != 0) writeStringToMemory(_info, param_value);
       if (param_value_size_ret != 0) {{{ makeSetValue('param_value_size_ret', '0', '_info.length + 1', 'i32') }}};
 
@@ -2582,8 +2584,10 @@ var LibraryOpenCL = {
       {{{ makeSetValue('cl_errcode_ret', '0', '0', 'i32') }}};
     }
 
+    // Add flags property
+    Object.defineProperty(_buffer, "flags", { value : flags_i64_1,writable : false });
     _id = CL.udid(_buffer);
-
+  
     // \todo need to be remove when firefox will be support hot_ptr
     /**** **** **** **** **** **** **** ****/
     if (_host_ptr != null) {
@@ -2720,6 +2724,8 @@ var LibraryOpenCL = {
       {{{ makeSetValue('cl_errcode_ret', '0', '0', 'i32') }}};
     }
 
+    // Add flags property
+    Object.defineProperty(_subbuffer, "flags", { value : flags_i64_1,writable : false });
     _id = CL.udid(_subbuffer);
 
 #if CL_GRAB_TRACE
@@ -2865,7 +2871,7 @@ var LibraryOpenCL = {
 
     var _size = image_width * image_height * _sizeOrder;
 
-    // console.info("/!\\ clCreateImage2D : Compute the size of ptr with image Info '"+_size+"'... need to be more tested");
+    console.info("/!\\ clCreateImage2D : Compute the size of ptr with image Info '"+_size+"'... need to be more tested");
 
     if ( host_ptr != 0 ) _host_ptr = CL.getCopyPointerToArray(host_ptr,_size,_type); 
     else if (
@@ -2906,6 +2912,8 @@ var LibraryOpenCL = {
       {{{ makeSetValue('cl_errcode_ret', '0', '0', 'i32') }}};
     }
 
+    // Add flags property
+    Object.defineProperty(_image, "flags", { value : flags_i64_1,writable : false });
     _id = CL.udid(_image);
 
 #if CL_GRAB_TRACE
@@ -3219,8 +3227,19 @@ var LibraryOpenCL = {
 
     if(typeof(_info) == "number") {
 
-      if (param_value != 0) {{{ makeSetValue('param_value', '0', '_info', 'i32') }}};
-      if (param_value_size_ret != 0) {{{ makeSetValue('param_value_size_ret', '0', '4', 'i32') }}};
+      if (param_name == 0x1101) /*CL_MEM_FLAGS*/ {
+
+        _info = CL.cl_objects[memobj].flags;
+
+        if (param_value != 0) {{{ makeSetValue('param_value', '0', '_info', 'i64') }}};
+        if (param_value_size_ret != 0) {{{ makeSetValue('param_value_size_ret', '0', '8', 'i32') }}};
+
+      } else {
+
+        if (param_value != 0) {{{ makeSetValue('param_value', '0', '_info', 'i32') }}};
+        if (param_value_size_ret != 0) {{{ makeSetValue('param_value_size_ret', '0', '4', 'i32') }}};  
+
+      }
 
     } else if(typeof(_info) == "object") {
 
