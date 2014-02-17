@@ -860,33 +860,19 @@ var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 #if USE_TYPED_ARRAYS
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
-#if ASM_JS == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
-#else
-  abort('Cannot enlarge memory arrays in asm.js. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', or (2) set Module.TOTAL_MEMORY before the program runs.');
-#endif
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast, and ALLOW_MEMORY_GROWTH is not fully tested with all optimizations on! ' + [DYNAMICTOP, TOTAL_MEMORY]); // We perform safe elimination instead of elimination in this mode, but if you see this error, try to disable it and other optimizations entirely
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [DYNAMICTOP, TOTAL_MEMORY]);
   assert(DYNAMICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
-  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
+
+  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
     TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
   }
   assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
-#if USE_TYPED_ARRAYS == 1
-  var oldIHEAP = IHEAP;
-  Module['HEAP'] = Module['IHEAP'] = HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-  IHEAP.set(oldIHEAP);
-  IHEAPU = new Uint32Array(IHEAP.buffer);
-#if USE_FHEAP
-  var oldFHEAP = FHEAP;
-  Module['FHEAP'] = FHEAP = new Float64Array(TOTAL_MEMORY);
-  FHEAP.set(oldFHEAP);
-#endif
-#endif
 #if USE_TYPED_ARRAYS == 2
   var oldHEAP8 = HEAP8;
   var buffer = new ArrayBuffer(TOTAL_MEMORY);
@@ -899,6 +885,11 @@ function enlargeMemory() {
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
   HEAP8.set(oldHEAP8);
+#else
+  abort('cannot enlarge memory arrays in non-ta2 modes');
+#endif
+#if ASM_JS
+  _emscripten_replace_memory(HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64);
 #endif
 #endif
 }

@@ -1961,8 +1961,7 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
-    if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
-    if Settings.ASM_JS: return self.skip('asm does not support memory growth yet')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
 
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
     # since we then need to enlarge the heap(s).

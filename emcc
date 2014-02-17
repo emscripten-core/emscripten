@@ -1204,7 +1204,6 @@ try:
 
   if fastcomp:
     shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
-    assert shared.Settings.ALLOW_MEMORY_GROWTH == 0, 'memory growth not supported in fastcomp yet'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp yet'
     assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
@@ -1246,8 +1245,8 @@ try:
       logging.warning('enabling js opts to allow SAFE_HEAP to work properly')
 
     if shared.Settings.ALLOW_MEMORY_GROWTH:
-      logging.error('Cannot enable ALLOW_MEMORY_GROWTH with asm.js, build with -s ASM_JS=0 if you need a growable heap');
-      sys.exit(1);
+      logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
+      shared.Settings.ASM_JS = 2
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
