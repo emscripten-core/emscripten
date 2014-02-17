@@ -1558,6 +1558,7 @@ function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i
 var ASM_INT = 0;
 var ASM_DOUBLE = 1;
 var ASM_FLOAT = 2;
+var ASM_NONE = 3;
 
 function detectAsmCoercion(node, asmInfo) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
@@ -1565,6 +1566,7 @@ function detectAsmCoercion(node, asmInfo) {
   if (node[0] === 'unary-prefix') return ASM_DOUBLE;
   if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
   if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
+  if (node[0] === 'name') return ASM_NONE;
   return ASM_INT;
 }
 
@@ -1573,7 +1575,8 @@ function makeAsmCoercion(node, type) {
     case ASM_INT: return ['binary', '|', node, ['num', 0]];
     case ASM_DOUBLE: return ['unary-prefix', '+', node];
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
-    default: throw 'wha? ' + JSON.stringify([node, type]) + new Error().stack;
+    case ASM_NONE: return node; // non-validating code, emit nothing
+    default: throw 'whaa?';
   }
 }
 
@@ -1970,7 +1973,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
+    var freeRegsClasses = asm ? [[], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2126,8 +2129,8 @@ function registerizeHarder(ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    var allRegsByType = [{}, {}, {}];
-    var regPrefixByType = ['i', 'd', 'f'];
+    var allRegsByType = [{}, {}, {}, {}];
+    var regPrefixByType = ['i', 'd', 'f', 'n'];
     var nextReg = 1;
 
     function createReg(forName) {
