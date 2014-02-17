@@ -216,16 +216,6 @@ function traverse(node, pre, post, stack) {
 }
 
 // Only walk through the generated functions
-function traverseGenerated(ast, pre, post, stack) {
-  assert(generatedFunctions);
-  traverse(ast, function(node) {
-    if (node[0] === 'defun') {
-      traverse(node, pre, post, stack);
-      return null;
-    }
-  });
-}
-
 function traverseGeneratedFunctions(ast, callback) {
   assert(generatedFunctions);
   if (ast[0] === 'toplevel') {
@@ -237,6 +227,12 @@ function traverseGeneratedFunctions(ast, callback) {
   } else if (ast[0] === 'defun') {
     callback(ast);
   }
+}
+
+function traverseGenerated(ast, pre, post, stack) {
+  traverseGeneratedFunctions(ast, function(func) {
+    traverse(func, pre, post, stack);
+  });
 }
 
 // Walk the ast in a simple way, with an understanding of which JS variables are defined)
