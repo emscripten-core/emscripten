@@ -1800,11 +1800,22 @@ var LibraryGL = {
     return GLctx.isFramebuffer(fb);
   },
 
+#if LEGACY_GL_EMULATION
+  glGenVertexArrays__deps: ['emulGlGenVertexArrays'],
+#endif
   glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function (n , arrays) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    _emulGlGenVertexArrays(n , arrays);
+    return;
+  }
+#else    
 #if ASSERTIONS    
     assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif    
+#endif
+
     for (var i = 0; i < n ; i++) {
       var id = GL.getNewId(GL.vaos);
       var vao = GL.vaoExt.createVertexArrayOES();
@@ -1814,11 +1825,22 @@ var LibraryGL = {
     }
   },
   
+#if LEGACY_GL_EMULATION
+  glDeleteVertexArrays__deps: ['emulGlDeleteVertexArrays'],
+#endif
   glDeleteVertexArrays__sig: 'vii',
   glDeleteVertexArrays: function(n, vaos) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    _emulGlDeleteVertexArrays(n , vaos);
+    return;
+  }
+#else       
 #if ASSERTIONS    
     assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif    
+#endif
+
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GL.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
@@ -1826,19 +1848,40 @@ var LibraryGL = {
     }
   },
   
+#if LEGACY_GL_EMULATION
+  glBindVertexArray__deps: ['emulGlBindVertexArray'],
+#endif
   glBindVertexArray__sig: 'vi',
   glBindVertexArray: function(vao) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    _emulGlBindVertexArray(vao);
+    return;
+  }
+#else      
 #if ASSERTIONS
     assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');    
 #endif
+#endif
+
     GL.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
   },
 
+#if LEGACY_GL_EMULATION
+  glIsVertexArray__deps: ['emulGlIsVertexArray'],
+#endif
   glIsVertexArray__sig: 'ii',
   glIsVertexArray: function(array) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    return _emulGlIsVertexArray(array);
+  }
+#else     
 #if ASSERTIONS
     assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');    
-#endif    
+#endif  
+#endif
+
     var vao = GL.vaos[array];
     if (!vao) return 0;
     return GL.vaoExt.isVertexArrayOES(vao);
@@ -4881,6 +4924,12 @@ var LibraryGL = {
       if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
     }
   },
+  emulGlIsVertexArray__sig: 'vi',
+  emulGlIsVertexArray: function(array) {
+    var vao = GLEmulation.vaos[array];
+    if (!vao) return 0;
+    return 1;
+  },
   emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
   emulGlBindVertexArray__sig: 'vi',
   emulGlBindVertexArray: function(vao) {
@@ -5092,6 +5141,12 @@ var LibraryGL = {
   glLoadIdentity: function(){ throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
 
 #endif // LEGACY_GL_EMULATION
+
+  // Open GLES1.1 vao compatibility (Could work w/o -s LEGACY_GL_EMULATION=1)
+
+  glGenVertexArraysOES: 'glGenVertexArrays',
+  glDeleteVertexArraysOES: 'glDeleteVertexArrays',
+  glBindVertexArrayOES: 'glBindVertexArray',
 
   // GLU
 
