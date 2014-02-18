@@ -5583,7 +5583,6 @@ def process(filename):
 
   def test_scriptaclass(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
 
       Settings.EXPORT_BINDINGS = 1
 
