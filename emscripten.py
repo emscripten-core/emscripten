@@ -744,6 +744,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     backend_args += ['-emscripten-precise-f32']
   if settings['WARN_UNALIGNED']:
     backend_args += ['-emscripten-warn-unaligned']
+  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+    backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
   if DEBUG:
     logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
     t = time.time()
@@ -801,9 +803,13 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   # Settings changes
   assert settings['TARGET_LE32'] == 1
   settings['TARGET_LE32'] = 2
-  if 'i64Add' in metadata['declares']: # TODO: others, once we split them up
-    settings['PRECISE_I64_MATH'] = 2
-    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+  i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
+  for i64_func in i64_funcs:
+    if i64_func in metadata['declares']:
+      settings['PRECISE_I64_MATH'] = 2
+      break
+
+  metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
   # Integrate info from backend
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
@@ -928,7 +934,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
       for j in range(settings['RESERVED_FUNCTION_POINTERS']):
-        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = 'jsCall_%s_%s' % (sig, j)
+        curr = 'jsCall_%s_%s' % (sig, j)
+        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
+        implemented_functions.add(curr)
       Counter.j = 0
       def fix_item(item):
         Counter.j += 1

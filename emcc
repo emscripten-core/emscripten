@@ -1207,7 +1207,6 @@ try:
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp yet'
     assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
-    assert shared.Settings.RESERVED_FUNCTION_POINTERS == 0, 'reserved function pointers not supported in fastcomp'
     assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
     assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
     assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
@@ -1217,6 +1216,7 @@ try:
     assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
     assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
     assert not bind, 'embind not supported in fastcomp yet'
+    assert shared.Settings.MAX_SETJMPS == 20, 'changing MAX_SETJMPS is not supported in fastcomp yet'
     if jcache:
       logging.warning('jcache is not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
