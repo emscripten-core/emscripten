@@ -1207,7 +1207,6 @@ try:
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp yet'
     assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
-    assert shared.Settings.RESERVED_FUNCTION_POINTERS == 0, 'reserved function pointers not supported in fastcomp'
     assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
     assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
     assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'

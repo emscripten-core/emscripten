@@ -744,6 +744,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     backend_args += ['-emscripten-precise-f32']
   if settings['WARN_UNALIGNED']:
     backend_args += ['-emscripten-warn-unaligned']
+  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+    backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
   if DEBUG:
     logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
     t = time.time()
@@ -932,7 +934,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
       for j in range(settings['RESERVED_FUNCTION_POINTERS']):
-        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = 'jsCall_%s_%s' % (sig, j)
+        curr = 'jsCall_%s_%s' % (sig, j)
+        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
+        implemented_functions.add(curr)
       Counter.j = 0
       def fix_item(item):
         Counter.j += 1
