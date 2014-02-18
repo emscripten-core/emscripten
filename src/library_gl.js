@@ -1801,7 +1801,7 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glGenVertexArrays__deps: ['$Browser', '$GL', '$GLEmulation','emulGlGenVertexArrays'],
+  glGenVertexArrays__deps: ['emulGlGenVertexArrays'],
 #endif
   glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function (n , arrays) {
@@ -1826,7 +1826,7 @@ var LibraryGL = {
   },
   
 #if LEGACY_GL_EMULATION
-  glDeleteVertexArrays__deps: ['$Browser', '$GL', '$GLEmulation','emulGlDeleteVertexArrays'],
+  glDeleteVertexArrays__deps: ['emulGlDeleteVertexArrays'],
 #endif
   glDeleteVertexArrays__sig: 'vii',
   glDeleteVertexArrays: function(n, vaos) {
@@ -1849,7 +1849,7 @@ var LibraryGL = {
   },
   
 #if LEGACY_GL_EMULATION
-  glBindVertexArray__deps: ['$Browser', '$GL', '$GLEmulation','emulGlBindVertexArray'],
+  glBindVertexArray__deps: ['emulGlBindVertexArray'],
 #endif
   glBindVertexArray__sig: 'vi',
   glBindVertexArray: function(vao) {
@@ -1868,7 +1868,7 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glIsVertexArray__deps: ['$Browser', '$GL', '$GLEmulation','emulGlIsVertexArray'],
+  glIsVertexArray__deps: ['emulGlIsVertexArray'],
 #endif
   glIsVertexArray__sig: 'ii',
   glIsVertexArray: function(array) {
