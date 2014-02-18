@@ -1,6 +1,9 @@
 #!/usr/bin/env python2
 # -*- Mode: python -*-
-
+#  Original from https://github.com/kripken/emscripten/blob/master/tools/emcc
+#
+#  Modified by Anthony Liot
+#
 '''
 emcc - compiler helper script
 =============================
@@ -1530,6 +1533,8 @@ try:
   if len(preload_files) + len(embed_files) > 0:
     logging.debug('setting up files')
     file_args = []
+    if len(shared.Settings.CL_VAL_PARAM) > 0 and shared.Settings.CL_VALIDATOR:
+      file_args.append('='.join(('--enable-validator', ','.join( str(x) for x in shared.Settings.CL_VAL_PARAM).join('[]'))))
     if len(preload_files) > 0:
       file_args.append('--preload')
       file_args += preload_files
