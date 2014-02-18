@@ -1217,6 +1217,7 @@ try:
     assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
     assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
     assert not bind, 'embind not supported in fastcomp yet'
+    assert shared.Settings.MAX_SETJMPS == 20, 'changing MAX_SETJMPS is not supported in fastcomp yet'
     if jcache:
       logging.warning('jcache is not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
