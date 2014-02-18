@@ -5180,7 +5180,6 @@ def process(filename):
       print x
       for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')):
         #if os.path.basename(name) != '4.c': continue
-        if os.environ.get('EMCC_FAST_COMPILER') == '1' and os.path.basename(name) in ['17.c']: continue # pnacl limitation in not legalizing i104, i96, etc.
 
         print name
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
