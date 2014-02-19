@@ -848,7 +848,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     }).filter(function(param) { return param.value && param.value.ident != 'undef' });
     return item;
   }
-  // 'phi'
+  // 'va_arg'
   function va_argHandler(item) {
     item.intertype = 'va_arg';
     var segments = splitTokenList(item.tokens.slice(1));
