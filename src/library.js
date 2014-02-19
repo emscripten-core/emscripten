@@ -6443,7 +6443,7 @@ LibraryManager.library = {
     // var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
     var me = _localeconv;
     if (!me.ret) {
-      me.ret = allocate([allocate(intArrayFromString('.'), 'i8', ALLOC_NORMAL)], 'i8*', ALLOC_NORMAL); // just decimal point, for now
+	me.ret = allocate([allocate(intArrayFromString('.'), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL)], 'i8*', ALLOC_NORMAL); // Allocate strings in lconv, still don't allocate chars
     }
     return me.ret;
   },
