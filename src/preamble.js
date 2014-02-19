@@ -918,7 +918,7 @@ if (totalMemory !== TOTAL_MEMORY) {
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
-       'Cannot fallback to non-typed array case: Code is too specialized');
+       'JS engine does not provide full typed array support');
 
 #if USE_TYPED_ARRAYS == 1
 HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
