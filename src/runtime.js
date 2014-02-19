@@ -336,6 +336,9 @@ var Runtime = {
 #if ASM_JS
       if (!args.splice) args = Array.prototype.slice.call(args);
       args.splice(0, 0, ptr);
+#if ASSERTIONS
+      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
       return Module['dynCall_' + sig].apply(null, args);
 #else
       return FUNCTION_TABLE[ptr].apply(null, args);
@@ -345,6 +348,9 @@ var Runtime = {
       assert(sig.length == 1);
 #endif
 #if ASM_JS
+#if ASSERTIONS
+      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
       return Module['dynCall_' + sig].call(null, ptr);
 #else
       return FUNCTION_TABLE[ptr]();
