@@ -61,7 +61,7 @@ void do_send(int sockfd) {
   exit(EXIT_SUCCESS);
 }
 
-void iter(void *arg) {
+void iter() {
   int res;
   fd_set fdr;
   fd_set fdw;
@@ -127,7 +127,7 @@ int main() {
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 60, 0);
 #else
-  while (1) iter(NULL);
+  while (1) iter();
 #endif
 
   return EXIT_SUCCESS;

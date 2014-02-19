@@ -25,7 +25,7 @@ void finish(int result) {
   exit(result);
 }
 
-void iter(void *arg) {
+void iter() {
   char buffer[1024];
   char packetLength;
   fd_set fdr;
@@ -111,7 +111,7 @@ int main() {
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (1) iter(NULL);
+  while (1) iter();
 #endif
 
   return EXIT_SUCCESS;
