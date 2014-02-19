@@ -2339,6 +2339,7 @@ The current type of b is: 9
       src = '''
         #include <stdio.h>
         #include <stdlib.h>
+        #include <ctype.h>
         #include <sys/time.h>
 
         void clean()
@@ -2383,11 +2384,13 @@ The current type of b is: 9
 
           printf("*malloc(0)!=0:%d*\\n", malloc(0) != 0); // We should not fail horribly
 
+          printf("tolower_l: %c\\n", tolower_l('A', 0));
+
           return 0;
         }
         '''
 
-      self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*malloc(0)!=0:1*\n*cleaned*')
+      self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*malloc(0)!=0:1*\ntolower_l: a\n*cleaned*')
 
       src = r'''
         #include <stdio.h>
