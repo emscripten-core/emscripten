@@ -918,18 +918,30 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     def unfloat(s):
       return 'd' if s == 'f' else s # lower float to double for ffis
 
+    if settings['ASSERTIONS'] >= 2:
+      debug_tables = {}
+
     def make_table(sig, raw):
-      i = Counter.i
-      Counter.i += 1
-      bad = 'b' + str(i)
+      Counter.pre = ''
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coerced_params = ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
       def make_func(name, code):
         return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
-      Counter.pre = [make_func(bad, ('abort' if not settings['ASSERTIONS'] else 'nullFunc') + '(' + str(i) + ');' + (
-        '' if sig[0] == 'v' else ('return %s' % shared.JS.make_initializer(sig[0], settings))
-      ))]
+      def make_bad(target=None):
+        i = Counter.i
+        Counter.i += 1
+        if target is None: target = i
+        name = 'b' + str(i)
+        if not settings['ASSERTIONS']:
+          code = 'abort(%s);' % target
+        else:
+          code = 'nullFunc_' + sig + '(%d);' % target
+        if sig[0] != 'v':
+          code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
+        return name, make_func(name, code)
+      bad, bad_func = make_bad() # the default bad func
+      Counter.pre = [bad_func]
       start = raw.index('[')
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
@@ -941,7 +953,13 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       def fix_item(item):
         Counter.j += 1
         newline = Counter.j % 30 == 29
-        if item == '0': return bad if not newline else (bad + '\n')
+        if item == '0':
+          if settings['ASSERTIONS'] <= 1:
+            return bad if not newline else (bad + '\n')
+          else:
+            specific_bad, specific_bad_func = make_bad(Counter.j)
+            Counter.pre.append(specific_bad_func)
+            return specific_bad if not newline else (specific_bad + '\n')
         if item not in implemented_functions:
           # this is imported into asm, we must wrap it
           call_ident = item
@@ -956,6 +974,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           Counter.pre.append(make_func(item + '__wrapper', code))
           return item + '__wrapper'
         return item if not newline else (item + '\n')
+      if settings['ASSERTIONS'] >= 2:
+        debug_tables[sig] = body
       body = ','.join(map(fix_item, body))
       return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
 
@@ -977,8 +997,20 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
-      basic_funcs += ['nullFunc']
-      asm_setup += 'function nullFunc(x) { Module["printErr"]("Invalid function pointer called. Perhaps a miscast function pointer (check compilation warnings) or bad vtable lookup (maybe due to derefing a bad pointer, like NULL)?"); abort(x) }\n'
+      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+        basic_funcs += ['nullFunc_' + sig]
+        if settings['ASSERTIONS'] <= 1:
+          extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
+          pointer = ' '
+        else:
+          pointer = ' \'" + x + "\' '
+          asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+          extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
+          for other in last_forwarded_json['Functions']['tables'].iterkeys():
+            if other != sig:
+              extra += other + ': " + debug_table_' + other + '[x] + "  '
+          extra += '"); '
+        asm_setup += '\nfunction nullFunc_' + sig + '(x) { Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an different type, which will fail?"); ' + extra + ' abort(x) }\n'
 
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
