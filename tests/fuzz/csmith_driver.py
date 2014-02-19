@@ -115,7 +115,7 @@ while 1:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
-    shutil.copyfile(fullname, 'newfail%d.c' % fails)
+    shutil.copyfile(fullname, 'newfail%d%s' % (fails, suffix))
     continue
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
