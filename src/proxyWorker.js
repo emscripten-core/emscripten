@@ -79,7 +79,7 @@ document.createElement = function document_createElement(what) {
   }
 };
 
-var console = {
+var console = console || {
   log: function(x) {
     Module.printErr(x);
   }
