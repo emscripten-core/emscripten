@@ -19,6 +19,7 @@ var LibraryGL = {
     textures: [],
     uniforms: [],
     shaders: [],
+    vaos: [],
 
 #if FULL_ES2
     clientBuffers: [],
@@ -633,6 +634,9 @@ var LibraryGL = {
       
       // Extension available from Firefox 26 and Google Chrome 30
       GL.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
+      
+      // Extension available from Firefox 25 and WebKit
+      GL.vaoExt = Module.ctx.getExtension('OES_vertex_array_object');
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -1794,6 +1798,93 @@ var LibraryGL = {
     var fb = GL.framebuffers[framebuffer];
     if (!fb) return 0;
     return GLctx.isFramebuffer(fb);
+  },
+
+#if LEGACY_GL_EMULATION
+  glGenVertexArrays__deps: ['emulGlGenVertexArrays'],
+#endif
+  glGenVertexArrays__sig: 'vii',
+  glGenVertexArrays: function (n , arrays) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    GLImmediate.emulGlGenVertexArrays(n , arrays);
+    return;
+  }
+#else    
+#if GL_ASSERTIONS    
+    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
+#endif    
+#endif
+
+    for (var i = 0; i < n ; i++) {
+      var id = GL.getNewId(GL.vaos);
+      var vao = GL.vaoExt.createVertexArrayOES();
+      vao.name = id;
+      GL.vaos[id] = vao;
+      {{{ makeSetValue('arrays', 'i*4', 'id', 'i32') }}};
+    }
+  },
+  
+#if LEGACY_GL_EMULATION
+  glDeleteVertexArrays__deps: ['emulGlDeleteVertexArrays'],
+#endif
+  glDeleteVertexArrays__sig: 'vii',
+  glDeleteVertexArrays: function(n, vaos) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    GLImmediate.emulGlDeleteVertexArrays(n , vaos);
+    return;
+  }
+#else       
+#if GL_ASSERTIONS    
+    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
+#endif    
+#endif
+
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
+      GL.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
+      GL.vaos[id] = null;
+    }
+  },
+  
+#if LEGACY_GL_EMULATION
+  glBindVertexArray__deps: ['emulGlBindVertexArray'],
+#endif
+  glBindVertexArray__sig: 'vi',
+  glBindVertexArray: function(vao) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    GLImmediate.emulGlBindVertexArray(vao);
+    return;
+  }
+#else      
+#if GL_ASSERTIONS
+    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');    
+#endif
+#endif
+
+    GL.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
+  },
+
+#if LEGACY_GL_EMULATION
+  glIsVertexArray__deps: ['emulGlIsVertexArray'],
+#endif
+  glIsVertexArray__sig: 'ii',
+  glIsVertexArray: function(array) {
+#if LEGACY_GL_EMULATION
+  if (GL.vaoExt == null) {
+    return GLImmediate.emulGlIsVertexArray(array);
+  }
+#else     
+#if GL_ASSERTIONS
+    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');    
+#endif  
+#endif
+
+    var vao = GL.vaos[array];
+    if (!vao) return 0;
+    return GL.vaoExt.isVertexArrayOES(vao);
   },
 
 #if LEGACY_GL_EMULATION
@@ -4809,9 +4900,9 @@ var LibraryGL = {
   },
 
   // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
-  glGenVertexArrays__deps: ['$GLEmulation'],
-  glGenVertexArrays__sig: 'vii',
-  glGenVertexArrays: function(n, vaos) {
+  emulGlGenVertexArrays__deps: ['$GLEmulation'],
+  emulGlGenVertexArrays__sig: 'vii',
+  emulGlGenVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GLEmulation.vaos);
       GLEmulation.vaos[id] = {
@@ -4825,17 +4916,23 @@ var LibraryGL = {
       {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
     }
   },
-  glDeleteVertexArrays__sig: 'vii',
-  glDeleteVertexArrays: function(n, vaos) {
+  emulGlDeleteVertexArrays__sig: 'vii',
+  emulGlDeleteVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLEmulation.vaos[id] = null;
       if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
     }
   },
-  glBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
-  glBindVertexArray__sig: 'vi',
-  glBindVertexArray: function(vao) {
+  emulGlIsVertexArray__sig: 'vi',
+  emulGlIsVertexArray: function(array) {
+    var vao = GLEmulation.vaos[array];
+    if (!vao) return 0;
+    return 1;
+  },
+  emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
+  emulGlBindVertexArray__sig: 'vi',
+  emulGlBindVertexArray: function(vao) {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
     GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
     if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
@@ -5034,20 +5131,22 @@ var LibraryGL = {
   glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
   glDeleteFramebuffersOES : 'glDeleteFramebuffers',
   glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
-  glGenVertexArraysOES: 'glGenVertexArrays',
-  glDeleteVertexArraysOES: 'glDeleteVertexArrays',
-  glBindVertexArrayOES: 'glBindVertexArray',
   glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 
 #else // LEGACY_GL_EMULATION
 
   glVertexPointer: function(){ throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
-  glGenVertexArrays: function(){ throw 'Legacy GL function (glGenVertexArrays) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
   glMatrixMode: function(){ throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
   glBegin: function(){ throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
   glLoadIdentity: function(){ throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
 
 #endif // LEGACY_GL_EMULATION
+
+  // Open GLES1.1 vao compatibility (Could work w/o -s LEGACY_GL_EMULATION=1)
+
+  glGenVertexArraysOES: 'glGenVertexArrays',
+  glDeleteVertexArraysOES: 'glDeleteVertexArrays',
+  glBindVertexArrayOES: 'glBindVertexArray',
 
   // GLU
 
