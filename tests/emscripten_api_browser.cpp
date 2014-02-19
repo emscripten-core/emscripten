@@ -31,6 +31,18 @@ void five(void *arg) {
   emscripten_resume_main_loop();
 }
 
+void argey(void* arg) {
+  static int counter = 0;
+  assert((int)arg == 17);
+  counter++;
+  printf("argey: %d\n", counter);
+  if (counter == 5) {
+    emscripten_cancel_main_loop();
+    int result = 1;
+    REPORT_RESULT();
+  }
+}
+
 void mainey() {
   static int counter = 0;
   printf("mainey: %d\n", counter++);
@@ -45,8 +57,8 @@ void mainey() {
     assert(pre1ed);
     assert(pre2ed);
     printf("Good!\n");
-    int result = 1;
-    REPORT_RESULT();
+    emscripten_cancel_main_loop();
+    emscripten_set_main_loop_arg(argey, (void*)17, 0, 0);
   }
 }
 

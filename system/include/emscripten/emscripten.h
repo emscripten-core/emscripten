@@ -116,6 +116,9 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  * asynchronous callbacks, but you must pause the main
  * loop until they complete.
  *
+ * If you want your main loop function to receive a void*
+ * argument, use emscripten_set_main_loop_arg.
+
  * @simulate_infinite_loop If true, this function will throw an
  *    exception in order to stop execution of the caller. This
  *    will lead to the main loop being entered instead of code
@@ -134,6 +137,7 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  */
 #if EMSCRIPTEN
 extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop_arg(void (*func)(void*), void *arg, int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop();
 extern void emscripten_resume_main_loop();
 extern void emscripten_cancel_main_loop();

@@ -752,7 +752,7 @@ mergeInto(LibraryManager.library, {
     document.body.appendChild(script);
   },
 
-  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
+  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg) {
     Module['noExitRuntime'] = true;
 
     Browser.mainLoop.runner = function Browser_mainLoop_runner() {
@@ -803,7 +803,11 @@ mergeInto(LibraryManager.library, {
       }
 
       try {
-        Runtime.dynCall('v', func);
+        if (typeof arg !== 'undefined') {
+          Runtime.dynCall('vi', func, [arg]);
+        } else {
+          Runtime.dynCall('v', func);
+        }
       } catch (e) {
         if (e instanceof ExitStatus) {
           return;
@@ -841,6 +845,11 @@ mergeInto(LibraryManager.library, {
     if (simulateInfiniteLoop) {
       throw 'SimulateInfiniteLoop';
     }
+  },
+
+  emscripten_set_main_loop_arg__deps: ['emscripten_set_main_loop'],
+  emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
+    _emscripten_set_main_loop(func, fps, simulateInfiniteLoop, arg);
   },
 
   emscripten_cancel_main_loop: function() {
