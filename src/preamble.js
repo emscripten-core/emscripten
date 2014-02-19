@@ -529,18 +529,17 @@ function allocate(slab, types, allocator, ptr) {
   }
 #endif
 
-  var index = 0, byteIndex = 0, type, typeSize, previousType;
-  while ((singleType ? index : byteIndex) < size) {
-    var curr = slab[index];
+  var i = 0, type, typeSize, previousType;
+  while (i < size) {
+    var curr = slab[i];
 
     if (typeof curr === 'function') {
       curr = Runtime.getFunctionIndex(curr);
     }
 
-    type = singleType || types[byteIndex];
+    type = singleType || types[i];
     if (type === 0) {
-      index++;
-      byteIndex++;
+      i++;
       continue;
     }
 #if ASSERTIONS
@@ -551,15 +550,14 @@ function allocate(slab, types, allocator, ptr) {
     if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
 #endif
 
-    setValue(ret+byteIndex, curr, type);
+    setValue(ret+i, curr, type);
 
     // no need to look up size unless type changes, so cache it
     if (previousType !== type) {
       typeSize = Runtime.getNativeTypeSize(type);
       previousType = type;
     }
-    index++;
-    byteIndex += typeSize;
+    i += typeSize;
   }
 
   return ret;

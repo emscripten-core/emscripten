@@ -6443,7 +6443,19 @@ LibraryManager.library = {
     // var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
     var me = _localeconv;
     if (!me.ret) {
-	me.ret = allocate([allocate(intArrayFromString('.'), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL)], 'i8*', ALLOC_NORMAL); // Allocate strings in lconv, still don't allocate chars
+	// These are defaults from the "C" locale
+	me.ret = allocate(
+	    [allocate(intArrayFromString('.'), 'i8', ALLOC_NORMAL),0,0,0, // decimal_point
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // thousands_sep
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // grouping
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // int_curr_symbol
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // currency_symbol
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // mon_decimal_point
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // mon_thousands_sep
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // mon_grouping
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // positive_sign
+	     allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0], // negative_sign
+	    'i8*', ALLOC_NORMAL); // Allocate strings in lconv, still don't allocate chars
     }
     return me.ret;
   },
