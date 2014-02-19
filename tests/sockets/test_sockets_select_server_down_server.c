@@ -14,7 +14,7 @@
 #include <emscripten.h>
 #endif
 
-void main_loop(void *arg) {
+void main_loop() {
 }
 
 int main() {
@@ -50,7 +50,7 @@ int main() {
 #if EMSCRIPTEN
   emscripten_set_main_loop(main_loop, 60, 0);
 #else
-  while (1) main_loop(NULL); sleep(1);
+  while (1) main_loop(); sleep(1);
 #endif
 
   return EXIT_SUCCESS;

@@ -176,7 +176,7 @@ class benchmark(RunnerCore):
       pass
 
     Building.COMPILER = CLANG
-    Building.COMPILER_TEST_OPTS = []
+    Building.COMPILER_TEST_OPTS = ['-O2']
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     if len(benchmarkers) == 0: raise Exception('error, no benchmarkers: ' + benchmarkers_error)

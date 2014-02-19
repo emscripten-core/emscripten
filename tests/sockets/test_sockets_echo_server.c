@@ -49,7 +49,7 @@ void cleanup() {
   }
 }
 
-void main_loop(void *arg) {
+void main_loop() {
   int res;
   fd_set fdr;
   fd_set fdw;
@@ -189,7 +189,7 @@ int main() {
 #if EMSCRIPTEN
   emscripten_set_main_loop(main_loop, 60, 0);
 #else
-  while (1) main_loop(NULL);
+  while (1) main_loop();
 #endif
 
   return EXIT_SUCCESS;

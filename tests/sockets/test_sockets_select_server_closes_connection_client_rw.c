@@ -30,7 +30,7 @@ void finish(int result) {
   exit(result);
 }
 
-void main_loop(void *arg) {
+void main_loop() {
   static int state = 0;
   static int readPos = 0;
   static int writePos = 0;
@@ -219,7 +219,7 @@ int main() {
 #if EMSCRIPTEN
   emscripten_set_main_loop(main_loop, 0, 0);
 #else
-  while (1) main_loop(NULL);
+  while (1) main_loop();
 #endif
 
   return EXIT_SUCCESS;

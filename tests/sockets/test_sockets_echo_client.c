@@ -48,7 +48,7 @@ void finish(int result) {
   exit(result);
 }
 
-void main_loop(void *arg) {
+void main_loop() {
   static char out[1024*2];
   static int pos = 0;
   fd_set fdr;
@@ -163,7 +163,7 @@ int main() {
 #if EMSCRIPTEN
   emscripten_set_main_loop(main_loop, 0, 0);
 #else
-  while (1) main_loop(NULL);
+  while (1) main_loop();
 #endif
 
   return EXIT_SUCCESS;

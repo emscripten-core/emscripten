@@ -25,7 +25,7 @@ struct iovec iov[1];
 struct msghdr hdr;
 int done = 0;
 
-void iter(void* arg) {
+void iter() {
   int n;
   n = sendmsg(sock, &hdr, 0);
 
@@ -74,7 +74,7 @@ int main(void)
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (!done) iter();
 #endif
 
   return EXIT_SUCCESS;

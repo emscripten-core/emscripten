@@ -521,7 +521,6 @@ f.close()
     assert 'function _malloc' in src
 
   def test_dangerous_func_cast(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
     src = r'''
       #include <stdio.h>
       typedef void (*voidfunc)();
@@ -543,13 +542,23 @@ f.close()
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True))
       return open(self.in_dir('a.out.js')).read()
 
-    test([], 'my func') # no asm, so casting func works
-    test(['-O2'], 'abort', ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
-                            'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
-    test(['-O2', '-s', 'ASSERTIONS=1'],
-         'Invalid function pointer called. Perhaps a miscast function pointer (check compilation warnings) or bad vtable lookup (maybe due to derefing a bad pointer, like NULL)?',
-         ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
-         'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
+    if os.environ.get('EMCC_FAST_COMPILER') != '1':
+      test([], 'my func') # no asm, so casting func works
+      test(['-O2'], 'abort', ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
+                              'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
+      test(['-O2', '-s', 'ASSERTIONS=1'],
+           'Invalid function pointer called. Perhaps a miscast function pointer (check compilation warnings) or bad vtable lookup (maybe due to derefing a bad pointer, like NULL)?',
+           ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
+           'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
+    else:
+      # fastcomp. all asm, so it can't just work with wrong sigs. but, ASSERTIONS=2 gives much better info to debug
+      test(['-O1'], 'abort') # no useful info
+      test(['-O1', '-s', 'ASSERTIONS=1'], '''Invalid function pointer called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an different type, which will fail?
+Build with ASSERTIONS=2 for more info.
+''') # some useful text
+      test(['-O1', '-s', 'ASSERTIONS=2'], '''Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an different type, which will fail?
+This pointer might make sense in another type signature: i: _my_func  
+''') # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
 
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work
@@ -1925,8 +1934,6 @@ seeked= file.
     assert output == invalid
 
   def test_link_s(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo safe heap in fastcomp')
-
     # -s OPT=VALUE can conflict with -s as a linker option. We warn and ignore
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
       extern "C" {
