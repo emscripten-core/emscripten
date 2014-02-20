@@ -234,6 +234,10 @@ mergeInto(LibraryManager.library, {
       }
 #endif
       var ctx;
+      var errorInfo = '?';
+      function onContextCreationError(event) {
+        errorInfo = event.statusMessage || errorInfo;
+      }
       try {
         if (useWebGL) {
           var contextAttributes = {
@@ -251,10 +255,6 @@ mergeInto(LibraryManager.library, {
           contextAttributes.preserveDrawingBuffer = true;
 #endif
 
-          var errorInfo = '?';
-          function onContextCreationError(event) {
-            errorInfo = event.statusMessage || errorInfo;
-          }
           canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
           try {
             ['experimental-webgl', 'webgl'].some(function(webglId) {
