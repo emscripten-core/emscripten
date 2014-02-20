@@ -1806,14 +1806,10 @@ var LibraryGL = {
   glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function (n, arrays) {
 #if LEGACY_GL_EMULATION
-    if (GL.vaoExt == null) {
-      _emulGlGenVertexArrays(n, arrays);
-      return;
-    }
-#else    
-#if GL_ASSERTIONS    
+    _emulGlGenVertexArrays(n, arrays);
+#else
+#if GL_ASSERTIONS
     assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
-#endif    
 #endif
 
     for(var i = 0; i < n; i++) {
@@ -1823,6 +1819,7 @@ var LibraryGL = {
       GL.vaos[id] = vao;
       {{{ makeSetValue('arrays', 'i*4', 'id', 'i32') }}};
     }
+#endif
   },
   
 #if LEGACY_GL_EMULATION
@@ -1831,21 +1828,17 @@ var LibraryGL = {
   glDeleteVertexArrays__sig: 'vii',
   glDeleteVertexArrays: function(n, vaos) {
 #if LEGACY_GL_EMULATION
-    if (GL.vaoExt == null) {
-      _emulGlDeleteVertexArrays(n, vaos);
-      return;
-    }
-#else       
-#if GL_ASSERTIONS    
+    _emulGlDeleteVertexArrays(n, vaos);
+#else
+#if GL_ASSERTIONS
     assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
-#endif    
 #endif
-
     for(var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GL.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
       GL.vaos[id] = null;
     }
+#endif
   },
   
 #if LEGACY_GL_EMULATION
@@ -1854,17 +1847,14 @@ var LibraryGL = {
   glBindVertexArray__sig: 'vi',
   glBindVertexArray: function(vao) {
 #if LEGACY_GL_EMULATION
-    if (GL.vaoExt == null) {
-      _emulGlBindVertexArray(vao);
-      return;
-    }
-#else      
+    _emulGlBindVertexArray(vao);
+#else
 #if GL_ASSERTIONS
-    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');    
-#endif
+    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif
 
     GL.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
+#endif
   },
 
 #if LEGACY_GL_EMULATION
@@ -1873,18 +1863,16 @@ var LibraryGL = {
   glIsVertexArray__sig: 'ii',
   glIsVertexArray: function(array) {
 #if LEGACY_GL_EMULATION
-    if (GL.vaoExt == null) {
-     return _emulGlIsVertexArray(array);
-    }
-#else     
+    return _emulGlIsVertexArray(array);
+#else
 #if GL_ASSERTIONS
-    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');    
+    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif  
-#endif
 
     var vao = GL.vaos[array];
     if (!vao) return 0;
     return GL.vaoExt.isVertexArrayOES(vao);
+#endif
   },
 
 #if LEGACY_GL_EMULATION
