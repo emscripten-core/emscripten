@@ -23,7 +23,6 @@ mergeInto(LibraryManager.library, {
               setattr: MEMFS.node_ops.setattr,
               lookup: MEMFS.node_ops.lookup,
               mknod: MEMFS.node_ops.mknod,
-              mknod: MEMFS.node_ops.mknod,
               rename: MEMFS.node_ops.rename,
               unlink: MEMFS.node_ops.unlink,
               rmdir: MEMFS.node_ops.rmdir,
