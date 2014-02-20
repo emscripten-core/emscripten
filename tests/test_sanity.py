@@ -51,7 +51,7 @@ class sanity(RunnerCore):
     if type(command) is not list:
       command = [command]
     if expected is None:
-      if command[0] == EMCC:
+      if command[0] == EMCC or (len(command) >= 2 and command[1] == EMCC):
         expected = 'no input files'
       else:
         expected = "No tests found for ['blahblah']"
