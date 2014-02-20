@@ -5181,12 +5181,13 @@ def process(filename):
 
     def run_all(x):
       print x
-      for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')):
+      for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')) + glob.glob(path_from_root('tests', 'fuzz', '*.cpp')):
         #if os.path.basename(name) != '4.c': continue
+        if 'newfail' in name: continue
 
         print name
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
-                    open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=True)
+                    open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=name.endswith('.c'))
 
     run_all('normal')
 
