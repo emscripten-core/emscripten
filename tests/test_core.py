@@ -6455,6 +6455,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
       return
 
     # TODO: Move much of these to a init() function in shared.py, and reuse that
+    Settings.ASM_JS = 0
     Settings.USE_TYPED_ARRAYS = typed_arrays
     Settings.INVOKE_RUN = 1
     Settings.RELOOP = 0 # we only do them in the "o2" pass
