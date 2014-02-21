@@ -446,7 +446,7 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
-var ASM_JS = 0; // If 1, generate code in asm.js format. If 2, emits the same code except
+var ASM_JS = 1; // If 1, generate code in asm.js format. If 2, emits the same code except
                 // for omitting 'use asm'
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for

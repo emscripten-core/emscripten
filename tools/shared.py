@@ -804,6 +804,8 @@ class Settings2(type):
 
     @classmethod
     def apply_opt_level(self, opt_level, noisy=False):
+      if opt_level == 0 and os.environ.get('EMCC_FAST_COMPILER') == '0':
+        self.attrs['ASM_JS'] = 0 # non-fastcomp has asm off in -O1
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
