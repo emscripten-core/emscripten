@@ -618,7 +618,7 @@ except:
 
 # Target choice. Must be synced with src/settings.js (TARGET_*)
 def get_llvm_target():
-  return os.environ.get('EMCC_LLVM_TARGET') or 'le32-unknown-nacl' # 'i386-pc-linux-gnu'
+  return os.environ.get('EMCC_LLVM_TARGET') or 'asmjs-unknown-emscripten'
 LLVM_TARGET = get_llvm_target()
 
 # COMPILER_OPTS: options passed to clang when generating bitcode for us
@@ -631,8 +631,9 @@ COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-DEMSCRIPTEN', '-D__EMSCRIPTEN__',
                                  #'-fno-threadsafe-statics', # disabled due to issue 1289
                                  '-target', LLVM_TARGET]
 
-if LLVM_TARGET == 'le32-unknown-nacl':
-  COMPILER_OPTS = filter(lambda opt: opt != '-m32', COMPILER_OPTS) # le32 target is 32-bit anyhow, no need for -m32
+# For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
+if LLVM_TARGET == 'asmjs-unknown-emscripten' or LLVM_TARGET == 'le32-unknown-nacl':
+  COMPILER_OPTS = filter(lambda opt: opt != '-m32', COMPILER_OPTS) # asmjs-unknown-emscripten target is 32-bit anyhow, no need for -m32
   COMPILER_OPTS += ['-U__native_client__', '-U__pnacl__', '-U__ELF__'] # The nacl target is originally used for Google Native Client. Emscripten is not NaCl, so remove the platform #define, when using their triple.
 
 # Remove various platform specific defines, and set little endian
@@ -658,8 +659,10 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ]
   EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
-  if LLVM_TARGET != 'le32-unknown-nacl':
-    EMSDK_CXX_OPTS = ['-nostdinc++'] # le32 target does not need -nostdinc++
+  # For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
+  if LLVM_TARGET != 'asmjs-unknown-emscripten' and \
+     LLVM_TARGET != 'le32-unknown-pnacl':
+    EMSDK_CXX_OPTS = ['-nostdinc++'] # asmjs-unknown-emscripten target does not need -nostdinc++
   else:
     EMSDK_CXX_OPTS = []
   COMPILER_OPTS += EMSDK_OPTS
