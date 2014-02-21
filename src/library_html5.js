@@ -156,17 +156,17 @@ var LibraryJSEvents = {
         var e = event || window.event;
         writeStringToMemory(e.key ? e.key : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}} );
         writeStringToMemory(e.code ? e.code : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}} );
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.location, 'e.location', 'i32') }}}
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey, 'e.ctrlKey', 'i32') }}}
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.shiftKey, 'e.shiftKey', 'i32') }}}
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.altKey, 'e.altKey', 'i32') }}}
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.metaKey, 'e.metaKey', 'i32') }}}
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.repeat, 'e.repeat', 'i32') }}}
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.location, 'e.location', 'i32') }}};
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.shiftKey, 'e.shiftKey', 'i32') }}};
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.altKey, 'e.altKey', 'i32') }}};
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.metaKey, 'e.metaKey', 'i32') }}};
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.repeat, 'e.repeat', 'i32') }}};
         writeStringToMemory(e.locale ? e.locale : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}} );
         writeStringToMemory(e.char ? e.char : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}} );
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.charCode, 'e.charCode', 'i32') }}}
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.keyCode, 'e.keyCode', 'i32') }}}
-        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.which, 'e.which', 'i32') }}}
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.charCode, 'e.charCode', 'i32') }}};
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.keyCode, 'e.keyCode', 'i32') }}};
+        {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.which, 'e.which', 'i32') }}};
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.keyEvent, userData]);
         if (shouldCancel) {
           e.preventDefault();
@@ -288,15 +288,15 @@ var LibraryJSEvents = {
           return;
         }
         var scrollPos = JSEvents.pageScrollPos();
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'window.innerWidth', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'window.innerHeight', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'window.outerWidth', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'window.outerHeight', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}}
-        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}}
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'window.innerWidth', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'window.innerHeight', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'window.outerWidth', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'window.outerHeight', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}};
+        {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}};
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.uiEvent, userData]);
         if (shouldCancel) {
           e.preventDefault();
@@ -361,11 +361,11 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}}
+        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}};
 
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.deviceOrientationEvent, userData]);
         if (shouldCancel) {
@@ -391,16 +391,16 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'e.accelerationIncludingGravity.x', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'e.accelerationIncludingGravity.y', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'e.accelerationIncludingGravity.z', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'e.rotationRate.alpha', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'e.rotationRate.beta', 'double') }}}
-        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}}
+        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'e.accelerationIncludingGravity.x', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'e.accelerationIncludingGravity.y', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'e.accelerationIncludingGravity.z', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'e.rotationRate.alpha', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'e.rotationRate.beta', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}};
 
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.deviceMotionEvent, userData]);
         if (shouldCancel) {
@@ -434,8 +434,8 @@ var LibraryJSEvents = {
         orientation = orientations2.indexOf(orientationString);
       }
 
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, '1 << orientation', 'i32') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'window.orientation', 'i32') }}}
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, '1 << orientation', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'window.orientation', 'i32') }}};
     },
 
     registerOrientationChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
@@ -482,8 +482,8 @@ var LibraryJSEvents = {
     fillFullscreenChangeEventData: function(eventStruct, e) {
       var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
       var isFullscreen = !!fullscreenElement;
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}}
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
       var nodeName = JSEvents.getNodeNameForTarget(fullscreenElement);
       var id = (fullscreenElement && fullscreenElement.id) ? fullscreenElement.id : '';
       writeStringToMemory(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.nodeName }}} );
@@ -547,7 +547,7 @@ var LibraryJSEvents = {
     fillPointerlockChangeEventData: function(eventStruct, e) {
       var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
       var isPointerlocked = !!pointerLockElement;
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}}
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
       var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
       var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
       writeStringToMemory(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.nodeName }}} );
@@ -612,8 +612,8 @@ var LibraryJSEvents = {
       var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
       var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}}
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
     },
 
     registerVisibilityChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
@@ -673,33 +673,33 @@ var LibraryJSEvents = {
         }
         
         var ptr = JSEvents.touchEvent;
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.ctrlKey, 'e.ctrlKey', 'i32') }}}
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.shiftKey, 'e.shiftKey', 'i32') }}}
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}}
-        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}}
+        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
+        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.shiftKey, 'e.shiftKey', 'i32') }}};
+        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
+        {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
         ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
         var rect = Module['canvas'].getBoundingClientRect();
         var numTouches = 0;
         for(var i in touches) {
           var t = touches[i];
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.identifier, 't.identifier', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenX, 't.screenX', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenY, 't.screenY', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientX, 't.clientX', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientY, 't.clientY', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageX, 't.pageX', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - rect.left', 'i32') }}}
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - rect.top', 'i32') }}}
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.identifier, 't.identifier', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenX, 't.screenX', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.screenY, 't.screenY', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientX, 't.clientX', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.clientY, 't.clientY', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageX, 't.pageX', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - rect.left', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - rect.top', 'i32') }}};
           ptr += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
 
           if (++numTouches >= 32) {
             break;
           }
         }
-        {{{ makeSetValue('JSEvents.touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}}
+        {{{ makeSetValue('JSEvents.touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}};
 
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.touchEvent, userData]);
         if (shouldCancel) {
@@ -721,20 +721,20 @@ var LibraryJSEvents = {
     },
 
     fillGamepadEventData: function(eventStruct, e) {
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.timestamp, 'e.timestamp', 'double') }}}
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.timestamp, 'e.timestamp', 'double') }}};
       for(var i = 0; i < e.axes.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.axis, 'e.axes[i]', 'double') }}}
+        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.axis, 'e.axes[i]', 'double') }}};
       }
       for(var i = 0; i < e.buttons.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}}
+        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
       }
       for(var i = 0; i < e.buttons.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}}
+        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
       }
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numAxes, 'e.axes.length', 'i32') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numButtons, 'e.buttons.length', 'i32') }}}
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numAxes, 'e.axes.length', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numButtons, 'e.buttons.length', 'i32') }}};
       writeStringToMemory(e.id, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.id }}} );
       writeStringToMemory(e.mapping, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.mapping }}} );
     },
@@ -795,10 +795,10 @@ var LibraryJSEvents = {
     battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; },
 
     fillBatteryEventData: function(eventStruct, e) {
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'e.chargingTime', 'double') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'e.dischargingTime', 'double') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}}
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i32') }}}
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'e.chargingTime', 'double') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'e.dischargingTime', 'double') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i32') }}};
     },
     
     registerBatteryEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
@@ -1159,7 +1159,7 @@ var LibraryJSEvents = {
 
     var vibrateList = [];
     for(var i = 0; i < numEntries; ++i) {
-      var msecs = {{{ makeGetValue('msecsArray', 'i*4', 'i32') }}}
+      var msecs = {{{ makeGetValue('msecsArray', 'i*4', 'i32') }}};
       vibrateList.push(msecs);
     }
     navigator.vibrate(vibrateList);
