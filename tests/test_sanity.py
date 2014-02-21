@@ -489,7 +489,7 @@ fi
     try:
       old = os.environ.get('EMCC_LLVM_TARGET') or ''
       for compiler in [EMCC, EMXX]:
-        for target in ['i386-pc-linux-gnu', 'le32-unknown-nacl']:
+        for target in ['i386-pc-linux-gnu', 'asmjs-unknown-emscripten']:
           print compiler, target
           os.environ['EMCC_LLVM_TARGET'] = target
           out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()

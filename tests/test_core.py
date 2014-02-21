@@ -6,7 +6,7 @@ from tools.shared import *
 from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_bullet_library
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
-  def is_le32(self):
+  def is_emscripten_abi(self):
     return not ('i386-pc-linux-gnu' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'i386-pc-linux-gnu')
 
   def test_hello_world(self):
@@ -506,7 +506,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_cube2md5(self):
     if self.emcc_args == None: return self.skip('needs emcc')
-    if not self.is_le32(): return self.skip('le32 needed for accurate math')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), os.path.join(self.get_dir(), 'cube2md5.txt'))
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
@@ -586,7 +586,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       # TODO: A version of this with int64s as well
 
-      if self.is_le32():
+      if self.is_emscripten_abi():
         return self.skip('LLVM marks the reads of s as fully aligned, making this test invalid')
       else:
         self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
@@ -666,7 +666,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       }
     '''
 
-    if self.is_le32():
+    if self.is_emscripten_abi():
       self.do_run(src, '''16,32
 0,8,8,8
 16,24,24,24
@@ -848,7 +848,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_math_lgamma(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      if not self.is_le32(): return self.skip('le32 needed for accurate math')
+      if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')
 
       test_path = path_from_root('tests', 'math', 'lgamma')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -1872,7 +1872,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         # Compressed memory. Note that sizeof() does give the fat sizes, however!
         self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
       else:
-        if self.is_le32():
+        if self.is_emscripten_abi():
           self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
         else:
           self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
@@ -1941,7 +1941,7 @@ def process(filename):
     self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
 
   def test_inlinejs(self):
-      if not self.is_le32(): return self.skip('le32 needed for inline js')
+      if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
       if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp only supports EM_ASM')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs')
@@ -1954,7 +1954,7 @@ def process(filename):
         for i in range(1, 5): assert ('comment%d' % i) in out
 
   def test_inlinejs2(self):
-      if not self.is_le32(): return self.skip('le32 needed for inline js')
+      if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
       if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp only supports EM_ASM')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs2')
@@ -2143,7 +2143,7 @@ def process(filename):
 
   def test_varargs(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
-      if not self.is_le32(): return self.skip('we do not support all varargs stuff without le32')
+      if not self.is_emscripten_abi(): return self.skip('we do not support all varargs stuff without asmjs-unknown-emscripten')
 
       test_path = path_from_root('tests', 'core', 'test_varargs')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -2152,7 +2152,7 @@ def process(filename):
 
   def test_varargs_byval(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('FIXME: Add support for this')
-    if self.is_le32(): return self.skip('clang cannot compile this code with that target yet')
+    if self.is_emscripten_abi(): return self.skip('clang cannot compile this code with that target yet')
 
     src = r'''
       #include <stdio.h>
@@ -2776,8 +2776,8 @@ The current type of b is: 9
     else:
       Settings.NAMED_GLOBALS = 1
 
-    if not self.is_le32():
-      self.skip('need le32 for dlfcn support')
+    if not self.is_emscripten_abi():
+      self.skip('need asmjs-unknown-emscripten for dlfcn support')
       return False
     else:
       return True
@@ -3614,7 +3614,7 @@ int main()
 
   def test_strtod(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
-    if not self.is_le32(): return self.skip('le32 needed for accurate math')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')
 
     src = r'''
       #include <stdio.h>
@@ -3770,7 +3770,7 @@ int main()
 
   def test_sscanf(self):
     if self.emcc_args is None: return self.skip('needs emcc for libc')
-    if not self.is_le32(): return self.skip('le32 needed for accurate math')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4152,7 +4152,7 @@ def process(filename):
 
   def test_utf32(self):
     if self.emcc_args is None: return self.skip('need libc for wcslen()')
-    if not self.is_le32(): return self.skip('this test uses inline js, which requires le32')
+    if not self.is_emscripten_abi(): return self.skip('this test uses inline js, which requires asmjs-unknown-emscripten')
 
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
@@ -4209,13 +4209,13 @@ def process(filename):
 
   def test_fs_nodefs_rw(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_access(self):
     self.clear()
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
@@ -4223,7 +4223,7 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
     self.do_run(src, expected)
@@ -4254,7 +4254,7 @@ def process(filename):
 
   def test_unistd_truncate(self):
     self.clear()
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
@@ -4283,7 +4283,7 @@ def process(filename):
   def test_unistd_unlink(self):
     self.clear()
     if self.emcc_args is None: return self.skip('requires emcc')
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
@@ -4291,7 +4291,7 @@ def process(filename):
 
   def test_unistd_links(self):
     self.clear()
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       if WINDOWS and fs == 'NODEFS':
         print >> sys.stderr, 'Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.'
@@ -4311,7 +4311,7 @@ def process(filename):
 
   def test_unistd_io(self):
     self.clear()
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
     if self.emcc_args is None: return self.skip('requires emcc')
     for fs in ['MEMFS', 'NODEFS']:
@@ -4322,7 +4322,7 @@ def process(filename):
 
   def test_unistd_misc(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if not self.is_le32(): return self.skip('le32 needed for inline js')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
@@ -4813,7 +4813,7 @@ def process(filename):
   def test_sqlite(self):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
-    if not self.is_le32(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
+    if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
 
@@ -5080,12 +5080,12 @@ def process(filename):
   def test_python(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
-    if not self.is_le32(): return self.skip('fails on non-le32') # FIXME
+    if not self.is_emscripten_abi(): return self.skip('fails on not asmjs-unknown-emscripten') # FIXME
 
     #Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
 
-    if self.is_le32():
-      bitcode = path_from_root('tests', 'python', 'python.le32.bc')
+    if self.is_emscripten_abi():
+      bitcode = path_from_root('tests', 'python', 'python.asmjs-unknown-emscripten.bc')
     else:
       bitcode = path_from_root('tests', 'python', 'python.small.bc')
 
@@ -5131,8 +5131,8 @@ def process(filename):
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
           continue
-        if '_le32' in shortname and not self.is_le32():
-          print self.skip('case "%s" not relevant for non-le32 target' % shortname)
+        if '_eua' in shortname and not self.is_emscripten_abi():
+          print self.skip('case "%s" not relevant for not asmjs-unknown-emscripten target' % shortname)
           continue
         if '_fastcomp' in shortname and not os.environ.get('EMCC_FAST_COMPILER') != '0':
           print self.skip('case "%s" not relevant for non-fastcomp' % shortname)
