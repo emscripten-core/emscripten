@@ -131,7 +131,7 @@ LibraryManager.library = {
     stream.position++;
     return 0;
   },
-  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
+  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES', 'malloc'],
   readdir: function(dirp) {
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
@@ -1021,7 +1021,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  ttyname__deps: ['ttyname_r'],
+  ttyname__deps: ['ttyname_r', 'malloc'],
   ttyname: function(fildes) {
     // char *ttyname(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
@@ -1287,7 +1287,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  getlogin__deps: ['getlogin_r'],
+  getlogin__deps: ['getlogin_r', 'malloc'],
   getlogin: function() {
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
@@ -2695,7 +2695,7 @@ LibraryManager.library = {
     if (buf) _setvbuf(stream, buf, 0, 8192);  // _IOFBF, BUFSIZ.
     else _setvbuf(stream, buf, 2, 8192);  // _IONBF, BUFSIZ.
   },
-  tmpnam__deps: ['$FS'],
+  tmpnam__deps: ['$FS', 'malloc'],
   tmpnam: function(s, dir, prefix) {
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
@@ -2792,7 +2792,7 @@ LibraryManager.library = {
     function unget() { index--; };
     return __scanString(format, get, unget, varargs);
   },
-  snprintf__deps: ['_formatString'],
+  snprintf__deps: ['_formatString', 'malloc'],
   snprintf: function(s, n, format, varargs) {
     // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
@@ -2903,7 +2903,7 @@ LibraryManager.library = {
   // sys/mman.h
   // ==========================================================================
 
-  mmap__deps: ['$FS'],
+  mmap__deps: ['$FS', 'malloc', 'memset'],
   mmap: function(start, num, prot, flags, fd, offset) {
     /* FIXME: Since mmap is normally implemented at the kernel level,
      * this implementation simply uses malloc underneath the call to
@@ -3061,7 +3061,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  realloc__deps: ['memcpy'],
+  realloc__deps: ['malloc', 'memcpy', 'free'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use
     // a real realloc with it
@@ -3275,7 +3275,7 @@ LibraryManager.library = {
     return _strtoll(ptr, null, 10);
   },
 
-  qsort__deps: ['memcpy'],
+  qsort__deps: ['malloc', 'memcpy', 'free'],
   qsort: function(base, num, size, cmp) {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
@@ -3825,7 +3825,7 @@ LibraryManager.library = {
   },
   rindex: 'strrchr',
 
-  strdup__deps: ['strlen'],
+  strdup__deps: ['strlen', 'malloc'],
   strdup: function(ptr) {
     var len = _strlen(ptr);
     var newStr = _malloc(len + 1);
@@ -3834,7 +3834,7 @@ LibraryManager.library = {
     return newStr;
   },
 
-  strndup__deps: ['strdup', 'strlen'],
+  strndup__deps: ['strdup', 'strlen', 'malloc'],
   strndup: function(ptr, size) {
     var len = _strlen(ptr);
 
@@ -3942,7 +3942,7 @@ LibraryManager.library = {
       return ___setErrNo(ERRNO_CODES.EINVAL);
     }
   },
-  strerror__deps: ['strerror_r'],
+  strerror__deps: ['strerror_r', 'malloc'],
   strerror: function(errnum) {
     if (!_strerror.buffer) _strerror.buffer = _malloc(256);
     _strerror_r(errnum, _strerror.buffer, 256);
@@ -4080,6 +4080,7 @@ LibraryManager.library = {
     return _isgraph(chr); // no locale support yet
   },
   // Lookup tables for glibc ctype implementation.
+  __ctype_b_loc__deps: ['malloc'],
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
@@ -4105,6 +4106,7 @@ LibraryManager.library = {
     }
     return me.ret;
   },
+  __ctype_tolower_loc__deps: ['malloc'],
   __ctype_tolower_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-tolower-loc.html
     var me = ___ctype_tolower_loc;
@@ -4133,6 +4135,7 @@ LibraryManager.library = {
     }
     return me.ret;
   },
+  __ctype_toupper_loc__deps: ['malloc'],
   __ctype_toupper_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-toupper-loc.html
     var me = ___ctype_toupper_loc;
@@ -4338,12 +4341,12 @@ LibraryManager.library = {
   __cxa_caught_exceptions: [],
 
   // Exceptions
-  __cxa_allocate_exception__deps: ['__cxa_exception_header_size'],
+  __cxa_allocate_exception__deps: ['__cxa_exception_header_size', 'malloc'],
   __cxa_allocate_exception: function(size) {
     var ptr = _malloc(size + ___cxa_exception_header_size);
     return ptr + ___cxa_exception_header_size;
   },
-  __cxa_free_exception__deps: ['__cxa_exception_header_size'],
+  __cxa_free_exception__deps: ['__cxa_exception_header_size', 'free'],
   __cxa_free_exception: function(ptr) {
     try {
       return _free(ptr - ___cxa_exception_header_size);
@@ -4414,7 +4417,7 @@ LibraryManager.library = {
   // we don't actually get the value that we allocated, but something else. Easiest
   // to remember that the last exception thrown is going to be the first to be caught,
   // so just use that value instead as it is what we're really looking for.
-  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions'],
+  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions', '__cxa_last_thrown_exception'],
   __cxa_begin_catch: function(ptr) {
     __ZSt18uncaught_exceptionv.uncaught_exception--;
     ___cxa_caught_exceptions.push(___cxa_last_thrown_exception);
@@ -4449,14 +4452,13 @@ LibraryManager.library = {
       ___cxa_last_thrown_exception = 0;
     }
   },
-  __cxa_get_exception_ptr__deps: ['___cxa_last_thrown_exception'],
   __cxa_get_exception_ptr: function(ptr) {
     return ptr;
   },
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
-  __cxa_uncaught_exception__deps: ['_Zst18uncaught_exceptionv'],
+  __cxa_uncaught_exception__deps: ['_ZSt18uncaught_exceptionv'],
   __cxa_uncaught_exception: function() {
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
@@ -4532,7 +4534,7 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
-  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }], // will be called directly from compiled code
+  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
     Module.print("Resuming exception");
@@ -4585,7 +4587,7 @@ LibraryManager.library = {
   _ZNSt9exceptionD1Ev: function() {},
   _ZNSt9exceptionD2Ev: function() {},
 
-  _ZNKSt9exception4whatEv__deps: ['_malloc'],
+  _ZNKSt9exception4whatEv__deps: ['malloc'],
   _ZNKSt9exception4whatEv: function() {
     if (!__ZNKSt9exception4whatEv.buffer) {
       var name = "std::exception";
@@ -6454,6 +6456,7 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
+  nl_langinfo__deps: ['malloc'],
   nl_langinfo: function(item) {
     // char *nl_langinfo(nl_item item);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
@@ -7080,7 +7083,7 @@ LibraryManager.library = {
     }
     return addr;
   },
-  inet_ntoa__deps: ['_inet_ntop4_raw'],
+  inet_ntoa__deps: ['_inet_ntop4_raw', 'malloc'],
   inet_ntoa: function(in_addr) {
     if (!_inet_ntoa.buffer) {
       _inet_ntoa.buffer = _malloc(1024);
@@ -7442,7 +7445,7 @@ LibraryManager.library = {
     return _gethostbyname(hostp);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', 'malloc'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
 
@@ -7475,7 +7478,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl', 'malloc'],
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -7692,7 +7695,7 @@ LibraryManager.library = {
   // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
   $GAI_ERRNO_MESSAGES: {},
 
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES', 'malloc'],
   gai_strerror: function(val) {
     var buflen = 256;
 
@@ -7734,7 +7737,7 @@ LibraryManager.library = {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols'],
+  setprotoent__deps: ['$Protocols', 'malloc'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -8397,7 +8400,7 @@ LibraryManager.library = {
     }
   },
 
-  getsockname__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
+  getsockname__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   getsockname: function (fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8415,7 +8418,7 @@ LibraryManager.library = {
     }
   },
 
-  getpeername__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
+  getpeername__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   getpeername: function (fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8565,7 +8568,7 @@ LibraryManager.library = {
     }
   },
 
-  recvmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_inet_pton_raw', '_write_sockaddr'],
+  recvmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   recvmsg: function(fd, message, flags) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
