@@ -223,6 +223,10 @@ class sanity(RunnerCore):
     os.chmod(path_from_root('tests', 'fake', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     output = self.check_working(EMCC, WARNING)
 
+    restore()
+
+    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'INIT_HEAP=1'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend''')
+
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
     NODE_WARNING_2 = 'cannot check node version'
