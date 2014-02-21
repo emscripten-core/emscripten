@@ -453,27 +453,34 @@ fi
     try_delete(CANONICAL_TEMP_DIR)
 
   def test_relooper(self):
-    RELOOPER = Cache.get_path('relooper.js')
+    assert os.environ.get('EMCC_FAST_COMPILER') is None
 
-    restore()
-    for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
-      if phase == 0: Cache.erase()
-      try_delete(RELOOPER)
+    try:
+      os.environ['EMCC_FAST_COMPILER'] = '0'
 
-      for i in range(4):
-        print >> sys.stderr, phase, i
-        opt = min(i, 2)
-        try_delete('a.out.js')
-        output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '-g'],
-                       stdout=PIPE, stderr=PIPE).communicate()
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        output = '\n'.join(output)
-        assert ('bootstrapping relooper succeeded' in output) == (i == 1), 'only bootstrap on first O2: ' + output
-        assert os.path.exists(RELOOPER) == (i >= 1), 'have relooper on O2: ' + output
-        src = open('a.out.js').read()
-        main = src.split('function _main()')[1].split('\n}\n')[0]
-        assert ('while (1) {' in main or 'while(1){' in main or 'while(1) {' in main or '} while ($' in main or '}while($' in main) == (i >= 1), 'reloop code on O2: ' + main
-        assert ('switch' not in main) == (i >= 1), 'reloop code on O2: ' + main
+      RELOOPER = Cache.get_path('relooper.js')
+
+      restore()
+      for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
+        if phase == 0: Cache.erase()
+        try_delete(RELOOPER)
+
+        for i in range(4):
+          print >> sys.stderr, phase, i
+          opt = min(i, 2)
+          try_delete('a.out.js')
+          output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '-g'],
+                         stdout=PIPE, stderr=PIPE).communicate()
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          output = '\n'.join(output)
+          assert ('bootstrapping relooper succeeded' in output) == (i == 1), 'only bootstrap on first O2: ' + output
+          assert os.path.exists(RELOOPER) == (i >= 1), 'have relooper on O2: ' + output
+          src = open('a.out.js').read()
+          main = src.split('function _main()')[1].split('\n}\n')[0]
+          assert ('while (1) {' in main or 'while(1){' in main or 'while(1) {' in main or '} while ($' in main or '}while($' in main) == (i >= 1), 'reloop code on O2: ' + main
+          assert ('switch' not in main) == (i >= 1), 'reloop code on O2: ' + main
+    finally:
+      del os.environ['EMCC_FAST_COMPILER']
 
   def test_jcache(self):
     PRE_LOAD_MSG = 'loading pre from jcache'
