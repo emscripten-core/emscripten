@@ -379,7 +379,7 @@ def check_sanity(force=False):
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_llvm_version()
     check_node_version()
-    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+    if os.environ.get('EMCC_FAST_COMPILER') != '0':
       fastcomp_ok = check_fastcomp()
 
     if os.environ.get('EM_IGNORE_SANITY'):
@@ -402,7 +402,7 @@ def check_sanity(force=False):
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
 
-    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+    if os.environ.get('EMCC_FAST_COMPILER') != '0':
       if not fastcomp_ok:
         logging.critical('failing sanity checks due to previous fastcomp failure')
         sys.exit(1)
@@ -1467,7 +1467,7 @@ class Building:
   @staticmethod
   def ensure_relooper(relooper):
     if os.path.exists(relooper): return
-    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+    if os.environ.get('EMCC_FAST_COMPILER') != '0':
       logging.debug('not building relooper to js, using it in c++ backend')
       return
 
@@ -1542,7 +1542,7 @@ class Building:
       text = m.groups(0)[0]
       assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
       assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': # fake it in fastcomp
+      if os.environ.get('EMCC_FAST_COMPILER') != '0': # fake it in fastcomp
         return text.replace('emscripten_jcache_printf', 'printf')
       start = text.index('(')
       end = text.rindex(')')

@@ -1200,7 +1200,7 @@ try:
     logging.warning('disabling asm.js since embind is not ready for it yet')
     shared.Settings.ASM_JS = 0
 
-  fastcomp = os.environ.get('EMCC_FAST_COMPILER') == '1'
+  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
 
   if fastcomp:
     shared.Settings.ASM_JS = 1 if opt_level > 0 else 2

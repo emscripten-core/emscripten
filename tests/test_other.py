@@ -207,7 +207,7 @@ Options that are modified or new in %s include:
       ]:
         print params, text
         self.clear()
-        if os.environ.get('EMCC_FAST_COMPILER') == '1' and ['disable typed arrays', 'typed arrays 1 selected']: continue
+        if os.environ.get('EMCC_FAST_COMPILER') != '0' and ['disable typed arrays', 'typed arrays 1 selected']: continue
         output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -451,7 +451,7 @@ f.close()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_unaligned_memory(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
 
     open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
       #include <stdio.h>
@@ -477,7 +477,7 @@ f.close()
     self.assertContained('data: 67452301\ndata[0,1] 16bit: 2301\ndata[1,2] 16bit: 4523', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_unaligned_memory_2(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
 
     open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
       #include <string>
@@ -542,7 +542,7 @@ f.close()
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True))
       return open(self.in_dir('a.out.js')).read()
 
-    if os.environ.get('EMCC_FAST_COMPILER') != '1':
+    if os.environ.get('EMCC_FAST_COMPILER') == '0':
       test([], 'my func') # no asm, so casting func works
       test(['-O2'], 'abort', ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
                               'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
@@ -590,7 +590,7 @@ This pointer might make sense in another type signature: i: _my_func
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
   def test_static_link(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
 
     def test(name, header, main, side, expected, args=[], suffix='cpp', first=True):
       print name
@@ -1817,7 +1817,7 @@ This pointer might make sense in another type signature: i: _my_func
       assert 'error' not in err, 'Unexpected stderr: ' + err
 
   def test_chunking(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('not relevant for fastcomp, only checks js compiler chunking')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('not relevant for fastcomp, only checks js compiler chunking')
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     if os.environ.get('EMCC_CORES'): return self.skip('cannot run if cores are altered')
     if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
@@ -1868,7 +1868,7 @@ This pointer might make sense in another type signature: i: _my_func
     assert 'If you see this - the world is all right!' in output
 
   def test_embind(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
     for args, fail in [
       ([], True), # without --bind, we fail
       (['--bind'], False),
@@ -2362,7 +2362,7 @@ int main() {
     assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1], err[1]
 
   def test_warn_unaligned(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '1': return self.skip('need fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('need fastcomp')
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>
 static const double grid[4][2] = {{-3 / 3., -1 / 3.},

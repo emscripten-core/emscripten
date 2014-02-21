@@ -120,8 +120,6 @@ If manually bisecting:
 '''
 
   def test_emscripten_log(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('fastcomp uses asm, where call stacks are sometimes less clear')
-
     src = os.path.join(self.get_dir(), 'src.cpp')
     open(src, 'w').write(self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
 
@@ -143,7 +141,7 @@ If manually bisecting:
       os.chdir(cwd)
 
   def test_split(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('no --split in fastcomp, deprecated')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('no --split in fastcomp, deprecated')
 
     # test HTML generation.
     self.reftest(path_from_root('tests', 'htmltest.png'))
@@ -237,7 +235,7 @@ If manually bisecting:
     self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
   def test_split_in_source_filenames(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('no --split in fastcomp, deprecated')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('no --split in fastcomp, deprecated')
 
     self.reftest(path_from_root('tests', 'htmltest.png'))
     output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
@@ -1493,7 +1491,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('sdl_resize.c', '1')
 
   def test_gc(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('flaky in fastcomp and also non-fastcomp -O1, timing issues')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('flaky in fastcomp and also non-fastcomp -O1, timing issues')
 
     self.btest('browser_gc.cpp', '1')
 
@@ -1703,7 +1701,7 @@ void *getBindBuffer() {
     self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_aniso(self):
-    if SPIDERMONKEY_ENGINE in JS_ENGINES and os.environ.get('EMCC_FAST_COMPILER') != '1':
+    if SPIDERMONKEY_ENGINE in JS_ENGINES:
       # asm.js-ification check
       Popen([PYTHON, EMCC, path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
       Settings.ASM_JS = 1
@@ -1763,7 +1761,7 @@ void *getBindBuffer() {
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
   def test_module(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
 
     Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')

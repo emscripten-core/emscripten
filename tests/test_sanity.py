@@ -196,7 +196,7 @@ class sanity(RunnerCore):
       del os.environ['EM_IGNORE_SANITY']
 
   def test_llvm_fastcomp(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '1': return self.skip('not using fastcomp')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('not using fastcomp')
 
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
 
