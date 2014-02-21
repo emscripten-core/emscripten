@@ -3946,9 +3946,9 @@ def process(filename):
     post = '''
 def process(filename):
   src = \'\'\'
-    var data = [10, 20, 40, 30];
     var Module = {
-      stdin: function() { return data.pop() || null },
+      data: [10, 20, 40, 30],
+      stdin: function() { return Module.data.pop() || null },
       stdout: function(x) { Module.print('got: ' + x) }
     };
   \'\'\' + open(filename, 'r').read()
