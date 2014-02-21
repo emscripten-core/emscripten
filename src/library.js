@@ -1970,7 +1970,7 @@ LibraryManager.library = {
           }
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         }
-        if (precision === -1) {
+        if (precision < 0) {
           precision = 6; // Standard default.
           precisionSet = false;
         }

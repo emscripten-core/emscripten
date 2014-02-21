@@ -8286,6 +8286,7 @@ int main() {
   printf("%x\n", -0xFFFFFFFF);
   printf("\n");
   printf("%*.*E\n", 10, -1, 12345.6789123);
+  printf("%*.*E\n", 10, -313, 12345.6789123);
   printf("no_new_line");
   return 0;
 }
