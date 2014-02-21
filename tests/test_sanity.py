@@ -199,6 +199,7 @@ class sanity(RunnerCore):
     assert os.environ.get('EMCC_FAST_COMPILER') != '0', 'must be using fastcomp to test fastcomp'
 
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
+    WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend'
 
     restore()
 
@@ -206,6 +207,7 @@ class sanity(RunnerCore):
     assert check_fastcomp()
     output = self.check_working(EMCC)
     assert WARNING not in output, output
+    assert WARNING2 not in output, output
 
     # Fake incorrect llc output, no mention of js backend
     restore()
@@ -222,6 +224,7 @@ class sanity(RunnerCore):
     f.close()
     os.chmod(path_from_root('tests', 'fake', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     output = self.check_working(EMCC, WARNING)
+    output = self.check_working(EMCC, WARNING2)
 
     restore()
 

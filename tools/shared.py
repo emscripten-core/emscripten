@@ -303,6 +303,7 @@ def check_fastcomp():
       print >> sys.stderr, '==========================================================================='
       print >> sys.stderr, llc_version_info,
       print >> sys.stderr, '==========================================================================='
+      logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend')
       return False
     return True
   except Exception, e:
