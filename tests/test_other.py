@@ -277,6 +277,9 @@ f.close()
     # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
     # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+  def test_emcc_nonfastcomp(self):
+    nonfastcomp(self.test_emcc)
+
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
