@@ -270,7 +270,7 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3,2)
+EXPECTED_LLVM_VERSION = (3,3)
 
 actual_clang_version = None
 
