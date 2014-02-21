@@ -772,8 +772,9 @@ var LibraryJSEvents = {
 
         var confirmationMessage = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, 0, userData]);
         
-        if (confirmationMessage)
+        if (confirmationMessage) {
           confirmationMessage = Pointer_stringify(confirmationMessage);
+        }
         if (confirmationMessage) {
           e.preventDefault();
           e.returnValue = confirmationMessage;
