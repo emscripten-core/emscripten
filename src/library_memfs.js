@@ -8,7 +8,7 @@ mergeInto(LibraryManager.library, {
     CONTENT_FLEXIBLE: 2, // has been modified or never set to anything, and is a flexible js array that can grow/shrink
     CONTENT_FIXED: 3, // contains some fixed-size content written into it, in a typed array
     mount: function(mount) {
-      return MEMFS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
+      return MEMFS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
     },
     createNode: function(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
@@ -22,7 +22,6 @@ mergeInto(LibraryManager.library, {
               getattr: MEMFS.node_ops.getattr,
               setattr: MEMFS.node_ops.setattr,
               lookup: MEMFS.node_ops.lookup,
-              mknod: MEMFS.node_ops.mknod,
               mknod: MEMFS.node_ops.mknod,
               rename: MEMFS.node_ops.rename,
               unlink: MEMFS.node_ops.unlink,
@@ -185,7 +184,7 @@ mergeInto(LibraryManager.library, {
         return entries;
       },
       symlink: function(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 0777 | {{{ cDefine('S_IFLNK') }}}, 0);
+        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefine('S_IFLNK') }}}, 0);
         node.link = oldpath;
         return node;
       },

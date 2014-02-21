@@ -3,7 +3,7 @@ mergeInto(LibraryManager.library, {
   $SOCKFS__deps: ['$FS', 'mkport'],
   $SOCKFS: {
     mount: function(mount) {
-      return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
+      return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
     },
     createSocket: function(family, type, protocol) {
       var streaming = type == {{{ cDefine('SOCK_STREAM') }}};
