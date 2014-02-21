@@ -2080,8 +2080,6 @@ def process(filename):
 ''', args=['34962', '26214', '35040'])
 
   def test_indirectbr(self):
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
       test_path = path_from_root('tests', 'core', 'test_indirectbr')
@@ -2090,8 +2088,6 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_indirectbr_many(self):
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': return self.skip('todo in fastcomp')
-
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('blockaddr > 255 requires ta2')
 
       test_path = path_from_root('tests', 'core', 'test_indirectbr_many')
@@ -5133,7 +5129,7 @@ def process(filename):
           'structparam', 'extendedprecision', 'issue_39', 'emptystruct', 'phinonexist', 'quotedlabel', 'oob_ta2', 'phientryimplicit', 'phiself', 'invokebitcast', 'funcptr', # invalid ir
           'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
           '2xi40', # pnacl limitations in ExpandGetElementPtr
-          'indirectbrphi', 'ptrtoint_blockaddr', 'quoted', # current fastcomp limitations FIXME
+          'quoted', # current fastcomp limitations FIXME
           'sillyfuncast2', 'sillybitcast', 'atomicrmw_unaligned' # TODO XXX
         ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
