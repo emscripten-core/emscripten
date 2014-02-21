@@ -79,11 +79,13 @@ document.createElement = function document_createElement(what) {
   }
 };
 
-var console = {
-  log: function(x) {
-    Module.printErr(x);
-  }
-};
+if (typeof console === 'undefined') {
+  var console = {
+    log: function(x) {
+      Module.printErr(x);
+    }
+  };
+}
 
 Module.canvas = document.createElement('canvas');
 
