@@ -36,10 +36,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-if os.environ.get('EMCC_FAST_COMPILER') != '0':
-  test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g']
-else:
-  test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'slow2', 'slow2asm', 's_0_0', 's_0_1']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):

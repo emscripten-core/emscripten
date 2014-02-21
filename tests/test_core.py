@@ -512,22 +512,45 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
 
   def test_cube2hash(self):
-    try:
-      old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
-      os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = '1' # test splitting out each function to a chunk in emscripten.py (21 functions here)
+    # extra testing for various codegen modes
+    for x86 in [0, 1] if self.run_name == 'asm2' else [0]:
+      print 'x86', x86
+      try:
+        old_x86 = os.environ.get('EMCC_LLVM_TARGET') or ''
+        if x86:
+          os.environ['EMCC_LLVM_TARGET'] = "i386-pc-linux-gnu"
+        try:
+          old_fastcomp = os.environ.get('EMCC_FAST_COMPILER') or ''
+          if x86:
+            os.environ['EMCC_FAST_COMPILER'] = "0"
+          try:
+            old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
+            os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = '1' # test splitting out each function to a chunk in emscripten.py (21 functions here)
 
-      # A good test of i64 math
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
-      self.do_run('', 'Usage: hashstring <seed>',
-                  libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
-                  includes=[path_from_root('tests', 'cube2hash')])
+            # A good test of i64 math
+            if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
+            self.do_run('', 'Usage: hashstring <seed>',
+                        libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None, cache_name_extra=str(x86)),
+                        includes=[path_from_root('tests', 'cube2hash')])
 
-      for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
-                           ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
-                           ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-        self.do_run('', 'hash value: ' + output, [text], no_build=True)
-    finally:
-      os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
+            for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
+                                 ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
+                                 ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
+              self.do_run('', 'hash value: ' + output, [text], no_build=True)
+          finally:
+            os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
+        finally:
+          if x86:
+            if old_fastcomp:
+              os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
+            else:
+              del os.environ['EMCC_FAST_COMPILER']
+      finally:
+        if x86:
+          if old_x86:
+            os.environ['EMCC_LLVM_TARGET'] = old_x86
+          else:
+            del os.environ['EMCC_LLVM_TARGET']
 
   def test_unaligned(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
@@ -4662,25 +4685,6 @@ return malloc(size);
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp always aliases pointers')
-
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      results = {}
-      original = open('src.cpp.o.js').read()
-      results[Settings.ALIASING_FUNCTION_POINTERS] = len(original)
-      Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS
-      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
-      final = open('src.cpp.o.js').read()
-      results[Settings.ALIASING_FUNCTION_POINTERS] = len(final)
-      open('original.js', 'w').write(original)
-      print results
-      assert results[1] < 0.99*results[0]
-      assert ' & 3]()' in original, 'small function table exists'
-      assert ' & 3]()' not in final, 'small function table does not exist'
-      assert ' & 255]()' not in original, 'big function table does not exist'
-      assert ' & 255]()' in final, 'big function table exists'
-
   def test_simd(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
@@ -6476,27 +6480,19 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
 
   return TT
 
-# Make one run with the defaults
-default = make_run("default", compiler=CLANG, emcc_args=[] if os.environ.get('EMCC_FAST_COMPILER') == '0' else ['-s', 'ASM_JS=1'])
-
-# Make one run with -O1, with safe heap
-o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=0", "-s", "SAFE_HEAP=1"])
-
-# Make one run with -O2, but without closure (we enable closure in specific tests, otherwise on everything it is too slow)
-o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "JS_CHUNK_SIZE=1024"])
-
-# asm.js
+# Main test modes
+default = make_run("default", compiler=CLANG, emcc_args=[])
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
 asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-O2", "-s", "PRECISE_F32=1"])
-if os.environ.get('EMCC_FAST_COMPILER') != '0':
-  asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "SAFE_HEAP=1"])
-else:
-  asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "CHECK_HEAP_ALIGN=1"])
-asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env={"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"})
+asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "SAFE_HEAP=1"])
 
-# Make custom runs with various options
+# Legacy test modes - 
+slow2 = make_run("slow2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0"], env={"EMCC_FAST_COMPILER": "0"})
+slow2asm = make_run("slow2asm", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_FAST_COMPILER": "0"})
+
+# Legacy test modes - very old
 for compiler, quantum, embetter, typed_arrays in [
   (CLANG, 4, 0, 0),
   (CLANG, 4, 1, 1),
@@ -6504,6 +6500,6 @@ for compiler, quantum, embetter, typed_arrays in [
   fullname = 's_0_%d%s%s' % (
     embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
   )
-  locals()[fullname] = make_run(fullname, fullname, compiler, embetter, quantum, typed_arrays)
+  locals()[fullname] = make_run(fullname, fullname, compiler, embetter, quantum, typed_arrays, env={"EMCC_FAST_COMPILER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
