@@ -747,8 +747,11 @@ function assert(x, y) { if (!x) throw 'assertion failed ' + y }
 
 var windowClose = window.close;
 window.close = function() {
-  doReftest();
-  setTimeout(windowClose, 1000);
+  // wait for rafs to arrive and the screen to update before reftesting
+  setTimeout(function() {
+    doReftest();
+    setTimeout(windowClose, 1000);
+  }, 1000);
 };
 </script>
 </body>''' % open('reftest.js').read())
