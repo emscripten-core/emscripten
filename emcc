@@ -1284,7 +1284,7 @@ try:
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
 
-  if shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
+  if not fastcomp and shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
     logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
