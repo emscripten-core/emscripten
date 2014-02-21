@@ -1490,11 +1490,6 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_resize(self):
     self.btest('sdl_resize.c', '1')
 
-  def test_gc(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('flaky in fastcomp and also non-fastcomp -O1, timing issues')
-
-    self.btest('browser_gc.cpp', '1')
-
   def test_glshaderinfo(self):
     self.btest('glshaderinfo.cpp', '1')
 
