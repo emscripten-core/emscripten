@@ -573,7 +573,7 @@ elif sys.argv[1] == '--version':
   finally:
     os.chdir(here)
   print '''emcc (Emscripten GCC-like replacement) %s (%s)
-Copyright (C) 2013 the Emscripten authors (see AUTHORS.txt)
+Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   ''' % (shared.EMSCRIPTEN_VERSION, revision)
