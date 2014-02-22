@@ -923,7 +923,7 @@ This pointer might make sense in another type signature: i: _my_func
          500: (250, 500),
         1000: (230, 1000),
         2000: (380, 2000),
-        5000: (800, 5000),
+        5000: (500, 5000),
            0: (1500, 5000)
       }),
       (['-O2'], {
