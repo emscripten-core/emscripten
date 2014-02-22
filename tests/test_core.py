@@ -5630,8 +5630,6 @@ def process(filename):
 
       # Way 2: use CppHeaderParser
 
-      Settings.RUNTIME_TYPE_INFO = 1
-
       header = '''
         #include <stdio.h>
 
