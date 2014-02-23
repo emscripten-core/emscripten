@@ -194,9 +194,6 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 }
 
 function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
-#if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP load: ' + [dest, bytes, isFloat, unsigned]);
-#endif
   assert(dest > 0, 'segmentation fault');
   assert(dest % bytes === 0);
   assert(dest < Math.max(DYNAMICTOP, STATICTOP));
@@ -204,6 +201,9 @@ function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned]);
+#endif
   return ret;
 }
 
