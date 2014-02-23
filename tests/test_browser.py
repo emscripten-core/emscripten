@@ -1678,6 +1678,10 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]']).communicate()
     self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
 
+  def test_worker_api_3(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
+    self.btest('worker_api_3_main.cpp', expected='5')
+
   def test_emscripten_async_wget2(self):
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
