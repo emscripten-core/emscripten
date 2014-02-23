@@ -25,6 +25,7 @@ function _free($mem) {
  $mem = $mem | 0;
  var $5 = 0, $10 = 0, $16 = 0, $21 = 0, $25 = 0, $26 = 0, $psize_0 = 0, $p_0 = 0, $189 = 0, $194 = 0, sp = 0, helper$0 = 0;
  sp = STACKTOP;
+ STACKTOP = STACKTOP + 864 | 0;
  if (($mem | 0) == 0) {
   STACKTOP = sp;
   return;

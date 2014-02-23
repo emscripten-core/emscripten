@@ -4935,7 +4935,27 @@ function outline(ast) {
           if ('sp' in asmData.vars) {
             // find stack bump (STACKTOP = STACKTOP + X | 0) and add the extra space
             var stackBumpNode = getStackBumpNode(stats);
-            if (stackBumpNode) stackBumpNode[3][2][3][1] = asmData.totalStackSize;
+            if (stackBumpNode) {
+              stackBumpNode[3][2][3][1] = asmData.totalStackSize;
+            } else {
+              // sp exists, but no stack bump, so we need to add it
+              var found = false;
+              for (var i = 0; i < stats.length; i++) {
+                var stat = stats[i];
+                if (stat[0] === 'stat') stat = stat[1];
+                if (stat[0] === 'assign' && stat[2][0] === 'name' && stat[2][1] === 'sp') {
+                  var newNode = ['stat', makeAssign(['name', 'STACKTOP'], ['binary', '|', ['binary', '+', ['name', 'STACKTOP'], ['num', asmData.totalStackSize]], ['num', 0]])];
+                  if (i+1 < stats.length) {
+                    stats.splice(i+1, 0, newNode);
+                  } else {
+                    stats.push(newNode);
+                  }
+                  found = true;
+                  break;
+                }
+              }
+              assert(found);
+            }
           } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
             var index = getFirstIndexInNormalized(func, asmData);
