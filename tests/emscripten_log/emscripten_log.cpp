@@ -83,14 +83,14 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 
 	if ((flags & EM_LOG_C_STACK) != 0)
 	{
-		MYASSERT(!!strstr(callstack, "at bar(int, char*, double) (src.cpp:"), "Callstack was %s!", callstack);
-		MYASSERT(!!strstr(callstack, "at void Foo<int>() (src.cpp:"), "Callstack was %s!", callstack);
+		MYASSERT(!!strstr(callstack, ".cpp:"), "Callstack was %s!", callstack);
 	}
 	else
 	{
-		MYASSERT(!!strstr(callstack, "at bar(int, char*, double) (src.cpp.o.js:"), "Callstack was %s!", callstack);
-		MYASSERT(!!strstr(callstack, "at void Foo<int>() (src.cpp.o.js:"), "Callstack was %s!", callstack);
+		MYASSERT(!!strstr(callstack, ".js:"), "Callstack was %s!", callstack);
 	}
+	MYASSERT(!!strstr(callstack, "at bar(int, char*, double)"), "Callstack was %s!", callstack);
+	MYASSERT(!!strstr(callstack, "at void Foo<int>()"), "Callstack was %s!", callstack);
 
 	// 5. Clean up.
 	delete[] callstack;
