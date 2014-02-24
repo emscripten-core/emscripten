@@ -687,9 +687,12 @@ else:
 
 try:
   if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    new_spidermonkey = SPIDERMONKEY_ENGINE
     if type(SPIDERMONKEY_ENGINE) is str:
-      SPIDERMONKEY_ENGINE = [SPIDERMONKEY_ENGINE]
-    SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+      new_spidermonkey = [SPIDERMONKEY_ENGINE]
+    new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+    JS_ENGINES = map(lambda x: x if x != SPIDERMONKEY_ENGINE else new_spidermonkey, JS_ENGINES)
+    SPIDERMONKEY_ENGINE = new_spidermonkey
 except NameError:
   pass
 
