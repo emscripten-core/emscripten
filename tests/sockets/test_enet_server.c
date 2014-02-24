@@ -4,7 +4,7 @@
 #include <string.h>
 #include <enet/enet.h>
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -29,12 +29,12 @@ void send_msg(ENetPeer *peer) {
 
 void main_loop() {
   static int counter = 0;
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   counter++;
 #endif
   if (counter == 100) {
     printf("stop!\n");
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     emscripten_cancel_main_loop();
 #endif
     return;
@@ -101,7 +101,7 @@ int main (int argc, char ** argv)
     exit (EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 3, 1);
 #else
   while (1) main_loop();

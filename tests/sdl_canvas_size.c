@@ -30,7 +30,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 ); // *new*
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     // Test 1: Check that initializing video mode with size (0,0) will use the size from the <canvas> element.
     screen = SDL_SetVideoMode( 0, 0, 16, SDL_OPENGL ); // *changed*
 
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 
     SDL_GL_SwapBuffers();
 
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     // Wait for 3 seconds to give us a chance to see the image
     SDL_Delay(3000);
 #endif

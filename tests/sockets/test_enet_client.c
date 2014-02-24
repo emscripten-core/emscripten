@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <enet/enet.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
 ENetHost * host;
 
 void main_loop() {
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   static int counter = 0;
   counter++;
   if (counter == 100) {
@@ -34,7 +34,7 @@ void main_loop() {
               event.channelID);
 
       int result = strcmp("packetfoo", event.packet->data);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
       REPORT_RESULT();
 #else
       exit(EXIT_SUCCESS);
@@ -92,7 +92,7 @@ int main (int argc, char ** argv)
     exit (EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #if USE_IFRAME
   emscripten_run_script("console.log('adding iframe');"
                         "var iframe = document.createElement('iframe');"
@@ -104,7 +104,7 @@ int main (int argc, char ** argv)
 #endif
 #endif
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 3, 1);
 #else
   while (1) main_loop();

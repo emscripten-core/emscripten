@@ -32,7 +32,7 @@ void test() {
   // than a FIFO. so, the tests are disabled when running
   // natively as they'd be utterly inconsistent.
   //
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 
   // mknod a folder
   err = mknod("mknod-folder", S_IFDIR | 0777, 0);

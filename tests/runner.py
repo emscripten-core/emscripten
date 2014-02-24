@@ -583,7 +583,7 @@ class BrowserCore(RunnerCore):
 
   def with_report_result(self, code):
     return r'''
-      #if EMSCRIPTEN
+      #ifdef __EMSCRIPTEN__
       #include <emscripten.h>
       #define REPORT_RESULT_INTERNAL(sync) \
         char output[1000]; \

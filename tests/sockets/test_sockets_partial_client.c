@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <assert.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -19,7 +19,7 @@ int sum = 0;
 
 void finish(int result) {
   close(sockfd);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   REPORT_RESULT();
 #endif
   exit(result);
@@ -108,7 +108,7 @@ int main() {
     finish(EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(iter, 0, 0);
 #else
   while (1) iter();
