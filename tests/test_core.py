@@ -504,6 +504,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
+  def test_asmjs_unknown_emscripten(self):
+    if self.emcc_args == None: return self.skip('needs emcc')
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for asmjs-unknown-emscripten target test')
+    self.do_run(open(path_from_root('tests', 'asmjs-unknown-emscripten.c')).read(), '')
+
   def test_cube2md5(self):
     if self.emcc_args == None: return self.skip('needs emcc')
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')

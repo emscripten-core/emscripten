@@ -626,20 +626,29 @@ try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
 except:
   COMPILER_OPTS = []
-COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-DEMSCRIPTEN', '-D__EMSCRIPTEN__',
-                                 '-fno-math-errno',
-                                 #'-fno-threadsafe-statics', # disabled due to issue 1289
+COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
                                  '-target', LLVM_TARGET]
 
-# For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
-if LLVM_TARGET == 'asmjs-unknown-emscripten' or LLVM_TARGET == 'le32-unknown-nacl':
-  COMPILER_OPTS = filter(lambda opt: opt != '-m32', COMPILER_OPTS) # asmjs-unknown-emscripten target is 32-bit anyhow, no need for -m32
-  COMPILER_OPTS += ['-U__native_client__', '-U__pnacl__', '-U__ELF__'] # The nacl target is originally used for Google Native Client. Emscripten is not NaCl, so remove the platform #define, when using their triple.
+# COMPILER_STANDARDIZATION_OPTS: Options to correct various predefined macro options.
+COMPILER_STANDARDIZATION_OPTS = []
 
-# Remove various platform specific defines, and set little endian
-COMPILER_STANDARDIZATION_OPTS = ['-U__i386__', '-U__i386', '-Ui386', '-U__STRICT_ANSI__', '-D__IEEE_LITTLE_ENDIAN',
-                                 '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
-                                 '-U__APPLE__', '-U__linux__']
+# When we're not using an appropriate target triple, use -m32 to get i386, which we
+# can mostly make work.
+if LLVM_TARGET != 'asmjs-unknown-emscripten' and LLVM_TARGET != 'le32-unknown-nacl':
+  COMPILER_OPTS += ['-m32']
+  COMPILER_STANDARDIZATION_OPTS += ['-U__i386__', '-U__i386', '-Ui386',
+                                    '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
+                                    '-U__APPLE__', '-U__linux__']
+
+# With the asmjs-unknown-emscripten target triple, clang sets up language modes
+# and predefined macros properly. When using the other targets, we have to set things
+# up manually.
+if LLVM_TARGET != 'asmjs-unknown-emscripten':
+  COMPILER_OPTS += ['-fno-math-errno']
+  COMPILER_STANDARDIZATION_OPTS += ['-D__IEEE_LITTLE_ENDIAN']
+if LLVM_TARGET == 'le32-unknown-nacl':
+  COMPILER_OPTS += ['-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-fno-math-errno',
+                    '-U__native_client__', '-U__pnacl__', '-U__ELF__']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 

@@ -100,7 +100,7 @@
 
 #endif /* Windows */
 
-#if defined(EMSCRIPTEN)
+#if defined(__EMSCRIPTEN__)
 
 #define _YUGA_LITTLE_ENDIAN 1
 #define _YUGA_BIG_ENDIAN    0
