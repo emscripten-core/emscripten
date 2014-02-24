@@ -1,4 +1,6 @@
 
+// WARNING: this is deprecated. You should just build Boehm from source, it is much faster than the toy version written in emscripten
+
 if (GC_SUPPORT) {
   EXPORTED_FUNCTIONS['_calloc'] = 1;
   EXPORTED_FUNCTIONS['_realloc'] = 1;

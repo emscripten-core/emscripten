@@ -4525,10 +4525,10 @@ function outline(ast) {
     var size = measureSize(func);
     if (size <= extraInfo.sizeToOutline) {
       sizeToOutline = Infinity;
-      printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
+      //printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
     } else {
       sizeToOutline = Math.round(size/Math.max(2, asmData.intendedPieces--));
-      printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
+      //printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
     }
   }
 
@@ -4753,7 +4753,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('performed outline ' + [func[1], newIdent, 'pre size', originalCodeSize, 'resulting size', measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
+    //printErr('performed outline ' + [func[1], newIdent, 'pre size', originalCodeSize, 'resulting size', measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
     calculateThreshold(func, asmData);
     return [newFunc];
   }
@@ -4775,7 +4775,16 @@ function outline(ast) {
         for (var i = minIndex; i < stats.length; i++) {
           var stat = stats[i];
           if (stat[0] == 'stat') stat = stat[1];
-          if (stat[0] == 'assign' && stat[2][0] == 'name' && stat[2][1] == 'sp') minIndex = i+1; // cannot outline |sp = |
+          if (stat[0] == 'assign' && stat[2][0] == 'name' && stat[2][1] == 'sp') {
+            // cannot outline |sp = |
+            minIndex = i+1;
+            // When followed by a STACKTOP bump, preserve that too (we may need to replace it later)
+            stat = stats[i+1];
+            if (stat[0] == 'stat') stat = stat[1];
+            if (stat && stat[0] == 'assign' && stat[2][0] == 'name' && stat[2][1] == 'STACKTOP') {
+              minIndex = i+2;
+            }
+          }
         }
       }
     }
@@ -4899,7 +4908,7 @@ function outline(ast) {
 
   var maxTotalFunctions = Infinity; // debugging tool
 
-  printErr('\n');
+  //printErr('\n');
 
   var more = true;
   while (more) {
@@ -4926,7 +4935,27 @@ function outline(ast) {
           if ('sp' in asmData.vars) {
             // find stack bump (STACKTOP = STACKTOP + X | 0) and add the extra space
             var stackBumpNode = getStackBumpNode(stats);
-            if (stackBumpNode) stackBumpNode[3][2][3][1] = asmData.totalStackSize;
+            if (stackBumpNode) {
+              stackBumpNode[3][2][3][1] = asmData.totalStackSize;
+            } else {
+              // sp exists, but no stack bump, so we need to add it
+              var found = false;
+              for (var i = 0; i < stats.length; i++) {
+                var stat = stats[i];
+                if (stat[0] === 'stat') stat = stat[1];
+                if (stat[0] === 'assign' && stat[2][0] === 'name' && stat[2][1] === 'sp') {
+                  var newNode = ['stat', makeAssign(['name', 'STACKTOP'], ['binary', '|', ['binary', '+', ['name', 'STACKTOP'], ['num', asmData.totalStackSize]], ['num', 0]])];
+                  if (i+1 < stats.length) {
+                    stats.splice(i+1, 0, newNode);
+                  } else {
+                    stats.push(newNode);
+                  }
+                  found = true;
+                  break;
+                }
+              }
+              assert(found);
+            }
           } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
             var index = getFirstIndexInNormalized(func, asmData);
@@ -4961,7 +4990,7 @@ function outline(ast) {
         }
         if (ret) {
           ret.push(func);
-          printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+          //printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
         }
       }
       denormalizeAsm(func, asmData);

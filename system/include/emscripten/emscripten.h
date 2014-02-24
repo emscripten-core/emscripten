@@ -40,10 +40,15 @@ extern "C" {
 #define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
 
 /*
- * Input-output versions of EM_ASM. EM_ASM_INT receives arguments of
- * either int or double type and returns an int; EM_ASM_DOUBLE
- * receives similar arguments (int or double) but returns a double.
- * Arguments arrive as $0, $1 etc; output value should be returned:
+ * Input-output versions of EM_ASM.
+ *
+ * EM_ASM_ (an extra _ is added) allows sending values (ints
+ * or doubles) into the code. If you also want a return value,
+ * EM_ASM_INT receives arguments (of int or double type)
+ * and returns an int; EM_ASM_DOUBLE does the same and returns
+ * a double.
+ *
+ * Arguments arrive as $0, $1 etc. The output value should be returned:
  *
  *    int x = EM_ASM_INT({
  *      console.log('I received: ' + [$0, $1]);
@@ -54,6 +59,7 @@ extern "C" {
  * (int or double) but *not* to pass any values, you can use
  * EM_ASM_INT_V and EM_ASM_DOUBLE_V respectively.
  */
+#define EM_ASM_(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, __VA_ARGS__)
 #define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)

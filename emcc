@@ -425,59 +425,6 @@ Options that are modified or new in %s include:
                            -v to Clang, and also enable EMCC_DEBUG
                            to details emcc's operations
 
-  --jcache                 Use a JavaScript cache. This is disabled by
-                           default. When enabled, emcc will store the
-                           results of compilation in a cache and check
-                           the cache when compiling later, something
-                           like what ccache does. This allows incremental
-                           builds - where you are compiling a large
-                           program but only modified a small part of it -
-                           to be much faster (at the cost of more disk
-                           IO for cache accesses). Note that you need
-                           to enable --jcache for both loading and saving
-                           of data, so you must enable it on a full build
-                           for a later incremental build (where you also
-                           enable it) to be sped up.
-
-                           Caching works separately on 4 parts of compilation:
-                           'pre' which is types and global variables; that
-                           information is then fed into 'funcs' which are
-                           the functions (which we parallelize), and then
-                           'post' which adds final information based on
-                           the functions (e.g., do we need long64 support
-                           code). Finally, 'jsfuncs' are JavaScript-level
-                           optimizations. Each of the 4 parts can be cached
-                           separately, but note that they can affect each
-                           other: If you recompile a single C++ file that
-                           changes a global variable - e.g., adds, removes
-                           or modifies a global variable, say by adding
-                           a printf or by adding a compile-time timestamp,
-                           then 'pre' cannot be loaded from the cache. And
-                           since 'pre's output is sent to 'funcs' and 'post',
-                           they will get invalidated as well, and only
-                           'jsfuncs' will be cached. So avoid modifying
-                           globals to let caching work fully.
-
-                           To work around the problem mentioned in the
-                           previous paragraph, you can use
-
-                            emscripten_jcache_printf
-
-                           when adding debug printfs to your code. That
-                           function is specially preprocessed so that it
-                           does not create a constant string global for
-                           its first argument. See emscripten.h for more
-                           details. Note in particular that you need to
-                           already have a call to that function in your
-                           code *before* you add one and do an incremental
-                           build, so that adding an external reference
-                           (also a global property) does not invalidate
-                           everything.
-
-                           Note that you should use -g during the linking
-                           stage (bitcode to JS), for jcache to work
-                           (otherwise, JS minification can confuse it).
-
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
                            libc++abi, libc). This is normally
@@ -986,6 +933,7 @@ try:
       logging.warning ('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
       newargs[i] = ''
     elif newargs[i] == '--jcache':
+      logging.warning('jcache is deprecated')
       jcache = True
       newargs[i] = ''
     elif newargs[i] == '--clear-cache':
@@ -1200,26 +1148,33 @@ try:
     logging.warning('disabling asm.js since embind is not ready for it yet')
     shared.Settings.ASM_JS = 0
 
-  fastcomp = os.environ.get('EMCC_FAST_COMPILER') == '1'
+  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
 
   if fastcomp:
     shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
-    assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
-    assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp yet'
-    assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
-    assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
-    assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
-    assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
-    assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
-    assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
-    assert shared.Settings.TARGET_LE32 == 1, 'fastcomp requires le32'
-    assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
-    assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
-    assert not bind, 'embind not supported in fastcomp yet'
-    assert shared.Settings.MAX_SETJMPS == 20, 'changing MAX_SETJMPS is not supported in fastcomp yet'
-    assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
+    try:
+      assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
+      assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp yet'
+      assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
+      assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
+      assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
+      assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
+      assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
+      assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
+      assert shared.Settings.TARGET_LE32 == 1, 'fastcomp requires le32'
+      assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
+      assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
+      assert not bind, 'embind not supported in fastcomp yet'
+      assert shared.Settings.MAX_SETJMPS == 20, 'changing MAX_SETJMPS is not supported in fastcomp yet'
+      assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
+      assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
+      assert not shared.Settings.CORRUPTION_CHECK, 'CORRUPTION_CHECK is not supported in asm.js mode, which is what fastcomp can emit (you can use non-asm.js mode in non-fastcomp)'
+    except Exception, e:
+      logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend')
+      raise e
+
     if jcache:
-      logging.warning('jcache is not supported in fastcomp (you should not need it anyhow), disabling')
+      logging.warning('jcache is deprecated and not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
 
     fastcomp_opts = ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
@@ -1284,7 +1239,7 @@ try:
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
 
-  if shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
+  if not fastcomp and shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
     logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
