@@ -4525,10 +4525,10 @@ function outline(ast) {
     var size = measureSize(func);
     if (size <= extraInfo.sizeToOutline) {
       sizeToOutline = Infinity;
-      printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
+      //printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
     } else {
       sizeToOutline = Math.round(size/Math.max(2, asmData.intendedPieces--));
-      printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
+      //printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
     }
   }
 
@@ -4753,7 +4753,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('performed outline ' + [func[1], newIdent, 'pre size', originalCodeSize, 'resulting size', measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
+    //printErr('performed outline ' + [func[1], newIdent, 'pre size', originalCodeSize, 'resulting size', measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
     calculateThreshold(func, asmData);
     return [newFunc];
   }
@@ -4908,7 +4908,7 @@ function outline(ast) {
 
   var maxTotalFunctions = Infinity; // debugging tool
 
-  printErr('\n');
+  //printErr('\n');
 
   var more = true;
   while (more) {
@@ -4990,7 +4990,7 @@ function outline(ast) {
         }
         if (ret) {
           ret.push(func);
-          printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+          //printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
         }
       }
       denormalizeAsm(func, asmData);
