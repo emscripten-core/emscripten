@@ -4584,6 +4584,7 @@ LibraryManager.library = {
 
   // Destructors for std::exception since we don't have them implemented in libcxx as we aren't using libcxxabi.
   // These are also needed for the dlmalloc tests.
+  _ZNSt9exceptionD0Ev: function() {},
   _ZNSt9exceptionD1Ev: function() {},
   _ZNSt9exceptionD2Ev: function() {},
 
