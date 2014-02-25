@@ -384,7 +384,7 @@ function JSify(data, functionsOnly) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
 
-    function addFromLibrary(ident) {
+    function addFromLibrary(ident, notDep) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -396,8 +396,10 @@ function JSify(data, functionsOnly) {
       if (('_' + ident) in Functions.implementedFunctions) return '';
 
       if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
-        if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
-        else if (VERBOSE || (WARN_ON_UNDEFINED_SYMBOLS && !LINKABLE)) warn('unresolved symbol: ' + ident);
+        if (notDep) {
+          if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
+          else if (VERBOSE || (WARN_ON_UNDEFINED_SYMBOLS && !LINKABLE)) warn('unresolved symbol: ' + ident);
+        }
         // emit a stub that will fail at runtime
         LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
       }
@@ -502,7 +504,7 @@ function JSify(data, functionsOnly) {
           delete LibraryManager.library[shortident + '__deps'];
         }
       }
-      item.JS = addFromLibrary(shortident);
+      item.JS = addFromLibrary(shortident, true);
     }
   }
 
