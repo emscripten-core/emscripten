@@ -919,8 +919,8 @@ This pointer might make sense in another type signature: i: _my_func
     for test_opts, expected_ranges in [
       ([], {
          100: (190, 500),
-         250: (200, 500),
-         500: (250, 500),
+         250: (200, 600),
+         500: (250, 700),
         1000: (230, 1000),
         2000: (380, 2000),
         5000: (500, 5000),
