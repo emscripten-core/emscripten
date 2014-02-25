@@ -2420,7 +2420,9 @@ LibraryManager.library = {
   fileno: function(stream) {
     // int fileno(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fileno.html
-    return FS.getStreamFromPtr(stream).fd;
+    stream = FS.getStreamFromPtr(stream);
+    if (!stream) return -1;
+    return stream.fd;
   },
   ftrylockfile: function() {
     // int ftrylockfile(FILE *file);
