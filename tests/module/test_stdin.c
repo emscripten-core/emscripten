@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -48,7 +48,7 @@ int main(int argc, char const *argv[])
   // should exit out after calling main_loop once.
   main_loop();
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 60, 0);
 #else
   while (1) main_loop(); sleep(1);

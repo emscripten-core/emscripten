@@ -6,7 +6,7 @@
 
 
 int main(int argc, char **argv) {
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   // include GL stuff, to check that we can compile hybrid 2d/GL apps
   extern void glBegin(int mode);
   extern void glBindBuffer(int target, int buffer);

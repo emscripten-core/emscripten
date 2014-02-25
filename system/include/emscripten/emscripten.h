@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#if !EMSCRIPTEN
+#if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
 
@@ -141,7 +141,7 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  *    you created an object on the stack, it will be cleaned up
  *    before the main loop will be called the first time.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
 extern void emscripten_set_main_loop_arg(void (*func)(void*), void *arg, int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop();
@@ -166,7 +166,7 @@ extern void emscripten_cancel_main_loop();
  * are not counted, do not block the main loop, and can fire
  * at specific time in the future.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
 extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
 #else
@@ -188,7 +188,7 @@ inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), v
  * to 10, then push 10 blockers, as they complete the user will
  * see x/10 and so forth.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_set_main_loop_expected_blockers(int num);
 #else
 inline void emscripten_set_main_loop_expected_blockers(int num) {}
@@ -203,7 +203,7 @@ inline void emscripten_set_main_loop_expected_blockers(int num) {}
  * If millis is negative, the browser's requestAnimationFrame
  * mechanism is used.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_async_call(void (*func)(void *), void *arg, int millis);
 #else
 inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
@@ -247,7 +247,7 @@ void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
  * absolute time, and is only meaningful in comparison to
  * other calls to this function. The unit is ms.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 double emscripten_get_now();
 #else
 #include <time.h>

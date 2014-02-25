@@ -82,7 +82,7 @@ typedef long long json_int_t;
 typedef long json_int_t;
 #endif /* JSON_INTEGER_IS_LONG_LONG */
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     extern "C" bool json_typeof(const void *object);
     extern "C" bool json_is_object(const void *object);
     extern "C" bool json_is_array(const void *object);

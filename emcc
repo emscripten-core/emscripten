@@ -47,8 +47,8 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
-import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging, json
-from subprocess import PIPE, STDOUT
+import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
+from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS
 from tools.response_file import read_response_file
@@ -330,7 +330,7 @@ Options that are modified or new in %s include:
                            For more docs on the options --preload-file
                            accepts, see  https://github.com/kripken/emscripten/wiki/Filesystem-Guide
 
-  --exclude-file <name>   Files and directories to be excluded from 
+  --exclude-file <name>   Files and directories to be excluded from
                            --embed-file and --preload-file
                            wildcard is supported
 
@@ -477,9 +477,9 @@ Options that are modified or new in %s include:
   --default-obj-ext .ext   Specifies the file suffix to generate if the location
                            of a directory name is passed to -o directive, e.g.
                              emcc -c a.c -o dir/
-                           will by default generate an output name 'dir/a.o', 
+                           will by default generate an output name 'dir/a.o',
                            but this cmdline param can be passed to generate a
-                           file with a custom suffix 'dir/a.ext'. 
+                           file with a custom suffix 'dir/a.ext'.
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -524,13 +524,13 @@ Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   ''' % (shared.EMSCRIPTEN_VERSION, revision)
-  exit(0)  
+  exit(0)
 
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
   print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) %s' % shared.EMSCRIPTEN_VERSION
   exit(subprocess.call([shared.CLANG, '-v']))
 
-def is_minus_s_for_emcc(newargs,i):
+def is_minus_s_for_emcc(newargs, i):
   assert newargs[i] == '-s'
   if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option
     return True
@@ -591,7 +591,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       idx += 1
 
   cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
-  if not use_js: cmd += shared.EMSDK_OPTS + ['-DEMSCRIPTEN']
+  if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
   if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
   logging.debug('just configuring: ' + ' '.join(cmd))
@@ -729,7 +729,7 @@ log_time_last = time.time()
 def log_time(name):
   global log_time_last
   now = time.time()
-  logging.debug('emcc step "%s" took %.2f seconds' % (name, now - log_time_last))
+  logging.debug('emcc step "%s" took %.2f seconds', name, now - log_time_last)
   log_time_last = now
 
 try:
@@ -805,7 +805,7 @@ try:
       # optimization mode, but we disable the actual optimization passes, as we'll
       # run them seperately.
       newargs.append('-mllvm')
-      newargs.append('-disable-llvm-optzns');
+      newargs.append('-disable-llvm-optzns')
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
       js_opts = eval(newargs[i+1])
@@ -930,7 +930,7 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '--remove-duplicates':
-      logging.warning ('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
+      logging.warning('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
       newargs[i] = ''
     elif newargs[i] == '--jcache':
       logging.warning('jcache is deprecated')
@@ -957,7 +957,7 @@ try:
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name):
-        logging.warning ('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+        logging.warning('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
     elif newargs[i] == '--emrun':
       emrun = True
@@ -973,7 +973,7 @@ try:
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
 
-  newargs = [ arg for arg in newargs if arg is not '' ]
+  newargs = [arg for arg in newargs if arg is not '']
 
   # If user did not specify a default -std for C++ code, specify the emscripten default.
   if default_cxx_std:
@@ -999,7 +999,7 @@ try:
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 
   if closure:
-    assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER)
+    assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
 
   for i in range(len(newargs)):
     if newargs[i] == '-s':
@@ -1011,7 +1011,7 @@ try:
       settings_changes.append('USE_TYPED_ARRAYS=' + newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
-  newargs = [ arg for arg in newargs if arg is not '' ]
+  newargs = [arg for arg in newargs if arg is not '']
 
   if split_js_file:
     settings_changes.append("PRINT_SPLIT_FILE_MARKER=1")
@@ -1032,12 +1032,12 @@ try:
       prev = newargs[i-1]
       if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
 
-    if (os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS)):
+    if os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS):
       arg = os.path.realpath(arg)
 
     if not arg.startswith('-'):
       if not os.path.exists(arg):
-        logging.error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)' % (arg, arg))
+        logging.error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
         exit(1)
 
       arg_ending = filename_type_ending(arg)
@@ -1082,7 +1082,7 @@ try:
 
   original_input_files = input_files[:]
 
-  newargs = [ arg for arg in newargs if arg is not '' ]
+  newargs = [arg for arg in newargs if arg is not '']
 
   # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
   has_dash_c = '-c' in newargs
@@ -1093,7 +1093,7 @@ try:
 
   # Find library files
   for lib in libs:
-    logging.debug('looking for library "%s"' % lib)
+    logging.debug('looking for library "%s"', lib)
     found = False
     for prefix in LIB_PREFIXES:
       for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
@@ -1101,24 +1101,24 @@ try:
         for lib_dir in lib_dirs:
           path = os.path.join(lib_dir, name)
           if os.path.exists(path):
-            logging.debug('found library "%s" at %s' % (lib, path))
+            logging.debug('found library "%s" at %s', lib, path)
             input_files.append(path)
             found = True
             break
         if found: break
       if found: break
-    if not found: logging.warning('emcc: cannot find library "%s"' % lib)
+    if not found: logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
   # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
   if not filename_type_suffix(target) in JS_CONTAINING_SUFFIXES or ignore_dynamic_linking:
     def check(input_file):
       if filename_type_ending(input_file) in DYNAMICLIB_ENDINGS:
-        if not ignore_dynamic_linking: logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end' % os.path.basename(input_file))
+        if not ignore_dynamic_linking: logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
         return False
       else:
         return True
-    input_files = filter(lambda input_file: check(input_file), input_files)
+    input_files = [input_file for input_file in input_files if check(input_file)]
 
   if len(input_files) == 0:
     logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
@@ -1161,7 +1161,7 @@ try:
       assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
       assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
       assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
-      assert shared.Settings.TARGET_LE32 == 1, 'fastcomp requires le32'
+      assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
       assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
       assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
       assert not bind, 'embind not supported in fastcomp yet'
@@ -1214,10 +1214,12 @@ try:
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
     shared.Settings.TARGET_X86 = 1
-    shared.Settings.TARGET_LE32 = 0
-    assert 'le32-unknown-nacl' not in shared.COMPILER_OPTS
-  elif shared.LLVM_TARGET == 'le32-unknown-nacl':
-    shared.Settings.TARGET_LE32 = 1
+    shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 0
+    assert 'asmjs-unknown-emscripten' not in shared.COMPILER_OPTS
+  elif shared.LLVM_TARGET == 'asmjs-unknown-emscripten' or \
+       shared.LLVM_TARGET == 'le32-unknown-nacl':
+    # For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
+    shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1
     shared.Settings.TARGET_X86 = 0
     assert 'i386-pc-linux-gnu' not in shared.COMPILER_OPTS
   else:
@@ -1334,7 +1336,7 @@ try:
         file_ending = filename_type_ending(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
           temp_file = temp_files[i]
-          logging.debug('optimizing %s with -O%s' % (input_file, llvm_opts))
+          logging.debug('optimizing %s with -O%s', input_file, llvm_opts)
           shared.Building.llvm_opt(temp_file, llvm_opts)
 
   # If we were just asked to generate bitcode, stop there
@@ -1391,7 +1393,7 @@ try:
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_ENDINGS or suffix(temp_files[0]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents = len(filter(lambda temp: not temp.endswith(STATICLIB_ENDINGS), temp_files)) == 0)
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=len([temp for temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
@@ -1404,7 +1406,7 @@ try:
   log_time('link')
 
   if DEBUG:
-    logging.debug('saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR)
+    logging.debug('saving intermediate processing steps to %s', shared.EMSCRIPTEN_TEMP_DIR)
 
     intermediate_counter = 0
     def save_intermediate(name=None, suffix='js'):
@@ -1528,7 +1530,7 @@ try:
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
     posix = True if not shared.WINDOWS else False
-    logging.debug('applying transform: %s' % js_transform)
+    logging.debug('applying transform: %s', js_transform)
     subprocess.check_call(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
@@ -1558,7 +1560,7 @@ try:
       if DEBUG:
         if os.path.exists(memfile):
           save_intermediate('meminit')
-          logging.debug('wrote memory initialization to %s' % memfile)
+          logging.debug('wrote memory initialization to %s', memfile)
         else:
           logging.debug('did not see memory initialization')
   elif shared.Settings.USE_TYPED_ARRAYS == 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE:
@@ -1660,7 +1662,7 @@ try:
       if debug_level < 2 and shared.Settings.ASM_JS: js_optimizer_queue += ['minifyNames']
       if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
-    if closure and shared.Settings.ASM_JS: 
+    if closure and shared.Settings.ASM_JS:
       js_optimizer_queue += ['closure']
 
     if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
@@ -1840,7 +1842,7 @@ try {
 
   log_time('final emitting')
 
-  if DEBUG: logging.debug('total time: %.2f seconds' % (time.time() - start_time))
+  if DEBUG: logging.debug('total time: %.2f seconds', (time.time() - start_time))
 
 finally:
   if not TEMP_DIR:

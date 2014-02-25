@@ -254,7 +254,7 @@ process(sys.argv[1])
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
-      raise Exception("did NOT asm.js'ify")
+      raise Exception("did NOT asm.js'ify: " + err)
     err = '\n'.join(filter(lambda line: 'uccessfully compiled asm.js code' not in line, err.split('\n')))
     return err
 
@@ -583,7 +583,7 @@ class BrowserCore(RunnerCore):
 
   def with_report_result(self, code):
     return r'''
-      #if EMSCRIPTEN
+      #ifdef __EMSCRIPTEN__
       #include <emscripten.h>
       #define REPORT_RESULT_INTERNAL(sync) \
         char output[1000]; \

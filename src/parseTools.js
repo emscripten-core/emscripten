@@ -1161,7 +1161,7 @@ function getHeapOffset(offset, type, forceAsm) {
 
   if (Runtime.getNativeFieldSize(type) > 4) {
     if (type == 'i64' || TARGET_X86) {
-      type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in le32 but only i64, not double
+      type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in asmjs-unknown-emscripten but only i64, not double
     }
   }
 
@@ -1287,7 +1287,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in le32
+  // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in asmjs-unknown-emscripten
   // we need this code path if we are not fully aligned.
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && (TARGET_X86 || align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
@@ -1826,7 +1826,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
       case '<4 x i32>':
       case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
       case 'double': {
-        if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
+        if (TARGET_ASMJS_UNKNOWN_EMSCRIPTEN) return ['HEAPF64']; // in asmjs-unknown-emscripten, we do have the ability to assume 64-bit alignment
         // otherwise, fall through to float
       }
       case '<4 x float>':

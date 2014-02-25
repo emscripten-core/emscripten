@@ -17,8 +17,8 @@
 typedef std::string ministring;
 #endif
 
-template <class T, class U> bool contains(const T& container, const U& contained) {
-  return container.find(contained) != container.end();
+template <class T, class U> static bool contains(const T& container, const U& contained) {
+  return container.count(contained);
 }
 
 #if DEBUG
@@ -650,7 +650,7 @@ void Relooper::Calculate(Block *Entry) {
             Block *Curr = *iter;
             for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
               Block *Target = iter->first;
-              if (Hoisted.find(Target) == Hoisted.end() && NextEntries.find(Target) == NextEntries.end()) {
+              if (!contains(Hoisted, Target) && !contains(NextEntries, Target))
                 // abort this hoisting
                 abort = true;
                 break;

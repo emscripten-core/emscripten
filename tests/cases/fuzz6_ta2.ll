@@ -1,6 +1,6 @@
 ; ModuleID = 'emcc-0-basebc.bc'
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
-target triple = "le32-unknown-nacl"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32"
+target triple = "asmjs-unknown-emscripten"
 
 %struct.S3 = type { i32, i32 }
 %struct.S1 = type { i32, i32, i8, i16 }

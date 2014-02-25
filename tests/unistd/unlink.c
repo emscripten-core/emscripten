@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -23,7 +23,7 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   mkdir("working", 0777);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   EM_ASM(
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, 'working');

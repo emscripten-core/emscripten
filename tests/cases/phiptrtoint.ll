@@ -1,7 +1,7 @@
 ; ModuleID = '/tmp/tmpJctwj0/bug.bc'
 ; just an asm validation check, no output
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
-target triple = "le32-unknown-nacl"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32"
+target triple = "asmjs-unknown-emscripten"
 
 %"class.test::Processor" = type { i32, %"class.test::StateMachine" }
 %"class.test::StateMachine" = type { { i32, i32 } }

@@ -1413,7 +1413,7 @@ function JSify(data, functionsOnly) {
     }
   }
   function va_argHandler(item) {
-    assert(TARGET_LE32);
+    assert(TARGET_ASMJS_UNKNOWN_EMSCRIPTEN);
     var ident = item.value.ident;
     var move = Runtime.STACK_ALIGN;
     
@@ -1710,7 +1710,7 @@ function JSify(data, functionsOnly) {
       if ((phase == 'pre' || phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
-        assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
+        assert((TARGET_ASMJS_UNKNOWN_EMSCRIPTEN && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
         if (!SIDE_MODULE) {
           print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');

@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <arpa/inet.h>
 #endif
 

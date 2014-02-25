@@ -11,7 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -124,7 +124,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(iter, 60, 0);
 #else
   while (1) iter();

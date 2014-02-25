@@ -348,7 +348,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       if (token1Text == 'triple') {
         var triple = item.tokens[3].text;
         triple = triple.substr(1, triple.length-2);
-        var expected = TARGET_LE32 ? 'le32-unknown-nacl' : 'i386-pc-linux-gnu';
+        var expected = TARGET_ASMJS_UNKNOWN_EMSCRIPTEN ? 'asmjs-unknown-emscripten' : 'i386-pc-linux-gnu';
         if (triple !== expected) {
           warn('using an unexpected LLVM triple: ' + [triple, ' !== ', expected] + ' (are you using emcc for everything and not clang?)');
         }
@@ -688,7 +688,7 @@ function intertyper(lines, sidePass, baseLineNums) {
         Types.hasInlineJS = true;
         warnOnce('inline JavaScript using asm() will cause the code to no longer fall in the asm.js subset of JavaScript, which can reduce performance - consider using emscripten_run_script');
       }
-      assert(TARGET_LE32, 'inline js is only supported in le32');
+      assert(TARGET_ASMJS_UNKNOWN_EMSCRIPTEN, 'inline js is only supported in asmjs-unknown-emscripten');
       // Inline assembly is just JavaScript that we paste into the code
       item.intertype = 'value';
       if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
@@ -848,7 +848,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     }).filter(function(param) { return param.value && param.value.ident != 'undef' });
     return item;
   }
-  // 'phi'
+  // 'va_arg'
   function va_argHandler(item) {
     item.intertype = 'va_arg';
     var segments = splitTokenList(item.tokens.slice(1));

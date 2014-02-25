@@ -185,10 +185,10 @@ var Runtime = {
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size, vararg) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
-#if TARGET_LE32 == 1
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1
     if (vararg) return 8;
 #endif
-#if TARGET_LE32
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     if (!vararg && (type == 'i64' || type == 'double')) return 8;
     if (!type) return Math.min(size, 8); // align structures internally to 64 bits
 #endif

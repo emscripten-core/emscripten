@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 
   int lastChannel = loadAndPlay();
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   int result = (lastChannel == -1);
   REPORT_RESULT();
 #endif

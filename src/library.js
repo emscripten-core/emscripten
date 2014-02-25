@@ -1861,14 +1861,14 @@ LibraryManager.library = {
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
       if (type === 'double') {
-#if TARGET_LE32 == 2
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 2
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true, 4) }}};
 #else
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
 #endif
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
-#if TARGET_LE32 == 1
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
         argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
@@ -1885,7 +1885,7 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
-#if TARGET_LE32 == 2
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 2
       argIndex += Runtime.getNativeFieldSize(type);
 #else
       argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
@@ -2859,7 +2859,7 @@ LibraryManager.library = {
   vsscanf: 'sscanf',
 #endif
 
-#if TARGET_LE32
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
   // convert va_arg into varargs
   vfprintf__deps: ['fprintf'],
   vfprintf: function(s, f, va_arg) {
@@ -4178,7 +4178,7 @@ LibraryManager.library = {
 #if TARGET_X86
     return makeSetValue(ptr, 0, 'varrp', 'void*');
 #endif
-#if TARGET_LE32
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     // 2-word structure: struct { void* start; void* currentOffset; }
     return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
 #endif

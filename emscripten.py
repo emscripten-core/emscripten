@@ -9,7 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging, shutil
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -538,7 +538,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
     if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
-      assert settings.get('TARGET_LE32'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
+      assert settings.get('TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
       for key, value in forwarded_json['Variables']['globals'].iteritems():
         if value.get('linkable'):
           init = forwarded_json['Variables']['indexedGlobals'][key] + 8 # 8 is Runtime.GLOBAL_BASE / STATIC_BASE
@@ -801,8 +801,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: logging.debug('emscript: js compiler glue')
 
   # Settings changes
-  assert settings['TARGET_LE32'] == 1
-  settings['TARGET_LE32'] = 2
+  assert settings['TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'] == 1
+  settings['TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'] = 2
   i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
   for i64_func in i64_funcs:
     if i64_func in metadata['declares']:
@@ -1087,7 +1087,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
     # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
     if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
-      assert settings.get('TARGET_LE32'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
+      assert settings.get('TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
       for key, value in forwarded_json['Variables']['globals'].iteritems():
         if value.get('linkable'):
           init = forwarded_json['Variables']['indexedGlobals'][key] + 8 # 8 is Runtime.GLOBAL_BASE / STATIC_BASE
@@ -1277,13 +1277,13 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
     settings.setdefault('RELOOPER', relooper)
     if not os.path.exists(relooper):
       shared.Building.ensure_relooper(relooper)
-  
+
   settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
-  
+
   if not os.path.exists(struct_info):
     shared.Building.ensure_struct_info(struct_info)
-  
+
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
