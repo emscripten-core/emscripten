@@ -174,8 +174,8 @@ var LibraryOpenAL = {
   },
 
   alcOpenDevice: function(deviceName) {
-    if (typeof(AudioContext) == "function" ||
-        typeof(webkitAudioContext) == "function") {
+    if (typeof(AudioContext) !== "undefined" ||
+        typeof(webkitAudioContext) !== "undefined") {
       return 1; // non-null pointer -- we just simulate one device
     } else {
       return 0;
