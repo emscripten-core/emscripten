@@ -1,4 +1,4 @@
-![emscripten logo](media/switch_logo.jpeg)
+![emscripten logo](media/switch_logo.png)
 
 Emscripten is an LLVM-to-JavaScript compiler. It takes LLVM bitcode - which can be generated
 from C/C++, using `llvm-gcc` (DragonEgg) or `clang`, or any other language that can be
