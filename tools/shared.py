@@ -305,9 +305,24 @@ def check_fastcomp():
       print >> sys.stderr, '==========================================================================='
       logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend')
       return False
+
+    # look for a source tree under the llvm binary directory. if there is one, look for emscripten-version.txt files
+    d = os.path.dirname(LLVM_COMPILER)
+    while d != os.path.dirname(d):
+      if os.path.exists(os.path.join(d, 'emscripten-version.txt')):
+        llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
+        if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
+          clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
+        else:
+          clang_version = '?'
+        if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
+          logging.error('Emscripten, llvm and clang versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
+          logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See https://github.com/kripken/emscripten/wiki/LLVM-Backend')
+        break
+      d = os.path.dirname(d)
     return True
   except Exception, e:
-    logging.warning('cound not check fastcomp: %s' % str(e))
+    logging.warning('could not check fastcomp: %s' % str(e))
     return True
 
 EXPECTED_NODE_VERSION = (0,8,0)
