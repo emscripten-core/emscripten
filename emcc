@@ -940,6 +940,7 @@ try:
       newargs[i] = ''
       logging.warning('clearing cache')
       shared.Cache.erase()
+      shared.check_sanity(force=True) # this is a good time for a sanity check
       sys.exit(0)
     elif newargs[i] == '--save-bc':
       check_bad_eq(newargs[i])
