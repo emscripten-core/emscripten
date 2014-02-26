@@ -13,7 +13,7 @@ JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512*1024) # configuring this is just for debugging purposes
-MAX_CHUNK_SIZE = 5*1024*1024
+MAX_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MAX_CHUNK_SIZE') or 5*1024*1024)
 
 WINDOWS = sys.platform.startswith('win')
 
