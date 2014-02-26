@@ -5213,7 +5213,10 @@ def process(filename):
       for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')) + glob.glob(path_from_root('tests', 'fuzz', '*.cpp')):
         #if os.path.basename(name) != '4.c': continue
         if 'newfail' in name: continue
-        if os.path.basename(name) == '18.cpp' and not os.environ.get('EMCC_FAST_COMPILER') != '0': continue # works only in fastcomp
+        if os.environ.get('EMCC_FAST_COMPILER') == '0' and os.path.basename(name) in [
+          '18.cpp', '15.c'
+        ]:
+          continue # works only in fastcomp
 
         print name
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
