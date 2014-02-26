@@ -1846,6 +1846,9 @@ Module["preRun"].push(function () {
   def test_html5(self):
     self.btest(path_from_root('tests', 'test_html5.c'), expected='0')
 
+  def test_html5_fullscreen(self):
+    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0')
+
   def test_codemods(self):
     for opt_level in [0, 2]:
       print 'opt level', opt_level

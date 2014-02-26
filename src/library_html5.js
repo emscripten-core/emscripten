@@ -13,6 +13,10 @@ var LibraryJSEvents = {
     visibilityChangeEvent: 0,
     touchEvent: 0,
 
+    // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
+    // so that we can report information about that element in the event message.
+    previousFullscreenElement: null,
+
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
@@ -484,10 +488,20 @@ var LibraryJSEvents = {
       var isFullscreen = !!fullscreenElement;
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
-      var nodeName = JSEvents.getNodeNameForTarget(fullscreenElement);
-      var id = (fullscreenElement && fullscreenElement.id) ? fullscreenElement.id : '';
+      // If transitioning to fullscreen, report info about the element that is now fullscreen.
+      // If transitioning to windowed mode, report info about the element that just was fullscreen.
+      var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
+      var nodeName = JSEvents.getNodeNameForTarget(reportedElement);
+      var id = (reportedElement && reportedElement.id) ? reportedElement.id : '';
       writeStringToMemory(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.nodeName }}} );
       writeStringToMemory(id, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.id }}} );
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.elementWidth, 'reportedElement ? reportedElement.clientWidth : 0', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.elementHeight, 'reportedElement ? reportedElement.clientHeight : 0', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.screenWidth, 'screen.width', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.screenHeight, 'screen.height', 'i32') }}};
+      if (isFullscreen) {
+        JSEvents.previousFullscreenElement = fullscreenElement;
+      }
     },
 
     registerFullscreenChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {

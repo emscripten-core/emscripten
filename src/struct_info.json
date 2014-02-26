@@ -1207,7 +1207,11 @@
               "isFullscreen",
               "fullscreenEnabled",
               "nodeName",
-              "id"
+              "id",
+              "elementWidth",
+              "elementHeight",
+              "screenWidth",
+              "screenHeight"
             ],
             "EmscriptenPointerlockChangeEvent": [
               "isActive",
