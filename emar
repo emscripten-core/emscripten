@@ -12,12 +12,13 @@ from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
-	DEBUG = None
+   DEBUG = None
 
 newargs = [shared.LLVM_AR] + sys.argv[1:]
 
 if DEBUG:
-	print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
+  print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
 
 if len(newargs) > 2:
-	subprocess.call(newargs)
+  subprocess.call(newargs)
+

@@ -4,7 +4,7 @@
 This is a helper script. It runs make for you, setting
 the environment variables to use emcc and so forth. Usage:
 
-	emmake make [FLAGS]
+  emmake make [FLAGS]
 
 Note that if you ran configure with emconfigure, then
 the environment variables have already been detected
@@ -26,3 +26,4 @@ try:
 	shared.Building.make(sys.argv[1:])
 except CalledProcessError, e:
 	sys.exit(e.returncode)
+
