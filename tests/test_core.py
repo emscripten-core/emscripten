@@ -530,18 +530,21 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
             os.environ['EMCC_FAST_COMPILER'] = "0"
           try:
             old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
-            os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = '1' # test splitting out each function to a chunk in emscripten.py (21 functions here)
 
-            # A good test of i64 math
-            if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
-            self.do_run('', 'Usage: hashstring <seed>',
-                        libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None, cache_name_extra=str(x86)),
-                        includes=[path_from_root('tests', 'cube2hash')])
+            for chunk_size in ['1', old_chunk_size]: # test splitting out each function to a chunk in emscripten.py (21 functions here)
+              print '  chunks', chunk_size
+              os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = chunk_size
 
-            for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
-                                 ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
-                                 ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-              self.do_run('', 'hash value: ' + output, [text], no_build=True)
+              # A good test of i64 math
+              if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
+              self.do_run('', 'Usage: hashstring <seed>',
+                          libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None, cache_name_extra=str(x86)),
+                          includes=[path_from_root('tests', 'cube2hash')])
+
+              for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
+                                   ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
+                                   ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
+                self.do_run('', 'hash value: ' + output, [text], no_build=True)
           finally:
             os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
         finally:
