@@ -423,7 +423,17 @@ Options that are modified or new in %s include:
 
   -v                       Turns on verbose output. This will pass
                            -v to Clang, and also enable EMCC_DEBUG
-                           to details emcc's operations
+                           to details emcc's operations.
+
+                           It will also run emscripten's internal sanity
+                           checks, checking that things like the LLVM directory
+                           path looks correct, etc. This works with or
+                           without other arguments, so it can be useful to run
+
+                              emcc -v
+
+                           if you see odd errors, as it can help diagnose
+                           things.
 
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
@@ -528,8 +538,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
   print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) %s' % shared.EMSCRIPTEN_VERSION
+  code = subprocess.call([shared.CLANG, '-v'])
   shared.check_sanity(force=True)
-  exit(subprocess.call([shared.CLANG, '-v']))
+  exit(code)
 
 def is_minus_s_for_emcc(newargs, i):
   assert newargs[i] == '-s'
