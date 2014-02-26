@@ -646,7 +646,6 @@ if LLVM_TARGET != 'asmjs-unknown-emscripten' and LLVM_TARGET != 'le32-unknown-na
 if LLVM_TARGET != 'asmjs-unknown-emscripten':
   COMPILER_OPTS += ['-fno-math-errno']
   COMPILER_STANDARDIZATION_OPTS += ['-D__IEEE_LITTLE_ENDIAN']
-if LLVM_TARGET == 'le32-unknown-nacl':
   COMPILER_OPTS += ['-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-fno-math-errno',
                     '-U__native_client__', '-U__pnacl__', '-U__ELF__']
 
