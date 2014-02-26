@@ -212,6 +212,7 @@ EMSCRIPTEN_FUNCS();
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
   chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: intended size:', chunk_size, 'num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
   funcs = None
 
   if jcache:
