@@ -618,6 +618,10 @@ except:
 
 # Target choice. Must be synced with src/settings.js (TARGET_*)
 def get_llvm_target():
+  if os.environ.get('EMCC_FAST_COMPILER') == '0':
+    if not os.environ.get('EMCC_LLVM_TARGET'):
+      os.environ['EMCC_LLVM_TARGET'] = 'le32-unknown-nacl'
+    return os.environ.get('EMCC_LLVM_TARGET')
   return os.environ.get('EMCC_LLVM_TARGET') or 'asmjs-unknown-emscripten'
 LLVM_TARGET = get_llvm_target()
 
