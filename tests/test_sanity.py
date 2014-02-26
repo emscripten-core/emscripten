@@ -319,7 +319,8 @@ fi
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
 
-    # also with -v
+    # also with -v, with or without inputs
+    output = self.check_working([EMCC, '-v'], SANITY_MESSAGE)
     output = self.check_working([EMCC, '-v', path_from_root('tests', 'hello_world.c')], SANITY_MESSAGE)
 
     # Make sure the test runner didn't do anything to the setup
