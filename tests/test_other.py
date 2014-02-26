@@ -2391,3 +2391,40 @@ int main() {
     assert 'emcc: warning: unaligned store' in output[1]
     assert '@line 9 "src.cpp"' in output[1]
 
+  def test_no_exit_runtime(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdio.h>
+
+template<int x>
+struct Waste {
+  Waste() {
+    printf("coming around %d\n", x);
+  }
+  ~Waste() {
+    printf("going away %d\n", x);
+  }
+};
+
+Waste<1> w1;
+Waste<2> w2;
+Waste<3> w3;
+Waste<4> w4;
+Waste<5> w5;
+
+int main(int argc, char **argv) {
+  return 0;
+}
+''')
+
+    for no_exit in [0, 1]:
+      for opts in [0, 1]:
+        print no_exit, opts
+        Popen([PYTHON, EMCC, '-O' + str(opts), 'code.cpp', '-s', 'NO_EXIT_RUNTIME=' + str(no_exit)]).communicate()
+        output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
+        src = open('a.out.js').read()
+        exit = 1-no_exit
+        assert 'coming around' in output
+        assert ('going away' in output) == exit, 'destructors should not run if no exit'
+        assert ('_ZN5WasteILi2EED1Ev' in src) == exit, 'destructors should not appear if no exit'
+        assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
+

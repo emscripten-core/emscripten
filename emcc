@@ -1180,7 +1180,10 @@ try:
       logging.warning('jcache is deprecated and not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
 
-    fastcomp_opts = ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+    fastcomp_opts = []
+    if shared.Settings.NO_EXIT_RUNTIME:
+      fastcomp_opts += ['-emscripten-no-exit-runtime', '-globaldce']
+    fastcomp_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
       fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
       if len(shared.Settings.EXCEPTION_CATCHING_WHITELIST) > 0:
