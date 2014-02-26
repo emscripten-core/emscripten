@@ -4066,6 +4066,28 @@ def process(filename):
     self.emcc_args += ['--embed-file', 'three_numbers.txt']
     self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
 
+  def test_fileno(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    open(os.path.join(self.get_dir(), 'empty.txt'), 'w').write('')
+    src = r'''
+      #include <stdio.h>
+      #include <unistd.h>
+      int main()
+      {
+          FILE* fp = fopen("empty.txt", "r");
+          if (fp) {
+              printf("%d\n", fp);
+              printf("%d\n", fileno(fp));
+              printf("%d\n", fileno((FILE*)42));  // nonexistent stream
+          } else {
+              printf("failed to open empty.txt\n");
+          }
+          return 0;
+      }
+    '''
+    self.emcc_args += ['--embed-file', 'empty.txt']
+    self.do_run(src, '4\n3\n-1\n')
+
   def test_readdir(self):
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
