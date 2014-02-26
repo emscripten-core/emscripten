@@ -319,6 +319,9 @@ fi
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
 
+    # also with -v
+    output = self.check_working([EMCC, '-v', path_from_root('tests', 'hello_world.c')], SANITY_MESSAGE)
+
     # Make sure the test runner didn't do anything to the setup
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
