@@ -214,19 +214,55 @@ class sanity(RunnerCore):
     # Fake incorrect llc output, no mention of js backend
     restore()
     f = open(CONFIG_FILE, 'a')
-    f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
+    f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"')
     f.close()
+    #print '1', open(CONFIG_FILE).read()
 
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
+    try_delete(path_from_root('tests', 'fake'))
+    os.makedirs(path_from_root('tests', 'fake', 'bin'))
 
-    f = open(path_from_root('tests', 'fake', 'llc'), 'w')
+    f = open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w')
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake output\nRegistered Targets:\nno j-s backend for you!"')
     f.close()
-    os.chmod(path_from_root('tests', 'fake', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     output = self.check_working(EMCC, WARNING)
     output = self.check_working(EMCC, WARNING2)
+
+    # fake some more
+    for fake in ['llvm-link', 'clang', 'clang++', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
+      open(path_from_root('tests', 'fake', 'bin', fake), 'w').write('.')
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, WARNING)
+    # make sure sanity checks notice there is no source dir with version #
+    open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w').write('#!/bin/sh\necho "Registered Targets: there IZ a js backend: JavaScript (asm.js, emscripten) backend"')
+    open(path_from_root('tests', 'fake', 'bin', 'clang++'), 'w').write('#!/bin/sh\necho "clang version %s (blah blah)" >&2\necho "..." >&2\n' % '.'.join(map(str, EXPECTED_LLVM_VERSION)))
+    os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    os.chmod(path_from_root('tests', 'fake', 'bin', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, 'did not see a source tree above LLVM_DIR, could not verify version numbers match')
+
+    VERSION_WARNING = 'Emscripten, llvm and clang versions do not match, this is dangerous'
+
+    # add version number
+    open(path_from_root('tests', 'fake', 'emscripten-version.txt'), 'w').write('waka')
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, VERSION_WARNING)
+
+    os.makedirs(path_from_root('tests', 'fake', 'tools', 'clang'))
+
+    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, VERSION_WARNING)
+
+    open(path_from_root('tests', 'fake', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC)
+    assert VERSION_WARNING not in output
+
+    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write('waka')
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, VERSION_WARNING)
 
     restore()
 

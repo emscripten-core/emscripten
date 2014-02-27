@@ -307,9 +307,11 @@ def check_fastcomp():
       return False
 
     # look for a source tree under the llvm binary directory. if there is one, look for emscripten-version.txt files
+    seen = False
     d = os.path.dirname(LLVM_COMPILER)
     while d != os.path.dirname(d):
       if os.path.exists(os.path.join(d, 'emscripten-version.txt')):
+        seen = True
         llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
         if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
           clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
@@ -320,6 +322,8 @@ def check_fastcomp():
           logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See https://github.com/kripken/emscripten/wiki/LLVM-Backend')
         break
       d = os.path.dirname(d)
+    if not seen:
+      logging.warning('did not see a source tree above LLVM_DIR, could not verify version numbers match')
     return True
   except Exception, e:
     logging.warning('could not check fastcomp: %s' % str(e))
