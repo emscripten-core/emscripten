@@ -35,7 +35,13 @@ notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
 fails = 0
 
 while 1:
-  opts = '-O' + str(random.randint(0, 3))
+  if random.random() < 0.666:
+    opts = '-O' + str(random.randint(0, 3))
+  else:
+    if random.random() < 0.5:
+      opts = '-Os'
+    else:
+      opts = '-Oz'
   print 'opt level:', opts
 
   print 'Tried %d, notes: %s' % (tried, notes)
