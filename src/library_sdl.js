@@ -1304,7 +1304,7 @@ var LibrarySDL = {
     dstData.ctx.globalAlpha = oldAlpha;
     if (dst != SDL.screen) {
       // XXX As in IMG_Load, for compatibility we write out |pixels|
-      console.log('WARNING: copying canvas data to memory for compatibility');
+      Runtime.warnOnce('WARNING: copying canvas data to memory for compatibility');
       _SDL_LockSurface(dst);
       dstData.locked--; // The surface is not actually locked in this hack
     }
