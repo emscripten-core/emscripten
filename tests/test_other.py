@@ -2428,3 +2428,20 @@ int main(int argc, char **argv) {
         assert ('_ZN5WasteILi2EED1Ev' in src) == exit, 'destructors should not appear if no exit'
         assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
 
+  def test_os_oz(self):
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      for args, expect in [
+          (['-O1'], 'LLVM opts: -O1'),
+          (['-O2'], 'LLVM opts: -O3'),
+          (['-Os'], 'LLVM opts: -Os'),
+          (['-Oz'], 'LLVM opts: -Oz'),
+          (['-O3'], 'LLVM opts: -O3'),
+        ]:
+        print args, expect
+        output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
+        self.assertContained(expect, err)
+    finally:
+      del os.environ['EMCC_DEBUG']
+
