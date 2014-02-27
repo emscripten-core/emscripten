@@ -6141,7 +6141,7 @@ def process(filename):
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
     with open(no_maps_filename) as f: no_maps_file = f.read()
-    no_maps_file = re.sub(' *//@.*$', '', no_maps_file, flags=re.MULTILINE)
+    no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     Building.COMPILER_TEST_OPTS.append('-g4')
 
     def build_and_check():
@@ -6154,7 +6154,7 @@ def process(filename):
       # this is worth checking because the parser AST swaps strings for token
       # objects when generating source maps, so we want to make sure the
       # optimizer can deal with both types.
-      out_file = re.sub(' *//@.*$', '', out_file, flags=re.MULTILINE)
+      out_file = re.sub(' *//[@#].*$', '', out_file, flags=re.MULTILINE)
       def clean(code):
         code = re.sub(r'\n+[ \n]*\n+', '\n', code)
         code = code.replace('{\n}', '{}')
