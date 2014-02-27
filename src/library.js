@@ -9025,7 +9025,7 @@ LibraryManager.library = {
     }
     // Truncate output to avoid writing past bounds.
     if (callstack.length > maxbytes-1) {
-      callstack.slice(0, maxbytes-1);
+      callstack = callstack.slice(0, maxbytes-1);
     }
     // Output callstack string as C string to HEAP.
     writeStringToMemory(callstack, str, false);
