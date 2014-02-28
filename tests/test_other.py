@@ -2417,7 +2417,7 @@ int main(int argc, char **argv) {
 ''')
 
     for no_exit in [0, 1]:
-      for opts in [[], ['-O1'], ['-O2', '-g2']]:
+      for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '--llvm-lto', '1']]:
         print no_exit, opts
         Popen([PYTHON, EMCC] + opts + ['code.cpp', '-s', 'NO_EXIT_RUNTIME=' + str(no_exit)]).communicate()
         output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
@@ -2496,7 +2496,9 @@ Waste<3> *getMore() {
       (['-O2', '-g'], True),
       (['-O2', '-g', '-s', 'NO_EXIT_RUNTIME=1'], False), # no-exit-runtime removes the atexits, and then globalgce can work it's magic to remove the global initializer entirely
       (['-Os', '-g'], True),
-      (['-Os', '-g', '-s', 'NO_EXIT_RUNTIME=1'], False), # no-exit-runtime removes the atexits, and then globalgce can work it's magic to remove the global initializer entirely
+      (['-Os', '-g', '-s', 'NO_EXIT_RUNTIME=1'], False),
+      (['-O2', '-g', '--llvm-lto', '1'], True),
+      (['-O2', '-g', '-s', 'NO_EXIT_RUNTIME=1', '--llvm-lto', '1'], False),
     ]:
       print opts, has_global
       Popen([PYTHON, EMCC, 'main.cpp', '-c'] + opts).communicate()

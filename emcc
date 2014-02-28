@@ -1204,9 +1204,11 @@ try:
       logging.warning('jcache is deprecated and not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
 
+    pre_fastcomp_opts = []
     fastcomp_opts = []
     if shared.Settings.NO_EXIT_RUNTIME:
-      fastcomp_opts += ['-emscripten-no-exit-runtime', '-globalopt']
+      pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
+      if not llvm_lto: fastcomp_opts += ['-globalopt', '-globaldce']
     fastcomp_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
       fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
@@ -1473,7 +1475,7 @@ try:
     else:
       if fastcomp and not save_bc:
         # Simplify LLVM bitcode for fastcomp
-        link_opts += fastcomp_opts
+        link_opts = pre_fastcomp_opts + link_opts + fastcomp_opts
       shared.Building.llvm_opt(final, link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
