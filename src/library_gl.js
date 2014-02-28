@@ -827,7 +827,7 @@ var LibraryGL = {
     } else {
       data = null;
     }
-    CLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, data);
+    GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, data);
   },
 
   glTexImage2D__sig: 'viiiiiiiii',
