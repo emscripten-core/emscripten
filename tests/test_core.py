@@ -4540,6 +4540,41 @@ PORT: 3979
       '''
       self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\nJansson: Node with ID `0` not found. Context has `10` nodes.\n0\nJansson: No JSON context.\njansson!')
 
+  def test_constglobalunion(self):
+    if self.emcc_args is None: return self.skip('needs emcc')
+    self.emcc_args += ['-s', 'EXPORT_ALL=1']
+
+    self.do_run(r'''
+#include <stdio.h>
+
+struct one_const {
+  long a;
+};
+
+struct two_consts {
+  long a;
+  long b;
+};
+
+union some_consts {
+  struct one_const one;
+  struct two_consts two;
+};
+
+union some_consts my_consts = {{
+  1
+}};
+
+struct one_const addr_of_my_consts = {
+  (long)(&my_consts)
+};
+
+int main(void) {
+  printf("%li\n", !!addr_of_my_consts.a);
+  return 0;
+}
+    ''', '1')
+
   ### 'Medium' tests
 
   def test_fannkuch(self):
