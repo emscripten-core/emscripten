@@ -2509,3 +2509,28 @@ Waste<3> *getMore() {
       self.assertContained('argc: 1\n16\n17\n10\n', run_js('a.out.js'))
       assert ('_GLOBAL_' in src) == has_global
 
+  def test_implicit_func(self):
+    open('src.c', 'w').write(r'''
+#include <stdio.h>
+int main()
+{
+    printf("hello %d\n", strnlen("waka", 2)); // Implicit declaration, no header, for strnlen
+    int (*my_strnlen)(char*, ...) = strnlen;
+    printf("hello %d\n", my_strnlen("shaka", 2));
+    return 0;
+}
+''')
+
+    for opts, expected, compile_expected in [
+      ([], ['abort()', 'it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this'], []),
+      (['-s', 'ASSERTIONS=2'], ['abort()', 'This pointer might make sense in another type signature: ii: _strnlen'], []),
+      (['-O1'], ['hello 2\nhello 5\n'], []), # invalid output - second arg is sent as varargs, but needs to be int. llvm optimizer avoided the crash silently, caused undefined behavior... at least people can debug this by running an -O0 build.
+    ]:
+      print opts, expected
+      stdout, stderr = Popen([PYTHON, EMCC, 'src.c'] + opts, stderr=PIPE).communicate()
+      output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
+      for e in expected:
+        self.assertContained(e, output)
+      for ce in compile_expected + ['''warning: implicit declaration of function 'strnlen' is invalid in C99''', '''warning: incompatible pointer types''']:
+        self.assertContained(ce, stderr)
+
