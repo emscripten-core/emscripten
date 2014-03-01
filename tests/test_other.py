@@ -540,6 +540,7 @@ f.close()
     '''
     open('src.c', 'w').write(src)
     def test(args, expected, err_expected=None):
+      print args, expected, err_expected
       out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
       if err_expected: self.assertContained(err_expected, err)
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True))
