@@ -4945,11 +4945,15 @@ def process(filename):
       Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
                                   'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
+    asserts = Settings.ASSERTIONS
+
     for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
       print 'cmake', use_cmake
       # Windows cannot run configure sh scripts.
       if WINDOWS and not use_cmake:
         continue
+
+      Settings.ASSERTIONS = 2 if use_cmake else asserts # extra testing for ASSERTIONS == 2
 
       def test():
         self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
