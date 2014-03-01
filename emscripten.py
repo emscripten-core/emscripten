@@ -1010,7 +1010,11 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
             if other != sig:
               extra += other + ': " + debug_table_' + other + '[x] + "  '
           extra += '"); '
-        asm_setup += '\nfunction nullFunc_' + sig + '(x) { Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an different type, which will fail?"); ' + extra + ' abort(x) }\n'
+        asm_setup += '\nfunction nullFunc_' + sig + '(x) { Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
+                     'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
+                     'Or calling a function with an incorrect type, which will fail? ' + \
+                     '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this) ' + \
+                     '"); ' + extra + ' abort(x) }\n'
 
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
