@@ -181,7 +181,13 @@ function abort(text) {
   ABORT = true;
   EXITSTATUS = 1;
 
-  throw 'abort() at ' + stackTrace();
+#if ASSERTIONS == 0
+  var extra = '\nIf this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.';
+#else
+  var extra = '';
+#endif
+
+  throw 'abort() at ' + stackTrace() + extra;
 }
 Module['abort'] = Module.abort = abort;
 
