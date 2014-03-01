@@ -27,7 +27,7 @@ cond.end:                                         ; preds = %cond.false, %cond.t
   %cond = phi { i32, i32 } [ { i32 5, i32 6 }, %entry ], [ zeroinitializer, %cond.null ] ; [#uses=1]
   store { i32, i32 } %cond, { i32, i32 }* %comp
   %call = call i32 (i32, { i32, i32 })* @doit(i32 1, { i32, i32 } %cond) ;
-  store { i32, i32 } { i32 ptrtoint (i64* @_dispatchTable to i32), i32 0 }, { i32, i32 }* getelementptr inbounds ([1 x i64]* @_dispatchTable, i32 0, i32 0, i32 1), align 4
+  store { i32, i32 } { i32 ptrtoint (i64* @_dispatchTable to i32), i32 0 }, { i32, i32 }* bitcast (i64* getelementptr inbounds ([1 x i64]* bitcast (i64* @_dispatchTable to [1 x i64]*), i32 0, i32 0) to { i32, i32 }*), align 4
   ret i32 0                             ; [debug line = 6:13]
 }
 

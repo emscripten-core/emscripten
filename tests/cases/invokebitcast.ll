@@ -10,7 +10,7 @@ target triple = "asmjs-unknown-emscripten"
 @.str = private unnamed_addr constant [14 x i8] c"hello, world!\00", align 1 ; [#uses=1]
 
 ; [#uses=0]
-define i32 @main() {
+define i32 @main(i32 %p) {
 entry:
   %retval = alloca i32                            ; [#uses=2]
   %0 = alloca i32                                 ; [#uses=2]
@@ -24,13 +24,15 @@ entry:
   store i32 %3, i32* %retval, align 4
   br label %return
 
-  invoke void bitcast (void (i32*, i32)* @_Z8toStringj to void (i64*, i32)*)(%struct.CPU_Regs* noalias @cpu_regs, i32 %99)
+  invoke void bitcast (void (i32*, i32)* @_Z8toStringj to void (i64*, i32)*)(i64* bitcast (%struct.CPU_Regs* @cpu_regs to i64*), i32 %p)
           to label %invcont33 unwind label %lpad106
 
 invcont33:
   ret i32 %retval1
 
 lpad106:
+  %Z = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+       cleanup 
   ret i32 %retval1
 
 return:                                           ; preds = %entry
@@ -40,3 +42,6 @@ return:                                           ; preds = %entry
 
 ; [#uses=1]
 declare i32 @puts(i8*)
+
+declare void @_Z8toStringj(i32*, i32)
+declare i32 @__gxx_personality_v0(...)
