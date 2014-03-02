@@ -999,6 +999,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
+      if settings['ASSERTIONS'] >= 2: import difflib
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
         basic_funcs += ['nullFunc_' + sig]
         if settings['ASSERTIONS'] <= 1:
@@ -1008,7 +1009,21 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           pointer = ' \'" + x + "\' '
           asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
           extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
-          for other in last_forwarded_json['Functions']['tables'].iterkeys():
+          # sort signatures, attempting to show most likely related ones first
+          sigs = last_forwarded_json['Functions']['tables'].keys()
+          def keyfunc(other):
+            ret = 0
+            minlen = min(len(other), len(sig))
+            maxlen = min(len(other), len(sig))
+            if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
+            ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
+            ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
+            for i in range(minlen):
+              if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
+            ret += 20*len(other) # deprioritize on length
+            return ret
+          sigs.sort(key=keyfunc)
+          for other in sigs:
             if other != sig:
               extra += other + ': " + debug_table_' + other + '[x] + "  '
           extra += '"); '
