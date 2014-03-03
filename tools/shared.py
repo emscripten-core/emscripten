@@ -662,6 +662,15 @@ if LLVM_TARGET != 'asmjs-unknown-emscripten':
   COMPILER_OPTS += ['-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-fno-math-errno',
                     '-U__native_client__', '-U__pnacl__', '-U__ELF__']
 
+# Changes to default clang behavior
+if LLVM_TARGET == 'asmjs-unknown-emscripten' or LLVM_TARGET == 'le32-unknown-nacl':
+  # Implicit functions can cause horribly confusing asm.js function pointer type errors, see #2175
+  # If your codebase really needs them - very unrecommended! - you can disable the error with
+  #   -Wno-error=implicit-function-declaration
+  # or disable even a warning about it with
+  #   -Wno-implicit-function-declaration
+  COMPILER_OPTS += ['-Werror=implicit-function-declaration']
+
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:

@@ -38,10 +38,6 @@ void verify() {
   for (int x = 0; x < width*height*4; x++) {
     if (x % 4 != 3) sum += x * data[x];
   }
-#ifdef __EMSCRIPTEN__
-  int result = sum;
-  REPORT_RESULT();
-#endif
 }
 
 int main(int argc, char *argv[])
