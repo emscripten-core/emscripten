@@ -400,10 +400,15 @@ void emscripten_destroy_worker(worker_handle worker);
 void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
 
 /*
- * Sends a response when in a worker call. Should only be
- * called once in each call.
+ * Sends a response when in a worker call. Both functions post a message
+ * back to the thread which called the worker.  The _respond_provisionally
+ * variant can be invoked multiple times, which will queue up messages to
+ * be posted to the worker's creator.  Eventually, the _respond variant can
+ * be invoked, which will disallow further messages and free framework
+ * resources previously allocated for this worker call.
  */
 void emscripten_worker_respond(char *data, int size);
+void emscripten_worker_respond_provisionally(char *data, int size);
 
 /*
  * Checks how many responses are being waited for from a worker. This
