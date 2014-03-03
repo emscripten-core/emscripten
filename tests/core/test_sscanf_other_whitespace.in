@@ -1,8 +1,8 @@
 #include <stdio.h>
 
 int main() {
-  short int x;
-  short int y;
+  int x;
+  int y;
 
   const char* buffer[] = {
       "\t2\t3\t",                       /* TAB - horizontal tab */
