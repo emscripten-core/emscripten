@@ -66,12 +66,8 @@ extern "C" {
 #define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double(#code)
 
 /*
- * Forces LLVM to not dead-code-eliminate a function. Note that
- * you still need to use EXPORTED_FUNCTIONS so it stays alive
- * in JS, e.g.
- *     emcc -s EXPORTED_FUNCTIONS=["_main", "_myfunc"]
- * and in the source file
- *     void EMSCRIPTEN_KEEPALIVE myfunc() {..}
+ * Forces LLVM to not dead-code-eliminate a function. This also
+ * exports the function, as if you added it to EXPORTED_FUNCTIONS.
  */
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
