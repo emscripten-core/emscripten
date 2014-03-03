@@ -124,7 +124,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   if (ENVIRONMENT_IS_WEB) {
-    this['{{{ EXPORT_NAME }}}'] = Module;
+    window['{{{ EXPORT_NAME }}}'] = Module;
   } else {
     Module['load'] = importScripts;
   }
