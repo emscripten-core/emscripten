@@ -310,7 +310,8 @@ def check_fastcomp():
     seen = False
     d = os.path.dirname(LLVM_COMPILER)
     while d != os.path.dirname(d):
-      if os.path.exists(os.path.join(d, 'emscripten-version.txt')):
+      # look for version file in llvm repo, making sure not to mistake the emscripten repo for it
+      if os.path.exists(os.path.join(d, 'emscripten-version.txt')) and not os.path.abspath(d) == os.path.abspath(path_from_root()):
         seen = True
         llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
         if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
@@ -365,7 +366,11 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.12.3'
+try:
+  EMSCRIPTEN_VERSION = open(path_from_root('emscripten-version.txt')).read().strip()
+except Exception, e:
+  logging.error('cannot find emscripten version ' + str(e))
+  EMSCRIPTEN_VERSION = 'unknown'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
