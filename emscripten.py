@@ -924,7 +924,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       debug_tables = {}
 
     def make_table(sig, raw):
-      Counter.pre = ''
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coerced_params = ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
@@ -943,7 +942,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
         return name, make_func(name, code)
       bad, bad_func = make_bad() # the default bad func
-      Counter.pre = [bad_func]
+      if settings['ASSERTIONS'] <= 1:
+        Counter.pre = [bad_func]
+      else:
+        Counter.pre = []
       start = raw.index('[')
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
@@ -959,7 +961,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           if settings['ASSERTIONS'] <= 1:
             return bad if not newline else (bad + '\n')
           else:
-            specific_bad, specific_bad_func = make_bad(Counter.j)
+            specific_bad, specific_bad_func = make_bad(Counter.j-1)
             Counter.pre.append(specific_bad_func)
             return specific_bad if not newline else (specific_bad + '\n')
         if item not in implemented_functions:
