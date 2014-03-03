@@ -12,7 +12,7 @@ var newAudioProxy = function (worker) {
     worker.postMessage({
       target: 'audio',
       features: {
-        'Audio.mozSetup': typeof(Audio) === 'function' && new Audio()['mozSetup'] === 'function',
+        'Audio.mozSetup': typeof(Audio) === 'function' && typeof(new Audio()['mozSetup']) === 'function',
         AudioContext: typeof(AudioContext) === 'function',
         webkitAudioContext: typeof(webkitAudioContext) === 'function'
       }
