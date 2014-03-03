@@ -678,18 +678,31 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  EMSDK_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
-    '-Xclang', '-isystem' + path_from_root('system', 'local', 'include'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'compat'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'emscripten'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
+  C_INCLUDE_PATHS = [path_from_root('system', 'local', 'include'),
+                     path_from_root('system', 'include', 'compat'),
+                     path_from_root('system', 'include'),
+                     path_from_root('system', 'include', 'emscripten'),
+                     path_from_root('system', 'include', 'bsd'), # posix stuff
+                     path_from_root('system', 'include', 'libc'),
+                     path_from_root('system', 'include', 'gfx'),
+                     path_from_root('system', 'include', 'net'),
+                     path_from_root('system', 'include', 'SDL'),
   ]
+  
+  CXX_INCLUDE_PATHS = [path_from_root('system', 'include', 'libcxx')
+  ]
+  
+  C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
+  ]
+  
+  def include_directive(paths):
+    result = []
+    for path in paths:
+      result += ['-Xclang', '-isystem' + path]
+    return result
+  
+  EMSDK_OPTS = C_OPTS + include_directive(C_INCLUDE_PATHS) + include_directive(CXX_INCLUDE_PATHS)
+
   EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
   # For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
   if LLVM_TARGET != 'asmjs-unknown-emscripten' and \
