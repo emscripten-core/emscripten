@@ -2547,8 +2547,10 @@ int main()
       for asserts in [0, 1]:
         extra = []
         if opts != 1-asserts: extra = ['-s', 'ASSERTIONS=' + str(asserts)]
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'cases', 'sillyfuncast2.ll'), '-O' + str(opts)] + extra
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'cases', 'sillyfuncast2_noasm.ll'), '-O' + str(opts)] + extra
         print cmd
         stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
         assert ('''unexpected number of arguments 3 in call to 'doit', should be 2''' in stderr) == asserts, stderr
+        assert ('''unexpected return type i32 in call to 'doit', should be void''' in stderr) == asserts, stderr
+        assert ('''unexpected argument type float at index 1 in call to 'doit', should be i32''' in stderr) == asserts, stderr
 

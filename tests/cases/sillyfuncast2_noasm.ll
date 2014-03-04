@@ -14,6 +14,7 @@ entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
   call i32 bitcast (void (i32, i32)* @doit to i32 (i32, i64)*)(i32 0, i64 0) nounwind
+  call void bitcast (void (i32, i32)* @doit to void (i32, float)*)(i32 0, float 0.0) nounwind
   ret i32 1
 }
 
