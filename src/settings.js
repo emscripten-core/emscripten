@@ -311,6 +311,10 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
+                                    // Note also that this is the full list of exported functions - if you
+                                    // have a main() function and want it to run, you must include it in this
+                                    // list (as _main is by default in this value, and if you override it
+                                    // without keeping it there, you are in effect removing it).
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
