@@ -4308,7 +4308,7 @@ LibraryManager.library = {
   llvm_prefetch: function(){},
 
   __assert_fail: function(condition, filename, line, func) {
-    ABORT = true;
+    setAbort(true);
     throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + stackTrace();
   },
 
@@ -4467,7 +4467,7 @@ LibraryManager.library = {
 
   __cxa_call_unexpected: function(exception) {
     Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
-    ABORT = true;
+    setAbort(true);
     throw exception;
   },
 
@@ -4686,7 +4686,7 @@ LibraryManager.library = {
   },
 
   __cxa_pure_virtual: function() {
-    ABORT = true;
+    setAbort(true);
     throw 'Pure virtual function called!';
   },
 

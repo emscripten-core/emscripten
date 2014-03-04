@@ -152,7 +152,7 @@ function run(args) {
 Module['run'] = Module.run = run;
 
 function exit(status) {
-  ABORT = true;
+  setAbort(true);
   EXITSTATUS = status;
   STACKTOP = initialStackTop;
 
@@ -178,7 +178,7 @@ function abort(text) {
     Module.printErr(text);
   }
 
-  ABORT = true;
+  setAbort(true);
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
