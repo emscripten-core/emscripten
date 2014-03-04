@@ -450,9 +450,9 @@ var LibrarySDL = {
           // keyup. This isn't perfect, but it enables SDL_WM_ToggleFullScreen
           // to work as the result of a keypress (which is an extremely
           // common use case).
-          if (event.type === 'keydown') {
+          if (event.type === 'keydown' || event.type === 'mousedown') {
             SDL.canRequestFullscreen = true;
-          } else if (event.type === 'keyup') {
+          } else if (event.type === 'keyup' || event.type === 'mouseup') {
             if (SDL.isRequestingFullscreen) {
               Module['requestFullScreen'](true, true);
               SDL.isRequestingFullscreen = false;
