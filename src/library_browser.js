@@ -723,8 +723,59 @@ mergeInto(LibraryManager.library, {
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
-      var percentComplete = (e.position / e.totalSize)*100;
-      if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
+      if (e.lengthComputable || (e.lengthComputable === undefined && e.totalSize != 0)) {
+        var percentComplete = (e.position / e.totalSize)*100;
+        if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
+      }
+    };
+
+    // Useful because the browser can limit the number of redirection
+    try {
+      if (http.channel instanceof Ci.nsIHttpChannel)
+      http.channel.redirectionLimit = 0;
+    } catch (ex) { /* whatever */ }
+
+    if (_request == "POST") {
+      //Send the proper header information along with the request
+      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader("Content-length", _param.length);
+      http.setRequestHeader("Connection", "close");
+      http.send(_param);
+    } else {
+      http.send(null);
+    }
+  },
+
+  emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
+    var _url = Pointer_stringify(url);
+    var _request = Pointer_stringify(request);
+    var _param = Pointer_stringify(param);
+
+    var http = new XMLHttpRequest();
+    http.open(_request, _url, true);
+    http.responseType = 'arraybuffer';
+
+    // LOAD
+    http.onload = function http_onload(e) {
+      if (http.status == 200 || _url.substr(0,4).toLowerCase() != "http") {
+        var byteArray = new Uint8Array(http.response);
+        var buffer = _malloc(byteArray.length);
+        HEAPU8.set(byteArray, buffer);
+        if (onload) Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
+        if (free) _free(buffer);
+      } else {
+        if (onerror) Runtime.dynCall('viii', onerror, [arg, http.status, http.statusText]);
+      }
+    };
+
+    // ERROR
+    http.onerror = function http_onerror(e) {
+      if (onerror) Runtime.dynCall('viii', onerror, [arg, http.status, http.statusText]);
+    };
+
+    // PROGRESS
+    http.onprogress = function http_onprogress(e) {
+      if (onprogress) Runtime.dynCall('viii', onprogress, [arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0]);
     };
 
     // Useful because the browser can limit the number of redirection
