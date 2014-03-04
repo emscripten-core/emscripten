@@ -316,8 +316,10 @@ def check_fastcomp():
         llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
         if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
           clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
+        elif os.path.exists(os.path.join(d, 'tools', 'clang')):
+          clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
         else:
-          clang_version = '?'
+          clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
         if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
           logging.error('Emscripten, llvm and clang versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
           logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See https://github.com/kripken/emscripten/wiki/LLVM-Backend')
