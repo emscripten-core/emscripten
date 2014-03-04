@@ -5202,7 +5202,7 @@ def process(filename):
           'structparam', 'extendedprecision', 'issue_39', 'phinonexist', 'oob_ta2', 'phiself', 'invokebitcast', # invalid ir
           'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
           '2xi40', # pnacl limitations in ExpandGetElementPtr
-          'quoted', # current fastcomp limitations FIXME
+          'quoted', 'sillyfuncast2', # current fastcomp limitations FIXME
           'atomicrmw_unaligned' # TODO XXX
         ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
