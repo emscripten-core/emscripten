@@ -153,4 +153,3 @@ void org_xmlvm_runtime_RedTypeMarker___INIT___(JAVA_OBJECT me)
     return;
     //XMLVM_END_WRAPPER
 }
-

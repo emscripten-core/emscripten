@@ -224,4 +224,3 @@ uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
 #endif
 
 #endif
-

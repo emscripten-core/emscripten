@@ -630,4 +630,3 @@ void	btSortedOverlappingPairCache::sortOverlappingPairs(btDispatcher* dispatcher
 {
 	//should already be sorted
 }
-

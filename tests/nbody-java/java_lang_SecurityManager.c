@@ -1719,4 +1719,3 @@ void java_lang_SecurityManager___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
-

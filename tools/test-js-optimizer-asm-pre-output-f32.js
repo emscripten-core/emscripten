@@ -14,4 +14,3 @@ function dupe() {
  x = Math_fround(x);
  x = Math_fround(x);
 }
-

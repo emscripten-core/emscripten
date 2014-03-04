@@ -23,4 +23,3 @@ subject to the following restrictions:
 
 
 #endif //BT_COLLISION_MARGIN_H
-

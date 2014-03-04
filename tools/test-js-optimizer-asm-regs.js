@@ -107,4 +107,3 @@ function iffey() {
  return 0;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey"]
-

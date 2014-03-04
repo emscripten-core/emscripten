@@ -64,4 +64,3 @@ LUALIB_API void luaL_openlibs (lua_State *L) {
   }
   lua_pop(L, 1);  /* remove _PRELOAD table */
 }
-

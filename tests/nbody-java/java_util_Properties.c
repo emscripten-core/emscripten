@@ -2780,4 +2780,3 @@ JAVA_OBJECT java_util_Properties_substitutePredefinedEntries___java_lang_String(
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
-

@@ -68,4 +68,3 @@ function fastaRandom(n, table) {
   print(">THREE Homo sapiens frequency")
   fastaRandom(5*n, HomoSap)
 }).call(this, 1*arguments[0]*1)
-

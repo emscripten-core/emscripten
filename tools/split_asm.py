@@ -27,4 +27,3 @@ module = AsmModule(infile)
 
 open(out_shell, 'w').write(module.pre_js + '\n// ASM_CODE\n' + module.post_js)
 open(out_asm, 'w').write(module.asm_js)
-

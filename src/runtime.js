@@ -639,4 +639,3 @@ if (RETAIN_COMPILER_SETTINGS) {
     } catch(e){}
   }
 }
-

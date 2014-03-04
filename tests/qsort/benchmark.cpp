@@ -40,4 +40,3 @@ int main() {
   float diff = (((float)end - (float)start) / CLOCKS_PER_SEC ) * 1000;
   printf("cost %fms\n", diff);
 }
-

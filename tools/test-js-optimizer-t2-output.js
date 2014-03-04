@@ -88,4 +88,3 @@ function shifty($id2) {
  q(go() << 16);
  q(go() + 2 >> 2);
 }
-

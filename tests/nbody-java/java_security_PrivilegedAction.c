@@ -73,4 +73,3 @@ void __INIT_IMPL_java_security_PrivilegedAction()
 
     __TIB_java_security_PrivilegedAction.classInitialized = 1;
 }
-

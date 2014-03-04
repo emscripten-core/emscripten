@@ -619,4 +619,3 @@ void pout(char title[18], float ops, int type, SPDP checknum,
 
 	return;
 }
-

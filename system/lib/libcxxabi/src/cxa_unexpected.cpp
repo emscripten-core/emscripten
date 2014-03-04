@@ -24,4 +24,3 @@ extern "C"
 #pragma GCC visibility pop
 
 }  // namespace __cxxabiv1
-

@@ -183,4 +183,3 @@ void org_apache_harmony_luni_util_NumberConverter_bigIntDigitGeneratorInstImpl__
 
     //XMLVM_END_NATIVE
 }
-

@@ -332,7 +332,3 @@ void	btPolyhedralConvexAabbCachingShape::recalcLocalAabb()
 	}
 	#endif
 }
-
-
-
-

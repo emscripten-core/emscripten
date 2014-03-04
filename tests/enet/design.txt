@@ -113,5 +113,3 @@ can easily be extended to support other platforms and integrates easily.
 restrict you in how you might use it in your programs. ENet is licensed under
 a short-and-sweet MIT-style license, which gives you the freedom to do anything 
 you want with it (well, almost anything).
-
-

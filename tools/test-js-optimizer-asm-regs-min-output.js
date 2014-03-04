@@ -38,4 +38,3 @@ function cl(b) {
  b = b + 4;
  a(b);
 }
-

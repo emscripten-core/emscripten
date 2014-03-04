@@ -1277,4 +1277,3 @@ tanh: 1
 asinh: 2.98571
 acosh: 2.98058
 atanh: nan
-

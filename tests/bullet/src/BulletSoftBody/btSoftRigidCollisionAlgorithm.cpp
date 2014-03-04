@@ -79,6 +79,3 @@ btScalar btSoftRigidCollisionAlgorithm::calculateTimeOfImpact(btCollisionObject*
 	//not yet
 	return btScalar(1.);
 }
-
-
-

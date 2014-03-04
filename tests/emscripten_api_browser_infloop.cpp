@@ -38,4 +38,3 @@ int main() {
   Class().start();
   return 1;
 }
-

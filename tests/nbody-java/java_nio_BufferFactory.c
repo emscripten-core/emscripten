@@ -491,4 +491,3 @@ JAVA_OBJECT java_nio_BufferFactory_newShortBuffer___short_1ARRAY(JAVA_OBJECT n1)
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
-

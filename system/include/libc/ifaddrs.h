@@ -32,4 +32,3 @@ int getifaddrs(struct ifaddrs **ifap);
 #endif
 
 #endif
-

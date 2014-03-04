@@ -67,4 +67,3 @@ function fannkuch(n) {
 
 var n = parseInt(arguments[0]);
 print("Pfannkuchen(" + n.toString() + ") = " + fannkuch(n).toString());
-

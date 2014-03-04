@@ -1408,5 +1408,3 @@ void	processCollisionTask(void* userPtr, void* lsMemPtr)
 
 	return;
 }
-
-

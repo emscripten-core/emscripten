@@ -125,4 +125,3 @@ float computeMeshVolume2(const float *vertices,unsigned int tcount,const unsigne
 
   return volume * (1.0f / 6.0f );
 }
-

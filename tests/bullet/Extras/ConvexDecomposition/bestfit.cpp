@@ -462,5 +462,3 @@ bool  overlapAABB(const float *bmin1,const float *bmax1,const float *bmin2,const
 
   return true; // the extents overlap
 }
-
-

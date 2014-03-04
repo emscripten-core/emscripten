@@ -388,4 +388,3 @@ void org_xmlvm_runtime_XMLVMArray___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
-

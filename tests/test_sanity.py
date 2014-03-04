@@ -575,4 +575,3 @@ fi
     shutil.rmtree(temp_dir)
 
     self.assertContained('hello, world!', result)
-

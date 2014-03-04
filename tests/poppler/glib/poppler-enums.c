@@ -671,4 +671,3 @@ poppler_backend_get_type (void)
 
 
 /* Generated data ends here */
-

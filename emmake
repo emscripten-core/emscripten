@@ -26,4 +26,3 @@ try:
 	shared.Building.make(sys.argv[1:])
 except CalledProcessError, e:
 	sys.exit(e.returncode)
-

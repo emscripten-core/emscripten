@@ -225,4 +225,3 @@ int main(int argc, char *argv[])
     if ((int)g % 16 == 4) g(5, 7);
     return (int)f + (int)g;
 }
-

@@ -25,4 +25,3 @@ function _memset(ptr, value, num) {
   ptr = ptr + 1 | 0;
  }
 }
-

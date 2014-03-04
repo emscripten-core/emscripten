@@ -121,4 +121,3 @@ onmessage = function(msg) {
     time: Date.now() - start
   });
 };
-

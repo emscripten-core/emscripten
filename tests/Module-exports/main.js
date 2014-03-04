@@ -24,7 +24,3 @@ console.log("\nbufferTest finished\n");
 
 // free the heap buffer
 Module._free(ptr);
-
-
-
-

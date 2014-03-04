@@ -1354,4 +1354,3 @@ void org_apache_harmony_luni_util_NumberConverter_longDigitGenerator___long_int_
     goto label119;
     //XMLVM_END_WRAPPER
 }
-

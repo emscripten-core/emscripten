@@ -503,4 +503,3 @@ var LibraryGLUT = {
 
 autoAddDeps(LibraryGLUT, '$GLUT');
 mergeInto(LibraryManager.library, LibraryGLUT);
-

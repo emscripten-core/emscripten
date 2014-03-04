@@ -238,4 +238,3 @@ private:
 
 
 #endif //BT_CD_HULL_H
-

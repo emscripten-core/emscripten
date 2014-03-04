@@ -5023,4 +5023,3 @@ void java_lang_String___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
-

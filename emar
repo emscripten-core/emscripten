@@ -21,4 +21,3 @@ if DEBUG:
 
 if len(newargs) > 2:
   subprocess.call(newargs)
-

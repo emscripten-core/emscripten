@@ -178,4 +178,3 @@ void iter() {
   if (responsive_main_loop) emscripten_cancel_main_loop();
 #endif
 }
-

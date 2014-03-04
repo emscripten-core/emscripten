@@ -157,4 +157,3 @@ open(os.path.join(out_dir, first_js), 'w').write(
 )
 
 print 'done!'
-

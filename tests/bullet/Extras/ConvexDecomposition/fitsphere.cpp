@@ -198,5 +198,3 @@ float computeBoundingSphere(unsigned int vcount,const float *points,float *cente
 
   return mRadius;
 }
-
-

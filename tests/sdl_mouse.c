@@ -66,4 +66,3 @@ void main_2(void* arg) {
 
   emscripten_set_main_loop(one, 0, 0);
 }
-

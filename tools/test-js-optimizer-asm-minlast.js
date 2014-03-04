@@ -5,4 +5,3 @@ function test($34) {
   return $35 | 0;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["test"]
-

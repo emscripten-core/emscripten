@@ -33,4 +33,3 @@ __uremdi3(du_int a, du_int b)
     __udivmoddi4(a, b, &rem);
     return rem;
 }
-

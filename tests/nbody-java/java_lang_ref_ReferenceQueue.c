@@ -670,4 +670,3 @@ JAVA_BOOLEAN java_lang_ref_ReferenceQueue_enqueue___java_lang_ref_Reference(JAVA
     XMLVM_THROW_CUSTOM(_r0.o)
     //XMLVM_END_WRAPPER
 }
-

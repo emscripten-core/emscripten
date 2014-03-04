@@ -15,4 +15,3 @@ for i in range(len(lines)):
   print str(depth) + '|' + line
   if line.startswith('AD:-1,'):
     depth += 1
-

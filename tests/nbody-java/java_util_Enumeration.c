@@ -73,4 +73,3 @@ void __INIT_IMPL_java_util_Enumeration()
 
     __TIB_java_util_Enumeration.classInitialized = 1;
 }
-

@@ -7,4 +7,3 @@ int main()
   emscripten_jcache_printf("waka %d waka\n", 5);
   return 0;
 }
-

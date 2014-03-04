@@ -215,4 +215,3 @@ bool btBU_Simplex1to4::isInside(const btVector3& ,btScalar ) const
 {
 	return false;
 }
-

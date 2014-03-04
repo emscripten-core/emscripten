@@ -7,4 +7,3 @@ int main() {
   REPORT_RESULT();
   return 1;
 }
-

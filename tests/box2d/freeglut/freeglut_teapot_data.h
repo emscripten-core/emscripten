@@ -2426,4 +2426,3 @@ static double tex[2][2][2] =
 
 
 #endif  /* FREEGLUT_TEAPOT_DATA_H */
-

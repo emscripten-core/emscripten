@@ -8,4 +8,3 @@ int main()
   emscripten_jcache_printf("yet another printf %.2f %d\n", 5.5, 66);
   return 0;
 }
-

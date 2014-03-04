@@ -810,4 +810,3 @@ function cute($this, $outImage) {
  }
  return 0;
 }
-

@@ -26,4 +26,3 @@
 
   return Module;
 });
-

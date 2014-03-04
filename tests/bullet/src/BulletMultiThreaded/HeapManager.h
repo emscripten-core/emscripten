@@ -114,4 +114,3 @@ public:
 };
 
 #endif //BT_HEAP_MANAGER_H__
-

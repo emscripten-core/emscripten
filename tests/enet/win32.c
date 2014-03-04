@@ -353,4 +353,3 @@ enet_socket_wait (ENetSocket socket, enet_uint32 * condition, enet_uint32 timeou
 } 
 
 #endif
-

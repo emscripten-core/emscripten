@@ -46,4 +46,3 @@ function _png_create_write_struct_2($user_png_ver, $error_ptr, $error_fn, $warn_
   setjmpTable[e.label](e.value);
  }
 }
-

@@ -445,4 +445,3 @@ JAVA_OBJECT java_util_AbstractSequentialList_set___int_java_lang_Object(JAVA_OBJ
     return _r1.o;
     //XMLVM_END_WRAPPER
 }
-

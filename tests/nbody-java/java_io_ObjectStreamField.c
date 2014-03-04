@@ -1125,4 +1125,3 @@ JAVA_BOOLEAN java_io_ObjectStreamField_defaultResolve__(JAVA_OBJECT me)
     label66:;
     //XMLVM_END_WRAPPER
 }
-

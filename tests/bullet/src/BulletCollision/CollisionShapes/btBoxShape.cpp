@@ -38,4 +38,3 @@ void	btBoxShape::calculateLocalInertia(btScalar mass,btVector3& inertia) const
 					mass/(btScalar(12.0)) * (lx*lx + ly*ly));
 
 }
-

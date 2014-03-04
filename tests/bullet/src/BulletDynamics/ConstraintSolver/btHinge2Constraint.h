@@ -55,4 +55,3 @@ public:
 
 
 #endif // BT_HINGE2_CONSTRAINT_H
-

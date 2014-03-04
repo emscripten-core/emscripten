@@ -37,4 +37,3 @@ int main() {
 
   puts(buffer);
 }
-

@@ -217,4 +217,3 @@ char* XMLVMUtil_convertFromByteArray(JAVA_OBJECT byteArray) {
     buf[length] = '\0';
     return buf;
 }
-

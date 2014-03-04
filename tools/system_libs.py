@@ -394,4 +394,3 @@ def calculate(temp_files, in_temp, stdout, stderr):
         libfile = shared.Cache.get(name, create)
         ret.append(libfile)
   return ret
-

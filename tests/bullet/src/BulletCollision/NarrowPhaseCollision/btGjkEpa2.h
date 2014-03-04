@@ -72,4 +72,3 @@ static bool		SignedDistance(	const btConvexShape* shape0,const btTransform& wtrs
 };
 
 #endif //BT_GJK_EPA2_H
-

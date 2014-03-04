@@ -48,4 +48,3 @@ public:
 
 
 #endif //SPU_CONVEX_PENETRATION_DEPTH_H
-

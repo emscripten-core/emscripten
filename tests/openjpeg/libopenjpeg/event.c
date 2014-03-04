@@ -118,4 +118,3 @@ bool opj_event_msg(opj_common_ptr cinfo, int event_type, const char *fmt, ...) {
 
 	return true;
 }
-

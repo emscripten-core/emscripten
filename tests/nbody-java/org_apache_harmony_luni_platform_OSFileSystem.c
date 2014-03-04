@@ -1047,4 +1047,3 @@ JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_ttyRead___byte_1ARRAY_in
 }
 
 //XMLVM_NATIVE[JAVA_LONG org_apache_harmony_luni_platform_OSFileSystem_ttyReadImpl___byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_INT n2, JAVA_INT n3)]
-

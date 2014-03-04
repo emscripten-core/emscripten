@@ -47,4 +47,3 @@ Popen([LLVM_INTERPRETER, sys.argv[1]+'.clean.bc'] + sys.argv[2:], env={'HOME': '
 #Popen([LLVM_COMPILER, '-march=c', sys.argv[1], '-o', sys.argv[1]+'.cbe.c']).communicate()[0]
 #Popen(['gcc', sys.argv[1]+'.cbe.c', '-lstdc++']).communicate()[0]
 #Popen(['./a.out'] + sys.argv[2:]).communicate()[0]
-

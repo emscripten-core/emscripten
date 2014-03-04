@@ -586,5 +586,3 @@ void btGpu3DGridBroadphase::squeezeOverlappingPairBuff()
 
 
 #include "btGpu3DGridBroadphaseSharedCode.h"
-
-

@@ -87,5 +87,3 @@ typedef unsigned long long u_quad_t;
 }
 #endif
 #endif
-
-

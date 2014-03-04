@@ -28,4 +28,3 @@ int main() {
 
   puts(buffer);
 }
-

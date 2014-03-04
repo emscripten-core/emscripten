@@ -213,4 +213,3 @@ var Recorder = (function() {
   recorder.replaying = replaying;
   return recorder;
 })();
-

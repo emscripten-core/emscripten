@@ -19,4 +19,3 @@ btDispatcher::~btDispatcher()
 {
 
 }
-

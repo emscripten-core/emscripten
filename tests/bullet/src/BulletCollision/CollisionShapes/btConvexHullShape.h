@@ -117,4 +117,3 @@ SIMD_FORCE_INLINE	int	btConvexHullShape::calculateSerializeBufferSize() const
 
 
 #endif //BT_CONVEX_HULL_SHAPE_H
-

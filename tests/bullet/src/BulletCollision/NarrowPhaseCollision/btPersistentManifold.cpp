@@ -253,8 +253,3 @@ void btPersistentManifold::refreshContactPoints(const btTransform& trA,const btT
 	DebugPersistency();
 #endif //
 }
-
-
-
-
-

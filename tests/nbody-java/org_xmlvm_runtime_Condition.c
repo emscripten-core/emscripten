@@ -190,4 +190,3 @@ JAVA_OBJECT org_xmlvm_runtime_Condition_getSynchronizedObject__(JAVA_OBJECT me)
 //XMLVM_NATIVE[void org_xmlvm_runtime_Condition_signal__(JAVA_OBJECT me)]
 
 //XMLVM_NATIVE[void org_xmlvm_runtime_Condition_broadcast__(JAVA_OBJECT me)]
-

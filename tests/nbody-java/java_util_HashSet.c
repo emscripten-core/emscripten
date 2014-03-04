@@ -704,4 +704,3 @@ JAVA_OBJECT java_util_HashSet_createBackingMap___int_float(JAVA_OBJECT me, JAVA_
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
-

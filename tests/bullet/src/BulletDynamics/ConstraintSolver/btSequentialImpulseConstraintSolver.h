@@ -125,4 +125,3 @@ typedef btSequentialImpulseConstraintSolver btSequentialImpulseConstraintSolverP
 
 
 #endif //BT_SEQUENTIAL_IMPULSE_CONSTRAINT_SOLVER_H
-

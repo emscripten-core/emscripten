@@ -14,4 +14,3 @@ void bufferTest(const void* source, unsigned int sourceLen) {
         printf("source[%d] = %d\n", i, src[i]);
     }
 }
-

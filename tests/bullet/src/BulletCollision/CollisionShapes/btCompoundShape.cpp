@@ -353,4 +353,3 @@ const char*	btCompoundShape::serialize(void* dataBuffer, btSerializer* serialize
 	}
 	return "btCompoundShapeData";
 }
-

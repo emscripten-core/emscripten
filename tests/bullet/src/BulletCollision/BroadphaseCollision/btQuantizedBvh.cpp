@@ -1368,8 +1368,3 @@ const char*	btQuantizedBvh::serialize(void* dataBuffer, btSerializer* serializer
 	}
 	return btQuantizedBvhDataName;
 }
-
-
-
-
-

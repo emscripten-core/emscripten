@@ -567,4 +567,3 @@ int emscripten_get_callstack(int flags, char *out, int maxbytes);
 #endif
 
 #endif // __emscripten_h__
-

@@ -20,4 +20,3 @@ int main(void) {
   emscripten_set_main_loop(main_loop, 10, 0);
   return 0;
 }
-

@@ -100,4 +100,3 @@ function a($directory) {
  } while (1); // cannot eliminate a do-while that is not one-time
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["a"]
-

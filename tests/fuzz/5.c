@@ -10,4 +10,3 @@ int main(int argc, char **argv) {
   //memset 5243040,-114,6,false,6
   return buffer[15];
 }
-

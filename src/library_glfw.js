@@ -575,5 +575,3 @@ var LibraryGLFW = {
 
 autoAddDeps(LibraryGLFW, '$GLFW');
 mergeInto(LibraryManager.library, LibraryGLFW);
-
-

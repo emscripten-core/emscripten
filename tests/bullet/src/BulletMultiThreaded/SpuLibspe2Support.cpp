@@ -254,4 +254,3 @@ void SpuLibspe2Support::stopSPU()
 
 
 #endif //USE_LIBSPE2
-

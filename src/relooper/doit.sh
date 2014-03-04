@@ -67,4 +67,3 @@ g++ Relooper.o test_fuzz6.o -o test_fuzz6
 echo
 echo "============================="
 echo
-

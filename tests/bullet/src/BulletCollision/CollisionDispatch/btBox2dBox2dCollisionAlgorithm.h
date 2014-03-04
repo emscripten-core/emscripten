@@ -63,4 +63,3 @@ public:
 };
 
 #endif //BT_BOX_2D_BOX_2D__COLLISION_ALGORITHM_H
-

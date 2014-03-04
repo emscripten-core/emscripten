@@ -59,4 +59,3 @@ diff -w -U 5 test_fuzz5.txt test_fuzz5.out
 echo "test fuzz6"
 ./test_fuzz6 &> test_fuzz6.out
 diff -w -U 5 test_fuzz6.txt test_fuzz6.out
-

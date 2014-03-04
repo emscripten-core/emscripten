@@ -28,4 +28,3 @@ struct tftphdr {
 #define EEXISTS 6
 #define ENOUSER 7
 #endif
-

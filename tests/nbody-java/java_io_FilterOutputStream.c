@@ -383,4 +383,3 @@ void java_io_FilterOutputStream_write___int(JAVA_OBJECT me, JAVA_INT n1)
     return;
     //XMLVM_END_WRAPPER
 }
-

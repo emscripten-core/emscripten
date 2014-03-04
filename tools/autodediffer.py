@@ -57,4 +57,3 @@ while max(ai, bi) < maxx:
     print '<<%d %d>>  %d : %.5f' % (ai, bi, av[0], diff)
   ai += 1
   bi += 1
-

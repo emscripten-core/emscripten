@@ -553,4 +553,3 @@ var PassManager = {
 var Framework = {
   currItem: null
 };
-

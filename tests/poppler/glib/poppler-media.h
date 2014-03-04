@@ -69,4 +69,3 @@ gboolean     poppler_media_save_to_callback (PopplerMedia        *poppler_media,
 G_END_DECLS
 
 #endif /* __POPPLER_MEDIA_H__ */
-

@@ -321,4 +321,3 @@ JAVA_INT java_lang_reflect_Field_getModifiers__(JAVA_OBJECT me)
 //XMLVM_NATIVE[void java_lang_reflect_Field_setShort___java_lang_Object_short(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_SHORT n2)]
 
 //XMLVM_NATIVE[JAVA_OBJECT java_lang_reflect_Field_toString__(JAVA_OBJECT me)]
-

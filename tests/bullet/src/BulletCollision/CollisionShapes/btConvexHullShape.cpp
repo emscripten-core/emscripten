@@ -207,5 +207,3 @@ const char*	btConvexHullShape::serialize(void* dataBuffer, btSerializer* seriali
 	
 	return "btConvexHullShapeData";
 }
-
-

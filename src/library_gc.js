@@ -235,4 +235,3 @@ if (GC_SUPPORT) {
 
   mergeInto(LibraryManager.library, LibraryGC);
 }
-

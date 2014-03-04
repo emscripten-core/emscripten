@@ -634,7 +634,3 @@ bool GIM_TRIANGLE::collide_triangle_hard_test(
 					contact_data);
 
 }
-
-
-
-

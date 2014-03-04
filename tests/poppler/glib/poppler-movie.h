@@ -39,4 +39,3 @@ gboolean     poppler_movie_show_controls (PopplerMovie *poppler_movie);
 G_END_DECLS
 
 #endif /* __POPPLER_MOVIE_H__ */
-

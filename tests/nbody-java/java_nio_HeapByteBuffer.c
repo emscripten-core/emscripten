@@ -1343,4 +1343,3 @@ JAVA_OBJECT java_nio_HeapByteBuffer_putChar___int_char(JAVA_OBJECT me, JAVA_INT 
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
-

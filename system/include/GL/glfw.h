@@ -515,4 +515,3 @@ GLFWAPI int  GLFWAPIENTRY glfwLoadTextureImage2D( GLFWimage *img, int flags );
 #endif
 
 #endif /* __glfw_h_ */
-

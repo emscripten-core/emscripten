@@ -396,4 +396,3 @@ btCriticalSection* PosixThreadSupport::createCriticalSection()
 }
 
 #endif // USE_PTHREADS
-

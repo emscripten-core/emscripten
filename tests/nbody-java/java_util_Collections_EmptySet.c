@@ -304,4 +304,3 @@ void java_util_Collections_EmptySet___INIT____java_util_Collections_EmptySet(JAV
     return;
     //XMLVM_END_WRAPPER
 }
-

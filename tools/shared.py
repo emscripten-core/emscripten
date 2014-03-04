@@ -1819,4 +1819,3 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 import js_optimizer
-

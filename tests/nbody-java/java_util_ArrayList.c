@@ -2361,4 +2361,3 @@ void java_util_ArrayList_readObject___java_io_ObjectInputStream(JAVA_OBJECT me, 
     goto label24;
     //XMLVM_END_WRAPPER
 }
-

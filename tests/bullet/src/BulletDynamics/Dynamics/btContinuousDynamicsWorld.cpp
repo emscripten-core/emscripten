@@ -191,6 +191,3 @@ void	btContinuousDynamicsWorld::updateTemporalAabbs(btScalar timeStep)
 
 
 }
-
-
-

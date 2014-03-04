@@ -487,4 +487,3 @@ private:
 };
 
 #endif
-

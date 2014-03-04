@@ -16,4 +16,3 @@ print data[0:80]
 print string[0:80]
 out.write(string)
 out.close()
-

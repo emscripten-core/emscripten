@@ -1510,4 +1510,3 @@ void	btCollisionWorld::serialize(btSerializer* serializer)
 	
 	serializer->finishSerialization();
 }
-

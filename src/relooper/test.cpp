@@ -315,4 +315,3 @@ int main() {
     puts(buffer);
   }
 }
-

@@ -1150,6 +1150,3 @@ function, references to m[i][j] are written m[ldm*i+j].  */
         }
         return;
 } 
-
-
-

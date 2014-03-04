@@ -8876,4 +8876,3 @@ function td(x, y) { // tempDoublePtr should invalidate each other
   func(xl, xh, yl, yh);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi", "intoCond", "math", "td"]
-

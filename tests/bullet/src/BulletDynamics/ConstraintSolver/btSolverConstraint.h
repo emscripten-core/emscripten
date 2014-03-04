@@ -91,6 +91,3 @@ typedef btAlignedObjectArray<btSolverConstraint>	btConstraintArray;
 
 
 #endif //BT_SOLVER_CONSTRAINT_H
-
-
-

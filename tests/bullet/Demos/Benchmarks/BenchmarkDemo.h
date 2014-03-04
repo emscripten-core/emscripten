@@ -262,4 +262,3 @@ public:
 };
 
 #endif //BENCHMARK_DEMO_H
-

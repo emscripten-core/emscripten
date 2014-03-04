@@ -137,4 +137,3 @@ mergeInto(LibraryManager.library, {
     return {{{ cDefine('UUID_VARIANT_DCE') }}};
   }
 });
-

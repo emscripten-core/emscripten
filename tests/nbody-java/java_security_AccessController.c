@@ -348,4 +348,3 @@ void java_security_AccessController___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
-

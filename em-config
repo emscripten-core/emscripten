@@ -21,4 +21,3 @@ if len(sys.argv) != 2 or \
   exit(1)
 
 print eval('shared.' + sys.argv[1])
-

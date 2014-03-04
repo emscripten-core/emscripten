@@ -73,4 +73,3 @@ void __INIT_IMPL_java_lang_reflect_GenericDeclaration()
 
     __TIB_java_lang_reflect_GenericDeclaration.classInitialized = 1;
 }
-

@@ -1884,4 +1884,3 @@ finally:
       pass
   else:
     logging.info('emcc saved files are in:' + temp_dir)
-

@@ -3354,4 +3354,3 @@ const JAVA_INT xmlvm_constant_pool_length[] = {
 };
 
 int xmlvm_constant_pool_size = sizeof(xmlvm_constant_pool_data) / sizeof(JAVA_ARRAY_CHAR*);
-

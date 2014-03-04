@@ -5,5 +5,3 @@
 var Module = {
     'noExitRuntime' : true
 };
-
-

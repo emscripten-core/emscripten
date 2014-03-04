@@ -1900,4 +1900,3 @@ JAVA_INT java_lang_Long_compareTo___java_lang_Object(JAVA_OBJECT me, JAVA_OBJECT
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
-

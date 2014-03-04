@@ -652,4 +652,3 @@ public:
 
 
 #endif //BT_SERIALIZER_H
-

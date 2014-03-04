@@ -1123,5 +1123,3 @@ void btConeTwistConstraint::setFrames(const btTransform & frameA, const btTransf
 }
 
  
-
-

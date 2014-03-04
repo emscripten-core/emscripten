@@ -59,4 +59,3 @@ public:
 
 
 #endif // BT_UNIVERSAL_CONSTRAINT_H
-

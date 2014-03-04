@@ -12,4 +12,3 @@ int main(void) {
         printf("EXCEPTION!\n");
     }
 }
-

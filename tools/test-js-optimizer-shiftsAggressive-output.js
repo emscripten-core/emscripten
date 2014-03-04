@@ -8,4 +8,3 @@ function __ZNSt3__111__call_onceERVmPvPFvS2_E($flag, $arg, $func) {
  whee2($flag + 1 | 0);
  whee3($flag + 1 | 0);
 }
-

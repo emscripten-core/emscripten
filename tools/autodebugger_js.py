@@ -44,4 +44,3 @@ for i in range(len(lines)):
 print '\n'.join(lines)
 
 print >> sys.stderr, 'Success.'
-

@@ -18,4 +18,3 @@ void java_io_FileDescriptor_syncImpl__(JAVA_OBJECT me)
     XMLVM_UNIMPLEMENTED_NATIVE_METHOD();
     //XMLVM_END_NATIVE
 }
-

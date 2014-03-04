@@ -1275,4 +1275,3 @@ typedef void (GL_APIENTRYP PFNGLENDTILINGQCOMPROC) (GLbitfield preserveMask);
 #endif
 
 #endif /* __glext_h_ */
-

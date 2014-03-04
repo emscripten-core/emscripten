@@ -901,4 +901,3 @@ JAVA_OBJECT java_nio_charset_CoderResult_toString__(JAVA_OBJECT me)
     label72:;
     //XMLVM_END_WRAPPER
 }
-

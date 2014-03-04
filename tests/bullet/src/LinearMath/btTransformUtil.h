@@ -225,4 +225,3 @@ public:
 
 
 #endif //BT_TRANSFORM_UTIL_H
-

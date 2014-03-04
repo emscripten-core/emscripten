@@ -42,4 +42,3 @@ int main()
   printf("Previous (in alphabetical order) is %s\n", (*prev).first);
   printf("Next (in alphabetical order) is %s\n", (*next).first);
 }
-

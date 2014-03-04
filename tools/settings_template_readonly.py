@@ -46,4 +46,3 @@ COMPILER_ENGINE = NODE_JS
 #                 here because of v8 issue 1822.
 
 JS_ENGINES = [NODE_JS] # add this if you have spidermonkey installed too, SPIDERMONKEY_ENGINE]
-

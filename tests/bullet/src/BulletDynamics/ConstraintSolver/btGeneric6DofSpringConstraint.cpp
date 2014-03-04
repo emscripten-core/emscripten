@@ -167,6 +167,3 @@ void btGeneric6DofSpringConstraint::setAxis(const btVector3& axis1,const btVecto
 
   calculateTransforms();
 }
-
-
-

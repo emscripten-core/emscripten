@@ -256,4 +256,3 @@ JAVA_INT java_lang_Object_AddedMembers_access$102___java_lang_Object_AddedMember
     return _r1.i;
     //XMLVM_END_WRAPPER
 }
-

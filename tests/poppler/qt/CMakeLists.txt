@@ -30,5 +30,3 @@ set(test_poppler_qt_SOURCES
 )
 poppler_add_test(test-poppler-qt BUILD_QT3_TESTS ${test_poppler_qt_SOURCES})
 target_link_libraries(test-poppler-qt poppler-qt)
-
-

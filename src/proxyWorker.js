@@ -142,4 +142,3 @@ onmessage = function onmessage(message) {
     default: throw 'wha? ' + message.data.target;
   }
 };
-

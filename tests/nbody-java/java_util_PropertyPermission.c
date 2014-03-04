@@ -562,4 +562,3 @@ void java_util_PropertyPermission_readObject___java_io_ObjectInputStream(JAVA_OB
     return;
     //XMLVM_END_WRAPPER
 }
-

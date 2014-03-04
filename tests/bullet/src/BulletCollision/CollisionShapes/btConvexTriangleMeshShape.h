@@ -70,6 +70,3 @@ public:
 
 
 #endif //BT_CONVEX_TRIANGLEMESH_SHAPE_H
-
-
-

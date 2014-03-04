@@ -178,5 +178,3 @@ void GIM_BOX_TREE::build_tree(
 	
 	_build_sub_tree(primitive_boxes, 0, primitive_boxes.size());
 }
-
-

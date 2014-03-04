@@ -25,4 +25,3 @@ for line in open(sys.argv[1]).readlines():
       print line
     else:
       if line == '}': kill = False
-

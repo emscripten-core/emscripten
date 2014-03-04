@@ -822,4 +822,3 @@ JAVA_OBJECT java_util_AbstractList_subList___int_int(JAVA_OBJECT me, JAVA_INT n1
     XMLVM_THROW_CUSTOM(_r0.o)
     //XMLVM_END_WRAPPER
 }
-

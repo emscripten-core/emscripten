@@ -113,4 +113,3 @@ void org_apache_harmony_luni_platform_IMemorySystem_PUT_MMAP_WRITE_COPY(JAVA_INT
 {
     _STATIC_org_apache_harmony_luni_platform_IMemorySystem_MMAP_WRITE_COPY = v;
 }
-

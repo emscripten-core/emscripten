@@ -34,4 +34,3 @@ for filename in filenames:
   f.close()
 
 print 'Success.'
-

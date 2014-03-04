@@ -359,5 +359,3 @@ public:
 };
 
 #endif //BT_OBB_BOX_2D_SHAPE_H
-
-

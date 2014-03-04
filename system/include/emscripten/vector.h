@@ -31,4 +31,3 @@ int32x4 emscripten_float32x4_toInt32x4(float32x4 a);
 #ifdef __cplusplus
 }
 #endif
-

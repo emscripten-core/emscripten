@@ -795,4 +795,3 @@ JAVA_OBJECT java_lang_reflect_Modifier_toString___int(JAVA_INT n1)
     goto label145;
     //XMLVM_END_WRAPPER
 }
-

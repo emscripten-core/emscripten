@@ -285,4 +285,3 @@ typedef struct hyaddrinfo_struct
   int length;
 } hyaddrinfo_struct;
 #endif
-

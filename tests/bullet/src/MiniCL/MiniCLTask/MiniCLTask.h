@@ -59,4 +59,3 @@ void*	createMiniCLLocalStoreMemory();
 
 
 #endif //MINICL__TASK_H
-

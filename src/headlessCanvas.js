@@ -619,4 +619,3 @@ function headlessCanvas() {
     },
   };
 }
-

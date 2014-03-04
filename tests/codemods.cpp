@@ -18,4 +18,3 @@ int main() {
   else result = diff+2; // add two to this >= number to avoid conflicts with 1
   REPORT_RESULT();
 }
-

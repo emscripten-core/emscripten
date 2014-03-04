@@ -98,4 +98,3 @@ int main(int argc, char **argv) {
 #endif //USE_GRAPHICAL_BENCHMARK
 	return 0;
 }
-
