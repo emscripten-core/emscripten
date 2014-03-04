@@ -323,6 +323,28 @@ void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*
 void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*, int), void (*onprogress)(void*, int));
 
 /*
+ * More feature-complete version of emscripten_async_wget_data. Note:
+ * this version is experimental.
+ *
+ * The requesttype is 'GET' or 'POST',
+ * If is post request, param is the post parameter 
+ * like key=value&key2=value2.
+ * The param 'arg' is a pointer will be pass to the callback
+ * The free param tells the runtime whether to free the returned buffer
+   after onload is complete. If false freeing the buffer is the receiver's
+   responsibility.
+ * The callbacks are called with an object pointer give in parameter.
+ * When file is ready then 'onload' callback will called with a pointer to
+   the buffer in memory and the size in bytes.
+ * During the download 'onprogress' callback will called. The first argument is
+   the number of bytes loaded. The second argument is the total size in bytes,
+   or zero if the size is unavailable.
+ * If any error occurred 'onerror' will called with the HTTP status code
+   and a string with the status description.
+ */
+    void emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, bool free, void (*onload)(void*, void*, size_t), void (*onerror)(void*, int, const char*), void (*onprogress)(void*, int, int));
+
+/*
  * Prepare a file in asynchronous way. This does just the
  * preparation part of emscripten_async_wget, that is, it
  * works on file data already present, and asynchronously
