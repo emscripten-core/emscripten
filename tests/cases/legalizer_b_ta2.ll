@@ -1,6 +1,6 @@
 ; ModuleID = 'tests/hello_world.bc'
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
-target triple = "le32-unknown-nacl"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target triple = "asmjs-unknown-emscripten"
 
 @globaliz = global [300 x i8] zeroinitializer
 
@@ -92,7 +92,7 @@ entry:
   store i128 %ored, i128* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
-  %ander = trunc i128 18402271027389267967 to i128
+  %ander = bitcast i128 18402271027389267967 to i128
   %anded = and i128 %loaded, %ander ; variable
   store i128 %anded, i128* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)

@@ -83,14 +83,14 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 
 	if ((flags & EM_LOG_C_STACK) != 0)
 	{
-		MYASSERT(!!strstr(callstack, "at bar(int, char*, double) (src.cpp:"), "Callstack was %s!", callstack);
-		MYASSERT(!!strstr(callstack, "at void Foo<int>() (src.cpp:"), "Callstack was %s!", callstack);
+		MYASSERT(!!strstr(callstack, ".cpp:"), "Callstack was %s!", callstack);
 	}
 	else
 	{
-		MYASSERT(!!strstr(callstack, "at bar(int, char*, double) (src.cpp.o.js:"), "Callstack was %s!", callstack);
-		MYASSERT(!!strstr(callstack, "at void Foo<int>() (src.cpp.o.js:"), "Callstack was %s!", callstack);
+		MYASSERT(!!strstr(callstack, ".js:"), "Callstack was %s!", callstack);
 	}
+	MYASSERT(!!strstr(callstack, "at bar(int, char*, double)"), "Callstack was %s!", callstack);
+	MYASSERT(!!strstr(callstack, "at void Foo<int>()"), "Callstack was %s!", callstack);
 
 	// 5. Clean up.
 	delete[] callstack;
@@ -98,6 +98,14 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	// Or alternatively use a fixed-size buffer for the callstack (and get a truncated output if it was too small).
 	char str[1024];
 	emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_JS_STACK, str, 1024);
+
+	// Test that obtaining a truncated callstack works. (https://github.com/kripken/emscripten/issues/2171)
+	char *buffer = new char[21];
+	buffer[20] = 0x01; // Magic sentinel that should not change its value.
+	emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_DEMANGLE | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);
+	MYASSERT(!!strstr(buffer, "at bar(int,"), "Truncated callstack was %s!", buffer);
+	MYASSERT(buffer[20] == 0x01);
+	delete[] buffer;
 
 	/* With EM_LOG_JS_STACK, the callstack will be
 		at __Z3bariPcd (src.cpp.o.js:5394:12)

@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <assert.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -42,13 +42,13 @@ void finish(int result) {
     close(server.fd);
     server.fd = 0;
   }
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   REPORT_RESULT();
 #endif
   exit(result);
 }
 
-void main_loop(void *arg) {
+void main_loop() {
   static char out[1024*2];
   static int pos = 0;
   fd_set fdr;
@@ -160,10 +160,10 @@ int main() {
     finish(EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 0, 0);
 #else
-  while (1) main_loop(NULL);
+  while (1) main_loop();
 #endif
 
   return EXIT_SUCCESS;

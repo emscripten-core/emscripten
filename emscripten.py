@@ -9,7 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging, shutil
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, logging
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -538,7 +538,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
     if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
-      assert settings.get('TARGET_LE32'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
+      assert settings.get('TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
       for key, value in forwarded_json['Variables']['globals'].iteritems():
         if value.get('linkable'):
           init = forwarded_json['Variables']['indexedGlobals'][key] + 8 # 8 is Runtime.GLOBAL_BASE / STATIC_BASE
@@ -744,6 +744,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     backend_args += ['-emscripten-precise-f32']
   if settings['WARN_UNALIGNED']:
     backend_args += ['-emscripten-warn-unaligned']
+  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+    backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
+  if settings['ASSERTIONS'] > 0:
+    backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
   if DEBUG:
     logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
     t = time.time()
@@ -778,6 +782,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   table_sizes = {}
   for k, v in metadata['tables'].iteritems():
     table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
+    #if settings['ASSERTIONS'] >= 2 and table_sizes[k] == 0:
+    #  print >> sys.stderr, 'warning: no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
   funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
 
   # fix +float into float.0, if not running js opts
@@ -799,11 +805,15 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: logging.debug('emscript: js compiler glue')
 
   # Settings changes
-  assert settings['TARGET_LE32'] == 1
-  settings['TARGET_LE32'] = 2
-  if 'i64Add' in metadata['declares']: # TODO: others, once we split them up
-    settings['PRECISE_I64_MATH'] = 2
-    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+  assert settings['TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'] == 1
+  settings['TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'] = 2
+  i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
+  for i64_func in i64_funcs:
+    if i64_func in metadata['declares']:
+      settings['PRECISE_I64_MATH'] = 2
+      break
+
+  metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
   # Integrate info from backend
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
@@ -912,28 +922,50 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     def unfloat(s):
       return 'd' if s == 'f' else s # lower float to double for ffis
 
+    if settings['ASSERTIONS'] >= 2:
+      debug_tables = {}
+
     def make_table(sig, raw):
-      i = Counter.i
-      Counter.i += 1
-      bad = 'b' + str(i)
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coerced_params = ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
       def make_func(name, code):
         return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
-      Counter.pre = [make_func(bad, ('abort' if not settings['ASSERTIONS'] else 'nullFunc') + '(' + str(i) + ');' + (
-        '' if sig[0] == 'v' else ('return %s' % shared.JS.make_initializer(sig[0], settings))
-      ))]
+      def make_bad(target=None):
+        i = Counter.i
+        Counter.i += 1
+        if target is None: target = i
+        name = 'b' + str(i)
+        if not settings['ASSERTIONS']:
+          code = 'abort(%s);' % target
+        else:
+          code = 'nullFunc_' + sig + '(%d);' % target
+        if sig[0] != 'v':
+          code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
+        return name, make_func(name, code)
+      bad, bad_func = make_bad() # the default bad func
+      if settings['ASSERTIONS'] <= 1:
+        Counter.pre = [bad_func]
+      else:
+        Counter.pre = []
       start = raw.index('[')
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
       for j in range(settings['RESERVED_FUNCTION_POINTERS']):
-        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = 'jsCall_%s_%s' % (sig, j)
+        curr = 'jsCall_%s_%s' % (sig, j)
+        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
+        implemented_functions.add(curr)
       Counter.j = 0
       def fix_item(item):
         Counter.j += 1
         newline = Counter.j % 30 == 29
-        if item == '0': return bad if not newline else (bad + '\n')
+        if item == '0':
+          if settings['ASSERTIONS'] <= 1:
+            return bad if not newline else (bad + '\n')
+          else:
+            specific_bad, specific_bad_func = make_bad(Counter.j-1)
+            Counter.pre.append(specific_bad_func)
+            return specific_bad if not newline else (specific_bad + '\n')
         if item not in implemented_functions:
           # this is imported into asm, we must wrap it
           call_ident = item
@@ -948,6 +980,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           Counter.pre.append(make_func(item + '__wrapper', code))
           return item + '__wrapper'
         return item if not newline else (item + '\n')
+      if settings['ASSERTIONS'] >= 2:
+        debug_tables[sig] = body
       body = ','.join(map(fix_item, body))
       return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
 
@@ -969,8 +1003,39 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
-      basic_funcs += ['nullFunc']
-      asm_setup += 'function nullFunc(x) { Module["printErr"]("Invalid function pointer called. Perhaps a miscast function pointer (check compilation warnings) or bad vtable lookup (maybe due to derefing a bad pointer, like NULL)?"); abort(x) }\n'
+      if settings['ASSERTIONS'] >= 2: import difflib
+      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+        basic_funcs += ['nullFunc_' + sig]
+        if settings['ASSERTIONS'] <= 1:
+          extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
+          pointer = ' '
+        else:
+          pointer = ' \'" + x + "\' '
+          asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+          extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
+          # sort signatures, attempting to show most likely related ones first
+          sigs = last_forwarded_json['Functions']['tables'].keys()
+          def keyfunc(other):
+            ret = 0
+            minlen = min(len(other), len(sig))
+            maxlen = min(len(other), len(sig))
+            if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
+            ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
+            ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
+            for i in range(minlen):
+              if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
+            ret += 20*len(other) # deprioritize on length
+            return ret
+          sigs.sort(key=keyfunc)
+          for other in sigs:
+            if other != sig:
+              extra += other + ': " + debug_table_' + other + '[x] + "  '
+          extra += '"); '
+        asm_setup += '\nfunction nullFunc_' + sig + '(x) { Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
+                     'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
+                     'Or calling a function with an incorrect type, which will fail? ' + \
+                     '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
+                     '"); ' + extra + ' abort(x) }\n'
 
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
@@ -1047,7 +1112,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
     # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
     if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
-      assert settings.get('TARGET_LE32'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
+      assert settings.get('TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
       for key, value in forwarded_json['Variables']['globals'].iteritems():
         if value.get('linkable'):
           init = forwarded_json['Variables']['indexedGlobals'][key] + 8 # 8 is Runtime.GLOBAL_BASE / STATIC_BASE
@@ -1217,7 +1282,7 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 
   if DEBUG: logging.debug('  emscript: final python processing took %s seconds' % (time.time() - t))
 
-if os.environ.get('EMCC_FAST_COMPILER') == '1':
+if os.environ.get('EMCC_FAST_COMPILER') != '0':
   emscript = emscript_fast
 
 def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE):
@@ -1237,13 +1302,13 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
     settings.setdefault('RELOOPER', relooper)
     if not os.path.exists(relooper):
       shared.Building.ensure_relooper(relooper)
-  
+
   settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
-  
+
   if not os.path.exists(struct_info):
     shared.Building.ensure_struct_info(struct_info)
-  
+
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 

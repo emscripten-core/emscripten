@@ -1,6 +1,6 @@
 #include <SDL/SDL.h>
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 

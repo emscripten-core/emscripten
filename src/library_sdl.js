@@ -214,26 +214,33 @@ var LibrarySDL = {
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
-      var surf = _malloc({{{ C_STRUCTS.SDL_Surface.__size__ }}});  // SDL_Surface has 15 fields of quantum size
+      var is_SDL_HWSURFACE = flags & 0x00000001;
+      var is_SDL_HWPALETTE = flags & 0x00200000;
+      var is_SDL_OPENGL = flags & 0x04000000;
+
+      var surf = _malloc({{{ C_STRUCTS.SDL_Surface.__size__ }}});
       var pixelFormat = _malloc({{{ C_STRUCTS.SDL_PixelFormat.__size__ }}});
-      flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
-
       //surface with SDL_HWPALETTE flag is 8bpp surface (1 byte)
-      var is_SDL_HWPALETTE = flags & 0x00200000;  
       var bpp = is_SDL_HWPALETTE ? 1 : 4;
- 
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.flags, 'flags', 'i32') }}};        // SDL_Surface.flags
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.format, 'pixelFormat', 'void*') }}};// SDL_Surface.format TODO
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.w, 'width', 'i32') }}};        // SDL_Surface.w
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.h, 'height', 'i32') }}};       // SDL_Surface.h
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pitch, 'width * bpp', 'i32') }}};      // SDL_Surface.pitch, assuming RGBA or indexed for now,
-                                                                               // since that is what ImageData gives us in browsers
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, '0', 'void*') }}};     // SDL_Surface.pixels, lazily initialized inside of SDL_LockSurface
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect, '0', 'i32*') }}};     // SDL_Surface.offset
+      var buffer = 0;
 
+      // preemptively initialize this for software surfaces,
+      // otherwise it will be lazily initialized inside of SDL_LockSurface
+      if (!is_SDL_HWSURFACE && !is_SDL_OPENGL) {
+        buffer = _malloc(width * height * 4);
+      }
+
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.flags, 'flags', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.format, 'pixelFormat', 'void*') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.w, 'width', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.h, 'height', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pitch, 'width * bpp', 'i32') }}};  // assuming RGBA or indexed for now,
+                                                                                        // since that is what ImageData gives us in browsers
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', 'void*') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect, '0', 'i32*') }}};
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}};// SDL_PIXELFORMAT_RGBA8888
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.palette, '0', 'i32') }}};// TODO
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}};
@@ -244,8 +251,7 @@ var LibrarySDL = {
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.Amask, 'amask || 0xff000000', 'i32') }}};
 
       // Decide if we want to use WebGL or not
-      var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
-      SDL.GL = SDL.GL || useWebGL;
+      SDL.GL = SDL.GL || is_SDL_OPENGL;
       var canvas;
       if (!usePageCanvas) {
         if (SDL.canvasPool.length > 0) {
@@ -265,7 +271,7 @@ var LibrarySDL = {
         stencil: (SDL.glAttributes[7 /*SDL_GL_STENCIL_SIZE*/] > 0)
       };
       
-      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas, webGLContextAttributes);
+      var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
             
       SDL.surfaces[surf] = {
         width: width,
@@ -273,7 +279,7 @@ var LibrarySDL = {
         canvas: canvas,
         ctx: ctx,
         surf: surf,
-        buffer: 0,
+        buffer: buffer,
         pixelFormat: pixelFormat,
         alpha: 255,
         flags: flags,
@@ -1072,8 +1078,9 @@ var LibrarySDL = {
 
     var surfData = SDL.surfaces[surf];
 
-    surfData.locked--;
-    if (surfData.locked > 0) return;
+    if (!surfData.locked || --surfData.locked > 0) {
+      return;
+    }
 
     // Copy pixel data to image
     if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
@@ -1297,7 +1304,7 @@ var LibrarySDL = {
     dstData.ctx.globalAlpha = oldAlpha;
     if (dst != SDL.screen) {
       // XXX As in IMG_Load, for compatibility we write out |pixels|
-      console.log('WARNING: copying canvas data to memory for compatibility');
+      Runtime.warnOnce('WARNING: copying canvas data to memory for compatibility');
       _SDL_LockSurface(dst);
       dstData.locked--; // The surface is not actually locked in this hack
     }
@@ -1857,7 +1864,7 @@ var LibrarySDL = {
     } else if (!SDL.audio.timer && !SDL.audio.scriptProcessorNode) {
       // If we are using the same sampling frequency as the native sampling rate of the Web Audio graph is using, we can feed our buffers via
       // Web Audio ScriptProcessorNode, which is a pull-mode API that calls back to our code to get audio data.
-      if (SDL.audio.freq == SDL.audioContext['sampleRate']) {
+      if (SDL.audioContext !== undefined && SDL.audio.freq == SDL.audioContext['sampleRate']) {
         var sizeSamplesPerChannel = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
         SDL.audio.scriptProcessorNode = SDL.audioContext['createScriptProcessor'](sizeSamplesPerChannel, 0, SDL.audio.channels);
         SDL.audio.scriptProcessorNode['onaudioprocess'] = function (e) {

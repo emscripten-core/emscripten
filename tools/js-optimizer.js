@@ -216,16 +216,6 @@ function traverse(node, pre, post, stack) {
 }
 
 // Only walk through the generated functions
-function traverseGenerated(ast, pre, post, stack) {
-  assert(generatedFunctions);
-  traverse(ast, function(node) {
-    if (node[0] === 'defun') {
-      traverse(node, pre, post, stack);
-      return null;
-    }
-  });
-}
-
 function traverseGeneratedFunctions(ast, callback) {
   assert(generatedFunctions);
   if (ast[0] === 'toplevel') {
@@ -237,6 +227,12 @@ function traverseGeneratedFunctions(ast, callback) {
   } else if (ast[0] === 'defun') {
     callback(ast);
   }
+}
+
+function traverseGenerated(ast, pre, post, stack) {
+  traverseGeneratedFunctions(ast, function(func) {
+    traverse(func, pre, post, stack);
+  });
 }
 
 // Walk the ast in a simple way, with an understanding of which JS variables are defined)
@@ -1562,6 +1558,7 @@ function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i
 var ASM_INT = 0;
 var ASM_DOUBLE = 1;
 var ASM_FLOAT = 2;
+var ASM_NONE = 3;
 
 function detectAsmCoercion(node, asmInfo) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
@@ -1569,6 +1566,7 @@ function detectAsmCoercion(node, asmInfo) {
   if (node[0] === 'unary-prefix') return ASM_DOUBLE;
   if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
   if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
+  if (node[0] === 'name') return ASM_NONE;
   return ASM_INT;
 }
 
@@ -1577,7 +1575,8 @@ function makeAsmCoercion(node, type) {
     case ASM_INT: return ['binary', '|', node, ['num', 0]];
     case ASM_DOUBLE: return ['unary-prefix', '+', node];
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
-    default: throw 'wha? ' + JSON.stringify([node, type]) + new Error().stack;
+    case ASM_NONE: return node; // non-validating code, emit nothing
+    default: throw 'whaa?';
   }
 }
 
@@ -1974,7 +1973,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
+    var freeRegsClasses = asm ? [[], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2130,8 +2129,8 @@ function registerizeHarder(ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    var allRegsByType = [{}, {}, {}];
-    var regPrefixByType = ['i', 'd', 'f'];
+    var allRegsByType = [{}, {}, {}, {}];
+    var regPrefixByType = ['i', 'd', 'f', 'n'];
     var nextReg = 1;
 
     function createReg(forName) {
@@ -4526,10 +4525,10 @@ function outline(ast) {
     var size = measureSize(func);
     if (size <= extraInfo.sizeToOutline) {
       sizeToOutline = Infinity;
-      printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
+      //printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
     } else {
       sizeToOutline = Math.round(size/Math.max(2, asmData.intendedPieces--));
-      printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
+      //printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
     }
   }
 
@@ -4754,7 +4753,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('performed outline ' + [func[1], newIdent, 'pre size', originalCodeSize, 'resulting size', measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
+    //printErr('performed outline ' + [func[1], newIdent, 'pre size', originalCodeSize, 'resulting size', measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
     calculateThreshold(func, asmData);
     return [newFunc];
   }
@@ -4776,7 +4775,16 @@ function outline(ast) {
         for (var i = minIndex; i < stats.length; i++) {
           var stat = stats[i];
           if (stat[0] == 'stat') stat = stat[1];
-          if (stat[0] == 'assign' && stat[2][0] == 'name' && stat[2][1] == 'sp') minIndex = i+1; // cannot outline |sp = |
+          if (stat[0] == 'assign' && stat[2][0] == 'name' && stat[2][1] == 'sp') {
+            // cannot outline |sp = |
+            minIndex = i+1;
+            // When followed by a STACKTOP bump, preserve that too (we may need to replace it later)
+            stat = stats[i+1];
+            if (stat[0] == 'stat') stat = stat[1];
+            if (stat && stat[0] == 'assign' && stat[2][0] == 'name' && stat[2][1] == 'STACKTOP') {
+              minIndex = i+2;
+            }
+          }
         }
       }
     }
@@ -4900,7 +4908,7 @@ function outline(ast) {
 
   var maxTotalFunctions = Infinity; // debugging tool
 
-  printErr('\n');
+  //printErr('\n');
 
   var more = true;
   while (more) {
@@ -4927,7 +4935,27 @@ function outline(ast) {
           if ('sp' in asmData.vars) {
             // find stack bump (STACKTOP = STACKTOP + X | 0) and add the extra space
             var stackBumpNode = getStackBumpNode(stats);
-            if (stackBumpNode) stackBumpNode[3][2][3][1] = asmData.totalStackSize;
+            if (stackBumpNode) {
+              stackBumpNode[3][2][3][1] = asmData.totalStackSize;
+            } else {
+              // sp exists, but no stack bump, so we need to add it
+              var found = false;
+              for (var i = 0; i < stats.length; i++) {
+                var stat = stats[i];
+                if (stat[0] === 'stat') stat = stat[1];
+                if (stat[0] === 'assign' && stat[2][0] === 'name' && stat[2][1] === 'sp') {
+                  var newNode = ['stat', makeAssign(['name', 'STACKTOP'], ['binary', '|', ['binary', '+', ['name', 'STACKTOP'], ['num', asmData.totalStackSize]], ['num', 0]])];
+                  if (i+1 < stats.length) {
+                    stats.splice(i+1, 0, newNode);
+                  } else {
+                    stats.push(newNode);
+                  }
+                  found = true;
+                  break;
+                }
+              }
+              assert(found);
+            }
           } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
             var index = getFirstIndexInNormalized(func, asmData);
@@ -4962,7 +4990,7 @@ function outline(ast) {
         }
         if (ret) {
           ret.push(func);
-          printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
+          //printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
         }
       }
       denormalizeAsm(func, asmData);

@@ -1,5 +1,7 @@
 /*
  * Boehm-compatible GC API
+ *
+ * WARNING: this is deprecated. You should just build Boehm from source, it is much faster than the toy version written in emscripten
  */
 #ifndef _GC_H_INCLUDED
 #define _GC_H_INCLUDED

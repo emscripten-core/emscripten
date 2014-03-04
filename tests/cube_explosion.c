@@ -12,7 +12,7 @@ RESULTING FROM THE USE, MODIFICATION, OR
 REDISTRIBUTION OF THIS SOFTWARE.
 */
 
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 #define USE_GLEW 1
 #endif
 
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
     glDeleteTextures(1, &texture);
     assert(!glIsTexture(texture)); // but not anymore
 
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     SDL_Delay(1500);
 #endif
 

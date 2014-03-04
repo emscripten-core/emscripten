@@ -194,9 +194,6 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 }
 
 function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
-#if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP load: ' + [dest, bytes, isFloat, unsigned]);
-#endif
   assert(dest > 0, 'segmentation fault');
   assert(dest % bytes === 0);
   assert(dest < Math.max(DYNAMICTOP, STATICTOP));
@@ -204,6 +201,9 @@ function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned]);
+#endif
   return ret;
 }
 
@@ -683,6 +683,130 @@ function stringToUTF32(str, outPtr) {
 Module['stringToUTF32'] = stringToUTF32;
 
 function demangle(func) {
+  var i = 3;
+  // params, etc.
+  var basicTypes = {
+    'v': 'void',
+    'b': 'bool',
+    'c': 'char',
+    's': 'short',
+    'i': 'int',
+    'l': 'long',
+    'f': 'float',
+    'd': 'double',
+    'w': 'wchar_t',
+    'a': 'signed char',
+    'h': 'unsigned char',
+    't': 'unsigned short',
+    'j': 'unsigned int',
+    'm': 'unsigned long',
+    'x': 'long long',
+    'y': 'unsigned long long',
+    'z': '...'
+  };
+  var subs = [];
+  var first = true;
+  function dump(x) {
+    //return;
+    if (x) Module.print(x);
+    Module.print(func);
+    var pre = '';
+    for (var a = 0; a < i; a++) pre += ' ';
+    Module.print (pre + '^');
+  }
+  function parseNested() {
+    i++;
+    if (func[i] === 'K') i++; // ignore const
+    var parts = [];
+    while (func[i] !== 'E') {
+      if (func[i] === 'S') { // substitution
+        i++;
+        var next = func.indexOf('_', i);
+        var num = func.substring(i, next) || 0;
+        parts.push(subs[num] || '?');
+        i = next+1;
+        continue;
+      }
+      if (func[i] === 'C') { // constructor
+        parts.push(parts[parts.length-1]);
+        i += 2;
+        continue;
+      }
+      var size = parseInt(func.substr(i));
+      var pre = size.toString().length;
+      if (!size || !pre) { i--; break; } // counter i++ below us
+      var curr = func.substr(i + pre, size);
+      parts.push(curr);
+      subs.push(curr);
+      i += pre + size;
+    }
+    i++; // skip E
+    return parts;
+  }
+  function parse(rawList, limit, allowVoid) { // main parser
+    limit = limit || Infinity;
+    var ret = '', list = [];
+    function flushList() {
+      return '(' + list.join(', ') + ')';
+    }
+    var name;
+    if (func[i] === 'N') {
+      // namespaced N-E
+      name = parseNested().join('::');
+      limit--;
+      if (limit === 0) return rawList ? [name] : name;
+    } else {
+      // not namespaced
+      if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
+      var size = parseInt(func.substr(i));
+      if (size) {
+        var pre = size.toString().length;
+        name = func.substr(i + pre, size);
+        i += pre + size;
+      }
+    }
+    first = false;
+    if (func[i] === 'I') {
+      i++;
+      var iList = parse(true);
+      var iRet = parse(true, 1, true);
+      ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
+    } else {
+      ret = name;
+    }
+    paramLoop: while (i < func.length && limit-- > 0) {
+      //dump('paramLoop');
+      var c = func[i++];
+      if (c in basicTypes) {
+        list.push(basicTypes[c]);
+      } else {
+        switch (c) {
+          case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
+          case 'R': list.push(parse(true, 1, true)[0] + '&'); break; // reference
+          case 'L': { // literal
+            i++; // skip basic type
+            var end = func.indexOf('E', i);
+            var size = end - i;
+            list.push(func.substr(i, size));
+            i += size + 2; // size + 'EE'
+            break;
+          }
+          case 'A': { // array
+            var size = parseInt(func.substr(i));
+            i += size.toString().length;
+            if (func[i] !== '_') throw '?';
+            i++; // skip _
+            list.push(parse(true, 1, true)[0] + ' [' + size + ']');
+            break;
+          }
+          case 'E': break paramLoop;
+          default: ret += '?' + c; break paramLoop;
+        }
+      }
+    }
+    if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
+    return rawList ? list : ret + flushList();
+  }
   try {
     // Special-case the entry point, since its name differs from other name mangling.
     if (func == 'Object._main' || func == '_main') {
@@ -695,130 +819,6 @@ function demangle(func) {
     switch (func[3]) {
       case 'n': return 'operator new()';
       case 'd': return 'operator delete()';
-    }
-    var i = 3;
-    // params, etc.
-    var basicTypes = {
-      'v': 'void',
-      'b': 'bool',
-      'c': 'char',
-      's': 'short',
-      'i': 'int',
-      'l': 'long',
-      'f': 'float',
-      'd': 'double',
-      'w': 'wchar_t',
-      'a': 'signed char',
-      'h': 'unsigned char',
-      't': 'unsigned short',
-      'j': 'unsigned int',
-      'm': 'unsigned long',
-      'x': 'long long',
-      'y': 'unsigned long long',
-      'z': '...'
-    };
-    function dump(x) {
-      //return;
-      if (x) Module.print(x);
-      Module.print(func);
-      var pre = '';
-      for (var a = 0; a < i; a++) pre += ' ';
-      Module.print (pre + '^');
-    }
-    var subs = [];
-    function parseNested() {
-      i++;
-      if (func[i] === 'K') i++; // ignore const
-      var parts = [];
-      while (func[i] !== 'E') {
-        if (func[i] === 'S') { // substitution
-          i++;
-          var next = func.indexOf('_', i);
-          var num = func.substring(i, next) || 0;
-          parts.push(subs[num] || '?');
-          i = next+1;
-          continue;
-        }
-        if (func[i] === 'C') { // constructor
-          parts.push(parts[parts.length-1]);
-          i += 2;
-          continue;
-        }
-        var size = parseInt(func.substr(i));
-        var pre = size.toString().length;
-        if (!size || !pre) { i--; break; } // counter i++ below us
-        var curr = func.substr(i + pre, size);
-        parts.push(curr);
-        subs.push(curr);
-        i += pre + size;
-      }
-      i++; // skip E
-      return parts;
-    }
-    var first = true;
-    function parse(rawList, limit, allowVoid) { // main parser
-      limit = limit || Infinity;
-      var ret = '', list = [];
-      function flushList() {
-        return '(' + list.join(', ') + ')';
-      }
-      var name;
-      if (func[i] === 'N') {
-        // namespaced N-E
-        name = parseNested().join('::');
-        limit--;
-        if (limit === 0) return rawList ? [name] : name;
-      } else {
-        // not namespaced
-        if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
-        var size = parseInt(func.substr(i));
-        if (size) {
-          var pre = size.toString().length;
-          name = func.substr(i + pre, size);
-          i += pre + size;
-        }
-      }
-      first = false;
-      if (func[i] === 'I') {
-        i++;
-        var iList = parse(true);
-        var iRet = parse(true, 1, true);
-        ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
-      } else {
-        ret = name;
-      }
-      paramLoop: while (i < func.length && limit-- > 0) {
-        //dump('paramLoop');
-        var c = func[i++];
-        if (c in basicTypes) {
-          list.push(basicTypes[c]);
-        } else {
-          switch (c) {
-            case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
-            case 'R': list.push(parse(true, 1, true)[0] + '&'); break; // reference
-            case 'L': { // literal
-              i++; // skip basic type
-              var end = func.indexOf('E', i);
-              var size = end - i;
-              list.push(func.substr(i, size));
-              i += size + 2; // size + 'EE'
-              break;
-            }
-            case 'A': { // array
-              var size = parseInt(func.substr(i));
-              i += size.toString().length;
-              if (func[i] !== '_') throw '?';
-              i++; // skip _
-              list.push(parse(true, 1, true)[0] + ' [' + size + ']');
-              break;
-            }
-            case 'E': break paramLoop;
-            default: ret += '?' + c; break paramLoop;
-          }
-        }
-      }
-      if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-      return rawList ? list : ret + flushList();
     }
     return parse();
   } catch(e) {
@@ -860,33 +860,19 @@ var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 #if USE_TYPED_ARRAYS
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
-#if ASM_JS == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
-#else
-  abort('Cannot enlarge memory arrays in asm.js. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', or (2) set Module.TOTAL_MEMORY before the program runs.');
-#endif
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast, and ALLOW_MEMORY_GROWTH is not fully tested with all optimizations on! ' + [DYNAMICTOP, TOTAL_MEMORY]); // We perform safe elimination instead of elimination in this mode, but if you see this error, try to disable it and other optimizations entirely
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [DYNAMICTOP, TOTAL_MEMORY]);
   assert(DYNAMICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
-  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
+
+  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
     TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
   }
   assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
-#if USE_TYPED_ARRAYS == 1
-  var oldIHEAP = IHEAP;
-  Module['HEAP'] = Module['IHEAP'] = HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-  IHEAP.set(oldIHEAP);
-  IHEAPU = new Uint32Array(IHEAP.buffer);
-#if USE_FHEAP
-  var oldFHEAP = FHEAP;
-  Module['FHEAP'] = FHEAP = new Float64Array(TOTAL_MEMORY);
-  FHEAP.set(oldFHEAP);
-#endif
-#endif
 #if USE_TYPED_ARRAYS == 2
   var oldHEAP8 = HEAP8;
   var buffer = new ArrayBuffer(TOTAL_MEMORY);
@@ -899,6 +885,11 @@ function enlargeMemory() {
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
   HEAP8.set(oldHEAP8);
+#else
+  abort('cannot enlarge memory arrays in non-ta2 modes');
+#endif
+#if ASM_JS
+  _emscripten_replace_memory(HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64);
 #endif
 #endif
 }
@@ -927,7 +918,7 @@ if (totalMemory !== TOTAL_MEMORY) {
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
-       'Cannot fallback to non-typed array case: Code is too specialized');
+       'JS engine does not provide full typed array support');
 
 #if USE_TYPED_ARRAYS == 1
 HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);

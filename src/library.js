@@ -131,7 +131,7 @@ LibraryManager.library = {
     stream.position++;
     return 0;
   },
-  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
+  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES', 'malloc'],
   readdir: function(dirp) {
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
@@ -1021,7 +1021,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  ttyname__deps: ['ttyname_r'],
+  ttyname__deps: ['ttyname_r', 'malloc'],
   ttyname: function(fildes) {
     // char *ttyname(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
@@ -1287,7 +1287,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  getlogin__deps: ['getlogin_r'],
+  getlogin__deps: ['getlogin_r', 'malloc'],
   getlogin: function() {
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
@@ -1861,14 +1861,14 @@ LibraryManager.library = {
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
       if (type === 'double') {
-#if TARGET_LE32 == 2
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 2
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true, 4) }}};
 #else
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
 #endif
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
-#if TARGET_LE32 == 1
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
         argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
@@ -1885,7 +1885,7 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
-#if TARGET_LE32 == 2
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 2
       argIndex += Runtime.getNativeFieldSize(type);
 #else
       argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
@@ -1970,7 +1970,7 @@ LibraryManager.library = {
           }
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         }
-        if (precision === -1) {
+        if (precision < 0) {
           precision = 6; // Standard default.
           precisionSet = false;
         }
@@ -2420,7 +2420,9 @@ LibraryManager.library = {
   fileno: function(stream) {
     // int fileno(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fileno.html
-    return FS.getStreamFromPtr(stream).fd;
+    stream = FS.getStreamFromPtr(stream);
+    if (!stream) return -1;
+    return stream.fd;
   },
   ftrylockfile: function() {
     // int ftrylockfile(FILE *file);
@@ -2695,7 +2697,7 @@ LibraryManager.library = {
     if (buf) _setvbuf(stream, buf, 0, 8192);  // _IOFBF, BUFSIZ.
     else _setvbuf(stream, buf, 2, 8192);  // _IONBF, BUFSIZ.
   },
-  tmpnam__deps: ['$FS'],
+  tmpnam__deps: ['$FS', 'malloc'],
   tmpnam: function(s, dir, prefix) {
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
@@ -2792,7 +2794,7 @@ LibraryManager.library = {
     function unget() { index--; };
     return __scanString(format, get, unget, varargs);
   },
-  snprintf__deps: ['_formatString'],
+  snprintf__deps: ['_formatString', 'malloc'],
   snprintf: function(s, n, format, varargs) {
     // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
@@ -2859,7 +2861,7 @@ LibraryManager.library = {
   vsscanf: 'sscanf',
 #endif
 
-#if TARGET_LE32
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
   // convert va_arg into varargs
   vfprintf__deps: ['fprintf'],
   vfprintf: function(s, f, va_arg) {
@@ -2903,7 +2905,7 @@ LibraryManager.library = {
   // sys/mman.h
   // ==========================================================================
 
-  mmap__deps: ['$FS'],
+  mmap__deps: ['$FS', 'malloc', 'memset'],
   mmap: function(start, num, prot, flags, fd, offset) {
     /* FIXME: Since mmap is normally implemented at the kernel level,
      * this implementation simply uses malloc underneath the call to
@@ -3061,7 +3063,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  realloc__deps: ['memcpy'],
+  realloc__deps: ['malloc', 'memcpy', 'free'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use
     // a real realloc with it
@@ -3275,7 +3277,7 @@ LibraryManager.library = {
     return _strtoll(ptr, null, 10);
   },
 
-  qsort__deps: ['memcpy'],
+  qsort__deps: ['malloc', 'memcpy', 'free'],
   qsort: function(base, num, size, cmp) {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
@@ -3825,7 +3827,7 @@ LibraryManager.library = {
   },
   rindex: 'strrchr',
 
-  strdup__deps: ['strlen'],
+  strdup__deps: ['strlen', 'malloc'],
   strdup: function(ptr) {
     var len = _strlen(ptr);
     var newStr = _malloc(len + 1);
@@ -3834,7 +3836,7 @@ LibraryManager.library = {
     return newStr;
   },
 
-  strndup__deps: ['strdup', 'strlen'],
+  strndup__deps: ['strdup', 'strlen', 'malloc'],
   strndup: function(ptr, size) {
     var len = _strlen(ptr);
 
@@ -3942,7 +3944,7 @@ LibraryManager.library = {
       return ___setErrNo(ERRNO_CODES.EINVAL);
     }
   },
-  strerror__deps: ['strerror_r'],
+  strerror__deps: ['strerror_r', 'malloc'],
   strerror: function(errnum) {
     if (!_strerror.buffer) _strerror.buffer = _malloc(256);
     _strerror_r(errnum, _strerror.buffer, 256);
@@ -4080,6 +4082,7 @@ LibraryManager.library = {
     return _isgraph(chr); // no locale support yet
   },
   // Lookup tables for glibc ctype implementation.
+  __ctype_b_loc__deps: ['malloc'],
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
@@ -4105,6 +4108,7 @@ LibraryManager.library = {
     }
     return me.ret;
   },
+  __ctype_tolower_loc__deps: ['malloc'],
   __ctype_tolower_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-tolower-loc.html
     var me = ___ctype_tolower_loc;
@@ -4133,6 +4137,7 @@ LibraryManager.library = {
     }
     return me.ret;
   },
+  __ctype_toupper_loc__deps: ['malloc'],
   __ctype_toupper_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-toupper-loc.html
     var me = ___ctype_toupper_loc;
@@ -4175,7 +4180,7 @@ LibraryManager.library = {
 #if TARGET_X86
     return makeSetValue(ptr, 0, 'varrp', 'void*');
 #endif
-#if TARGET_LE32
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     // 2-word structure: struct { void* start; void* currentOffset; }
     return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
 #endif
@@ -4338,12 +4343,12 @@ LibraryManager.library = {
   __cxa_caught_exceptions: [],
 
   // Exceptions
-  __cxa_allocate_exception__deps: ['__cxa_exception_header_size'],
+  __cxa_allocate_exception__deps: ['__cxa_exception_header_size', 'malloc'],
   __cxa_allocate_exception: function(size) {
     var ptr = _malloc(size + ___cxa_exception_header_size);
     return ptr + ___cxa_exception_header_size;
   },
-  __cxa_free_exception__deps: ['__cxa_exception_header_size'],
+  __cxa_free_exception__deps: ['__cxa_exception_header_size', 'free'],
   __cxa_free_exception: function(ptr) {
     try {
       return _free(ptr - ___cxa_exception_header_size);
@@ -4414,7 +4419,7 @@ LibraryManager.library = {
   // we don't actually get the value that we allocated, but something else. Easiest
   // to remember that the last exception thrown is going to be the first to be caught,
   // so just use that value instead as it is what we're really looking for.
-  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions'],
+  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions', '__cxa_last_thrown_exception'],
   __cxa_begin_catch: function(ptr) {
     __ZSt18uncaught_exceptionv.uncaught_exception--;
     ___cxa_caught_exceptions.push(___cxa_last_thrown_exception);
@@ -4449,14 +4454,13 @@ LibraryManager.library = {
       ___cxa_last_thrown_exception = 0;
     }
   },
-  __cxa_get_exception_ptr__deps: ['___cxa_last_thrown_exception'],
   __cxa_get_exception_ptr: function(ptr) {
     return ptr;
   },
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
-  __cxa_uncaught_exception__deps: ['_Zst18uncaught_exceptionv'],
+  __cxa_uncaught_exception__deps: ['_ZSt18uncaught_exceptionv'],
   __cxa_uncaught_exception: function() {
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
@@ -4532,7 +4536,7 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
-  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }], // will be called directly from compiled code
+  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
     Module.print("Resuming exception");
@@ -4582,10 +4586,11 @@ LibraryManager.library = {
 
   // Destructors for std::exception since we don't have them implemented in libcxx as we aren't using libcxxabi.
   // These are also needed for the dlmalloc tests.
+  _ZNSt9exceptionD0Ev: function() {},
   _ZNSt9exceptionD1Ev: function() {},
   _ZNSt9exceptionD2Ev: function() {},
 
-  _ZNKSt9exception4whatEv__deps: ['_malloc'],
+  _ZNKSt9exception4whatEv__deps: ['malloc'],
   _ZNKSt9exception4whatEv: function() {
     if (!__ZNKSt9exception4whatEv.buffer) {
       var name = "std::exception";
@@ -6443,7 +6448,19 @@ LibraryManager.library = {
     // var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
     var me = _localeconv;
     if (!me.ret) {
-      me.ret = allocate([allocate(intArrayFromString('.'), 'i8', ALLOC_NORMAL)], 'i8*', ALLOC_NORMAL); // just decimal point, for now
+    // These are defaults from the "C" locale
+      me.ret = allocate([
+        allocate(intArrayFromString('.'), 'i8', ALLOC_NORMAL),0,0,0, // decimal_point
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // thousands_sep
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // grouping
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // int_curr_symbol
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // currency_symbol
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // mon_decimal_point
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // mon_thousands_sep
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // mon_grouping
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0, // positive_sign
+        allocate(intArrayFromString(''), 'i8', ALLOC_NORMAL),0,0,0 // negative_sign
+      ], 'i8*', ALLOC_NORMAL); // Allocate strings in lconv, still don't allocate chars
     }
     return me.ret;
   },
@@ -6454,6 +6471,7 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
+  nl_langinfo__deps: ['malloc'],
   nl_langinfo: function(item) {
     // char *nl_langinfo(nl_item item);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
@@ -7080,7 +7098,7 @@ LibraryManager.library = {
     }
     return addr;
   },
-  inet_ntoa__deps: ['_inet_ntop4_raw'],
+  inet_ntoa__deps: ['_inet_ntop4_raw', 'malloc'],
   inet_ntoa: function(in_addr) {
     if (!_inet_ntoa.buffer) {
       _inet_ntoa.buffer = _malloc(1024);
@@ -7442,7 +7460,7 @@ LibraryManager.library = {
     return _gethostbyname(hostp);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', 'malloc'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
 
@@ -7475,7 +7493,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl', 'malloc'],
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -7692,7 +7710,7 @@ LibraryManager.library = {
   // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
   $GAI_ERRNO_MESSAGES: {},
 
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES', 'malloc'],
   gai_strerror: function(val) {
     var buflen = 256;
 
@@ -7734,7 +7752,7 @@ LibraryManager.library = {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols'],
+  setprotoent__deps: ['$Protocols', 'malloc'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -8397,7 +8415,7 @@ LibraryManager.library = {
     }
   },
 
-  getsockname__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
+  getsockname__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   getsockname: function (fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8415,7 +8433,7 @@ LibraryManager.library = {
     }
   },
 
-  getpeername__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
+  getpeername__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   getpeername: function (fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8565,7 +8583,7 @@ LibraryManager.library = {
     }
   },
 
-  recvmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_inet_pton_raw', '_write_sockaddr'],
+  recvmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   recvmsg: function(fd, message, flags) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8926,7 +8944,8 @@ LibraryManager.library = {
     // Process all lines:
     lines = callstack.split('\n');
     callstack = '';
-    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)'); // Extract components of form '       Object._main@http://server.com:4324'
+    var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)'); // New FF30 with column info: extract components of form '       Object._main@http://server.com:4324:12'
+    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?'); // Old FF without column info: extract components of form '       Object._main@http://server.com:4324'
     var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
     
     for(l in lines) {
@@ -8944,12 +8963,13 @@ LibraryManager.library = {
         lineno = parts[3];
         column = parts[4];
       } else {
-        parts = firefoxRe.exec(line);
-        if (parts && parts.length == 4) {
+        parts = newFirefoxRe.exec(line);
+        if (!parts) parts = firefoxRe.exec(line);
+        if (parts && parts.length >= 4) {
           jsSymbolName = parts[1];
           file = parts[2];
           lineno = parts[3];
-          column = 0; // Firefox doesn't carry column information. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+          column = parts[4]|0; // Old Firefox doesn't carry column information, but in new FF30, it is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
         } else {
           // Was not able to extract this line for demangling/sourcemapping purposes. Output it as-is.
           callstack += line + '\n';
@@ -9005,7 +9025,7 @@ LibraryManager.library = {
     }
     // Truncate output to avoid writing past bounds.
     if (callstack.length > maxbytes-1) {
-      callstack.slice(0, maxbytes-1);
+      callstack = callstack.slice(0, maxbytes-1);
     }
     // Output callstack string as C string to HEAP.
     writeStringToMemory(callstack, str, false);
@@ -9050,6 +9070,49 @@ LibraryManager.library = {
     }
     _emscripten_log_js(flags, str);
   },
+
+  emscripten_get_compiler_setting: function(name) {
+    name = Pointer_stringify(name);
+
+    var ret = Runtime.getCompilerSetting(name);
+    if (typeof ret === 'number') return ret;
+
+    if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
+    var cache = _emscripten_get_compiler_setting.cache;
+    var fullname = name + '__str';
+    var fullret = cache[fullname];
+    if (fullret) return fullret;
+    return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
+  },
+
+#if ASM_JS
+#if ALLOW_MEMORY_GROWTH
+  emscripten_replace_memory__asm: true, // this is used inside the asm module
+  emscripten_replace_memory__sig: 'viiiiiiii', // bogus
+  emscripten_replace_memory: function(_HEAP8, _HEAP16, _HEAP32, _HEAPU8, _HEAPU16, _HEAPU32, _HEAPF32, _HEAPF64) {
+    _HEAP8 = _HEAP8; // fake asm coercions
+    _HEAP16 = _HEAP16;
+    _HEAP32 = _HEAP32;
+    _HEAPU8 = _HEAPU8;
+    _HEAPU16 = _HEAPU16;
+    _HEAPU32 = _HEAPU32;
+    _HEAPF32 = _HEAPF32;
+    _HEAPF64 = _HEAPF64;
+    HEAP8 = _HEAP8; // replace the memory views
+    HEAP16 = _HEAP16;
+    HEAP32 = _HEAP32;
+    HEAPU8 = _HEAPU8;
+    HEAPU16 = _HEAPU16;
+    HEAPU32 = _HEAPU32;
+    HEAPF32 = _HEAPF32;
+    HEAPF64 = _HEAPF64;
+  },
+  // this function is inside the asm block, but prevents validation as asm.js
+  // the codebase still benefits from being in the general asm.js shape,
+  // but should not declare itself as validating (which is prevented in ASM_JS == 2).
+  {{{ (assert(ASM_JS === 2), DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('emscripten_replace_memory'), '') }}}
+#endif
+#endif
 
   //============================
   // emscripten vector ops

@@ -27,6 +27,19 @@ sys.path += [path_from_root(''), path_from_root('third_party/websockify')]
 import tools.shared
 from tools.shared import *
 
+# Utils
+
+def nonfastcomp(test):
+  try:
+    old_fastcomp = os.environ.get('EMCC_FAST_COMPILER')
+    os.environ['EMCC_FAST_COMPILER'] = '0'
+    test()
+  finally:
+    if old_fastcomp is None:
+      del os.environ['EMCC_FAST_COMPILER']
+    else:
+      os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
+
 # Sanity check for config
 
 try:
@@ -36,10 +49,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-if os.environ.get('EMCC_FAST_COMPILER') == '1':
-  test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g']
-else:
-  test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'slow2', 'slow2asm', 's_0_0', 's_0_1']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):
@@ -244,7 +254,7 @@ process(sys.argv[1])
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
-      raise Exception("did NOT asm.js'ify")
+      raise Exception("did NOT asm.js'ify: " + err)
     err = '\n'.join(filter(lambda line: 'uccessfully compiled asm.js code' not in line, err.split('\n')))
     return err
 
@@ -573,7 +583,7 @@ class BrowserCore(RunnerCore):
 
   def with_report_result(self, code):
     return r'''
-      #if EMSCRIPTEN
+      #ifdef __EMSCRIPTEN__
       #include <emscripten.h>
       #define REPORT_RESULT_INTERNAL(sync) \
         char output[1000]; \

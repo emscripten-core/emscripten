@@ -10,7 +10,225 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    https://github.com/kripken/emscripten/compare/1.8.2...incoming
+    https://github.com/kripken/emscripten/compare/1.12.3...incoming
+
+v1.12.3: 2/27/2014
+------------------
+ - Fixed alcOpenDevice on Safari.
+ - Improved the warning message on missing symbols to not show false positives (#2154).
+ - Improved EmscriptenFullscreenChangeEvent HTML5 API structure to return information about HTML element and screen sizes for convenience.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.2...1.12.3
+
+v1.12.2: 2/25/2014
+------------------
+ - Added better warning message if Emscripten, LLVM and Clang versions don't match.
+ - Introduced the asmjs-unknown-emscripten target triple that allows specializing LLVM codegen for Emscripten purposes.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.1...1.12.2
+
+v1.12.1: 2/25/2014
+------------------
+ - TURNED ON FASTCOMP BY DEFAULT. This means that you will need to migrate to fastcomp-clang build. Either use an Emscripten SDK distribution, or to build manually, see https://github.com/kripken/emscripten/wiki/LLVM-Backend for info.
+ - Migrate to requiring Clang 3.3 instead of Clang 3.2. The fastcomp-clang repository by Emscripten is based on Clang 3.3.
+ - Deprecated old Emscripten libgc implementation.
+ - asm.js will now be always enabled, even in -O0 builds in fastcomp.
+ - Remove support for -s RUNTIME_TYPE_INFO, which is unsupported in fastcomp.
+ - Added a new "powered by Emscripten" logo.
+ - Updated default shell.html graphical layout.
+ - Added new macro EM_ASM_, which allows sending values to JS without returning anything.
+ - Deprecated the jcache compiler option. It should not be needed anymore.
+ - Added support for fetching callstack column information in Firefox 30 in emscripten_get_callstack.
+ - Fix issues with missing exceptions-related symbols in fastcomp.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.0...1.12.1
+
+v1.12.0: 2/22/2014
+------------------
+ - Improved the runtime abort error message when calling an invalid function pointer if compiled with -s ASSERTIONS=1 and 2. This allows the developer to better deduce errors with bad function pointers or function pointers casted and invoked via a wrong signature.
+ - Added a new api function emscripten_set_main_loop_arg, which allows passing a userData pointer that will be carried via the function call, useful for object-oriented encapsulation purposes (#2114).
+ - Fixed CMake MinSizeRel configuration type to actually optimize for minimal size with -Os.
+ - Added support for GLES2 VAO extension OES_vertex_array_object for browsers that support it.
+ - Fix issues with emscripten/html5.f when compiled with the SAFE_HEAP option.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.11.1...1.12.0
+
+v1.11.1: 2/19/2014
+------------------
+ - Improved eglSwapBuffers to be spec-conformant.
+ - Fixed an issue with asm.js validation and va_args (#2120).
+ - Fixed asm.js validation issues found with fuzzing.
+ - Added new link-time compiler flag -s RETAIN_COMPILER_SETTINGS=1, which enables a runtime API for querying which Emscripten settings were used to compile the file.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.11.0...1.11.1
+
+v1.11.0: 2/14/2014
+------------------
+ - Implemented some new SDL library functions.
+ - Renamed standard file descriptors to have handles 0, 1 and 2 rather than 1, 2 and 3 to coincide with unix numbering.
+ - Improved embind support with smart pointers and mixins.
+ - Improved the registerization -O3 optimization pass around switch-case constructs.
+ - Upper-case files with suffix .C are now also recognized (#2109).
+ - Fixed an issue with glGetTexParameter (#2112).
+ - Improved exceptions support in fastcomp.
+ - Added new linker option -s NO_EXIT_RUNTIME=1, which can be used to set a default value for the Module["noExitRuntime"] parameter at compile-time.
+ - Improved SDL audio buffer queueing when the sample rate matches the native web audio graph sample rate.
+ - Added an optimization that removes redundant Math.frounds in -O3.
+ - Improved the default shell.html file.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.4...1.11.0
+
+v1.10.4: 2/10/2014
+------------------
+ - Added support for legacy GL emulation in fastcomp.
+ - Deprecated the --split-js compiler option. This is not supported in fastcomp. 
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.3...1.10.4
+
+v1.10.3: 2/9/2014
+------------------
+ - Work on supporting GL/EGL GetProcAddress.
+ - Fixed issues with shared lib linking support.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.2...1.10.3
+
+v1.10.2: 2/7/2014
+------------------
+ - Added basic FS unmount support.
+ - Improved screen orientation lock API to return a success code.
+ - Added PRECISE_F32 support to fastcomp.
+ - Fixed issues in fastcomp related to special floating point literal serialization.
+ - Improved SDL audio buffer queueing.
+ - Added new link-time option -s WARN_UNALIGNED=1 to fastcomp to report compiler warnings about generated unaligned memory accesses, which can hurt performance.
+ - Optimized libc strcmp and memcmp with the implementations from musl libc.
+ - Optimized libc memcpy and memset to back to native code for large buffer sizes.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.1...1.10.2
+
+v1.10.1: 1/31/2014
+------------------
+ - Improve srand() and rand() to be seedable and use a Linear Congruential Generator (LCG) for the rng generation for performance.
+ - Improved OpenAL library support.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.0...1.10.1
+
+v1.10.0: 1/29/2014
+------------------
+ - Improved C++ exception handling.
+ - Improved OpenAL library support.
+ - Fixed an issue where loading side modules could try to allocate from sealed heap (#2060).
+ - Fixed safe heap issues (2068).
+ - Added new EM_ASM variants that return a value but do not receive any inputs (#2070).
+ - Add support for simultaneously using setjmp and C++ exceptions in fastcomp.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.5...1.10.0
+
+v1.9.5: 1/25/2014
+------------------
+ - Added a spinner logo to default html shell.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.4...1.9.5
+
+v1.9.4: 1/24/2014
+------------------
+ - Add support for Ninja and Eclipse+Ninja builds with Emscripten+CMake.
+ - Fixed regressions with GL emulation.
+ - Added support for #if !X in .js library preprocessor.
+ - Make the syntax EM_ASM("code"); not silently fail. Note that the proper form is EM_ASM(code); without double-quotes.
+ - Optimize generated code size by minifying loop labels as well.
+ - Revised the -O3 optimization level to mean "safe, but very slow optimizations on top of -O2", instead of the old meaning "unsafe optimizations". Using -O3 will now only do safe optimizations, but can be very slow compared to -O2.
+ - Implemented a new registerization optimization pass that does extra variable elimination in -O3 and later to reduce the number of local variables in functions.
+ - Implemented a new emscripten/html5.h interface that exposes common HTML5 APIs directly to C code without having to handwrite JS wrappers.
+ - Improved error messages reported on user-written .js libraries containing syntax errors (#2033).
+ - Fixed glBufferData() function call signature with null data pointer.
+ - Added new option Module['filePackagePrefixURL'] that allows customizing the URL where the VFS package is loaded from.
+ - Implemented glGetTexEnviv and glGetTexEnvfv in GL emulation mode.
+ - Optimized the size of large memory initializer sections.
+ - Fixed issues with the safe heap compilation option.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.3...1.9.4
+
+v1.9.3: 1/17/2014
+------------------
+ - re-merge split blocks in multiples
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.2...1.9.3
+
+v1.9.2: 1/16/2014
+------------------
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.1...1.9.2
+
+v1.9.1: 1/16/2014
+------------------
+ - Optimize desktop GL fixed function pipeline emulation texture load instruction counts when GL_COMBINE is used.
+ - fix Math_floor coercion in unrecommended codegen modes
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.0...1.9.1
+
+v1.9.0: 1/16/2014
+------------------
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.14...1.9.0
+
+v1.8.14: 1/15/2014
+------------------
+ - add musl fputws and fix vswprintf.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.13...1.8.14
+
+v1.8.13: 1/15/2014
+------------------
+ - remove musl use of fwritex
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.12...1.8.13
+
+v1.8.12: 1/15/2014
+------------------
+ - Added new GLEW 1.10.0 emulation support.
+ - Fixed an issue where the runtime could start more than once when run in a browser (#1992)
+ - Fix a regression in wprintf.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.11...1.8.12
+
+v1.8.11: 1/15/2014
+------------------
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.10...1.8.11
+
+v1.8.10: 1/14/2014
+------------------
+ - Update libc implementation from musl libc.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.9...1.8.10
+
+v1.8.9: 1/14/2014
+------------------
+ - add fputwc, which enables wprintf.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.8...1.8.9
+
+v1.8.8: 1/14/2014
+------------------
+ - Update to latest libcxx and libcxxabi libraries.
+ - Fix handling of floating point negative zero (#1898)
+ - Fixed a memory leak in relooper in previous release.
+ - Fixed an issue in previous release with VBO handling in GL optimizations.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.7...1.8.8
+
+v1.8.7: 1/13/2014
+------------------
+ - Added support to numpad keycodes in glut support library.
+ - Fix SIMD support with fastcomp.
+ - Fixed a compiler error 'ran out of names' that could occur with too many minified symbol names.
+ - Work around webkit imul bug https://bugs.webkit.org/show_bug.cgi?id=126345 (#1991)
+ - Optimized desktop GL fixed function pipeline emulation path for better performance.
+ - Added support for exceptions when building with fastcomp.
+ - Fix and issue where the run() function could be called multiple times at startup (#1992)
+ - Removed a relooper limitation with fixed buffer size.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.6...1.8.7
+
+v1.8.6: 1/8/2014
+------------------
+ - Added support for the libuuid library, see http://linux.die.net/man/3/libuuid.
+ - Fixed .js file preprocessor to preprocess recursively (#1984).
+ - Fixed a compiler codegen issue related to overflow arithmetic (#1975)
+ - Added new link-time optimization flag -s AGGRESSIVE_VARIABLE_ELIMINATION=1 that enables the aggressiveVariableElimination js optimizer pass, which tries to remove temporary variables in generated JS code at the expense of code size.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.5...1.8.6
+
+v1.8.5: 1/7/2014
+------------------
+ - Fixed compiler issues when used with LLVM 3.4.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.4...1.8.5
+
+v1.8.4: 1/6/2014
+------------------
+ - Added support to Return and Backspace keys to glut
+ - Fixed compiler issues when used with LLVM 3.4.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.3...1.8.4
+
+v1.8.3: 1/5/2014
+------------------
+ - Improved SDL and page scroll pos handling support for IE10 and IE11.
+ - Optimized SDL_UnlockSurface performance.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.2...1.8.3
 
 v1.8.2: 1/4/2014
 ------------------

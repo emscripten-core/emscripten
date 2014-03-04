@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <assert.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -24,13 +24,13 @@ msg_t writemsg;
 
 void finish(int result) {
   close(sockfd);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   REPORT_RESULT();
 #endif
   exit(result);
 }
 
-void main_loop(void *arg) {
+void main_loop() {
   static int state = 0;
   static int readPos = 0;
   static int writePos = 0;
@@ -216,10 +216,10 @@ int main() {
     finish(EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 0, 0);
 #else
-  while (1) main_loop(NULL);
+  while (1) main_loop();
 #endif
 
   return EXIT_SUCCESS;

@@ -25,7 +25,7 @@ typedef struct {
 #include <time.h>
 #include <math.h>
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
 		world->Step(1.0f/60.0f, 3, 3);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   responsive_main_loop = argc > 2 ? argv[2][0] - '0' : 0;
   if (responsive_main_loop) {
     printf("responsive main loop\n");
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
     do {
       iter();
     } while (frameCounter <= FRAMES);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   }
 #endif
 
@@ -173,7 +173,7 @@ void iter() {
 
   printf("frame averages: %.3f +- %.3f, range: %.3f to %.3f \n", result.mean, result.stddev, float(minn)/CLOCKS_PER_SEC * 1000, float(maxx)/CLOCKS_PER_SEC * 1000);
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_run_script("if (Module.reportCompletion) Module.reportCompletion()");
   if (responsive_main_loop) emscripten_cancel_main_loop();
 #endif

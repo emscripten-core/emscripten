@@ -423,6 +423,32 @@ function switchh2() {
  }
  STACKTOP = sp;
 }
+function stackSet(x1, x2, x3, x4, x5) {
+ x1 = x1 | 0;
+ x2 = x2 | 0;
+ x3 = x3 | 0;
+ x4 = x4 | 0;
+ x5 = x5 | 0;
+ var sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 282 | 0;
+ c(1);
+ c(2);
+ c(3);
+ c(4);
+ c(5);
+ c(6);
+ c(7);
+ c(8);
+ c(9);
+ c(10);
+ HEAP32[sp + 66 >> 2] = 0;
+ HEAP32[sp + 70 >> 2] = 0;
+ stackSet$1(sp);
+ HEAP32[sp + 58 >> 2] = 0;
+ HEAP32[sp + 62 >> 2] = 0;
+ stackSet$0(sp);
+}
 function lin$0(sp) {
  sp = sp | 0;
  c(14);
@@ -925,5 +951,27 @@ function switchh2$2(sp) {
   }
  } while (0);
  HEAP32[sp + 8 >> 2] = helper$0;
+}
+function stackSet$0(sp) {
+ sp = sp | 0;
+ c(7);
+ c(8);
+ c(9);
+ c(10);
+ c(11);
+ c(12);
+ c(13);
+}
+function stackSet$1(sp) {
+ sp = sp | 0;
+ c(11);
+ c(12);
+ c(13);
+ c(1);
+ c(2);
+ c(3);
+ c(4);
+ c(5);
+ c(6);
 }
 

@@ -388,9 +388,16 @@ typedef struct EmscriptenFullscreenChangeEvent {
   // Specifies if the current page has the ability to display elements fullscreen.
   EM_BOOL fullscreenEnabled;
   // The nodeName of the target HTML Element that is in full screen mode. See https://developer.mozilla.org/en-US/docs/Web/API/Node.nodeName
+  // If isFullscreen is false, then nodeName, id and elementWidth/Height specify information about the element that just exited fullscreen mode.
   EM_UTF8 nodeName[128];
   // The HTML Element ID of the target HTML element that is in full screen mode.
   EM_UTF8 id[128];
+  // The new pixel size of the element that changed fullscreen status.
+  int elementWidth;
+  int elementHeight;
+  // The size of the whole screen, in pixels.
+  int screenWidth;
+  int screenHeight;
 } EmscriptenFullscreenChangeEvent;
 
 /*

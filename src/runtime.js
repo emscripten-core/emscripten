@@ -185,10 +185,10 @@ var Runtime = {
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size, vararg) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
-#if TARGET_LE32 == 1
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1
     if (vararg) return 8;
 #endif
-#if TARGET_LE32
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     if (!vararg && (type == 'i64' || type == 'double')) return 8;
     if (!type) return Math.min(size, 8); // align structures internally to 64 bits
 #endif
@@ -336,6 +336,9 @@ var Runtime = {
 #if ASM_JS
       if (!args.splice) args = Array.prototype.slice.call(args);
       args.splice(0, 0, ptr);
+#if ASSERTIONS
+      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
       return Module['dynCall_' + sig].apply(null, args);
 #else
       return FUNCTION_TABLE[ptr].apply(null, args);
@@ -345,6 +348,9 @@ var Runtime = {
       assert(sig.length == 1);
 #endif
 #if ASM_JS
+#if ASSERTIONS
+      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
       return Module['dynCall_' + sig].call(null, ptr);
 #else
       return FUNCTION_TABLE[ptr]();
@@ -487,6 +493,19 @@ var Runtime = {
     }
   },
 
+#if RETAIN_COMPILER_SETTINGS
+  compilerSettings: {},
+#endif
+
+  getCompilerSetting: function(name) {
+#if RETAIN_COMPILER_SETTINGS == 0
+    throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for Runtime.getCompilerSetting or emscripten_get_compiler_setting to work';
+#else
+    if (!(name in Runtime.compilerSettings)) return 'invalid compiler setting: ' + name;
+    return Runtime.compilerSettings[name];
+#endif
+  },
+
 #if RUNTIME_DEBUG
   debug: true, // Switch to false at runtime to disable logging at the right times
 
@@ -611,4 +630,13 @@ function reSign(value, bits, ignore) {
 // Then the stack.
 // Then 'dynamic' memory for sbrk.
 Runtime.GLOBAL_BASE = Runtime.alignMemory(1);
+
+if (RETAIN_COMPILER_SETTINGS) {
+  var blacklist = set('RELOOPER', 'STRUCT_INFO');
+  for (var x in this) {
+    try {
+      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) Runtime.compilerSettings[x] = this[x];
+    } catch(e){}
+  }
+}
 

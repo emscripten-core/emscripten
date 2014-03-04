@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#if !EMSCRIPTEN
+#if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
 
@@ -40,10 +40,15 @@ extern "C" {
 #define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
 
 /*
- * Input-output versions of EM_ASM. EM_ASM_INT receives arguments of
- * either int or double type and returns an int; EM_ASM_DOUBLE
- * receives similar arguments (int or double) but returns a double.
- * Arguments arrive as $0, $1 etc; output value should be returned:
+ * Input-output versions of EM_ASM.
+ *
+ * EM_ASM_ (an extra _ is added) allows sending values (ints
+ * or doubles) into the code. If you also want a return value,
+ * EM_ASM_INT receives arguments (of int or double type)
+ * and returns an int; EM_ASM_DOUBLE does the same and returns
+ * a double.
+ *
+ * Arguments arrive as $0, $1 etc. The output value should be returned:
  *
  *    int x = EM_ASM_INT({
  *      console.log('I received: ' + [$0, $1]);
@@ -54,18 +59,15 @@ extern "C" {
  * (int or double) but *not* to pass any values, you can use
  * EM_ASM_INT_V and EM_ASM_DOUBLE_V respectively.
  */
+#define EM_ASM_(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, __VA_ARGS__)
 #define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)
 #define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double(#code)
 
 /*
- * Forces LLVM to not dead-code-eliminate a function. Note that
- * you still need to use EXPORTED_FUNCTIONS so it stays alive
- * in JS, e.g.
- *     emcc -s EXPORTED_FUNCTIONS=["_main", "_myfunc"]
- * and in the source file
- *     void EMSCRIPTEN_KEEPALIVE myfunc() {..}
+ * Forces LLVM to not dead-code-eliminate a function. This also
+ * exports the function, as if you added it to EXPORTED_FUNCTIONS.
  */
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
@@ -116,6 +118,9 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  * asynchronous callbacks, but you must pause the main
  * loop until they complete.
  *
+ * If you want your main loop function to receive a void*
+ * argument, use emscripten_set_main_loop_arg.
+
  * @simulate_infinite_loop If true, this function will throw an
  *    exception in order to stop execution of the caller. This
  *    will lead to the main loop being entered instead of code
@@ -132,8 +137,9 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  *    you created an object on the stack, it will be cleaned up
  *    before the main loop will be called the first time.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop_arg(void (*func)(void*), void *arg, int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop();
 extern void emscripten_resume_main_loop();
 extern void emscripten_cancel_main_loop();
@@ -156,7 +162,7 @@ extern void emscripten_cancel_main_loop();
  * are not counted, do not block the main loop, and can fire
  * at specific time in the future.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
 extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
 #else
@@ -178,7 +184,7 @@ inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), v
  * to 10, then push 10 blockers, as they complete the user will
  * see x/10 and so forth.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_set_main_loop_expected_blockers(int num);
 #else
 inline void emscripten_set_main_loop_expected_blockers(int num) {}
@@ -193,7 +199,7 @@ inline void emscripten_set_main_loop_expected_blockers(int num) {}
  * If millis is negative, the browser's requestAnimationFrame
  * mechanism is used.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_async_call(void (*func)(void *), void *arg, int millis);
 #else
 inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
@@ -237,7 +243,7 @@ void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
  * absolute time, and is only meaningful in comparison to
  * other calls to this function. The unit is ms.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 double emscripten_get_now();
 #else
 #include <time.h>
@@ -394,10 +400,17 @@ void emscripten_destroy_worker(worker_handle worker);
 void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
 
 /*
- * Sends a response when in a worker call. Should only be
- * called once in each call.
+ * Sends a response when in a worker call. Both functions post a message
+ * back to the thread which called the worker.  The _respond_provisionally
+ * variant can be invoked multiple times, which will queue up messages to
+ * be posted to the worker's creator.  Eventually, the _respond variant must
+ * be invoked, which will disallow further messages and free framework
+ * resources previously allocated for this worker call. (Calling the
+ * provisional version is optional, but you must call the non-provisional
+ * one to avoid leaks.) 
  */
 void emscripten_worker_respond(char *data, int size);
+void emscripten_worker_respond_provisionally(char *data, int size);
 
 /*
  * Checks how many responses are being waited for from a worker. This
@@ -419,6 +432,27 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 #define EMSCRIPTEN_NETWORK_WEBSOCKETS 0
 #define EMSCRIPTEN_NETWORK_WEBRTC     1
 void emscripten_set_network_backend(int backend);
+
+/*
+ * Returns the value of a compiler setting. For example
+ *
+ *   emscripten_get_compiler_setting("PRECISE_F32")
+ *
+ * will return an integer representing the value of
+ * PRECISE_F32 during compilation. For values containing
+ * anything other than an integer, a string is returned
+ * (you will need to cast the int return value to a char*).
+ *
+ * Some useful things this can do is provide the
+ * version of emscripten ("EMSCRIPTEN_VERSION"), the optimization
+ * level ("OPT_LEVEL"), debug level ("DEBUG_LEVEL"), etc.
+ *
+ * For this command to work, you must build with
+ *   -s RETAIN_COMPILER_SETTINGS=1
+ * as otherwise we do not want to increase the build size
+ * with this metadata.
+ */
+int emscripten_get_compiler_setting(const char *name);
 
 /* Internal APIs. Be careful with these. */
 

@@ -270,7 +270,7 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3,2)
+EXPECTED_LLVM_VERSION = (3,3)
 
 actual_clang_version = None
 
@@ -303,10 +303,31 @@ def check_fastcomp():
       print >> sys.stderr, '==========================================================================='
       print >> sys.stderr, llc_version_info,
       print >> sys.stderr, '==========================================================================='
+      logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend')
       return False
+
+    # look for a source tree under the llvm binary directory. if there is one, look for emscripten-version.txt files
+    seen = False
+    d = os.path.dirname(LLVM_COMPILER)
+    while d != os.path.dirname(d):
+      # look for version file in llvm repo, making sure not to mistake the emscripten repo for it
+      if os.path.exists(os.path.join(d, 'emscripten-version.txt')) and not os.path.abspath(d) == os.path.abspath(path_from_root()):
+        seen = True
+        llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
+        if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
+          clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
+        else:
+          clang_version = '?'
+        if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
+          logging.error('Emscripten, llvm and clang versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
+          logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See https://github.com/kripken/emscripten/wiki/LLVM-Backend')
+        break
+      d = os.path.dirname(d)
+    if not seen:
+      logging.warning('did not see a source tree above LLVM_DIR, could not verify version numbers match')
     return True
   except Exception, e:
-    logging.warning('cound not check fastcomp: %s' % str(e))
+    logging.warning('could not check fastcomp: %s' % str(e))
     return True
 
 EXPECTED_NODE_VERSION = (0,8,0)
@@ -345,7 +366,11 @@ def find_temp_directory():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.10.4'
+try:
+  EMSCRIPTEN_VERSION = open(path_from_root('emscripten-version.txt')).read().strip()
+except Exception, e:
+  logging.error('cannot find emscripten version ' + str(e))
+  EMSCRIPTEN_VERSION = 'unknown'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
@@ -379,7 +404,7 @@ def check_sanity(force=False):
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_llvm_version()
     check_node_version()
-    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+    if os.environ.get('EMCC_FAST_COMPILER') != '0':
       fastcomp_ok = check_fastcomp()
 
     if os.environ.get('EM_IGNORE_SANITY'):
@@ -402,7 +427,7 @@ def check_sanity(force=False):
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
 
-    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+    if os.environ.get('EMCC_FAST_COMPILER') != '0':
       if not fastcomp_ok:
         logging.critical('failing sanity checks due to previous fastcomp failure')
         sys.exit(1)
@@ -602,7 +627,11 @@ except:
 
 # Target choice. Must be synced with src/settings.js (TARGET_*)
 def get_llvm_target():
-  return os.environ.get('EMCC_LLVM_TARGET') or 'le32-unknown-nacl' # 'i386-pc-linux-gnu'
+  if os.environ.get('EMCC_FAST_COMPILER') == '0':
+    if not os.environ.get('EMCC_LLVM_TARGET'):
+      os.environ['EMCC_LLVM_TARGET'] = 'le32-unknown-nacl'
+    return os.environ.get('EMCC_LLVM_TARGET')
+  return os.environ.get('EMCC_LLVM_TARGET') or 'asmjs-unknown-emscripten'
 LLVM_TARGET = get_llvm_target()
 
 # COMPILER_OPTS: options passed to clang when generating bitcode for us
@@ -610,19 +639,37 @@ try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
 except:
   COMPILER_OPTS = []
-COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-DEMSCRIPTEN', '-D__EMSCRIPTEN__',
-                                 '-fno-math-errno',
-                                 #'-fno-threadsafe-statics', # disabled due to issue 1289
+COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
                                  '-target', LLVM_TARGET]
 
-if LLVM_TARGET == 'le32-unknown-nacl':
-  COMPILER_OPTS = filter(lambda opt: opt != '-m32', COMPILER_OPTS) # le32 target is 32-bit anyhow, no need for -m32
-  COMPILER_OPTS += ['-U__native_client__', '-U__pnacl__', '-U__ELF__'] # The nacl target is originally used for Google Native Client. Emscripten is not NaCl, so remove the platform #define, when using their triple.
+# COMPILER_STANDARDIZATION_OPTS: Options to correct various predefined macro options.
+COMPILER_STANDARDIZATION_OPTS = []
 
-# Remove various platform specific defines, and set little endian
-COMPILER_STANDARDIZATION_OPTS = ['-U__i386__', '-U__i386', '-Ui386', '-U__STRICT_ANSI__', '-D__IEEE_LITTLE_ENDIAN',
-                                 '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
-                                 '-U__APPLE__', '-U__linux__']
+# When we're not using an appropriate target triple, use -m32 to get i386, which we
+# can mostly make work.
+if LLVM_TARGET != 'asmjs-unknown-emscripten' and LLVM_TARGET != 'le32-unknown-nacl':
+  COMPILER_OPTS += ['-m32']
+  COMPILER_STANDARDIZATION_OPTS += ['-U__i386__', '-U__i386', '-Ui386',
+                                    '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
+                                    '-U__APPLE__', '-U__linux__']
+
+# With the asmjs-unknown-emscripten target triple, clang sets up language modes
+# and predefined macros properly. When using the other targets, we have to set things
+# up manually.
+if LLVM_TARGET != 'asmjs-unknown-emscripten':
+  COMPILER_OPTS += ['-fno-math-errno']
+  COMPILER_STANDARDIZATION_OPTS += ['-D__IEEE_LITTLE_ENDIAN']
+  COMPILER_OPTS += ['-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-fno-math-errno',
+                    '-U__native_client__', '-U__pnacl__', '-U__ELF__']
+
+# Changes to default clang behavior
+if LLVM_TARGET == 'asmjs-unknown-emscripten' or LLVM_TARGET == 'le32-unknown-nacl':
+  # Implicit functions can cause horribly confusing asm.js function pointer type errors, see #2175
+  # If your codebase really needs them - very unrecommended! - you can disable the error with
+  #   -Wno-error=implicit-function-declaration
+  # or disable even a warning about it with
+  #   -Wno-implicit-function-declaration
+  COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
@@ -642,8 +689,10 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ]
   EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
-  if LLVM_TARGET != 'le32-unknown-nacl':
-    EMSDK_CXX_OPTS = ['-nostdinc++'] # le32 target does not need -nostdinc++
+  # For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
+  if LLVM_TARGET != 'asmjs-unknown-emscripten' and \
+     LLVM_TARGET != 'le32-unknown-pnacl':
+    EMSDK_CXX_OPTS = ['-nostdinc++'] # asmjs-unknown-emscripten target does not need -nostdinc++
   else:
     EMSDK_CXX_OPTS = []
   COMPILER_OPTS += EMSDK_OPTS
@@ -659,9 +708,12 @@ else:
 
 try:
   if 'gcparam' not in str(SPIDERMONKEY_ENGINE):
+    new_spidermonkey = SPIDERMONKEY_ENGINE
     if type(SPIDERMONKEY_ENGINE) is str:
-      SPIDERMONKEY_ENGINE = [SPIDERMONKEY_ENGINE]
-    SPIDERMONKEY_ENGINE += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+      new_spidermonkey = [SPIDERMONKEY_ENGINE]
+    new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+    JS_ENGINES = map(lambda x: x if x != SPIDERMONKEY_ENGINE else new_spidermonkey, JS_ENGINES)
+    SPIDERMONKEY_ENGINE = new_spidermonkey
 except NameError:
   pass
 
@@ -803,6 +855,8 @@ class Settings2(type):
 
     @classmethod
     def apply_opt_level(self, opt_level, noisy=False):
+      if opt_level == 0 and os.environ.get('EMCC_FAST_COMPILER') == '0':
+        self.attrs['ASM_JS'] = 0 # non-fastcomp has asm off in -O1
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
@@ -1467,7 +1521,7 @@ class Building:
   @staticmethod
   def ensure_relooper(relooper):
     if os.path.exists(relooper): return
-    if os.environ.get('EMCC_FAST_COMPILER') == '1':
+    if os.environ.get('EMCC_FAST_COMPILER') != '0':
       logging.debug('not building relooper to js, using it in c++ backend')
       return
 
@@ -1542,7 +1596,7 @@ class Building:
       text = m.groups(0)[0]
       assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
       assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
-      if os.environ.get('EMCC_FAST_COMPILER') == '1': # fake it in fastcomp
+      if os.environ.get('EMCC_FAST_COMPILER') != '0': # fake it in fastcomp
         return text.replace('emscripten_jcache_printf', 'printf')
       start = text.index('(')
       end = text.rindex(')')

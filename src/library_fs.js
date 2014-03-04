@@ -616,13 +616,13 @@ mergeInto(LibraryManager.library, {
     },
     // helpers to create specific types of nodes
     create: function(path, mode) {
-      mode = mode !== undefined ? mode : 0666;
+      mode = mode !== undefined ? mode : 438 /* 0666 */;
       mode &= {{{ cDefine('S_IALLUGO') }}};
       mode |= {{{ cDefine('S_IFREG') }}};
       return FS.mknod(path, mode, 0);
     },
     mkdir: function(path, mode) {
-      mode = mode !== undefined ? mode : 0777;
+      mode = mode !== undefined ? mode : 511 /* 0777 */;
       mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
       mode |= {{{ cDefine('S_IFDIR') }}};
       return FS.mknod(path, mode, 0);
@@ -630,7 +630,7 @@ mergeInto(LibraryManager.library, {
     mkdev: function(path, mode, dev) {
       if (typeof(dev) === 'undefined') {
         dev = mode;
-        mode = 0666;
+        mode = 438 /* 0666 */;
       }
       mode |= {{{ cDefine('S_IFCHR') }}};
       return FS.mknod(path, mode, dev);
@@ -895,7 +895,7 @@ mergeInto(LibraryManager.library, {
     },
     open: function(path, flags, mode, fd_start, fd_end) {
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
-      mode = typeof mode === 'undefined' ? 0666 : mode;
+      mode = typeof mode === 'undefined' ? 438 /* 0666 */ : mode;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
         mode = (mode & {{{ cDefine('S_IALLUGO') }}}) | {{{ cDefine('S_IFREG') }}};
       } else {

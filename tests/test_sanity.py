@@ -3,7 +3,7 @@ from runner import RunnerCore, path_from_root
 from tools.shared import *
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
-commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
+commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
 def restore():
   shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
@@ -14,6 +14,8 @@ def wipe():
 
 def mtime(filename):
   return os.stat(filename).st_mtime
+
+SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
 class sanity(RunnerCore):
   @classmethod
@@ -51,7 +53,7 @@ class sanity(RunnerCore):
     if type(command) is not list:
       command = [command]
     if expected is None:
-      if command[0] == EMCC:
+      if command[0] == EMCC or (len(command) >= 2 and command[1] == EMCC):
         expected = 'no input files'
       else:
         expected = "No tests found for ['blahblah']"
@@ -196,9 +198,10 @@ class sanity(RunnerCore):
       del os.environ['EM_IGNORE_SANITY']
 
   def test_llvm_fastcomp(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '1': return self.skip('not using fastcomp')
+    assert os.environ.get('EMCC_FAST_COMPILER') != '0', 'must be using fastcomp to test fastcomp'
 
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
+    WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend'
 
     restore()
 
@@ -206,22 +209,64 @@ class sanity(RunnerCore):
     assert check_fastcomp()
     output = self.check_working(EMCC)
     assert WARNING not in output, output
+    assert WARNING2 not in output, output
 
     # Fake incorrect llc output, no mention of js backend
     restore()
     f = open(CONFIG_FILE, 'a')
-    f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
+    f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"')
     f.close()
+    #print '1', open(CONFIG_FILE).read()
 
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
+    try_delete(path_from_root('tests', 'fake'))
+    os.makedirs(path_from_root('tests', 'fake', 'bin'))
 
-    f = open(path_from_root('tests', 'fake', 'llc'), 'w')
+    f = open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w')
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake output\nRegistered Targets:\nno j-s backend for you!"')
     f.close()
-    os.chmod(path_from_root('tests', 'fake', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     output = self.check_working(EMCC, WARNING)
+    output = self.check_working(EMCC, WARNING2)
+
+    # fake some more
+    for fake in ['llvm-link', 'clang', 'clang++', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
+      open(path_from_root('tests', 'fake', 'bin', fake), 'w').write('.')
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, WARNING)
+    # make sure sanity checks notice there is no source dir with version #
+    open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w').write('#!/bin/sh\necho "Registered Targets: there IZ a js backend: JavaScript (asm.js, emscripten) backend"')
+    open(path_from_root('tests', 'fake', 'bin', 'clang++'), 'w').write('#!/bin/sh\necho "clang version %s (blah blah)" >&2\necho "..." >&2\n' % '.'.join(map(str, EXPECTED_LLVM_VERSION)))
+    os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    os.chmod(path_from_root('tests', 'fake', 'bin', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, 'did not see a source tree above LLVM_DIR, could not verify version numbers match')
+
+    VERSION_WARNING = 'Emscripten, llvm and clang versions do not match, this is dangerous'
+
+    # add version number
+    open(path_from_root('tests', 'fake', 'emscripten-version.txt'), 'w').write('waka')
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, VERSION_WARNING)
+
+    os.makedirs(path_from_root('tests', 'fake', 'tools', 'clang'))
+
+    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, VERSION_WARNING)
+
+    open(path_from_root('tests', 'fake', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC)
+    assert VERSION_WARNING not in output
+
+    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write('waka')
+    try_delete(SANITY_FILE)
+    output = self.check_working(EMCC, VERSION_WARNING)
+
+    restore()
+
+    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'INIT_HEAP=1'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend''')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
@@ -272,7 +317,6 @@ fi
       del os.environ['EM_IGNORE_SANITY']
 
   def test_emcc(self):
-    SANITY_MESSAGE = 'Emscripten: Running sanity checks'
     SANITY_FAIL_MESSAGE = 'sanity check failed to run'
 
     # emcc should check sanity if no ${EM_CONFIG}_sanity
@@ -310,6 +354,10 @@ fi
     self.assertContained(SANITY_MESSAGE, output)
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
+
+    # also with -v, with or without inputs
+    output = self.check_working([EMCC, '-v'], SANITY_MESSAGE)
+    output = self.check_working([EMCC, '-v', path_from_root('tests', 'hello_world.c')], SANITY_MESSAGE)
 
     # Make sure the test runner didn't do anything to the setup
     output = self.check_working(EMCC)
@@ -414,21 +462,22 @@ fi
                 except:
                   pass
               assert ll
-              assert ll.count('\n!') < 10 # a few lines are left even in -O1 and -O2
+              assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']
 
     restore()
 
     def ensure_cache():
-      self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+      self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
     # Manual cache clearing
     ensure_cache()
     assert os.path.exists(EMCC_CACHE)
-    output = self.do([EMCC, '--clear-cache'])
+    output = self.do([PYTHON, EMCC, '--clear-cache'])
     assert ERASING_MESSAGE in output
     assert not os.path.exists(EMCC_CACHE)
+    assert SANITY_MESSAGE in output
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     ensure_cache()
@@ -436,7 +485,7 @@ fi
     try:
       os.environ['LLVM'] = 'waka'
       assert os.path.exists(EMCC_CACHE)
-      output = self.do([EMCC])
+      output = self.do([PYTHON, EMCC])
       assert ERASING_MESSAGE in output
       assert not os.path.exists(EMCC_CACHE)
     finally:
@@ -446,111 +495,34 @@ fi
     try_delete(CANONICAL_TEMP_DIR)
 
   def test_relooper(self):
-    RELOOPER = Cache.get_path('relooper.js')
-
-    restore()
-    for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
-      if phase == 0: Cache.erase()
-      try_delete(RELOOPER)
-
-      for i in range(4):
-        print >> sys.stderr, phase, i
-        opt = min(i, 2)
-        try_delete('a.out.js')
-        output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '-g'],
-                       stdout=PIPE, stderr=PIPE).communicate()
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        output = '\n'.join(output)
-        assert ('bootstrapping relooper succeeded' in output) == (i == 1), 'only bootstrap on first O2: ' + output
-        assert os.path.exists(RELOOPER) == (i >= 1), 'have relooper on O2: ' + output
-        src = open('a.out.js').read()
-        main = src.split('function _main()')[1].split('\n}\n')[0]
-        assert ('while (1) {' in main or 'while(1){' in main or 'while(1) {' in main or '} while ($' in main or '}while($' in main) == (i >= 1), 'reloop code on O2: ' + main
-        assert ('switch' not in main) == (i >= 1), 'reloop code on O2: ' + main
-
-  def test_jcache(self):
-    PRE_LOAD_MSG = 'loading pre from jcache'
-    PRE_SAVE_MSG = 'saving pre to jcache'
-    FUNC_CHUNKS_LOAD_MSG = ' funcchunks from jcache'
-    FUNC_CHUNKS_SAVE_MSG = ' funcchunks to jcache'
-    JSFUNC_CHUNKS_LOAD_MSG = 'jsfuncchunks from jcache'
-    JSFUNC_CHUNKS_SAVE_MSG = 'jsfuncchunks to jcache'
-
-    restore()
-    Cache.erase()
+    assert os.environ.get('EMCC_FAST_COMPILER') is None
 
     try:
-      os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_JSOPT_MIN_CHUNK_SIZE'] = str(1024*512)
+      os.environ['EMCC_FAST_COMPILER'] = '0'
 
-      self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
-      if not os.path.exists(self.working_dir): os.makedirs(self.working_dir)
+      RELOOPER = Cache.get_path('relooper.js')
 
-      assert not os.path.exists(JCache.get_cachename('emscript_files'))
+      restore()
+      for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
+        if phase == 0: Cache.erase()
+        try_delete(RELOOPER)
 
-      srcs = {}
-      used_jcache = False
-
-      for args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected in [
-        ([], 'hello_world_loop.cpp', False, False, False, False, False, False, []),
-        (['--jcache'], 'hello_world_loop.cpp', True, False, True, False, True, False, []),
-        (['--jcache'], 'hello_world_loop.cpp', False, True, False, True, False, True, []),
-        ([], 'hello_world_loop.cpp', False, False, False, False, False, False, []),
-        # new
-        ([], 'hello_world.cpp', False, False, False, False, False, False, []),
-        (['--jcache'], 'hello_world.cpp', True, False, True, False, True, False, []),
-        (['--jcache'], 'hello_world.cpp', False, True, False, True, False, True, []),
-        ([], 'hello_world.cpp', False, False, False, False, False, False, []),
-        # go back to old file, experience caching
-        (['--jcache'], 'hello_world_loop.cpp', False, True, False, True, False, True, []),
-        # new, large file
-        ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
-        (['--jcache'], 'hello_malloc.cpp', True, False, True, False, True, False, []),
-        (['--jcache'], 'hello_malloc.cpp', False, True, False, True, False, True, []),
-        ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
-        # new, huge file
-        ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('4 chunks',)),
-        (['--jcache'], 'hello_libcxx.cpp', True, False, True, False, True, False, []),
-        (['--jcache'], 'hello_libcxx.cpp', False, True, False, True, False, True, []),
-        ([], 'hello_libcxx.cpp', False, False, False, False, False, False, []),
-        # finally, build a file close to the previous, to see that some chunks are found in the cache and some not
-        (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, True, True, True, True, []), # win on pre, mix on funcs, mix on jsfuncs
-        (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, False, True, False, True, []),
-        (None, None, None, None, None, None, None, None, None), # clear
-        (['--jcache'], 'hello_libcxx_mod2.cpp', True, False, True, False, True, False, []), # load into cache
-        (['--jcache'], 'hello_libcxx_mod2a.cpp', False, True, True, True, True, True, []) # add a printf, do not lose everything
-      ]:
-        self.clear()
-        if args is None:
-          Cache.erase()
-          continue
-
-        print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
-
-        out, err = Popen([PYTHON, EMCC, '-O2', '-g', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
-        errtail = err.split('emcc invocation')[-1]
-        self.assertContained('hello, world!', run_js('a.out.js'), errtail)
-        assert (PRE_SAVE_MSG in err) == expect_pre_save, errtail
-        assert (PRE_LOAD_MSG in err) == expect_pre_load, errtail
-        assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_funcs_save, errtail
-        assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_funcs_load, errtail
-        assert (JSFUNC_CHUNKS_SAVE_MSG in err) == expect_jsfuncs_save, errtail
-        assert (JSFUNC_CHUNKS_LOAD_MSG in err) == expect_jsfuncs_load, errtail
-        for expect in expected: assert expect in err, expect + ' ? ' + errtail
-        curr = open('a.out.js').read()
-        if input_file not in srcs:
-          srcs[input_file] = curr
-        else:
-          #open('/home/alon/Dev/emscripten/a', 'w').write(srcs[input_file])
-          #open('/home/alon/Dev/emscripten/b', 'w').write(curr)
-          assert abs(len(curr)/float(len(srcs[input_file]))-1)<0.01, 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + errtail
-        used_jcache = used_jcache or ('--jcache' in args)
-        assert used_jcache == os.path.exists(JCache.get_cachename('emscript_files'))
-        #print >> sys.stderr, errtail
-
+        for i in range(4):
+          print >> sys.stderr, phase, i
+          opt = min(i, 2)
+          try_delete('a.out.js')
+          output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '-g'],
+                         stdout=PIPE, stderr=PIPE).communicate()
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          output = '\n'.join(output)
+          assert ('bootstrapping relooper succeeded' in output) == (i == 1), 'only bootstrap on first O2: ' + output
+          assert os.path.exists(RELOOPER) == (i >= 1), 'have relooper on O2: ' + output
+          src = open('a.out.js').read()
+          main = src.split('function _main()')[1].split('\n}\n')[0]
+          assert ('while (1) {' in main or 'while(1){' in main or 'while(1) {' in main or '} while ($' in main or '}while($' in main) == (i >= 1), 'reloop code on O2: ' + main
+          assert ('switch' not in main) == (i >= 1), 'reloop code on O2: ' + main
     finally:
-      del os.environ['EMCC_DEBUG']
-      del os.environ['EMCC_JSOPT_MIN_CHUNK_SIZE']
+      del os.environ['EMCC_FAST_COMPILER']
 
   def test_nostdincxx(self):
     restore()
@@ -559,7 +531,7 @@ fi
     try:
       old = os.environ.get('EMCC_LLVM_TARGET') or ''
       for compiler in [EMCC, EMXX]:
-        for target in ['i386-pc-linux-gnu', 'le32-unknown-nacl']:
+        for target in ['i386-pc-linux-gnu', 'asmjs-unknown-emscripten']:
           print compiler, target
           os.environ['EMCC_LLVM_TARGET'] = target
           out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
@@ -594,7 +566,7 @@ fi
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
     os.chdir(temp_dir)
-    self.do([EMCC, '-O2', '--em-config', custom_config_filename, path_from_root('tests', 'hello_world.c')])
+    self.do([PYTHON, EMCC, '-O2', '--em-config', custom_config_filename, path_from_root('tests', 'hello_world.c')])
     result = run_js('a.out.js')
     
     # Clean up created temp files.

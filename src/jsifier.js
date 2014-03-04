@@ -384,7 +384,7 @@ function JSify(data, functionsOnly) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
 
-    function addFromLibrary(ident) {
+    function addFromLibrary(ident, notDep) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -396,8 +396,10 @@ function JSify(data, functionsOnly) {
       if (('_' + ident) in Functions.implementedFunctions) return '';
 
       if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
-        if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
-        else if (VERBOSE || (WARN_ON_UNDEFINED_SYMBOLS && !LINKABLE)) warn('unresolved symbol: ' + ident);
+        if (notDep) {
+          if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
+          else if (VERBOSE || (WARN_ON_UNDEFINED_SYMBOLS && !LINKABLE)) warn('unresolved symbol: ' + ident);
+        }
         // emit a stub that will fail at runtime
         LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
       }
@@ -502,7 +504,7 @@ function JSify(data, functionsOnly) {
           delete LibraryManager.library[shortident + '__deps'];
         }
       }
-      item.JS = addFromLibrary(shortident);
+      item.JS = addFromLibrary(shortident, true);
     }
   }
 
@@ -1413,13 +1415,13 @@ function JSify(data, functionsOnly) {
     }
   }
   function va_argHandler(item) {
-    assert(TARGET_LE32);
+    assert(TARGET_ASMJS_UNKNOWN_EMSCRIPTEN);
     var ident = item.value.ident;
     var move = Runtime.STACK_ALIGN;
     
     // store current list offset in tempInt, advance list offset by STACK_ALIGN, return list entry stored at tempInt
     return '(tempInt=' + makeGetValue(ident, Runtime.QUANTUM_SIZE, '*') + ',' +
-                         makeSetValue(ident, Runtime.QUANTUM_SIZE, 'tempInt + ' + move, '*', null, null, null, null, ',') + ',' +
+                         makeSetValue(ident, Runtime.QUANTUM_SIZE, asmCoercion('tempInt + ' + move, 'i32'), '*', null, null, null, null, ',') + ',' +
                          makeGetValue(makeGetValue(ident, 0, '*'), 'tempInt', item.type) + ')';
   }
 
@@ -1710,7 +1712,7 @@ function JSify(data, functionsOnly) {
       if ((phase == 'pre' || phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
-        assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
+        assert((TARGET_ASMJS_UNKNOWN_EMSCRIPTEN && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
         if (!SIDE_MODULE) {
           print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');

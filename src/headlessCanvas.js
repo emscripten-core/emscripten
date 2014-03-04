@@ -598,7 +598,9 @@ function headlessCanvas() {
       });
     },
     exitPointerLock: function(){},
-    style: {},
+    style: {
+      setProperty: function(){}
+    },
     eventListeners: {},
     addEventListener: function(){},
     removeEventListener: function(){},

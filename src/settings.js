@@ -23,8 +23,8 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // Changing this from the default of 4 is deprecated.
 
 var TARGET_X86 = 0;  // For i386-pc-linux-gnu
-var TARGET_LE32 = 1; // For le32-unknown-nacl. 1 is normal, 2 is for the fastcomp llvm
-                     // backend using pnacl abi simplification
+var TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1; // For asmjs-unknown-emscripten. 1 is normal, 2 is for the fastcomp llvm
+                     // backend using emscripten-customized abi simplification
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
@@ -311,10 +311,25 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
+                                    // Note also that this is the full list of exported functions - if you
+                                    // have a main() function and want it to run, you must include it in this
+                                    // list (as _main is by default in this value, and if you override it
+                                    // without keeping it there, you are in effect removing it).
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
                          // is necessary to use the bindings generator with asm.js
+var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
+                                  // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
+                                  // To see what is retained, look for compilerSettings in the generated code.
+
+
+var EMSCRIPTEN_VERSION = ''; // this will contain the emscripten version. you should not modify it. This
+                             // and the following few settings are useful in combination with
+                             // RETAIN_COMPILER_SETTINGS
+var OPT_LEVEL = 0;           // this will contain the optimization level (-Ox). you should not modify it.
+var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you should not modify it.
+
 
 // JS library functions (C functions implemented in JS)
 // that we include by default. If you want to make sure
@@ -435,7 +450,7 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
-var ASM_JS = 0; // If 1, generate code in asm.js format. If 2, emits the same code except
+var ASM_JS = 1; // If 1, generate code in asm.js format. If 2, emits the same code except
                 // for omitting 'use asm'
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
