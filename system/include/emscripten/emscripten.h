@@ -454,7 +454,18 @@ void emscripten_set_network_backend(int backend);
  */
 int emscripten_get_compiler_setting(const char *name);
 
+/*
+ * Emits
+ *   debugger;
+ * inline in the code, which tells the JS engine to invoke
+ * the debugger if it gets there.
+ */
+void emscripten_debugger();
+
+
+/* ===================================== */
 /* Internal APIs. Be careful with these. */
+/* ===================================== */
 
 /*
  * Profiling tools.

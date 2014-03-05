@@ -9114,6 +9114,10 @@ LibraryManager.library = {
 #endif
 #endif
 
+  emscripten_debugger: function() {
+    debugger;
+  },
+
   //============================
   // emscripten vector ops
   //============================
