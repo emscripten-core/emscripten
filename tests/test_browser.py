@@ -51,23 +51,6 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
     httpd.handle_request()
 
 class browser(BrowserCore):
-  @staticmethod
-  def audio():
-    print
-    print 'Running the browser audio tests. Make sure to listen to hear the correct results!'
-    print
-    audio_test_cases = [
-      'test_sdl_audio',
-      'test_sdl_audio_mix_channels',
-      'test_sdl_audio_mix',
-      'test_sdl_audio_quickload',
-      'test_sdl_audio_beeps',
-      'test_openal_playback',
-      'test_openal_buffers',
-      'test_freealut'
-    ]
-    return unittest.TestSuite(map(browser, audio_test_cases))
-
   @classmethod
   def setUpClass(self):
     super(browser, self).setUpClass()
@@ -1130,47 +1113,6 @@ keydown(100);keyup(100); // trigger the end
     ''')
     self.btest('sdl_pumpevents.c', expected='7', args=['--pre-js', 'pre.js'])
 
-  def test_sdl_audio(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
-    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmcreatemiltaryfoot_1.wav'), os.path.join(self.get_dir(), 'sound2.wav'))
-    shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
-    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'the_entertainer.ogg'))
-    open(os.path.join(self.get_dir(), 'bad.ogg'), 'w').write('I claim to be audio, but am lying')
-    open(os.path.join(self.get_dir(), 'sdl_audio.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio.c')).read()))
-
-    # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
-  def test_sdl_audio_mix_channels(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
-    open(os.path.join(self.get_dir(), 'sdl_audio_mix_channels.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_mix_channels.c')).read()))
-
-    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
-  def test_sdl_audio_mix(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'pluck.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
-    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'music.ogg'))
-    shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
-    open(os.path.join(self.get_dir(), 'sdl_audio_mix.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_mix.c')).read()))
-
-    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
-  def test_sdl_audio_quickload(self):
-    open(os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_quickload.c')).read()))
-
-    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
-  def test_sdl_audio_beeps(self):
-    open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
-
-    # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
   def test_sdl_canvas_size(self):
     self.btest('sdl_canvas_size.c', reference='screenshot-gray-purple.png', reference_slack=1,
       args=['-O2', '--minify', '0', '--shell-file', path_from_root('tests', 'sdl_canvas_size.html'), '--preload-file', path_from_root('tests', 'screenshot.png') + '@/', '-s', 'LEGACY_GL_EMULATION=1'],
@@ -1236,17 +1178,6 @@ keydown(100);keyup(100); // trigger the end
       args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
-  def test_openal_playback(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
-    open(os.path.join(self.get_dir(), 'openal_playback.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'openal_playback.cpp')).read()))
-
-    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
-  def test_openal_buffers(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
-    self.btest('openal_buffers.c', '0', args=['--preload-file', 'the_entertainer.wav'],)
-
   def test_glfw(self):
     self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
@@ -1261,19 +1192,6 @@ keydown(100);keyup(100); // trigger the end
 
     Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'test_egl_width_height.c'), '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
-
-  def get_freealut_library(self):
-    if WINDOWS and Building.which('cmake'):
-      return self.get_library('freealut', os.path.join('hello_world.bc'), configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
-    else:
-      return self.get_library('freealut', os.path.join('examples', '.libs', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
-
-  def test_freealut(self):
-    programs = self.get_freealut_library()
-    for program in programs:
-      assert os.path.exists(program)
-      Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
-      self.run_browser('page.html', 'You should hear "Hello World!"')
 
   def test_worker(self):
     # Test running in a web worker
@@ -1852,9 +1770,6 @@ Module["preRun"].push(function () {
 
   def test_html5(self):
     self.btest(path_from_root('tests', 'test_html5.c'), expected='0')
-
-  def test_html5_fullscreen(self):
-    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0')
 
   def test_codemods(self):
     for opt_level in [0, 2]:
