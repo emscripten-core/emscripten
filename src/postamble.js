@@ -48,10 +48,6 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 
   args = args || [];
 
-  if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
-    Module.printErr('preload time: ' + (Date.now() - preloadStartTime) + ' ms');
-  }
-
   ensureInitRuntime();
 
   var argc = args.length+1;
@@ -129,6 +125,10 @@ function run(args) {
     ensureInitRuntime();
 
     preMain();
+
+    if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
+      Module.printErr('pre-main prep time: ' + (Date.now() - preloadStartTime) + ' ms');
+    }
 
     if (Module['_main'] && shouldRunNow) {
       Module['callMain'](args);
