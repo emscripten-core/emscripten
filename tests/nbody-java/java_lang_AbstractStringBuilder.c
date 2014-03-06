@@ -2791,4 +2791,3 @@ JAVA_INT java_lang_AbstractStringBuilder_offsetByCodePoints___int_int(JAVA_OBJEC
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
-

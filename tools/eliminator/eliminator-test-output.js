@@ -6133,4 +6133,3 @@ function td(x, y) {
  HEAPF64[tempDoublePtr >> 3] = y;
  func(xl, xh, HEAP32[tempDoublePtr >> 2], HEAP32[tempDoublePtr >> 2]);
 }
-

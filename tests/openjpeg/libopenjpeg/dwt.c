@@ -855,4 +855,3 @@ void dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, int numres){
 
 	opj_aligned_free(h.wavelet);
 }
-

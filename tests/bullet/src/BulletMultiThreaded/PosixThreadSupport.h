@@ -138,5 +138,3 @@ public:
 #endif // USE_PTHREADS
 
 #endif // BT_POSIX_THREAD_SUPPORT_H
-
-

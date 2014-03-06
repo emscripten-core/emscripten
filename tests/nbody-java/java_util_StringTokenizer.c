@@ -633,4 +633,3 @@ JAVA_OBJECT java_util_StringTokenizer_nextToken___java_lang_String(JAVA_OBJECT m
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
-

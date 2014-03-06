@@ -30,4 +30,3 @@ int main() {
 
   emscripten_run_script("setTimeout(function() { window.close() }, 2000)");
 }
-

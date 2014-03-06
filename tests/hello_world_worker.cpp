@@ -14,4 +14,3 @@ int main()
   sprintf(buffer2, "if (typeof postMessage !== 'undefined') { postMessage('hello from worker, and |%s|') }", buffer);
   emscripten_run_script(buffer2);
 }
-

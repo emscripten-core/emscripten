@@ -223,4 +223,3 @@ void java_util_Hashtable_2_remove__(JAVA_OBJECT me)
     XMLVM_THROW_CUSTOM(_r0.o)
     //XMLVM_END_WRAPPER
 }
-

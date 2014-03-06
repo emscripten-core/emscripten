@@ -163,5 +163,3 @@ const char*	btMultiSphereShape::serialize(void* dataBuffer, btSerializer* serial
 	
 	return "btMultiSphereShapeData";
 }
-
-

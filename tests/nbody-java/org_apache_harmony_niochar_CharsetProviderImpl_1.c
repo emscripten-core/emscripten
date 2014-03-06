@@ -264,4 +264,3 @@ JAVA_OBJECT org_apache_harmony_niochar_CharsetProviderImpl_1_run__(JAVA_OBJECT m
     goto label44;
     //XMLVM_END_WRAPPER
 }
-

@@ -18,4 +18,3 @@ int main() {
   dump(copy);
   return 1;
 }
-

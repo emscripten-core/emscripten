@@ -39,4 +39,3 @@ SIMD_FORCE_INLINE unsigned int GEN_rand()                   { return rand(); }
 #endif
 
 #endif //BT_GEN_RANDOM_H
-

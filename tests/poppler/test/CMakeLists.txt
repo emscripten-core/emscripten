@@ -57,5 +57,3 @@ set (pdf_fullrewrite_SRCS
 )
 add_executable(pdf-fullrewrite ${pdf_fullrewrite_SRCS})
 target_link_libraries(pdf-fullrewrite poppler)
-
-

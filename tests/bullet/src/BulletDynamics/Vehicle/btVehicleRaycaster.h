@@ -32,4 +32,3 @@ virtual ~btVehicleRaycaster()
 };
 
 #endif //BT_VEHICLE_RAYCASTER_H
-

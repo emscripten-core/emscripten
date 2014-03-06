@@ -53,4 +53,3 @@ for orig_line in file:
           print dummy_stmt
   if not skip:
     print orig_line.rstrip("\n")
-

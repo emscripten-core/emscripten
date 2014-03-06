@@ -45,4 +45,3 @@ opj_image_t* opj_image_create0(void);
 /*@}*/
 
 #endif /* __IMAGE_H */
-

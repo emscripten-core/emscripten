@@ -73,4 +73,3 @@ void __INIT_IMPL_java_lang_Runnable()
 
     __TIB_java_lang_Runnable.classInitialized = 1;
 }
-

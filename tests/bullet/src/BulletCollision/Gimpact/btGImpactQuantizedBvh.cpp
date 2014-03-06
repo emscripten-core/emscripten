@@ -524,5 +524,3 @@ void btGImpactQuantizedBvh::find_collision(btGImpactQuantizedBvh * boxset0, cons
 #endif //TRI_COLLISION_PROFILING
 
 }
-
-

@@ -182,4 +182,3 @@ Udata *luaS_newudata (lua_State *L, size_t s, Table *e) {
   u->uv.env = e;
   return u;
 }
-

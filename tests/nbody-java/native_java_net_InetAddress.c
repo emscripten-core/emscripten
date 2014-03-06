@@ -89,4 +89,3 @@ JAVA_OBJECT java_net_InetAddress_getHostNameImpl__()
     XMLVM_UNIMPLEMENTED_NATIVE_METHOD();
     //XMLVM_END_NATIVE
 }
-

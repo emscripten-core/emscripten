@@ -194,4 +194,3 @@ void java_lang_IndexOutOfBoundsException___INIT____java_lang_String(JAVA_OBJECT 
     return;
     //XMLVM_END_WRAPPER
 }
-

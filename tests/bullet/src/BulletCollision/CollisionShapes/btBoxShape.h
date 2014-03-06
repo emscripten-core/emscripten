@@ -314,5 +314,3 @@ public:
 
 
 #endif //BT_OBB_BOX_MINKOWSKI_H
-
-

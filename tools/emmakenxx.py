@@ -15,4 +15,3 @@ from tools.shared import *
 emmaken = path_from_root('tools', 'emmaken.py')
 os.environ['EMMAKEN_CXX'] = '1'
 exit(subprocess.call([PYTHON, emmaken] + sys.argv[1:]))
-

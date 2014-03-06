@@ -24,4 +24,3 @@ extern void   enet_free (void *);
 /** @} */
 
 #endif /* __ENET_CALLBACKS_H__ */
-

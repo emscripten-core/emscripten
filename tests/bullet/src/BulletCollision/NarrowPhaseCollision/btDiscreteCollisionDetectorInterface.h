@@ -88,4 +88,3 @@ struct btStorageResult : public btDiscreteCollisionDetectorInterface::Result
 };
 
 #endif //BT_DISCRETE_COLLISION_DETECTOR1_INTERFACE_H
-

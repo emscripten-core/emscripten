@@ -23,4 +23,3 @@ shared.try_delete(outfile)
 
 pre, post = open(in_shell).read().split('// ASM_CODE\n')
 open(outfile, 'w').write(pre + '\n' + open(in_asm).read() + '\n' + post)
-

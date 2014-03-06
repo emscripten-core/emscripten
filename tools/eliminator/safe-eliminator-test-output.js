@@ -82,4 +82,3 @@ function a($directory) {
   print(zzz1);
  } while (1);
 }
-

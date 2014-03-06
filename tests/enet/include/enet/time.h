@@ -15,4 +15,3 @@
 #define ENET_TIME_DIFFERENCE(a, b) ((a) - (b) >= ENET_TIME_OVERFLOW ? (b) - (a) : (a) - (b))
 
 #endif /* __ENET_TIME_H__ */
-

@@ -267,4 +267,3 @@ SIMD_FORCE_INLINE bool operator==(const btBroadphasePair& a, const btBroadphaseP
 
 
 #endif //BT_BROADPHASE_PROXY_H
-

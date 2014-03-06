@@ -150,4 +150,3 @@ function linkedVars() {
  return outer1 + outer2;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey", "labelledJump", "linkedVars']
-

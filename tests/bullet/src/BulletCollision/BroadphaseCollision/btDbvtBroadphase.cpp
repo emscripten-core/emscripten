@@ -793,4 +793,3 @@ void							btDbvtBroadphase::benchmark(btBroadphaseInterface*)
 #if DBVT_BP_PROFILE
 #undef	SPC
 #endif
-

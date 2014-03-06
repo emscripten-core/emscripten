@@ -113,4 +113,3 @@ in this Software without prior written authorization from The Open Group.
 # endif
 
 #endif /* _XOSDEFS_H_ */
-

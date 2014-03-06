@@ -154,4 +154,3 @@ bool btConvexPointCloudShape::isInside(const btVector3& ,btScalar ) const
 	btAssert(0);
 	return false;
 }
-

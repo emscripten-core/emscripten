@@ -974,4 +974,3 @@ function stackSet$1(sp) {
  c(5);
  c(6);
 }
-

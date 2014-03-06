@@ -74,4 +74,3 @@ void __INIT_IMPL_java_lang_Appendable()
 
     __TIB_java_lang_Appendable.classInitialized = 1;
 }
-

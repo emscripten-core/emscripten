@@ -187,5 +187,3 @@ ATTRIBUTE_ALIGNED64 (struct)	btSolverBodyObsolete
 };
 
 #endif //BT_SOLVER_BODY_H
-
-

@@ -2718,4 +2718,3 @@ function asmFFICoercion(value, type) {
   if (PRECISE_F32 && type === 'float') value = asmCoercion(value, 'float');
   return value;
 }
-

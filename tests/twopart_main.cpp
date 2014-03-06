@@ -5,4 +5,3 @@ int main() {
   theFunc("hello from main");
   return 1;
 }
-

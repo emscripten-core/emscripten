@@ -1728,4 +1728,3 @@ void* emscripten_GetProcAddress(const char *name_) {
   fprintf(stderr, "bad name in getProcAddress: %s | %s\n", name_, name);
   return 0;
 }
-

@@ -476,4 +476,3 @@ void TestOptionalContent::checkRadioButtons()
 QTEST_MAIN(TestOptionalContent)
 
 #include "check_optcontent.moc"
-

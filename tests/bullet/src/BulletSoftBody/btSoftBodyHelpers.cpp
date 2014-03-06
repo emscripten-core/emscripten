@@ -1052,4 +1052,3 @@ printf("Faces:  %u\r\n",psb->m_faces.size());
 printf("Tetras: %u\r\n",psb->m_tetras.size());
 return(psb);
 }
-

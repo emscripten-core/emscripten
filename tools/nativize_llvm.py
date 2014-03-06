@@ -33,4 +33,3 @@ for params in [['-march=x86'], ['-march=x86-64']]: # try x86, then x86-64 FIXME
   if os.path.exists(filename + '.o'): break
 print 'o => runnable'
 Popen(['g++', path_from_root('system', 'lib', 'debugging.cpp'), filename + '.o', '-o', filename + '.run'] + ['-l' + lib for lib in libs]).communicate()[0]
-

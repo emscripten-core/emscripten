@@ -106,5 +106,3 @@ var flags = {};
 * @type {boolean}
 */
 flags.binary;
-
-

@@ -73,4 +73,3 @@ void __INIT_IMPL_java_lang_reflect_Type()
 
     __TIB_java_lang_reflect_Type.classInitialized = 1;
 }
-

@@ -84,4 +84,3 @@ int raw_decode(opj_raw_t *raw) {
 	
 	return d;
 }
-

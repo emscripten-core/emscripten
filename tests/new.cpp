@@ -35,4 +35,3 @@ int main() {
   char *newer = (char*){{{ NEW }}}; /* should be different */
   printf("*%d,%d*\n", first == last, first == newer);
 }
-

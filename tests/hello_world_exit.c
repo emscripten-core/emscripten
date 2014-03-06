@@ -12,4 +12,3 @@ int main(int argc, char **argv) {
   fprintf(stderr, "hello, error stream!\n");
   exit(100);
 }
-

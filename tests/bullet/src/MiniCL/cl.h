@@ -864,4 +864,3 @@ clEnqueueBarrier(cl_command_queue /* command_queue */) CL_API_SUFFIX__VERSION_1_
 #endif
 
 #endif  // __OPENCL_CL_H
-

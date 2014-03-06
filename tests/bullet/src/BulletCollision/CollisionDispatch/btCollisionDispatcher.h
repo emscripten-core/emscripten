@@ -169,4 +169,3 @@ public:
 };
 
 #endif //BT_COLLISION__DISPATCHER_H
-

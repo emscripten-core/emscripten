@@ -252,4 +252,3 @@ void btSolve2LinearConstraint::resolveAngularConstraint(	const btMatrix3x3& invI
 
 }
 */
-

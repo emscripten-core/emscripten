@@ -39,4 +39,3 @@ class btGeometryUtil
 
 
 #endif //BT_GEOMETRY_UTIL_H
-

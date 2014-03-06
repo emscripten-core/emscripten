@@ -183,4 +183,3 @@ JAVA_FLOAT java_lang_Math_nextafterf___float_float(JAVA_FLOAT n1, JAVA_FLOAT n2)
     return nextafterf(n1, n2);
     //XMLVM_END_NATIVE
 }
-

@@ -107,4 +107,3 @@ function cloneObject(event) {
     event.preventDefault();
   }, true);
 });
-

@@ -83,4 +83,3 @@ void cio_skip(opj_cio_t *cio, int n);
 /*@}*/
 
 #endif /* __CIO_H */
-

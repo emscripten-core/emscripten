@@ -589,5 +589,3 @@ void mqc_resetstates(opj_mqc_t *mqc) {
 void mqc_setstate(opj_mqc_t *mqc, int ctxno, int msb, int prob) {
 	mqc->ctxs[ctxno] = &mqc_states[msb + (prob << 1)];
 }
-
-

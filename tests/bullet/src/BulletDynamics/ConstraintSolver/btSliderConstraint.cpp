@@ -852,6 +852,3 @@ btScalar btSliderConstraint::getParam(int num, int axis) const
 	}
 	return retVal;
 }
-
-
-

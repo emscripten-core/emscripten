@@ -343,6 +343,3 @@ bool SpuMinkowskiPenetrationDepthSolver::calcPenDepth( btSimplexSolverInterface&
 #endif
 	return false;
 }
-
-
-

@@ -15,4 +15,3 @@ for iss in set_iss:
     bigs.append(size)
 bigs.sort()
 print bigs
-

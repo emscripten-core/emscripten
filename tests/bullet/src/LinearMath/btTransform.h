@@ -299,9 +299,3 @@ SIMD_FORCE_INLINE	void	btTransform::deSerializeDouble(const btTransformDoubleDat
 
 
 #endif //BT_TRANSFORM_H
-
-
-
-
-
-

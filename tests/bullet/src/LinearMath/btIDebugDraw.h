@@ -414,4 +414,3 @@ class	btIDebugDraw
 
 
 #endif //BT_IDEBUG_DRAW__H
-

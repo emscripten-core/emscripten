@@ -73,4 +73,3 @@ void __INIT_IMPL_java_util_Map_Entry()
 
     __TIB_java_util_Map_Entry.classInitialized = 1;
 }
-

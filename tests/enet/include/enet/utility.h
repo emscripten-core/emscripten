@@ -9,4 +9,3 @@
 #define ENET_MIN(x, y) ((x) < (y) ? (x) : (y))
 
 #endif /* __ENET_UTILITY_H__ */
-

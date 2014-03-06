@@ -152,4 +152,3 @@ LUAMOD_API int luaopen_coroutine (lua_State *L) {
   luaL_newlib(L, co_funcs);
   return 1;
 }
-

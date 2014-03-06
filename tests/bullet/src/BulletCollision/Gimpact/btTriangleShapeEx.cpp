@@ -214,5 +214,3 @@ bool btTriangleShapeEx::overlap_test_conservative(const btTriangleShapeEx& other
 
     return true;
 }
-
-

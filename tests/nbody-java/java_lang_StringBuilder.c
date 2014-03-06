@@ -996,4 +996,3 @@ void java_lang_StringBuilder_writeObject___java_io_ObjectOutputStream(JAVA_OBJEC
     return;
     //XMLVM_END_WRAPPER
 }
-

@@ -7,4 +7,3 @@ Changes for emscripten:
 
   example.c: Use %d instead of %x in version number printout
              Comment out gzio test
-

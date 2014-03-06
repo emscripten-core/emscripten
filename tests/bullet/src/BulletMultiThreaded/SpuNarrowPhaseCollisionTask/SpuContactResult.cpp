@@ -244,5 +244,3 @@ void SpuContactResult::flush()
 	m_spuManifold = NULL;
 	m_RequiresWriteBack = false;
 }
-
-

@@ -95,4 +95,3 @@ var CorruptionChecker = {
 };
 
 CorruptionChecker.init();
-

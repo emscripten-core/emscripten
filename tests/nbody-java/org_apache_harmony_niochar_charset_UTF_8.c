@@ -651,4 +651,3 @@ JAVA_OBJECT org_apache_harmony_niochar_charset_UTF_8_access$2__()
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
-

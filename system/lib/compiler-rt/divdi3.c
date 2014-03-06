@@ -44,4 +44,3 @@ __remdi3(di_int a, di_int b)
     __udivmoddi4(a, b, &rem);
     return (rem ^ s_a) - s_a;  /* negate if s_a == -1 */
 }
-

@@ -13,5 +13,3 @@ for line in open(sys.argv[1]).readlines():
       print output,
   except:
     pass
-
-

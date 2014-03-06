@@ -323,4 +323,3 @@ void java_util_Collections_EmptyMap___INIT____java_util_Collections_EmptyMap(JAV
     return;
     //XMLVM_END_WRAPPER
 }
-

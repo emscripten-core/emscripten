@@ -43,4 +43,3 @@ void	btSetDebugDrawer(btIDebugDraw* debugDrawer);
 
 
 #endif //BT_INTERNAL_EDGE_UTILITY_H
-

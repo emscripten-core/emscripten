@@ -257,4 +257,3 @@ btScalar btSphereBoxCollisionAlgorithm::getSpherePenetration( btCollisionObject*
 	return fSep;
 
 }
-

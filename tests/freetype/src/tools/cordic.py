@@ -76,4 +76,3 @@ print "shrink factor    = " + repr( shrink )
 print "shrink factor 2  = " + repr( shrink * (2.0**32) )
 print "expansion factor = " + repr(1/shrink)
 print ""
-

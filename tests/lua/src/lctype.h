@@ -92,4 +92,3 @@ LUAI_DDEC const lu_byte luai_ctype_[UCHAR_MAX + 2];
 #endif			/* } */
 
 #endif
-

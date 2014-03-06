@@ -275,4 +275,3 @@ class AsmModule():
     self.tables_js = '// EMSCRIPTEN_END_FUNCS\n'
     for table, data in self.tables.iteritems():
       self.tables_js += 'var %s = %s;\n' % (table, data)
-

@@ -206,4 +206,3 @@ void org_xmlvm_runtime_XMLVMUtil_notImplemented__()
 }
 
 //XMLVM_NATIVE[JAVA_OBJECT org_xmlvm_runtime_XMLVMUtil_getCurrentWorkingDirectory__()]
-

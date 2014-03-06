@@ -1635,4 +1635,3 @@ Closure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   lua_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
   return cl;  /* it's on the stack too */
 }
-

@@ -32,4 +32,3 @@ public:
 };
 
 #endif // BT_MATERIAL_H
-

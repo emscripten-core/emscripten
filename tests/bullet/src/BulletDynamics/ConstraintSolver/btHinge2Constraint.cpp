@@ -63,4 +63,3 @@ btHinge2Constraint::btHinge2Constraint(btRigidBody& rbA, btRigidBody& rbB, btVec
 	setDamping(2, 0.01f);
 	setEquilibriumPoint();
 }
-

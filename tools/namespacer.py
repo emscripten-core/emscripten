@@ -92,4 +92,3 @@ def finalize(line):
     return line
 
 print 'var ModuleNames = ' + '\n'.join(map(finalize, json.dumps(space, sort_keys=True, indent=2).split('\n')))
-

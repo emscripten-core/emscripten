@@ -227,4 +227,3 @@ try:
 except Exception, e:
   print 'Error in emmaken.py. (Is the config file %s set up properly?) Error:' % EM_CONFIG, e
   raise
-

@@ -427,7 +427,3 @@ shortestArcQuatNormalize2(btVector3& v0,btVector3& v1)
 }
 
 #endif //BT_SIMD__QUATERNION_H_
-
-
-
-

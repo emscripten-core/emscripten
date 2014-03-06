@@ -30,4 +30,3 @@ __attribute__((visibility("hidden"), noreturn))
 #pragma GCC visibility pop
 
 #endif
-

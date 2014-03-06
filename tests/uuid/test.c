@@ -66,4 +66,3 @@ int main() {
     #endif
     exit(0);
 }
-

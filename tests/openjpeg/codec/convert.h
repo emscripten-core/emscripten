@@ -79,4 +79,3 @@ static int imagetopng(opj_image_t *image, const char *write_idf) { return 0; } /
 extern opj_image_t* pngtoimage(const char *filename, opj_cparameters_t *parameters);
 
 #endif /* __J2K_CONVERT_H */
-

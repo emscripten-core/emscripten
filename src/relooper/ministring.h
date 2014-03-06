@@ -32,4 +32,3 @@ public:
     return *this;
   }
 };
-

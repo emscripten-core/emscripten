@@ -43,4 +43,3 @@ public:
 };
 
 #endif //BT_CHARACTER_CONTROLLER_INTERFACE_H
-

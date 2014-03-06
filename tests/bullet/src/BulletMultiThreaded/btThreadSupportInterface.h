@@ -82,4 +82,3 @@ public:
 };
 
 #endif //BT_THREAD_SUPPORT_INTERFACE_H
-

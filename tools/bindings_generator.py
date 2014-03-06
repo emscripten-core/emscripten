@@ -829,4 +829,3 @@ gen_c.write('''
 
 gen_c.close()
 gen_js.close()
-

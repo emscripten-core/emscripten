@@ -137,4 +137,3 @@ typedef union
 } long_double_bits;
 
 #endif /* INT_TYPES_H */
-

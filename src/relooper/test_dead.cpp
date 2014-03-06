@@ -25,4 +25,3 @@ int main() {
 
   printf("I did not crash even though I have dead code with a branch!\n");
 }
-

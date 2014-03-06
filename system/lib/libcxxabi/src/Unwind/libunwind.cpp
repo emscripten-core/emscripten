@@ -350,4 +350,3 @@ bool logUnwinding() {
 }
 
 #endif // NDEBUG
-

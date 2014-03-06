@@ -562,4 +562,3 @@ void XMLVM_ERROR(const char* msg, const char* file, const char* function, int li
     printf("XMLVM Error: %s: (%s):%s:%d\n", msg, function, file, line);
     exit(-1);
 }
-

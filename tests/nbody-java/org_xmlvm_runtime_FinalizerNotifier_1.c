@@ -224,4 +224,3 @@ void org_xmlvm_runtime_FinalizerNotifier_1_run__(JAVA_OBJECT me)
     return;
     //XMLVM_END_WRAPPER
 }
-

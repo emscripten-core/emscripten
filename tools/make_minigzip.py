@@ -10,4 +10,3 @@ zlib = shared.Building.build_library('zlib', shared.EMSCRIPTEN_TEMP_DIR, shared.
 print 'Building minigzip'
 
 Popen([shared.PYTHON, shared.EMCC, '-O2', shared.path_from_root('tests', 'zlib', 'minigzip.c'), zlib, '-o', shared.path_from_root('tools', 'minigzip.js')]).communicate()
-

@@ -178,4 +178,3 @@ void btContactArray::merge_contacts_unique(const btContactArray & contacts)
 	average_contact.m_normal /= average_contact.m_depth;
 
 }
-

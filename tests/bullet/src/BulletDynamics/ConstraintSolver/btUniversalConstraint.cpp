@@ -83,5 +83,3 @@ void btUniversalConstraint::setAxis(const btVector3& axis1,const btVector3& axis
 
   calculateTransforms();
 }
-
-

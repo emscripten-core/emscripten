@@ -232,5 +232,3 @@ SIMD_FORCE_INLINE	void btTransformAabb(const btVector3& localAabbMin,const btVec
 #endif //USE_BANCHLESS
 
 #endif //BT_AABB_UTIL2
-
-

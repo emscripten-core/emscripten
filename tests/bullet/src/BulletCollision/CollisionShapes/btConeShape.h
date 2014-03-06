@@ -100,4 +100,3 @@ class btConeShapeZ : public btConeShape
 		btConeShapeZ(btScalar radius,btScalar height);
 };
 #endif //BT_CONE_MINKOWSKI_H
-

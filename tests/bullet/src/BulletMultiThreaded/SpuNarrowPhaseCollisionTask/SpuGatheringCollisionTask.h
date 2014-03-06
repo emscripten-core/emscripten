@@ -136,5 +136,3 @@ int main(unsigned long long speid, addr64 argp, addr64 envp)
 
 
 #endif //SPU_GATHERING_COLLISION_TASK_H
-
-

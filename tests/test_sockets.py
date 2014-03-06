@@ -431,4 +431,3 @@ class sockets(BrowserCore):
         # Tidy up files that might have been created by this test.
         try_delete(path_from_root('tests', 'sockets', 'client.js'))
         try_delete(path_from_root('tests', 'sockets', 'client.js.map'))
-

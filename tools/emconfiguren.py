@@ -16,4 +16,3 @@ sys.path += [path_from_root('')]
 from tools.shared import *
 
 Building.configure(sys.argv[1:])
-

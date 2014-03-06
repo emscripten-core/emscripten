@@ -258,5 +258,3 @@ static void checkContextAttributesSupport() {
     EM_ASM(alert('warning: no stencil\n'));
   }
 }
-
-

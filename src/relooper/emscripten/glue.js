@@ -64,4 +64,3 @@
   };
 
   Module['Relooper'] = RelooperGlue;
-

@@ -85,4 +85,3 @@ c = open('critical.diff', 'w')
 c.write(critical)
 c.close()
 print 'middle%d is like left, middle%d is like right, critical.diff is the difference that matters' % (mid-1, mid), 'diff:', critical
-

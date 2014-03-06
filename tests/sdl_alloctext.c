@@ -30,4 +30,3 @@ int main()
     REPORT_RESULT();
 #endif
 }
-

@@ -834,4 +834,3 @@ void org_apache_harmony_niochar_charset_UTF_8_Encoder___INIT____org_apache_harmo
     return;
     //XMLVM_END_WRAPPER
 }
-

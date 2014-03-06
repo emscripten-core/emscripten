@@ -847,4 +847,3 @@ js optimizer phase.
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
   exit(numFailures)
-

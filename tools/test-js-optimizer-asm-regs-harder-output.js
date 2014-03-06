@@ -129,4 +129,3 @@ function linkedVars() {
  }
  return i2 + i1;
 }
-

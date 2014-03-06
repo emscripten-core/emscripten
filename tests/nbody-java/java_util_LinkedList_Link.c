@@ -171,4 +171,3 @@ void java_util_LinkedList_Link___INIT____java_lang_Object_java_util_LinkedList_L
     return;
     //XMLVM_END_WRAPPER
 }
-

@@ -2307,4 +2307,3 @@ JAVA_INT java_nio_charset_Charset_compareTo___java_lang_Object(JAVA_OBJECT me, J
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
-

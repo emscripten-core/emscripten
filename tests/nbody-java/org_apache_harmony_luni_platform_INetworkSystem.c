@@ -103,4 +103,3 @@ void org_apache_harmony_luni_platform_INetworkSystem_PUT_SOCKET_CONNECT_STEP_CHE
 {
     _STATIC_org_apache_harmony_luni_platform_INetworkSystem_SOCKET_CONNECT_STEP_CHECK = v;
 }
-

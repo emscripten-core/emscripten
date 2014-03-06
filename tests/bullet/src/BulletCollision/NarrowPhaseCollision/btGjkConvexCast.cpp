@@ -173,4 +173,3 @@ bool	btGjkConvexCast::calcTimeOfImpact(
 
 
 }
-

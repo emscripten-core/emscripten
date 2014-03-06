@@ -91,5 +91,3 @@ void	btTriangleIndexVertexArray::getPremadeAabb(btVector3* aabbMin, btVector3* a
 	*aabbMin = m_aabbMin;
 	*aabbMax = m_aabbMax;
 }
-
-

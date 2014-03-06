@@ -383,5 +383,3 @@ z_streamp z )
   Tracev((stderr, "inflate:   blocks freed\n"));
   return Z_OK;
 }
-
-

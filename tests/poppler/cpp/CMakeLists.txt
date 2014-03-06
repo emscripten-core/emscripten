@@ -44,4 +44,3 @@ install(FILES
   poppler-toc.h
   ${CMAKE_CURRENT_BINARY_DIR}/poppler-version.h
   DESTINATION include/poppler/cpp)
-

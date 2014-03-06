@@ -20,4 +20,3 @@ var LibraryXlib = {
 };
 
 mergeInto(LibraryManager.library, LibraryXlib);
-

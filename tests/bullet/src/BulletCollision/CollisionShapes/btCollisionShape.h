@@ -147,4 +147,3 @@ SIMD_FORCE_INLINE	int	btCollisionShape::calculateSerializeBufferSize() const
 
 
 #endif //BT_COLLISION_SHAPE_H
-

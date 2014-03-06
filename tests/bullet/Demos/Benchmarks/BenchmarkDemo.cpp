@@ -1326,4 +1326,3 @@ btRigidBody*	DemoApplication::localCreateRigidBody(float mass, const btTransform
 	return body;
 }
 #endif //USE_GRAPHICAL_BENCHMARK
-

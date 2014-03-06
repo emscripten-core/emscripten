@@ -417,4 +417,3 @@ JAVA_OBJECT org_apache_harmony_luni_util_PriviAction_run__(JAVA_OBJECT me)
     label44:;
     //XMLVM_END_WRAPPER
 }
-

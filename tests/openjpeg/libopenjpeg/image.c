@@ -86,4 +86,3 @@ void OPJ_CALLCONV opj_image_destroy(opj_image_t *image) {
 		opj_free(image);
 	}
 }
-

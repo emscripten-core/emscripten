@@ -230,4 +230,3 @@ void java_lang_Exception___INIT____java_lang_Throwable(JAVA_OBJECT me, JAVA_OBJE
     return;
     //XMLVM_END_WRAPPER
 }
-

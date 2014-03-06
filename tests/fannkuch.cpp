@@ -156,4 +156,3 @@ main(int argc, char **argv)
    printf("Pfannkuchen(%d) = %d.\n", n, fannkuch(n));
    return 0;
 }
-

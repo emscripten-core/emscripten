@@ -495,4 +495,3 @@ void btGImpactBvh::find_collision(btGImpactBvh * boxset0, const btTransform & tr
 #endif //TRI_COLLISION_PROFILING
 
 }
-

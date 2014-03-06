@@ -827,6 +827,3 @@ void    GLUI_Scrollbar::increase_growth( void )
     growth *= growth_exp;
   return;
 }
-
-
-

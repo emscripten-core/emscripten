@@ -31,4 +31,3 @@ int main(int argc, char **argv) {
   EM_ASM(window.close());
   return 0;
 }
-

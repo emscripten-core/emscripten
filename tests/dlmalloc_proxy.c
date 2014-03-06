@@ -82,4 +82,3 @@ int main() {
   while (handles > 0) unget_lib();
   printf("*%d,%d*\n", total, l);
 }
-

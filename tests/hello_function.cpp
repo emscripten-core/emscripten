@@ -8,4 +8,3 @@ int int_sqrt(int x) {
 }
 
 }
-

@@ -259,4 +259,3 @@ RELOOPERDLL_API void  rl_relooper_render(void *relooper);
 #ifdef __cplusplus
 }
 #endif
-

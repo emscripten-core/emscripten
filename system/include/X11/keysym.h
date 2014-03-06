@@ -70,4 +70,3 @@ SOFTWARE.
 #define XK_BRAILLE
 
 #include <X11/keysymdef.h>
-

@@ -5479,4 +5479,3 @@ keys(LibraryGL).forEach(function(x) {
 mergeInto(LibraryManager.library, LibraryGL);
 
 assert(!(FULL_ES2 && LEGACY_GL_EMULATION), 'cannot emulate both ES2 and legacy GL');
-

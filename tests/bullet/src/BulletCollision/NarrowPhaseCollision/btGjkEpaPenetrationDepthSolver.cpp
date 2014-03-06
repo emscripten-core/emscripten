@@ -62,5 +62,3 @@ bool btGjkEpaPenetrationDepthSolver::calcPenDepth( btSimplexSolverInterface& sim
 
 	return false;
 }
-
-

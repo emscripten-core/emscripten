@@ -997,4 +997,3 @@ JAVA_LONG org_apache_harmony_luni_platform_OSMemory_swap___long(JAVA_OBJECT me, 
     return _r0.l;
     //XMLVM_END_WRAPPER
 }
-

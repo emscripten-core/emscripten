@@ -33,5 +33,3 @@ __Unwind_SjLj_SetTopOfFunctionStack(struct _Unwind_FunctionContext *fc);
 #endif
 
 #endif // __UNWIND_EXT__
-
-

@@ -17,4 +17,3 @@ for line in open(sys.argv[1]):
     inside = None
 
 print '\n'.join(map(lambda func: str(func[1]) + ':' + func[0], sorted(funcs, key=lambda func: -func[1])))
-

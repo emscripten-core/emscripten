@@ -17,4 +17,3 @@ function hashMemory(id) {
   }
   print(id + ':' + ret);
 }
-

@@ -20,4 +20,3 @@ for line in open(filename):
     curr = None
 data.sort(lambda x, y: x[1] - y[1])
 print ''.join(['%6d : %s' % (x[1], x[0]) for x in data])
-

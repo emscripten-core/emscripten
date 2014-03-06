@@ -1607,4 +1607,3 @@ JAVA_OBJECT java_io_PrintStream_append___java_lang_CharSequence_int_int(JAVA_OBJ
     goto label11;
     //XMLVM_END_WRAPPER
 }
-

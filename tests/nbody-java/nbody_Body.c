@@ -450,4 +450,3 @@ JAVA_OBJECT nbody_Body_offsetMomentum___double_double_double(JAVA_OBJECT me, JAV
     return _r4.o;
     //XMLVM_END_WRAPPER
 }
-

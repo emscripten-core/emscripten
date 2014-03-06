@@ -193,4 +193,3 @@ def chunkify(funcs, chunk_size, chunking_file, DEBUG=False):
   return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
 import shared
-

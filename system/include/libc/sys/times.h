@@ -23,4 +23,3 @@ clock_t times (struct tms *);
 #endif
 
 #endif
-

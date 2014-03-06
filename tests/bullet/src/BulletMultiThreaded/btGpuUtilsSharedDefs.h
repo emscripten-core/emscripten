@@ -49,4 +49,3 @@ void BT_GPU_PREF(unmapGLBufferObject(unsigned int vbo));
 
 
 #endif // BTGPUUTILSDHAREDDEFS_H
-

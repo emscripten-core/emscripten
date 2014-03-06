@@ -348,6 +348,3 @@ btScalar	btCompoundCollisionAlgorithm::calculateTimeOfImpact(btCollisionObject* 
 	return hitFraction;
 
 }
-
-
-

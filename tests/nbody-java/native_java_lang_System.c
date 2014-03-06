@@ -113,4 +113,3 @@ JAVA_INT java_lang_System_identityHashCode___java_lang_Object(JAVA_OBJECT n1)
     return (JAVA_INT) n1;
     //XMLVM_END_NATIVE
 }
-

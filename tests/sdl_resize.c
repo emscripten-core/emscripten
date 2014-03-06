@@ -42,4 +42,3 @@ int main() {
 
   emscripten_set_main_loop(loop, 0, 0);
 }
-

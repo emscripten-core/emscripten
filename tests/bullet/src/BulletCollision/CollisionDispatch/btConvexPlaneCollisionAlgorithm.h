@@ -81,4 +81,3 @@ public:
 };
 
 #endif //BT_CONVEX_PLANE_COLLISION_ALGORITHM_H
-

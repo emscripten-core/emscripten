@@ -40,4 +40,3 @@ extern size_t enet_list_size (ENetList *);
 #define enet_list_back(list) ((void *) (list) -> sentinel.previous)
 
 #endif /* __ENET_LIST_H__ */
-

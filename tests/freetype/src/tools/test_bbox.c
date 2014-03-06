@@ -157,4 +157,3 @@
     profile_outline( &dummy_outline_2, REPEAT );
     return 0;
   }
-

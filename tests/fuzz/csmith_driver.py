@@ -151,4 +151,3 @@ while 1:
       shutil.copyfile(fullname, 'newfail%d.c' % fails)
       continue
     print '[asm.js validation ok]'
-

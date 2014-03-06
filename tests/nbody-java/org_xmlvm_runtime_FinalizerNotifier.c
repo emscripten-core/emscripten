@@ -503,4 +503,3 @@ void org_xmlvm_runtime_FinalizerNotifier___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
-

@@ -25,4 +25,3 @@ btInternalTriangleIndexCallback::~btInternalTriangleIndexCallback()
 {
 
 }
-

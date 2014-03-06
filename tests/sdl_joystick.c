@@ -125,4 +125,3 @@ void main_2(void* arg) {
   printf("Test passed!\n");
   REPORT_RESULT();
 }
-

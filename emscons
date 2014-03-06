@@ -17,4 +17,3 @@ env = os.environ.copy()
 env[ 'EMSCRIPTEN_TOOL_PATH' ] = tool_path
 
 exit(subprocess.call(sys.argv[1:], env=env))
-

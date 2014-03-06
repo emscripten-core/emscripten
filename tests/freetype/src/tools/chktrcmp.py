@@ -111,4 +111,3 @@ for c in cmpnt:
   if c not in USED_COMPONENT:
     if c != "any":
       print "Trace component %s (defined in %s) is not used." % ( c, KNOWN_COMPONENT[c] )
-

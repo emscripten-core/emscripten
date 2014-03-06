@@ -225,4 +225,3 @@ LUAI_FUNC void luaE_freeCI (lua_State *L);
 
 
 #endif
-
