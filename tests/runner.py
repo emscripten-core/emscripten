@@ -779,13 +779,10 @@ A recommended order is:
   (the main test suite)
   other - tests separate from the main suite
   browser - runs pages in a web browser
+  interactive - runs interactive browser tests that need human verification, and could not be automated
   sockets - runs websocket networking tests
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions
-
-There are also commands to run specific subsets of the test suite:
-
-  browser.audio - runs audio tests in a web browser (requires human verification)
 
 To run one of those parts, do something like
 
