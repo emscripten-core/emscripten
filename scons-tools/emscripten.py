@@ -9,11 +9,6 @@ from SCons.Scanner import Scanner
 def exists(env):
     return True
 
-def _expand_settings_flags(settings, env):
-    return [
-        ('-s%s=%s' % (KEY, json.dumps(VALUE).replace('"', '\\"')))
-        for KEY, VALUE in settings.items() ]
-
 emscripten_version_files = {}
 
 def build_version_file(env):
@@ -86,10 +81,6 @@ def emscripten(env, target_js, source_bc):
         buildName('raw.js'),
         [opt_ll])
 
-    [optimized_js] = env.JSOptimizer(
-        buildName('opt.js'),
-        raw_emscripten_js)
-
     prejs = [
         env['EMSCRIPTEN_PREJS'],
         '${EMSCRIPTEN_HOME}/src/embind/emval.js',
@@ -98,7 +89,7 @@ def emscripten(env, target_js, source_bc):
     [concatenated_js] = env.Concatenate(
         buildName('concat.js'),
         [ prejs,
-          optimized_js,
+          raw_emscripten_js,
           env['EMSCRIPTEN_POSTJS'] ])
 
     DISABLE_EMSCRIPTEN_WARNINGS = [
@@ -139,11 +130,6 @@ def emscripten(env, target_js, source_bc):
         concatenated_js,
         CLOSURE_FLAGS=['--language_in', 'ECMASCRIPT5']+DISABLE_EMSCRIPTEN_WARNINGS+['--formatting', 'PRETTY_PRINT', '--compilation_level', 'ADVANCED_OPTIMIZATIONS'])
 
-    [global_emscripten_min_js] = env.JSOptimizer(
-        buildName('global.min.js'),
-        closure_js,
-        JS_OPTIMIZER_PASSES=['simplifyExpressionsPost', 'minifyWhitespace', 'last'])
-
     [emscripten_iteration_js] = env.WrapInModule(
         buildName('iteration.js'),
         iter_global_emscripten_js)
@@ -154,12 +140,27 @@ def emscripten(env, target_js, source_bc):
 
     [emscripten_min_js] = env.WrapInModule(
         buildName('min.js'),
-        global_emscripten_min_js)
+        closure_js)
 
     return [emscripten_iteration_js, emscripten_js, emscripten_min_js]
 
 LIBC_SOURCES = [
     'system/lib/dlmalloc.c',
+    'system/lib/libc/musl/src/internal/floatscan.c',
+    'system/lib/libc/musl/src/internal/shgetc.c',
+    'system/lib/libc/musl/src/math/scalbn.c',
+    'system/lib/libc/musl/src/math/scalbnl.c',
+    'system/lib/libc/musl/src/stdio/__overflow.c',
+    'system/lib/libc/musl/src/stdio/__toread.c',
+    'system/lib/libc/musl/src/stdio/__towrite.c',
+    'system/lib/libc/musl/src/stdio/__uflow.c',
+    'system/lib/libc/musl/src/stdlib/atof.c',
+    'system/lib/libc/musl/src/stdlib/strtod.c',
+    'system/lib/libc/musl/src/string/memcmp.c',
+    'system/lib/libc/musl/src/string/strcasecmp.c',
+    'system/lib/libc/musl/src/string/strcmp.c',
+    'system/lib/libc/musl/src/string/strncasecmp.c',
+    'system/lib/libc/musl/src/string/strncmp.c',
     'system/lib/libc/musl/src/string/wmemset.c',
     'system/lib/libc/musl/src/string/wmemcpy.c',
 ]
@@ -185,13 +186,14 @@ LIBCXX_SOURCES = [os.path.join('system/lib/libcxx', x) for x in [
     'strstream.cpp',
     'system_error.cpp',
     #'thread.cpp',
-    'typeinfo.cpp',
+    #'typeinfo.cpp',
     'utility.cpp',
     'valarray.cpp',
 ]]
 
 LIBCXXABI_SOURCES = [os.path.join('system/lib/libcxxabi/src', x) for x in [
-    'private_typeinfo.cpp'
+    'private_typeinfo.cpp',
+    'typeinfo.cpp'
 ]]
 
 # MAJOR HACK ALERT
@@ -233,6 +235,7 @@ def build_libcxx(env):
     env = env.Clone()
     env['CXXFLAGS'] = filter(lambda e: e not in ('-Werror', '-Wall'), env['CXXFLAGS'])
     env['CCFLAGS'] = filter(lambda e: e not in ('-Werror', '-Wall'), env['CCFLAGS'])
+    env['CCFLAGS'] = env['CCFLAGS'] + ['-isystem${EMSCRIPTEN_HOME}/system/lib/libc/musl/src/internal/']
 
     objs = [
         env.Object(
@@ -248,16 +251,10 @@ def build_libcxx(env):
 def generate(env):
     env.SetDefault(
         PYTHON=sys.executable,
-        NODEJS='node',
-        JS_ENGINE='$NODEJS',
-        EMSCRIPTEN_FLAGS=['-v', '-j', '--suppressUsageWarning'],
+        EMSCRIPTEN_FLAGS=[],
         EMSCRIPTEN_TEMP_DIR=env.Dir('#/emscripten.tmp'),
-        _expand_settings_flags=_expand_settings_flags,
         EMSCRIPTEN_PREJS=[],
         EMSCRIPTEN_POSTJS=[],
-        EMSCRIPTEN_SETTINGS={},
-        _EMSCRIPTEN_SETTINGS_FLAGS='${_expand_settings_flags(EMSCRIPTEN_SETTINGS, __env__)}',
-        JS_OPTIMIZER_PASSES=[],
         LLVM_OPT_PASSES=['-std-compile-opts', '-std-link-opts'],
 
         EMSCRIPTEN_HOME=env.Dir(os.path.join(os.path.dirname(__file__), '..')),
@@ -274,7 +271,7 @@ def generate(env):
         RANLIBCOM='',
         CCFLAGS=[
             '-U__STRICT_ANSI__',
-            '-target', 'asmjs-unknown-emscripten',
+            '-target', 'le32-unknown-nacl',
             '-nostdinc',
             '-Wno-#warnings',
             '-Wno-error=unused-variable',
@@ -286,10 +283,9 @@ def generate(env):
             '-Xclang', '-nostdinc++',
             '-Xclang', '-nobuiltininc',
             '-Xclang', '-nostdsysteminc',
-            '-Xclang', '-isystem$EMSCRIPTEN_HOME/system/include',
+            '-Xclang', '-isystem$EMSCRIPTEN_HOME/system/include/compat',
             '-Xclang', '-isystem$EMSCRIPTEN_HOME/system/include/libc',
             '-Xclang', '-isystem$EMSCRIPTEN_HOME/system/include/libcxx',
-            '-Xclang', '-isystem$EMSCRIPTEN_HOME/system/include/bsd',
             '-emit-llvm'],
         CXXFLAGS=['-std=c++11', '-fno-exceptions'],
     )
@@ -307,11 +303,7 @@ def generate(env):
     )
 
     env['BUILDERS']['Emscripten'] = Builder(
-        action='$PYTHON ${EMSCRIPTEN_HOME}/emscripten.py $EMSCRIPTEN_FLAGS $_EMSCRIPTEN_SETTINGS_FLAGS --temp-dir=$EMSCRIPTEN_TEMP_DIR --compiler $JS_ENGINE --relooper=third-party/relooper.js $SOURCE > $TARGET',
-        target_scanner=EmscriptenScanner)
-
-    env['BUILDERS']['JSOptimizer'] = Builder(
-        action='$JS_ENGINE ${EMSCRIPTEN_HOME}/tools/js-optimizer.js $SOURCE $JS_OPTIMIZER_PASSES > $TARGET',
+        action='$PYTHON ${EMSCRIPTEN_HOME}/emcc ${EMSCRIPTEN_FLAGS} $SOURCE -o $TARGET',
         target_scanner=EmscriptenScanner)
 
     def depend_on_embedder(target, source, env):
