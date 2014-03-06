@@ -22,6 +22,7 @@ var LibraryGLUT = {
     windowY: 0,
     windowWidth: 0,
     windowHeight: 0,
+    requestedAnimationFrame: false,
 
     saveModifiers: function(event) {
       GLUT.modifiers = 0;
@@ -484,8 +485,10 @@ var LibraryGLUT = {
   glutSwapBuffers: function() {},
 
   glutPostRedisplay: function() {
-    if (GLUT.displayFunc) {
+    if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
+      GLUT.requestedAnimationFrame = true;
       Browser.requestAnimationFrame(function() {
+        GLUT.requestedAnimationFrame = false;
         if (ABORT) return;
         Runtime.dynCall('v', GLUT.displayFunc);
       });

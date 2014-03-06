@@ -1386,6 +1386,9 @@ keydown(100);keyup(100); // trigger the end
         args=['-DHAVE_BUILTIN_SINCOS'], outfile='something.html',
         message='You should see animating gears.')
 
+  def test_glgears_long(self):
+    self.btest('hello_world_gles.c', expected=map(str, range(30, 1000)), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST'])
+
   def test_glgears_animation(self):
     es2_suffix = ['', '_full', '_full_944']
     for full_es2 in [0, 1, 2]:
