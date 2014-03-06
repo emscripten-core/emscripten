@@ -335,8 +335,10 @@ def calculate(temp_files, in_temp, stdout, stderr):
 
   # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
+  # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   force_all = force == '1'
+  force = set((force or '').split(','))
 
   # Scan symbols
   symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
@@ -364,15 +366,15 @@ def calculate(temp_files, in_temp, stdout, stderr):
     all_needed.difference_update(symbols.defs)
 
   # Go over libraries to figure out which we must include
-  # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky.
   ret = []
   has = need = None
-  for name, create, apply_, library_symbols in [('libcxx',    create_libcxx,    apply_libcxx,    libcxx_symbols),
-                                                ('libcextra', create_libcextra, lambda x: True,  libcextra_symbols),
-                                                ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols),
-                                                ('gl',        create_gl,        lambda x: True,  gl_symbols),
-                                                ('libc',      create_libc,      apply_libc,      libc_symbols)]:
-    force_this = force_all or force == name
+  for name, create, apply_, library_symbols, deps in [('libcxx',    create_libcxx,    apply_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi']),
+                                                      ('libcextra', create_libcextra, lambda x: True,  libcextra_symbols, ['libc']),
+                                                      ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols, ['libc']),
+                                                      ('gl',        create_gl,        lambda x: True,  gl_symbols,        ['libc']),
+                                                      ('libc',      create_libc,      apply_libc,      libc_symbols,      [])]:
+    force = force.union(deps)
+    force_this = force_all or name in force
     if not force_this:
       need = set()
       has = set()
@@ -387,7 +389,6 @@ def calculate(temp_files, in_temp, stdout, stderr):
           need.remove(haz)
       if shared.Settings.VERBOSE: logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
     if force_this or len(need) > 0:
-      force_all = True
       if apply_(need):
         # We need to build and link the library in
         logging.debug('including %s' % name)
