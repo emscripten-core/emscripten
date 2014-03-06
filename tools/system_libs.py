@@ -373,7 +373,6 @@ def calculate(temp_files, in_temp, stdout, stderr):
                                                       ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols, ['libc']),
                                                       ('gl',        create_gl,        lambda x: True,  gl_symbols,        ['libc']),
                                                       ('libc',      create_libc,      apply_libc,      libc_symbols,      [])]:
-    force = force.union(deps)
     force_this = force_all or name in force
     if not force_this:
       need = set()
@@ -394,5 +393,6 @@ def calculate(temp_files, in_temp, stdout, stderr):
         logging.debug('including %s' % name)
         libfile = shared.Cache.get(name, create)
         ret.append(libfile)
+        force = force.union(deps)
   return ret
 

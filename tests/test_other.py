@@ -114,8 +114,6 @@ Options that are modified or new in %s include:
         os.chdir(self.get_dir())
       self.clear()
 
-      # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
-      # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
       for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
         print source, has_malloc
         self.clear()
