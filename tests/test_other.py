@@ -2554,3 +2554,12 @@ int main()
         assert ('''unexpected return type i32 in call to 'doit', should be void''' in stderr) == asserts, stderr
         assert ('''unexpected argument type float at index 1 in call to 'doit', should be i32''' in stderr) == asserts, stderr
 
+  def test_llvm_lit(self):
+    llvm_src = LLVM_ROOT
+    while not os.path.exists(os.path.join(llvm_src, 'emscripten-version.txt')): llvm_src = os.path.dirname(llvm_src)
+    cmd = [os.path.join(LLVM_ROOT, 'llvm-lit'), os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
+    print cmd
+    p = Popen(cmd)
+    p.communicate()
+    assert p.returncode == 0, 'LLVM tests must pass with exit code 0'
+
