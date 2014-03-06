@@ -348,9 +348,9 @@ mergeInto(LibraryManager.library, {
       if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
 
       var canvas = Module['canvas'];
-      var canvasContainer = canvas.parentNode;
       function fullScreenChange() {
         Browser.isFullScreen = false;
+        var canvasContainer = canvas.parentNode;
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
              document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
              document['fullScreenElement'] || document['fullscreenElement'] ||
@@ -369,7 +369,6 @@ mergeInto(LibraryManager.library, {
         } else {
           
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
-          var canvasContainer = canvas.parentNode;
           canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
           canvasContainer.parentNode.removeChild(canvasContainer);
           
