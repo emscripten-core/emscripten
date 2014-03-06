@@ -182,7 +182,6 @@ var LibraryOpenAL = {
     }
   },
 
-  alcCreateContext__deps: ['updateSources'],
   alcCreateContext: function(device, attrList) {
     if (device != 1) {
       return 0;
@@ -386,7 +385,6 @@ var LibraryOpenAL = {
     }
   },
 
-  alSourcei__deps: ['updateSource'],
   alSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -558,7 +556,6 @@ var LibraryOpenAL = {
       {{{ makeGetValue('value', '8', 'float') }}});
   },
 
-  alSourceQueueBuffers__deps: ["updateSource"],
   alSourceQueueBuffers: function(source, count, buffers) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -594,7 +591,6 @@ var LibraryOpenAL = {
     AL.updateSource(src);
   },
 
-  alSourceUnqueueBuffers__deps: ["updateSource"],
   alSourceUnqueueBuffers: function(source, count, buffers) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -860,7 +856,6 @@ var LibraryOpenAL = {
     AL.setSourceState(src, 0x1013 /* AL_PAUSED */);
   },
 
-  alGetSourcei__deps: ['updateSource'],
   alGetSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
