@@ -40,3 +40,4 @@ class btGjkEpaPenetrationDepthSolver : public btConvexPenetrationDepthSolver
 };
 
 #endif	// BT_GJP_EPA_PENETRATION_DEPTH_H
+

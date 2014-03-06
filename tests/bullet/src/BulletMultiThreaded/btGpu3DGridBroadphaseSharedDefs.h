@@ -58,3 +58,4 @@ void BT_GPU_PREF(squeezeOverlappingPairBuff)(unsigned int* pPairBuff, unsigned i
 //----------------------------------------------------------------------------------------
 
 #endif // BTGPU3DGRIDBROADPHASESHAREDDEFS_H
+

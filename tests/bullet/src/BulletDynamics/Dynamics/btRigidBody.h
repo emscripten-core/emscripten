@@ -688,3 +688,4 @@ struct	btRigidBodyDoubleData
 
 
 #endif //BT_RIGIDBODY_H
+

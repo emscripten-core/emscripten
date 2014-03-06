@@ -30,3 +30,5 @@ btScalar btEmptyAlgorithm::calculateTimeOfImpact(btCollisionObject* ,btCollision
 {
 	return btScalar(1.);
 }
+
+

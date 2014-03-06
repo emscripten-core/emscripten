@@ -325,3 +325,5 @@ static uint4 operator-(const uint4& a,const uint4& b)
 
 extern "C" int gMiniCLNumOutstandingTasks;
 //	extern "C" void __kernel_func();
+
+

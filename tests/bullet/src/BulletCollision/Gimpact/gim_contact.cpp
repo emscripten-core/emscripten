@@ -143,3 +143,4 @@ void gim_contact_array::merge_contacts_unique(const gim_contact_array & contacts
 	average_contact.m_normal /= average_contact.m_depth;
 
 }
+

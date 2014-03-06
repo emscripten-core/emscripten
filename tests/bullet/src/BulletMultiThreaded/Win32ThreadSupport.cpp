@@ -442,3 +442,5 @@ btCriticalSection* Win32ThreadSupport::createCriticalSection()
 
 
 #endif //USE_WIN32_THREADING
+
+

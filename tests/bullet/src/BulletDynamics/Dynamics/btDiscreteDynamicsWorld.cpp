@@ -1345,3 +1345,4 @@ void	btDiscreteDynamicsWorld::serialize(btSerializer* serializer)
 
 	serializer->finishSerialization();
 }
+

@@ -174,3 +174,7 @@ private:
 #endif //USE_LIBSPE2
 
 #endif //BT_SPU_LIBSPE2_SUPPORT_H
+
+
+
+

@@ -154,3 +154,7 @@ bool	btSubsimplexConvexCast::calcTimeOfImpact(
 	result.m_hitPoint=hitB;
 	return true;
 }
+
+
+
+

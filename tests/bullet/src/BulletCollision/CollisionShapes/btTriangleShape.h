@@ -179,3 +179,4 @@ public:
 };
 
 #endif //BT_OBB_TRIANGLE_MINKOWSKI_H
+

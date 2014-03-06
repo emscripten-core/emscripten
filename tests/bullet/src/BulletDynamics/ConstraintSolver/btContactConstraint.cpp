@@ -172,3 +172,7 @@ void resolveSingleBilateral(btRigidBody& body1, const btVector3& pos1,
 	impulse = velocityImpulse;
 #endif
 }
+
+
+
+

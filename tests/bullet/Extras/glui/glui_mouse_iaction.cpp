@@ -207,3 +207,4 @@ void    GLUI_Mouse_Interaction::draw_active_area( void )
   glMatrixMode( GL_MODELVIEW );
   glPopMatrix();
 }
+

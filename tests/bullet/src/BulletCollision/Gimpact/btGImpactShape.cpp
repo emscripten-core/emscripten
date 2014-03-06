@@ -200,3 +200,4 @@ const char*	btGImpactMeshShape::serialize(void* dataBuffer, btSerializer* serial
 
 	return "btGImpactMeshShapeData";
 }
+

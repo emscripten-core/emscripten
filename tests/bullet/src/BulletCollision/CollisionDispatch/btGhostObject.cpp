@@ -168,3 +168,4 @@ void	btGhostObject::rayTest(const btVector3& rayFromWorld, const btVector3& rayT
 		}
 	}
 }
+

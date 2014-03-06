@@ -312,3 +312,4 @@ void btConvexTriangleMeshShape::calculatePrincipalAxisTransform(btTransform& pri
    inertia.setValue(i[0][0], i[1][1], i[2][2]);
    inertia /= volume;
 }
+

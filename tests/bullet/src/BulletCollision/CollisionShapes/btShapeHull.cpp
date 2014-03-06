@@ -167,3 +167,4 @@ btVector3* btShapeHull::getUnitSpherePoints()
 	};
 	return sUnitSpherePoints;
 }
+

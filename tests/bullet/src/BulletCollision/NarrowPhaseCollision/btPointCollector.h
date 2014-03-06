@@ -61,3 +61,4 @@ struct btPointCollector : public btDiscreteCollisionDetectorInterface::Result
 };
 
 #endif //BT_POINT_COLLECTOR_H
+

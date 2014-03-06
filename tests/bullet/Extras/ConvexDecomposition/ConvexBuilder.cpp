@@ -369,3 +369,5 @@ void ConvexBuilder::sortChulls(CHullVector &hulls)
 	hulls.quickSort(CHullSort());
 	//hulls.heapSort(CHullSort());
 }
+
+

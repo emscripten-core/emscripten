@@ -1029,3 +1029,5 @@ btScalar btHingeConstraint::getParam(int num, int axis) const
 	}
 	return retVal;
 }
+
+

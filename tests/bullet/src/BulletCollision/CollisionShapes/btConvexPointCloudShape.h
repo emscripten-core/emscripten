@@ -102,3 +102,4 @@ public:
 
 
 #endif //BT_CONVEX_POINT_CLOUD_SHAPE_H
+

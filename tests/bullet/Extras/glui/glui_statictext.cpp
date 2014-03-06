@@ -100,3 +100,6 @@ void    GLUI_StaticText::erase_text( void )
   glVertex2i( 0, 0 );  glVertex2i( w, h );  glVertex2i( 0, h );   
   glEnd();
 }
+
+
+

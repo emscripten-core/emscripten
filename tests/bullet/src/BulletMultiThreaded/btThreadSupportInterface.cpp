@@ -19,3 +19,4 @@ btThreadSupportInterface::~btThreadSupportInterface()
 {
 
 }
+

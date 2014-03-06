@@ -164,3 +164,6 @@ btCriticalSection* SequentialThreadSupport::createCriticalSection()
 	return new btDummyCriticalSection();
 	
 }
+
+
+

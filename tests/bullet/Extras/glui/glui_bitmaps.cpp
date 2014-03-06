@@ -173,3 +173,4 @@ void GLUI_StdBitmaps::draw(int i, int x, int y) const
 			GL_RGB, GL_UNSIGNED_BYTE, bitmaps[i].pixels); 
 	}
 }
+

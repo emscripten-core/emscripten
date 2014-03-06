@@ -48,3 +48,4 @@ private:
 	
 };
 #endif //BT_SPHERE_TRIANGLE_DETECTOR_H
+

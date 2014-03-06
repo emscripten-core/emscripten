@@ -51,3 +51,4 @@ void*	createSampleLocalStoreMemory();
 
 
 #endif //SPU_SAMPLE_TASK_H
+

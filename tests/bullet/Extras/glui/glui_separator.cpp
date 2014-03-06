@@ -71,3 +71,5 @@ void    GLUI_Separator::draw( int x, int y )
   glVertex2i( width-indent, GLUI_SEPARATOR_HEIGHT/2 );    
   glEnd();
 }
+
+

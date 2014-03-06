@@ -460,3 +460,7 @@ void	btBvhTriangleMeshShape::serializeSingleTriangleInfoMap(btSerializer* serial
 		serializer->finalizeChunk(chunk,structType,BT_TRIANLGE_INFO_MAP,(void*)m_triangleInfoMap);
 	}
 }
+
+
+
+

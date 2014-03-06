@@ -230,3 +230,8 @@ void Arcball::set_damping(float d)
 {
     damp_factor = d;
 }
+
+
+
+
+

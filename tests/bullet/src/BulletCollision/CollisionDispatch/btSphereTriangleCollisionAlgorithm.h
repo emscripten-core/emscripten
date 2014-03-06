@@ -66,3 +66,4 @@ public:
 };
 
 #endif //BT_SPHERE_TRIANGLE_COLLISION_ALGORITHM_H
+

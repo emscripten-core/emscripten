@@ -193,3 +193,5 @@ void   GLUI_CommandLine::dump( FILE *out, const char *name )
 	   insertion_pt, substring_start, substring_end, sel_start, sel_end,
 	   (int)text.length());
 }
+
+

@@ -63,3 +63,4 @@ public:
 };
 
 #endif //BT_SPHERE_SPHERE_COLLISION_ALGORITHM_H
+

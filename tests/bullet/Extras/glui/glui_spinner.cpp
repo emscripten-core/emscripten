@@ -626,3 +626,5 @@ int    GLUI_Spinner::get_int_val( void )
   else 
     return 0; 
 }
+
+

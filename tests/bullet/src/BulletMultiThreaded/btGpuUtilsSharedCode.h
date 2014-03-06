@@ -52,3 +52,4 @@ void BT_GPU_PREF(computeGridSize)(int n, int blockSize, int &numBlocks, int &num
 //----------------------------------------------------------------------------------------
 
 } // extern "C"
+

@@ -148,3 +148,4 @@ void btDefaultSoftBodySolver::predictMotion( float timeStep )
 		}
 	}
 }
+

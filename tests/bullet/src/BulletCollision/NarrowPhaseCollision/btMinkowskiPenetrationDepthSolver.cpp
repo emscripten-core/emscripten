@@ -358,3 +358,5 @@ btVector3*	btMinkowskiPenetrationDepthSolver::getPenetrationDirections()
 
 	return sPenetrationDirections;
 }
+
+

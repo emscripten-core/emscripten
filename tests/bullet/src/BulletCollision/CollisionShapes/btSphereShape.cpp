@@ -68,3 +68,4 @@ void	btSphereShape::calculateLocalInertia(btScalar mass,btVector3& inertia) cons
 	inertia.setValue(elem,elem,elem);
 
 }
+

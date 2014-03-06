@@ -398,3 +398,5 @@ void btRigidBody::serializeSingleObject(class btSerializer* serializer) const
 	const char* structType = serialize(chunk->m_oldPtr, serializer);
 	serializer->finalizeChunk(chunk,structType,BT_RIGIDBODY_CODE,(void*)this);
 }
+
+

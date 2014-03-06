@@ -165,3 +165,7 @@ btCapsuleShapeZ::btCapsuleShapeZ(btScalar radius,btScalar height)
 	m_upAxis = 2;
 	m_implicitShapeDimensions.setValue(radius,radius,0.5f*height);
 }
+
+
+
+

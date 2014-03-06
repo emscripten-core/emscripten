@@ -182,3 +182,4 @@ void	btGeometryUtil::getVerticesFromPlaneEquations(const btAlignedObjectArray<bt
 		}
 	}
 }
+

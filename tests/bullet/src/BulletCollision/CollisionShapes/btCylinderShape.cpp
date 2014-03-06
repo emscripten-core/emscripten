@@ -275,3 +275,5 @@ void	btCylinderShapeX::batchedUnitVectorGetSupportingVertexWithoutMargin(const b
 		supportVerticesOut[i] = CylinderLocalSupportX(getHalfExtentsWithoutMargin(),vectors[i]);
 	}
 }
+
+

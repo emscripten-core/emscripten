@@ -244,3 +244,4 @@ btScalar	btConvex2dConvex2dAlgorithm::calculateTimeOfImpact(btCollisionObject* c
 	return resultFraction;
 
 }
+

@@ -93,3 +93,4 @@ public:
 };
 
 #endif //BT_SEQUENTIAL_THREAD_SUPPORT_H
+

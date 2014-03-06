@@ -65,3 +65,5 @@ public:
 };
 
 #endif //BT_SOFT_SOFT_COLLISION_ALGORITHM_H
+
+

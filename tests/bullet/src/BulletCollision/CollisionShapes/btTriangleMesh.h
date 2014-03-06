@@ -66,3 +66,4 @@ class btTriangleMesh : public btTriangleIndexVertexArray
 };
 
 #endif //BT_TRIANGLE_MESH_H
+

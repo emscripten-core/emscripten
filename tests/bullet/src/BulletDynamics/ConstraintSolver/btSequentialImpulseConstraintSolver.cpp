@@ -1236,3 +1236,4 @@ btRigidBody& btSequentialImpulseConstraintSolver::getFixedBody()
 	s_fixed.setMassProps(btScalar(0.),btVector3(btScalar(0.),btScalar(0.),btScalar(0.)));
 	return s_fixed;
 }
+

@@ -176,3 +176,4 @@ public:
 };
 
 #endif //BT_VORONOI_SIMPLEX_SOLVER_H
+

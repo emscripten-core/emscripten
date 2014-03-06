@@ -42,3 +42,4 @@ struct btCollisionAlgorithmCreateFunc
 	}
 };
 #endif //BT_COLLISION_CREATE_FUNC
+

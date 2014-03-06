@@ -60,3 +60,4 @@ class btSimplexSolverInterface
 };
 #endif
 #endif //BT_SIMPLEX_SOLVER_INTERFACE_H
+

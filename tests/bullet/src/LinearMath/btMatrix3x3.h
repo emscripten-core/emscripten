@@ -768,3 +768,4 @@ SIMD_FORCE_INLINE	void	btMatrix3x3::deSerializeDouble(const struct	btMatrix3x3Do
 }
 
 #endif //BT_MATRIX3x3_H
+

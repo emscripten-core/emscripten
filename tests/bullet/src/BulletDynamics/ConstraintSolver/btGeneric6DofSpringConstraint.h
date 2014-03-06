@@ -94,3 +94,4 @@ SIMD_FORCE_INLINE	const char*	btGeneric6DofSpringConstraint::serialize(void* dat
 }
 
 #endif // BT_GENERIC_6DOF_SPRING_CONSTRAINT_H
+

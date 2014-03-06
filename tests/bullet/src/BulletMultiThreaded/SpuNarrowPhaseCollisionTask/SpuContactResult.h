@@ -103,3 +103,4 @@ class SpuContactResult : public btDiscreteCollisionDetectorInterface::Result
 
 
 #endif //SPU_CONTACT_RESULT2_H
+
