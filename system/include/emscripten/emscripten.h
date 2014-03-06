@@ -96,7 +96,7 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * for this is to load an asset module, that is, the output of the
  * file packager.
  */
-extern void emscripten_async_load_script(const char *script, void (*onload)(), void (*onerror)());
+extern void emscripten_async_load_script(const char *script, void (*onload)(void), void (*onerror)(void));
 
 /*
  * Set a C function as the main event loop. The JS environment
@@ -138,11 +138,11 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  *    before the main loop will be called the first time.
  */
 #if __EMSCRIPTEN__
-extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop(void (*func)(void), int fps, int simulate_infinite_loop);
 extern void emscripten_set_main_loop_arg(void (*func)(void*), void *arg, int fps, int simulate_infinite_loop);
-extern void emscripten_pause_main_loop();
-extern void emscripten_resume_main_loop();
-extern void emscripten_cancel_main_loop();
+extern void emscripten_pause_main_loop(void);
+extern void emscripten_resume_main_loop(void);
+extern void emscripten_cancel_main_loop(void);
 #else
 #define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
   while (1) { func(); usleep(1000000/fps); }
@@ -214,7 +214,7 @@ inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
  * etc. are not run). This is implicitly performed when you do
  * an asynchronous operation like emscripten_async_call.
  */
-extern void emscripten_exit_with_live_runtime();
+extern void emscripten_exit_with_live_runtime(void);
 
 /*
  * Hide the OS mouse cursor over the canvas. Note that SDL's
@@ -222,7 +222,7 @@ extern void emscripten_exit_with_live_runtime();
  * the OS one. This command is useful to hide the OS cursor
  * if your app draws its own cursor.
  */
-void emscripten_hide_mouse();
+void emscripten_hide_mouse(void);
 
 /*
  * Resizes the pixel width and height of the <canvas> element
@@ -244,10 +244,10 @@ void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
  * other calls to this function. The unit is ms.
  */
 #if __EMSCRIPTEN__
-double emscripten_get_now();
+double emscripten_get_now(void);
 #else
 #include <time.h>
-double emscripten_get_now() {
+double emscripten_get_now(void) {
   return (1000*clock())/(double)CLOCKS_PER_SEC;
 }
 #endif
@@ -255,7 +255,7 @@ double emscripten_get_now() {
 /*
  * Simple random number generation in [0, 1), maps to Math.random().
  */
-float emscripten_random();
+float emscripten_random(void);
 
 /*
  * This macro-looking function will cause Emscripten to
