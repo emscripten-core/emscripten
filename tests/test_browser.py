@@ -1752,6 +1752,23 @@ void *getBindBuffer() {
     for mem in [0, 1]:
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
 
+  def test_mem_init(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function myJSCallback() { // called from main()
+        Module._note(1);
+      }
+      Module.preRun = function() {
+        addOnPreMain(function() {
+          Module._note(2);
+        });
+      };
+    ''')
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
+      Module._note(4); // this happens too early! and is overwritten when the mem init arrives
+    ''')
+
+    self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
+
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
     self.btest('worker_api_main.cpp', expected='566')

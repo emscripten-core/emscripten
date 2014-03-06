@@ -470,7 +470,16 @@ Options that are modified or new in %s include:
                            1: Emit a separate memory initialization file
                               in binary format. This is more efficient than
                               storing it as text inside JavaScript, but does
-                              mean you have another file to publish.
+                              mean you have another file to publish. The
+                              binary file will also be loaded asynchronously,
+                              which means main() will not be called until
+                              the file is downloaded and applied; you cannot
+                              call any C functions until it arrives. (Call
+                              yourself from main() to know when all async
+                              stuff has happened and it is safe to call
+                              library functions, as main() will only be
+                              called at that time. You can also call
+                              addOnPreMain from a preRun.)
 
   -Wno-warn-absolute-paths If not specified, the compiler will warn about any
                            uses of absolute paths in -I and -L command line
