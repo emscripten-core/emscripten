@@ -5203,7 +5203,8 @@ def process(filename):
           'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
           '2xi40', # pnacl limitations in ExpandGetElementPtr
           'quoted', # current fastcomp limitations FIXME
-          'atomicrmw_unaligned' # TODO XXX
+          'atomicrmw_unaligned', # TODO XXX
+          'emptyasm_aue' # we don't support inline asm
         ]: continue
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
           print self.skip('case "%s" only relevant for ta2' % shortname)
