@@ -123,6 +123,7 @@ var LibraryGLFW = {
           Runtime.dynCall('vii', GLFW.charFunc, [event.charCode, 1]);
         }
       }
+      event.preventDefault();
     },
 
     onKeyChanged: function(event, status) {
