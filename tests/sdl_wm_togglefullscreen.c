@@ -12,7 +12,15 @@ int inFullscreen = 0;
 
 int wasFullscreen = 0;
 
+void render() {
+  int width, height, isfs;
+  emscripten_get_canvas_size(&width, &height, &isfs);
+  SDL_Rect rect = { 0, 0, width, height };
+  SDL_FillRect(screen, &rect, 0xff00ffff);
+}
+
 void mainloop() {
+  render();
   SDL_Event event;
   int isInFullscreen = EM_ASM_INT_V(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
   if (isInFullscreen && !wasFullscreen) {
@@ -61,9 +69,6 @@ void mainloop() {
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
   screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
-
-  SDL_Rect rect = { 0, 0, 600, 450 };
-  SDL_FillRect(screen, &rect, 0xff00ffff);
 
   printf("You should see a yellow canvas.\n");
   printf("Click on the canvas to enter full screen, and then click on the canvas again to finish the test.\n");
