@@ -113,7 +113,7 @@ for arg in sys.argv[2:]:
     try:
       from shared import CRUNCH
     except Exception, e:
-      print >> sys.stderr, 'count not import CRUNCH (make sure it is defined properly in ~/.emscripten)'
+      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ~/.emscripten)'
       raise e
     crunch = arg.split('=')[1] if '=' in arg else '128'
     leading = ''
@@ -223,13 +223,14 @@ if len(data_files) == 0:
   sys.exit(1)
 
 # Absolutize paths, and check that they make sense
-curr_abspath = os.path.abspath(os.getcwd())
+curr_abspath = os.path.abspath(os.getcwd()) # os.getcwd() always returns the hard path with any symbolic links resolved, even if we cd'd into a symbolic link.
+
 for file_ in data_files:
   if file_['srcpath'] == file_['dstpath']:
     # This file was not defined with src@dst, so we inferred the destination from the source. In that case,
     # we require that the destination not be under the current location
     path = file_['dstpath']
-    abspath = os.path.abspath(path)
+    abspath = os.path.realpath(os.path.abspath(path)) # Use os.path.realpath to resolve any symbolic links to hard paths, to match the structure in curr_abspath.
     if DEBUG: print >> sys.stderr, path, abspath, curr_abspath
     if not abspath.startswith(curr_abspath):
       print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory "%s". This is invalid since the current directory becomes the root that the generated code will see' % (path, curr_abspath)
