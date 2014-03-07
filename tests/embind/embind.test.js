@@ -1938,10 +1938,21 @@ module({
         derived.delete();
         // Let the memory leak test superfixture check that no leaks occurred.
     });
+
+    test("val::as supports variety of types", function() {
+        assert.equal(true,  cm.val_as_bool(true));
+        assert.equal(127,   cm.val_as_char(127));
+        assert.equal(32767, cm.val_as_short(32767));
+        assert.equal(65536, cm.val_as_int(65536));
+        assert.equal(65536, cm.val_as_long(65536));
+        assert.equal(10.5,  cm.val_as_float(10.5));
+        assert.equal(10.5,  cm.val_as_double(10.5));
+    });
 });
 
 /* global run_all_tests */
 // If running as part of the emscripten test runner suite, and not as part of the IMVU suite,
 // we launch the test execution from here. IMVU suite uses its own dedicated mechanism instead of this.
-if (typeof run_all_tests !== "undefined")
+if (typeof run_all_tests !== "undefined") {
     run_all_tests();
+}

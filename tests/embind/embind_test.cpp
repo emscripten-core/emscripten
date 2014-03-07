@@ -2304,3 +2304,18 @@ EMSCRIPTEN_BINDINGS(mixins) {
             .constructor<>()
     );
 }
+
+template<typename T>
+T val_as(const val& v) {
+    return v.as<T>();
+}
+
+EMSCRIPTEN_BINDINGS(val_as) {
+    function("val_as_bool",   &val_as<bool>);
+    function("val_as_char",   &val_as<char>);
+    function("val_as_short",  &val_as<short>);
+    function("val_as_int",    &val_as<int>);
+    function("val_as_long",   &val_as<long>);
+    function("val_as_float",  &val_as<float>);
+    function("val_as_double", &val_as<double>);
+}
