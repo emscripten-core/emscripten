@@ -123,12 +123,13 @@ for arg in sys.argv[2:]:
     leading = ''
   elif leading == 'preload' or leading == 'embed':
     mode = leading
-    if '@' in arg:
+    uses_at_notation = '@' in arg
+    if uses_at_notation:
       srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
     else:
       srcpath = dstpath = arg # Use source path as destination path.
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
-      data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode })
+      data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': uses_at_notation })
     else:
       print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
   elif leading == 'exclude':
@@ -206,7 +207,7 @@ def add(arg, dirname, names):
       new_names.append(name)
       if not os.path.isdir(fullname):
         dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
-        new_data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode })
+        new_data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': True })
   del names[:]
   names.extend(new_names)
 
@@ -226,7 +227,7 @@ if len(data_files) == 0:
 curr_abspath = os.path.abspath(os.getcwd()) # os.getcwd() always returns the hard path with any symbolic links resolved, even if we cd'd into a symbolic link.
 
 for file_ in data_files:
-  if file_['srcpath'] == file_['dstpath']:
+  if not file_['explicit_dst_path']:
     # This file was not defined with src@dst, so we inferred the destination from the source. In that case,
     # we require that the destination not be under the current location
     path = file_['dstpath']
