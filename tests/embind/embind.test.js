@@ -1939,14 +1939,26 @@ module({
         // Let the memory leak test superfixture check that no leaks occurred.
     });
 
-    test("val::as supports variety of types", function() {
-        assert.equal(true,  cm.val_as_bool(true));
-        assert.equal(127,   cm.val_as_char(127));
-        assert.equal(32767, cm.val_as_short(32767));
-        assert.equal(65536, cm.val_as_int(65536));
-        assert.equal(65536, cm.val_as_long(65536));
-        assert.equal(10.5,  cm.val_as_float(10.5));
-        assert.equal(10.5,  cm.val_as_double(10.5));
+    BaseFixture.extend("val::as built-in types", function() {
+        test("primitives", function() {
+            assert.equal(true,  cm.val_as_bool(true));
+            assert.equal(127,   cm.val_as_char(127));
+            assert.equal(32767, cm.val_as_short(32767));
+            assert.equal(65536, cm.val_as_int(65536));
+            assert.equal(65536, cm.val_as_long(65536));
+            assert.equal(10.5,  cm.val_as_float(10.5));
+            assert.equal(10.5,  cm.val_as_double(10.5));
+
+            assert.equal("foo", cm.val_as_string("foo"));
+            assert.equal("foo", cm.val_as_wstring("foo"));
+
+            var obj = {};
+            assert.equal(obj, cm.val_as_val(obj));
+
+            // JS->C++ memory view not implemented
+            //var ab = cm.val_as_memory_view(new ArrayBuffer(13));
+            //assert.equal(13, ab.byteLength);
+        });
     });
 });
 

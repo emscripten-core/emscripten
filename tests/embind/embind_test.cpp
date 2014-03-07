@@ -2316,6 +2316,12 @@ EMSCRIPTEN_BINDINGS(val_as) {
     function("val_as_short",  &val_as<short>);
     function("val_as_int",    &val_as<int>);
     function("val_as_long",   &val_as<long>);
+
     function("val_as_float",  &val_as<float>);
     function("val_as_double", &val_as<double>);
+
+    function("val_as_string", &val_as<std::string>);
+    function("val_as_wstring", &val_as<std::wstring>);
+    function("val_as_val", &val_as<val>);
+    //function("val_as_memory_view", &val_as<memory_view>);
 }
