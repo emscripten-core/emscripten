@@ -376,7 +376,7 @@ extern EMSCRIPTEN_RESULT emscripten_lock_orientation(int allowedOrientations);
 /*
  * Allows the screen to turn again into any orientation.
  */
-extern EMSCRIPTEN_RESULT emscripten_unlock_orientation();
+extern EMSCRIPTEN_RESULT emscripten_unlock_orientation(void);
 
 /*
  * The event structure passed in the fullscreenchange event.
@@ -420,7 +420,7 @@ extern EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, int d
 /*
  * Returns back to windowed browsing mode.
  */
-extern EMSCRIPTEN_RESULT emscripten_exit_fullscreen();
+extern EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void);
 
 /*
  * The event structure passed in the pointerlockchange event.
@@ -456,7 +456,7 @@ extern EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target, int 
 /*
  * Exits pointer lock state and restores the mouse cursor to be visible again.
  */
-extern EMSCRIPTEN_RESULT emscripten_exit_pointerlock();
+extern EMSCRIPTEN_RESULT emscripten_exit_pointerlock(void);
 
 #define EMSCRIPTEN_VISIBILITY_HIDDEN    0
 #define EMSCRIPTEN_VISIBILITY_VISIBLE   1
@@ -573,7 +573,7 @@ extern EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userD
  * Returns the number of gamepads connected to the system or EMSCRIPTEN_RESULT_NOT_SUPPORTED if the current browser does not support gamepads.
  * Note: A gamepad does not show up as connected until a button on it is pressed.
  */
-extern int emscripten_get_num_gamepads();
+extern int emscripten_get_num_gamepads(void);
 /*
  * Returns a snapshot of the current gamepad state.
  */
