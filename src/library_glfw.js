@@ -51,7 +51,7 @@ var LibraryGLFW = {
     DOMToGLFWKeyCode: function(keycode) {
       switch (keycode) {
         case 0x09: return 295 ; //DOM_VK_TAB -> GLFW_KEY_TAB
-        case 0x1B: return 255 ; //DOM_VK_ESCAPE -> GLFW_KEY_ESC
+        case 0x1B: return 257 ; //DOM_VK_ESCAPE -> GLFW_KEY_ESC
         case 0x6A: return 313 ; //DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
         case 0x6B: return 315 ; //DOM_VK_ADD -> GLFW_KEY_KP_ADD
         case 0x6D: return 314 ; //DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
