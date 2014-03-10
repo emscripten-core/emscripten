@@ -580,3 +580,4 @@ static int FGAPIENTRY FGUNUSED glutCreateMenu_ATEXIT_HACK(void (* func)(int)) { 
 /*** END OF FILE ***/
 
 #endif /* __FREEGLUT_STD_H__ */
+

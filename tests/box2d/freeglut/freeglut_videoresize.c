@@ -41,3 +41,10 @@ void FGAPIENTRY glutVideoResize( int x, int y, int w, int h ) { /* Not implement
 void FGAPIENTRY glutVideoPan( int x, int y, int w, int h )    { /* Not implemented */ }
 
 /*** END OF FILE ***/
+
+
+
+
+
+
+
