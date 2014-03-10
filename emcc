@@ -1498,7 +1498,7 @@ try:
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
-    if save_bc:
+    if save_bc and not fastcomp:
       final = shared.Building.llvm_dis(final, final + '.ll')
   else:
     assert len(input_files) == 1
