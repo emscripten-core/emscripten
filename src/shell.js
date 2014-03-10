@@ -14,7 +14,11 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 var Module;
+#if CLOSURE_COMPILER
 if (!Module) Module = eval('(function() { try { return {{{ EXPORT_NAME }}} || {} } catch(e) { return {} } })()');
+#else
+if (!Module) Module = (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : null) || {};
+#endif
 
 // Sometimes an existing Module object exists with properties
 // meant to overwrite the default module functionality. Here

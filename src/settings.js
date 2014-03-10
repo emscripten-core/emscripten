@@ -133,6 +133,7 @@ var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 6
                      //    therefore recommended.
 var SIMD = 0; // Whether to emit SIMD code ( https://github.com/johnmccutchan/ecmascript_simd )
 
+var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
 

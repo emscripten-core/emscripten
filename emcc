@@ -1034,9 +1034,6 @@ try:
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 
-  if closure:
-    assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
-
   for i in range(len(newargs)):
     if newargs[i] == '-s':
       if is_minus_s_for_emcc(newargs, i):
@@ -1251,6 +1248,10 @@ try:
   if debug_level > 1 and closure:
     logging.warning('disabling closure because debug info was requested')
     closure = False
+
+  if closure:
+    shared.Settings.CLOSURE_COMPILER = 1
+    assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
 
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
