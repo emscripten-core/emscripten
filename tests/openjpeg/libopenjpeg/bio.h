@@ -122,3 +122,4 @@ int bio_inalign(opj_bio_t *bio);
 /*@}*/
 
 #endif /* __BIO_H */
+

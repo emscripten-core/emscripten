@@ -784,3 +784,8 @@ void t2_destroy(opj_t2_t *t2) {
 		opj_free(t2);
 	}
 }
+
+
+
+
+

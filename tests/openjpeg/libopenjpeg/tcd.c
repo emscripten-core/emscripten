@@ -1512,3 +1512,6 @@ void tcd_free_decode_tile(opj_tcd_t *tcd, int tileno) {
 	}
 	opj_free(tile->comps);
 }
+
+
+

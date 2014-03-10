@@ -51,3 +51,4 @@ double opj_clock(void);
 /*@}*/
 
 #endif /* __J2K_LIB_H */
+

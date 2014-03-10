@@ -68,3 +68,4 @@ double opj_clock(void) {
 #endif
 #endif
 }
+

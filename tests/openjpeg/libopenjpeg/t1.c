@@ -1578,3 +1578,4 @@ void t1_decode_cblks(
 		} /* bandno */
 	} /* resno */
 }
+

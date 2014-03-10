@@ -631,3 +631,4 @@ static void j2k_dump_cp(FILE *fd, opj_image_t * img, opj_cp_t * cp) {
 	}
 	fprintf(fd, "}\n");
 }
+

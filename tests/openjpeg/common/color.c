@@ -460,3 +460,4 @@ fprintf(stderr,"%s:%d:color_apply_icc_profile\n\tcmsCreateTransform failed. "
 }/* color_apply_icc_profile() */
 
 #endif /* HAVE_LIBLCMS2 || HAVE_LIBLCMS1 */
+

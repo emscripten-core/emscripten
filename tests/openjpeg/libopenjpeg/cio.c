@@ -186,3 +186,6 @@ unsigned int cio_read(opj_cio_t *cio, int n) {
 void cio_skip(opj_cio_t *cio, int n) {
 	cio->bp += n;
 }
+
+
+

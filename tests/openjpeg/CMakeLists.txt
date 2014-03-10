@@ -366,3 +366,4 @@ CONFIGURE_FILE("${OPENJPEG_SOURCE_DIR}/opj_configh.cmake.in"
   "${OPENJPEG_BINARY_DIR}/opj_config.h"
   @ONLY 
 )
+

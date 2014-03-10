@@ -2683,3 +2683,4 @@ fin:
 	return fails;
 }/* imagetopng() */
 #endif /* HAVE_LIBPNG */
+
