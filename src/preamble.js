@@ -187,16 +187,16 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat]);
 #endif
   assert(dest > 0, 'segmentation fault');
-  assert(dest % bytes === 0);
-  assert(dest < Math.max(DYNAMICTOP, STATICTOP));
+  assert(dest % bytes === 0, 'alignment error');
+  assert(dest < Math.max(DYNAMICTOP, STATICTOP), 'segmentation fault (high)');
   assert(DYNAMICTOP <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
 
 function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
   assert(dest > 0, 'segmentation fault');
-  assert(dest % bytes === 0);
-  assert(dest < Math.max(DYNAMICTOP, STATICTOP));
+  assert(dest % bytes === 0, 'alignment error');
+  assert(dest < Math.max(DYNAMICTOP, STATICTOP), 'segmentation fault (high)');
   assert(DYNAMICTOP <= TOTAL_MEMORY);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
