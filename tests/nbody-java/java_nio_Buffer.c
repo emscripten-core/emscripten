@@ -521,3 +521,4 @@ JAVA_OBJECT java_nio_Buffer_rewind__(JAVA_OBJECT me)
     return _r1.o;
     //XMLVM_END_WRAPPER
 }
+

@@ -194,3 +194,4 @@ void java_net_SocketException___INIT____java_lang_String(JAVA_OBJECT me, JAVA_OB
     return;
     //XMLVM_END_WRAPPER
 }
+

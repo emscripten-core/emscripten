@@ -1076,3 +1076,4 @@ void java_lang_Object___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
+

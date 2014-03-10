@@ -611,3 +611,4 @@ JAVA_OBJECT java_nio_ReadWriteCharArrayBuffer_slice__(JAVA_OBJECT me)
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

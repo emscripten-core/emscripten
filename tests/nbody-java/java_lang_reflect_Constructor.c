@@ -291,3 +291,4 @@ void java_lang_reflect_Constructor___INIT____java_lang_Class_java_lang_Class_1AR
 //XMLVM_NATIVE[JAVA_OBJECT java_lang_reflect_Constructor_newInstance___java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1)]
 
 //XMLVM_NATIVE[JAVA_OBJECT java_lang_reflect_Constructor_toString__(JAVA_OBJECT me)]
+

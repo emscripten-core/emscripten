@@ -402,3 +402,4 @@ JAVA_BOOLEAN java_util_AbstractSet_removeAll___java_util_Collection(JAVA_OBJECT 
     goto label45;
     //XMLVM_END_WRAPPER
 }
+

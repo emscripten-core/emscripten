@@ -74,3 +74,4 @@ void __INIT_IMPL_java_lang_CharSequence()
 
     __TIB_java_lang_CharSequence.classInitialized = 1;
 }
+

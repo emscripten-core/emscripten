@@ -400,3 +400,4 @@ void java_lang_Thread_State___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
+

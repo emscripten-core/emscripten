@@ -182,3 +182,4 @@ void java_lang_ref_WeakReference___INIT____java_lang_Object_java_lang_ref_Refere
     return;
     //XMLVM_END_WRAPPER
 }
+

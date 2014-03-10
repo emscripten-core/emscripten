@@ -1979,3 +1979,4 @@ JAVA_INT java_lang_Integer_compareTo___java_lang_Object(JAVA_OBJECT me, JAVA_OBJ
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
+

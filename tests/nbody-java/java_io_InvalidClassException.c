@@ -242,3 +242,4 @@ JAVA_OBJECT java_io_InvalidClassException_getMessage__(JAVA_OBJECT me)
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

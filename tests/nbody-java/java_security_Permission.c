@@ -322,3 +322,4 @@ JAVA_OBJECT java_security_Permission_toString__(JAVA_OBJECT me)
     goto label16;
     //XMLVM_END_WRAPPER
 }
+

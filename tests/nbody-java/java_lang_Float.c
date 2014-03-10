@@ -1054,3 +1054,4 @@ JAVA_INT java_lang_Float_compareTo___java_lang_Object(JAVA_OBJECT me, JAVA_OBJEC
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
+

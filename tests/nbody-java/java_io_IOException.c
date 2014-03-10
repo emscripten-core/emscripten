@@ -240,3 +240,4 @@ void java_io_IOException___INIT____java_lang_Throwable(JAVA_OBJECT me, JAVA_OBJE
     goto label3;
     //XMLVM_END_WRAPPER
 }
+

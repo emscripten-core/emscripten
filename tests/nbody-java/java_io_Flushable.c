@@ -73,3 +73,4 @@ void __INIT_IMPL_java_io_Flushable()
 
     __TIB_java_io_Flushable.classInitialized = 1;
 }
+

@@ -1697,3 +1697,4 @@ JAVA_BOOLEAN java_util_HashMap_areEqualValues___java_lang_Object_java_lang_Objec
     goto label9;
     //XMLVM_END_WRAPPER
 }
+

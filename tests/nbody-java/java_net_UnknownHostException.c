@@ -194,3 +194,4 @@ void java_net_UnknownHostException___INIT____java_lang_String(JAVA_OBJECT me, JA
     return;
     //XMLVM_END_WRAPPER
 }
+

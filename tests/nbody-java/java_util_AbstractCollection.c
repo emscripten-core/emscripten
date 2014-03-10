@@ -744,3 +744,4 @@ JAVA_OBJECT java_util_AbstractCollection_toString__(JAVA_OBJECT me)
     goto label54;
     //XMLVM_END_WRAPPER
 }
+

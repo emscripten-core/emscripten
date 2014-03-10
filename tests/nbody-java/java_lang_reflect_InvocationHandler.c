@@ -74,3 +74,4 @@ void __INIT_IMPL_java_lang_reflect_InvocationHandler()
 
     __TIB_java_lang_reflect_InvocationHandler.classInitialized = 1;
 }
+

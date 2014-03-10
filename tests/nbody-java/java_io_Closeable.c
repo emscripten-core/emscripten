@@ -73,3 +73,4 @@ void __INIT_IMPL_java_io_Closeable()
 
     __TIB_java_io_Closeable.classInitialized = 1;
 }
+

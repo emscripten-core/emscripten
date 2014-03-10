@@ -176,3 +176,4 @@ void java_lang_ThreadGroup_ChildrenThreadsLock___INIT____java_lang_ThreadGroup_j
     return;
     //XMLVM_END_WRAPPER
 }
+

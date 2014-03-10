@@ -891,3 +891,4 @@ void java_lang_ClassLoader___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
+

@@ -562,3 +562,4 @@ JAVA_OBJECT org_apache_harmony_luni_internal_nls_Messages_format___java_lang_Str
     return _r5.o;
     //XMLVM_END_WRAPPER
 }
+

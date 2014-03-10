@@ -395,3 +395,4 @@ JAVA_OBJECT java_util_WeakHashMap_Entry_toString__(JAVA_OBJECT me)
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

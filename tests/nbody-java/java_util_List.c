@@ -75,3 +75,4 @@ void __INIT_IMPL_java_util_List()
 
     __TIB_java_util_List.classInitialized = 1;
 }
+

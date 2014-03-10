@@ -667,3 +667,4 @@ JAVA_DOUBLE nbody_NBodySystem_energy__(JAVA_OBJECT me)
     return _r2.d;
     //XMLVM_END_WRAPPER
 }
+

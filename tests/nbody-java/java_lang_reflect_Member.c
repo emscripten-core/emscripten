@@ -101,3 +101,4 @@ void java_lang_reflect_Member_PUT_DECLARED(JAVA_INT v)
 {
     _STATIC_java_lang_reflect_Member_DECLARED = v;
 }
+

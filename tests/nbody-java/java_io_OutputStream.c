@@ -290,3 +290,4 @@ JAVA_BOOLEAN java_io_OutputStream_checkError__(JAVA_OBJECT me)
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
+

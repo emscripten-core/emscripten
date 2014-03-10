@@ -186,3 +186,4 @@ void org_xmlvm_runtime_XMLVMOutputStream_write___int(JAVA_OBJECT me, JAVA_INT n1
 }
 
 //XMLVM_NATIVE[void org_xmlvm_runtime_XMLVMOutputStream_nativeWrite___int(JAVA_INT n1)]
+

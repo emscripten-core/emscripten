@@ -44,3 +44,4 @@ JAVA_DOUBLE java_lang_Double_longBitsToDouble___long(JAVA_LONG n1)
     return u.d;
     //XMLVM_END_NATIVE
 }
+

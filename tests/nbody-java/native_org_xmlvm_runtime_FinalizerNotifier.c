@@ -60,3 +60,4 @@ JAVA_INT org_xmlvm_runtime_FinalizerNotifier_invokeFinalizers__()
 #endif
     //XMLVM_END_NATIVE
 }
+

@@ -1024,3 +1024,4 @@ void java_util_Collections_SynchronizedMap_writeObject___java_io_ObjectOutputStr
     XMLVM_THROW_CUSTOM(_r1.o)
     //XMLVM_END_WRAPPER
 }
+

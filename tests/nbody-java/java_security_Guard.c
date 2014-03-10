@@ -73,3 +73,4 @@ void __INIT_IMPL_java_security_Guard()
 
     __TIB_java_security_Guard.classInitialized = 1;
 }
+

@@ -232,3 +232,4 @@ JAVA_OBJECT org_apache_harmony_luni_platform_Endianness_toString__(JAVA_OBJECT m
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

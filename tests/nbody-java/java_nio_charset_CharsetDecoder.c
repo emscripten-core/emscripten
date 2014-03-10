@@ -1054,3 +1054,4 @@ JAVA_OBJECT java_nio_charset_CharsetDecoder_unmappableCharacterAction__(JAVA_OBJ
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

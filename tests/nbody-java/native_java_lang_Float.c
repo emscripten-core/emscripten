@@ -49,3 +49,4 @@ JAVA_FLOAT java_lang_Float_intBitsToFloat___int(JAVA_INT n1)
     return u.f;
     //XMLVM_END_NATIVE
 }
+

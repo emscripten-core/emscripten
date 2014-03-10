@@ -1989,3 +1989,4 @@ void org_apache_harmony_luni_util_Util___CLINIT_()
     goto label124;
     //XMLVM_END_WRAPPER
 }
+

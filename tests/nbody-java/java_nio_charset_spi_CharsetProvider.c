@@ -207,3 +207,4 @@ void java_nio_charset_spi_CharsetProvider___INIT___(JAVA_OBJECT me)
     return;
     //XMLVM_END_WRAPPER
 }
+

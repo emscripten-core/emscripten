@@ -2375,3 +2375,4 @@ void java_lang_Thread___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
+

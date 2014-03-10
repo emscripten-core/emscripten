@@ -373,3 +373,4 @@ JAVA_OBJECT java_lang_reflect_Method_getReturnType__(JAVA_OBJECT me)
 //XMLVM_NATIVE[JAVA_OBJECT java_lang_reflect_Method_invoke___java_lang_Object_java_lang_Object_1ARRAY(JAVA_OBJECT me, JAVA_OBJECT n1, JAVA_OBJECT n2)]
 
 //XMLVM_NATIVE[JAVA_OBJECT java_lang_reflect_Method_toString__(JAVA_OBJECT me)]
+

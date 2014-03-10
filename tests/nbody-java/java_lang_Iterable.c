@@ -74,3 +74,4 @@ void __INIT_IMPL_java_lang_Iterable()
 
     __TIB_java_lang_Iterable.classInitialized = 1;
 }
+

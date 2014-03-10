@@ -33,3 +33,4 @@ void java_util_Locale_initNativeLayer__()
 #endif
     //XMLVM_END_NATIVE
 }
+

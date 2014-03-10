@@ -1703,3 +1703,4 @@ void java_util_Locale___CLINIT_()
     return;
     //XMLVM_END_WRAPPER
 }
+

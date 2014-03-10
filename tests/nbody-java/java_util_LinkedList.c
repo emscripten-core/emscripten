@@ -2401,3 +2401,4 @@ void java_util_LinkedList_readObject___java_io_ObjectInputStream(JAVA_OBJECT me,
     goto label24;
     //XMLVM_END_WRAPPER
 }
+

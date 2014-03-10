@@ -456,3 +456,4 @@ JAVA_DOUBLE java_lang_reflect_AccessibleObject_invokeD___java_lang_Object_java_l
     return _r0.d;
     //XMLVM_END_WRAPPER
 }
+

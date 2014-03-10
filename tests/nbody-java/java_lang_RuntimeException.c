@@ -231,3 +231,4 @@ void java_lang_RuntimeException___INIT____java_lang_Throwable(JAVA_OBJECT me, JA
     return;
     //XMLVM_END_WRAPPER
 }
+

@@ -269,3 +269,4 @@ void org_apache_harmony_luni_platform_IFileSystem_PUT_O_TRUNC(JAVA_INT v)
 {
     _STATIC_org_apache_harmony_luni_platform_IFileSystem_O_TRUNC = v;
 }
+

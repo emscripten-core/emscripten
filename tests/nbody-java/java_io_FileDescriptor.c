@@ -306,3 +306,4 @@ JAVA_BOOLEAN java_io_FileDescriptor_valid__(JAVA_OBJECT me)
     goto label9;
     //XMLVM_END_WRAPPER
 }
+

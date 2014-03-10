@@ -4459,3 +4459,4 @@ void org_apache_harmony_niochar_CharsetProviderImpl___CLINIT_()
     goto label6;
     //XMLVM_END_WRAPPER
 }
+

@@ -74,3 +74,4 @@ void __INIT_IMPL_java_util_Queue()
 
     __TIB_java_util_Queue.classInitialized = 1;
 }
+

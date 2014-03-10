@@ -506,3 +506,4 @@ JAVA_OBJECT java_nio_CharArrayBuffer_toString__(JAVA_OBJECT me)
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

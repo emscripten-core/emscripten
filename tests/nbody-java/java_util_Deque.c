@@ -75,3 +75,4 @@ void __INIT_IMPL_java_util_Deque()
 
     __TIB_java_util_Deque.classInitialized = 1;
 }
+

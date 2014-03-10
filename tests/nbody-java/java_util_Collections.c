@@ -2673,3 +2673,4 @@ JAVA_OBJECT java_util_Collections_asLifoQueue___java_util_Deque(JAVA_OBJECT n1)
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

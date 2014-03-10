@@ -200,3 +200,4 @@ void java_lang_reflect_Array___INIT___(JAVA_OBJECT me)
 //XMLVM_NATIVE[void java_lang_reflect_Array_setLong___java_lang_Object_int_long(JAVA_OBJECT n1, JAVA_INT n2, JAVA_LONG n3)]
 
 //XMLVM_NATIVE[void java_lang_reflect_Array_setShort___java_lang_Object_int_short(JAVA_OBJECT n1, JAVA_INT n2, JAVA_SHORT n3)]
+

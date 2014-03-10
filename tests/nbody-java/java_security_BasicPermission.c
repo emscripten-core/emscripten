@@ -559,3 +559,4 @@ void java_security_BasicPermission_readObject___java_io_ObjectInputStream(JAVA_O
     return;
     //XMLVM_END_WRAPPER
 }
+

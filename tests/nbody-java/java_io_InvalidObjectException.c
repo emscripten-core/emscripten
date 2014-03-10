@@ -177,3 +177,4 @@ void java_io_InvalidObjectException___INIT____java_lang_String(JAVA_OBJECT me, J
     return;
     //XMLVM_END_WRAPPER
 }
+

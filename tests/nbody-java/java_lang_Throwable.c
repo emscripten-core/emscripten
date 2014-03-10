@@ -930,3 +930,4 @@ void java_lang_Throwable_writeObject___java_io_ObjectOutputStream(JAVA_OBJECT me
     return;
     //XMLVM_END_WRAPPER
 }
+

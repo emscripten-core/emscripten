@@ -73,3 +73,4 @@ void __INIT_IMPL_java_lang_Cloneable()
 
     __TIB_java_lang_Cloneable.classInitialized = 1;
 }
+

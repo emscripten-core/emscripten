@@ -1452,3 +1452,4 @@ void java_net_Inet6Address___CLINIT_()
     label118:;
     //XMLVM_END_WRAPPER
 }
+

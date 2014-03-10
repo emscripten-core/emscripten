@@ -73,3 +73,4 @@ void __INIT_IMPL_java_io_Serializable()
 
     __TIB_java_io_Serializable.classInitialized = 1;
 }
+

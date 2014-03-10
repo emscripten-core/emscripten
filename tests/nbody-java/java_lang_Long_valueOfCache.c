@@ -209,3 +209,4 @@ void java_lang_Long_valueOfCache___INIT___(JAVA_OBJECT me)
     return;
     //XMLVM_END_WRAPPER
 }
+

@@ -975,3 +975,4 @@ JAVA_OBJECT java_util_AbstractMap_clone__(JAVA_OBJECT me)
     return _r1.o;
     //XMLVM_END_WRAPPER
 }
+

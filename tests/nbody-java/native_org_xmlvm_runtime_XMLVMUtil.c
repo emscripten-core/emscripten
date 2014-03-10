@@ -34,3 +34,4 @@ JAVA_OBJECT org_xmlvm_runtime_XMLVMUtil_getCurrentWorkingDirectory__()
 #endif
     //XMLVM_END_NATIVE
 }
+

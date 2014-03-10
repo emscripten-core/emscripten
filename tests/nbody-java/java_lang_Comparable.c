@@ -73,3 +73,4 @@ void __INIT_IMPL_java_lang_Comparable()
 
     __TIB_java_lang_Comparable.classInitialized = 1;
 }
+

@@ -75,3 +75,4 @@ void __INIT_IMPL_java_lang_Thread_UncaughtExceptionHandler()
 
     __TIB_java_lang_Thread_UncaughtExceptionHandler.classInitialized = 1;
 }
+

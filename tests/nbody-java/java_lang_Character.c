@@ -8871,3 +8871,4 @@ JAVA_INT java_lang_Character_compareTo___java_lang_Object(JAVA_OBJECT me, JAVA_O
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
+

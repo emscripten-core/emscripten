@@ -73,3 +73,4 @@ void __INIT_IMPL_java_util_RandomAccess()
 
     __TIB_java_util_RandomAccess.classInitialized = 1;
 }
+

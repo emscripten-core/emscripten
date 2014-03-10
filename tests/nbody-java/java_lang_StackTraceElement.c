@@ -555,3 +555,4 @@ JAVA_OBJECT java_lang_StackTraceElement_toString__(JAVA_OBJECT me)
     goto label37;
     //XMLVM_END_WRAPPER
 }
+

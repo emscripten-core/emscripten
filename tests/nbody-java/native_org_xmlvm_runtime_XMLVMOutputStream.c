@@ -12,3 +12,4 @@ void org_xmlvm_runtime_XMLVMOutputStream_nativeWrite___int(JAVA_INT n1)
     printf("%c", (char) n1);
     //XMLVM_END_NATIVE
 }
+

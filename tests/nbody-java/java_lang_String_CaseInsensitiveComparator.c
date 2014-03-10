@@ -237,3 +237,4 @@ void java_lang_String_CaseInsensitiveComparator___INIT____java_lang_String_1(JAV
     return;
     //XMLVM_END_WRAPPER
 }
+

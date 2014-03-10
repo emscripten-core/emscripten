@@ -3506,3 +3506,4 @@ void java_net_InetAddress___CLINIT_()
     label92:;
     //XMLVM_END_WRAPPER
 }
+

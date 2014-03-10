@@ -156,3 +156,4 @@ void java_util_Dictionary___INIT___(JAVA_OBJECT me)
     return;
     //XMLVM_END_WRAPPER
 }
+

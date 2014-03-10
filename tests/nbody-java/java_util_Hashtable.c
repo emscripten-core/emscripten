@@ -2473,3 +2473,4 @@ JAVA_OBJECT java_util_Hashtable_access$0__()
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

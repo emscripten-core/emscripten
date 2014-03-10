@@ -1934,3 +1934,4 @@ JAVA_LONG java_lang_Math_shiftLongBits___long_long(JAVA_LONG n1, JAVA_LONG n2)
     goto label11;
     //XMLVM_END_WRAPPER
 }
+

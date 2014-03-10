@@ -195,3 +195,4 @@ JAVA_OBJECT org_xmlvm_runtime_XMLVMClassLoader_findResource___java_lang_String(J
     return _r0.o;
     //XMLVM_END_WRAPPER
 }
+

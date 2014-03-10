@@ -30,3 +30,4 @@ JAVA_FLOAT org_apache_harmony_luni_util_FloatingPointParser_parseFltImpl___java_
     return floatNum * pow(10, n2);
     //XMLVM_END_NATIVE
 }
+

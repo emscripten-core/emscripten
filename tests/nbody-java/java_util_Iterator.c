@@ -73,3 +73,4 @@ void __INIT_IMPL_java_util_Iterator()
 
     __TIB_java_util_Iterator.classInitialized = 1;
 }
+

@@ -900,3 +900,4 @@ JAVA_FLOAT org_apache_harmony_luni_util_FloatingPointParser_parseFloat___java_la
     goto label35;
     //XMLVM_END_WRAPPER
 }
+

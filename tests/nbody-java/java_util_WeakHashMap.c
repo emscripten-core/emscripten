@@ -1425,3 +1425,4 @@ void java_util_WeakHashMap_putAllImpl___java_util_Map(JAVA_OBJECT me, JAVA_OBJEC
     return;
     //XMLVM_END_WRAPPER
 }
+

@@ -194,3 +194,4 @@ void java_net_BindException___INIT____java_lang_String(JAVA_OBJECT me, JAVA_OBJE
     return;
     //XMLVM_END_WRAPPER
 }
+

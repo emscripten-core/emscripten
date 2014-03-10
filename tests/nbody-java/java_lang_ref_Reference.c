@@ -274,3 +274,4 @@ void java_lang_ref_Reference_dequeue__(JAVA_OBJECT me)
     return;
     //XMLVM_END_WRAPPER
 }
+

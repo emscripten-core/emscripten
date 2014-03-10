@@ -544,3 +544,4 @@ void java_lang_RuntimePermission___INIT____java_lang_String_java_lang_String(JAV
     return;
     //XMLVM_END_WRAPPER
 }
+

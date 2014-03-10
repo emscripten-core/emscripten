@@ -212,3 +212,4 @@ JAVA_SHORT java_lang_Number_shortValue__(JAVA_OBJECT me)
     return _r0.i;
     //XMLVM_END_WRAPPER
 }
+

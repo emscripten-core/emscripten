@@ -193,3 +193,4 @@ void java_lang_reflect_Array_setShort___java_lang_Object_int_short(JAVA_OBJECT n
     XMLVM_UNIMPLEMENTED_NATIVE_METHOD();
     //XMLVM_END_NATIVE
 }
+
