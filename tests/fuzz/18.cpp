@@ -1122,3 +1122,4 @@ XXX percentage a fresh-made variable is used: 17.8
 XXX percentage an existing variable is used: 82.2
 FYI: the random generator makes assumptions about the integer size. See platform.info for more details.
 ********************* end of statistics **********************/
+

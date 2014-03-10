@@ -114,3 +114,4 @@ int main (int argc, char* argv[])
     platform_main_end(crc32_context ^ 0xFFFFFFFFUL, print_hash_value);
     return 0;
 }
+

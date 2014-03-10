@@ -2432,3 +2432,4 @@ breakdown:
 XXX percentage a fresh-made variable is used: 14.8
 XXX percentage an existing variable is used: 85.2
 ********************* end of statistics **********************/
+
