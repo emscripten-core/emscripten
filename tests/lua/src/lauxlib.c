@@ -956,3 +956,4 @@ LUALIB_API void luaL_checkversion_ (lua_State *L, lua_Number ver) {
                   " must recompile Lua with proper settings");
   lua_pop(L, 1);
 }
+

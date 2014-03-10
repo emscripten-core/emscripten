@@ -494,3 +494,4 @@ int main (int argc, char **argv) {
   lua_close(L);
   return (result && status == LUA_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+

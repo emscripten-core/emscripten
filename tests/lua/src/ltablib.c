@@ -280,3 +280,4 @@ LUAMOD_API int luaopen_table (lua_State *L) {
 #endif
   return 1;
 }
+

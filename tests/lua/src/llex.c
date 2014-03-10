@@ -524,3 +524,4 @@ int luaX_lookahead (LexState *ls) {
   ls->lookahead.token = llex(ls, &ls->lookahead.seminfo);
   return ls->lookahead.token;
 }
+
