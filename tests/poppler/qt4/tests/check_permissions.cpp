@@ -41,3 +41,4 @@ void TestPermissions::permissions1()
 
 QTEST_MAIN(TestPermissions)
 #include "check_permissions.moc"
+

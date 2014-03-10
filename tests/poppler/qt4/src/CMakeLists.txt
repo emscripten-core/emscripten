@@ -45,3 +45,4 @@ install(FILES
   poppler-export.h
   poppler-page-transition.h
   DESTINATION include/poppler/qt4)
+

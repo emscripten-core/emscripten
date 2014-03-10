@@ -30,3 +30,4 @@ void TestActualText::checkActualText1()
 QTEST_MAIN(TestActualText)
 
 #include "check_actualtext.moc"
+

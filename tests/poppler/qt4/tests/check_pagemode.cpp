@@ -70,3 +70,4 @@ void TestPageMode::checkOC()
 
 QTEST_MAIN(TestPageMode)
 #include "check_pagemode.moc"
+

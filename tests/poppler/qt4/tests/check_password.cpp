@@ -85,3 +85,4 @@ void TestPassword::password3()
 
 QTEST_MAIN(TestPassword)
 #include "check_password.moc"
+

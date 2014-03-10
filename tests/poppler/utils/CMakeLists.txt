@@ -88,3 +88,4 @@ if (ENABLE_ABIWORD)
   target_link_libraries(pdftoabw ${common_libs} ${LIBXML2_LIBRARIES})
   install(TARGETS pdftoabw DESTINATION bin)
 endif (ENABLE_ABIWORD)
+

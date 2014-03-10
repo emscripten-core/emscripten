@@ -88,3 +88,4 @@ void TestSearch::testNextAndPrevious()
 
 QTEST_MAIN(TestSearch)
 #include "check_search.moc"
+

@@ -77,3 +77,4 @@ G_END_DECLS
 #endif /* !POPPLER_ENUMS_H */
 
 /* Generated data ends here */
+
