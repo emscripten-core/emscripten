@@ -873,3 +873,4 @@ struct stream
 };
 
 #endif
+

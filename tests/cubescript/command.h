@@ -201,3 +201,4 @@ static inline float parsefloat(const char *s)
 #define IVARR(n, m, c, x)  _IVAR(n, m, c, x, , IDF_OVERRIDE)
 #define IVARFP(n, m, c, x, b) _IVAR(n, m, c, x, void changed() { b; }, IDF_PERSIST)
 #define IVARFR(n, m, c, x, b) _IVAR(n, m, c, x, void changed() { b; }, IDF_OVERRIDE)
+
