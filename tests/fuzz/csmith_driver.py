@@ -138,7 +138,7 @@ while 1:
   # This is ok. Try in secondary JS engine too
   if opts != '-O0' and engine2 and normal:
     try:
-      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2, full_output=True, check_timeout=True)
+      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True)
     except:
       print 'failed to run in secondary', js2
       break
