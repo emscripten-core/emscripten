@@ -10,7 +10,28 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    https://github.com/kripken/emscripten/compare/1.12.3...incoming
+    https://github.com/kripken/emscripten/compare/1.13.1...incoming
+
+v1.13.1: 3/10/2014
+------------------
+ - Disallow C implicit function declarations by making it an error instead of a warning by default. These will not work with Emscripten, due to strict Emscripten signature requirements when calling function pointers (#2175).
+ - Allow transitioning to full screen from SDL as a response to mouse press events.
+ - Fixed a bug in previous 1.13.0 release that broke fullscreen transitioning from working.
+ - Fixed emscripten/html5.h to be used in C source files.
+ - Fix an issue where extraneous system libraries would get included in the generated output (#2191).
+ - Added a new function emscripten_async_wget2_data() that allows reading from an XMLHTTPRequest directly into memory while supporting advanced features.
+ - Fixed esc key code in GLFW.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.13.0...1.13.1
+
+v1.13.0: 3/3/2014
+------------------
+ - Fixed the deprecated source mapping syntax warning.
+ - Fixed a buffer overflow issue in emscripten_get_callstack (#2171).
+ - Added support for -Os (optimize for size) and -Oz (aggressively optimize for size) arguments to emcc.
+ - Fixed a typo that broko the call signature of glCompressedTexSubImage2D() function (#2173).
+ - Added new browser fullscreen resize logic that always retains aspect ratio and adds support for IE11.
+ - Improve debug messaging with bad function pointer calls when -s ASSERTIONS=2 is set.
+ - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.3...1.13.0
 
 v1.12.3: 2/27/2014
 ------------------
