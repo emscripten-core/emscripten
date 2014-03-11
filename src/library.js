@@ -8915,10 +8915,19 @@ LibraryManager.library = {
   emscripten_get_callstack_js: function(flags) {
     var err = new Error();
     if (!err.stack) {
-      Runtime.warnOnce('emscripten_get_callstack_js is not supported on this browser!');
-      return '';
+      // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
+      // so try that as a special-case.
+      try {
+        throw new Error(0);
+      } catch(e) {
+        err = e;
+      }
+      if (!err.stack) {
+        Runtime.warnOnce('emscripten_get_callstack_js is not supported on this browser!');
+        return '';
+      }
     }
-    var callstack = new Error().stack.toString();
+    var callstack = err.stack.toString();
 
     // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everyhing up to these from the output.
     var iThisFunc = callstack.lastIndexOf('_emscripten_log');
