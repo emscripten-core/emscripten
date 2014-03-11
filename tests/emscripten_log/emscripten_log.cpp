@@ -5,10 +5,6 @@
 #define STRINGIZE_HELPER(x) #x
 #define STRINGIZE(x) STRINGIZE_HELPER(x)
 
-#ifndef REPORT_RESULT
-#define REPORT_RESULT int dummy
-#endif
-
 int result = 1; // If 1, this test succeeded.
 
 // A custom assert macro to test varargs routing to emscripten_log().
@@ -134,11 +130,10 @@ void __attribute__((noinline)) Foo() // Arbitrary function signature to add some
 int main()
 {
 	Foo<int>();
-#ifndef RUN_FROM_JS_SHELL
+#ifdef REPORT_RESULT
 	REPORT_RESULT();
-	return 0;
-#else
+#endif
 	if (result)
 		printf("Success!\n");
-#endif
+	return 0;
 }
