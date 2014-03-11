@@ -2104,6 +2104,7 @@ done.
         EM_ASM(Module.print(demangle('__Z5multiwahtjmxyz')));
         EM_ASM(Module.print(demangle('__Z1aA32_iPA5_c')));
         EM_ASM(Module.print(demangle('__ZN21FWakaGLXFleeflsMarfooC2EjjjPKvbjj')));
+        EM_ASM(Module.print(demangle('__ZN5wakaw2Cm10RasterBaseINS_6watwat9PolocatorEE8merbine1INS4_2OREEEvPKjj'))); // we get this wrong, but at least emit a '?'
         one(17);
         return 0;
       }
@@ -2127,6 +2128,7 @@ parseword(char*&, int, int&)
 multi(wchar_t, signed char, unsigned char, unsigned short, unsigned int, unsigned long, long long, unsigned long long, ...)
 a(int [32], char [5]*)
 FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigned int, void*, bool, unsigned int, unsigned int)
+void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned int)
 ''', output)
     # test for multiple functions in one stack trace
     assert 'one(int)' in output

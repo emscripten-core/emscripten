@@ -805,7 +805,14 @@ function demangle(func) {
       }
     }
     if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-    return rawList ? list : ret + flushList();
+    if (rawList) {
+      if (ret) {
+        list.push(ret + '?');
+      }
+      return list;
+    } else {
+      return ret + flushList();
+    }
   }
   try {
     // Special-case the entry point, since its name differs from other name mangling.
