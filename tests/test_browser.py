@@ -1786,7 +1786,9 @@ Module["preRun"].push(function () {
     self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
 
   def test_html5(self):
-    self.btest(path_from_root('tests', 'test_html5.c'), expected='0')
+    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+      print opts
+      self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
 
   def test_codemods(self):
     for opt_level in [0, 2]:
