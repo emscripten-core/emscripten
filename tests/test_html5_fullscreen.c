@@ -3,7 +3,6 @@
 #include <string.h>
 #include <emscripten/html5.h>
 
-#ifdef REPORT_RESULT
 void report_result(int result)
 {
   if (result == 0) {
@@ -11,9 +10,10 @@ void report_result(int result)
   } else {
     printf("Test failed!\n");
   }
+#ifdef REPORT_RESULT
   REPORT_RESULT();
-}
 #endif
+}
 
 static inline const char *emscripten_event_type_to_string(int eventType) {
   const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize", 
