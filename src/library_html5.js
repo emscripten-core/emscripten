@@ -118,6 +118,8 @@ var LibraryJSEvents = {
     // Stores objects representing each currently registered JS event handler.
     eventHandlers: [],
 
+    isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
+
     _removeHandler: function(i) {
       JSEvents.eventHandlers[i].target.removeEventListener(JSEvents.eventHandlers[i].eventTypeString, JSEvents.eventHandlers[i].handlerFunc, true);
       JSEvents.eventHandlers.splice(i, 1);
@@ -177,11 +179,9 @@ var LibraryJSEvents = {
         }
       };
 
-      var isInternetExplorer = (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0);
-
       var eventHandler = {
         target: JSEvents.findEventTarget(target),
-        allowsDeferredCalls: isInternetExplorer ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
+        allowsDeferredCalls: JSEvents.isInternetExplorer ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
         handlerFunc: handlerFunc,
@@ -230,6 +230,8 @@ var LibraryJSEvents = {
         handlerFunc: handlerFunc,
         useCapture: useCapture
       };
+      // In IE, mousedown events don't either allow deferred calls to be run!
+      if (JSEvents.isInternetExplorer() && eventTypeString == 'mousedown') eventHandler.allowsDeferredCalls = false;
       JSEvents.registerOrRemoveHandler(eventHandler);
     },
 
