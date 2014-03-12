@@ -90,6 +90,11 @@ EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChang
   return 0;
 }
 
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
+{
+  return 0;
+}
+
 int main()
 {
   EMSCRIPTEN_RESULT ret = emscripten_set_keypress_callback(0, 0, 1, key_callback);
@@ -98,7 +103,21 @@ int main()
   ret = emscripten_set_fullscreenchange_callback(0, 0, 1, fullscreenchange_callback);
   TEST_RESULT(emscripten_set_fullscreenchange_callback);
 
+  // For Internet Explorer, fullscreen and pointer lock requests cannot be run
+  // from inside keyboard event handlers. Therefore we must register a callback to
+  // mouse events (any other than mousedown) to activate deferred fullscreen/pointerlock
+  // requests to occur for IE. The callback itself can be a no-op.
+  ret = emscripten_set_click_callback(0, 0, 1, mouse_callback);
+  TEST_RESULT(emscripten_set_click_callback);
+  ret = emscripten_set_mousedown_callback(0, 0, 1, mouse_callback);
+  TEST_RESULT(emscripten_set_mousedown_callback);
+  ret = emscripten_set_mouseup_callback(0, 0, 1, mouse_callback);
+  TEST_RESULT(emscripten_set_mouseup_callback);
+  ret = emscripten_set_dblclick_callback(0, 0, 1, mouse_callback);
+  TEST_RESULT(emscripten_set_dblclick_callback);
+
   printf("To finish this test, press f to enter fullscreen mode, and then exit it.\n");
+  printf("On IE, press a mouse key over the canvas after pressing f to activate the fullscreen request event.\n");
 
   /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 
      Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
