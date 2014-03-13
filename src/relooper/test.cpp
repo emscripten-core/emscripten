@@ -312,7 +312,7 @@ int main() {
     printf("\n\n", "the_var");
     r.Render();
 
-    puts(buffer);
+    puts(r.GetOutputBuffer());
   }
 
   if (1) {

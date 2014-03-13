@@ -324,10 +324,6 @@
  label = 1;
  L0:  while(1) {
   switch(label|0) {
-   case 3: {
-    // block C
-    break;
-   }
    case 1: {
     // block A
     if (check == 10) {
@@ -355,6 +351,10 @@
      continue L0;
     }
     }
+    break;
+   }
+   case 3: {
+    // block C
     break;
    }
   }
