@@ -181,7 +181,7 @@ var LibraryJSEvents = {
 
       var eventHandler = {
         target: JSEvents.findEventTarget(target),
-        allowsDeferredCalls: JSEvents.isInternetExplorer ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
+        allowsDeferredCalls: JSEvents.isInternetExplorer() ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
         handlerFunc: handlerFunc,
