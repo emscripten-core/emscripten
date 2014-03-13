@@ -17,6 +17,11 @@ var LibraryJSEvents = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
+    // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
+    // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
+    previousScreenX: null,
+    previousScreenY: null,
+
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
@@ -203,10 +208,12 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e.movementX || e.mozMovementX || e.webkitMovementX', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e.movementY || e.mozMovementY || e.webkitMovementY', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e.movementX || e.mozMovementX || e.webkitMovementX || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e.movementY || e.mozMovementY || e.webkitMovementY || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
+      JSEvents.previousScreenX = e.screenX;
+      JSEvents.previousScreenY = e.screenY;
     },
     
     registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
