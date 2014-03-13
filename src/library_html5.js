@@ -246,7 +246,8 @@ var LibraryJSEvents = {
       if (!JSEvents.wheelEvent) {
         JSEvents.wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
       }
-      var handlerFunc = function(event) {
+      // The DOM Level 3 events spec event 'wheel'
+      var wheelHandlerFunc = function(event) {
         var e = event || window.event;
         JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
@@ -258,13 +259,26 @@ var LibraryJSEvents = {
           e.preventDefault();
         }
       };
+      // The 'mousewheel' event as implemented in Safari 6.0.5
+      var mouseWheelHandlerFunc = function(event) {
+        var e = event || window.event;
+        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"]', 'double') }}};
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-e["wheelDeltaY"] /* Invert to unify direction with the DOM Level 3 wheel event. */', 'double') }}};
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
+        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.wheelEvent, userData]);
+        if (shouldCancel) {
+          e.preventDefault();
+        }
+      };
 
       var eventHandler = {
         target: JSEvents.findEventTarget(target),
         allowsDeferredCalls: true,
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
-        handlerFunc: handlerFunc,
+        handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
         useCapture: useCapture
       };
       JSEvents.registerOrRemoveHandler(eventHandler);
@@ -927,8 +941,16 @@ var LibraryJSEvents = {
   },
 
   emscripten_set_wheel_callback: function(target, userData, useCapture, callbackfunc) {
-    JSEvents.registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel");
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    target = JSEvents.findEventTarget(target);
+    if (typeof target.onwheel !== 'undefined') {
+      JSEvents.registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel");
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    } else if (typeof target.onmousewheel !== 'undefined') {
+      JSEvents.registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "mousewheel");
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    } else {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    }
   },
 
   emscripten_set_resize_callback: function(target, userData, useCapture, callbackfunc) {
