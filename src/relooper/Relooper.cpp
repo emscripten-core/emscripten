@@ -122,7 +122,7 @@ void Branch::Render(Block *Target, bool SetLabel) {
   if (Code) PrintIndented("%s\n", Code);
   if (SetLabel) PrintIndented("label = %d;\n", Target->Id);
   if (Ancestor) {
-    if (Type != Direct) {
+    if (Type == Break || Type == Continue) {
       if (Labeled) {
         PrintIndented("%s L%d;\n", Type == Break ? "break" : "continue", Ancestor->Id);
       } else {
@@ -287,6 +287,11 @@ void Block::Render(bool InLoop) {
     Details->Render(Target, SetCurrLabel);
     if (HasFusedContent) {
       Fused->InnerMap.find(Target)->second->Render(InLoop);
+    } else if (Details->Type == Branch::Nested) {
+      // Nest the parent content here, and remove it from showing up afterwards as Next
+      assert(Parent->Next);
+      Parent->Next->Render(InLoop);
+      Parent->Next = NULL;
     }
     if (useSwitch && iter != ProcessedBranchesOut.end()) {
       PrintIndented("break;\n");
@@ -1077,12 +1082,48 @@ void Relooper::Calculate(Block *Entry) {
         SHAPE_SWITCH(Root, {
           if (Simple->Inner->BranchVar) LastLoop = NULL; // a switch clears out the loop (TODO: only for breaks, not continue)
 
-          // If there is a next block, we already know at Simple creation time to make direct branches,
-          // and we can do nothing more. If there is no next however, then Natural is where we will
-          // go to by doing nothing, so we can potentially optimize some branches to direct.
           if (Simple->Next) {
+            if (!Simple->Inner->BranchVar && Simple->Inner->ProcessedBranchesOut.size() == 2) {
+              // If there is a next block, we already know at Simple creation time to make direct branches,
+              // and we can do nothing more in general. But, we try to optimize the case of a break and
+              // a direct: This would normally be  if (break?) { break; } ..  but if we
+              // make sure to nest the else, we can save the break,  if (!break?) { .. }  . This is also
+              // better because the more canonical nested form is easier to further optimize later. The
+              // downside is more nesting, which adds to size in builds with whitespace.
+              // Note that we avoid switches, as it complicates control flow and is not relevant
+              // for the common case we optimize here.
+              bool Found = false;
+              bool Abort = false;
+              for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
+                Block *Target = iter->first;
+                Branch *Details = iter->second;
+                if (Details->Type == Branch::Break) {
+                  Found = true;
+                  if (!contains(NaturalBlocks, Target)) Abort = true;
+                } else if (Details->Type != Branch::Direct) {
+                  Abort = true;
+                }
+              }
+              if (Found && !Abort) {
+                for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
+                  Block *Target = iter->first;
+                  Branch *Details = iter->second;
+                  if (Details->Type == Branch::Break) {
+                    Details->Type = Branch::Direct;
+                    if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
+                      Multiple->NeedLoop--;
+                    }
+                  } else {
+                    assert(Details->Type == Branch::Direct);
+                    Details->Type = Branch::Nested;
+                  }
+                }
+              }
+            }
             Next = Simple->Next;
           } else {
+            // If there is no next then Natural is where we will
+            // go to by doing nothing, so we can potentially optimize some branches to direct.
             for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
               Block *Target = iter->first;
               Branch *Details = iter->second;
@@ -1140,7 +1181,7 @@ void Relooper::Calculate(Block *Entry) {
           for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
             Block *Target = iter->first;
             Branch *Details = iter->second;
-            if (Details->Type != Branch::Direct) {
+            if (Details->Type == Branch::Break || Details->Type == Branch::Continue) {
               assert(LoopStack.size() > 0);
               if (Details->Ancestor != LoopStack.top() && Details->Labeled) {
                 LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);

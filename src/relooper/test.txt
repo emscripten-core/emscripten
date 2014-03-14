@@ -360,3 +360,42 @@
   }
  }
 
+
+
+-- If chain (optimized) --
+
+ // block A
+ if (a == 10) {
+  // block B
+ }
+ // block C
+
+
+
+-- If chain (optimized) --
+
+ // block A
+ if (a == 10) {
+  // block B
+  if (b == 10) {
+   // block C
+  }
+ }
+ // block D
+
+
+
+-- If chain (optimized, long) --
+
+ // block A
+ if (a == 10) {
+  // block B
+  if (b == 10) {
+   // block C
+   if (c == 10) {
+    // block D
+   }
+  }
+ }
+ // block E
+

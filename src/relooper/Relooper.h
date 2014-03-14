@@ -24,9 +24,11 @@ struct Shape;
 // Info about a branching from one block to another
 struct Branch {
   enum FlowType {
-    Direct = 0, // We will directly reach the right location through other means, no need for continue or break
+    Direct = 0,   // We will directly reach the right location through other means, no need for continue or break
     Break = 1,
-    Continue = 2
+    Continue = 2,
+    Nested = 3    // This code is directly reached, but we must be careful to ensure it is nested in an if - it is not reached
+                  // unconditionally, other code paths exist alongside it that we need to make sure do not intertwine
   };
   Shape *Ancestor; // If not NULL, this shape is the relevant one for purposes of getting to the target block. We break or continue on it
   Branch::FlowType Type; // If Ancestor is not NULL, this says whether to break or continue
@@ -59,7 +61,7 @@ struct Block {
   Shape *Parent; // The shape we are directly inside
   int Id; // A unique identifier, defined when added to relooper. Note that this uniquely identifies a *logical* block - if we split it, the two instances have the same content *and* the same Id
   const char *Code; // The string representation of the code in this block. Owning pointer (we copy the input)
-  const char *BranchVar; // If we have more than one branch out, the variable whose value determines where we go
+  const char *BranchVar; // A variable whose value determines where we go; if this is not NULL, emit a switch on that variable
   bool IsCheckedMultipleEntry; // If true, we are a multiple entry, so reaching us requires setting the label variable
 
   Block(const char *CodeInit, const char *BranchVarInit);
