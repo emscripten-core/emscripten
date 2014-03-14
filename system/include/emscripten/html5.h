@@ -123,6 +123,10 @@ extern "C" {
 /*
  * The event structure passed in keyboard events keypress, keydown and keyup.
  * https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys
+ *
+ * Note that since the DOM Level 3 Events spec is very recent at the time of writing (2014-03), uniform
+ * support for the different fields in the spec is still in flux. Be sure to check the results in multiple
+ * browsers. See the unmerged pull request #2222 for an example way on how to interpret the legacy key events.
  */
 typedef struct EmscriptenKeyboardEvent {
   // The printed representation of the pressed key.
@@ -144,14 +148,18 @@ typedef struct EmscriptenKeyboardEvent {
   EM_UTF8 locale[32];
   // The following fields are values from previous versions of the DOM key events specifications.
   // See https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent?redirectlocale=en-US&redirectslug=DOM%2FKeyboardEvent
-  // The character representation of the key.
+  // The character representation of the key. This is the field 'char' from the docs, but renamed to charValue to avoid a C reserved word.
+  // Warning: This attribute has been dropped from DOM Level 3 events.
   EM_UTF8 charValue[32];
   // The Unicode reference number of the key; this attribute is used only by the keypress event. For keys whose char attribute
   // contains multiple characters, this is the Unicode value of the first character in that attribute.
+  // Warning: This attribute is deprecated, you should use the field 'key' instead, if available.
   unsigned long charCode;
   // A system and implementation dependent numerical code identifying the unmodified value of the pressed key.
+  // Warning: This attribute is deprecated, you should use the field 'key' instead, if available.
   unsigned long keyCode;
   // A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as keyCode.
+  // Warning: This attribute is deprecated, you should use the field 'key' instead, if available.
   unsigned long which;
 } EmscriptenKeyboardEvent;
 
