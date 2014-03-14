@@ -97,10 +97,10 @@ function fcntl_open() {
   r13 = r3 + 97 & 255;
   r14 = 0;
   while (1) {
-   r15 = (r14 & 1 | 0) == 0 ? r11 : r12;
-   r16 = (r14 & 2 | 0) == 0 ? r15 : r15 | 2048;
-   r15 = (r14 & 4 | 0) == 0 ? r16 : r16 | 1024;
-   r16 = (r14 & 8 | 0) == 0 ? r15 : r15 | 8;
+   r15 = !(r14 & 1) ? r11 : r12;
+   r16 = !(r14 & 2) ? r15 : r15 | 2048;
+   r15 = !(r14 & 4) ? r16 : r16 | 1024;
+   r16 = !(r14 & 8) ? r15 : r15 | 8;
    r15 = _printf(STRING_TABLE.__str | 0, (tempInt = STACKTOP, STACKTOP += 8, HEAP32[tempInt >> 2] = r3, HEAP32[tempInt + 4 >> 2] = r14, tempInt));
    r15 = _open(STRING_TABLE.__str2 | 0, r16, (tempInt = STACKTOP, STACKTOP += 4, HEAP32[tempInt >> 2] = 511, tempInt));
    r17 = (r15 | 0) != -1 & 1;

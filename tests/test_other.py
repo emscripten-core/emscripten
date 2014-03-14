@@ -1807,6 +1807,8 @@ This pointer might make sense in another type signature: i: 0
        ['asm', 'minifyWhitespace', 'last']),
       (path_from_root('tools', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tools', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
        ['asm', 'aggressiveVariableElimination']),
+      (path_from_root('tools', 'test-js-optimizer-asm-short-circuit.js'), open(path_from_root('tools', 'test-js-optimizer-asm-short-circuit-output.js')).read(),
+       ['asm', 'simplifyExpressions']),
     ]:
       print input
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]

@@ -1,5 +1,5 @@
 function expr() {
- if ($0 >= $1) print("hi");
+ if (($0 | 0) >= ($1 | 0)) print("hi");
 }
 function loopy() {
  $while_body$2 : while (1) {
@@ -93,12 +93,12 @@ function hoisting() {
   callOther();
  }
  pause(6);
- if ($i >= $N) {
+ if (($i | 0) >= ($N | 0)) {
   somethingElse();
  }
  pause(7);
  while (1) {
-  if ($i >= $N) {
+  if (($i | 0) >= ($N | 0)) {
    label = 3;
    break;
   }
@@ -142,12 +142,12 @@ function hoisting() {
    continue;
   }
   somethingElse();
-  if ($i2 >= $N) {
+  if (($i2 | 0) >= ($N | 0)) {
    somethingElse();
    break;
   }
   callOther();
-  if ($i3 >= $N) {
+  if (($i3 | 0) >= ($N | 0)) {
    somethingElse();
    continue;
   }
@@ -222,7 +222,7 @@ function lua() {
   } while (0);
  }
  pause();
- if ($1435 == 0) {
+ if (!$1435) {
   label = 176;
   cheez();
  } else if ($1435 != 1) {
@@ -230,7 +230,7 @@ function lua() {
   cheez();
  }
  pause();
- if ($1435 == 0) {
+ if (!$1435) {
   label = 176;
   cheez();
  }
@@ -252,7 +252,7 @@ function moreLabels() {
    while (1) {
     var $6;
     $iter = $6 + 3;
-    if (FHEAP[$iter + 1] >= $pct_addr) {
+    if ((FHEAP[$iter + 1] | 0) >= ($pct_addr | 0)) {
      var $_lcssa = $iter;
      break $while_body$$while_end$31;
     }
@@ -266,7 +266,7 @@ function moreLabels() {
  cheez();
 }
 function notComps() {
- if (HEAP32[$incdec_ptr71_i + 8 >> 2] != 0) {
+ if (HEAP32[$incdec_ptr71_i + 8 >> 2]) {
   shoo();
  }
 }
