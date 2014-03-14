@@ -17,6 +17,11 @@ var LibraryJSEvents = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
+    // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
+    // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
+    previousScreenX: null,
+    previousScreenY: null,
+
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
@@ -203,10 +208,12 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e.movementX || e.mozMovementX || e.webkitMovementX', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e.movementY || e.mozMovementY || e.webkitMovementY', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e.movementX || e.mozMovementX || e.webkitMovementX || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e.movementY || e.mozMovementY || e.webkitMovementY || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
+      JSEvents.previousScreenX = e.screenX;
+      JSEvents.previousScreenY = e.screenY;
     },
     
     registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
@@ -239,7 +246,8 @@ var LibraryJSEvents = {
       if (!JSEvents.wheelEvent) {
         JSEvents.wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
       }
-      var handlerFunc = function(event) {
+      // The DOM Level 3 events spec event 'wheel'
+      var wheelHandlerFunc = function(event) {
         var e = event || window.event;
         JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
@@ -251,13 +259,26 @@ var LibraryJSEvents = {
           e.preventDefault();
         }
       };
+      // The 'mousewheel' event as implemented in Safari 6.0.5
+      var mouseWheelHandlerFunc = function(event) {
+        var e = event || window.event;
+        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"]', 'double') }}};
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-e["wheelDeltaY"] /* Invert to unify direction with the DOM Level 3 wheel event. */', 'double') }}};
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
+        {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
+        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.wheelEvent, userData]);
+        if (shouldCancel) {
+          e.preventDefault();
+        }
+      };
 
       var eventHandler = {
         target: JSEvents.findEventTarget(target),
         allowsDeferredCalls: true,
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
-        handlerFunc: handlerFunc,
+        handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
         useCapture: useCapture
       };
       JSEvents.registerOrRemoveHandler(eventHandler);
@@ -920,8 +941,16 @@ var LibraryJSEvents = {
   },
 
   emscripten_set_wheel_callback: function(target, userData, useCapture, callbackfunc) {
-    JSEvents.registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel");
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    target = JSEvents.findEventTarget(target);
+    if (typeof target.onwheel !== 'undefined') {
+      JSEvents.registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel");
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    } else if (typeof target.onmousewheel !== 'undefined') {
+      JSEvents.registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "mousewheel");
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    } else {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    }
   },
 
   emscripten_set_resize_callback: function(target, userData, useCapture, callbackfunc) {
