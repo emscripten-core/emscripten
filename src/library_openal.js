@@ -216,7 +216,7 @@ var LibraryOpenAL = {
     }
 
     if (ctx) {
-      // Old Web Audio API (e.g. Safari 6.0.5) had aninconsistently named createGainNode function.
+      // Old Web Audio API (e.g. Safari 6.0.5) had an inconsistently named createGainNode function.
       if (typeof(ctx.createGain) === 'undefined') ctx.createGain = ctx.createGainNode;
 
       var gain = ctx.createGain();
