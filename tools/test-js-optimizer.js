@@ -1,5 +1,5 @@
 function expr() {
- if (!($0 < $1)) print("hi");
+ if (!(($0|0) < ($1|0))) print("hi");
 }
 function loopy() {
  $while_body$2: while(1) { 
@@ -118,7 +118,7 @@ function hoisting() {
   somethingElse();
  }
  pause(6);
- if ($i < $N) {
+ if (($i|0) < ($N|0)) {
   label = 2;
  } else {
   label = 3;
@@ -128,7 +128,7 @@ function hoisting() {
  }
  pause(7);
  free: while (1) {
-  if ($i < $N) {
+  if (($i|0) < ($N|0)) {
    label = 2;
   } else {
    label = 3; // this cannot be removed!
@@ -207,7 +207,7 @@ function hoisting() {
   } else if (label == 3) {
    somethingElse();
   }
-  if ($i2 < $N) {
+  if (($i2|0) < ($N|0)) {
    label = 2;
   } else {
    label = 3;
@@ -218,7 +218,7 @@ function hoisting() {
    somethingElse();
    break;
   }
-  if ($i3 < $N) {
+  if (($i3|0) < ($N|0)) {
    label = 2;
   } else {
    label = 3;
@@ -358,7 +358,7 @@ function moreLabels() {
     while (1) {
      var $6;
      $iter = $6 + 3;
-     if (FHEAP[$iter + 1] < $pct_addr) {
+     if ((FHEAP[$iter + 1]|0) < ($pct_addr|0)) {
       var $6 = $iter;
      } else {
       var $_lcssa = $iter;
