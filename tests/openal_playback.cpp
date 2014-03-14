@@ -25,7 +25,7 @@ void playSource(void* arg)
   alGetSourcei(source, AL_SOURCE_STATE, &state);
   assert(state == AL_STOPPED);
 
-#ifdef __EMSCRIPTEN__
+#ifdef REPORT_RESULT
   int result = 1;
   REPORT_RESULT();
 #endif

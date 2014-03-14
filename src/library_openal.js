@@ -58,9 +58,21 @@ var LibraryOpenAL = {
           entry.src = AL.currentContext.ctx.createBufferSource();
           entry.src.buffer = entry.buffer;
           entry.src.connect(src.gain);
-          entry.src.start(startTime, offset);
-          
+          if (typeof(entry.src.start) !== 'undefined') {
+            entry.src.start(startTime, offset);
+          } else if (typeof(entry.src.noteOn) !== 'undefined') {
+            entry.src.noteOn(startTime);
 #if OPENAL_DEBUG
+            if (offset > 0) {
+              Runtime.warnOnce('The current browser does not support AudioBufferSourceNode.start(when, offset); method, so cannot play back audio with an offset '+offset+' secs! Audio glitches will occur!');
+            }
+#endif
+          }
+#if OPENAL_DEBUG
+          else {
+            Runtime.warnOnce('Unable to start AudioBufferSourceNode playback! Not supported by the browser?');
+          }
+
           console.log('updateSource queuing buffer ' + i + ' for source ' + idx + ' at ' + startTime + ' (offset by ' + offset + ')');
 #endif
         }
@@ -204,6 +216,9 @@ var LibraryOpenAL = {
     }
 
     if (ctx) {
+      // Old Web Audio API (e.g. Safari 6.0.5) had an inconsistently named createGainNode function.
+      if (typeof(ctx.createGain) === 'undefined') ctx.createGain = ctx.createGainNode;
+
       var gain = ctx.createGain();
       gain.connect(ctx.destination);
       var context = {
@@ -1283,16 +1298,16 @@ var LibraryOpenAL = {
       ret = 'Out of Memory';
       break;
     case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
-      if (typeof(AudioContext) == "function" ||
-          typeof(webkitAudioContext) == "function") {
+      if (typeof(AudioContext) !== "undefined" ||
+          typeof(webkitAudioContext) !== "undefined") {
         ret = 'Device';
       } else {
         return 0;
       }
       break;
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
-      if (typeof(AudioContext) == "function" ||
-          typeof(webkitAudioContext) == "function") {
+      if (typeof(AudioContext) !== "undefined" ||
+          typeof(webkitAudioContext) !== "undefined") {
         ret = 'Device\0';
       } else {
         ret = '\0';

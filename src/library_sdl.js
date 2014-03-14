@@ -1746,9 +1746,9 @@ var LibrarySDL = {
         // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
         // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
         if (!SDL.audioContext) {
-          if (typeof(AudioContext) === 'function') {
+          if (typeof(AudioContext) !== 'undefined') {
             SDL.audioContext = new AudioContext();
-          } else if (typeof(webkitAudioContext) === 'function') {
+          } else if (typeof(webkitAudioContext) !== 'undefined') {
             SDL.audioContext = new webkitAudioContext();
           } else {
             throw 'Web Audio API is not available!';
@@ -1791,7 +1791,12 @@ var LibrarySDL = {
             }
 #endif
             var playtime = Math.max(curtime, SDL.audio.nextPlayTime);
-            SDL.audio.soundSource[SDL.audio.nextSoundSource]['start'](playtime);
+            var ss = SDL.audio.soundSource[SDL.audio.nextSoundSource];
+            if (typeof ss['start'] !== 'undefined') {
+              ss['start'](playtime);
+            } else if (typeof ss['noteOn'] !== 'undefined') {
+              ss['noteOn'](playtime);
+            }
             var buffer_duration = sizeSamplesPerChannel / SDL.audio.freq;
             SDL.audio.nextPlayTime = playtime + buffer_duration;
             // Timer will be scheduled before the buffer completed playing.
@@ -1864,7 +1869,7 @@ var LibrarySDL = {
     } else if (!SDL.audio.timer && !SDL.audio.scriptProcessorNode) {
       // If we are using the same sampling frequency as the native sampling rate of the Web Audio graph is using, we can feed our buffers via
       // Web Audio ScriptProcessorNode, which is a pull-mode API that calls back to our code to get audio data.
-      if (SDL.audioContext !== undefined && SDL.audio.freq == SDL.audioContext['sampleRate']) {
+      if (SDL.audioContext !== undefined && SDL.audio.freq == SDL.audioContext['sampleRate'] && typeof SDL.audioContext['createScriptProcessor'] !== 'undefined') {
         var sizeSamplesPerChannel = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
         SDL.audio.scriptProcessorNode = SDL.audioContext['createScriptProcessor'](sizeSamplesPerChannel, 0, SDL.audio.channels);
         SDL.audio.scriptProcessorNode['onaudioprocess'] = function (e) {
