@@ -777,28 +777,11 @@ function simplifyExpressions(ast) {
     }
   }
 
-  // if (x === 0) can be if (!x), etc.
-  function simplifyZeroComp(ast) {
-    traverse(ast, function(node, type) {
-      var binary;
-      if (type === 'if' && (binary = node[1])[0] === 'binary') {
-        if ((binary[1] === '!=' || binary[1] === '!==') && binary[3][0] === 'num' && binary[3][1] === 0) {
-          node[1] = binary[2];
-          return node;
-        } else if ((binary[1] === '==' || binary[1] === '===') && binary[3][0] === 'num' && binary[3][1] === 0) {
-          node[1] = ['unary-prefix', '!', binary[2]];
-          return node;
-        }
-      }
-    });
-  }
-
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
     simplifyBitops(func);
     joinAdditions(func);
-    // simplifyZeroComp(func); TODO: investigate performance
-    simplifyNotComps(func);
+    optimizeControllingExpressions(ast);
   });
 }
 
@@ -1135,38 +1118,238 @@ function optimizeShiftsAggressive(ast) {
   optimizeShiftsInternal(ast, false);
 }
 
-// We often have branchings that are simplified so one end vanishes, and
-// we then get
-//   if (!(x < 5))
-// or such. Simplifying these saves space and time.
-function simplifyNotCompsDirect(node) {
-  if (node[0] === 'unary-prefix' && node[1] === '!') {
-    // de-morgan's laws do not work on floats, due to nans >:(
-    if (node[2][0] === 'binary' && (!asm || (((node[2][2][0] === 'binary' && node[2][2][1] === '|') || node[2][2][0] === 'num') &&
-                                             ((node[2][3][0] === 'binary' && node[2][3][1] === '|') || node[2][3][0] === 'num')))) {
-      switch(node[2][1]) {
-        case '<': return ['binary', '>=', node[2][2], node[2][3]];
-        case '>': return ['binary', '<=', node[2][2], node[2][3]];
-        case '<=': return ['binary', '>', node[2][2], node[2][3]];
-        case '>=': return ['binary', '<', node[2][2], node[2][3]];
-        case '==': return ['binary', '!=', node[2][2], node[2][3]];
-        case '!=': return ['binary', '==', node[2][2], node[2][3]];
-        case '===': return ['binary', '!==', node[2][2], node[2][3]];
-        case '!==': return ['binary', '===', node[2][2], node[2][3]];
-      }
-    } else if (node[2][0] === 'unary-prefix' && node[2][1] === '!') {
-      return node[2][2];
-    }
-  }
-  if (!simplifyNotCompsPass) return node;
+// Test whether the given node is a constant zero.
+function isZero(node) {
+  return node[0] === 'num' && node[1] === 0;
 }
 
-var simplifyNotCompsPass = false;
+// Test whether the given node is a constant one.
+function isOne(node) {
+  return node[0] === 'num' && node[1] === 1;
+}
 
-function simplifyNotComps(ast) {
-  simplifyNotCompsPass = true;
-  traverse(ast, simplifyNotCompsDirect);
-  simplifyNotCompsPass = false;
+// Test whether the given node is a unary ! expression.
+function isNot(node) {
+  return node[0] === 'unary-prefix' && node[1] == '1';
+}
+
+// Given a unary ! expression, return the operand.
+function getNotOperand(node) {
+  return node[2];
+}
+
+// Test whether the given node always has an integer or boolean result.
+// TODO: More kinds of things are integral than this.
+function isIntegral(node) {
+  if (isBoolean(node)) return true;
+
+  if (node[0] === 'binary') {
+    return node[1] in USEFUL_BINARY_OPS;
+  }
+
+  if (node[0] === 'num') {
+    return +(node[1]|0) == node[1];
+  }
+
+  return false;
+}
+
+// Test whether the given node always has a boolean result (exactly
+// 0 or 1). TODO: More kinds of things are boolean than this.
+function isBoolean(node) {
+  if (node[0] === 'unary-prefix') {
+    if (node[1] === '!') {
+      // Unary ! returns boolean.
+      return true;
+    }
+  } else if (node[0] === 'binary') {
+    if (node[1] in COMPARE_OPS) {
+      // Comparison operators return boolean.
+      return true;
+    }
+    if (node[1] in set('&&', '||')) {
+      // Logical operators return boolean.
+      return true;
+    }
+    if (node[1] in set('&', '|', '^')) {
+      // Bitwise operators return boolean if both their operands do.
+      return isBoolean(node[2], node[3]);
+    }
+  } else if (node[0] === 'conditional') {
+    // A conditional operator is boolean if both its arms are.
+    return isBoolean(node[2]) && isBoolean(node[3]);
+  } else if (node[0] === 'num') {
+    // 0 and 1 are boolean.
+    return node[1] == 0 || node[1] == 1;
+  }
+  return false;
+}
+
+// Test whether the given node looks interesting enough to move behind the
+// cover of a short-circuit.
+function isNonTrivial(node) {
+  // For now, just assume anything other than a simple variable reference is
+  // worthwhile. TODO: Evaluate performance.
+  return node[0] != 'name';
+}
+
+// Given a bitwise-and operation, return an equivalent simplified and
+// short-circuitized conditional operation.
+function shortCircuitizeBitAnd(expr) {
+  var ternary = expr;
+  var test = optimizeControllingExpr(expr[2], false);
+  var lhs  = optimizeControllingExpr(expr[3], false);
+  var rhs  = ['num', 0];
+
+  // One last chance to eliminate a not: swapping the arms.
+  if (isNot(test)) {
+    test = getNotOperand(test);
+    var tmp = lhs; lhs = rhs; rhs = lhs;
+  }
+
+  // If we'd end up forming test?1:0 or test?0:1, don't.
+  if (isZero(lhs) && isOne(rhs)) {
+    return optimizeControllingExpr(test, /*not=*/true);
+  }
+  if (isOne(lhs) && isZero(rhs)) {
+    return optimizeControllingExpr(test, /*not=*/false);
+  }
+
+  ternary[0] = 'conditional';
+  ternary[1] = test;
+  ternary[2] = lhs;
+  ternary[3] = rhs;
+  return ternary;
+}
+
+// Given a bitwise-or operation, return an equivalent simplified and
+// short-circuitized conditional operation.
+function shortCircuitizeBitOr(expr) {
+  var ternary = expr;
+  var test = optimizeControllingExpr(expr[2], false)
+  var lhs = ['num', 1]
+  var rhs = optimizeControllingExpr(expr[3], false);
+
+  // One last chance to eliminate a not: swapping the arms.
+  if (isNot(test)) {
+    test = getNotOperand(test);
+    var tmp = lhs; lhs = rhs; rhs = lhs;
+  }
+
+  // If we'd end up forming test?1:0 or test?0:1, don't.
+  if (isZero(lhs) && isOne(rhs)) {
+    return optimizeControllingExpr(test, /*not=*/true);
+  }
+  if (isOne(lhs) && isZero(rhs)) {
+    return optimizeControllingExpr(test, /*not=*/false);
+  }
+
+  ternary[0] = 'conditional';
+  ternary[1] = test;
+  ternary[2] = lhs;
+  ternary[3] = rhs;
+  return ternary;
+}
+
+// Given an operation which appears in a controlling-expression context,
+// return a replacement expression which is more optimal if possible.
+// If the not argument is true, logically negate the result (using a
+// unary ! if necessary, but folding it in if possible).
+function optimizeControllingExpr(expr, not) {
+  var unary, binary, num;
+  if ((unary = expr)[0] === 'unary-prefix') {
+    if (unary[1] === '!') {
+      // Attempt to fold the ! into the expression.
+      return optimizeControllingExpr(unary[2], !not);
+    }
+  } else if ((binary = expr)[0] === 'binary') {
+    var opcode = binary[1];
+    var lhs = binary[2];
+    var rhs = binary[3];
+    if (opcode === '&') {
+      // Unlike bitwise or, bitwise and does not compute the same effective
+      // boolean result as logical and. For example, (1&2) is 0, (1&&2) is 1.
+      // We're safe if both operands are booleans though.
+      if (isBoolean(lhs) && isBoolean(rhs) && isNonTrivial(rhs)) {
+        if (not) {
+          // !(x & y) => !x | !y
+          binary[1] = '|';
+          binary[2] = optimizeControllingExpr(lhs, true);
+          binary[3] = optimizeControllingExpr(rhs, true);
+          return shortCircuitizeBitOr(binary);
+        }
+        return shortCircuitizeBitAnd(binary);
+      }
+    } else if (opcode === '|') {
+      // !!x is not equivalent to !!(x|0) if x is not integral.
+      if (isIntegral(lhs) && isIntegral(rhs) && isNonTrivial(rhs)) {
+        if (not) {
+          // !(x | y) => !x & !y
+          binary[1] = '&';
+          binary[2] = optimizeControllingExpr(lhs, true);
+          binary[3] = optimizeControllingExpr(rhs, true);
+          return shortCircuitizeBitAnd(binary);
+        }
+        return shortCircuitizeBitOr(binary);
+      }
+    } else if (opcode === '==') {
+      if (isZero(rhs)) {
+        return optimizeControllingExpr(lhs, !not);
+      }
+      if (not) {
+        binary[1] = '!=';
+        return binary;
+      }
+    } else if (opcode === '===') {
+      if (not) {
+        binary[1] = '!==';
+        return binary;
+      }
+    } else if (opcode === '!=') {
+      if (isZero(rhs)) {
+        return optimizeControllingExpr(lhs, not);
+      }
+      if (not) {
+        binary[1] = '==';
+        return binary;
+      }
+    } else if (opcode === '!==') {
+      if (not) {
+        binary[1] = '===';
+        return binary;
+      }
+    } else if (opcode === '<') {
+      if (not && isIntegral(lhs) && isIntegral(rhs)) { binary[1] = '>='; return binary; }
+    } else if (opcode === '>') {
+      if (not && isIntegral(lhs) && isIntegral(rhs)) { binary[1] = '<='; return binary; }
+    } else if (opcode === '<=') {
+      if (not && isIntegral(lhs) && isIntegral(rhs)) { binary[1] = '>'; return binary; }
+    } else if (opcode === '>=') {
+      if (not && isIntegral(lhs) && isIntegral(rhs)) { binary[1] = '<'; return binary; }
+    }
+  } else if ((num = expr)[0] === 'num') {
+    if (not) {
+      return ['num', expr[1] ? 0 : 1];
+    }
+  }
+
+  // If we haven't managed to fold the not in, add an explicit not.
+  if (not) expr = ['unary-prefix', '!', expr];
+
+  return expr;
+}
+
+// Optimize controlling expressions.
+function optimizeControllingExpressions(ast) {
+  traverse(ast, function(node, type) {
+    // TODO: If node is a unary !, we could just reverse the arms of an
+    // if-then-else or a conditional instead of folding the ! into everything.
+    if (type in set('while', 'do', 'if', 'conditional')) {
+      node[1] = optimizeControllingExpr(node[1], false);
+    } else if (type === 'for') {
+      node[2] = optimizeControllingExpr(node[2], false);
+    }
+  });
 }
 
 function callHasSideEffects(node) { // checks if the call itself (not the args) has side effects (or is not statically known)
@@ -1267,7 +1450,7 @@ function vacuum(ast) {
         if (!empty2 && empty3 && has3) { // empty else clauses
           return node.slice(0, 3);
         } else if (empty2 && !empty3) { // empty if blocks
-          return ['if', ['unary-prefix', '!', node[1]], node[3]];
+          return ['if', optimizeControllingExpr(node[1], /*not=*/true), node[3]];
         } else if (empty2 && empty3) {
           if (hasSideEffects(node[1])) {
             return ['stat', node[1]];
@@ -1280,7 +1463,7 @@ function vacuum(ast) {
   }
   traverseGeneratedFunctions(ast, function(node) {
     vacuumInternal(node);
-    simplifyNotComps(node);
+    optimizeControllingExpressions(node);
   });
 }
 
@@ -1426,7 +1609,7 @@ function hoistMultiples(ast) {
           var temp = node[3];
           node[3] = node[2];
           node[2] = temp;
-          node[1] = simplifyNotCompsDirect(['unary-prefix', '!', node[1]]);
+          node[1] = optimizeControllingExpr(node[1], /*not=*/true);
           stat1 = node[2][1];
           stat2 = node[3][1];
         }
@@ -1565,7 +1748,7 @@ function detectAsmCoercion(node, asmInfo) {
   if (node[0] === 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
   if (node[0] === 'unary-prefix') return ASM_DOUBLE;
   if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
-  if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
+  if (asmInfo && node[0] === 'name') return getAsmType(node[1], asmInfo);
   if (node[0] === 'name') return ASM_NONE;
   return ASM_INT;
 }
@@ -3816,7 +3999,7 @@ function eliminate(ast, memSafe) {
             }
             // simplify the if. we remove the if branch, leaving only the else
             if (flip) {
-              last[1] = simplifyNotCompsDirect(['unary-prefix', '!', last[1]]);
+              last[1] = optimizeControllingExpr(last[1], /*not=*/true);
               last[2] = last[3];
             }
             last.pop();
@@ -4307,7 +4490,7 @@ function outline(ast) {
                     // so we undo that, in hopes of making it more flattenable
                     curr[3] = curr[2];
                     curr[2] = ['block', []];
-                    curr[1] = simplifyNotCompsDirect(['unary-prefix', '!', curr[1]]);
+                    curr[1] = optimizeControllingExpr(curr[1], /*not=*/true);
                   }
                   parts.push({ condition: curr[1], body: curr[2] });
                   curr = curr[3];
@@ -5194,7 +5377,7 @@ function asmLastOpts(ast) {
           var conditionToBreak = last[1];
           stats.pop();
           node[0] = 'do';
-          node[1] = simplifyNotCompsDirect(['unary-prefix', '!', conditionToBreak]);
+          node[1] = optimizeControllingExpr(conditionToBreak, /*not=*/true);
           return node;
         }
       } else if (type == 'binary') {
