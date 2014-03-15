@@ -279,6 +279,28 @@ function clearEmptyNodes(list) {
   }
 }
 
+function filterEmptyNodes(list) { // creates a copy and returns it
+  return list.filter(function(node) {
+    return !(isEmptyNode(node) || (node[0] === 'stat' && isEmptyNode(node[1])));
+  });
+}
+
+function removeEmptySubNodes(node) {
+  if (node[0] === 'defun') {
+    node[3] = filterEmptyNodes(node[3]);
+  } else if (node[0] === 'block' && node[1]) {
+    node[1] = filterEmptyNodes(node[1]);
+  }
+/*
+  var stats = getStatements(node);
+  if (stats) clearEmptyNodes(stats);
+*/
+}
+
+function removeAllEmptySubNodes(ast) {
+  traverse(ast, removeEmptySubNodes);
+}
+
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
@@ -3877,6 +3899,8 @@ function eliminate(ast, memSafe) {
     }
     new ExpressionOptimizer(ast).run();
   }
+
+  removeAllEmptySubNodes(ast);
 }
 
 function eliminateMemSafe(ast) {
@@ -5282,6 +5306,9 @@ if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
+  //traverse(ast, function(node) {
+  //  if (isEmptyNode(node)) throw 'empty node after ' + arg;
+  //});
 });
 if (asm && last) {
   asmLastOpts(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
