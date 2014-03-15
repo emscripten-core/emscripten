@@ -176,11 +176,12 @@ function vars(x, y) {
  y = +y;
  var sp = 0;
  sp = STACKTOP;
- STACKTOP = STACKTOP + 152 | 0;
+ STACKTOP = STACKTOP + 136 | 0;
  c(1 + (x + y));
  c(2 + y * x);
  c(3 + (x + y));
  c(4 + y * x);
+ c(5 + (x + y));
  HEAP32[sp + 8 >> 2] = x;
  HEAPF32[sp + 16 >> 2] = y;
  HEAP32[sp + 24 >> 2] = 0;
@@ -213,7 +214,7 @@ function vars3(x, y) {
  y = +y;
  var a = 0, sp = 0;
  sp = STACKTOP;
- STACKTOP = STACKTOP + 160 | 0;
+ STACKTOP = STACKTOP + 144 | 0;
  a = x + y;
  a = c(1 + a);
  a = c(2 + y * x);
@@ -256,15 +257,11 @@ function vars_w_stack(x, y) {
  var a = 0, b = +0, sp = 0;
  sp = STACKTOP;
  STACKTOP = STACKTOP + 208 | 0;
- HEAP32[sp + 24 >> 2] = x;
- HEAPF32[sp + 32 >> 2] = y;
- HEAP32[sp + 40 >> 2] = a;
- HEAPF32[sp + 48 >> 2] = b;
- HEAP32[sp + 72 >> 2] = 0;
- HEAP32[sp + 76 >> 2] = 0;
- vars_w_stack$1(sp);
- a = HEAP32[sp + 40 >> 2] | 0;
- b = +HEAPF32[sp + 48 >> 2];
+ a = x + y;
+ b = y * x;
+ a = c(1 + a);
+ a = c(2 + a);
+ a = c(3 + a);
  HEAP32[sp + 40 >> 2] = a;
  HEAPF32[sp + 48 >> 2] = b;
  HEAP32[sp + 64 >> 2] = 0;
@@ -585,10 +582,9 @@ function mix$1(sp) {
 }
 function vars$0(sp) {
  sp = sp | 0;
- var x = 0, y = +0;
+ var y = +0, x = 0;
  x = HEAP32[sp + 8 >> 2] | 0;
  y = +HEAPF32[sp + 16 >> 2];
- c(5 + (x + y));
  c(6 + y * x);
  c(7 + (x + y));
  c(8 + y * x);
@@ -632,26 +628,11 @@ function vars_w_stack$0(sp) {
  var a = 0, b = +0;
  a = HEAP32[sp + 40 >> 2] | 0;
  b = +HEAPF32[sp + 48 >> 2];
+ a = c(4 + a);
  a = c(5 + a);
  a = c(6 + a);
  b = c(7 + a);
  STACKTOP = sp;
- HEAP32[sp + 40 >> 2] = a;
- HEAPF32[sp + 48 >> 2] = b;
-}
-function vars_w_stack$1(sp) {
- sp = sp | 0;
- var a = 0, x = 0, y = +0, b = +0;
- x = HEAP32[sp + 24 >> 2] | 0;
- y = +HEAPF32[sp + 32 >> 2];
- a = HEAP32[sp + 40 >> 2] | 0;
- b = +HEAPF32[sp + 48 >> 2];
- a = x + y;
- b = y * x;
- a = c(1 + a);
- a = c(2 + a);
- a = c(3 + a);
- a = c(4 + a);
  HEAP32[sp + 40 >> 2] = a;
  HEAPF32[sp + 48 >> 2] = b;
 }

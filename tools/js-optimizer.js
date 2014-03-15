@@ -4272,6 +4272,8 @@ function aggressiveVariableEliminationInternal(func, asmData) {
       }
     }
   });
+
+  removeAllEmptySubNodes(func);
 }
 
 function aggressiveVariableElimination(ast) {
