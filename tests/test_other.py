@@ -2577,3 +2577,24 @@ int main()
     assert 'warning' in err, err
     assert 'incorrect target triple' in err, err
 
+  def test_simplify_ifs(self):
+    open('src.c', 'w').write(r'''
+      #include <stdio.h>
+      #include <string.h>
+      int main(int argc, char **argv) {
+        if (argc > 5 && strlen(argv[0]) > 1 && strlen(argv[1]) > 2) printf("halp");
+        return 0;
+      }
+    ''')
+    for opts, ifs in [
+      [['-g2'], 3],
+      [['-profiling'], 1],
+      [['-profiling', '-g2'], 1]
+    ]:
+      print opts, ifs
+      Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE, stderr=PIPE).communicate()
+      src = open('a.out.js').read()
+      main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
+      actual_ifs = main.count('if (')
+      assert ifs == actual_ifs, main
+
