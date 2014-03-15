@@ -436,7 +436,7 @@ function removeUnneededLabelSettings(ast) {
   });
 }
 
-// Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
+// Various expression simplifications. Happens after elimination, which opens up many of these simplification opportunities.
 
 var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
 var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=', '!==');
@@ -819,10 +819,31 @@ function simplifyExpressions(ast) {
     simplifyIntegerConversions(func);
     simplifyBitops(func);
     joinAdditions(func);
-    // simplifyZeroComp(func); TODO: investigate performance
     simplifyNotComps(func);
+    // simplifyZeroComp(func); TODO: investigate performance
   });
 }
+
+
+function simplifyIfs(ast) {
+  traverse(ast, function(node, type) {
+    // simplify   if (x) { if (y) { .. } }   to   if (x ? y : 0) { .. }
+    if (type === 'if' && !node[3]) {
+      var body = node[2];
+      // recurse to handle chains
+      while (body[0] === 'block' && body[1].length === 1) {
+        var singleton = body[1][0];
+        if (singleton[0] === 'if' && !singleton[3]) {
+          node[1] = ['conditional', node[1], singleton[1], ['num', 0]];
+          body = node[2] = singleton[2];
+        } else {
+          break;
+        }
+      }
+    }
+  });
+}
+
 
 // In typed arrays mode 2, we can have
 //  HEAP[x >> 2]
@@ -5262,6 +5283,7 @@ var passes = {
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressions: simplifyExpressions,
+  simplifyIfs: simplifyIfs,
   optimizeShiftsConservative: optimizeShiftsConservative,
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   hoistMultiples: hoistMultiples,

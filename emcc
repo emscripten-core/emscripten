@@ -1689,6 +1689,8 @@ try:
 
       js_optimizer_queue += ['simplifyExpressions']
 
+      if debug_level == 0 or profiling: js_optimizer_queue += ['simplifyIfs']
+
       if opt_level >= 3 and shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
 
   if closure and not shared.Settings.ASM_JS:

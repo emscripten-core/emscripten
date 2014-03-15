@@ -1773,6 +1773,8 @@ This pointer might make sense in another type signature: i: 0
        ['simplifyExpressions', 'optimizeShiftsConservative']),
       (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
        ['simplifyExpressions', 'optimizeShiftsAggressive']),
+      (path_from_root('tools', 'test-js-optimizer-si.js'), open(path_from_root('tools', 'test-js-optimizer-si-output.js')).read(),
+       ['simplifyIfs']),
       # Make sure that optimizeShifts handles functions with shift statements.
       (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3-output.js')).read(),
        ['optimizeShiftsAggressive']),
