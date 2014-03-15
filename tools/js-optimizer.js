@@ -140,6 +140,8 @@ var ALTER_FLOW = set('break', 'continue', 'return');
 var BREAK_CAPTURERS = set('do', 'while', 'for', 'switch');
 var CONTINUE_CAPTURERS = LOOP;
 
+var COMMABLE = set('assign', 'binary', 'unary-prefix', 'unary-postfix', 'name', 'num', 'call', 'seq', 'conditional', 'sub');
+
 var FUNCTIONS_THAT_ALWAYS_THROW = set('abort', '___resumeException', '___cxa_throw', '___cxa_rethrow');
 
 var NULL_NODE = ['name', 'null'];
@@ -832,8 +834,29 @@ function simplifyIfs(ast) {
       var body = node[2];
       // recurse to handle chains
       while (body[0] === 'block') {
-        if (body[1].length !== 1) break;
-        var singleton = body[1][0];
+        var stats = body[1];
+        if (stats.length > 1) {
+          var last = stats[stats.length-1];
+          if (last[0] === 'if' && !last[3]) {
+            // try to commaify - turn everything between the ifs into a comma operator inside the second if
+            var ok = true;
+            for (var i = 0; i < stats.length-1; i++) {
+              var curr = stats[i];
+              if (curr[0] === 'stat') curr = curr[1];
+              if (!(curr[0] in COMMABLE)) ok = false;
+            }
+            if (ok) {
+              for (var i = stats.length-2; i >= 0; i--) {
+                var curr = stats[i];
+                if (curr[0] === 'stat') curr = curr[1];
+                last[1] = ['seq', curr, last[1]];
+              }
+              stats = body[1] = [last];
+            }
+          }
+        }
+        if (stats.length !== 1) break;
+        var singleton = stats[0];
         if (singleton[0] === 'if' && !singleton[3]) {
           node[1] = ['conditional', node[1], singleton[1], ['num', 0]];
           body = node[2] = singleton[2];
