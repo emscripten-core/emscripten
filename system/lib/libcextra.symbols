@@ -111,12 +111,14 @@
          T strcasecmp_l
          T strcasestr
          W strchrnul
+         T strcspn
          T strfmon
          T strfmon_l
          T strlcat
          T strlcpy
          T strncasecmp_l
          T strsep
+         T strspn
          T strverscmp
          T strxfrm
          W strxfrm_l

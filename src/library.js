@@ -3576,38 +3576,6 @@ LibraryManager.library = {
     return (curr - ptr)|0;
   },
 
-  strspn: function(pstr, pset) {
-    var str = pstr, set, strcurr, setcurr;
-    while (1) {
-      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
-      if (!strcurr) return str - pstr;
-      set = pset;
-      while (1) {
-        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
-        if (!setcurr || setcurr == strcurr) break;
-        set++;
-      }
-      if (!setcurr) return str - pstr;
-      str++;
-    }
-  },
-
-  strcspn: function(pstr, pset) {
-    var str = pstr, set, strcurr, setcurr;
-    while (1) {
-      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
-      if (!strcurr) return str - pstr;
-      set = pset;
-      while (1) {
-        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
-        if (!setcurr || setcurr == strcurr) break;
-        set++;
-      }
-      if (setcurr) return str - pstr;
-      str++;
-    }
-  },
-
   strcpy__asm: true,
   strcpy__sig: 'iii',
   strcpy: function(pdest, psrc) {
