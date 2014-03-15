@@ -404,5 +404,36 @@ int main() {
 
     puts(r.GetOutputBuffer());
   }
+
+  if (1) {
+    Relooper::MakeOutputBuffer(10);
+
+    printf("\n\n-- If chain (optimized, lead to complex) --\n\n");
+
+    Block *b_a = new Block("// block A\n", NULL);
+    Block *b_b = new Block("// block B\n", NULL);
+    Block *b_c = new Block("// block C\n", NULL);
+    Block *b_d = new Block("// block D\n", NULL);
+
+    b_a->AddBranchTo(b_b, "a == 10", NULL);
+    b_a->AddBranchTo(b_d, NULL, NULL);
+
+    b_b->AddBranchTo(b_c, "b == 10", NULL);
+    b_b->AddBranchTo(b_d, NULL, NULL);
+
+    b_c->AddBranchTo(b_c, "loop", NULL);
+    b_c->AddBranchTo(b_d, NULL, NULL);
+
+    Relooper r;
+    r.AddBlock(b_a);
+    r.AddBlock(b_b);
+    r.AddBlock(b_c);
+    r.AddBlock(b_d);
+
+    r.Calculate(b_a);
+    r.Render();
+
+    puts(r.GetOutputBuffer());
+  }
 }
 

@@ -399,3 +399,21 @@
  }
  // block E
 
+
+
+-- If chain (optimized, lead to complex) --
+
+ // block A
+ if (a == 10) {
+  // block B
+  if (b == 10) {
+   while(1) {
+    // block C
+    if (!(loop)) {
+     break;
+    }
+   }
+  }
+ }
+ // block D
+
