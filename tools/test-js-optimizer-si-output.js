@@ -23,7 +23,7 @@ function a() {
   h();
  }
  if (x) {
-  f();
+  return;
   if (y) {
    g();
   }
@@ -32,13 +32,13 @@ function a() {
   g();
  }
  if (x) {
-  f();
+  return;
   if (y ? z : 0) {
    g();
   }
  }
  if (x ? y : 0) {
-  f();
+  return;
   if (z) {
    g();
   }
@@ -54,6 +54,17 @@ function a() {
    g();
   }
   f();
+ }
+ if (x ? (f(), x = x + 2 | 0, y) : 0) {
+  g();
+ }
+ if (x) {
+  f();
+  x = x + 2 | 0;
+  return;
+  if (y) {
+   g();
+  }
  }
 }
 

@@ -25,7 +25,7 @@ function a() {
     h();
   }
   if (x) {
-    f();
+    return;
     if (y) {
       g();
     }
@@ -38,7 +38,7 @@ function a() {
     }
   }
   if (x) {
-    f();
+    return;
     if (y) {
       if (z) {
         g();
@@ -47,18 +47,18 @@ function a() {
   }
   if (x) {
     if (y) {
+      return;
+      if (z) {
+        g();
+      }
+    }
+  }
+  if (x) {
+    if (y) {
+      if (z) {
+        g();
+      }
       f();
-      if (z) {
-        g();
-      }
-    }
-  }
-  if (x) {
-    if (y) {
-      if (z) {
-        g();
-      }
-      f();
     }
   }
   if (x) {
@@ -68,6 +68,21 @@ function a() {
       }
     }
     f();
+  }
+  if (x) {
+    f();
+    x = x + 2 | 0;
+    if (y) {
+      g();
+    }
+  }
+  if (x) {
+    f();
+    x = x + 2 | 0;
+    return;
+    if (y) {
+      g();
+    }
   }
 }
 
