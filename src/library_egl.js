@@ -492,7 +492,11 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
-  
+
+
+  // EGLAPI EGLBoolean EGLAPIENTRY eglWaitGL(void);
+  eglWaitGL: 'eglWaitClient',
+
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval);
   eglSwapInterval: function(display, interval) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
