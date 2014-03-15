@@ -655,7 +655,7 @@ void Relooper::Calculate(Block *Entry) {
             Block *Curr = *iter;
             for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
               Block *Target = iter->first;
-              if (!contains(Hoisted, Target) && !contains(NextEntries, Target))
+              if (!contains(Hoisted, Target) && !contains(NextEntries, Target)) {
                 // abort this hoisting
                 abort = true;
                 break;
