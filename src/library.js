@@ -3035,34 +3035,6 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  bsearch: function(key, base, num, size, compar) {
-    function cmp(x, y) {
-#if ASM_JS
-      return Module['dynCall_iii'](compar, x, y);
-#else
-      return FUNCTION_TABLE[compar](x, y);
-#endif
-    };
-    var left = 0;
-    var right = num;
-    var mid, test, addr;
-
-    while (left < right) {
-      mid = (left + right) >>> 1;
-      addr = base + (mid * size);
-      test = cmp(key, addr);
-      if (test < 0) {
-        right = mid;
-      } else if (test > 0) {
-        left = mid + 1;
-      } else {
-        return addr;
-      }
-    }
-
-    return 0;
-  },
-
   realloc__deps: ['malloc', 'memcpy', 'free'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use

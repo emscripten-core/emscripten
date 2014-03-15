@@ -221,6 +221,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'fputws.c',
        ]],
        ['stdlib', [
+         'bsearch.c',
          'ecvt.c',
          'fcvt.c',
          'gcvt.c',

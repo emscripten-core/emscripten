@@ -22,6 +22,7 @@
          T __wcscoll_l
          T __wcsxfrm_l
          W __wctype_l
+         T bsearch
          T btowc
          T ecvt
          T err
