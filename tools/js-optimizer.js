@@ -832,7 +832,6 @@ function simplifyIfs(ast) {
       var body = node[2];
       // recurse to handle chains
       while (body[0] === 'block') {
-        if (body[1].length > 1) body[1] = filterEmptyNodes(body[1]);
         if (body[1].length !== 1) break;
         var singleton = body[1][0];
         if (singleton[0] === 'if' && !singleton[3]) {
