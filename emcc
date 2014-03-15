@@ -235,6 +235,13 @@ Options that are modified or new in %s include:
                                  slower because JS optimization will be
                                  limited to 1 core.  (default in -O0)
 
+  -profiling               Use reasonable defaults when emitting JS to
+                           make the build useful for profiling. This
+                           sets -g2 (preserve function names) and may
+                           also enable optimizations that affect
+                           performance and otherwise might not be
+                           performed in -g2.
+
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
@@ -770,6 +777,7 @@ try:
 
   opt_level = 0
   debug_level = 0
+  profiling = False
   js_opts = None
   llvm_opts = None
   llvm_lto = None
@@ -890,6 +898,10 @@ try:
       requested_level = newargs[i][2:] or '3'
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
       newargs[i] = '-g' # we'll need this to get LLVM debug info
+    elif newargs[i] == '-profiling':
+      debug_level = 2
+      profiling = True
+      newargs[i] = ''
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
