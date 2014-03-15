@@ -2568,3 +2568,9 @@ int main()
     output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
     assert 'asm.js' in output, 'spidermonkey should mention asm.js compilation: ' + output
 
+  def test_bad_triple(self):
+    Popen([CLANG, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm', '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+    out, err = Popen([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+    assert 'warning' in err, err
+    assert 'incorrect target triple' in err, err
+
