@@ -3238,30 +3238,6 @@ LibraryManager.library = {
     return _strtoull(str, endptr, base); // no locale support yet
   },
 
-  qsort__deps: ['malloc', 'memcpy', 'free'],
-  qsort: function(base, num, size, cmp) {
-    if (num == 0 || size == 0) return;
-    // forward calls to the JavaScript sort method
-    // first, sort the items logically
-    var keys = [];
-    for (var i = 0; i < num; i++) keys.push(i);
-    keys.sort(function(a, b) {
-#if ASM_JS
-      return Module['dynCall_iii'](cmp, base+a*size, base+b*size);
-#else
-      return FUNCTION_TABLE[cmp](base+a*size, base+b*size);
-#endif
-    });
-    // apply the sort
-    var temp = _malloc(num*size);
-    _memcpy(temp, base, num*size);
-    for (var i = 0; i < num; i++) {
-      if (keys[i] == i) continue; // already in place
-      _memcpy(base+i*size, temp+keys[i]*size, size);
-    }
-    _free(temp);
-  },
-
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: '_environ',

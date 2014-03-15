@@ -98,6 +98,7 @@
          C optopt
          W optreset
          W putwc_unlocked
+         T qsort
          T regcomp
          T regerror
          T regexec
