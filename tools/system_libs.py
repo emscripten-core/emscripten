@@ -71,6 +71,8 @@ def calculate(temp_files, in_temp, stdout, stderr):
       ]],
       ['stdlib', [
        'atof.c',
+       'atoi.c',
+       'atol.c',
        'strtod.c',
       ]],
       ['string', [
@@ -221,6 +223,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'fputws.c',
        ]],
        ['stdlib', [
+         'atoll.c',
          'bsearch.c',
          'ecvt.c',
          'fcvt.c',

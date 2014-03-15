@@ -3238,17 +3238,6 @@ LibraryManager.library = {
     return _strtoull(str, endptr, base); // no locale support yet
   },
 
-  atoi__deps: ['strtol'],
-  atoi: function(ptr) {
-    return _strtol(ptr, null, 10);
-  },
-  atol: 'atoi',
-
-  atoll__deps: ['strtoll'],
-  atoll: function(ptr) {
-    return _strtoll(ptr, null, 10);
-  },
-
   qsort__deps: ['malloc', 'memcpy', 'free'],
   qsort: function(base, num, size, cmp) {
     if (num == 0 || size == 0) return;
