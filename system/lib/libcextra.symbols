@@ -23,6 +23,9 @@
          T __wcsxfrm_l
          W __wctype_l
          T atoll
+         T bcmp
+         T bcopy
+         T bzero
          T bsearch
          T btowc
          T ecvt

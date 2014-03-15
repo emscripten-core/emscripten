@@ -233,6 +233,9 @@ def calculate(temp_files, in_temp, stdout, stderr):
          'wcstol.c',
        ]],
        ['string', [
+         'bcmp.c',
+         'bcopy.c',
+         'bzero.c',
          'memccpy.c',
          'memmem.c',
          'mempcpy.c',
