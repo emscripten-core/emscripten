@@ -3588,15 +3588,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  stpcpy: function(pdest, psrc) {
-    var i = 0;
-    do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest + i - 1;
-  },
-
   strncpy__asm: true,
   strncpy__sig: 'iiii',
   strncpy: function(pdest, psrc, num) {

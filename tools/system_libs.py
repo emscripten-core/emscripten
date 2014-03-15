@@ -240,6 +240,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
          'memmem.c',
          'mempcpy.c',
          'memrchr.c',
+         'stpcpy.c',
          'strcasestr.c',
          'strchrnul.c',
          'strcspn.c',

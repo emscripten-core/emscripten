@@ -108,6 +108,7 @@
          T regfree
          T scalbnf
          D signgam
+         T stpcpy
          T strcasecmp_l
          T strcasestr
          W strchrnul
