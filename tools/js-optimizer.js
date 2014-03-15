@@ -1303,6 +1303,7 @@ function vacuum(ast) {
   traverseGeneratedFunctions(ast, function(node) {
     vacuumInternal(node);
     simplifyNotComps(node);
+    removeEmptySubNodes(node);
   });
 }
 
