@@ -6402,6 +6402,11 @@ LibraryManager.library = {
 
   siginterrupt: function() { throw 'siginterrupt not implemented' },
 
+  raise: function(sig) {
+    // TODO:
+    return 0;
+  },
+
   // ==========================================================================
   // sys/wait.h
   // ==========================================================================
