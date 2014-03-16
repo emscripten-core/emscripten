@@ -66,5 +66,34 @@ function a() {
    g();
   }
  }
+ andNowForElses();
+ if (x ? y : 0) {
+  f();
+ } else {
+  label = 5;
+ }
+ if (x) {
+  if (y) {
+   f();
+  } else {
+   label = 5;
+  }
+ } else {
+  label = 6;
+ }
+ if (x) {
+  if (y) {
+   f();
+  } else {
+   label = 5;
+  }
+ }
+ if (x) {
+  if (y) {
+   f();
+  }
+ } else {
+  label = 5;
+ }
 }
 
