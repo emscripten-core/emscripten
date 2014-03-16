@@ -845,36 +845,30 @@ function simplifyIfs(ast) {
       // recurse to handle chains
       while (body[0] === 'block') {
         var stats = body[1];
+        if (stats.length === 0) break;
+        var other = stats[stats.length-1];
+        if (other[0] !== 'if') break;
+        // we can handle elses, but must be fully identical
+        if (!astCompare(node[3], other[3])) break;
         if (stats.length > 1) {
-          var last = stats[stats.length-1];
-          if (last[0] === 'if') {
-            // try to commaify - turn everything between the ifs into a comma operator inside the second if
-            var ok = true;
-            for (var i = 0; i < stats.length-1; i++) {
-              var curr = stats[i];
-              if (curr[0] === 'stat') curr = curr[1];
-              if (!(curr[0] in COMMABLE)) ok = false;
-            }
-            if (ok) {
-              for (var i = stats.length-2; i >= 0; i--) {
-                var curr = stats[i];
-                if (curr[0] === 'stat') curr = curr[1];
-                last[1] = ['seq', curr, last[1]];
-              }
-              stats = body[1] = [last];
-            }
+          // try to commaify - turn everything between the ifs into a comma operator inside the second if
+          var ok = true;
+          for (var i = 0; i < stats.length-1; i++) {
+            var curr = stats[i];
+            if (curr[0] === 'stat') curr = curr[1];
+            if (!(curr[0] in COMMABLE)) ok = false;
           }
+          if (!ok) break;
+          for (var i = stats.length-2; i >= 0; i--) {
+            var curr = stats[i];
+            if (curr[0] === 'stat') curr = curr[1];
+            other[1] = ['seq', curr, other[1]];
+          }
+          stats = body[1] = [other];
         }
         if (stats.length !== 1) break;
-        var singleton = stats[0];
-        // we can handle elses, but must be fully identical
-        if (!astCompare(node[3], singleton[3])) break;
-        if (singleton[0] === 'if') {
-          node[1] = ['conditional', node[1], singleton[1], ['num', 0]];
-          body = node[2] = singleton[2];
-        } else {
-          break;
-        }
+        node[1] = ['conditional', node[1], other[1], ['num', 0]];
+        body = node[2] = other[2];
       }
     }
   });

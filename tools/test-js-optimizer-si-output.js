@@ -95,5 +95,13 @@ function a() {
  } else {
   label = 5;
  }
+ if (x) {
+  a = 5;
+  if (y) {
+   f();
+  }
+ } else {
+  label = 5;
+ }
 }
 

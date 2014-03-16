@@ -117,5 +117,13 @@ function a() {
   } else {
     label = 5;
   }
+  if (x) {
+    a = 5; // do not commify me
+    if (y) {
+      f();
+    }
+  } else {
+    label = 5;
+  }
 }
 
