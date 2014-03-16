@@ -112,18 +112,27 @@ function a() {
  if (x ? y : 0) {
   f();
  } else {
-  label = 5;
+  label = 52;
  }
- if ((label | 0) == 6) {
+ if ((label | 0) == 62) {
   label = 0;
   a();
  }
  if (x ? y : 0) {
   f();
  } else {
-  label = 5;
+  label = 53;
  }
- if ((label | 0) == 5) {
+ if ((label | 0) == 53) {
+  a();
+ }
+ if (x ? y : 0) {
+  label = 54;
+ } else {
+  label = 54;
+ }
+ if ((label | 0) == 54) {
+  label = 0;
   a();
  }
 }
@@ -135,6 +144,46 @@ function b() {
  }
  if ((label | 0) == 5) {
   label = 0;
+  a();
+ }
+}
+function c() {
+ label = x;
+ if (x ? y : 0) {
+  f();
+ } else {
+  label = 151;
+ }
+ if ((label | 0) == 151) {
+  label = 0;
+  a();
+ }
+}
+function d() {
+ if (x ? y : 0) {
+  f();
+ } else {
+  label = 251;
+ }
+ if ((label | 0) == 251) {
+  label = 0;
+  a();
+ }
+ if ((label | 0) == 251) {
+  a();
+ }
+}
+function e() {
+ if (x ? y : 0) {
+  f();
+ } else {
+  label = 351;
+ }
+ if ((label | 0) == 351) {
+  label = 0;
+  a();
+ }
+ if ((label | 0) == x) {
   a();
  }
 }

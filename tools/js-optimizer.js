@@ -879,6 +879,41 @@ function simplifyIfs(ast) {
 
     if (simplifiedAnElse) {
       // there may be fusing opportunities
+
+      // we can only fuse if we remove all uses of the label. if there are
+      // other ones - if the label check can be reached from elsewhere -
+      // we must leave it
+      var abort = false;
+
+      var labelAssigns = {};
+      traverse(func, function(node, type) {
+        if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'label') {
+          if (node[3][0] === 'num') {
+            var value = node[3][1];
+            labelAssigns[value] = (labelAssigns[value] || 0) + 1;
+          } else {
+            // label is assigned a dynamic value (like from indirectbr), we cannot do anything
+            abort = true;
+          }
+        }
+      });
+      if (abort) return;
+
+      var labelChecks = {};
+      traverse(func, function(node, type) {
+        if (type === 'binary' && node[1] === '==' && node[2][0] === 'binary' && node[2][1] === '|' &&
+            node[2][2][0] === 'name' && node[2][2][1] === 'label') {
+          if (node[3][0] === 'num') {
+            var value = node[3][1];
+            labelChecks[value] = (labelChecks[value] || 0) + 1;
+          } else {
+            // label is checked vs a dynamic value (like from indirectbr), we cannot do anything
+            abort = true;
+          }
+        }
+      });
+      if (abort) return;
+
       traverse(func, function(node, type) {
         var stats = getStatements(node);
         if (stats) {
@@ -894,7 +929,7 @@ function simplifyIfs(ast) {
                   postCond[3][0] === 'num') {
                 var postValue = postCond[3][1];
                 var preElse = pre[3];
-                if (preElse[0] === 'block' && preElse[1] && preElse[1].length === 1) {
+                if (labelAssigns[postValue] === 1 && labelChecks[postValue] === 1 && preElse[0] === 'block' && preElse[1] && preElse[1].length === 1) {
                   var preStat = preElse[1][0];
                   if (preStat[0] === 'stat' && preStat[1][0] === 'assign' &&
                       preStat[1][1] === true && preStat[1][2][0] === 'name' && preStat[1][2][1] === 'label' &&
