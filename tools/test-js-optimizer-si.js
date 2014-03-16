@@ -84,5 +84,38 @@ function a() {
       g();
     }
   }
+  andNowForElses();
+  if (x) {
+    if (y) {
+      f();
+    } else {
+      label = 5;
+    }
+  } else {
+    label = 5;
+  }
+  if (x) {
+    if (y) {
+      f();
+    } else {
+      label = 5;
+    }
+  } else {
+    label = 6;
+  }
+  if (x) {
+    if (y) {
+      f();
+    } else {
+      label = 5;
+    }
+  }
+  if (x) {
+    if (y) {
+      f();
+    }
+  } else {
+    label = 5;
+  }
 }
 

@@ -303,6 +303,16 @@ function removeAllEmptySubNodes(ast) {
   traverse(ast, removeEmptySubNodes);
 }
 
+function astCompare(x, y) {
+  if (!Array.isArray(x)) return x === y;
+  if (!Array.isArray(y)) return false;
+  if (x.length !== y.length) return false;
+  for (var i = 0; i < x.length; i++) {
+    if (!astCompare(x[i], y[i])) return false;
+  }
+  return true;
+}
+
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
@@ -830,14 +840,14 @@ function simplifyExpressions(ast) {
 function simplifyIfs(ast) {
   traverse(ast, function(node, type) {
     // simplify   if (x) { if (y) { .. } }   to   if (x ? y : 0) { .. }
-    if (type === 'if' && !node[3]) {
+    if (type === 'if') {
       var body = node[2];
       // recurse to handle chains
       while (body[0] === 'block') {
         var stats = body[1];
         if (stats.length > 1) {
           var last = stats[stats.length-1];
-          if (last[0] === 'if' && !last[3]) {
+          if (last[0] === 'if') {
             // try to commaify - turn everything between the ifs into a comma operator inside the second if
             var ok = true;
             for (var i = 0; i < stats.length-1; i++) {
@@ -857,7 +867,9 @@ function simplifyIfs(ast) {
         }
         if (stats.length !== 1) break;
         var singleton = stats[0];
-        if (singleton[0] === 'if' && !singleton[3]) {
+        // we can handle elses, but must be fully identical
+        if (!astCompare(node[3], singleton[3])) break;
+        if (singleton[0] === 'if') {
           node[1] = ['conditional', node[1], singleton[1], ['num', 0]];
           body = node[2] = singleton[2];
         } else {

@@ -2578,23 +2578,44 @@ int main()
     assert 'incorrect target triple' in err, err
 
   def test_simplify_ifs(self):
-    open('src.c', 'w').write(r'''
+    def test(src, nums):
+      open('src.c', 'w').write(src)
+      for opts, ifs in [
+        [['-g2'], nums[0]],
+        [['-profiling'], nums[1]],
+        [['-profiling', '-g2'], nums[2]]
+      ]:
+        print opts, ifs
+        Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE, stderr=PIPE).communicate()
+        src = open('a.out.js').read()
+        main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
+        actual_ifs = main.count('if (')
+        assert ifs == actual_ifs, main + ' : ' + str([ifs, actual_ifs])
+
+    test(r'''
       #include <stdio.h>
       #include <string.h>
       int main(int argc, char **argv) {
         if (argc > 5 && strlen(argv[0]) > 1 && strlen(argv[1]) > 2) printf("halp");
         return 0;
       }
-    ''')
-    for opts, ifs in [
-      [['-g2'], 3],
-      [['-profiling'], 1],
-      [['-profiling', '-g2'], 1]
-    ]:
-      print opts, ifs
-      Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE, stderr=PIPE).communicate()
-      src = open('a.out.js').read()
-      main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
-      actual_ifs = main.count('if (')
-      assert ifs == actual_ifs, main
+    ''', [3, 1, 1])
+
+    test(r'''
+      #include <stdio.h>
+      #include <string.h>
+      int main(int argc, char **argv) {
+        while (argc % 3 == 0) {
+          if (argc > 5 && strlen(argv[0]) > 1 && strlen(argv[1]) > 2) {
+            printf("halp");
+            argc++;
+          } else {
+            while (argc > 0) {
+              printf("%d\n", argc--);
+            }
+          }
+        }
+        return 0;
+      }
+    ''', [8, 6, 6])
 
