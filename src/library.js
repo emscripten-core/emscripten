@@ -3639,33 +3639,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  strdup__deps: ['strlen', 'malloc'],
-  strdup: function(ptr) {
-    var len = _strlen(ptr);
-    var newStr = _malloc(len + 1);
-    {{{ makeCopyValues('newStr', 'ptr', 'len', 'null', null, 1) }}};
-    {{{ makeSetValue('newStr', 'len', '0', 'i8') }}};
-    return newStr;
-  },
-
-  strndup__deps: ['strdup', 'strlen', 'malloc'],
-  strndup: function(ptr, size) {
-    var len = _strlen(ptr);
-
-    if (size >= len) {
-      return _strdup(ptr);
-    }
-
-    if (size < 0) {
-      size = 0;
-    }
-
-    var newStr = _malloc(size + 1);
-    {{{ makeCopyValues('newStr', 'ptr', 'size', 'null', null, 1) }}};
-    {{{ makeSetValue('newStr', 'size', '0', 'i8') }}};
-    return newStr;
-  },
-
   strpbrk: function(ptr1, ptr2) {
     var curr;
     var searchSet = {};

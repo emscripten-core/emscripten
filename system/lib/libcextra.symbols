@@ -117,12 +117,14 @@
          W strchrnul
          T strchr
          T strcspn
+         T strdup
          T strfmon
          T strfmon_l
          T strlcat
          T strlcpy
          T strncasecmp_l
          T strncat
+         T strndup
          T strnlen
          T strrchr
          T strsep
