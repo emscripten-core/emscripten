@@ -126,6 +126,7 @@
          T strncat
          T strndup
          T strnlen
+         T strpbrk
          T strrchr
          T strsep
          T strspn

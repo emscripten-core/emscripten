@@ -254,6 +254,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
          'strncat.c',
          'strndup.c',
          'strnlen.c',
+         'strpbrk.c',
          'strrchr.c',
          'strsep.c',
          'strspn.c',

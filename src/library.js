@@ -3639,23 +3639,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  strpbrk: function(ptr1, ptr2) {
-    var curr;
-    var searchSet = {};
-    while (1) {
-      var curr = {{{ makeGetValue('ptr2++', 0, 'i8') }}};
-      if (!curr) break;
-      searchSet[curr] = 1;
-    }
-    while (1) {
-      curr = {{{ makeGetValue('ptr1', 0, 'i8') }}};
-      if (!curr) break;
-      if (curr in searchSet) return ptr1;
-      ptr1++;
-    }
-    return 0;
-  },
-
   __strtok_state: 0,
   strtok__deps: ['__strtok_state', 'strtok_r'],
   strtok__postset: '___strtok_state = Runtime.staticAlloc(4);',
