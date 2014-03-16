@@ -3639,25 +3639,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  strstr: function(ptr1, ptr2) {
-    var check = 0, start;
-    do {
-      if (!check) {
-        start = ptr1;
-        check = ptr2;
-      }
-      var curr1 = {{{ makeGetValue('ptr1++', 0, 'i8') }}};
-      var curr2 = {{{ makeGetValue('check++', 0, 'i8') }}};
-      if (curr2 == 0) return start;
-      if (curr2 != curr1) {
-        // rewind to one character after start, to find ez in eeez
-        ptr1 = start + 1;
-        check = 0;
-      }
-    } while (curr1);
-    return 0;
-  },
-
   strchr: function(ptr, chr) {
     ptr--;
     do {

@@ -123,6 +123,7 @@
          T strnlen
          T strsep
          T strspn
+         T strstr
          T strverscmp
          T strxfrm
          W strxfrm_l
