@@ -79,6 +79,13 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
     if (eventType == EMSCRIPTEN_EVENT_MOUSEMOVE && (e->movementX != 0 || e->movementY != 0)) gotMouseMove = 1;
   }
 
+  if (eventType == EMSCRIPTEN_EVENT_CLICK && e->screenX == -500000)
+  {
+    printf("ERROR! Received an event to a callback that should have been unregistered!\n");
+    gotClick = 0;
+    report_result(1);
+  }
+
   instruction();
   return 0;
 }
@@ -123,6 +130,19 @@ int main()
       window.dispatchEvent(event);
     }
     sendEvent('click', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
+  );
+  // Test that unregistering a callback works. Clicks should no longer be received.
+  ret = emscripten_set_click_callback(0, 0, 1, 0);
+  TEST_RESULT(emscripten_set_click_callback);
+
+  EM_ASM(
+    function sendEvent(type, data) {
+      var event = document.createEvent('Event');
+      event.initEvent(type, true, true);
+      for(var d in data) event[d] = data[d];
+      window.dispatchEvent(event);
+    }
+    sendEvent('click', { screenX: -500000, screenY: -500000, clientX: -500000, clientY: -500000, button: 0, buttons: 1 }); // Send a dummy event that should not be received.
     sendEvent('mousedown', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
     sendEvent('mouseup', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0 });
     sendEvent('dblclick', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });

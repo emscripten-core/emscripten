@@ -126,7 +126,8 @@ var LibraryJSEvents = {
     isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
 
     _removeHandler: function(i) {
-      JSEvents.eventHandlers[i].target.removeEventListener(JSEvents.eventHandlers[i].eventTypeString, JSEvents.eventHandlers[i].handlerFunc, true);
+      var h = JSEvents.eventHandlers[i];
+      h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
       JSEvents.eventHandlers.splice(i, 1);
     },
     
@@ -146,6 +147,7 @@ var LibraryJSEvents = {
       }
       
       if (eventHandler.callbackfunc) {
+        eventHandler.eventListenerFunc = jsEventHandler;
         eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
         JSEvents.eventHandlers.push(eventHandler);
         JSEvents.registerRemoveEventListeners();
@@ -208,8 +210,8 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e.movementX || e.mozMovementX || e.webkitMovementX || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e.movementY || e.mozMovementY || e.webkitMovementY || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
+      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
       JSEvents.previousScreenX = e.screenX;
