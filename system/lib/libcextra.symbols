@@ -92,6 +92,7 @@
          T mbstowcs
          T mbtowc
          T memccpy
+         T memchr
          T memmem
          T mempcpy
          W memrchr

@@ -239,6 +239,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
          'memccpy.c',
          'memmem.c',
          'mempcpy.c',
+         'memchr.c',
          'memrchr.c',
          'stpcpy.c',
          'strcasestr.c',
