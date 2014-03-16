@@ -3639,22 +3639,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  strncat__deps: ['strlen'],
-  strncat: function(pdest, psrc, num) {
-    var len = _strlen(pdest);
-    var i = 0;
-    while(1) {
-      {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      if ({{{ makeGetValue('pdest', 'len+i', 'i8') }}} == 0) break;
-      i ++;
-      if (i == num) {
-        {{{ makeSetValue('pdest', 'len+i', 0, 'i8') }}};
-        break;
-      }
-    }
-    return pdest;
-  },
-
   memchr: function(ptr, chr, num) {
     chr = unSign(chr);
     for (var i = 0; i < num; i++) {

@@ -118,6 +118,7 @@
          T strlcat
          T strlcpy
          T strncasecmp_l
+         T strncat
          T strsep
          T strspn
          T strverscmp
