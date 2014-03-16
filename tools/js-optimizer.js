@@ -838,38 +838,86 @@ function simplifyExpressions(ast) {
 
 
 function simplifyIfs(ast) {
-  traverse(ast, function(node, type) {
-    // simplify   if (x) { if (y) { .. } }   to   if (x ? y : 0) { .. }
-    if (type === 'if') {
-      var body = node[2];
-      // recurse to handle chains
-      while (body[0] === 'block') {
-        var stats = body[1];
-        if (stats.length === 0) break;
-        var other = stats[stats.length-1];
-        if (other[0] !== 'if') break;
-        // we can handle elses, but must be fully identical
-        if (!astCompare(node[3], other[3])) break;
-        if (stats.length > 1) {
-          // try to commaify - turn everything between the ifs into a comma operator inside the second if
-          var ok = true;
-          for (var i = 0; i < stats.length-1; i++) {
-            var curr = stats[i];
-            if (curr[0] === 'stat') curr = curr[1];
-            if (!(curr[0] in COMMABLE)) ok = false;
+  traverseGeneratedFunctions(ast, function(func) {
+    var simplifiedAnElse = false;
+
+    traverse(func, function(node, type) {
+      // simplify   if (x) { if (y) { .. } }   to   if (x ? y : 0) { .. }
+      if (type === 'if') {
+        var body = node[2];
+        // recurse to handle chains
+        while (body[0] === 'block') {
+          var stats = body[1];
+          if (stats.length === 0) break;
+          var other = stats[stats.length-1];
+          if (other[0] !== 'if') break;
+          // we can handle elses, but must be fully identical
+          if (!astCompare(node[3], other[3])) break;
+          if (stats.length > 1) {
+            // try to commaify - turn everything between the ifs into a comma operator inside the second if
+            var ok = true;
+            for (var i = 0; i < stats.length-1; i++) {
+              var curr = stats[i];
+              if (curr[0] === 'stat') curr = curr[1];
+              if (!(curr[0] in COMMABLE)) ok = false;
+            }
+            if (!ok) break;
+            for (var i = stats.length-2; i >= 0; i--) {
+              var curr = stats[i];
+              if (curr[0] === 'stat') curr = curr[1];
+              other[1] = ['seq', curr, other[1]];
+            }
+            stats = body[1] = [other];
           }
-          if (!ok) break;
-          for (var i = stats.length-2; i >= 0; i--) {
-            var curr = stats[i];
-            if (curr[0] === 'stat') curr = curr[1];
-            other[1] = ['seq', curr, other[1]];
-          }
-          stats = body[1] = [other];
+          if (stats.length !== 1) break;
+          if (node[3]) simplifiedAnElse = true;
+          node[1] = ['conditional', node[1], other[1], ['num', 0]];
+          body = node[2] = other[2];
         }
-        if (stats.length !== 1) break;
-        node[1] = ['conditional', node[1], other[1], ['num', 0]];
-        body = node[2] = other[2];
       }
+    });
+
+    if (simplifiedAnElse) {
+      // there may be fusing opportunities
+      traverse(func, function(node, type) {
+        var stats = getStatements(node);
+        if (stats) {
+          for (var i = 0; i < stats.length-1; i++) {
+            var pre = stats[i];
+            var post = stats[i+1];
+            if (pre[0] === 'if' && pre[3] && post[0] === 'if' && !post[3]) {
+              var postCond = post[1];
+              if (postCond[0] === 'binary' && postCond[1] === '==' &&
+                  postCond[2][0] === 'binary' && postCond[2][1] === '|' &&
+                  postCond[2][2][0] === 'name' && postCond[2][2][1] === 'label' &&
+                  postCond[2][3][0] === 'num' && postCond[2][3][1] === 0 &&
+                  postCond[3][0] === 'num') {
+                var postValue = postCond[3][1];
+                var preElse = pre[3];
+                if (preElse[0] === 'block' && preElse[1] && preElse[1].length === 1) {
+                  var preStat = preElse[1][0];
+                  if (preStat[0] === 'stat' && preStat[1][0] === 'assign' &&
+                      preStat[1][1] === true && preStat[1][2][0] === 'name' && preStat[1][2][1] === 'label' &&
+                      preStat[1][3][0] === 'num' && preStat[1][3][1] === postValue) {
+                    // Conditions match, just need to make sure the post clears label
+                    if (post[2][0] === 'block' && post[2][1] && post[2][1].length > 0) {
+                      var postStat = post[2][1][0];
+                      if (postStat[0] === 'stat' && postStat[1][0] === 'assign' &&
+                          postStat[1][1] === true && postStat[1][2][0] === 'name' && postStat[1][2][1] === 'label' &&
+                          postStat[1][3][0] === 'num' && postStat[1][3][1] === 0) {
+                        // Everything lines up, do it
+                        pre[3] = post[2];
+                        pre[3][1].splice(0, 1); // remove the label clearing
+                        stats.splice(i+1, 1); // remove the post entirely
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
     }
   });
 }
