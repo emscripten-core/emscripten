@@ -3639,15 +3639,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  strnlen: function(ptr, num) {
-    num = num >>> 0;
-    for (var i = 0; i < num; i++) {
-      if ({{{ makeGetValue('ptr', 0, 'i8') }}} == 0) return i;
-      ptr++;
-    }
-    return num;
-  },
-
   strstr: function(ptr1, ptr2) {
     var check = 0, start;
     do {
