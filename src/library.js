@@ -3639,28 +3639,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  strchr: function(ptr, chr) {
-    ptr--;
-    do {
-      ptr++;
-      var val = {{{ makeGetValue('ptr', 0, 'i8') }}};
-      if (val == chr) return ptr;
-    } while (val);
-    return 0;
-  },
-  index: 'strchr',
-
-  strrchr__deps: ['strlen'],
-  strrchr: function(ptr, chr) {
-    var ptr2 = ptr + _strlen(ptr);
-    do {
-      if ({{{ makeGetValue('ptr2', 0, 'i8') }}} == chr) return ptr2;
-      ptr2--;
-    } while (ptr2 >= ptr);
-    return 0;
-  },
-  rindex: 'strrchr',
-
   strdup__deps: ['strlen', 'malloc'],
   strdup: function(ptr) {
     var len = _strlen(ptr);

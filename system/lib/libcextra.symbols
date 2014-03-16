@@ -45,6 +45,7 @@
          T ilogb
          T ilogbf
          T ilogbl
+         T index
          T iswalnum
          T iswalnum_l
          T iswalpha
@@ -107,12 +108,14 @@
          T regerror
          T regexec
          T regfree
+         T rindex
          T scalbnf
          D signgam
          T stpcpy
          T strcasecmp_l
          T strcasestr
          W strchrnul
+         T strchr
          T strcspn
          T strfmon
          T strfmon_l
@@ -121,6 +124,7 @@
          T strncasecmp_l
          T strncat
          T strnlen
+         T strrchr
          T strsep
          T strspn
          T strstr
