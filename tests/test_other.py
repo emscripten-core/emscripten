@@ -2591,6 +2591,7 @@ int main()
         main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
         actual_ifs = main.count('if (')
         assert ifs == actual_ifs, main + ' : ' + str([ifs, actual_ifs])
+        #print main
 
     test(r'''
       #include <stdio.h>
@@ -2617,5 +2618,5 @@ int main()
         }
         return 0;
       }
-    ''', [8, 6, 6])
+    ''', [8, 5, 5])
 

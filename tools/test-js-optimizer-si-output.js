@@ -103,5 +103,39 @@ function a() {
  } else {
   label = 5;
  }
+ fuseElses();
+ if (x ? y : 0) {
+  f();
+ } else {
+  a();
+ }
+ if (x ? y : 0) {
+  f();
+ } else {
+  label = 5;
+ }
+ if ((label | 0) == 6) {
+  label = 0;
+  a();
+ }
+ if (x ? y : 0) {
+  f();
+ } else {
+  label = 5;
+ }
+ if ((label | 0) == 5) {
+  a();
+ }
+}
+function b() {
+ if (x) {
+  a();
+ } else {
+  label = 5;
+ }
+ if ((label | 0) == 5) {
+  label = 0;
+  a();
+ }
 }
 
