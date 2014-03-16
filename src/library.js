@@ -3639,65 +3639,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  __strtok_state: 0,
-  strtok__deps: ['__strtok_state', 'strtok_r'],
-  strtok__postset: '___strtok_state = Runtime.staticAlloc(4);',
-  strtok: function(s, delim) {
-    return _strtok_r(s, delim, ___strtok_state);
-  },
-
-  // Translated from newlib; for the original source and licensing, see library_strtok_r.c
-  strtok_r: function(s, delim, lasts) {
-    var skip_leading_delim = 1;
-    var spanp;
-    var c, sc;
-    var tok;
-
-
-    if (s == 0 && (s = getValue(lasts, 'i8*')) == 0) {
-      return 0;
-    }
-
-    cont: while (1) {
-      c = getValue(s++, 'i8');
-      for (spanp = delim; (sc = getValue(spanp++, 'i8')) != 0;) {
-        if (c == sc) {
-          if (skip_leading_delim) {
-            continue cont;
-          } else {
-            setValue(lasts, s, 'i8*');
-            setValue(s - 1, 0, 'i8');
-            return s - 1;
-          }
-        }
-      }
-      break;
-    }
-
-    if (c == 0) {
-      setValue(lasts, 0, 'i8*');
-      return 0;
-    }
-    tok = s - 1;
-
-    for (;;) {
-      c = getValue(s++, 'i8');
-      spanp = delim;
-      do {
-        if ((sc = getValue(spanp++, 'i8')) == c) {
-          if (c == 0) {
-            s = 0;
-          } else {
-            setValue(s - 1, 0, 'i8');
-          }
-          setValue(lasts, s, 'i8*');
-          return tok;
-        }
-      } while (sc != 0);
-    }
-    abort('strtok_r error!');
-  },
-
   strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],
   strerror_r: function(errnum, strerrbuf, buflen) {
     if (errnum in ERRNO_MESSAGES) {

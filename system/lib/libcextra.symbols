@@ -131,6 +131,8 @@
          T strsep
          T strspn
          T strstr
+         T strtok
+         T strtok_r
          T strverscmp
          T strxfrm
          W strxfrm_l
