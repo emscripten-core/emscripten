@@ -8176,7 +8176,9 @@ LibraryManager.library = {
   },
 
   setsockopt: function(d, level, optname, optval, optlen) {
+#if SOCKET_DEBUG
     console.log('ignoring setsockopt command');
+#endif
     return 0;
   },
 
@@ -8665,7 +8667,9 @@ LibraryManager.library = {
   },
 
   setsockopt: function(fd, level, optname, optval, optlen) {
+#if SOCKET_DEBUG
     console.log('ignoring setsockopt command');
+#endif
     return 0;
   },
 

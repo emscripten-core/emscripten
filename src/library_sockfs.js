@@ -133,12 +133,42 @@ mergeInto(LibraryManager.library, {
         } else {
           // create the actual websocket object and connect
           try {
-            var url = 'ws://' + addr + ':' + port;
+            // runtimeConfig gets set to true if WebSocket runtime configuration is available.
+            var runtimeConfig = (Module['websocket'] && ('object' === typeof Module['websocket']));
+
+            // The default value is 'ws://' the replace is needed because the compiler replaces "//" comments with '#'
+            // comments without checking context, so we'd end up with ws:#, the replace swaps the "#" for "//" again.
+            var url = '{{{ WEBSOCKET_URL }}}'.replace('#', '//');
+
+            if (runtimeConfig) {
+              if ('string' === typeof Module['websocket']['url']) {
+                url = Module['websocket']['url']; // Fetch runtime WebSocket URL config.
+              }
+            }
+
+            if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
+              url = url + addr + ':' + port;
+            }
+
+            // Make the WebSocket subprotocol (Sec-WebSocket-Protocol) default to binary if no configuration is set.
+            var subProtocols = '{{{ WEBSOCKET_SUBPROTOCOL }}}'; // The default value is 'binary'
+
+            if (runtimeConfig) {
+              if ('string' === typeof Module['websocket']['subprotocol']) {
+                subProtocols = Module['websocket']['subprotocol']; // Fetch runtime WebSocket subprotocol config.
+              }
+            }
+
+            // The regex trims the string (removes spaces at the beginning and end, then splits the string by
+            // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
+            subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
+
+            // The node ws library API for specifying optional subprotocol is slightly different than the browser's.
+            var opts = ENVIRONMENT_IS_NODE ? {'protocol': subProtocols.toString()} : subProtocols;
+
 #if SOCKET_DEBUG
-            console.log('connect: ' + url);
+            Module.print('connect: ' + url + ', ' + subProtocols.toString());
 #endif
-            // the node ws library API is slightly different than the browser's
-            var opts = ENVIRONMENT_IS_NODE ? {headers: {'websocket-protocol': ['binary']}} : ['binary'];
             // If node we use the ws library.
             var WebSocket = ENVIRONMENT_IS_NODE ? require('ws') : window['WebSocket'];
             ws = new WebSocket(url, opts);
