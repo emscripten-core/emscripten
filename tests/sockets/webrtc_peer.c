@@ -46,7 +46,7 @@ void iter() {
 }
 
 int main(void)
-{  
+{
   memset(&si_host, 0, sizeof(struct sockaddr_in));
 
   si_host.sin_family = AF_INET;
@@ -63,7 +63,7 @@ int main(void)
 
   iov[0].iov_base = buf;
   iov[0].iov_len = sizeof(buf);
-  
+
   memset (&hdr, 0, sizeof (struct msghdr));
 
   hdr.msg_name = &si_host;

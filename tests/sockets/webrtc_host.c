@@ -22,7 +22,7 @@ char buf[BUFLEN];
 char expected[] = "emscripten";
 struct sockaddr_in si_host,
                    si_peer;
-struct iovec iov[1];                   
+struct iovec iov[1];
 struct msghdr hdr;
 int done = 0;
 
@@ -38,7 +38,10 @@ void iter() {
     close(sock);
 
 #ifdef __EMSCRIPTEN__
-    int result = 1;
+    if(strlen((char*)hdr.msg_iov[0].iov_base) == strlen(expected) &&
+       0 == strncmp((char*)hdr.msg_iov[0].iov_base, expected, strlen(expected))) {
+      result = 1;
+    }
     REPORT_RESULT();
     exit(EXIT_SUCCESS);
     emscripten_cancel_main_loop();
@@ -68,10 +71,10 @@ int main(void)
     perror("cannot bind host socket");
     exit(EXIT_FAILURE);
   }
-  
+
   iov[0].iov_base = buf;
   iov[0].iov_len = sizeof(buf);
-  
+
   memset (&hdr, 0, sizeof (struct msghdr));
 
   hdr.msg_name = &si_peer;
