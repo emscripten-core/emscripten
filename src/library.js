@@ -6404,7 +6404,7 @@ LibraryManager.library = {
 
   raise: function(sig) {
     // TODO:
-    return 0;
+    return 1;
   },
 
   // ==========================================================================
