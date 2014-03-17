@@ -6402,6 +6402,13 @@ LibraryManager.library = {
 
   siginterrupt: function() { throw 'siginterrupt not implemented' },
 
+  raise__deps: ['$ERRNO_CODES', '__setErrNo'],
+  raise: function(sig) {
+    // TODO:
+    ___setErrNo(ERRNO_CODES.ENOSYS);
+    return -1;
+  },
+
   // ==========================================================================
   // sys/wait.h
   // ==========================================================================
