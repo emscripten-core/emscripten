@@ -861,16 +861,18 @@ function simplifyIfs(ast) {
                 node[1] = flipCondition(node[1]);
                 node[2] = node[3];
                 node[3] = body;
+                body = node[2];
               } else break;
             } else break;
           }
           // we can handle elses, but must be fully identical
           if (node[3] || other[3]) {
-            if (!node[3] || !other[3]) break;
+            if (!node[3]) break;
             if (!astCompare(node[3], other[3])) {
               // the elses are different, but perhaps if we flipped a condition we can do better
               if (astCompare(node[3], other[2])) {
-                // flip other
+                // flip other. note that other may not have had an else! add one if so; we will eliminate such things later
+                if (!other[3]) other[3] = ['block', []];
                 other[1] = flipCondition(other[1]);
                 var temp = other[2];
                 other[2] = other[3];

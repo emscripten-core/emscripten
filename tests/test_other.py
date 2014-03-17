@@ -2652,3 +2652,16 @@ int main()
       }
     ''', [3, 1, 1])
 
+    test(r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      int main(int argc, char *argv[]) {
+        if (getenv("A") || getenv("B")) {
+            printf("hello world\n");
+        }
+        printf("and that's that\n");
+        return 0;
+      }
+    ''', [3, 1, 1])
+
