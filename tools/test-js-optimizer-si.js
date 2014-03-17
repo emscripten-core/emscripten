@@ -164,6 +164,20 @@ function a() {
   if ((label|0) == 53) {
     a();
   }
+  while (1) {
+    if (x) {
+      if (y) {
+        f();
+      } else {
+        label = 953;
+      }
+    } else {
+      label = 953;
+    }
+    if ((label|0) == 953) {
+      a();
+    }
+  }
   if (x) {
     if (y) {
       label = 54; // extra label setting, cannot fuse here

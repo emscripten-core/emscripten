@@ -914,7 +914,9 @@ function simplifyIfs(ast) {
       });
       if (abort) return;
 
+      var inLoop = 0; // when in a loop, we do not emit   label = 0;   in the relooper as there is no need
       traverse(func, function(node, type) {
+        if (type === 'while') inLoop++;
         var stats = getStatements(node);
         if (stats) {
           for (var i = 0; i < stats.length-1; i++) {
@@ -937,12 +939,14 @@ function simplifyIfs(ast) {
                     // Conditions match, just need to make sure the post clears label
                     if (post[2][0] === 'block' && post[2][1] && post[2][1].length > 0) {
                       var postStat = post[2][1][0];
-                      if (postStat[0] === 'stat' && postStat[1][0] === 'assign' &&
-                          postStat[1][1] === true && postStat[1][2][0] === 'name' && postStat[1][2][1] === 'label' &&
-                          postStat[1][3][0] === 'num' && postStat[1][3][1] === 0) {
+                      var haveClear =
+                        postStat[0] === 'stat' && postStat[1][0] === 'assign' &&
+                        postStat[1][1] === true && postStat[1][2][0] === 'name' && postStat[1][2][1] === 'label' &&
+                        postStat[1][3][0] === 'num' && postStat[1][3][1] === 0;
+                      if (!inLoop || haveClear) {
                         // Everything lines up, do it
                         pre[3] = post[2];
-                        pre[3][1].splice(0, 1); // remove the label clearing
+                        if (haveClear) pre[3][1].splice(0, 1); // remove the label clearing
                         stats.splice(i+1, 1); // remove the post entirely
                       }
                     }
@@ -952,6 +956,8 @@ function simplifyIfs(ast) {
             }
           }
         }
+      }, function(node, type) {
+        if (type === 'while') inLoop--;
       });
     }
   });

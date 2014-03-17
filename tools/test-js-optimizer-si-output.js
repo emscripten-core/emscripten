@@ -121,10 +121,17 @@ function a() {
  if (x ? y : 0) {
   f();
  } else {
-  label = 53;
- }
- if ((label | 0) == 53) {
   a();
+ }
+ while (1) {
+  if (x ? y : 0) {
+   f();
+  } else {
+   label = 953;
+  }
+  if ((label | 0) == 953) {
+   a();
+  }
  }
  if (x ? y : 0) {
   label = 54;
