@@ -850,9 +850,34 @@ function simplifyIfs(ast) {
           var stats = body[1];
           if (stats.length === 0) break;
           var other = stats[stats.length-1];
-          if (other[0] !== 'if') break;
+          if (other[0] !== 'if') {
+            // our if block does not end with an if. perhaps if have an else we can flip
+            if (node[3] && node[3][0] === 'block') {
+              var stats = node[3][1];
+              if (stats.length === 0) break;
+              var other = stats[stats.length-1];
+              if (other[0] === 'if') {
+                // flip node
+                node[1] = flipCondition(node[1]);
+                node[2] = node[3];
+                node[3] = body;
+              } else break;
+            } else break;
+          }
           // we can handle elses, but must be fully identical
-          if (!astCompare(node[3], other[3])) break;
+          if (node[3] || other[3]) {
+            if (!node[3] || !other[3]) break;
+            if (!astCompare(node[3], other[3])) {
+              // the elses are different, but perhaps if we flipped a condition we can do better
+              if (astCompare(node[3], other[2])) {
+                // flip other
+                other[1] = flipCondition(other[1]);
+                var temp = other[2];
+                other[2] = other[3];
+                other[3] = temp;
+              } else break;
+            }
+          }
           if (stats.length > 1) {
             // try to commaify - turn everything between the ifs into a comma operator inside the second if
             var ok = true;
@@ -1323,6 +1348,10 @@ function simplifyNotCompsDirect(node) {
   if (!simplifyNotCompsPass) return node;
 }
 
+function flipCondition(cond) {
+  return simplifyNotCompsDirect(['unary-prefix', '!', cond]);
+}
+
 var simplifyNotCompsPass = false;
 
 function simplifyNotComps(ast) {
@@ -1589,7 +1618,7 @@ function hoistMultiples(ast) {
           var temp = node[3];
           node[3] = node[2];
           node[2] = temp;
-          node[1] = simplifyNotCompsDirect(['unary-prefix', '!', node[1]]);
+          node[1] = flipCondition(node[1]);
           stat1 = node[2][1];
           stat2 = node[3][1];
         }
