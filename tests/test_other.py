@@ -2586,7 +2586,8 @@ int main()
         [['-profiling', '-g2'], nums[2]]
       ]:
         print opts, ifs
-        Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE, stderr=PIPE).communicate()
+        try_delete('a.out.js')
+        Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE).communicate()
         src = open('a.out.js').read()
         main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
         actual_ifs = main.count('if (')
@@ -2619,4 +2620,20 @@ int main()
         return 0;
       }
     ''', [8, 5, 5])
+
+    test(r'''
+      #include <stdio.h>
+      #include <string.h>
+      int main(int argc, char **argv) {
+        while (argc % 17 == 0) argc *= 2;
+        if (argc > 5 && strlen(argv[0]) > 10 && strlen(argv[1]) > 20) {
+          printf("halp");
+          argc++;
+        } else {
+          printf("%d\n", argc--);
+        }
+        while (argc % 17 == 0) argc *= 2;
+        return argc;
+      }
+    ''', [6, 3, 3])
 
