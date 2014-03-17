@@ -91,13 +91,20 @@ var LibrarySDL = {
 
       33: 1099, // pagedup
       34: 1102, // pagedown
-
+	  
+      35: 1101, // end
+      36: 1098, // home
+      
+      45: 1097, // insert
+	  
       17:  1248, // control (right, or left)
       18:  1250, // alt
       173: 45, // minus
       16:  1249, // shift
       
-      96: 88 | 1<<10, // keypad 0
+      20: 301, // caps lock
+	  
+      96: 98 | 1<<10, // keypad 0
       97: 89 | 1<<10, // keypad 1
       98: 90 | 1<<10, // keypad 2
       99: 91 | 1<<10, // keypad 3
@@ -107,6 +114,15 @@ var LibrarySDL = {
       103: 95 | 1<<10, // keypad 7
       104: 96 | 1<<10, // keypad 8
       105: 97 | 1<<10, // keypad 9
+	  
+      106: 85 | 1<<10, // keypad multiply
+      107: 87 | 1<<10, // keypad plus
+      109: 86 | 1<<10, // keypad minus
+      111: 84 | 1<<10, // keypad divide
+	  
+      110: 99 | 1<<10, // keypad decimal point
+	  
+      144: 83 | 1<<10, // keypad num lock
 
       112: 58 | 1<<10, // F1
       113: 59 | 1<<10, // F2
@@ -168,16 +184,19 @@ var LibrarySDL = {
        27: 41, // escape
         8: 42, // backspace
         9: 43, // tab
+      301: 57, // caps lock
        32: 44, // space
        61: 46, // equals
        91: 47, // left bracket
        93: 48, // right bracket
        92: 49, // backslash
+       96: 43, // grave
        59: 51, // ;
        96: 52, // apostrophe
        44: 54, // comma
        46: 55, // period
        47: 56, // slash
+      127: 76, // delete
       305: 224, // ctrl
       308: 226, // alt
     },
