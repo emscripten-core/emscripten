@@ -20,9 +20,10 @@ class Benchmarker:
   def __init__(self, name):
     self.name = name
 
-  def bench(self, args, output_parser=None):
+  def bench(self, args, output_parser=None, reps=TEST_REPS):
     self.times = []
-    for i in range(TEST_REPS):
+    self.reps = reps
+    for i in range(reps):
       start = time.time()
       output = self.run(args)
       if not output_parser:
@@ -41,7 +42,7 @@ class Benchmarker:
     sorted_times.sort()
     median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
 
-    print '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, TEST_REPS),
+    print '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps),
 
     if baseline:
       mean_baseline = sum(baseline.times)/len(baseline.times)
@@ -130,6 +131,7 @@ try:
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
     JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+    #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['-profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
     #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
     #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
@@ -192,7 +194,7 @@ class benchmark(RunnerCore):
     print
     for b in benchmarkers:
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
-      b.bench(args, output_parser)
+      b.bench(args, output_parser, reps)
       b.display(benchmarkers[0])
 
   def test_primes(self):
@@ -360,6 +362,51 @@ class benchmark(RunnerCore):
       }
     '''
     self.do_benchmark('copy', src, 'sum:')
+
+  def test_ifs(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      volatile int x = 0;
+
+      __attribute__ ((noinline)) int calc() {
+        return (x++) & 16384;
+      }
+
+      int main(int argc, char *argv[]) {
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        switch(arg) {
+          case 0: return 0; break;
+          case 1: arg = 75; break;
+          case 2: arg = 625; break;
+          case 3: arg = 1250; break;
+          case 4: arg = 5*1250; break;
+          case 5: arg = 10*1250; break;
+          default: printf("error: %d\\n", arg); return -1;
+        }
+
+        int sum = 0;
+
+        for (int j = 0; j < 27000; j++) {
+          for (int i = 0; i < arg; i++) {
+            if (calc() && calc()) {
+              sum += 17;
+            } else {
+              sum += 19;
+            }
+            if (calc() || calc()) {
+              sum += 23;
+            }
+          }
+        }
+
+        printf("ok\n");
+
+        return sum;
+      }
+    '''
+    self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS*5)
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
