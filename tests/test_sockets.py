@@ -345,12 +345,12 @@ class sockets(BrowserCore):
     host_outfile = 'host.html'
     peer_outfile = 'peer.html'
 
-    host_filepath = path_from_root('tests', 'sockets', host_src)      
+    host_filepath = path_from_root('tests', 'sockets', host_src)
     temp_host_filepath = os.path.join(self.get_dir(), os.path.basename(host_src))
     with open(host_filepath) as f: host_src = f.read()
     with open(temp_host_filepath, 'w') as f: f.write(self.with_report_result(host_src))
 
-    peer_filepath = path_from_root('tests', 'sockets', peer_src)      
+    peer_filepath = path_from_root('tests', 'sockets', peer_src)
     temp_peer_filepath = os.path.join(self.get_dir(), os.path.basename(peer_src))
     with open(peer_filepath) as f: peer_src = f.read()
     with open(temp_peer_filepath, 'w') as f: f.write(self.with_report_result(peer_src))
@@ -358,7 +358,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'host_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'https://mdsw.ch:8080',
+          broker: 'http://localhost:8080',
           session: undefined,
           onpeer: function(peer, route) {
             window.open('http://localhost:8888/peer.html?' + route);
@@ -382,7 +382,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'peer_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'https://mdsw.ch:8080',
+          broker: 'http://localhost:8080',
           session: window.location.toString().split('?')[1],
           onpeer: function(peer, route) {
             peer.connect(Module['webrtc']['session']);
@@ -403,8 +403,13 @@ class sockets(BrowserCore):
     Popen([PYTHON, EMCC, temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
     Popen([PYTHON, EMCC, temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
 
+    Popen(['npm', 'install', path_from_root('tests', 'sockets', 'p2p')]).communicate();
+    broker = Popen([NODE_JS, path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')]);
+
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
+
+    broker.kill();
 
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
