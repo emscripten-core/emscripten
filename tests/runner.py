@@ -790,9 +790,9 @@ To run one of those parts, do something like
 
 To run a specific set of tests, you can do things like
 
-  python tests/runner.py o1
+  python tests/runner.py asm2
 
-(that runs the o1 (-O1) tests). You can run individual tests with
+(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
 
   python tests/runner.py test_hello_world
 
