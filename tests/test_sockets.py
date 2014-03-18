@@ -403,8 +403,9 @@ class sockets(BrowserCore):
     Popen([PYTHON, EMCC, temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
     Popen([PYTHON, EMCC, temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
 
-    Popen(['npm', 'install', path_from_root('tests', 'sockets', 'p2p')]).communicate();
-    broker = Popen(listify(NODE_JS) + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')]);
+    # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
+    Popen(['npm', 'install', path_from_root('tests', 'sockets', 'p2p')]).communicate()
+    broker = Popen(listify(NODE_JS) + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
 
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])

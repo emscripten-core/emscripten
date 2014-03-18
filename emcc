@@ -1912,3 +1912,6 @@ finally:
   else:
     logging.info('emcc saved files are in:' + temp_dir)
 
+#//eliminate a = a in js opt. will kill STACKTOP = STACKTOP in funcs that do not use the C stack! add test for no STACKTOP or sp in such a func
+#// minify if into ?: ?
+
