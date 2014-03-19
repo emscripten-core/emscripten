@@ -13,8 +13,8 @@ var newAudioProxy = function (worker) {
       target: 'audio',
       features: {
         'Audio.mozSetup': typeof(Audio) === 'function' && typeof(new Audio()['mozSetup']) === 'function',
-        AudioContext: typeof(AudioContext) === 'function',
-        webkitAudioContext: typeof(webkitAudioContext) === 'function'
+        AudioContext: typeof(AudioContext) !== 'undefined',
+        webkitAudioContext: typeof(webkitAudioContext) !== 'undefined'
       }
     });
   }
