@@ -50,7 +50,9 @@ var LibraryGLFW = {
 
     DOMToGLFWKeyCode: function(keycode) {
       switch (keycode) {
-        case 0x09: return 295 ; //DOM_VK_TAB -> GLFW_KEY_TAB
+        case 0x08: return 295 ; //DOM_VK_BACKSPACE -> GLFW_KEY_BACKSPACE
+        case 0x09: return 293 ; //DOM_VK_TAB -> GLFW_KEY_TAB
+        case 0x0D: return 294 ; //DOM_VK_ENTER -> GLFW_KEY_ENTER
         case 0x1B: return 255 ; //DOM_VK_ESCAPE -> GLFW_KEY_ESC
         case 0x6A: return 313 ; //DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
         case 0x6B: return 315 ; //DOM_VK_ADD -> GLFW_KEY_KP_ADD
@@ -182,8 +184,19 @@ var LibraryGLFW = {
       }
 
       event.preventDefault();
-      //DOM and glfw have the same button codes
-      Runtime.dynCall('vii', GLFW.mouseButtonFunc, [event['button'], status]);
+
+      //DOM and glfw have different button codes
+      var eventButton = event['button'];
+      if (eventButton > 0) {
+        if (eventButton == 1) {
+          eventButton = 2;
+        }
+        else {
+          eventButton = 1;
+        }
+      }
+
+      Runtime.dynCall('vii', GLFW.mouseButtonFunc, eventButton, status]);
     },
 
     onMouseButtonDown: function(event) {
