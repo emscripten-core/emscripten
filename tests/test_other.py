@@ -1586,6 +1586,8 @@ This pointer might make sense in another type signature: i: 0
   def test_warn_undefined(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
       #include <stdio.h>
+      #include <SDL.h>
+      #include "SDL/SDL_opengl.h"
 
       extern "C" {
         void something();
@@ -1593,6 +1595,7 @@ This pointer might make sense in another type signature: i: 0
       }
 
       int main() {
+        printf("%p", SDL_GL_GetProcAddress("glGenTextures")); // pull in gl proc stuff, avoid warnings on emulation funcs
         something();
         elsey();
         return 0;
@@ -1612,6 +1615,7 @@ This pointer might make sense in another type signature: i: 0
             self.assertContained('unresolved symbol: something', output[1])
             self.assertContained('unresolved symbol: elsey', output[1])
             assert os.path.exists('a.out.js')
+            self.assertNotContained('unresolved symbol: emscripten_', output[1])
           elif action == 'ERROR' and value:
             self.assertContained('unresolved symbol: something', output[1])
             self.assertContained('unresolved symbol: elsey', output[1])
