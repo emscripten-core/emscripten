@@ -589,6 +589,9 @@ function __embind_register_memory_view(rawType, name) {
             var TA = typeMapping[type];
             return new TA(HEAP8.buffer, data, size);
         },
+        'readValueFromPointer': function(ptr) {
+            return this['fromWireType'](ptr);
+        },
     });
 }
 

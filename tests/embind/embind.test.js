@@ -1984,6 +1984,15 @@ module({
                 [6, -12.5, "a3", {x: 1, y: 2, z: 3, w: 4}, cm.EnumClass.TWO, [-1, -2, -3, -4]],
                 instance.arguments);
         });
+
+        test("memory view", function() {
+            function factory(view) {
+                this.view = view;
+            }
+
+            var instance = cm.construct_with_memory_view(factory);
+            assert.equal(10, instance.view.byteLength);
+        });
     });
 });
 

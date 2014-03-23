@@ -2343,6 +2343,12 @@ val construct_with_6(val factory) {
     return factory.new_(a1, a2, a3, a4, a5, a6);
 }
 
+val construct_with_memory_view(val factory) {
+    static const char data[11] = "0123456789";
+    return factory.new_(memory_view(10, data));
+}
+
 EMSCRIPTEN_BINDINGS(val_new_) {
     function("construct_with_6_arguments", &construct_with_6);
+    function("construct_with_memory_view", &construct_with_memory_view);
 }
