@@ -35,7 +35,7 @@ namespace emscripten {
             EM_VAL _emval_get_module_property(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
-            void _emval_as(EM_VAL value, TYPEID returnType, void* result, EM_DESTRUCTORS* destructors);
+            double _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
 
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -94,6 +94,25 @@ namespace emscripten {
         private:
             EM_DESTRUCTORS destructors;
         };
+
+        template<typename WireType>
+        struct GenericWireTypeConverter {
+            static WireType from(double wt) {
+                return static_cast<WireType>(wt);
+            }
+        };
+
+        template<typename Pointee>
+        struct GenericWireTypeConverter<Pointee*> {
+            static Pointee* from(double wt) {
+                return reinterpret_cast<Pointee*>(static_cast<uintptr_t>(wt));
+            }
+        };
+
+        template<typename WireType>
+        WireType fromGenericWireType(double wt) {
+            return GenericWireTypeConverter<WireType>::from(wt);
+        }
 
         template<typename ReturnType, typename... Args>
         struct MethodCaller {
@@ -286,9 +305,11 @@ namespace emscripten {
 
             typedef BindingType<T> BT;
 
-            typename BT::WireType result;
             EM_DESTRUCTORS destructors;
-            _emval_as(handle, TypeID<T>::get(), &result, &destructors);
+            auto result = fromGenericWireType<typename BindingType<T>::WireType>(_emval_as(
+                handle,
+                TypeID<T>::get(),
+                &destructors));
             DestructorsRunner dr(destructors);
             return BT::fromWireType(result);
         }
