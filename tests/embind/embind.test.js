@@ -1939,9 +1939,10 @@ module({
         // Let the memory leak test superfixture check that no leaks occurred.
     });
 
-    BaseFixture.extend("val::as built-in types", function() {
-        test("primitives", function() {
+    BaseFixture.extend("val::as", function() {
+        test("built-ins", function() {
             assert.equal(true,  cm.val_as_bool(true));
+            assert.equal(false, cm.val_as_bool(false));
             assert.equal(127,   cm.val_as_char(127));
             assert.equal(32767, cm.val_as_short(32767));
             assert.equal(65536, cm.val_as_int(65536));
@@ -1958,6 +1959,18 @@ module({
             // JS->C++ memory view not implemented
             //var ab = cm.val_as_memory_view(new ArrayBuffer(13));
             //assert.equal(13, ab.byteLength);
+        });
+
+        test("value types", function() {
+            var tuple = [1, 2, 3, 4];
+            assert.deepEqual(tuple, cm.val_as_value_array(tuple));
+
+            var struct = {x: 1, y: 2, z: 3, w: 4};
+            assert.deepEqual(struct, cm.val_as_value_object(struct));
+        });
+
+        test("enums", function() {
+            assert.equal(cm.Enum.ONE, cm.val_as_enum(cm.Enum.ONE));
         });
     });
 });

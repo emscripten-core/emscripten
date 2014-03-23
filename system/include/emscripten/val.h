@@ -13,11 +13,6 @@ namespace emscripten {
             typedef struct _EM_VAL* EM_VAL;
             typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
 
-            // TODO: functions returning this are reinterpret_cast
-            // into the correct return type.  this needs some thought
-            // for asm.js.
-            typedef void _POLYMORPHIC_RESULT;
-        
             void _emval_incref(EM_VAL value);
             void _emval_decref(EM_VAL value);
 
@@ -40,7 +35,7 @@ namespace emscripten {
             EM_VAL _emval_get_module_property(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
-            _POLYMORPHIC_RESULT _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* runDestructors);
+            void _emval_as(EM_VAL value, TYPEID returnType, void* result, EM_DESTRUCTORS* destructors);
 
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -297,16 +292,11 @@ namespace emscripten {
 
             typedef BindingType<T> BT;
 
-            typedef typename BT::WireType (*TypedAs)(
-                EM_VAL value,
-                TYPEID returnType,
-                EM_DESTRUCTORS* runDestructors);
-            TypedAs typedAs = reinterpret_cast<TypedAs>(&_emval_as);
-
+            typename BT::WireType result;
             EM_DESTRUCTORS destructors;
-            typename BT::WireType wt = typedAs(handle, TypeID<T>::get(), &destructors);
+            _emval_as(handle, TypeID<T>::get(), &result, &destructors);
             DestructorsRunner dr(destructors);
-            return BT::fromWireType(wt);
+            return BT::fromWireType(result);
         }
 
     private:

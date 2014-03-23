@@ -35,18 +35,21 @@ namespace emscripten {
             void _embind_register_bool(
                 TYPEID boolType,
                 const char* name,
+                size_t size,
                 bool trueValue,
                 bool falseValue);
 
             void _embind_register_integer(
                 TYPEID integerType,
                 const char* name,
+                size_t size,
                 long minRange,
                 unsigned long maxRange);
 
             void _embind_register_float(
                 TYPEID floatType,
-                const char* name);
+                const char* name,
+                size_t size);
             
             void _embind_register_std_string(
                 TYPEID stringType,
@@ -163,7 +166,9 @@ namespace emscripten {
 
             void _embind_register_enum(
                 TYPEID enumType,
-                const char* name);
+                const char* name,
+                size_t size,
+                bool isSigned);
 
             void _embind_register_enum_value(
                 TYPEID enumType,
@@ -1182,7 +1187,9 @@ namespace emscripten {
         enum_(const char* name) {
             _embind_register_enum(
                 internal::TypeID<EnumType>::get(),
-                name);
+                name,
+                sizeof(EnumType),
+                std::is_signed<typename std::underlying_type<EnumType>::type>::value);
         }
 
         enum_& value(const char* name, EnumType value) {

@@ -2323,5 +2323,12 @@ EMSCRIPTEN_BINDINGS(val_as) {
     function("val_as_string", &val_as<std::string>);
     function("val_as_wstring", &val_as<std::wstring>);
     function("val_as_val", &val_as<val>);
+
+    function("val_as_value_object", &val_as<StructVector>);
+    function("val_as_value_array", &val_as<TupleVector>);
+
+    function("val_as_enum", &val_as<Enum>);
+
+    // memory_view is always JS -> C++
     //function("val_as_memory_view", &val_as<memory_view>);
 }

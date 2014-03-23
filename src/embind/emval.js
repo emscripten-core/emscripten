@@ -205,13 +205,16 @@ function __emval_set_property(handle, key, value) {
     _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
 }
 
-function __emval_as(handle, returnType, destructorsRef) {
+function __emval_as(handle, returnType, result, destructorsRef) {
     requireHandle(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
     var rd = __emval_register(destructors);
     HEAP32[destructorsRef >> 2] = rd;
-    return returnType['toWireType'](destructors, _emval_handle_array[handle].value);
+    returnType.writeValueToPointer(
+        _emval_handle_array[handle].value,
+        result,
+        destructors);
 }
 
 function parseParameters(argCount, argTypes, argWireTypes) {
