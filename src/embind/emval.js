@@ -116,48 +116,43 @@ var __newers = {}; // arity -> function
 
 function craftEmvalAllocator(argCount) {
     /*This function returns a new function that looks like this:
-    function emval_allocator_3(handle, argTypes, arg0Wired, arg1Wired, arg2Wired) {
+    function emval_allocator_3(handle, argTypes, args) {
         var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
-        var arg0 = argType0.fromWireType(arg0Wired);
+        var arg0 = argType0.readValueFromPointer(args);
         var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
-        var arg1 = argType1.fromWireType(arg1Wired);
+        var arg1 = argType1.readValueFromPointer(args + 8);
         var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
-        var arg2 = argType2.fromWireType(arg2Wired);
+        var arg2 = argType2.readValueFromPointer(args + 16);
         var constructor = _emval_handle_array[handle].value;
-        var emval = new constructor(arg0, arg1, arg2);
-        return emval;
+        var obj = new constructor(arg0, arg1, arg2);
+        return __emval_register(obj);
     } */
 
-    var args1 = ["requireRegisteredType", "HEAP32", "_emval_handle_array", "__emval_register"];
-    var args2 = [requireRegisteredType, HEAP32, _emval_handle_array, __emval_register];
-
     var argsList = "";
-    var argsListWired = "";
     for(var i = 0; i < argCount; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
-        argsListWired += ", arg"+i+"Wired"; // ', arg0Wired, arg1Wired, ..., argnWired'
     }
 
-    var invokerFnBody =
-        "return function emval_allocator_"+argCount+"(handle, argTypes " + argsListWired + ") {\n";
+    var functionBody =
+        "return function emval_allocator_"+argCount+"(handle, argTypes, args) {\n";
 
     for(var i = 0; i < argCount; ++i) {
-        invokerFnBody += 
+        functionBody += 
             "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
-            "var arg"+i+" = argType"+i+".fromWireType(arg"+i+"Wired);\n";
+            "var arg"+i+" = argType"+i+".readValueFromPointer(args + " + i * 8 + ");\n";
     }
-    invokerFnBody +=
+    functionBody +=
         "var constructor = _emval_handle_array[handle].value;\n" +
         "var obj = new constructor("+argsList+");\n" +
         "return __emval_register(obj);\n" +
         "}\n";
 
-    args1.push(invokerFnBody);
-    var invokerFunction = new_(Function, args1).apply(null, args2);
-    return invokerFunction;
+    /*jshint evil:true*/
+    return (new Function("requireRegisteredType", "HEAP32", "_emval_handle_array", "__emval_register", functionBody))(
+        requireRegisteredType, HEAP32, _emval_handle_array, __emval_register);
 }
 
-function __emval_new(handle, argCount, argTypes) {
+function __emval_new(handle, argCount, argTypes, args) {
     requireHandle(handle);
     
     var newer = __newers[argCount];
@@ -166,20 +161,7 @@ function __emval_new(handle, argCount, argTypes) {
         __newers[argCount] = newer;
     }
 
-    if (argCount === 0) {
-        return newer(handle, argTypes);
-    } else if (argCount === 1) {
-        return newer(handle, argTypes, arguments[3]);
-    } else if (argCount === 2) {
-        return newer(handle, argTypes, arguments[3], arguments[4]);
-    } else if (argCount === 3) {
-        return newer(handle, argTypes, arguments[3], arguments[4], arguments[5]);
-    } else if (argCount === 4) {
-        return newer(handle, argTypes, arguments[3], arguments[4], arguments[5], arguments[6]);
-    } else {
-        // This is a slow path! (.apply and .splice are slow), so a few specializations are present above.
-        return newer.apply(null, arguments.splice(1));
-    }
+    return newer(handle, argTypes, args);
 }
 
 // appease jshint (technically this code uses eval)

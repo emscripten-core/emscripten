@@ -28,8 +28,8 @@ namespace emscripten {
             EM_VAL _emval_new(
                 EM_VAL value,
                 unsigned argCount,
-                internal::TYPEID argTypes[]
-                /*, ... */);
+                internal::TYPEID argTypes[],
+                ...);
 
             EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_module_property(const char* name);
@@ -232,14 +232,8 @@ namespace emscripten {
             WithPolicies<>::ArgTypeList<Args...> argList;
             // todo: this is awfully similar to operator(), can we
             // merge them somehow?
-            typedef EM_VAL (*TypedNew)(
-                EM_VAL,
-                unsigned,
-                TYPEID argTypes[],
-                typename BindingType<Args>::WireType...);
-            TypedNew typedNew = reinterpret_cast<TypedNew>(&_emval_new);
             return val(
-                typedNew(
+                _emval_new(
                     handle,
                     argList.count,
                     argList.types,

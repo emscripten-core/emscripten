@@ -842,7 +842,7 @@ Enum emval_test_take_and_return_Enum(Enum e) {
     return e;
 }
 
-enum class EnumClass { ONE, TWO };
+enum class EnumClass : char { ONE, TWO };
 
 EnumClass emval_test_take_and_return_EnumClass(EnumClass e) {
     return e;
@@ -2331,4 +2331,18 @@ EMSCRIPTEN_BINDINGS(val_as) {
 
     // memory_view is always JS -> C++
     //function("val_as_memory_view", &val_as<memory_view>);
+}
+
+val construct_with_6(val factory) {
+    unsigned char a1 = 6;
+    double a2 = -12.5;
+    std::string a3("a3");
+    StructVector a4(1, 2, 3, 4);
+    EnumClass a5 = EnumClass::TWO;
+    TupleVector a6(-1, -2, -3, -4);
+    return factory.new_(a1, a2, a3, a4, a5, a6);
+}
+
+EMSCRIPTEN_BINDINGS(val_new_) {
+    function("construct_with_6_arguments", &construct_with_6);
 }

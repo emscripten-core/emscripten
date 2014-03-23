@@ -1973,6 +1973,18 @@ module({
             assert.equal(cm.Enum.ONE, cm.val_as_enum(cm.Enum.ONE));
         });
     });
+
+    BaseFixture.extend("val::new_", function() {
+        test("variety of types", function() {
+            function factory() {
+                this.arguments = Array.prototype.slice.call(arguments, 0);
+            }
+            var instance = cm.construct_with_6_arguments(factory);
+            assert.deepEqual(
+                [6, -12.5, "a3", {x: 1, y: 2, z: 3, w: 4}, cm.EnumClass.TWO, [-1, -2, -3, -4]],
+                instance.arguments);
+        });
+    });
 });
 
 /* global run_all_tests */
