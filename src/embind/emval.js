@@ -139,7 +139,8 @@ function craftEmvalAllocator(argCount) {
     for(var i = 0; i < argCount; ++i) {
         functionBody += 
             "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
-            "var arg"+i+" = argType"+i+".readValueFromPointer(args + " + i * 8 + ");\n";
+            "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
+            "args += argType"+i+".varArgAdvance;\n";
     }
     functionBody +=
         "var obj = new constructor("+argsList+");\n" +

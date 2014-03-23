@@ -292,6 +292,7 @@ function __embind_register_bool(rawType, name, size, trueValue, falseValue) {
         'toWireType': function(destructors, o) {
             return o ? trueValue : falseValue;
         },
+        'varArgAdvance': 8,
         'readValueFromPointer': function(pointer) {
             // TODO: if heap is fixed (like in asm.js) this could be executed outside
             var heap;
@@ -406,6 +407,7 @@ function __embind_register_integer(primitiveType, name, size, minRange, maxRange
             }
             return value | 0;
         },
+        'varArgAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(shift, minRange !== 0),
         writeValueToPointer: integerWriteValueToPointer(shift, minRange !== 0),
         destructorFunction: null, // This type does not need a destructor
@@ -428,6 +430,7 @@ function __embind_register_float(rawType, name, size) {
             }
             return value;
         },
+        'varArgAdvance': 8,
         'readValueFromPointer': function(pointer) {
             var heap = (shift === 2) ? HEAPF32 : HEAPF64;
             return this['fromWireType'](heap[pointer >> shift]);
@@ -501,6 +504,7 @@ function __embind_register_std_string(rawType, name) {
             }
             return ptr;
         },
+        'varArgAdvance': 8,
         'readValueFromPointer': simpleReadValueFromPointer,
         writeValueToPointer: simpleWriteValueToPointer,
         destructorFunction: function(ptr) { _free(ptr); },
@@ -543,6 +547,7 @@ function __embind_register_std_wstring(rawType, charSize, name) {
             }
             return ptr;
         },
+        'varArgAdvance': 8,
         'readValueFromPointer': simpleReadValueFromPointer,
         writeValueToPointer: simpleWriteValueToPointer,
         destructorFunction: function(ptr) { _free(ptr); },
@@ -561,6 +566,7 @@ function __embind_register_emval(rawType, name) {
         'toWireType': function(destructors, value) {
             return __emval_register(value);
         },
+        'varArgAdvance': 8,
         'readValueFromPointer': simpleReadValueFromPointer,
         writeValueToPointer: simpleWriteValueToPointer,
         destructorFunction: null, // This type does not need a destructor
@@ -589,6 +595,7 @@ function __embind_register_memory_view(rawType, name) {
             var TA = typeMapping[type];
             return new TA(HEAP8.buffer, data, size);
         },
+        'varArgAdvance': 16,
         'readValueFromPointer': function(ptr) {
             return this['fromWireType'](ptr);
         },
@@ -834,6 +841,7 @@ function __embind_finalize_value_array(rawTupleType) {
                 }
                 return ptr;
             },
+            'varArgAdvance': 8,
             'readValueFromPointer': simpleReadValueFromPointer,
             writeValueToPointer: simpleWriteValueToPointer,
             destructorFunction: rawDestructor,
@@ -937,6 +945,7 @@ function __embind_finalize_value_object(structType) {
                 }
                 return ptr;
             },
+            'varArgAdvance': 8,
             'readValueFromPointer': simpleReadValueFromPointer,
             writeValueToPointer: simpleWriteValueToPointer,
             destructorFunction: rawDestructor,
@@ -1123,6 +1132,7 @@ RegisteredPointer.prototype.destructor = function(ptr) {
     }
 };
 
+RegisteredPointer.prototype['varArgAdvance'] = 8;
 RegisteredPointer.prototype['readValueFromPointer'] = simpleReadValueFromPointer;
 
 RegisteredPointer.prototype.writeValueToPointer = simpleWriteValueToPointer;
@@ -1771,6 +1781,7 @@ function __embind_register_enum(
         'toWireType': function(destructors, c) {
             return c.value;
         },
+        'varArgAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(shift, isSigned),
         writeValueToPointer: integerWriteValueToPointer(shift, isSigned),
         destructorFunction: null,

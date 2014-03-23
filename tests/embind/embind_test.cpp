@@ -2345,7 +2345,10 @@ val construct_with_6(val factory) {
 
 val construct_with_memory_view(val factory) {
     static const char data[11] = "0123456789";
-    return factory.new_(memory_view(10, data));
+    return factory.new_(
+        std::string("before"),
+        memory_view(10, data),
+        std::string("after"));
 }
 
 EMSCRIPTEN_BINDINGS(val_new_) {

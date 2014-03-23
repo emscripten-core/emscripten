@@ -1986,12 +1986,16 @@ module({
         });
 
         test("memory view", function() {
-            function factory(view) {
+            function factory(before, view, after) {
+                this.before = before;
                 this.view = view;
+                this.after = after;
             }
 
             var instance = cm.construct_with_memory_view(factory);
+            assert.equal("before", instance.before);
             assert.equal(10, instance.view.byteLength);
+            assert.equal("after", instance.after);
         });
     });
 });
