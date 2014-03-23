@@ -37,6 +37,7 @@ namespace emscripten {
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             double _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
 
+            // TODO: make compatible with asm.js
             EM_VAL _emval_call(
                 EM_VAL value,
                 unsigned argCount,
