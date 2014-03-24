@@ -2351,7 +2351,13 @@ val construct_with_memory_view(val factory) {
         std::string("after"));
 }
 
+val construct_with_ints_and_float(val factory) {
+    static const char data[11] = "0123456789";
+    return factory.new_(65537, 4.0f, 65538);
+}
+
 EMSCRIPTEN_BINDINGS(val_new_) {
     function("construct_with_6_arguments", &construct_with_6);
     function("construct_with_memory_view", &construct_with_memory_view);
+    function("construct_with_ints_and_float", &construct_with_ints_and_float);
 }

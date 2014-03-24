@@ -12,6 +12,8 @@ namespace emscripten {
 
             typedef struct _EM_VAL* EM_VAL;
             typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
+            typedef struct _EM_METHOD_CALLER* EM_METHOD_CALLER;
+            typedef double EM_GENERIC_WIRE_TYPE;
 
             void _emval_incref(EM_VAL value);
             void _emval_decref(EM_VAL value);
@@ -35,7 +37,7 @@ namespace emscripten {
             EM_VAL _emval_get_module_property(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
-            double _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
+            EM_GENERIC_WIRE_TYPE _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
 
             // TODO: make compatible with asm.js
             EM_VAL _emval_call(
@@ -44,17 +46,24 @@ namespace emscripten {
                 internal::TYPEID argTypes[]
                 /*, ... */);
 
-            // DO NOT call this more than once per signature. It will leak function pointer offsets!
-            GenericFunction _emval_get_method_caller(
+            // DO NOT call this more than once per signature. It will
+            // leak generated function objects!
+            EM_METHOD_CALLER _emval_get_method_caller(
                 unsigned argCount, // including return value
                 internal::TYPEID argTypes[]);
+            EM_GENERIC_WIRE_TYPE _emval_call_method(
+                EM_METHOD_CALLER caller,
+                EM_VAL handle,
+                const char* methodName,
+                EM_DESTRUCTORS* destructors,
+                ...);
             bool _emval_has_function(
                 EM_VAL value,
                 const char* methodName);
         }
 
         template<const char* address> 
-            struct symbol_registrar {
+        struct symbol_registrar {
             symbol_registrar() {
                 internal::_emval_register_symbol(address);
             }
@@ -62,19 +71,21 @@ namespace emscripten {
 
         template<typename ReturnType, typename... Args>
         struct Signature {
+            /*
             typedef typename BindingType<ReturnType>::WireType (*MethodCaller)(
                 EM_VAL value,
                 const char* methodName,
                 EM_DESTRUCTORS* destructors,
                 typename BindingType<Args>::WireType...);
+            */
 
-            static MethodCaller get_method_caller() {
-                static MethodCaller fp = reinterpret_cast<MethodCaller>(init_method_caller());
-                return fp;
+            static EM_METHOD_CALLER get_method_caller() {
+                static EM_METHOD_CALLER mc = init_method_caller();
+                return mc;
             }
 
         private:
-            static GenericFunction init_method_caller() {
+            static EM_METHOD_CALLER init_method_caller() {
                 WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
                 return _emval_get_method_caller(args.count, args.types);
             }
@@ -110,9 +121,11 @@ namespace emscripten {
             }
         };
 
-        template<typename WireType>
-        WireType fromGenericWireType(double wt) {
-            return GenericWireTypeConverter<WireType>::from(wt);
+        template<typename T>
+        T fromGenericWireType(double g) {
+            typedef typename BindingType<T>::WireType WireType;
+            WireType wt = GenericWireTypeConverter<WireType>::from(g);
+            return BindingType<T>::fromWireType(wt);
         }
 
         template<typename ReturnType, typename... Args>
@@ -121,13 +134,14 @@ namespace emscripten {
                 auto caller = Signature<ReturnType, Args...>::get_method_caller();
 
                 EM_DESTRUCTORS destructors;
-                auto wireType = caller(
+                EM_GENERIC_WIRE_TYPE result = _emval_call_method(
+                    caller,
                     handle,
                     methodName,
                     &destructors,
                     toWireType(std::forward<Args>(args))...);
                 DestructorsRunner rd(destructors);
-                return BindingType<ReturnType>::fromWireType(wireType);
+                return fromGenericWireType<ReturnType>(result);
             }
         };
 
@@ -137,7 +151,8 @@ namespace emscripten {
                 auto caller = Signature<void, Args...>::get_method_caller();
 
                 EM_DESTRUCTORS destructors;
-                caller(
+                _emval_call_method(
+                    caller,
                     handle,
                     methodName,
                     &destructors,
@@ -307,12 +322,12 @@ namespace emscripten {
             typedef BindingType<T> BT;
 
             EM_DESTRUCTORS destructors;
-            auto result = fromGenericWireType<typename BindingType<T>::WireType>(_emval_as(
+            EM_GENERIC_WIRE_TYPE result = _emval_as(
                 handle,
                 TypeID<T>::get(),
-                &destructors));
+                &destructors);
             DestructorsRunner dr(destructors);
-            return BT::fromWireType(result);
+            return fromGenericWireType<T>(result);
         }
 
     private:

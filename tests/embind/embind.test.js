@@ -1997,6 +1997,19 @@ module({
             assert.equal(10, instance.view.byteLength);
             assert.equal("after", instance.after);
         });
+
+        test("ints_and_float", function() {
+            function factory(a, b, c) {
+                this.a = a;
+                this.b = b;
+                this.c = c;
+            }
+
+            var instance = cm.construct_with_ints_and_float(factory);
+            assert.equal(65537, instance.a);
+            assert.equal(4.0, instance.b);
+            assert.equal(65538, instance.c);
+        });
     });
 });
 

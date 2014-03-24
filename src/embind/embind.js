@@ -164,6 +164,10 @@ var typeDependencies = {};
 var registeredPointers = {};
 
 function registerType(rawType, registeredInstance) {
+    if (!('varArgAdvance' in registeredInstance)) {
+        throw new TypeError('registerType registeredInstance requires varArgAdvance');
+    }
+
     var name = registeredInstance.name;
     if (!rawType) {
         throwBindingError('type "' + name + '" must have a positive integer typeid pointer');
@@ -268,6 +272,7 @@ function __embind_register_void(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
+        'varArgAdvance': 0,
         'fromWireType': function() {
             return undefined;
         },
@@ -432,8 +437,10 @@ function __embind_register_float(rawType, name, size) {
         },
         'varArgAdvance': 8,
         'readValueFromPointer': function(pointer) {
-            var heap = (shift === 2) ? HEAPF32 : HEAPF64;
-            return this['fromWireType'](heap[pointer >> shift]);
+            // TODO: rename readValueFromPointer to
+            // readValueFromVarArg in clang/emscripten, it appears
+            // floats are passed in varargs via HEAPF64
+            return this['fromWireType'](HEAPF64[pointer >> 3]);
         },
         writeValueToPointer: function(value, pointer, _destructors) {
             var heap = (shift === 2) ? HEAPF32 : HEAPF64;

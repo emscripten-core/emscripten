@@ -228,40 +228,55 @@ function allocateDestructors(destructorsRef) {
     return destructors;
 }
 
+// Leave id 0 undefined.  It's not a big deal, but might be confusing
+// to have null be a valid method caller.
+var methodCallers = [undefined];
+
+function addMethodCaller(caller) {
+    var id = methodCallers.length;
+    methodCallers.push(caller);
+    return id;
+}
+
 function __emval_get_method_caller(argCount, argTypes) {
     var types = lookupTypes(argCount, argTypes);
 
     var retType = types[0];
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
-    var args1 = ["addFunction", "createNamedFunction", "requireHandle", "getStringOrSymbol", "retType", "allocateDestructors"];
-    var args2 = [Runtime.addFunction, createNamedFunction, requireHandle, getStringOrSymbol, retType, allocateDestructors];
+    var params = ["retType"];
+    var args = [retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    var argsListWired = ""; // 'arg0Wired, ..., argNWired'
     for (var i = 0; i < argCount - 1; ++i) {
         argsList += (i !== 0 ? ", " : "") + "arg" + i;
-        argsListWired += ", arg" + i + "Wired";
-        args1.push("argType" + i);
-        args2.push(types[1 + i]);
+        params.push("argType" + i);
+        args.push(types[1 + i]);
     }
 
-    var invokerFnBody =
-        "return addFunction(createNamedFunction('" + signatureName + "', function (handle, name, destructorsRef" + argsListWired + ") {\n" +
-        "    var handle = requireHandle(handle);\n" +
-        "    name = getStringOrSymbol(name);\n";
+    var functionBody =
+        "return function (handle, name, destructors, args) {\n";
 
     for (var i = 0; i < argCount - 1; ++i) {
-        invokerFnBody += "    var arg" + i + " = argType" + i + ".fromWireType(arg" + i + "Wired);\n";
+        functionBody +=
+        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args);\n" +
+        "    args += argType" + i + ".varArgAdvance;\n";
     }
-    invokerFnBody +=
+    functionBody +=
         "    var rv = handle[name](" + argsList + ");\n" +
-        "    return retType.toWireType(allocateDestructors(destructorsRef), rv);\n" +
-        "}));\n";
+        "    return retType.toWireType(destructors, rv);\n" +
+        "};\n";
 
-    args1.push(invokerFnBody);
-    var invokerFunction = new_(Function, args1).apply(null, args2);
-    return invokerFunction;
+    params.push(functionBody);
+    var invokerFunction = new_(Function, params).apply(null, args);
+    return addMethodCaller(createNamedFunction(signatureName, invokerFunction));
+}
+
+function __emval_call_method(caller, handle, methodName, destructorsRef, args) {
+    caller = methodCallers[caller];
+    handle = requireHandle(handle);
+    methodName = getStringOrSymbol(methodName);
+    return caller(handle, methodName, allocateDestructors(destructorsRef), args);
 }
 
 function __emval_has_function(handle, name) {
