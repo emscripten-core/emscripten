@@ -4600,8 +4600,6 @@ LibraryManager.library = {
     return __ZNKSt9exception4whatEv.buffer;
   },
 
-  _ZNSt9type_infoD2Ev: function(){},
-
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
   // allocated variables as unique identifiers.
