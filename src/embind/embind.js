@@ -298,7 +298,7 @@ function __embind_register_bool(rawType, name, size, trueValue, falseValue) {
             return o ? trueValue : falseValue;
         },
         'varArgAdvance': 8,
-        'readValueFromPointer': function(pointer) {
+        'readValueFromVarArg': function(pointer) {
             // TODO: if heap is fixed (like in asm.js) this could be executed outside
             var heap;
             if (size === 1) {
@@ -311,20 +311,6 @@ function __embind_register_bool(rawType, name, size, trueValue, falseValue) {
                 throw new TypeError("Unknown boolean type size: " + name);
             }
             return this['fromWireType'](heap[pointer >> shift]);
-        },
-        writeValueToPointer: function(value, pointer, _destructors) {
-            // TODO: if heap is fixed (like in asm.js) this could be executed outside
-            var heap;
-            if (size === 1) {
-                heap = HEAP8;
-            } else if (size === 2) {
-                heap = HEAP16;
-            } else if (size === 4) {
-                heap = HEAP32;
-            } else {
-                throw new TypeError("Unknown boolean type size: " + name);
-            }
-            heap[pointer >> shift] = this['toWireType'](_destructors, value);
         },
         destructorFunction: null, // This type does not need a destructor
     });
@@ -345,6 +331,8 @@ function getShiftFromSize(size) {
 }
 
 function integerReadValueFromPointer(shift, signed) {
+    // TODO: varargs always promote integer arguments to int... could
+    // that break this code?
     if (shift === 0) {
         return function(pointer) {
             var heap = signed ? HEAP8 : HEAPU8;
@@ -359,27 +347,6 @@ function integerReadValueFromPointer(shift, signed) {
         return function(pointer) {
             var heap = signed ? HEAP32 : HEAPU32;
             return this['fromWireType'](heap[pointer >> 2]);
-        };
-    } else {
-        throw new TypeError("Unknown integer type: " + name);
-    }
-}
-
-function integerWriteValueToPointer(shift, signed) {
-    if (shift === 0) {
-        return function(value, pointer, _destructors) {
-            var heap = signed ? HEAP8 : HEAPU8;
-            heap[pointer] = this['toWireType'](_destructors, value);
-        };
-    } else if (shift === 1) {
-        return function(value, pointer, _destructors) {
-            var heap = signed ? HEAP16 : HEAPU16;
-            heap[pointer >> 1] = this['toWireType'](_destructors, value);
-        };
-    } else if (shift === 2) {
-        return function(value, pointer, _destructors) {
-            var heap = signed ? HEAP32 : HEAPU32;
-            heap[pointer >> 2] = this['toWireType'](_destructors, value);
         };
     } else {
         throw new TypeError("Unknown integer type: " + name);
@@ -413,8 +380,7 @@ function __embind_register_integer(primitiveType, name, size, minRange, maxRange
             return value | 0;
         },
         'varArgAdvance': 8,
-        'readValueFromPointer': integerReadValueFromPointer(shift, minRange !== 0),
-        writeValueToPointer: integerWriteValueToPointer(shift, minRange !== 0),
+        'readValueFromVarArg': integerReadValueFromPointer(shift, minRange !== 0),
         destructorFunction: null, // This type does not need a destructor
     });
 }
@@ -436,15 +402,9 @@ function __embind_register_float(rawType, name, size) {
             return value;
         },
         'varArgAdvance': 8,
-        'readValueFromPointer': function(pointer) {
-            // TODO: rename readValueFromPointer to
-            // readValueFromVarArg in clang/emscripten, it appears
-            // floats are passed in varargs via HEAPF64
+        'readValueFromVarArg': function(pointer) {
+            // vararg floats always promote to double
             return this['fromWireType'](HEAPF64[pointer >> 3]);
-        },
-        writeValueToPointer: function(value, pointer, _destructors) {
-            var heap = (shift === 2) ? HEAPF32 : HEAPF64;
-            heap[pointer >> shift] = this['toWireType'](_destructors, value);
         },
         destructorFunction: null, // This type does not need a destructor
     });
@@ -453,10 +413,6 @@ function __embind_register_float(rawType, name, size) {
 // For types whose wire types are 32-bit pointers.
 function simpleReadValueFromPointer(pointer) {
     return this['fromWireType'](HEAPU32[pointer >> 2]);
-}
-function simpleWriteValueToPointer(value, pointer, destructors) {
-    var wt = this['toWireType'](destructors, value);
-    HEAPU32[pointer >> 2] = wt;
 }
 
 function __embind_register_std_string(rawType, name) {
@@ -512,8 +468,7 @@ function __embind_register_std_string(rawType, name) {
             return ptr;
         },
         'varArgAdvance': 8,
-        'readValueFromPointer': simpleReadValueFromPointer,
-        writeValueToPointer: simpleWriteValueToPointer,
+        'readValueFromVarArg': simpleReadValueFromPointer,
         destructorFunction: function(ptr) { _free(ptr); },
     });
 }
@@ -555,8 +510,7 @@ function __embind_register_std_wstring(rawType, charSize, name) {
             return ptr;
         },
         'varArgAdvance': 8,
-        'readValueFromPointer': simpleReadValueFromPointer,
-        writeValueToPointer: simpleWriteValueToPointer,
+        'readValueFromVarArg': simpleReadValueFromPointer,
         destructorFunction: function(ptr) { _free(ptr); },
     });
 }
@@ -574,8 +528,7 @@ function __embind_register_emval(rawType, name) {
             return __emval_register(value);
         },
         'varArgAdvance': 8,
-        'readValueFromPointer': simpleReadValueFromPointer,
-        writeValueToPointer: simpleWriteValueToPointer,
+        'readValueFromVarArg': simpleReadValueFromPointer,
         destructorFunction: null, // This type does not need a destructor
     });
 }
@@ -603,7 +556,7 @@ function __embind_register_memory_view(rawType, name) {
             return new TA(HEAP8.buffer, data, size);
         },
         'varArgAdvance': 16,
-        'readValueFromPointer': function(ptr) {
+        'readValueFromVarArg': function(ptr) {
             return this['fromWireType'](ptr);
         },
     });
@@ -849,8 +802,7 @@ function __embind_finalize_value_array(rawTupleType) {
                 return ptr;
             },
             'varArgAdvance': 8,
-            'readValueFromPointer': simpleReadValueFromPointer,
-            writeValueToPointer: simpleWriteValueToPointer,
+            'readValueFromVarArg': simpleReadValueFromPointer,
             destructorFunction: rawDestructor,
         }];
     });
@@ -953,8 +905,7 @@ function __embind_finalize_value_object(structType) {
                 return ptr;
             },
             'varArgAdvance': 8,
-            'readValueFromPointer': simpleReadValueFromPointer,
-            writeValueToPointer: simpleWriteValueToPointer,
+            'readValueFromVarArg': simpleReadValueFromPointer,
             destructorFunction: rawDestructor,
         }];
     });
@@ -1140,9 +1091,7 @@ RegisteredPointer.prototype.destructor = function(ptr) {
 };
 
 RegisteredPointer.prototype['varArgAdvance'] = 8;
-RegisteredPointer.prototype['readValueFromPointer'] = simpleReadValueFromPointer;
-
-RegisteredPointer.prototype.writeValueToPointer = simpleWriteValueToPointer;
+RegisteredPointer.prototype['readValueFromVarArg'] = simpleReadValueFromPointer;
 
 RegisteredPointer.prototype['fromWireType'] = function(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)
@@ -1789,8 +1738,7 @@ function __embind_register_enum(
             return c.value;
         },
         'varArgAdvance': 8,
-        'readValueFromPointer': integerReadValueFromPointer(shift, isSigned),
-        writeValueToPointer: integerWriteValueToPointer(shift, isSigned),
+        'readValueFromVarArg': integerReadValueFromPointer(shift, isSigned),
         destructorFunction: null,
     });
     exposePublicSymbol(name, constructor);

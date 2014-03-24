@@ -119,11 +119,11 @@ function craftEmvalAllocator(argCount) {
     /*This function returns a new function that looks like this:
     function emval_allocator_3(constructor, argTypes, args) {
         var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
-        var arg0 = argType0.readValueFromPointer(args);
+        var arg0 = argType0.readValueFromVarArg(args);
         var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
-        var arg1 = argType1.readValueFromPointer(args + 8);
+        var arg1 = argType1.readValueFromVarArg(args + 8);
         var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
-        var arg2 = argType2.readValueFromPointer(args + 16);
+        var arg2 = argType2.readValueFromVarArg(args + 16);
         var obj = new constructor(arg0, arg1, arg2);
         return __emval_register(obj);
     } */
@@ -139,7 +139,7 @@ function craftEmvalAllocator(argCount) {
     for(var i = 0; i < argCount; ++i) {
         functionBody += 
             "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
-            "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
+            "var arg"+i+" = argType"+i+".readValueFromVarArg(args);\n" +
             "args += argType"+i+".varArgAdvance;\n";
     }
     functionBody +=
@@ -259,7 +259,7 @@ function __emval_get_method_caller(argCount, argTypes) {
 
     for (var i = 0; i < argCount - 1; ++i) {
         functionBody +=
-        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args);\n" +
+        "    var arg" + i + " = argType" + i + ".readValueFromVarArg(args);\n" +
         "    args += argType" + i + ".varArgAdvance;\n";
     }
     functionBody +=
