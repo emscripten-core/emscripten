@@ -5336,6 +5336,238 @@ function optimizeFrounds(ast) {
   traverseChildren(ast, fix);
 }
 
+function cIfy(ast) {
+  emitAst = false;
+  printErr('#include <stdio.h>');
+  printErr('#include <stdint.h>');
+  printErr('');
+  printErr('int8_t MEM[10*1024*1024];');
+  printErr('int32_t MEM_BASE = (int32_t)MEM;');
+  printErr('int32_t STACKTOP = sizeof(MEM_BASE) - 1024*1024;');
+  printErr('');
+  var output = '';
+  var indent = 0;
+  function emitIndent() {
+    for (var i = 0; i < indent; i++) {
+      output += '  ';
+    }
+  }
+  function cName(name) {
+    if (name[0] === '$') return '_' + name.substr(1);
+    if (name[0] === '_') return name.substr(1);
+    return name;
+  }
+  function typeName(asmType) {
+    switch(asmType) {
+      case ASM_INT:    return 'int32_t';
+      case ASM_DOUBLE: return 'double';
+      case ASM_FLOAT:  return 'float';
+      default: throw 'bad asm type';
+    }
+  }
+  function blockify(node) {
+    if (node[0] !== 'block') node = ['block', [node]];
+    return node;
+  }
+  function walk(node, freeParens) {
+    var stat = false;
+    if (node[0] === 'stat') {
+      node = node[1];
+      stat = true;
+    }
+    walkSwitch:
+    switch(node[0]) {
+      case 'var': {
+        node[1].forEach(function(varItem, i) {
+          var ident = varItem[0];
+          var value = varItem[1];
+          if (i > 0) emitIndent();
+          output += typeName(detectAsmCoercion(value));
+          output += ' ' + cName(ident) + ';';
+          if (i < node[1].length-1) output += '\n';
+        });
+        break;
+      }
+      case 'assign': {
+        // try to emit nice += etc. operators
+        if (node[2][0] === 'name' && node[3][0] === 'binary') {
+          if (node[3][1] === '|' && node[3][3][0] === 'num' && node[3][3][1] === 0) {
+            node[3] = node[3][2]; // wipe out |0 coercion
+          }
+          if (node[3][0] === 'binary' && node[3][2][0] === 'name' && node[2][1] === node[3][2][1]) {
+            switch (node[3][1]) {
+              case '+': case '-': case '|': case '&': {
+                walk(node[2], true);
+                if (node[3][3][0] === 'num' && node[3][3][1] === 1) {
+                  output += node[3][1] + node[3][1];
+                } else {
+                  output += ' ' + node[3][1] + '= ';
+                  walk(node[3][3]);
+                }
+                break walkSwitch;
+              }
+            }
+          }
+        }
+        walk(node[2], true);
+        output += ' = ';
+        walk(node[3], true);
+        break;
+      }
+      case 'name': {
+        output += cName(node[1]);
+        break;
+      }
+      case 'num': {
+        output += node[1];
+        break;
+      }
+      case 'binary': {
+        if (node[1] === '>>>') {
+          if (!freeParens) output += '(';
+          // special-case the unsigned coercion
+          output += '((uint32_t)';
+          walk(node[2]);
+          output += ')) >>> ((uint32_t)';
+          walk(node[2]);
+          output += ')';
+          if (!freeParens) output += ')';
+          break;
+        } else if (node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
+          // no need for |0 coercions (cannot be double-to-int)
+          walk(node[2], freeParens);
+          break;
+        }
+        if (!freeParens) output += '(';
+        walk(node[2]);
+        output += ' ' + node[1] + ' ';
+        walk(node[3]);
+        if (!freeParens) output += ')';
+        break;
+      }
+      case 'unary-prefix': {
+        if (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~') {
+          // special-case the double-to-int conversion
+          output += '((int32_t)';
+          walk(node[2][2]);
+          output += ')';
+          break;
+        }
+        output += '(';
+        switch (node[1]) {
+          case '!': output += '!'; break;
+          case '~': output += '~'; break;
+          case '-': output += '-'; break;
+          default: throw 'bad unary ' + node[1];
+        }
+        walk(node[2]);
+        output += ')';
+        break;
+      }
+      case 'return': {
+        output += 'return ';
+        walk(node[1], true);
+        output += ';';
+        break;
+      }
+      case 'call': {
+        walk(node[1]);
+        output += '(';
+        node[2].forEach(function(arg, i) {
+          if (i > 0) output += ', ';
+          walk(arg);
+        });
+        output += ')';
+        break;
+      }
+      case 'if': {
+        output += 'if (';
+        walk(node[1], true);
+        output += ') {\n';
+        indent++;
+        walk(blockify(node[2]));
+        indent--;
+        emitIndent();
+        output += '}';
+        if (node[3]) {
+          output += ' else {\n'
+          indent++;
+          walk(blockify(node[3]));
+          indent--;
+          emitIndent();
+          output += '}';
+        }
+        break;
+      }
+      case 'while': {
+        output += 'while (';
+        walk(node[1], true);
+        output += ') {\n';
+        indent++;
+        walk(blockify(node[2]));
+        indent--;
+        emitIndent();
+        output += '}';
+        break;
+      }
+      case 'block': {
+        walkStatements(getStatements(node));
+        break;
+      }
+      case 'sub': {
+        if (!freeParens) output += '(';
+        output += '*((';
+        assert(node[1][0] === 'name');
+        switch (node[1][1]) {
+          case 'HEAP8':  case 'HEAPU8':  output += 'int8_t';  break;
+          case 'HEAP16': case 'HEAPU16': output += 'int16_t'; break;
+          case 'HEAP32': case 'HEAPU32': output += 'int32_t'; break;
+          case 'HEAPF32':                output += 'float'; break;
+          case 'HEAPF64':                output += 'double'; break;
+          default: throw 'bad sub ' + node[1][1];
+        }
+        output += '*)(MEM_BASE + ';
+        walk(node[2], true);
+        output += '))';
+        if (!freeParens) output += ')';
+        break;
+      }
+      default: throw 'wha? ' + node[0];
+    }
+    if (stat) output += ';';
+  }
+  function walkStatements(stats) {
+    stats.forEach(function(stat) {
+      emitIndent();
+      walk(stat);
+      output += '\n';
+    });
+  }
+  traverseGeneratedFunctions(ast, function(func) {
+    if (func[1][0] !== '_') return;
+    var returnType = 'void';
+    traverse(func, function(node, type) {
+      if (type === 'return' && node[1]) returnType = typeName(detectAsmCoercion(node[1]));
+    });
+    output = returnType + ' ' + cName(func[1]) + '(';
+    var stats = getStatements(func);
+    func[2].forEach(function(arg, i) {
+      if (i > 0) output += ', ';
+      var assign = stats[i][1];
+      output += typeName(detectAsmCoercion(assign[3]));
+      output += ' ';
+      output += cName(assign[2][1]);
+    });
+    if (func[2].length === 0) output += 'void';
+    output += ') {\n';
+    indent++;
+    walkStatements(stats.slice(func[2].length));
+    indent--;
+    output += '}';
+    printErr(output);
+  });
+}
+
 // Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
@@ -5452,6 +5684,7 @@ var passes = {
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
   lastOpts: lastOpts,
+  cIfy: cIfy,
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },
@@ -5481,6 +5714,7 @@ var extraInfoStart = src.lastIndexOf('// EXTRA_INFO:')
 if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 //printErr(JSON.stringify(extraInfo));
 
+var emitAst = true;
 
 arguments_.slice(1).forEach(function(arg) {
   //traverse(ast, function(node) {
@@ -5496,17 +5730,20 @@ arguments_.slice(1).forEach(function(arg) {
 if (asm && last) {
   prepDotZero(ast);
 }
-var js = astToSrc(ast, minifyWhitespace), old;
-if (asm && last) {
-  js = fixDotZero(js);
-}
 
-// remove unneeded newlines+spaces, and print
-do {
-  old = js;
-  js = js.replace(/\n *\n/g, '\n');
-} while (js != old);
-print(js);
-print('\n');
-print(suffix);
+if (emitAst) {
+  var js = astToSrc(ast, minifyWhitespace), old;
+  if (asm && last) {
+    js = fixDotZero(js);
+  }
+
+  // remove unneeded newlines+spaces, and print
+  do {
+    old = js;
+    js = js.replace(/\n *\n/g, '\n');
+  } while (js != old);
+  print(js);
+  print('\n');
+  print(suffix);
+}
 
