@@ -1801,7 +1801,7 @@ This pointer might make sense in another type signature: i: 0
       (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
        ['asm', 'asmPreciseF32', 'simplifyExpressions', 'optimizeFrounds']),
       (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
-       ['asm', 'last']),
+       ['asm', 'lastOpts', 'last']),
       (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
        ['asm', 'relocate']),
       (path_from_root('tools', 'test-js-optimizer-asm-outline1.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline1-output.js')).read(),
@@ -1811,7 +1811,7 @@ This pointer might make sense in another type signature: i: 0
       (path_from_root('tools', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline3-output.js')).read(),
        ['asm', 'outline']),
       (path_from_root('tools', 'test-js-optimizer-asm-minlast.js'), open(path_from_root('tools', 'test-js-optimizer-asm-minlast-output.js')).read(),
-       ['asm', 'minifyWhitespace', 'last']),
+       ['asm', 'minifyWhitespace', 'lastOpts', 'last']),
       (path_from_root('tools', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tools', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
        ['asm', 'aggressiveVariableElimination']),
     ]:

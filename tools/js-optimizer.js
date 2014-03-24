@@ -5361,7 +5361,9 @@ function fixDotZero(js) {
   });
 }
 
-function asmLastOpts(ast) {
+// very last optimizations, alter things that prevent other optimizations and so must be done at the very end
+function lastOpts(ast) {
+  assert(asm);
   traverseGeneratedFunctions(ast, function(fun) {
     traverse(fun, function(node, type) {
       if (type === 'while' && node[1][0] === 'num' && node[1][1] === 1 && node[2][0] === 'block' && node[2].length == 2) {
@@ -5449,6 +5451,7 @@ var passes = {
   outline: outline,
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
+  lastOpts: lastOpts,
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },
@@ -5491,7 +5494,6 @@ arguments_.slice(1).forEach(function(arg) {
   //});
 });
 if (asm && last) {
-  asmLastOpts(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
   prepDotZero(ast);
 }
 var js = astToSrc(ast, minifyWhitespace), old;
