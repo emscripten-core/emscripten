@@ -5342,8 +5342,7 @@ function cIfy(ast) {
   printErr('#include <stdint.h>');
   printErr('');
   printErr('int8_t MEM[10*1024*1024];');
-  printErr('int32_t MEM_BASE = (int32_t)MEM;');
-  printErr('int32_t STACKTOP = sizeof(MEM_BASE) - 1024*1024;');
+  printErr('int32_t STACKTOP = sizeof(MEM) - 1024*1024;');
   printErr('');
   var output = '';
   var indent = 0;
@@ -5526,7 +5525,7 @@ function cIfy(ast) {
           case 'HEAPF64':                output += 'double'; break;
           default: throw 'bad sub ' + node[1][1];
         }
-        output += '*)(MEM_BASE + ';
+        output += '*)((int32_t)MEM + ';
         walk(node[2], true);
         output += '))';
         if (!freeParens) output += ')';
