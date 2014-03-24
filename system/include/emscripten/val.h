@@ -26,8 +26,7 @@ namespace emscripten {
             EM_VAL _emval_null();
             EM_VAL _emval_new_cstring(const char*);
 
-            // TODO: make compatible with asm.js
-            void _emval_take_value(TYPEID type/*, ...*/);
+            EM_VAL _emval_take_value(TYPEID type, ...);
 
             EM_VAL _emval_new(
                 EM_VAL value,
@@ -216,9 +215,12 @@ namespace emscripten {
 
         template<typename T>
         explicit val(T&& value) {
+            using namespace internal;
+
             typedef internal::BindingType<T> BT;
-            auto taker = reinterpret_cast<internal::EM_VAL (*)(internal::TYPEID, typename BT::WireType)>(&internal::_emval_take_value);
-            handle = taker(internal::TypeID<T>::get(), BT::toWireType(std::forward<T>(value)));
+            handle = _emval_take_value(
+                internal::TypeID<T>::get(),
+                BT::toWireType(std::forward<T>(value)));
         }
 
         val() = delete;

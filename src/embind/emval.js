@@ -106,9 +106,9 @@ function __emval_new_cstring(v) {
     return __emval_register(getStringOrSymbol(v));
 }
 
-function __emval_take_value(type, v) {
+function __emval_take_value(type, argv) {
     type = requireRegisteredType(type, '_emval_take_value');
-    v = type['fromWireType'](v);
+    var v = type['readValueFromVarArg'](argv);
     return __emval_register(v);
 }
 
