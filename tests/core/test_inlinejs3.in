@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <emscripten.h>
 
+void loop_iter() {
+  EM_ASM(Module.print('loop iter!'));
+}
+
 int main(int argc, char **argv) {
   EM_ASM(Module.print('hello dere1'));
   EM_ASM("Module.print('hello dere2');");
@@ -21,5 +25,6 @@ int main(int argc, char **argv) {
   sum = 0;
   sum = EM_ASM_INT_V({ return globalVar }); // no inputs, just output
   printf("sum: %d\n", sum);
+  for (int i = 0; i < argc*2; i++) loop_iter();
   return 0;
 }
