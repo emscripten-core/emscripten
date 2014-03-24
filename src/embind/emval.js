@@ -199,13 +199,15 @@ function __emval_as(handle, returnType, destructorsRef) {
     return returnType['toWireType'](destructors, handle);
 }
 
-function __emval_call(handle, argCount, argTypes) {
+function __emval_call(handle, argCount, argTypes, argv) {
     handle = requireHandle(handle);
     var types = lookupTypes(argCount, argTypes);
 
     var args = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
-        args[i] = types[i]['fromWireType'](arguments[3 + i]);
+        var type = types[i];
+        args[i] = type['readValueFromVarArg'](argv);
+        argv += type.varArgAdvance;
     }
 
     var rv = handle.apply(undefined, args);

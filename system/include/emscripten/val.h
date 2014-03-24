@@ -25,6 +25,8 @@ namespace emscripten {
             EM_VAL _emval_undefined();
             EM_VAL _emval_null();
             EM_VAL _emval_new_cstring(const char*);
+
+            // TODO: make compatible with asm.js
             void _emval_take_value(TYPEID type/*, ...*/);
 
             EM_VAL _emval_new(
@@ -39,12 +41,11 @@ namespace emscripten {
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             EM_GENERIC_WIRE_TYPE _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
 
-            // TODO: make compatible with asm.js
             EM_VAL _emval_call(
                 EM_VAL value,
                 unsigned argCount,
-                internal::TYPEID argTypes[]
-                /*, ... */);
+                internal::TYPEID argTypes[],
+                ...);
 
             // DO NOT call this more than once per signature. It will
             // leak generated function objects!
@@ -290,14 +291,8 @@ namespace emscripten {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
-            typedef EM_VAL (*TypedCall)(
-                EM_VAL,
-                unsigned,
-                TYPEID argTypes[],
-                typename BindingType<Args>::WireType...);
-            TypedCall typedCall = reinterpret_cast<TypedCall>(&_emval_call);
             return val(
-                typedCall(
+                _emval_call(
                     handle,
                     argList.count,
                     argList.types,
