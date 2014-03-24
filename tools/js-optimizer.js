@@ -5525,7 +5525,7 @@ function cIfy(ast) {
           case 'HEAPF64':                output += 'double'; break;
           default: throw 'bad sub ' + node[1][1];
         }
-        output += '*)((int32_t)MEM + ';
+        output += '*)(((int32_t)MEM) + ';
         walk(node[2], true);
         output += '))';
         if (!freeParens) output += ')';
