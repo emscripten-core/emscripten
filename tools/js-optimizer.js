@@ -5745,5 +5745,8 @@ if (emitAst) {
   print(js);
   print('\n');
   print(suffix);
+} else {
+  print('/* not printing ast */');
 }
+
 
