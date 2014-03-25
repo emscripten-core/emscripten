@@ -5346,6 +5346,17 @@ function cIfy(ast) {
   printErr('int32_t tempDoublePtr = 0;');
   printErr('');
 
+  // totally custom behavior per function
+  var callHandlers = {
+    Math_imul: function(node) {
+      walk(['binary', '*', node[2][0], node[2][1]]);
+      return true; // totally handled
+    },
+    Math_abs: function(node) {
+      node[1][1] = 'fabs';
+    },
+  };
+
   // shows for each function which of its arguments must be relocated == which are pointers
   var relocationInfo = {
     puts: ['char*'],
@@ -5495,14 +5506,17 @@ function cIfy(ast) {
         break;
       }
       case 'call': {
-        walk(node[1]);
         var relocations = null;
         if (node[1][0] === 'name') {
           var name = cName(node[1][1]);
+          if (callHandlers[name]) {
+            if (callHandlers[name](node)) break;
+          }
           //if (name === 'printf') throw 'variadic calls are not possible currently';
           relocations = relocationInfo[name];
         }
         relocations = relocations || [];
+        walk(node[1]);
         output += '(';
         node[2].forEach(function(arg, i) {
           if (i > 0) output += ', ';
