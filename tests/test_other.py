@@ -2673,9 +2673,11 @@ int main()
   def test_c_backend(self):
     for filename, output in [
       (path_from_root('tests', 'hello_world.c'), 'hello, world!'),
+      #(path_from_root('tests', 'linpack.c'), 'Unrolled Double  Precision'),
     ]:
       print filename, output
-      Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O1', filename]).communicate()
+      self.clear()
+      Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O3', filename]).communicate()
       assert os.path.exists('a.out.c')
       Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses']).communicate()
       assert os.path.exists('a.out')

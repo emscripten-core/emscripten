@@ -5349,6 +5349,22 @@ function cIfy(ast) {
   var relocationInfo = {
     puts: ['char*'],
   };
+  var cExterns = set('stdout', 'stderr', 'stdin');
+
+  function stripCasts(node) {
+    if (node[0] === 'binary' && node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
+      return stripCasts(node[2]);
+    } else if (node[0] === 'binary' && node[1] === '>>>' && node[3][0] === 'num' && node[3][1] === 0) {
+      return stripCasts(node[2]);
+    } else if (node[0] === 'unary-prefix' && node[1] === '+') return stripCasts(node[2]);
+    return node;
+  }
+  function stripShifts(node) {
+    if (node[0] === 'binary' && (node[1] === '>>' || node[1] === '>>>') && node[3][0] === 'num') {
+      return stripShifts(node[2]);
+    }
+    return node;
+  }
 
   var output = '';
   var indent = 0;
@@ -5375,6 +5391,7 @@ function cIfy(ast) {
     return node;
   }
   function walk(node, freeParens) {
+    if (!node) return;
     var stat = false;
     if (node[0] === 'stat') {
       node = node[1];
@@ -5463,6 +5480,7 @@ function cIfy(ast) {
           case '!': output += '!'; break;
           case '~': output += '~'; break;
           case '-': output += '-'; break;
+          case '+': output += '(double)'; break;
           default: throw 'bad unary ' + node[1];
         }
         walk(node[2]);
@@ -5523,11 +5541,53 @@ function cIfy(ast) {
         output += '}';
         break;
       }
+      case 'do': {
+        output += 'do {\n';
+        indent++;
+        walk(blockify(node[2]));
+        indent--;
+        emitIndent();
+        output += '} while (';
+        walk(node[1], true);
+        output += ')';
+        break;
+      }
       case 'block': {
         walkStatements(getStatements(node));
         break;
       }
+      case 'conditional': {
+        output += '((';
+        walk(node[1]);
+        output += ') ? (';
+        walk(node[2]);
+        output += ') : (';
+        walk(node[3]);
+        output += '))';
+        break;
+      }
+      case 'label': {
+        output += node[1] + ':';
+        break;
+      }
+      case 'break': {
+        output += 'break';
+        break;
+      }
+      case 'continue': {
+        output += 'continue';
+        break;
+      }
       case 'sub': {
+        var stripped = stripShifts(node[2]);
+        if (stripped[0] === 'name') {
+          var name = cName(stripped[1]);
+          if (name in cExterns) {
+            output += '((int32_t)' + name + ')';
+            break;
+          }
+        }
+
         if (!freeParens) output += '(';
         output += '*((';
         assert(node[1][0] === 'name');
