@@ -908,7 +908,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       contents = m.groups(0)[0]
       outfile.write(contents + '\n')
       return ''
-    funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
+    if len(funcs_js) >= 2:
+      funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
 
     funcs_js += ['\n// EMSCRIPTEN_END_FUNCS\n']
 

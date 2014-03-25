@@ -379,6 +379,8 @@ function JSify(data, functionsOnly) {
 
   // functionStub
   function functionStubHandler(item) {
+    if (!LINK_SYSTEM_LIBS) return ';';
+
     // note the signature
     if (item.returnType && item.params) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
