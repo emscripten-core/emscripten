@@ -2671,10 +2671,14 @@ int main()
 
 
   def test_c_backend(self):
-    Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O1', path_from_root('tests', 'hello_world.c')]).communicate()
-    assert os.path.exists('a.out.c')
-    Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses', '-Wno-incompatible-library-redeclaration']).communicate()
-    assert os.path.exists('a.out')
-    out, err = Popen(['./a.out'], stdout=PIPE).communicate()
-    assert 'hello, world!' in out, out
+    for filename, output in [
+      (path_from_root('tests', 'hello_world.c'), 'hello, world!'),
+    ]:
+      print filename, output
+      Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O1', filename]).communicate()
+      assert os.path.exists('a.out.c')
+      Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses']).communicate()
+      assert os.path.exists('a.out')
+      out, err = Popen(['./a.out'], stdout=PIPE).communicate()
+      self.assertContained(output, out)
 
