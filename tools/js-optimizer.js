@@ -5634,6 +5634,10 @@ function cIfy(ast) {
   }
 
   function getArgs(func) {
+    if (cName(func[1]) === 'main') {
+      output += 'int argc, char **argv';
+      return;
+    }
     var stats = getStatements(func);
     func[2].forEach(function(arg, i) {
       if (i > 0) output += ', ';
@@ -5667,6 +5671,16 @@ function cIfy(ast) {
     getArgs(func);
     output += ') {\n';
     indent++;
+    if (cName(func[1]) === 'main') {
+      // normal input args were replaced by the canonical ones, so add them here
+      func[2].forEach(function(arg, i) {
+        emitIndent();
+        output += 'int32_t ' + arg;
+        if (i === 0) output += ' = argc'
+        else if (i === 1) output += ' = (int32_t)argv';
+        output += ';\n';
+      });
+    }
     walkStatements(getStatements(func).slice(func[2].length));
     indent--;
     output += '}';
