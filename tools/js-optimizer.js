@@ -5344,6 +5344,13 @@ function cIfy(ast) {
   printErr('int8_t MEM[10*1024*1024];');
   printErr('int32_t STACKTOP = sizeof(MEM) - 1024*1024;');
   printErr('');
+
+  // shows for each function which of its arguments must be relocated == which are pointers
+  var relocationInfo = {
+    printf: ['char*'],
+    puts: ['char*'],
+  };
+
   var output = '';
   var indent = 0;
   function emitIndent() {
@@ -5471,10 +5478,18 @@ function cIfy(ast) {
       }
       case 'call': {
         walk(node[1]);
+        var relocations = null;
+        if (node[1][0] === 'name') {
+          var name = cName(node[1][1]);
+          relocations = relocationInfo[name];
+        }
+        relocations = relocations || [];
         output += '(';
         node[2].forEach(function(arg, i) {
           if (i > 0) output += ', ';
+          if (relocations[i]) output += '(' + relocations[i] + ')(((int32_t)MEM)+';
           walk(arg);
+          if (relocations[i]) output += ')';
         });
         output += ')';
         break;
