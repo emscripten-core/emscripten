@@ -5342,7 +5342,7 @@ function cIfy(ast) {
   printErr('#include <math.h>');
   printErr('#include <stdio.h>');
   printErr('');
-  printErr('int8_t MEM[10*1024*1024] = "";');
+  printErr('int8_t MEM[64*1024*1024] = "";');
   printErr('int32_t STACKTOP = sizeof(MEM) - 1024*1024;');
   printErr('int32_t tempDoublePtr = 0;');
   printErr('');
@@ -5722,6 +5722,7 @@ function cIfy(ast) {
     output += '}';
     printErr(output);
   });
+  printErr('');
 }
 
 // Last pass utilities

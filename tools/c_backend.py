@@ -56,7 +56,7 @@ for i in range(len(sys.argv)):
 temp_name = unsuffixed(output) + '.js'
 
 print '[em-c-backend] emitting asm.js'
-execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-s', 'LINK_SYSTEM_LIBS=0', '-o', temp_name])
+execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-o', temp_name])
 
 print '[em-c-backend] converting to C'
 out = open(output, 'w')
@@ -68,5 +68,15 @@ print '[em-c-backend] finalize C'
 asm = AsmModule(temp_name)
 data = asm.mem_init_js.split('[')[1].split(']')[0]
 c = c.replace('""', "{ " + ('0,'*8) + data + " }")
-open(output, 'w').write(c)
+open(output, 'w').write(c + r'''
+int32_t emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
+  int32_t i;
+  for (i = 0; i < num; i++) {
+    MEM[8+dest+i] = MEM[8+src+i];
+  }
+  return dest;
+}
+
+'''
+)
 
