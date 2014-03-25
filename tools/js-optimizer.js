@@ -5499,6 +5499,7 @@ function cIfy(ast) {
         var relocations = null;
         if (node[1][0] === 'name') {
           var name = cName(node[1][1]);
+          //if (name === 'printf') throw 'variadic calls are not possible currently';
           relocations = relocationInfo[name];
         }
         relocations = relocations || [];
@@ -5617,13 +5618,8 @@ function cIfy(ast) {
       output += '\n';
     });
   }
-  traverseGeneratedFunctions(ast, function(func) {
-    if (func[1][0] !== '_') return;
-    var returnType = 'void';
-    traverse(func, function(node, type) {
-      if (type === 'return' && node[1]) returnType = typeName(detectAsmCoercion(node[1]));
-    });
-    output = returnType + ' ' + cName(func[1]) + '(';
+
+  function getArgs(func) {
     var stats = getStatements(func);
     func[2].forEach(function(arg, i) {
       if (i > 0) output += ', ';
@@ -5633,9 +5629,31 @@ function cIfy(ast) {
       output += cName(assign[2][1]);
     });
     if (func[2].length === 0) output += 'void';
+  }
+
+  function getReturnType(func) {
+    var returnType = 'void';
+    traverse(func, function(node, type) {
+      if (type === 'return' && node[1]) returnType = typeName(detectAsmCoercion(node[1]));
+    });
+    return returnType;
+  }
+
+  traverseGeneratedFunctions(ast, function(func) {
+    if (func[1][0] !== '_') return;
+    output = getReturnType(func) + ' ' + cName(func[1]) + '(';
+    getArgs(func);
+    output += ');\n';
+    printErr(output);
+  });
+
+  traverseGeneratedFunctions(ast, function(func) {
+    if (func[1][0] !== '_') return;
+    output = getReturnType(func) + ' ' + cName(func[1]) + '(';
+    getArgs(func);
     output += ') {\n';
     indent++;
-    walkStatements(stats.slice(func[2].length));
+    walkStatements(getStatements(func).slice(func[2].length));
     indent--;
     output += '}';
     printErr(output);
