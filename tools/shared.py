@@ -1703,6 +1703,10 @@ class JS:
     while x % by != 0: x += 1
     return x
 
+  @staticmethod
+  def align_mem(x):
+    return JS.align(x, 8)
+
   INITIALIZER_CHUNK_SIZE = 10240
 
   @staticmethod

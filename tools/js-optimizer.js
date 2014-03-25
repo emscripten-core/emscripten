@@ -5341,7 +5341,7 @@ function cIfy(ast) {
   printErr('#include <stdio.h>');
   printErr('#include <stdint.h>');
   printErr('');
-  printErr('int8_t MEM[10*1024*1024];');
+  printErr('int8_t MEM[10*1024*1024] = "";');
   printErr('int32_t STACKTOP = sizeof(MEM) - 1024*1024;');
   printErr('');
 

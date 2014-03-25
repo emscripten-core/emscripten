@@ -2674,5 +2674,7 @@ int main()
     Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O1', path_from_root('tests', 'hello_world.c')]).communicate()
     assert os.path.exists('a.out.c')
     Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses', '-Wno-incompatible-library-redeclaration']).communicate()
-
+    assert os.path.exists('a.out')
+    out, err = Popen(['./a.out'], stdout=PIPE).communicate()
+    assert 'hello, world!' in out, out
 

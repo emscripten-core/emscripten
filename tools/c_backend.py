@@ -17,6 +17,7 @@ Limitations:
 import os, sys
 import shared
 from shared import execute, unsuffixed
+from asm_module import AsmModule
 
 if 'python' in sys.argv[0]:
   sys.argv = sys.argv[1:]
@@ -58,6 +59,11 @@ print '[em-c-backend] converting to C'
 out = open(output, 'w')
 execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), temp_name, 'cIfy'], stderr=out, env={ 'EMCC_CORES': '1' })
 out.close()
+c = open(output).read()
 
-# use js_optimizer, but one core
+print '[em-c-backend] finalize C'
+asm = AsmModule(temp_name)
+data = asm.mem_init_js.split('[')[1].split(']')[0]
+c = c.replace('""', "{ " + ('0,'*8) + data + " }")
+open(output, 'w').write(c)
 
