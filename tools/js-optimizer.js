@@ -5343,6 +5343,7 @@ function cIfy(ast) {
   printErr('');
   printErr('int8_t MEM[10*1024*1024] = "";');
   printErr('int32_t STACKTOP = sizeof(MEM) - 1024*1024;');
+  printErr('int32_t tempDoublePtr = 0;');
   printErr('');
 
   // shows for each function which of its arguments must be relocated == which are pointers
@@ -5505,7 +5506,7 @@ function cIfy(ast) {
         node[2].forEach(function(arg, i) {
           if (i > 0) output += ', ';
           if (relocations[i]) output += '(' + relocations[i] + ')(((int32_t)MEM)+';
-          walk(arg);
+          walk(arg, true);
           if (relocations[i]) output += ')';
         });
         output += ')';
@@ -5571,11 +5572,11 @@ function cIfy(ast) {
         break;
       }
       case 'break': {
-        output += 'break';
+        output += 'break;';
         break;
       }
       case 'continue': {
-        output += 'continue';
+        output += 'continue;';
         break;
       }
       case 'sub': {
