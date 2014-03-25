@@ -5359,11 +5359,16 @@ function cIfy(ast) {
     Math_sqrt: function(node) {
       node[1][1] = 'sqrtf';
     },
+    printf: function(node) {
+      // varargs doesn't work - at least avoid a segfault, just truncate variadic args
+      node[2].length = 1;
+    },
   };
 
   // shows for each function which of its arguments must be relocated == which are pointers
   var relocationInfo = {
     puts: ['char*'],
+    printf: ['char*'],
   };
   var cExterns = set('stdout', 'stderr', 'stdin');
 
@@ -5516,7 +5521,6 @@ function cIfy(ast) {
           if (callHandlers[name]) {
             if (callHandlers[name](node)) break;
           }
-          //if (name === 'printf') throw 'variadic calls are not possible currently';
           relocations = relocationInfo[name];
         }
         relocations = relocations || [];
