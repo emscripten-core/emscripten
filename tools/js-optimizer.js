@@ -5450,8 +5450,8 @@ function cIfy(ast) {
           // special-case the unsigned coercion
           output += '((uint32_t)';
           walk(node[2]);
-          output += ')) >>> ((uint32_t)';
-          walk(node[2]);
+          output += ') >> ((uint32_t)';
+          walk(node[3]);
           output += ')';
           if (!freeParens) output += ')';
           break;
