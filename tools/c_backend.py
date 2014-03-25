@@ -10,9 +10,10 @@ Run with no arguments to see instructions.
 Limitations:
 
   * No varargs calls to library functions (no printf. use -O1 or above so
-    trivial printfs turn into puts which are ok)
+    trivial printfs turn into puts which are ok).
   * Links with your system libc. There are probably inconsistencies with
     the libc used by emscripten, so things may not work.
+  * argc/argv do not work.
 
 '''
 
