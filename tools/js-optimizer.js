@@ -5549,7 +5549,7 @@ function cIfy(ast) {
         emitIndent();
         output += '} while (';
         walk(node[1], true);
-        output += ')';
+        output += ');';
         break;
       }
       case 'block': {
