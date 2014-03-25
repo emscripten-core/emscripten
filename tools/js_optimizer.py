@@ -32,6 +32,7 @@ class Minifier:
   def __init__(self, js, js_engine):
     self.js = js
     self.js_engine = js_engine
+    self.symbols_file = None
 
   def minify_shell(self, shell, minify_whitespace, source_map=False):
     # Run through js-optimizer.js to find and minify the global symbols
@@ -61,6 +62,14 @@ class Minifier:
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
     code, metadata = output.split('// EXTRA_INFO:')
     self.globs = json.loads(metadata)
+
+    if self.symbols_file:
+      mapfile = open(self.symbols_file, 'w')
+      for key, value in self.globs.iteritems():
+        mapfile.write(value + ':' + key + '\n')
+      mapfile.close()
+      print >> sys.stderr, 'wrote symbol map file to', self.symbols_file
+
     return code.replace('13371337', '0.0')
 
 
@@ -162,6 +171,12 @@ EMSCRIPTEN_FUNCS();
 
       # we assume there is a maximum of one new name per line
       minifier = Minifier(js, js_engine)
+      def check_symbol_mapping(p):
+        if p.startswith('symbolMap='):
+          minifier.symbols_file = p.split('=')[1]
+          return False
+        return True
+      passes = filter(check_symbol_mapping, passes)
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker

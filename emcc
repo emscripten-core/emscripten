@@ -242,6 +242,14 @@ Options that are modified or new in %s include:
                            performance and otherwise might not be
                            performed in -g2.
 
+  --emit-symbol-map        Save a map file between the minified
+                           global names and the original function names.
+                           This allows you to reconstruct meaningful
+                           stack traces, for example. (This is only
+                           relevant when minifying global names, which
+                           happens in -O2 and above, and when no -g
+                           option to prevent minification was specified.)
+
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
@@ -778,6 +786,7 @@ try:
   opt_level = 0
   debug_level = 0
   profiling = False
+  emit_symbol_map = False
   js_opts = None
   llvm_opts = None
   llvm_lto = None
@@ -901,6 +910,9 @@ try:
     elif newargs[i] == '-profiling':
       debug_level = 2
       profiling = True
+      newargs[i] = ''
+    elif newargs[i] == '--emit-symbol-map':
+      emit_symbol_map = True
       newargs[i] = ''
     elif newargs[i] == '--bind':
       bind = True
@@ -1718,7 +1730,9 @@ try:
         js_optimizer_queue += ['registerize']
 
     if opt_level >= 2:
-      if debug_level < 2 and shared.Settings.ASM_JS: js_optimizer_queue += ['minifyNames']
+      if debug_level < 2 and shared.Settings.ASM_JS:
+        js_optimizer_queue += ['minifyNames']
+        if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
       if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
     if closure and shared.Settings.ASM_JS:
