@@ -5338,8 +5338,9 @@ function optimizeFrounds(ast) {
 
 function cIfy(ast) {
   emitAst = false;
-  printErr('#include <stdio.h>');
   printErr('#include <stdint.h>');
+  printErr('#include <math.h>');
+  printErr('#include <stdio.h>');
   printErr('');
   printErr('int8_t MEM[10*1024*1024] = "";');
   printErr('int32_t STACKTOP = sizeof(MEM) - 1024*1024;');
@@ -5354,6 +5355,9 @@ function cIfy(ast) {
     },
     Math_abs: function(node) {
       node[1][1] = 'fabs';
+    },
+    Math_sqrt: function(node) {
+      node[1][1] = 'sqrtf';
     },
   };
 
@@ -5546,6 +5550,33 @@ function cIfy(ast) {
         }
         break;
       }
+      case 'switch': {
+        output += 'switch (';
+        walk(node[1], true);
+        output += ') {\n';
+        indent++;
+        var cases = node[2];
+        for (var i = 0; i < cases.length; i++) {
+          emitIndent();
+          if (cases[i][0]) {
+            output += 'case ';
+            walk(cases[i][0]);
+          } else {
+            output += 'default';
+          }
+          output += ': {\n';
+          indent++;
+          assert(cases[i][1][0][0] === 'block' && cases[i][1].length === 1);
+          walk(cases[i][1][0]);
+          indent--;
+          emitIndent();
+          output += '}\n';
+        }
+        indent--;
+        emitIndent();
+        output += '}';
+        break;
+      }
       case 'while': {
         output += 'while (';
         walk(node[1], true);
@@ -5583,7 +5614,8 @@ function cIfy(ast) {
         break;
       }
       case 'label': {
-        output += node[1] + ':';
+        output += node[1] + ': ';
+        walk(node[2]);
         break;
       }
       case 'break': {
@@ -5675,7 +5707,7 @@ function cIfy(ast) {
       // normal input args were replaced by the canonical ones, so add them here
       func[2].forEach(function(arg, i) {
         emitIndent();
-        output += 'int32_t ' + arg;
+        output += 'int32_t ' + cName(arg);
         if (i === 0) output += ' = argc'
         else if (i === 1) output += ' = (int32_t)argv';
         output += ';\n';
