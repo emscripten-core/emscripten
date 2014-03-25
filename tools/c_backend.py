@@ -5,7 +5,13 @@
 C compiler backend functionality for LLVM: uses the Emscripten infrastructure
 to compile LLVM IR into C.
 
-Run with no arguments to see instructions
+Run with no arguments to see instructions.
+
+Limitations:
+
+  * No varargs calls to library functions (no printf. use -O1 or above so
+    trivial printfs turn into puts which are ok
+
 '''
 
 import os, sys
@@ -46,7 +52,7 @@ for i in range(len(sys.argv)):
 temp_name = unsuffixed(output) + '.js'
 
 print '[em-c-backend] emitting asm.js'
-execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-o', temp_name])
+execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-s', 'LINK_SYSTEM_LIBS=0', '-o', temp_name])
 
 print '[em-c-backend] converting to C'
 out = open(output, 'w')

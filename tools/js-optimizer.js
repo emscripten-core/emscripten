@@ -5347,7 +5347,6 @@ function cIfy(ast) {
 
   // shows for each function which of its arguments must be relocated == which are pointers
   var relocationInfo = {
-    printf: ['char*'],
     puts: ['char*'],
   };
 

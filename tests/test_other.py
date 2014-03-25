@@ -2671,8 +2671,8 @@ int main()
 
 
   def test_c_backend(self):
-    Popen([PYTHON, path_from_root('tools', 'c_backend.py'), path_from_root('tests', 'hello_world.c')]).communicate()
+    Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O1', path_from_root('tests', 'hello_world.c')]).communicate()
     assert os.path.exists('a.out.c')
-    #Popen([CLANG_CC, 'a.out.c']).communicate()
+    Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses', '-Wno-incompatible-library-redeclaration']).communicate()
 
 

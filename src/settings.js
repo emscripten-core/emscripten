@@ -396,6 +396,8 @@ var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us
                      // a side module using emlink.py.
 var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
 
+var LINK_SYSTEM_LIBS = 1; // Whether to link in system libraries
+
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
                              // 1 means this is a normal shared lib, load it with dlopen()
