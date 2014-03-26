@@ -2571,7 +2571,7 @@ int main()
   def test_llvm_lit(self):
     llvm_src = LLVM_ROOT
     while not os.path.exists(os.path.join(llvm_src, 'emscripten-version.txt')): llvm_src = os.path.dirname(llvm_src)
-    cmd = [os.path.join(LLVM_ROOT, 'llvm-lit'), os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
+    cmd = [os.path.join(LLVM_ROOT, 'llvm-lit'), '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print cmd
     p = Popen(cmd)
     p.communicate()
