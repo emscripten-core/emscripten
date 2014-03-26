@@ -18,6 +18,7 @@
  *
  * Authors:
  * - Éloi Rivard <eloi.rivard@gmail.com>
+ * - Thomas Borsos <thomasborsos@gmail.com>
  *
  ******************************************************************************/
 
@@ -50,55 +51,55 @@ var LibraryGLFW = {
 
     DOMToGLFWKeyCode: function(keycode) {
       switch (keycode) {
-        case 0x08: return 295 ; //DOM_VK_BACKSPACE -> GLFW_KEY_BACKSPACE
-        case 0x09: return 293 ; //DOM_VK_TAB -> GLFW_KEY_TAB
-        case 0x0D: return 294 ; //DOM_VK_ENTER -> GLFW_KEY_ENTER
-        case 0x1B: return 255 ; //DOM_VK_ESCAPE -> GLFW_KEY_ESC
-        case 0x6A: return 313 ; //DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
-        case 0x6B: return 315 ; //DOM_VK_ADD -> GLFW_KEY_KP_ADD
-        case 0x6D: return 314 ; //DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
-        case 0x6E: return 316 ; //DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
-        case 0x6F: return 312 ; //DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
-        case 0x70: return 258 ; //DOM_VK_F1 -> GLFW_KEY_F1
-        case 0x71: return 259 ; //DOM_VK_F2 -> GLFW_KEY_F2
-        case 0x72: return 260 ; //DOM_VK_F3 -> GLFW_KEY_F3
-        case 0x73: return 261 ; //DOM_VK_F4 -> GLFW_KEY_F4
-        case 0x74: return 262 ; //DOM_VK_F5 -> GLFW_KEY_F5
-        case 0x75: return 263 ; //DOM_VK_F6 -> GLFW_KEY_F6
-        case 0x76: return 264 ; //DOM_VK_F7 -> GLFW_KEY_F7
-        case 0x77: return 265 ; //DOM_VK_F8 -> GLFW_KEY_F8
-        case 0x78: return 266 ; //DOM_VK_F9 -> GLFW_KEY_F9
-        case 0x79: return 267 ; //DOM_VK_F10 -> GLFW_KEY_F10
-        case 0x7a: return 268 ; //DOM_VK_F11 -> GLFW_KEY_F11
-        case 0x7b: return 269 ; //DOM_VK_F12 -> GLFW_KEY_F12
-        case 0x25: return 285 ; //DOM_VK_LEFT -> GLFW_KEY_LEFT
-        case 0x26: return 283 ; //DOM_VK_UP -> GLFW_KEY_UP
-        case 0x27: return 286 ; //DOM_VK_RIGHT -> GLFW_KEY_RIGHT
-        case 0x28: return 284 ; //DOM_VK_DOWN -> GLFW_KEY_DOWN
-        case 0x21: return 298 ; //DOM_VK_PAGE_UP -> GLFW_KEY_PAGEUP
-        case 0x22: return 299 ; //DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGEDOWN
-        case 0x24: return 300 ; //DOM_VK_HOME -> GLFW_KEY_HOME
-        case 0x23: return 301 ; //DOM_VK_END -> GLFW_KEY_END
-        case 0x2d: return 296 ; //DOM_VK_INSERT -> GLFW_KEY_INSERT
-        case 16  : return 287 ; //DOM_VK_SHIFT -> GLFW_KEY_LSHIFT
-        case 0x05: return 287 ; //DOM_VK_LEFT_SHIFT -> GLFW_KEY_LSHIFT
-        case 0x06: return 288 ; //DOM_VK_RIGHT_SHIFT -> GLFW_KEY_RSHIFT
-        case 17  : return 289 ; //DOM_VK_CONTROL -> GLFW_KEY_LCTRL
-        case 0x03: return 289 ; //DOM_VK_LEFT_CONTROL -> GLFW_KEY_LCTRL
-        case 0x04: return 290 ; //DOM_VK_RIGHT_CONTROL -> GLFW_KEY_RCTRL
-        case 18  : return 291 ; //DOM_VK_ALT -> GLFW_KEY_LALT
-        case 0x02: return 291 ; //DOM_VK_LEFT_ALT -> GLFW_KEY_LALT
-        case 0x01: return 292 ; //DOM_VK_RIGHT_ALT -> GLFW_KEY_RALT
-        case 96  : return 302 ; //GLFW_KEY_KP_0
-        case 97  : return 303 ; //GLFW_KEY_KP_1
-        case 98  : return 304 ; //GLFW_KEY_KP_2
-        case 99  : return 305 ; //GLFW_KEY_KP_3
-        case 100 : return 306 ; //GLFW_KEY_KP_4
-        case 101 : return 307 ; //GLFW_KEY_KP_5
-        case 102 : return 308 ; //GLFW_KEY_KP_6
-        case 103 : return 309 ; //GLFW_KEY_KP_7
-        case 104 : return 310 ; //GLFW_KEY_KP_8
-        case 105 : return 311 ; //GLFW_KEY_KP_9
+        case 0x08: return 295 ; // DOM_VK_BACKSPACE -> GLFW_KEY_BACKSPACE
+        case 0x09: return 293 ; // DOM_VK_TAB -> GLFW_KEY_TAB
+        case 0x0D: return 294 ; // DOM_VK_ENTER -> GLFW_KEY_ENTER
+        case 0x1B: return 255 ; // DOM_VK_ESCAPE -> GLFW_KEY_ESC
+        case 0x6A: return 313 ; // DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
+        case 0x6B: return 315 ; // DOM_VK_ADD -> GLFW_KEY_KP_ADD
+        case 0x6D: return 314 ; // DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
+        case 0x6E: return 316 ; // DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
+        case 0x6F: return 312 ; // DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
+        case 0x70: return 258 ; // DOM_VK_F1 -> GLFW_KEY_F1
+        case 0x71: return 259 ; // DOM_VK_F2 -> GLFW_KEY_F2
+        case 0x72: return 260 ; // DOM_VK_F3 -> GLFW_KEY_F3
+        case 0x73: return 261 ; // DOM_VK_F4 -> GLFW_KEY_F4
+        case 0x74: return 262 ; // DOM_VK_F5 -> GLFW_KEY_F5
+        case 0x75: return 263 ; // DOM_VK_F6 -> GLFW_KEY_F6
+        case 0x76: return 264 ; // DOM_VK_F7 -> GLFW_KEY_F7
+        case 0x77: return 265 ; // DOM_VK_F8 -> GLFW_KEY_F8
+        case 0x78: return 266 ; // DOM_VK_F9 -> GLFW_KEY_F9
+        case 0x79: return 267 ; // DOM_VK_F10 -> GLFW_KEY_F10
+        case 0x7a: return 268 ; // DOM_VK_F11 -> GLFW_KEY_F11
+        case 0x7b: return 269 ; // DOM_VK_F12 -> GLFW_KEY_F12
+        case 0x25: return 285 ; // DOM_VK_LEFT -> GLFW_KEY_LEFT
+        case 0x26: return 283 ; // DOM_VK_UP -> GLFW_KEY_UP
+        case 0x27: return 286 ; // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
+        case 0x28: return 284 ; // DOM_VK_DOWN -> GLFW_KEY_DOWN
+        case 0x21: return 298 ; // DOM_VK_PAGE_UP -> GLFW_KEY_PAGEUP
+        case 0x22: return 299 ; // DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGEDOWN
+        case 0x24: return 300 ; // DOM_VK_HOME -> GLFW_KEY_HOME
+        case 0x23: return 301 ; // DOM_VK_END -> GLFW_KEY_END
+        case 0x2d: return 296 ; // DOM_VK_INSERT -> GLFW_KEY_INSERT
+        case 16  : return 287 ; // DOM_VK_SHIFT -> GLFW_KEY_LSHIFT
+        case 0x05: return 287 ; // DOM_VK_LEFT_SHIFT -> GLFW_KEY_LSHIFT
+        case 0x06: return 288 ; // DOM_VK_RIGHT_SHIFT -> GLFW_KEY_RSHIFT
+        case 17  : return 289 ; // DOM_VK_CONTROL -> GLFW_KEY_LCTRL
+        case 0x03: return 289 ; // DOM_VK_LEFT_CONTROL -> GLFW_KEY_LCTRL
+        case 0x04: return 290 ; // DOM_VK_RIGHT_CONTROL -> GLFW_KEY_RCTRL
+        case 18  : return 291 ; // DOM_VK_ALT -> GLFW_KEY_LALT
+        case 0x02: return 291 ; // DOM_VK_LEFT_ALT -> GLFW_KEY_LALT
+        case 0x01: return 292 ; // DOM_VK_RIGHT_ALT -> GLFW_KEY_RALT
+        case 96  : return 302 ; // GLFW_KEY_KP_0
+        case 97  : return 303 ; // GLFW_KEY_KP_1
+        case 98  : return 304 ; // GLFW_KEY_KP_2
+        case 99  : return 305 ; // GLFW_KEY_KP_3
+        case 100 : return 306 ; // GLFW_KEY_KP_4
+        case 101 : return 307 ; // GLFW_KEY_KP_5
+        case 102 : return 308 ; // GLFW_KEY_KP_6
+        case 103 : return 309 ; // GLFW_KEY_KP_7
+        case 104 : return 310 ; // GLFW_KEY_KP_8
+        case 105 : return 311 ; // GLFW_KEY_KP_9
         default  : return keycode;
       };
     },
@@ -190,8 +191,7 @@ var LibraryGLFW = {
       if (eventButton > 0) {
         if (eventButton == 1) {
           eventButton = 2;
-        }
-        else {
+        } else {
           eventButton = 1;
         }
       }
