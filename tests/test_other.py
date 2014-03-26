@@ -2256,6 +2256,23 @@ int main()
     assert 'test.o' in head, 'Invalid dependency target'
     assert 'test.cpp' in tail and 'test.hpp' in tail, 'Invalid dependencies generated'
 
+  def test_dependency_file_2(self):
+    self.clear()
+    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
+    Popen([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c']).communicate()
+    self.assertContained(open('test.d').read(), 'a.o: a.c\n')
+
+    self.clear()
+    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
+    Popen([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c', '-o', 'test.o']).communicate()
+    self.assertContained(open('test.d').read(), 'test.o: a.c\n')
+
+    self.clear()
+    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
+    os.mkdir('obj')
+    Popen([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c', '-o', 'obj/test.o']).communicate()
+    self.assertContained(open('test.d').read(), 'obj/test.o: a.c\n')
+
   def test_quoted_js_lib_key(self):
     open('lib.js', 'w').write(r'''
 mergeInto(LibraryManager.library, {
