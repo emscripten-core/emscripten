@@ -104,7 +104,7 @@ var LibraryGLFW = {
       };
     },
 
-    //UCS-2 to UTF16 (ISO 10646)
+    // UCS-2 to UTF16 (ISO 10646)
     getUnicodeChar: function(value) {
       var output = '';
       if (value > 0xFFFF) {
@@ -117,7 +117,7 @@ var LibraryGLFW = {
     },
 
     onKeyPress: function(event) {
-      //charCode is only available whith onKeyPress event
+      // charCode is only available whith onKeyPress event
       var char = GLFW.getUnicodeChar(event.charCode);
 
       if (event.charCode) {
@@ -137,7 +137,7 @@ var LibraryGLFW = {
     },
 
     onKeydown: function(event) {
-      GLFW.onKeyChanged(event, 1);//GLFW_PRESS
+      GLFW.onKeyChanged(event, 1);// GLFW_PRESS
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
       // not get called
@@ -147,7 +147,7 @@ var LibraryGLFW = {
     },
 
     onKeyup: function(event) {
-      GLFW.onKeyChanged(event, 0);//GLFW_RELEASE
+      GLFW.onKeyChanged(event, 0);// GLFW_RELEASE
     },
 
     onMousemove: function(event) {
@@ -178,7 +178,7 @@ var LibraryGLFW = {
         return;
       }
 
-      if (status == 1) {//GLFW_PRESS
+      if (status == 1) {// GLFW_PRESS
         try {
           event.target.setCapture();
         } catch (e) {}
@@ -186,7 +186,7 @@ var LibraryGLFW = {
 
       event.preventDefault();
 
-      //DOM and glfw have different button codes
+      // DOM and glfw have different button codes
       var eventButton = event['button'];
       if (eventButton > 0) {
         if (eventButton == 1) {
@@ -201,12 +201,12 @@ var LibraryGLFW = {
 
     onMouseButtonDown: function(event) {
       GLFW.buttons |= (1 << event['button']);
-      GLFW.onMouseButtonChanged(event, 1);//GLFW_PRESS
+      GLFW.onMouseButtonChanged(event, 1);// GLFW_PRESS
     },
 
     onMouseButtonUp: function(event) {
       GLFW.buttons &= ~(1 << event['button']);
-      GLFW.onMouseButtonChanged(event, 0);//GLFW_RELEASE
+      GLFW.onMouseButtonChanged(event, 0);// GLFW_RELEASE
     },
 
     onMouseWheel: function(event) {
@@ -226,8 +226,7 @@ var LibraryGLFW = {
       if (document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
         width = screen["width"];
         height = screen["height"];
-      }
-      else {
+      } else {
         width = GLFW.windowWidth;
         height = GLFW.windowHeight;
         // TODO set position
@@ -292,40 +291,40 @@ var LibraryGLFW = {
 
     //TODO: Init with correct values
     GLFW.params = new Array();
-    GLFW.params[0x00030001] = true; //GLFW_MOUSE_CURSOR
-    GLFW.params[0x00030002] = false; //GLFW_STICKY_KEYS
-    GLFW.params[0x00030003] = true; //GLFW_STICKY_MOUSE_BUTTONS
-    GLFW.params[0x00030004] = false; //GLFW_SYSTEM_KEYS
-    GLFW.params[0x00030005] = false; //GLFW_KEY_REPEAT
-    GLFW.params[0x00030006] = true; //GLFW_AUTO_POLL_EVENTS
-    GLFW.params[0x00020001] = true; //GLFW_OPENED
-    GLFW.params[0x00020002] = true; //GLFW_ACTIVE
-    GLFW.params[0x00020003] = false; //GLFW_ICONIFIED
-    GLFW.params[0x00020004] = true; //GLFW_ACCELERATED
-    GLFW.params[0x00020005] = 0; //GLFW_RED_BITS
-    GLFW.params[0x00020006] = 0; //GLFW_GREEN_BITS
-    GLFW.params[0x00020007] = 0; //GLFW_BLUE_BITS
-    GLFW.params[0x00020008] = 0; //GLFW_ALPHA_BITS
-    GLFW.params[0x00020009] = 0; //GLFW_DEPTH_BITS
-    GLFW.params[0x0002000A] = 0; //GLFW_STENCIL_BITS
-    GLFW.params[0x0002000B] = 0; //GLFW_REFRESH_RATE
-    GLFW.params[0x0002000C] = 0; //GLFW_ACCUM_RED_BITS
-    GLFW.params[0x0002000D] = 0; //GLFW_ACCUM_GREEN_BITS
-    GLFW.params[0x0002000E] = 0; //GLFW_ACCUM_BLUE_BITS
-    GLFW.params[0x0002000F] = 0; //GLFW_ACCUM_ALPHA_BITS
-    GLFW.params[0x00020010] = 0; //GLFW_AUX_BUFFERS
-    GLFW.params[0x00020011] = 0; //GLFW_STEREO
-    GLFW.params[0x00020012] = 0; //GLFW_WINDOW_NO_RESIZE
-    GLFW.params[0x00020013] = 0; //GLFW_FSAA_SAMPLES
-    GLFW.params[0x00020014] = 0; //GLFW_OPENGL_VERSION_MAJOR
-    GLFW.params[0x00020015] = 0; //GLFW_OPENGL_VERSION_MINOR
-    GLFW.params[0x00020016] = 0; //GLFW_OPENGL_FORWARD_COMPAT
-    GLFW.params[0x00020017] = 0; //GLFW_OPENGL_DEBUG_CONTEXT
-    GLFW.params[0x00020018] = 0; //GLFW_OPENGL_PROFILE
+    GLFW.params[0x00030001] = true; // GLFW_MOUSE_CURSOR
+    GLFW.params[0x00030002] = false; // GLFW_STICKY_KEYS
+    GLFW.params[0x00030003] = true; // GLFW_STICKY_MOUSE_BUTTONS
+    GLFW.params[0x00030004] = false; // GLFW_SYSTEM_KEYS
+    GLFW.params[0x00030005] = false; // GLFW_KEY_REPEAT
+    GLFW.params[0x00030006] = true; // GLFW_AUTO_POLL_EVENTS
+    GLFW.params[0x00020001] = true; // GLFW_OPENED
+    GLFW.params[0x00020002] = true; // GLFW_ACTIVE
+    GLFW.params[0x00020003] = false; // GLFW_ICONIFIED
+    GLFW.params[0x00020004] = true; // GLFW_ACCELERATED
+    GLFW.params[0x00020005] = 0; // GLFW_RED_BITS
+    GLFW.params[0x00020006] = 0; // GLFW_GREEN_BITS
+    GLFW.params[0x00020007] = 0; // GLFW_BLUE_BITS
+    GLFW.params[0x00020008] = 0; // GLFW_ALPHA_BITS
+    GLFW.params[0x00020009] = 0; // GLFW_DEPTH_BITS
+    GLFW.params[0x0002000A] = 0; // GLFW_STENCIL_BITS
+    GLFW.params[0x0002000B] = 0; // GLFW_REFRESH_RATE
+    GLFW.params[0x0002000C] = 0; // GLFW_ACCUM_RED_BITS
+    GLFW.params[0x0002000D] = 0; // GLFW_ACCUM_GREEN_BITS
+    GLFW.params[0x0002000E] = 0; // GLFW_ACCUM_BLUE_BITS
+    GLFW.params[0x0002000F] = 0; // GLFW_ACCUM_ALPHA_BITS
+    GLFW.params[0x00020010] = 0; // GLFW_AUX_BUFFERS
+    GLFW.params[0x00020011] = 0; // GLFW_STEREO
+    GLFW.params[0x00020012] = 0; // GLFW_WINDOW_NO_RESIZE
+    GLFW.params[0x00020013] = 0; // GLFW_FSAA_SAMPLES
+    GLFW.params[0x00020014] = 0; // GLFW_OPENGL_VERSION_MAJOR
+    GLFW.params[0x00020015] = 0; // GLFW_OPENGL_VERSION_MINOR
+    GLFW.params[0x00020016] = 0; // GLFW_OPENGL_FORWARD_COMPAT
+    GLFW.params[0x00020017] = 0; // GLFW_OPENGL_DEBUG_CONTEXT
+    GLFW.params[0x00020018] = 0; // GLFW_OPENGL_PROFILE
 
     GLFW.keys = new Array();
 
-    return 1; //GL_TRUE
+    return 1; // GL_TRUE
   },
 
   glfwTerminate: function() {},
@@ -345,33 +344,31 @@ var LibraryGLFW = {
     if (width > 0 && height == 0) {
       height = 3 * width / 4;
     }
-    GLFW.params[0x00020005] = redbits; //GLFW_RED_BITS
-    GLFW.params[0x00020006] = greenbits; //GLFW_GREEN_BITS
-    GLFW.params[0x00020007] = bluebits; //GLFW_BLUE_BITS
-    GLFW.params[0x00020008] = alphabits; //GLFW_ALPHA_BITS
-    GLFW.params[0x00020009] = depthbits; //GLFW_DEPTH_BITS
-    GLFW.params[0x0002000A] = stencilbits; //GLFW_STENCIL_BITS
+    GLFW.params[0x00020005] = redbits; // GLFW_RED_BITS
+    GLFW.params[0x00020006] = greenbits; // GLFW_GREEN_BITS
+    GLFW.params[0x00020007] = bluebits; // GLFW_BLUE_BITS
+    GLFW.params[0x00020008] = alphabits; // GLFW_ALPHA_BITS
+    GLFW.params[0x00020009] = depthbits; // GLFW_DEPTH_BITS
+    GLFW.params[0x0002000A] = stencilbits; // GLFW_STENCIL_BITS
 
-    if (mode == 0x00010001) {//GLFW_WINDOW
+    if (mode == 0x00010001) {// GLFW_WINDOW
       Browser.setCanvasSize(GLFW.initWindowWidth = width,
                             GLFW.initWindowHeight = height);
-      GLFW.params[0x00030003] = true; //GLFW_STICKY_MOUSE_BUTTONS
-    }
-    else if (mode == 0x00010002) {//GLFW_FULLSCREEN
+      GLFW.params[0x00030003] = true; // GLFW_STICKY_MOUSE_BUTTONS
+    } else if (mode == 0x00010002) {// GLFW_FULLSCREEN
       GLFW.requestFullScreen();
-      GLFW.params[0x00030003] = false; //GLFW_STICKY_MOUSE_BUTTONS
-    }
-    else{
+      GLFW.params[0x00030003] = false; // GLFW_STICKY_MOUSE_BUTTONS
+    } else {
       throw "Invalid glfwOpenWindow mode.";
     }
 
     var contextAttributes = {
-      antialias: (GLFW.params[0x00020013] > 1), //GLFW_FSAA_SAMPLES
-      depth: (GLFW.params[0x00020009] > 0), //GLFW_DEPTH_BITS
-      stencil: (GLFW.params[0x0002000A] > 0) //GLFW_STENCIL_BITS
+      antialias: (GLFW.params[0x00020013] > 1), // GLFW_FSAA_SAMPLES
+      depth: (GLFW.params[0x00020009] > 0), // GLFW_DEPTH_BITS
+      stencil: (GLFW.params[0x0002000A] > 0) // GLFW_STENCIL_BITS
     }
     Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
-    return 1; //GL_TRUE
+    return 1; // GL_TRUE
   },
 
   glfwOpenWindowHint: function(target, hint) {
@@ -452,7 +449,7 @@ var LibraryGLFW = {
     setValue(ypos, Browser.mouseY, 'i32');
   },
 
-  //I believe it is not possible to move the mouse with javascript
+  // I believe it is not possible to move the mouse with javascript
   glfwSetMousePos: function(xpos, ypos) {},
 
   glfwGetMouseWheel: function() {
@@ -527,7 +524,7 @@ var LibraryGLFW = {
       str += 'i';
     }
     Runtime.dynCall(str, fun, arg);
-    //One single thread
+    // One single thread
     return 0;
   },
 
@@ -536,7 +533,7 @@ var LibraryGLFW = {
   glfwWaitThread: function(ID, waitmode) {},
 
   glfwGetThreadID: function() {
-    //One single thread
+    // One single thread
     return 0;
   },
 
@@ -559,7 +556,7 @@ var LibraryGLFW = {
   glfwBroadcastCond: function(cond) { throw "glfwBroadcastCond is not implemented."; },
 
   glfwGetNumberOfProcessors: function() {
-    //Threads are disabled anyway…
+    // Threads are disabled anyway…
     return 1;
   },
 
