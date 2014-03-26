@@ -292,6 +292,8 @@ function removeEmptySubNodes(node) {
     node[3] = filterEmptyNodes(node[3]);
   } else if (node[0] === 'block' && node[1]) {
     node[1] = filterEmptyNodes(node[1]);
+  } else if (node[0] === 'seq' && isEmptyNode(node[1])) {
+    return node[2];
   }
 /*
   var stats = getStatements(node);
@@ -3912,6 +3914,9 @@ function eliminate(ast, memSafe) {
           node[0] = 'toplevel';
           node[1] = [];
         }
+      } else if (type === 'assign' && node[1] === true && node[2][0] === 'name' && node[3][0] === 'name' && node[2][1] === node[3][1]) {
+        // elimination led to X = X, which we can just remove
+        return emptyNode();
       }
     }, function(node, type) {
       // post

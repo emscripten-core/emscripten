@@ -810,4 +810,13 @@ function cute($this, $outImage) {
  }
  return 0;
 }
+function selfAssign() {
+ var i1 = 0;
+ i1 = HEAP32[2] | 0;
+ HEAP32[2] = i1 + 1;
+ if (waka) {
+  return 0;
+ }
+ return i1 & 16384 | 0;
+}
 
