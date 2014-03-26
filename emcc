@@ -1147,6 +1147,7 @@ try:
     assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
     target = target_basename + '.o'
     final_suffix = 'o'
+  final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
   # Find library files
   for lib in libs:
@@ -1353,14 +1354,17 @@ try:
     sys.exit(1)
 
   def get_bitcode_file(input_file):
-    if final_suffix == 'o':
+    if final_suffix not in JS_CONTAINING_SUFFIXES:
       # no need for a temp file, just emit to the right place
       if len(input_files) == 1:
         # can just emit directly to the target
-        if specified_target: return specified_target
-        return unsuffixed(input_file) + '.' + final_suffix
-      return unsuffixed(input_file) + '.o'
-    return in_temp(unsuffixed(uniquename(input_file)) + '.o')
+        if specified_target:
+          if specified_target.endswith('/') or specified_target.endswith('\\') or os.path.isdir(specified_target):
+            return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + default_object_extension
+          return specified_target
+        return unsuffixed(input_file) + final_ending
+      return unsuffixed(input_file) + default_object_extension
+    return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
@@ -1419,26 +1423,18 @@ try:
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if not specified_target:
       for input_file in input_files:
-        safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + '.' + final_suffix)
+        safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + final_ending)
     else:
       if len(input_files) == 1:
         temp_output_base = unsuffixed(get_bitcode_file(input_files[0]))
-        if specified_target.endswith('/') or specified_target.endswith('\\') or os.path.isdir(specified_target): # User passed '-o <directory' as the location to output to.
-          obj_output_name = os.path.join(specified_target, os.path.splitext(os.path.basename(input_file))[0] + default_object_extension)
-          logging.debug('User specified -o <directoryname> as the location of the output. Generating output file ' + obj_output_name)
-          try:
-            safe_move(temp_output_base + '.o', obj_output_name)
-          except IOError, e:
-            logging.error('Could not write to output file ' + obj_output_name + '. Perhaps the output directory does not exist?')
-            exit(1)
-        else: # User passed '-o <filename>' as the location to output to.
-          safe_move(temp_output_base + '.o', specified_target)
+        if not specified_target:
+          safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + final_ending)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
           # adjusting the target name away from the temporary file name to the specified target.
           # It will be deleted with the rest of the temporary directory.
           deps = open(temp_output_base + '.d').read()
-          deps = deps.replace(temp_output_base + '.o', specified_target)
+          deps = deps.replace(temp_output_base + default_object_ext, specified_target)
           with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_files[0]) + '.d')), "w") as out_dep:
             out_dep.write(deps)
       else:
