@@ -1585,34 +1585,6 @@ class Building:
     import gen_struct_info
     gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
   
-  @staticmethod
-  def preprocess(infile, outfile):
-    '''
-      Preprocess source C/C++ in some special ways that emscripten needs. Returns
-      a filename (potentially the same one if nothing was changed).
-
-      Currently this only does emscripten_jcache_printf(..) rewriting.
-    '''
-    src = open(infile).read() # stack warning on jcacheprintf! in docs # add jcache printf test separatrely, for content of printf
-    if 'emscripten_jcache_printf' not in src: return infile
-    def fix(m):
-      text = m.groups(0)[0]
-      assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
-      assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
-      if os.environ.get('EMCC_FAST_COMPILER') != '0': # fake it in fastcomp
-        return text.replace('emscripten_jcache_printf', 'printf')
-      start = text.index('(')
-      end = text.rindex(')')
-      args = text[start+1:end].split(',')
-      args = map(lambda x: x.strip(), args)
-      if args[0][0] == '"':
-        # flatten out
-        args = map(lambda x: str(ord(x)), args[0][1:len(args[0])-1]) + ['0'] + args[1:]
-      return 'emscripten_jcache_printf_(' + ','.join(args) + ')'
-    src = re.sub(r'(emscripten_jcache_printf\([^)]+\))', lambda m: fix(m), src)
-    open(outfile, 'w').write(src)
-    return outfile
-
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
 JCache = cache.JCache(Cache)
@@ -1820,6 +1792,11 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
+def safe_move(src, dst):
+  if os.path.abspath(src) == os.path.abspath(dst):
+    return
+  shutil.move(src, dst)
 
 import js_optimizer
 

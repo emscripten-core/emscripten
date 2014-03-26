@@ -1978,23 +1978,6 @@ seeked= file.
     code = open('a.out.js').read()
     assert 'SAFE_HEAP' in code, 'valid -s option had an effect'
 
-  def test_jcache_printf(self):
-    open(self.in_dir('src.cpp'), 'w').write(r'''
-      #include <stdio.h>
-      #include <stdint.h>
-      #include <emscripten.h>
-      int main() {
-        emscripten_jcache_printf("hello world\n");
-        emscripten_jcache_printf("hello %d world\n", 5);
-        emscripten_jcache_printf("hello %.3f world\n", 123.456789123);
-        emscripten_jcache_printf("hello %llx world\n", 0x1234567811223344ULL);
-        return 0;
-      }
-    ''')
-    Popen([PYTHON, EMCC, self.in_dir('src.cpp')]).communicate()
-    output = run_js('a.out.js')
-    self.assertIdentical('hello world\nhello 5 world\nhello 123.457 world\nhello 1234567811223300 world\n', output)
-
   def test_conftest_s_flag_passing(self):
     open(os.path.join(self.get_dir(), 'conftest.c'), 'w').write(r'''
       int main() {

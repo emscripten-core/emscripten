@@ -50,7 +50,7 @@ emcc can be influenced by a few environment variables:
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS
+from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
 from tools.response_file import read_response_file
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
@@ -1352,13 +1352,22 @@ try:
     execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
     sys.exit(1)
 
+  def get_bitcode_file(input_file):
+    if final_suffix == 'o':
+      # no need for a temp file, just emit to the right place
+      if len(input_files) == 1:
+        # can just emit directly to the target
+        if specified_target: return specified_target
+        return unsuffixed(input_file) + '.' + final_suffix
+      return unsuffixed(input_file) + '.o'
+    return in_temp(unsuffixed(uniquename(input_file)) + '.o')
+
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for input_file in input_files:
     file_ending = filename_type_ending(input_file)
     if file_ending.endswith(SOURCE_ENDINGS):
       logging.debug('compiling source file: ' + input_file)
-      input_file = shared.Building.preprocess(input_file, in_temp(uniquename(input_file)))
-      output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
+      output_file = get_bitcode_file(input_file)
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if file_ending.endswith(CXX_ENDINGS):
@@ -1410,20 +1419,20 @@ try:
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if not specified_target:
       for input_file in input_files:
-        shutil.move(in_temp(unsuffixed(uniquename(input_file)) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
+        safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + '.' + final_suffix)
     else:
       if len(input_files) == 1:
-        temp_output_base = in_temp(unsuffixed(uniquename(input_files[0])))
+        temp_output_base = unsuffixed(get_bitcode_file(input_files[0]))
         if specified_target.endswith('/') or specified_target.endswith('\\') or os.path.isdir(specified_target): # User passed '-o <directory' as the location to output to.
           obj_output_name = os.path.join(specified_target, os.path.splitext(os.path.basename(input_file))[0] + default_object_extension)
           logging.debug('User specified -o <directoryname> as the location of the output. Generating output file ' + obj_output_name)
           try:
-            shutil.move(temp_output_base + '.o', obj_output_name)
+            safe_move(temp_output_base + '.o', obj_output_name)
           except IOError, e:
             logging.error('Could not write to output file ' + obj_output_name + '. Perhaps the output directory does not exist?')
             exit(1)
         else: # User passed '-o <filename>' as the location to output to.
-          shutil.move(temp_output_base + '.o', specified_target)
+          safe_move(temp_output_base + '.o', specified_target)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
           # adjusting the target name away from the temporary file name to the specified target.
