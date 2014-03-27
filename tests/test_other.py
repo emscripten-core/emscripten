@@ -1774,16 +1774,9 @@ This pointer might make sense in another type signature: i: 0
   def test_js_optimizer(self):
     for input, expected, passes in [
       (path_from_root('tools', 'test-js-optimizer.js'), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
-       ['hoistMultiples', 'loopOptimizer', 'removeAssignsToUndefined', 'simplifyExpressions']),
-      (path_from_root('tools', 'test-js-optimizer-t2c.js'), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
-       ['simplifyExpressions', 'optimizeShiftsConservative']),
-      (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
-       ['simplifyExpressions', 'optimizeShiftsAggressive']),
+       ['hoistMultiples', 'removeAssignsToUndefined', 'simplifyExpressions']),
       (path_from_root('tools', 'test-js-optimizer-si.js'), open(path_from_root('tools', 'test-js-optimizer-si-output.js')).read(),
        ['simplifyIfs']),
-      # Make sure that optimizeShifts handles functions with shift statements.
-      (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3-output.js')).read(),
-       ['optimizeShiftsAggressive']),
       (path_from_root('tools', 'test-js-optimizer-regs.js'), open(path_from_root('tools', 'test-js-optimizer-regs-output.js')).read(),
        ['registerize']),
       (path_from_root('tools', 'eliminator', 'eliminator-test.js'), open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read(),
