@@ -3988,7 +3988,9 @@ def process(filename):
         return 0;
       }
       '''
-    self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), post_build=post)
+    def clean(out, err):
+      return '\n'.join(filter(lambda line: 'warning' not in line, (out + err).split('\n')))
+    self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), post_build=post, output_nicerizer=clean)
 
   def test_mount(self):
     src = open(path_from_root('tests', 'fs', 'test_mount.c'), 'r').read()
