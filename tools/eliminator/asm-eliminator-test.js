@@ -1037,5 +1037,54 @@ function selfAssign() {
  STACKTOP = STACKTOP;
  return i1 & 16384 | 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign"]
+function elimOneLoopVar($argc, $argv) {
+ $argc = $argc | 0;
+ $argv = $argv | 0;
+ var $0 = 0, $1 = 0, $arg$0 = 0, $arrayidx = 0, $call10 = Math_fround(0), $cmp = 0, $cmp11 = 0, $cmp119 = 0, $cmp12 = 0, $cmp7 = 0, $conv = 0, $conv8 = Math_fround(0), $conv9 = Math_fround(0), $curri$012 = 0, $inc = 0, $inc14$primes$0 = 0, $inc16 = 0, $j$010 = 0, $j$010$phi = 0, $ok$0 = 0;
+ var $primes$011 = 0, $rem = 0, $retval$0 = 0, $sub = 0, $vararg_buffer1 = 0, label = 0, sp = 0;
+ $curri$012 = 2;
+ $primes$011 = 0;
+ while (1) {
+  $conv9 = Math_fround($curri$012 | 0);
+  $call10 = Math_fround(Math_sqrt(Math_fround($conv9)));
+  $cmp119 = $call10 > Math_fround(+2);
+  L15 : do {
+   if ($cmp119) {
+    $j$010 = 2;
+    while (1) {
+     $rem = ($curri$012 | 0) % ($j$010 | 0) & -1;
+     $cmp12 = ($rem | 0) == 0;
+     $inc = $j$010 + 1 | 0;
+     if ($cmp12) {
+      $ok$0 = 0;
+      break L15;
+     }
+     $conv8 = Math_fround($inc | 0);
+     $cmp11 = $conv8 < $call10;
+     if ($cmp11) {
+      $j$010$phi = $inc;
+      $j$010 = $j$010$phi;
+     } else {
+      $ok$0 = 1;
+      break;
+     }
+    }
+   } else {
+    $ok$0 = 1;
+   }
+  } while (0);
+  $inc14$primes$0 = $ok$0 + $primes$011 | 0;
+  $inc16 = $curri$012 + 1 | 0;
+  $cmp7 = ($inc14$primes$0 | 0) < ($arg$0 | 0);
+  if ($cmp7) {
+   $curri$012 = $inc16;
+   $primes$011 = $inc14$primes$0;
+  } else {
+   break;
+  }
+ }
+ HEAP32[$vararg_buffer1 >> 2] = $curri$012;
+ return $retval$0 | 0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign", "elimOneLoopVar"]
 

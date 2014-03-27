@@ -3964,7 +3964,7 @@ function eliminate(ast, memSafe) {
                 }
               }
             }
-            if (loopers.length < assigns.length) return; // TODO: handle the case where can can just eliminate one. (we can't optimize the break, but we can remove the var at least)
+            if (loopers.length === 0) return;
             for (var l = 0; l < loopers.length; l++) {
               var looper = loopers[l];
               var helper = helpers[l];
@@ -4016,9 +4016,24 @@ function eliminate(ast, memSafe) {
             // simplify the if. we remove the if branch, leaving only the else
             if (flip) {
               last[1] = simplifyNotCompsDirect(['unary-prefix', '!', last[1]]);
+              var temp = last[2];
               last[2] = last[3];
+              last[3] = temp;
             }
-            last.pop();
+            if (loopers.length === assigns.length) {
+              last.pop();
+            } else {
+              var elseStats = getStatements(last[3]);
+              for (var i = 0; i < elseStats.length; i++) {
+                var stat = elseStats[i];
+                if (stat[0] === 'stat') stat = stat[1];
+                if (stat[0] === 'assign' && stat[2][0] === 'name') {
+                  if (loopers.indexOf(stat[2][1]) >= 0) {
+                    elseStats[i] = emptyNode();
+                  }
+                }
+              }
+            }
           }
         }
       }

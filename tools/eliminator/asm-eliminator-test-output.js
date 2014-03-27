@@ -819,4 +819,42 @@ function selfAssign() {
  }
  return i1 & 16384 | 0;
 }
+function elimOneLoopVar($argc, $argv) {
+ $argc = $argc | 0;
+ $argv = $argv | 0;
+ var $arg$0 = 0, $call10 = Math_fround(0), $curri$012 = 0, $inc = 0, $j$010 = 0, $ok$0 = 0, $primes$011 = 0, $retval$0 = 0, $vararg_buffer1 = 0;
+ $curri$012 = 2;
+ $primes$011 = 0;
+ while (1) {
+  $call10 = Math_fround(Math_sqrt(Math_fround(Math_fround($curri$012 | 0))));
+  L15 : do {
+   if ($call10 > Math_fround(+2)) {
+    $j$010 = 2;
+    while (1) {
+     $inc = $j$010 + 1 | 0;
+     if ((($curri$012 | 0) % ($j$010 | 0) & -1 | 0) == 0) {
+      $ok$0 = 0;
+      break L15;
+     }
+     if (Math_fround($inc | 0) < $call10) {
+      $j$010 = $inc;
+     } else {
+      $ok$0 = 1;
+      break;
+     }
+    }
+   } else {
+    $ok$0 = 1;
+   }
+  } while (0);
+  $primes$011 = $ok$0 + $primes$011 | 0;
+  if (($primes$011 | 0) >= ($arg$0 | 0)) {
+   break;
+  } else {
+   $curri$012 = $curri$012 + 1 | 0;
+  }
+ }
+ HEAP32[$vararg_buffer1 >> 2] = $curri$012;
+ return $retval$0 | 0;
+}
 
