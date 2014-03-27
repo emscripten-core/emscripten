@@ -10,11 +10,11 @@ Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
 
 import os, sys, re
 
-ALLOW_POINTERS = False
+ALLOW_POINTERS = True
 ALLOW_MISC = True
 MEMCPY = False
 MEMCPY2 = False
-NO_DLMALLOC = True
+NO_DLMALLOC = False
 
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
