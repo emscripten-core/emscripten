@@ -1434,7 +1434,8 @@ try:
           # adjusting the target name away from the temporary file name to the specified target.
           # It will be deleted with the rest of the temporary directory.
           deps = open(temp_output_base + '.d').read()
-          deps = deps.replace(temp_output_base + default_object_ext, specified_target)
+
+          deps = deps.replace(temp_output_base + default_object_extension, specified_target)
           with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_files[0]) + '.d')), "w") as out_dep:
             out_dep.write(deps)
       else:
