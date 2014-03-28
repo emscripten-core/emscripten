@@ -5661,16 +5661,28 @@ function cIfy(ast) {
         break;
       }
       case 'label': {
-        output += node[1] + ': ';
+        output += node[1] + ':\n';
+        emitIndent();
         walk(node[2]);
+        output += '\n';
+        emitIndent();
+        output += node[1] + '_post:';
         break;
       }
       case 'break': {
-        output += 'break;';
+        if (!node[1]) {
+          output += 'break;';
+        } else {
+          output += 'goto ' + node[1] + '_post;';
+        }
         break;
       }
       case 'continue': {
-        output += 'continue;';
+        if (!node[1]) {
+          output += 'continue;';
+        } else {
+          output += 'goto ' + node[1] + ';';
+        }
         break;
       }
       case 'sub': {
