@@ -5682,7 +5682,6 @@ function cIfy(ast) {
             break;
           }
         }
-
         if (!freeParens) output += '(';
         output += '*((';
         assert(node[1][0] === 'name');
