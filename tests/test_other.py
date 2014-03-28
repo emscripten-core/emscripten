@@ -2682,3 +2682,14 @@ int main()
         symbols = open('a.out.js.symbols').read()
         assert ':_main' in symbols
 
+  def test_bc_to_bc(self):
+    # emcc should 'process' bitcode to bitcode. build systems can request this if
+    # e.g. they assume our 'executable' extension is bc, and compile an .o to a .bc
+    # (the user would then need to build bc to js of course, but we need to actually
+    # emit the bc)
+    cmd = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')]).communicate()
+    assert os.path.exists('hello_world.o')
+    cmd = Popen([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.bc']).communicate()
+    assert os.path.exists('hello_world.o')
+    assert os.path.exists('hello_world.bc')
+

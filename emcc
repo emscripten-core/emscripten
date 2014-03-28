@@ -1394,8 +1394,6 @@ try:
         temp_files.append(temp_file)
       elif file_ending.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
-          # Note that by assembling the .ll file, then disassembling it later, we will
-          # remove annotations which is a good thing for compilation time
           logging.debug('assembling assembly file: ' + input_file)
           temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
           shared.Building.llvm_as(input_file, temp_file)
@@ -1426,15 +1424,13 @@ try:
         safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + final_ending)
     else:
       if len(input_files) == 1:
-        temp_output_base = unsuffixed(get_bitcode_file(input_files[0]))
-        if not specified_target:
-          safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + final_ending)
+        safe_move(temp_files[0], specified_target if specified_target else unsuffixed_basename(input_file) + final_ending)
+        temp_output_base = unsuffixed(temp_files[0])
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
           # adjusting the target name away from the temporary file name to the specified target.
           # It will be deleted with the rest of the temporary directory.
           deps = open(temp_output_base + '.d').read()
-
           deps = deps.replace(temp_output_base + default_object_extension, specified_target)
           with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_files[0]) + '.d')), "w") as out_dep:
             out_dep.write(deps)
