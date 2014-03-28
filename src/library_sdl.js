@@ -411,6 +411,10 @@ var LibrarySDL = {
       _free(info.pixelFormat);
       _free(surf);
       SDL.surfaces[surf] = null;
+
+      if (surf === SDL.screen) {
+        SDL.screen = null;
+      }
     },
 
     touchX: 0, touchY: 0,
@@ -1036,7 +1040,7 @@ var LibrarySDL = {
     // Free the old surface first.
     if (SDL.screen) {
       SDL.freeSurface(SDL.screen);
-      SDL.screen = null;
+      assert(!SDL.screen);
     }
     SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
     if (!SDL.addedResizeListener) {
