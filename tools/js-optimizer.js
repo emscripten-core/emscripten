@@ -5434,6 +5434,10 @@ function cIfy(ast) {
     }
   }
   function cName(name) {
+    switch (name) {
+      case '_malloc': return 'emscripten_malloc'; // system libc we link to for printf cannot use our malloc/free!
+      case '_free': return 'emscripten_free'; // system libc we link to for printf cannot use our malloc/free!
+    }
     if (name[0] === '$') return '_' + name.substr(1);
     if (name[0] === '_') return name.substr(1);
     return name;
