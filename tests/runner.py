@@ -352,7 +352,7 @@ process(sys.argv[1])
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + str(Building.COMPILER_TEST_OPTS) + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '')
+    cache_name = name + str(Building.COMPILER_TEST_OPTS) + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '_') + (self.env.get('EMCC_FAST_COMPILER') or '_')
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
