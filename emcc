@@ -95,8 +95,7 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the auto
                                              # dlmalloc makes it hard to compare native and js builds
 EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we treat as if they were passed to us on the commandline
 
-if DEBUG: logging.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else ''))
-
+if DEBUG: logging.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '') + '  (in ' + os.getcwd() + ')')
 if EMCC_CFLAGS: sys.argv.append(EMCC_CFLAGS)
 
 if DEBUG and LEAVE_INPUTS_RAW: logging.warning('leaving inputs raw')
@@ -975,7 +974,7 @@ try:
         # swap in debug logging
         DEBUG = 1
         shared.set_logging()
-        logging.debug('invocation: ' + ' '.join(sys.argv))
+        logging.debug('-v invocation: ' + ' '.join(sys.argv))
         shared.apply_configuration() # reset config to pick up change
         shared.check_sanity(force=True)
       newargs[i] = ''
@@ -1445,9 +1444,10 @@ try:
         # we have multiple files: Link them
         logging.debug('link: ' + str(temp_files) + specified_target)
         shared.Building.link(temp_files, specified_target)
+    logging.debug('stopping at bitcode')
     exit(0)
 
-  log_time('bitcodeize inputs')
+  log_time('process inputs')
 
   ## Continue on to create JavaScript
 
