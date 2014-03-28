@@ -56,14 +56,14 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       argv.push(0);
     }
   }
-  var argv = [allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_NORMAL) ];
+  var argv = [allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_STATIC) ];
   pad();
   for (var i = 0; i < argc-1; i = i + 1) {
-    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_NORMAL));
+    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_STATIC));
     pad();
   }
   argv.push(0);
-  argv = allocate(argv, 'i32', ALLOC_NORMAL);
+  argv = allocate(argv, 'i32', ALLOC_STATIC);
 
   initialStackTop = STACKTOP;
 
