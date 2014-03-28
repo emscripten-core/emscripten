@@ -5347,6 +5347,50 @@ function cIfy(ast) {
   printErr('int32_t tempDoublePtr = 0;');
   printErr('');
 
+  function fixFunc(func) {
+    // fix up some things, like varargs
+    traverse(func, function(node) {
+      var stats = getStatements(node);
+      if (stats) {
+        for (var i = 0; i < stats.length; i++) {
+          var curr = stats[i];
+          if (curr[0] === 'stat') curr = curr[1];
+          if (curr[0] === 'assign') curr = curr[3];
+          curr = stripCasts(curr);
+          if (curr[0] === 'call' && curr[1][0] === 'name') {
+            if (cName(curr[1][1]) === 'printf') {
+              var vararg = curr[2][1];
+              if (!vararg) return;
+              vararg = stripCasts(vararg)[1];
+              printErr('VA ' + JSON.stringify(vararg));
+              var args = [];
+              var j = i;
+              while (--j >= 0) {
+                var temp = stats[j];
+                if (temp[0] === 'stat') temp = temp[1];
+                if (temp[0] === 'assign' && temp[2][0] === 'sub') {
+                  var target = stripShifts(stripCasts(temp[2][2]));
+                  var offset = 0;
+                  if (target[0] === 'binary' && target[1] === '+' && target[3][0] === 'num') {
+                    offset = target[3][1];
+                    target = target[2];
+                  }
+                  if (target[0] === 'name' && target[1] === vararg) {
+                    args.unshift([offset, temp[3], temp[2][1][1].indexOf('F') >= 0]); // offset, value, isFloat
+                    stats[j] = emptyNode();
+                  } else break;
+                } else break;
+              }
+              for (var j = 0; j < args.length; j++) {
+                curr[2][1+j] = args[j][1];
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
   // totally custom behavior per function
   var callHandlers = {
     Math_imul: function(node) {
@@ -5358,10 +5402,6 @@ function cIfy(ast) {
     },
     Math_sqrt: function(node) {
       node[1][1] = 'sqrtf';
-    },
-    printf: function(node) {
-      // varargs doesn't work - at least avoid a segfault, just truncate variadic args
-      node[2].length = 1;
     },
   };
 
@@ -5657,6 +5697,7 @@ function cIfy(ast) {
         if (!freeParens) output += ')';
         break;
       }
+      case 'toplevel': break; // empty node
       default: throw 'wha? ' + node[0];
     }
     if (stat) output += ';';
@@ -5703,6 +5744,7 @@ function cIfy(ast) {
 
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1][0] !== '_') return;
+    fixFunc(func);
     output = getReturnType(func) + ' ' + cName(func[1]) + '(';
     getArgs(func);
     output += ') {\n';
