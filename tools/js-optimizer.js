@@ -5362,7 +5362,6 @@ function cIfy(ast) {
               var vararg = curr[2][1];
               if (!vararg) return;
               vararg = stripCasts(vararg)[1];
-              printErr('VA ' + JSON.stringify(vararg));
               var args = [];
               var j = i;
               while (--j >= 0) {
@@ -5481,7 +5480,7 @@ function cIfy(ast) {
             switch (node[3][1]) {
               case '+': case '-': case '|': case '&': {
                 walk(node[2], true);
-                if (node[3][3][0] === 'num' && node[3][3][1] === 1) {
+                if (node[3][3][0] === 'num' && node[3][3][1] === 1 && (node[3][1] === '+' || node[3][1] === '-')) {
                   output += node[3][1] + node[3][1];
                 } else {
                   output += ' ' + node[3][1] + '= ';
