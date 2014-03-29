@@ -12,6 +12,8 @@
 #include <memory>
 #include <string>
 
+#define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
+
 namespace emscripten {
     namespace internal {
         typedef void (*GenericFunction)();

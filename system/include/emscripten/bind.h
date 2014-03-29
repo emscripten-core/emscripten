@@ -17,8 +17,6 @@ namespace emscripten {
         BY_EMVAL = 2,
     };
 
-#define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
-
     namespace internal {
         typedef long GenericEnumValue;
 
