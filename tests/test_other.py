@@ -2673,13 +2673,14 @@ int main()
   def test_c_backend(self):
     for filename, output in [
       (path_from_root('tests', 'hello_world.c'), 'hello, world!'),
+      (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(5) = 7.'),
       #(path_from_root('tests', 'linpack.c'), 'Unrolled Double  Precision'),
     ]:
-      print filename, output
+      print filename, output, '....................................'
       self.clear()
       Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O3', filename]).communicate()
       assert os.path.exists('a.out.c')
-      Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses']).communicate()
+      Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses'], stderr=PIPE).communicate()
       assert os.path.exists('a.out')
       out, err = Popen(['./a.out'], stdout=PIPE).communicate()
       self.assertContained(output, out)
