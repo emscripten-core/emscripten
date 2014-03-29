@@ -70,7 +70,7 @@ data = asm.mem_init_js.split('[')[1].split(']')[0]
 c = c.replace('""', "{ " + ('0,'*8) + data + " }")
 # add runtime and libc support code
 open(output, 'w').write(c + r'''
-int32_t emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
+int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
   int32_t i;
   for (i = 0; i < num; i++) {
     MEM[8+dest+i] = MEM[8+src+i];
@@ -78,7 +78,7 @@ int32_t emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
   return dest;
 }
 
-int32_t sbrk(int32_t bytes) {
+int32_t em__sbrk(int32_t bytes) {
   static int32_t DYNAMICTOP = 5246976;
   int32_t ret = DYNAMICTOP;
   if (bytes != 0) DYNAMICTOP += (bytes+7)&-8;

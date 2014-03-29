@@ -5402,12 +5402,14 @@ function cIfy(ast) {
     Math_sqrt: function(node) {
       node[1][1] = 'sqrtf';
     },
+    fprintf: function() { throw 'fprintf is not supported yet' },
   };
 
   // shows for each function which of its arguments must be relocated == which are pointers
   var relocationInfo = {
     puts: ['char*'],
     printf: ['char*'],
+    atoi: ['char*'],
   };
   var cExterns = set('stdout', 'stderr', 'stdin');
 
@@ -5435,11 +5437,16 @@ function cIfy(ast) {
   }
   function cName(name) {
     switch (name) {
-      case '_malloc': return 'emscripten_malloc'; // system libc we link to for printf cannot use our malloc/free!
-      case '_free': return 'emscripten_free'; // system libc we link to for printf cannot use our malloc/free!
+      // whitelist some libc functions we can just call
+      case '_puts': case '_abort': case '_printf': case '_atoi': case '_putchar':
+      case '_sysconf': case '_time': case '___errno_location': { // the ones on this line are suspect
+        return name.substr(1);
+      }
+      // basic stuff like main we cannot rename
+      case '_main': return name.substr(1);
     }
     if (name[0] === '$') return '_' + name.substr(1);
-    if (name[0] === '_') return name.substr(1);
+    if (name[0] === '_') return 'em_' + name; // avoid collisions with system malloc etc
     return name;
   }
   function typeName(asmType) {
