@@ -317,39 +317,32 @@ function __embind_register_bool(rawType, name, size, trueValue, falseValue) {
 }
 
 function getShiftFromSize(size) {
-    if (size === 1) {
-        return 0;
-    } else if (size === 2) {
-        return 1;
-    } else if (size === 4) {
-        return 2;
-    } else if (size === 8) {
-        return 3;
-    } else {
-        throw new TypeError('Unknown type size: ' + size);
+    switch (size) {
+        case 1: return 0;
+        case 2: return 1;
+        case 4: return 2;
+        case 8: return 3;
+        default:
+            throw new TypeError('Unknown type size: ' + size);
     }
 }
 
 function integerReadValueFromPointer(shift, signed) {
-    // TODO: varargs always promote integer arguments to int... could
-    // that break this code?
-    if (shift === 0) {
-        return function(pointer) {
+    switch (shift) {
+        case 0: return function(pointer) {
             var heap = signed ? HEAP8 : HEAPU8;
             return this['fromWireType'](heap[pointer]);
         };
-    } else if (shift === 1) {
-        return function(pointer) {
+        case 1: return function(pointer) {
             var heap = signed ? HEAP16 : HEAPU16;
             return this['fromWireType'](heap[pointer >> 1]);
         };
-    } else if (shift === 2) {
-        return function(pointer) {
+        case 2: return function(pointer) {
             var heap = signed ? HEAP32 : HEAPU32;
             return this['fromWireType'](heap[pointer >> 2]);
         };
-    } else {
-        throw new TypeError("Unknown integer type: " + name);
+        default:
+            throw new TypeError("Unknown integer type: " + name);
     }
 }
 
@@ -403,7 +396,9 @@ function __embind_register_float(rawType, name, size) {
         },
         'varArgAdvance': 8,
         'readValueFromVarArg': function(pointer) {
-            // vararg floats always promote to double
+            // embind arg pack floats are always promoted to double.
+            // We could change this and have C++ pass floats to
+            // JavaScript without converting to double.
             return this['fromWireType'](HEAPF64[pointer >> 3]);
         },
         destructorFunction: null, // This type does not need a destructor
