@@ -64,7 +64,10 @@ mergeInto(LibraryManager.library, {
       if (path === '/') return '/';
       var lastSlash = path.lastIndexOf('/');
       if (lastSlash === -1) return path;
-      return path.substr(lastSlash+1);
+      if (lastSlash === path.length - 1) {
+        return PATH.basename(path.substr(0, lastSlash));
+      }
+      return path.substr(lastSlash + 1);
     },
     extname: function(path) {
       return PATH.splitPath(path)[3];
