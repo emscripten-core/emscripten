@@ -5408,8 +5408,17 @@ function cIfy(ast) {
     puts: ['char*'],
     printf: ['char*'],
     atoi: ['char*'],
+    time: ['time_t*'],
   };
+
   var cExterns = set('stdout', 'stderr', 'stdin');
+
+  var funcIncludes = {
+    time: 'time.h',
+    sysconf: 'unistd.h',
+  };
+
+  var includes = [];
 
   function stripCasts(node) {
     if (node[0] === 'binary' && node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
@@ -5436,8 +5445,8 @@ function cIfy(ast) {
   function cName(name) {
     switch (name) {
       // whitelist some libc functions we can just call
-      case '_puts': case '_abort': case '_printf': case '_atoi': case '_putchar':
-      case '_sysconf': case '_time': case '___errno_location': { // the ones on this line are suspect
+      case '_puts': case '_abort': case '_printf': case '_atoi': case '_putchar': case '_sysconf': case '_time':
+      case '___errno_location': { // the ones on this line are suspect
         return name.substr(1);
       }
     }
@@ -5568,6 +5577,7 @@ function cIfy(ast) {
             if (callHandlers[name](node)) break;
           }
           relocations = relocationInfo[name];
+          if (funcIncludes[name]) includes.push(funcIncludes[name]);
         }
         relocations = relocations || [];
         walk(node[1]);
@@ -5777,6 +5787,8 @@ function cIfy(ast) {
     output += '}\n';
     printErr(output);
   });
+  printErr('');
+  printErr('INCLUDES: ' + includes);
   printErr('');
 }
 

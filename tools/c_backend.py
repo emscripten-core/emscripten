@@ -65,6 +65,7 @@ out = open(output, 'w')
 execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), temp_name, 'cIfy'], stderr=out, env={ 'EMCC_CORES': '1' })
 out.close()
 c = open(output).read()
+c, includes = c.split('INCLUDES: ')
 
 print '[em-c-backend] finalize C'
 asm = AsmModule(temp_name)
@@ -76,13 +77,22 @@ o.write(r'''
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <assert.h>
+''')
 
+for i in includes.strip().split(','):
+  if i: o.write('#include <' + i  + '>\n')
+
+o.write(r'''
 static int8_t MEM[64*1024*1024] = { %s };
 
 static int32_t STACKTOP = sizeof(MEM) - 1024*1024;
 static int32_t DYNAMICTOP = 5246976;
 static int32_t tempDoublePtr = 0;
+
+int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num);
+int32_t em__sbrk(int32_t bytes);
 
 //===
 ''' % (('0,'*8) + data) + c + r'''//===
