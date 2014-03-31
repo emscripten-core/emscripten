@@ -9,11 +9,10 @@ Run with no arguments to see instructions.
 
 Limitations:
 
-  * No varargs calls to library functions (no printf. use -O1 or above so
-    trivial printfs turn into puts which are ok).
   * Links with your system libc. There are probably inconsistencies with
     the libc used by emscripten, so things may not work.
-  * argc/argv do not work.
+  * printf of %s (strings) does not work. Use puts.
+  * varargs in general, including printf, might only work for a single arg.
 
 '''
 
@@ -70,9 +69,24 @@ c = open(output).read()
 print '[em-c-backend] finalize C'
 asm = AsmModule(temp_name)
 data = asm.mem_init_js.split('[')[1].split(']')[0]
-c = c.replace('""', "{ " + ('0,'*8) + data + " }")
 # add runtime and libc support code
-open(output, 'w').write(c + r'''
+o = open(output, 'w')
+o.write(r'''
+#include <stdint.h>
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+
+static int8_t MEM[64*1024*1024] = { %s };
+
+static int32_t STACKTOP = sizeof(MEM) - 1024*1024;
+static int32_t DYNAMICTOP = 5246976;
+static int32_t tempDoublePtr = 0;
+
+//===
+''' % (('0,'*8) + data) + c + r'''//===
+
 int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
   int32_t i;
   for (i = 0; i < num; i++) {
@@ -82,12 +96,37 @@ int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
 }
 
 int32_t em__sbrk(int32_t bytes) {
-  static int32_t DYNAMICTOP = 5246976;
   int32_t ret = DYNAMICTOP;
   if (bytes != 0) DYNAMICTOP += (bytes+7)&-8;
   return ret;
 }
 
-'''
-)
+int main(int argc, char **argv) {''')
+
+if 'em__main(void)' in c:
+  o.write(r'''
+  return em__main();
+''')
+else:
+  # translate args
+  o.write(r'''
+  assert(sizeof(void*) == 4 && "must build this code on a 32-bit arch (use -m32 if necessary)");
+  char **em_argv = (char**)(MEM + DYNAMICTOP);
+  em__sbrk(sizeof(char*)*(argc+1));
+  int i;
+  for (i = 0; i < argc; i++) {
+    char *arg = argv[i];
+    int len = strlen(arg);
+    char *em_arg = (char*)(MEM + DYNAMICTOP);
+    em__sbrk(len+1);
+    strcpy(em_arg, arg);
+    em_argv[i] = (char*)(((int32_t)em_arg) - (int32_t)MEM);
+  }
+  return em__main(argc, ((int32_t)em_argv) - (int32_t)MEM);  
+''')
+
+o.write(r'''}
+
+''')
+o.close()
 

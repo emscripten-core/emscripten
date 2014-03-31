@@ -147,7 +147,7 @@ fannkuch(int n)
 int
 main(int argc, char **argv)
 {
-   int n = argc > 1 ? atoi(argv[1]) : 5;
+   int n = argc > 1 ? atoi(argv[1]) : 0;
 
    if (n < 1) {
       printf("Wrong argument.\n");

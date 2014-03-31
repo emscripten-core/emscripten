@@ -5338,14 +5338,6 @@ function optimizeFrounds(ast) {
 
 function cIfy(ast) {
   emitAst = false;
-  printErr('#include <stdint.h>');
-  printErr('#include <math.h>');
-  printErr('#include <stdio.h>');
-  printErr('');
-  printErr('int8_t MEM[64*1024*1024] = "";');
-  printErr('int32_t STACKTOP = sizeof(MEM) - 1024*1024;');
-  printErr('int32_t tempDoublePtr = 0;');
-  printErr('');
 
   function fixFunc(func) {
     // fix up some things, like varargs
@@ -5442,8 +5434,6 @@ function cIfy(ast) {
       case '_sysconf': case '_time': case '___errno_location': { // the ones on this line are suspect
         return name.substr(1);
       }
-      // basic stuff like main we cannot rename
-      case '_main': return name.substr(1);
     }
     if (name[0] === '$') return '_' + name.substr(1);
     if (name[0] === '_') return 'em_' + name; // avoid collisions with system malloc etc
@@ -5742,10 +5732,6 @@ function cIfy(ast) {
   }
 
   function getArgs(func) {
-    if (cName(func[1]) === 'main') {
-      output += 'int argc, char **argv';
-      return;
-    }
     var stats = getStatements(func);
     func[2].forEach(function(arg, i) {
       if (i > 0) output += ', ';
@@ -5780,16 +5766,6 @@ function cIfy(ast) {
     getArgs(func);
     output += ') {\n';
     indent++;
-    if (cName(func[1]) === 'main') {
-      // normal input args were replaced by the canonical ones, so add them here
-      func[2].forEach(function(arg, i) {
-        emitIndent();
-        output += 'int32_t ' + cName(arg);
-        if (i === 0) output += ' = argc'
-        else if (i === 1) output += ' = (int32_t)argv';
-        output += ';\n';
-      });
-    }
     walkStatements(getStatements(func).slice(func[2].length));
     indent--;
     output += '}\n';

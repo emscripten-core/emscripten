@@ -2674,7 +2674,8 @@ int main()
     for filename, output, build_args, run_args in [
       (path_from_root('tests', 'hello_world.c'), 'hello, world!', [], []),
       (path_from_root('tests', 'hello_world.c'), 'hello, world!', ['-o', 'waka.c'], []),
-      (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(5) = 7.', [], []),
+      (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(4) = 4.', [], ['4']),
+      (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(5) = 7.', [], ['5']),
     ]:
       print filename, output, build_args, run_args, '....................................'
       self.clear()
@@ -2683,6 +2684,6 @@ int main()
       assert os.path.exists(outfile)
       Popen([CLANG_CC, '-m32', outfile, '-Wno-shift-op-parentheses'], stderr=PIPE).communicate()
       assert os.path.exists('a.out')
-      out, err = Popen(['./a.out'], stdout=PIPE).communicate()
+      out, err = Popen(['./a.out'] + run_args, stdout=PIPE).communicate()
       self.assertContained(output, out)
 

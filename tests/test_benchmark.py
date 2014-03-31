@@ -142,7 +142,7 @@ class CBackendBenchmarker(Benchmarker):
 
     final = final_c + '.exec'
     try_delete(final)
-    output = Popen([os.path.join(LLVM_3_2, 'clang'), '-O2', final_c, '-o', final]).communicate()
+    output = Popen([os.path.join(LLVM_3_2, 'clang'), '-O2', '-m32', final_c, '-o', final]).communicate()
     assert os.path.exists(final_c), 'Failed to compile file (2)'
     self.filename = final
 
