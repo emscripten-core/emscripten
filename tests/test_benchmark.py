@@ -142,8 +142,8 @@ class CBackendBenchmarker(Benchmarker):
 
     final = final_c + '.exec'
     try_delete(final)
-    output = Popen([os.path.join(LLVM_3_2, 'clang'), '-O2', '-m32', final_c, '-o', final], stderr=PIPE).communicate()
-    assert os.path.exists(final_c), 'Failed to compile file (2)'
+    output = Popen([os.path.join(LLVM_3_2, 'clang'), '-O2', '-m32', '-lm', final_c, '-o', final], stderr=PIPE).communicate()
+    assert os.path.exists(final), 'Failed to compile file (2) ' + output[1]
     self.filename = final
 
   def run(self, args):
