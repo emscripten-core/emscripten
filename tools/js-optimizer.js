@@ -5792,7 +5792,7 @@ function cIfy(ast) {
     }
     walkStatements(getStatements(func).slice(func[2].length));
     indent--;
-    output += '}';
+    output += '}\n';
     printErr(output);
   });
   printErr('');
