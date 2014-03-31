@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <emscripten.h>
 
-#define EM_ASM_REEXPAND(x) EM_ASM(x)
-
 void success() {
   int result = 1;
   REPORT_RESULT();
@@ -16,30 +14,32 @@ int main() {
 
 #if FIRST
   // store local files to backing IDB
-  EM_ASM_REEXPAND(
+  EM_ASM_ARGS({
     FS.writeFile('/working/waka.txt', 'az');
-    FS.writeFile('/working/moar.txt', SECRET);
+    FS.writeFile('/working/moar.txt', $0);
     FS.syncfs(function (err) {
       assert(!err);
 
-      ccall('success', 'v', '', []);
+      ccall('success', 'v');
     });
-  );
+  }, SECRET);
 #else
   // load files from backing IDB
-  EM_ASM_REEXPAND(
+  EM_ASM_ARGS({
     FS.syncfs(true, function (err) {
       assert(!err);
 
       var contents = FS.readFile('/working/waka.txt', { encoding: 'utf8' });
-      assert(contents === 'az');
+      assert(contents === 'az', 'bad contents ' + contents);
 
-      var secret = FS.readFile('/working/moar.txt', { encoding: 'utf8' });
-      assert(secret === SECRET);
+      // note we convert to a number here (using +), since we used writeFile, which writes a
+      // JS string.
+      var secret = +FS.readFile('/working/moar.txt', { encoding: 'utf8' });
+      assert(secret === $0, 'bad secret ' + [secret, $0, typeof secret, typeof $0]);
 
       ccall('success', 'v', '', []);
     });
-  );
+  }, SECRET);
 #endif
 
   emscripten_exit_with_live_runtime();
