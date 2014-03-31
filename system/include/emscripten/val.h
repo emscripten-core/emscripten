@@ -145,8 +145,8 @@ namespace emscripten {
 
         union GenericWireType {
             union {
-                int i;
                 unsigned u;
+                float f;
                 const void* p;
             } w[2];
             double d;
@@ -155,7 +155,7 @@ namespace emscripten {
         static_assert(alignof(GenericWireType) == 8, "GenericWireType must be 8-byte-aligned");
 
         inline void writeGenericWireType(GenericWireType*& cursor, float wt) {
-            cursor->d = wt;
+            cursor->w[0].f = wt;
             ++cursor;
         }
 
