@@ -1899,7 +1899,7 @@ function JSify(data, functionsOnly) {
       print('}');
     }
     if (PROXY_TO_WORKER) {
-      print(read('proxyWorker.js'));
+      print(read((PROXY_WORKER_FILE?PROXY_WORKER_FILE:'proxyWorker.js')));
     }
     if (RUNTIME_TYPE_INFO) {
       Types.cleanForRuntime();

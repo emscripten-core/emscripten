@@ -505,6 +505,15 @@ Options that are modified or new in %s include:
   --proxy-to-worker        Generates both html and js files. The main
                            program is in js, and the html proxies to/from it.
 
+  --proxy-files <client> <worker> Use custom proxy  files.Only useful in conjunction with
+                                  --proxy-to-worker. The client file will be embedded in the
+                                  HTML and must contain the token:
+                                  {{{ filename }}}
+                                  so that it knows the filename which contains the application code.
+                                  The worker file will be included as part of the application.
+                                  See src/proxyClient.js and src/proxyWorker.js for the default
+                                  proxy files.
+
   --emrun                  Enables the generated output to be aware of the
                            emrun command line tool. This allows stdout, stderr
                            and exit(returncode) capture when running the
@@ -811,6 +820,8 @@ try:
   no_heap_copy = False
   proxy_to_worker = False
   default_object_extension = '.o'
+  proxy_client_file = shared.path_from_root('src', 'proxyClient.js')
+  proxy_worker_file = shared.path_from_root('src', 'proxyWorker.js')
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -1014,6 +1025,13 @@ try:
     elif newargs[i] == '--proxy-to-worker':
       proxy_to_worker = True
       newargs[i] = ''
+    elif newargs[i].startswith('--proxy-files'):
+      check_bad_eq(newargs[i])
+      proxy_client_file = os.path.abspath(newargs[i+1])
+      proxy_worker_file = os.path.abspath(newargs[i+2])
+      newargs[i] = ''
+      newargs[i+1] = ''
+      newargs[i+2] = ''
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name):
@@ -1328,6 +1346,9 @@ try:
 
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
+
+  if proxy_worker_file:
+    shared.Settings.PROXY_WORKER_FILE = proxy_worker_file
 
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
@@ -1768,7 +1789,7 @@ try:
     js_target = unsuffixed(target) + '.js'
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename) + '</script>'))
+      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(proxy_client_file).read().replace('{{{ filename }}}', target_basename) + '</script>'))
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path
