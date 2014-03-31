@@ -5394,6 +5394,12 @@ function cIfy(ast) {
     Math_sqrt: function(node) {
       node[1][1] = 'sqrtf';
     },
+    Math_fround: function(node) {
+      output += '((float)(';
+      walk(node[2][0], true); // float coercion
+      output += '))';
+      return true;
+    },
     fprintf: function() { throw 'fprintf is not supported yet' },
   };
 
@@ -5466,7 +5472,7 @@ function cIfy(ast) {
           var value = varItem[1];
           if (i > 0) emitIndent();
           output += typeName(detectAsmCoercion(value));
-          output += ' ' + cName(ident) + ';';
+          output += ' ' + cName(ident) + ' = 0;';
           if (i < node[1].length-1) output += '\n';
         });
         break;
