@@ -51,11 +51,14 @@ output = 'a.out.c'
 for i in range(len(sys.argv)):
   if sys.argv[i] == '-o':
     output = sys.argv[i+1]
+    sys.argv[i] = None
+    sys.argv[i+1] = None
     break
+sys.argv = filter(lambda x: x is not None, sys.argv)
 
 temp_name = unsuffixed(output) + '.js'
 
-print '[em-c-backend] emitting asm.js'
+print '[em-c-backend] emitting asm.js, to', output, 'with temp', temp_name
 execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-o', temp_name])
 
 print '[em-c-backend] converting to C'
