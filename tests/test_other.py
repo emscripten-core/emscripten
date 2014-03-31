@@ -2685,3 +2685,8 @@ int main()
       out, err = Popen(['./a.out'], stdout=PIPE).communicate()
       self.assertContained(output, out)
 
+    # test -o syntax
+    Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O3', path_from_root('tests', 'hello_world.c'), '-o', 'waka.c']).communicate()
+    assert os.path.exists('waka.c')
+
+
