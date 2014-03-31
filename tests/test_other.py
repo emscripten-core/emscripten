@@ -2671,22 +2671,18 @@ int main()
 
 
   def test_c_backend(self):
-    for filename, output in [
-      (path_from_root('tests', 'hello_world.c'), 'hello, world!'),
-      (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(5) = 7.'),
-      #(path_from_root('tests', 'linpack.c'), 'Unrolled Double  Precision'),
+    for filename, output, build_args, run_args in [
+      (path_from_root('tests', 'hello_world.c'), 'hello, world!', [], []),
+      (path_from_root('tests', 'hello_world.c'), 'hello, world!', ['-o', 'waka.c'], []),
+      (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(5) = 7.', [], []),
     ]:
-      print filename, output, '....................................'
+      print filename, output, build_args, run_args, '....................................'
       self.clear()
-      Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O3', filename]).communicate()
-      assert os.path.exists('a.out.c')
-      Popen([CLANG_CC, '-m32', 'a.out.c', '-Wno-shift-op-parentheses'], stderr=PIPE).communicate()
+      Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O3', filename] + build_args).communicate()
+      outfile = 'a.out.c' if '-o' not in build_args else build_args[build_args.index('-o')+1]
+      assert os.path.exists(outfile)
+      Popen([CLANG_CC, '-m32', outfile, '-Wno-shift-op-parentheses'], stderr=PIPE).communicate()
       assert os.path.exists('a.out')
       out, err = Popen(['./a.out'], stdout=PIPE).communicate()
       self.assertContained(output, out)
-
-    # test -o syntax
-    Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O3', path_from_root('tests', 'hello_world.c'), '-o', 'waka.c']).communicate()
-    assert os.path.exists('waka.c')
-
 
