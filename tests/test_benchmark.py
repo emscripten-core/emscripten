@@ -120,6 +120,36 @@ process(sys.argv[1])
   def run(self, args):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
 
+class CBackendBenchmarker(Benchmarker):
+  def __init__(self, name, extra_args=[], env={}):
+    self.name = name
+    self.extra_args = extra_args
+    self.env = os.environ.copy()
+    for k, v in env.iteritems():
+      self.env[k] = v
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+    self.filename = filename
+    llvm_root = self.env.get('LLVM') or LLVM_ROOT
+    if lib_builder: emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env)
+    final_c = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.c'
+    try_delete(final_c)
+    output = Popen([PYTHON, path_from_root('tools', 'c_backend.py'), filename,
+                    '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
+                    '-s', 'TOTAL_MEMORY=128*1024*1024',
+                    '-o', final_c] + shared_args + emcc_args + self.extra_args, env=self.env).communicate()
+    assert os.path.exists(final_c), 'Failed to compile file (1)'
+
+    final = final_c + '.exec'
+    try_delete(final)
+    output = Popen([os.path.join(LLVM_3_2, 'clang'), '-O2', final_c, '-o', final]).communicate()
+    assert os.path.exists(final_c), 'Failed to compile file (2)'
+    self.filename = final
+
+  def run(self, args):
+    process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
+    return process.communicate()[0]
+
 # Benchmarkers
 try:
   benchmarkers_error = ''
@@ -131,6 +161,7 @@ try:
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
     JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+    CBackendBenchmarker('c-f32', ['-s', 'PRECISE_F32=2']),
     #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['-profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
     #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
