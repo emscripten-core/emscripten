@@ -13,7 +13,9 @@ int main() {
   );
 
 #if FIRST
-  // store local files to backing IDB
+  // store local files to backing IDB. Note that we use the JS FS API for everything here, but we
+  // could use normal libc fwrite etc. to do the writing. All we need the JS FS API for is to
+  // mount the filesystem and do syncfs.
   EM_ASM_ARGS({
     FS.writeFile('/working/waka.txt', 'az');
     FS.writeFile('/working/moar.txt', $0);
