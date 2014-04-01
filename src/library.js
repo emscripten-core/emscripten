@@ -2536,12 +2536,14 @@ LibraryManager.library = {
       bytesToRead--;
       bytesRead++;
     }
-    var err = _read(streamObj.fd, ptr, bytesToRead);
-    if (err == -1) {
-      if (streamObj) streamObj.error = true;
-      return 0;
+    if (bytesToRead != 0) {
+      var err = _read(streamObj.fd, ptr, bytesToRead);
+      if (err == -1) {
+        if (streamObj) streamObj.error = true;
+        return 0;
+      }
+      bytesRead += err;
     }
-    bytesRead += err;
     if (bytesRead < bytesToRead) streamObj.eof = true;
     return Math.floor(bytesRead / size);
   },
