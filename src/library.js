@@ -325,6 +325,9 @@ LibraryManager.library = {
     // int mkdir(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkdir.html
     path = Pointer_stringify(path);
+    // remove a trailing slash, if one - /a/b/ has basename of '', but
+    // we want to create b in the context of this function
+    if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
     try {
       FS.mkdir(path, mode, 0);
       return 0;
