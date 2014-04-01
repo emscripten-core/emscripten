@@ -93,6 +93,10 @@ static int32_t tempDoublePtr = 0;
 
 int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num);
 int32_t em__sbrk(int32_t bytes);
+int32_t __errno_location();
+int32_t em____cxa_allocate_exception(int32_t x);
+int32_t em____cxa_throw(int32_t x, int32_t y, int32_t z);
+void em___ZNSt9exceptionD2Ev();
 
 //===
 ''' % (('0,'*8) + data) + c + r'''//===
@@ -110,6 +114,31 @@ int32_t em__sbrk(int32_t bytes) {
   if (bytes != 0) DYNAMICTOP += (bytes+7)&-8;
   return ret;
 }
+
+int32_t __errno = 0;
+int32_t __errno_location() {
+  return ((int32_t)&__errno) - (int32_t)MEM; // out of bounds, but so what...
+}
+
+#define DIE(msg) \
+ printf(msg "\n"); \
+ exit(-1);
+
+int32_t em____cxa_allocate_exception(int32_t x) {
+  DIE("exceptions not supported");
+  return 0;
+}
+
+int32_t em____cxa_throw(int32_t x, int32_t y, int32_t z) {
+  DIE("exceptions not supported");
+  return 0;
+}
+
+void em___ZNSt9exceptionD2Ev() {
+  DIE("exceptions not supported");
+}
+
+// main
 
 int main(int argc, char **argv) {''')
 

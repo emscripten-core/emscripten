@@ -5699,6 +5699,15 @@ function cIfy(ast) {
         break;
       }
       case 'sub': {
+        assert(node[1][0] === 'name');
+        if (node[1][1][0] === 'F') {
+          // function table access
+          walk(node[1]);
+          output += '[';
+          walk(node[2]);
+          output += ']';
+          break;
+        }
         var stripped = stripShifts(node[2]);
         if (stripped[0] === 'name') {
           var name = cName(stripped[1]);
