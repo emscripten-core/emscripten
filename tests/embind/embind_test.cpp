@@ -2147,6 +2147,8 @@ struct BoundClass {
 };
 
 EMSCRIPTEN_BINDINGS(incomplete) {
+    constant("hasUnboundTypeNames", emscripten::has_unbound_type_names);
+
     function("getUnboundClass", &passThrough<UnboundClass>);
 
     class_<HasUnboundBase, base<UnboundClass>>("HasUnboundBase")

@@ -1646,6 +1646,10 @@ module({
     if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
 
     BaseFixture.extend("unbound types", function() {
+        if (!cm.hasUnboundTypeNames) {
+            return;
+        }
+
         function assertMessage(fn, message) {
             var e = assert.throws(cm.UnboundTypeError, fn);
             assert.equal(message, e.message);

@@ -14,26 +14,32 @@ using namespace emscripten;
 
 extern "C" {
     const char* __attribute__((used)) __getTypeName(const std::type_info* ti) {
+        if (has_unbound_type_names) {
 #ifdef USE_CXA_DEMANGLE
-        int stat;
-        char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
-        if (stat == 0 && demangled) {
-            return demangled;
-        }
+            int stat;
+            char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
+            if (stat == 0 && demangled) {
+                return demangled;
+            }
 
-        switch (stat) {
-            case -1:
-                return strdup("<allocation failure>");
-            case -2:
-                return strdup("<invalid C++ symbol>");
-            case -3:
-                return strdup("<invalid argument>");
-            default:
-                return strdup("<unknown error>");
-        }
+            switch (stat) {
+                case -1:
+                    return strdup("<allocation failure>");
+                case -2:
+                    return strdup("<invalid C++ symbol>");
+                case -3:
+                    return strdup("<invalid argument>");
+                default:
+                    return strdup("<unknown error>");
+            }
 #else
-        return strdup(ti->name());
+            return strdup(ti->name());
 #endif
+        } else {
+            char str[80];
+            sprintf(str, "%p", ti);
+            return strdup(str);
+        }
     }
 }
 
