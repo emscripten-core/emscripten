@@ -1150,8 +1150,8 @@ void callDifferentArguments(AbstractClass& ac, int i, double d, unsigned char f,
 
 EMSCRIPTEN_BINDINGS(interface_tests) {
     class_<AbstractClass>("AbstractClass")
-        .smart_ptr<std::shared_ptr<AbstractClass>>()
-        .allow_subclass<AbstractClassWrapper>()
+        .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
+        .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
         .function("abstractMethod", &AbstractClass::abstractMethod)
         .function("optionalMethod", &AbstractClass::optionalMethod)
         ;
@@ -1483,7 +1483,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_take_and_return_TupleInStruct", &emval_test_take_and_return_TupleInStruct);
 
     class_<ValHolder>("ValHolder")
-        .smart_ptr<std::shared_ptr<ValHolder>>()
+        .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")
         .constructor<val>()
         .function("getVal", &ValHolder::getVal)
         .function("getValNonConst", &ValHolder::getValNonConst)
@@ -1522,7 +1522,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_take_and_call_functor", &emval_test_take_and_call_functor);
 
     class_<StringHolder>("StringHolder")
-        .smart_ptr<std::shared_ptr<StringHolder>>()
+        .smart_ptr<std::shared_ptr<StringHolder>>("shared_ptr<StringHolder>")
         .constructor<std::string>()
         .function("set", &StringHolder::set)
         .function("get", &StringHolder::get)
@@ -1566,7 +1566,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     // register Derived before Base as a test that it's possible to
     // register base classes afterwards
     class_<Derived, base<Base>>("Derived")
-        .smart_ptr<std::shared_ptr<Derived>>()
+        .smart_ptr<std::shared_ptr<Derived>>("shared_ptr<Derived>")
         .constructor<>()
         .function("getClassName", &Derived::getClassName)
         .function("getMember", &Derived::getMember)
@@ -1575,7 +1575,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     class_<Base>("Base")
-        .smart_ptr<std::shared_ptr<Base>>()
+        .smart_ptr<std::shared_ptr<Base>>("shared_ptr<Base")
         .constructor<>()
         .function("getClassName", &Base::getClassName)
         .function("getClassNameFromBase", &Base::getClassNameFromBase)
@@ -1589,7 +1589,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     class_<SecondBase>("SecondBase")
-        .smart_ptr<std::shared_ptr<SecondBase>>()
+        .smart_ptr<std::shared_ptr<SecondBase>>("shared_ptr<SecondBase>")
         .constructor<>()
         .function("getClassName", &SecondBase::getClassName)
         .function("getClassNameFromSecondBase", &SecondBase::getClassNameFromSecondBase)
@@ -1612,13 +1612,13 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     class_<SiblingDerived>("SiblingDerived")
-        .smart_ptr<std::shared_ptr<SiblingDerived>>()
+        .smart_ptr<std::shared_ptr<SiblingDerived>>("shared_ptr<SiblingDerived>")
         .constructor<>()
         .function("getClassName", &SiblingDerived::getClassName)
         ;
     
     class_<MultiplyDerived, base<Base>>("MultiplyDerived")
-        .smart_ptr<std::shared_ptr<MultiplyDerived>>()
+        .smart_ptr<std::shared_ptr<MultiplyDerived>>("shared_ptr<MultiplyDerived>")
         .constructor<>()
         .function("getClassName", &MultiplyDerived::getClassName)
         .class_function("getInstanceCount", &MultiplyDerived::getInstanceCount)
@@ -1630,26 +1630,26 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     class_<DerivedThrice, base<Derived> >("DerivedThrice")
-        .smart_ptr<std::shared_ptr<DerivedThrice>>()
+        .smart_ptr<std::shared_ptr<DerivedThrice>>("shared_ptr<DerivedThrice>")
         .constructor<>()
         .function("getClassName", &DerivedThrice::getClassName)
         ;
 
     class_<PolyBase>("PolyBase")
-        .smart_ptr<std::shared_ptr<PolyBase>>()
+        .smart_ptr<std::shared_ptr<PolyBase>>("shared_ptr<PolyBase>")
         .constructor<>()
         .function("virtualGetClassName", &PolyBase::virtualGetClassName)
         .function("getClassName", &PolyBase::getClassName)
         ;
 
     class_<PolySecondBase>("PolySecondBase")
-        .smart_ptr<std::shared_ptr<PolySecondBase>>()
+        .smart_ptr<std::shared_ptr<PolySecondBase>>("shared_ptr<PolySecondBase>")
         .constructor<>()
         .function("getClassName", &PolySecondBase::getClassName)
         ;
 
     class_<PolyDerived, base<PolyBase>>("PolyDerived")
-        .smart_ptr<std::shared_ptr<PolyDerived>>()
+        .smart_ptr<std::shared_ptr<PolyDerived>>("shared_ptr<PolyDerived>")
         .constructor<>()
         .function("virtualGetClassName", &PolyDerived::virtualGetClassName)
         .function("getClassName", &PolyDerived::getClassName)
@@ -1671,43 +1671,43 @@ EMSCRIPTEN_BINDINGS(tests) {
 //    }
 
     class_<PolySiblingDerived, base<PolyBase>>("PolySiblingDerived")
-        .smart_ptr<std::shared_ptr<PolySiblingDerived>>()
+        .smart_ptr<std::shared_ptr<PolySiblingDerived>>("shared_ptr<PolySiblingDerived>")
         .constructor<>()
         .function("getClassName", &PolySiblingDerived::getClassName)
         ;
 
     class_<PolyMultiplyDerived, base<PolyBase>>("PolyMultiplyDerived")
-        .smart_ptr<std::shared_ptr<PolyMultiplyDerived>>()
+        .smart_ptr<std::shared_ptr<PolyMultiplyDerived>>("shared_ptr<PolyMultiplyDerived>")
         .constructor<>()
         .function("getClassName", &PolyMultiplyDerived::getClassName)
         ;
 
     class_<PolyDerivedThrice, base<PolyDerived>>("PolyDerivedThrice")
-        .smart_ptr<std::shared_ptr<PolyDerivedThrice>>()
+        .smart_ptr<std::shared_ptr<PolyDerivedThrice>>("shared_ptr<PolyDerivedThrice>")
         .constructor<>()
         .function("getClassName", &PolyDerivedThrice::getClassName)
         ;
 
     class_<PolyDiamondBase>("PolyDiamondBase")
-        .smart_ptr<std::shared_ptr<PolyDiamondBase>>()
+        .smart_ptr<std::shared_ptr<PolyDiamondBase>>("shared_ptr<PolyDiamondBase>")
         .constructor<>()
         .function("getClassName", &PolyDiamondBase::getClassName)
         ;
     
     class_<PolyDiamondDerived>("PolyDiamondDerived")
-        .smart_ptr<std::shared_ptr<PolyDiamondDerived>>()
+        .smart_ptr<std::shared_ptr<PolyDiamondDerived>>("shared_ptr<PolyDiamondDerived>")
         .constructor<>()
         .function("getClassName", &PolyDiamondDerived::getClassName)
         ;
 
     class_<PolyDiamondSiblingDerived>("PolyDiamondSiblingDerived")
-        .smart_ptr<std::shared_ptr<PolyDiamondSiblingDerived>>()
+        .smart_ptr<std::shared_ptr<PolyDiamondSiblingDerived>>("shared_ptr<PolyDiamondSiblingDerived>")
         .constructor<>()
         .function("getClassName", &PolyDiamondSiblingDerived::getClassName)
         ;
 
     class_<PolyDiamondMultiplyDerived>("PolyDiamondMultiplyDerived")
-        .smart_ptr<std::shared_ptr<PolyDiamondMultiplyDerived>>()
+        .smart_ptr<std::shared_ptr<PolyDiamondMultiplyDerived>>("shared_ptr<PolyDiamondMultiplyDerived>")
         .constructor<>()
         .function("getClassName", &PolyDiamondMultiplyDerived::getClassName)
         ;
@@ -1825,7 +1825,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     auto HeldBySmartPtr_class = class_<HeldBySmartPtr>("HeldBySmartPtr");
     HeldBySmartPtr_class
-        .smart_ptr<CustomSmartPtr<HeldBySmartPtr>>()
+        .smart_ptr<CustomSmartPtr<HeldBySmartPtr>>("CustomSmartPtr<HeldBySmartPtr>")
         .smart_ptr_constructor(&std::make_shared<HeldBySmartPtr, int, std::string>)
         .class_function("newCustomPtr", HeldBySmartPtr::newCustomPtr)
         .function("returnThis", &takesHeldBySmartPtrSharedPtr)
@@ -1836,8 +1836,8 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("takesHeldBySmartPtrSharedPtr", &takesHeldBySmartPtrSharedPtr);
 
     class_<HeldByCustomSmartPtr>("HeldByCustomSmartPtr")
-        .smart_ptr<std::shared_ptr<HeldByCustomSmartPtr>>()
-        .smart_ptr_constructor(&HeldByCustomSmartPtr::create)
+        .smart_ptr<std::shared_ptr<HeldByCustomSmartPtr>>("shared_ptr<HeldByCustomSmartPtr>")
+        .smart_ptr_constructor("CustomSmartPtr<HeldByCustomSmartPtr>", &HeldByCustomSmartPtr::create)
         .class_function("createSharedPtr", &HeldByCustomSmartPtr::createSharedPtr)
         .property("i", &HeldByCustomSmartPtr::i)
         .property("s", &HeldByCustomSmartPtr::s)
@@ -2022,7 +2022,7 @@ EMSCRIPTEN_BINDINGS(overloads) {
         ;
         
     class_<MultipleSmartCtors>("MultipleSmartCtors")
-        .smart_ptr<std::shared_ptr<MultipleSmartCtors>>()
+        .smart_ptr<std::shared_ptr<MultipleSmartCtors>>("shared_ptr<MultipleSmartCtors>")
         .constructor(&std::make_shared<MultipleSmartCtors, int>)
         .constructor(&std::make_shared<MultipleSmartCtors, int, int>)
         .function("WhichCtorCalled", &MultipleSmartCtors::WhichCtorCalled)

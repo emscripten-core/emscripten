@@ -1408,7 +1408,7 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.passThroughCustomSmartPtr(o);
             });
-            assert.equal('Cannot convert argument of type NSt3__110shared_ptrI20HeldByCustomSmartPtrEE to parameter type 14CustomSmartPtrI20HeldByCustomSmartPtrE', e.message);
+            assert.equal('Cannot convert argument of type shared_ptr<HeldByCustomSmartPtr> to parameter type CustomSmartPtr<HeldByCustomSmartPtr>', e.message);
             o.delete();
         });
 
