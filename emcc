@@ -1620,7 +1620,7 @@ try:
           logging.debug('wrote memory initialization to %s', memfile)
         else:
           logging.debug('did not see memory initialization')
-  elif shared.Settings.USE_TYPED_ARRAYS == 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE:
+  elif shared.Settings.USE_TYPED_ARRAYS == 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not shared.Settings.SIMPLE_MEM_INIT:
     # not writing a binary init, but we can at least optimize them by splitting them up
     src = open(final).read()
     src = shared.JS.optimize_initializer(src)

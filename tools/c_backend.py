@@ -58,7 +58,7 @@ sys.argv = filter(lambda x: x is not None, sys.argv)
 temp_name = unsuffixed(output) + '.js'
 
 print '[em-c-backend] emitting asm.js, to', output, 'with temp', temp_name
-execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-o', temp_name])
+execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-s', 'SIMPLE_MEM_INIT=1', '-o', temp_name])
 
 print '[em-c-backend] converting to C'
 out = open(output, 'w')
