@@ -5625,10 +5625,12 @@ function cIfy(ast) {
             output += 'default';
           }
           output += ': {\n';
-          indent++;
-          assert(cases[i][1][0][0] === 'block' && cases[i][1].length === 1);
-          walk(cases[i][1][0]);
-          indent--;
+          if (cases[i][1].length > 0) {
+            indent++;
+            assert(cases[i][1][0][0] === 'block' && cases[i][1].length === 1);
+            walk(cases[i][1][0]);
+            indent--;
+          }
           emitIndent();
           output += '}\n';
         }
