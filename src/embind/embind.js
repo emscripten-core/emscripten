@@ -1,6 +1,6 @@
 /*global Module*/
 /*global _malloc, _free, _memcpy*/
-/*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32*/
+/*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getTypeName*/
@@ -35,7 +35,7 @@ function throwUnboundTypeError(message, types) {
         seen[type] = true;
     }
     types.forEach(visit);
-    
+
     throw new UnboundTypeError(message + ': ' + unboundTypes.map(getTypeName).join([', ']));
 }
 
@@ -55,7 +55,7 @@ function ensureOverloadTable(proto, methodName, humanName) {
         // Move the previous function into the overload table.
         proto[methodName].overloadTable = [];
         proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
-    }            
+    }
 }
 
 /* Registers a symbol (function, class, enum, ...) as part of the Module JS object so that
@@ -72,7 +72,7 @@ function exposePublicSymbol(name, value, numArguments) {
         if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
             throwBindingError("Cannot register public name '" + name + "' twice");
         }
-        
+
         // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
         // that routes between the two.
         ensureOverloadTable(Module, name, name);
@@ -164,6 +164,10 @@ var typeDependencies = {};
 var registeredPointers = {};
 
 function registerType(rawType, registeredInstance) {
+    if (!('argPackAdvance' in registeredInstance)) {
+        throw new TypeError('registerType registeredInstance requires argPackAdvance');
+    }
+
     var name = registeredInstance.name;
     if (!rawType) {
         throwBindingError('type "' + name + '" must have a positive integer typeid pointer');
@@ -268,6 +272,7 @@ function __embind_register_void(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
+        'argPackAdvance': 0,
         'fromWireType': function() {
             return undefined;
         },
@@ -278,7 +283,9 @@ function __embind_register_void(rawType, name) {
     });
 }
 
-function __embind_register_bool(rawType, name, trueValue, falseValue) {
+function __embind_register_bool(rawType, name, size, trueValue, falseValue) {
+    var shift = getShiftFromSize(size);
+
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
@@ -290,21 +297,80 @@ function __embind_register_bool(rawType, name, trueValue, falseValue) {
         'toWireType': function(destructors, o) {
             return o ? trueValue : falseValue;
         },
+        'argPackAdvance': 8,
+        'readValueFromPointer': function(pointer) {
+            // TODO: if heap is fixed (like in asm.js) this could be executed outside
+            var heap;
+            if (size === 1) {
+                heap = HEAP8;
+            } else if (size === 2) {
+                heap = HEAP16;
+            } else if (size === 4) {
+                heap = HEAP32;
+            } else {
+                throw new TypeError("Unknown boolean type size: " + name);
+            }
+            return this['fromWireType'](heap[pointer >> shift]);
+        },
         destructorFunction: null, // This type does not need a destructor
     });
 }
 
+function getShiftFromSize(size) {
+    switch (size) {
+        case 1: return 0;
+        case 2: return 1;
+        case 4: return 2;
+        case 8: return 3;
+        default:
+            throw new TypeError('Unknown type size: ' + size);
+    }
+}
+
+function integerReadValueFromPointer(name, shift, signed) {
+    switch (shift) {
+        case 0: return function(pointer) {
+            var heap = signed ? HEAP8 : HEAPU8;
+            return this['fromWireType'](heap[pointer]);
+        };
+        case 1: return function(pointer) {
+            var heap = signed ? HEAP16 : HEAPU16;
+            return this['fromWireType'](heap[pointer >> 1]);
+        };
+        case 2: return function(pointer) {
+            var heap = signed ? HEAP32 : HEAPU32;
+            return this['fromWireType'](heap[pointer >> 2]);
+        };
+        default:
+            throw new TypeError("Unknown integer type: " + name);
+    }
+}
+
+function floatReadValueFromPointer(name, shift) {
+    switch (shift) {
+        case 2: return function(pointer) {
+            return this['fromWireType'](HEAPF32[pointer >> 2]);
+        };
+        case 3: return function(pointer) {
+            return this['fromWireType'](HEAPF64[pointer >> 3]);
+        };
+        default:
+            throw new TypeError("Unknown float type: " + name);
+    }
+}
+
 // When converting a number from JS to C++ side, the valid range of the number is
 // [minRange, maxRange], inclusive.
-function __embind_register_integer(primitiveType, name, minRange, maxRange) {
+function __embind_register_integer(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
     if (maxRange === -1) { // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come out as 'i32 -1'. Always treat those as max u32.
         maxRange = 4294967295;
     }
+
+    var shift = getShiftFromSize(size);
+
     registerType(primitiveType, {
         name: name,
-        minRange: minRange,
-        maxRange: maxRange,
         'fromWireType': function(value) {
             return value;
         },
@@ -319,11 +385,16 @@ function __embind_register_integer(primitiveType, name, minRange, maxRange) {
             }
             return value | 0;
         },
+        'argPackAdvance': 8,
+        'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
         destructorFunction: null, // This type does not need a destructor
     });
 }
 
-function __embind_register_float(rawType, name) {
+
+
+function __embind_register_float(rawType, name, size) {
+    var shift = getShiftFromSize(size);
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
@@ -338,8 +409,15 @@ function __embind_register_float(rawType, name) {
             }
             return value;
         },
+        'argPackAdvance': 8,
+        'readValueFromPointer': floatReadValueFromPointer(name, shift),
         destructorFunction: null, // This type does not need a destructor
     });
+}
+
+// For types whose wire types are 32-bit pointers.
+function simpleReadValueFromPointer(pointer) {
+    return this['fromWireType'](HEAPU32[pointer >> 2]);
 }
 
 function __embind_register_std_string(rawType, name) {
@@ -394,6 +472,8 @@ function __embind_register_std_string(rawType, name) {
             }
             return ptr;
         },
+        'argPackAdvance': 8,
+        'readValueFromPointer': simpleReadValueFromPointer,
         destructorFunction: function(ptr) { _free(ptr); },
     });
 }
@@ -434,6 +514,8 @@ function __embind_register_std_wstring(rawType, charSize, name) {
             }
             return ptr;
         },
+        'argPackAdvance': 8,
+        'readValueFromPointer': simpleReadValueFromPointer,
         destructorFunction: function(ptr) { _free(ptr); },
     });
 }
@@ -450,6 +532,8 @@ function __embind_register_emval(rawType, name) {
         'toWireType': function(destructors, value) {
             return __emval_register(value);
         },
+        'argPackAdvance': 8,
+        'readValueFromPointer': simpleReadValueFromPointer,
         destructorFunction: null, // This type does not need a destructor
     });
 }
@@ -463,7 +547,7 @@ function __embind_register_memory_view(rawType, name) {
         Int32Array,
         Uint32Array,
         Float32Array,
-        Float64Array,        
+        Float64Array,
     ];
 
     name = readLatin1String(name);
@@ -475,6 +559,10 @@ function __embind_register_memory_view(rawType, name) {
             var data = HEAPU32[(handle >> 2) + 2]; // byte offset into emscripten heap
             var TA = typeMapping[type];
             return new TA(HEAP8.buffer, data, size);
+        },
+        'argPackAdvance': 16,
+        'readValueFromPointer': function(ptr) {
+            return this['fromWireType'](ptr);
         },
     });
 }
@@ -531,7 +619,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     if (argCount < 2) {
         throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!");
     }
-    
+
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
     if (!isClassMethodFunc && !FUNCTION_TABLE[cppTargetFunc]) {
@@ -560,7 +648,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = false;
-    
+
     for(var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
         if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
             needsDestructorStack = true;
@@ -595,7 +683,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
 
     invokerFnBody +=
         (returns?"var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
-    
+
     if (needsDestructorStack) {
         invokerFnBody += "runDestructors(destructors);\n";
     } else {
@@ -608,7 +696,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
             }
         }
     }
-    
+
     if (returns) {
         invokerFnBody += "return retType.fromWireType(rv);\n";
     }
@@ -676,7 +764,7 @@ function __embind_finalize_value_array(rawTupleType) {
 
     var rawConstructor = reg.rawConstructor;
     var rawDestructor = reg.rawDestructor;
- 
+
     whenDependentTypesAreResolved([rawTupleType], elementTypes, function(elementTypes) {
         elements.forEach(function(elt, i) {
             var getterReturnType = elementTypes[i];
@@ -718,6 +806,8 @@ function __embind_finalize_value_array(rawTupleType) {
                 }
                 return ptr;
             },
+            'argPackAdvance': 8,
+            'readValueFromPointer': simpleReadValueFromPointer,
             destructorFunction: rawDestructor,
         }];
     });
@@ -819,6 +909,8 @@ function __embind_finalize_value_object(structType) {
                 }
                 return ptr;
             },
+            'argPackAdvance': 8,
+            'readValueFromPointer': simpleReadValueFromPointer,
             destructorFunction: rawDestructor,
         }];
     });
@@ -860,7 +952,7 @@ var genericPointerToWireType = function(destructors, handle) {
         if (undefined === handle.$$.smartPtr) {
             throwBindingError('Passing raw pointer to smart pointer is illegal');
         }
-        
+
         switch (this.sharingPolicy) {
             case 0: // NONE
                 // no upcasting
@@ -870,11 +962,11 @@ var genericPointerToWireType = function(destructors, handle) {
                     throwBindingError('Cannot convert argument of type ' + (handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name) + ' to parameter type ' + this.name);
                 }
                 break;
-            
+
             case 1: // INTRUSIVE
                 ptr = handle.$$.smartPtr;
                 break;
-            
+
             case 2: // BY_EMVAL
                 if (handle.$$.smartPtrType === this) {
                     ptr = handle.$$.smartPtr;
@@ -891,7 +983,7 @@ var genericPointerToWireType = function(destructors, handle) {
                     }
                 }
                 break;
-            
+
             default:
                 throwBindingError('Unsupporting sharing policy');
         }
@@ -985,7 +1077,7 @@ function RegisteredPointer(
         this['toWireType'] = genericPointerToWireType;
         // Here we must leave this.destructorFunction undefined, since whether genericPointerToWireType returns
         // a pointer that needs to be freed up is runtime-dependent, and cannot be evaluated at registration time.
-        // TODO: Create an alternative mechanism that allows removing the use of var destructors = []; array in 
+        // TODO: Create an alternative mechanism that allows removing the use of var destructors = []; array in
         //       craftInvokerFunction altogether.
     }
 }
@@ -1002,6 +1094,9 @@ RegisteredPointer.prototype.destructor = function(ptr) {
         this.rawDestructor(ptr);
     }
 };
+
+RegisteredPointer.prototype['argPackAdvance'] = 8;
+RegisteredPointer.prototype['readValueFromPointer'] = simpleReadValueFromPointer;
 
 RegisteredPointer.prototype['fromWireType'] = function(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)
@@ -1110,7 +1205,7 @@ ClassHandle.prototype['isAliasOf'] = function(other) {
         right = rightClass.upcast(right);
         rightClass = rightClass.baseClass;
     }
-    
+
     return leftClass === rightClass && left === right;
 };
 
@@ -1195,7 +1290,7 @@ Module['setDelayFunction'] = function setDelayFunction(fn) {
         delayFunction(flushPendingDeletes);
     }
 };
-        
+
 function RegisteredClass(
     name,
     constructor,
@@ -1298,7 +1393,7 @@ function __embind_register_class(
                 true,
                 false,
                 false);
-        
+
             var pointerConverter = new RegisteredPointer(
                 name + '*',
                 registeredClass,
@@ -1360,10 +1455,10 @@ function __embind_register_class_constructor(
                 for (var i = 1; i < argCount; ++i) {
                     args[i] = argTypes[i]['toWireType'](destructors, arguments[i - 1]);
                 }
-                
+
                 var ptr = invoker.apply(null, args);
                 runDestructors(destructors);
-                
+
                 return argTypes[0]['fromWireType'](ptr);
             };
             return [];
@@ -1447,7 +1542,7 @@ function __embind_register_class_function(
         }
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-        
+
             var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context);
 
             // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
@@ -1627,8 +1722,11 @@ function __embind_register_smart_ptr(
 
 function __embind_register_enum(
     rawType,
-    name
+    name,
+    size,
+    isSigned
 ) {
+    var shift = getShiftFromSize(size);
     name = readLatin1String(name);
 
     function constructor() {
@@ -1644,6 +1742,8 @@ function __embind_register_enum(
         'toWireType': function(destructors, c) {
             return c.value;
         },
+        'argPackAdvance': 8,
+        'readValueFromPointer': integerReadValueFromPointer(name, shift, isSigned),
         destructorFunction: null,
     });
     exposePublicSymbol(name, constructor);

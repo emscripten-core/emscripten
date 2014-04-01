@@ -1938,10 +1938,84 @@ module({
         derived.delete();
         // Let the memory leak test superfixture check that no leaks occurred.
     });
+
+    BaseFixture.extend("val::as", function() {
+        test("built-ins", function() {
+            assert.equal(true,  cm.val_as_bool(true));
+            assert.equal(false, cm.val_as_bool(false));
+            assert.equal(127,   cm.val_as_char(127));
+            assert.equal(32767, cm.val_as_short(32767));
+            assert.equal(65536, cm.val_as_int(65536));
+            assert.equal(65536, cm.val_as_long(65536));
+            assert.equal(10.5,  cm.val_as_float(10.5));
+            assert.equal(10.5,  cm.val_as_double(10.5));
+
+            assert.equal("foo", cm.val_as_string("foo"));
+            assert.equal("foo", cm.val_as_wstring("foo"));
+
+            var obj = {};
+            assert.equal(obj, cm.val_as_val(obj));
+
+            // JS->C++ memory view not implemented
+            //var ab = cm.val_as_memory_view(new ArrayBuffer(13));
+            //assert.equal(13, ab.byteLength);
+        });
+
+        test("value types", function() {
+            var tuple = [1, 2, 3, 4];
+            assert.deepEqual(tuple, cm.val_as_value_array(tuple));
+
+            var struct = {x: 1, y: 2, z: 3, w: 4};
+            assert.deepEqual(struct, cm.val_as_value_object(struct));
+        });
+
+        test("enums", function() {
+            assert.equal(cm.Enum.ONE, cm.val_as_enum(cm.Enum.ONE));
+        });
+    });
+
+    BaseFixture.extend("val::new_", function() {
+        test("variety of types", function() {
+            function factory() {
+                this.arguments = Array.prototype.slice.call(arguments, 0);
+            }
+            var instance = cm.construct_with_6_arguments(factory);
+            assert.deepEqual(
+                [6, -12.5, "a3", {x: 1, y: 2, z: 3, w: 4}, cm.EnumClass.TWO, [-1, -2, -3, -4]],
+                instance.arguments);
+        });
+
+        test("memory view", function() {
+            function factory(before, view, after) {
+                this.before = before;
+                this.view = view;
+                this.after = after;
+            }
+
+            var instance = cm.construct_with_memory_view(factory);
+            assert.equal("before", instance.before);
+            assert.equal(10, instance.view.byteLength);
+            assert.equal("after", instance.after);
+        });
+
+        test("ints_and_float", function() {
+            function factory(a, b, c) {
+                this.a = a;
+                this.b = b;
+                this.c = c;
+            }
+
+            var instance = cm.construct_with_ints_and_float(factory);
+            assert.equal(65537, instance.a);
+            assert.equal(4.0, instance.b);
+            assert.equal(65538, instance.c);
+        });
+    });
 });
 
 /* global run_all_tests */
 // If running as part of the emscripten test runner suite, and not as part of the IMVU suite,
 // we launch the test execution from here. IMVU suite uses its own dedicated mechanism instead of this.
-if (typeof run_all_tests !== "undefined")
+if (typeof run_all_tests !== "undefined") {
     run_all_tests();
+}

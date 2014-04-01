@@ -842,7 +842,7 @@ Enum emval_test_take_and_return_Enum(Enum e) {
     return e;
 }
 
-enum class EnumClass { ONE, TWO };
+enum class EnumClass : char { ONE, TWO };
 
 EnumClass emval_test_take_and_return_EnumClass(EnumClass e) {
     return e;
@@ -2303,4 +2303,61 @@ EMSCRIPTEN_BINDINGS(mixins) {
         class_<DerivedWithMixin, base<Base>>("DerivedWithMixin")
             .constructor<>()
     );
+}
+
+template<typename T>
+T val_as(const val& v) {
+    return v.as<T>();
+}
+
+EMSCRIPTEN_BINDINGS(val_as) {
+    function("val_as_bool",   &val_as<bool>);
+    function("val_as_char",   &val_as<char>);
+    function("val_as_short",  &val_as<short>);
+    function("val_as_int",    &val_as<int>);
+    function("val_as_long",   &val_as<long>);
+
+    function("val_as_float",  &val_as<float>);
+    function("val_as_double", &val_as<double>);
+
+    function("val_as_string", &val_as<std::string>);
+    function("val_as_wstring", &val_as<std::wstring>);
+    function("val_as_val", &val_as<val>);
+
+    function("val_as_value_object", &val_as<StructVector>);
+    function("val_as_value_array", &val_as<TupleVector>);
+
+    function("val_as_enum", &val_as<Enum>);
+
+    // memory_view is always JS -> C++
+    //function("val_as_memory_view", &val_as<memory_view>);
+}
+
+val construct_with_6(val factory) {
+    unsigned char a1 = 6;
+    double a2 = -12.5;
+    std::string a3("a3");
+    StructVector a4(1, 2, 3, 4);
+    EnumClass a5 = EnumClass::TWO;
+    TupleVector a6(-1, -2, -3, -4);
+    return factory.new_(a1, a2, a3, a4, a5, a6);
+}
+
+val construct_with_memory_view(val factory) {
+    static const char data[11] = "0123456789";
+    return factory.new_(
+        std::string("before"),
+        memory_view(10, data),
+        std::string("after"));
+}
+
+val construct_with_ints_and_float(val factory) {
+    static const char data[11] = "0123456789";
+    return factory.new_(65537, 4.0f, 65538);
+}
+
+EMSCRIPTEN_BINDINGS(val_new_) {
+    function("construct_with_6_arguments", &construct_with_6);
+    function("construct_with_memory_view", &construct_with_memory_view);
+    function("construct_with_ints_and_float", &construct_with_ints_and_float);
 }

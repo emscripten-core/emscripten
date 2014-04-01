@@ -55,6 +55,7 @@ function requireHandle(handle) {
     if (!handle) {
         throwBindingError('Cannot use deleted val. handle = ' + handle);
     }
+    return _emval_handle_array[handle].value;
 }
 
 function __emval_register(value) {
@@ -105,9 +106,9 @@ function __emval_new_cstring(v) {
     return __emval_register(getStringOrSymbol(v));
 }
 
-function __emval_take_value(type, v) {
+function __emval_take_value(type, argv) {
     type = requireRegisteredType(type, '_emval_take_value');
-    v = type['fromWireType'](v);
+    var v = type['readValueFromPointer'](argv);
     return __emval_register(v);
 }
 
@@ -116,70 +117,51 @@ var __newers = {}; // arity -> function
 
 function craftEmvalAllocator(argCount) {
     /*This function returns a new function that looks like this:
-    function emval_allocator_3(handle, argTypes, arg0Wired, arg1Wired, arg2Wired) {
+    function emval_allocator_3(constructor, argTypes, args) {
         var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
-        var arg0 = argType0.fromWireType(arg0Wired);
+        var arg0 = argType0.readValueFromPointer(args);
         var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
-        var arg1 = argType1.fromWireType(arg1Wired);
+        var arg1 = argType1.readValueFromPointer(args + 8);
         var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
-        var arg2 = argType2.fromWireType(arg2Wired);
-        var constructor = _emval_handle_array[handle].value;
-        var emval = new constructor(arg0, arg1, arg2);
-        return emval;
+        var arg2 = argType2.readValueFromPointer(args + 16);
+        var obj = new constructor(arg0, arg1, arg2);
+        return __emval_register(obj);
     } */
 
-    var args1 = ["requireRegisteredType", "HEAP32", "_emval_handle_array", "__emval_register"];
-    var args2 = [requireRegisteredType, HEAP32, _emval_handle_array, __emval_register];
-
     var argsList = "";
-    var argsListWired = "";
     for(var i = 0; i < argCount; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
-        argsListWired += ", arg"+i+"Wired"; // ', arg0Wired, arg1Wired, ..., argnWired'
     }
 
-    var invokerFnBody =
-        "return function emval_allocator_"+argCount+"(handle, argTypes " + argsListWired + ") {\n";
+    var functionBody =
+        "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n";
 
     for(var i = 0; i < argCount; ++i) {
-        invokerFnBody += 
+        functionBody +=
             "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
-            "var arg"+i+" = argType"+i+".fromWireType(arg"+i+"Wired);\n";
+            "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
+            "args += argType"+i+".argPackAdvance;\n";
     }
-    invokerFnBody +=
-        "var constructor = _emval_handle_array[handle].value;\n" +
+    functionBody +=
         "var obj = new constructor("+argsList+");\n" +
         "return __emval_register(obj);\n" +
         "}\n";
 
-    args1.push(invokerFnBody);
-    var invokerFunction = new_(Function, args1).apply(null, args2);
-    return invokerFunction;
+    /*jshint evil:true*/
+    return (new Function("requireRegisteredType", "HEAP32", "__emval_register", functionBody))(
+        requireRegisteredType, HEAP32, __emval_register);
 }
 
-function __emval_new(handle, argCount, argTypes) {
-    requireHandle(handle);
-    
+function __emval_new(handle, argCount, argTypes, args) {
+    handle = requireHandle(handle);
+
     var newer = __newers[argCount];
     if (!newer) {
         newer = craftEmvalAllocator(argCount);
         __newers[argCount] = newer;
     }
 
-    if (argCount === 0) {
-        return newer(handle, argTypes);
-    } else if (argCount === 1) {
-        return newer(handle, argTypes, arguments[3]);
-    } else if (argCount === 2) {
-        return newer(handle, argTypes, arguments[3], arguments[4]);
-    } else if (argCount === 3) {
-        return newer(handle, argTypes, arguments[3], arguments[4], arguments[5]);
-    } else if (argCount === 4) {
-        return newer(handle, argTypes, arguments[3], arguments[4], arguments[5], arguments[6]);
-    } else {
-        // This is a slow path! (.apply and .splice are slow), so a few specializations are present above.
-        return newer.apply(null, arguments.splice(1));
-    }
+    return newer(handle, argTypes, args);
 }
 
 // appease jshint (technically this code uses eval)
@@ -196,46 +178,39 @@ function __emval_get_module_property(name) {
 }
 
 function __emval_get_property(handle, key) {
-    requireHandle(handle);
-    return __emval_register(_emval_handle_array[handle].value[_emval_handle_array[key].value]);
+    handle = requireHandle(handle);
+    key = requireHandle(key);
+    return __emval_register(handle[key]);
 }
 
 function __emval_set_property(handle, key, value) {
-    requireHandle(handle);
-    _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
+    handle = requireHandle(handle);
+    key = requireHandle(key);
+    value = requireHandle(value);
+    handle[key] = value;
 }
 
 function __emval_as(handle, returnType, destructorsRef) {
-    requireHandle(handle);
+    handle = requireHandle(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
     var rd = __emval_register(destructors);
     HEAP32[destructorsRef >> 2] = rd;
-    return returnType['toWireType'](destructors, _emval_handle_array[handle].value);
+    return returnType['toWireType'](destructors, handle);
 }
 
-function parseParameters(argCount, argTypes, argWireTypes) {
-    var a = new Array(argCount);
-    for (var i = 0; i < argCount; ++i) {
-        var argType = requireRegisteredType(
-            HEAP32[(argTypes >> 2) + i],
-            "parameter " + i);
-        a[i] = argType['fromWireType'](argWireTypes[i]);
-    }
-    return a;
-}
-
-function __emval_call(handle, argCount, argTypes) {
-    requireHandle(handle);
+function __emval_call(handle, argCount, argTypes, argv) {
+    handle = requireHandle(handle);
     var types = lookupTypes(argCount, argTypes);
 
     var args = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
-        args[i] = types[i]['fromWireType'](arguments[3 + i]);
+        var type = types[i];
+        args[i] = type['readValueFromPointer'](argv);
+        argv += type.argPackAdvance;
     }
 
-    var fn = _emval_handle_array[handle].value;
-    var rv = fn.apply(undefined, args);
+    var rv = handle.apply(undefined, args);
     return __emval_register(rv);
 }
 
@@ -255,44 +230,59 @@ function allocateDestructors(destructorsRef) {
     return destructors;
 }
 
+// Leave id 0 undefined.  It's not a big deal, but might be confusing
+// to have null be a valid method caller.
+var methodCallers = [undefined];
+
+function addMethodCaller(caller) {
+    var id = methodCallers.length;
+    methodCallers.push(caller);
+    return id;
+}
+
 function __emval_get_method_caller(argCount, argTypes) {
     var types = lookupTypes(argCount, argTypes);
 
     var retType = types[0];
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
-    var args1 = ["addFunction", "createNamedFunction", "requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType", "allocateDestructors"];
-    var args2 = [Runtime.addFunction, createNamedFunction, requireHandle, getStringOrSymbol, _emval_handle_array, retType, allocateDestructors];
+    var params = ["retType"];
+    var args = [retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    var argsListWired = ""; // 'arg0Wired, ..., argNWired'
     for (var i = 0; i < argCount - 1; ++i) {
         argsList += (i !== 0 ? ", " : "") + "arg" + i;
-        argsListWired += ", arg" + i + "Wired";
-        args1.push("argType" + i);
-        args2.push(types[1 + i]);
+        params.push("argType" + i);
+        args.push(types[1 + i]);
     }
 
-    var invokerFnBody =
-        "return addFunction(createNamedFunction('" + signatureName + "', function (handle, name, destructorsRef" + argsListWired + ") {\n" +
-        "    requireHandle(handle);\n" +
-        "    name = getStringOrSymbol(name);\n";
+    var functionBody =
+        "return function (handle, name, destructors, args) {\n";
 
     for (var i = 0; i < argCount - 1; ++i) {
-        invokerFnBody += "    var arg" + i + " = argType" + i + ".fromWireType(arg" + i + "Wired);\n";
+        functionBody +=
+        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args);\n" +
+        "    args += argType" + i + ".argPackAdvance;\n";
     }
-    invokerFnBody +=
-        "    var obj = _emval_handle_array[handle].value;\n" +
-        "    var rv = obj[name](" + argsList + ");\n" +
-        "    return retType.toWireType(allocateDestructors(destructorsRef), rv);\n" +
-        "}));\n";
+    functionBody +=
+        "    var rv = handle[name](" + argsList + ");\n" +
+        "    return retType.toWireType(destructors, rv);\n" +
+        "};\n";
 
-    args1.push(invokerFnBody);
-    var invokerFunction = new_(Function, args1).apply(null, args2);
-    return invokerFunction;
+    params.push(functionBody);
+    var invokerFunction = new_(Function, params).apply(null, args);
+    return addMethodCaller(createNamedFunction(signatureName, invokerFunction));
+}
+
+function __emval_call_method(caller, handle, methodName, destructorsRef, args) {
+    caller = methodCallers[caller];
+    handle = requireHandle(handle);
+    methodName = getStringOrSymbol(methodName);
+    return caller(handle, methodName, allocateDestructors(destructorsRef), args);
 }
 
 function __emval_has_function(handle, name) {
+    handle = requireHandle(handle);
     name = getStringOrSymbol(name);
-    return _emval_handle_array[handle].value[name] instanceof Function;
+    return handle[name] instanceof Function;
 }
