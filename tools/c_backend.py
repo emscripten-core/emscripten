@@ -99,6 +99,9 @@ int32_t em____cxa_allocate_exception(int32_t x);
 int32_t em____cxa_throw(int32_t x, int32_t y, int32_t z);
 void em___ZNSt9exceptionD2Ev();
 
+int32_t em__llvm_bswap_i32(int32_t);
+void em____assert_fail(int32_t, int32_t, int32_t, int32_t);
+
 ''' % (('0,'*8) + data) + pre_c)
 
 def get_c_type(s):
@@ -156,6 +159,15 @@ int32_t em____cxa_throw(int32_t x, int32_t y, int32_t z) {
 
 void em___ZNSt9exceptionD2Ev() {
   DIE("exceptions not supported");
+}
+
+int32_t em__llvm_bswap_i32(int32_t x) {
+  return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | ((x>>24)&0xff);
+}
+
+void em____assert_fail(int32_t condition, int32_t filename, int32_t line, int32_t func) {
+  printf("assert failed at line %d\n", line);
+  exit(3);
 }
 
 // main
