@@ -1826,7 +1826,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     auto HeldBySmartPtr_class = class_<HeldBySmartPtr>("HeldBySmartPtr");
     HeldBySmartPtr_class
         .smart_ptr<CustomSmartPtr<HeldBySmartPtr>>("CustomSmartPtr<HeldBySmartPtr>")
-        .smart_ptr_constructor(&std::make_shared<HeldBySmartPtr, int, std::string>)
+        .smart_ptr_constructor("shared_ptr<HeldbySmartPtr>", &std::make_shared<HeldBySmartPtr, int, std::string>)
         .class_function("newCustomPtr", HeldBySmartPtr::newCustomPtr)
         .function("returnThis", &takesHeldBySmartPtrSharedPtr)
         .property("i", &HeldBySmartPtr::i)
@@ -2249,7 +2249,7 @@ std::shared_ptr<Base> return_Base_from_DerivedWithOffset(std::shared_ptr<Derived
 
 EMSCRIPTEN_BINDINGS(with_adjustment) {
     class_<DerivedWithOffset, base<Base>>("DerivedWithOffset")
-        .smart_ptr_constructor(&std::make_shared<DerivedWithOffset>)
+        .smart_ptr_constructor("shared_ptr<DerivedWithOffset>", &std::make_shared<DerivedWithOffset>)
         ;
 
     function("return_Base_from_DerivedWithOffset", &return_Base_from_DerivedWithOffset);

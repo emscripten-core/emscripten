@@ -890,7 +890,7 @@ namespace emscripten {
         }
 
         template<typename PointerType>
-        const class_& smart_ptr(const char* name = typeid(PointerType).name()) const {
+        const class_& smart_ptr(const char* name) const {
             using namespace internal;
 
             typedef smart_ptr_trait<PointerType> PointerTrait;
@@ -933,12 +933,6 @@ namespace emscripten {
         }
 
         template<typename SmartPtr, typename... Args, typename... Policies>
-        const class_& smart_ptr_constructor(SmartPtr (*factory)(Args...), Policies&&... policies) const {
-            // TODO: once everyone has manually specified a name, remove this
-            return smart_ptr_constructor(typeid(SmartPtr).name(), factory, std::forward<Policies>(policies)...);
-        }
-
-        template<typename SmartPtr, typename... Args, typename... Policies>
         const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
             using namespace internal;
 
@@ -955,7 +949,7 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename PointerType = WrapperType*>
-        const class_& allow_subclass(const char* wrapperClassName = typeid(WrapperType).name()) const {
+        const class_& allow_subclass(const char* wrapperClassName) const {
             using namespace internal;
 
             auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
