@@ -5776,6 +5776,7 @@ function cIfy(ast) {
     return returnType;
   }
 
+  // forward declarations
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1][0] !== '_') return;
     output = getReturnType(func) + ' ' + cName(func[1]) + '(';
@@ -5784,6 +5785,9 @@ function cIfy(ast) {
     printErr(output);
   });
 
+  printErr('\nSPLIT\n');
+
+  // implementations
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1][0] !== '_') return;
     fixFunc(func);

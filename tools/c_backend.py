@@ -66,6 +66,7 @@ execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), temp_
 out.close()
 c = open(output).read()
 c, includes = c.split('INCLUDES: ')
+pre_c, post_c = c.split('\nSPLIT\n')
 
 print '[em-c-backend] finalize C'
 asm = AsmModule(temp_name)
@@ -98,8 +99,27 @@ int32_t em____cxa_allocate_exception(int32_t x);
 int32_t em____cxa_throw(int32_t x, int32_t y, int32_t z);
 void em___ZNSt9exceptionD2Ev();
 
-//===
-''' % (('0,'*8) + data) + c + r'''//===
+''' % (('0,'*8) + data) + pre_c)
+
+def get_c_type(s):
+  if s == 'i':
+    return 'int32_t';
+  elif s == 'd':
+    return 'double'
+  elif s == 'f':
+   return 'float'
+  elif s == 'v':
+    return 'void'
+  else:
+    assert 0
+
+for name, table in asm.tables.iteritems():
+  sig = name.split('_')[-1]
+  o.write('typedef ' + get_c_type(sig[0]) + ' (*fp_' + sig + ')(' + ','.join(map(get_c_type, sig[1:])) + ');\n')
+  table = '{ ' + ','.join(map(lambda item: ('em_' + item) if item[0] != 'b' else 'NULL', table[1:-1].split(','))) + ' }'
+  o.write('fp_' + sig + ' ' + name + '[] = ' + table + ';\n\n')
+
+o.write('//===\n' + post_c + r'''//===
 
 int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
   int32_t i;
