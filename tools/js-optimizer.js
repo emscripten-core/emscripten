@@ -5772,6 +5772,7 @@ function cIfy(ast) {
     if (stat) output += ';';
   }
   function walkStatements(stats) {
+    if (!stats) return;
     stats.forEach(function(stat) {
       emitIndent();
       walk(stat);
