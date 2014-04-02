@@ -108,6 +108,8 @@ void em___ZNSt9exceptionD2Ev();
 int32_t em__llvm_bswap_i32(int32_t);
 void em____assert_fail(int32_t, int32_t, int32_t, int32_t);
 
+int32_t relocate(int32_t ptr);
+
 ''' % (data.count(',') + 9, ('0,'*8) + data) + pre_c)
 
 def get_c_type(s):
@@ -179,6 +181,11 @@ int32_t em__llvm_bswap_i32(int32_t x) {
 void em____assert_fail(int32_t condition, int32_t filename, int32_t line, int32_t func) {
   printf("assert failed at line %d\n", line);
   exit(3);
+}
+
+int32_t relocate(int32_t ptr) {
+  if (ptr == 0) return 0; // NULL is NULL
+  return ptr + (int32_t)MEM;
 }
 
 // main

@@ -5584,7 +5584,7 @@ function cIfy(ast) {
         output += '(';
         node[2].forEach(function(arg, i) {
           if (i > 0) output += ', ';
-          if (relocations[i]) output += '(' + relocations[i] + ')(((int32_t)MEM)+';
+          if (relocations[i]) output += '(' + relocations[i] + ')relocate(';
           walk(arg, true);
           if (relocations[i]) output += ')';
         });
