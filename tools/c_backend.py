@@ -14,6 +14,11 @@ Limitations:
   * printf of %s (strings) does not work. Use puts.
   * varargs in general, including printf, might only work for a single arg.
 
+TODO:
+
+  * NULLs to outfuncs like time() must become NULLS!
+  * global constructors
+
 '''
 
 import os, sys
@@ -86,10 +91,11 @@ for i in includes.strip().split(','):
   if i: o.write('#include <' + i  + '>\n')
 
 o.write(r'''
-static int8_t MEM[64*1024*1024] = { %s };
+static int8_t STATIC_INIT[%d] = { %s };
+static int8_t MEM[64*1024*1024];
 
-static int32_t STACKTOP = sizeof(MEM) - 1024*1024;
-static int32_t DYNAMICTOP = 5246976;
+static int32_t STACKTOP;
+static int32_t DYNAMICTOP;
 static int32_t tempDoublePtr = 0;
 
 int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num);
@@ -102,7 +108,7 @@ void em___ZNSt9exceptionD2Ev();
 int32_t em__llvm_bswap_i32(int32_t);
 void em____assert_fail(int32_t, int32_t, int32_t, int32_t);
 
-''' % (('0,'*8) + data) + pre_c)
+''' % (data.count(',') + 9, ('0,'*8) + data) + pre_c)
 
 def get_c_type(s):
   if s == 'i':
@@ -177,13 +183,21 @@ void em____assert_fail(int32_t condition, int32_t filename, int32_t line, int32_
 
 // main
 
+int32_t alignMemory(int32_t p) {
+  return (p+7)&-8;
+}
+
 int32_t dynamicAlloc(int32_t bytes) {
   int32_t ret = DYNAMICTOP;
-  DYNAMICTOP += (bytes+7)&-8;
+  DYNAMICTOP += alignMemory(bytes);
   return ret;
 }
 
-int main(int argc, char **argv) {''')
+int main(int argc, char **argv) {
+  memcpy(MEM, STATIC_INIT, sizeof(STATIC_INIT));
+  STACKTOP = alignMemory(sizeof(STATIC_INIT));
+  DYNAMICTOP = alignMemory(STACKTOP + 5242880);
+''')
 
 if 'em__main(void)' in c:
   o.write(r'''
