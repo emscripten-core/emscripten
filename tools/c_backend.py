@@ -16,7 +16,6 @@ Limitations:
 
 TODO:
 
-  * NULLs to outfuncs like time() must become NULLS!
   * global constructors
 
 '''
@@ -110,6 +109,12 @@ void em____assert_fail(int32_t, int32_t, int32_t, int32_t);
 
 int32_t relocate(int32_t ptr);
 
+void em__emscripten_run_script(int32_t code);
+
+void em____cxa_begin_catch(int32_t);
+void em___ZSt9terminatev();
+void em____cxa_pure_virtual();
+
 ''' % (data.count(',') + 9, ('0,'*8) + data) + pre_c)
 
 def get_c_type(s):
@@ -187,6 +192,22 @@ void em____assert_fail(int32_t condition, int32_t filename, int32_t line, int32_
 int32_t relocate(int32_t ptr) {
   if (ptr == 0) return 0; // NULL is NULL
   return ptr + (int32_t)MEM;
+}
+
+void em__emscripten_run_script(int32_t code) {
+  printf("[not running script code]\n");
+}
+
+void em____cxa_begin_catch(int32_t ex) {
+  DIE("exceptions not supported");
+}
+
+void em___ZSt9terminatev() {
+  DIE("terminate");
+}
+
+void em____cxa_pure_virtual() {
+  DIE("pure virtual");
 }
 
 // main

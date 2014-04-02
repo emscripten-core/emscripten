@@ -5392,7 +5392,16 @@ function cIfy(ast) {
       node[1][1] = 'fabs';
     },
     Math_sqrt: function(node) {
-      node[1][1] = 'sqrtf';
+      node[1][1] = 'sqrt';
+    },
+    Math_sin: function(node) {
+      node[1][1] = 'sin';
+    },
+    Math_cos: function(node) {
+      node[1][1] = 'cos';
+    },
+    Math_floor: function(node) {
+      node[1][1] = 'floor';
     },
     Math_fround: function(node) {
       output += '((float)(';
@@ -5415,6 +5424,7 @@ function cIfy(ast) {
 
   var funcIncludes = {
     time: 'time.h',
+    clock: 'time.h',
     sysconf: 'unistd.h',
   };
 
@@ -5446,7 +5456,7 @@ function cIfy(ast) {
     switch (name) {
       // whitelist some libc functions we can just call
       case '_puts': case '_abort': case '_printf': case '_atoi': case '_putchar': case '_sysconf': case '_time':
-      case '___errno_location': { // the ones on this line are suspect
+      case '___errno_location': case '_clock': {
         return name.substr(1);
       }
     }
@@ -5743,6 +5753,14 @@ function cIfy(ast) {
         }
         output += '))';
         if (!freeParens) output += ')';
+        break;
+      }
+      case 'seq': {
+        output += '(';
+        walk(node[1]);
+        output += ', ';
+        walk(node[2]);
+        output += ')';
         break;
       }
       case 'toplevel': break; // empty node
