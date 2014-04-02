@@ -5459,6 +5459,9 @@ function cIfy(ast) {
       case '___errno_location': case '_clock': {
         return name.substr(1);
       }
+      // special numerics
+      case 'inf': return 'INFINITY';
+      case 'nan': return 'NAN';
     }
     if (name[0] === '$') return '_' + name.substr(1);
     if (name[0] === '_') return 'em_' + name; // avoid collisions with system malloc etc

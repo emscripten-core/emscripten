@@ -115,6 +115,9 @@ void em____cxa_begin_catch(int32_t);
 void em___ZSt9terminatev();
 void em____cxa_pure_virtual();
 
+void em__emscripten_set_main_loop(int32_t func, int32_t fps, int32_t simulate);
+void em__emscripten_cancel_main_loop();
+
 ''' % (data.count(',') + 9, ('0,'*8) + data) + pre_c)
 
 def get_c_type(s):
@@ -208,6 +211,14 @@ void em___ZSt9terminatev() {
 
 void em____cxa_pure_virtual() {
   DIE("pure virtual");
+}
+
+void em__emscripten_set_main_loop(int32_t func, int32_t fps, int32_t simulate) {
+  DIE("no main loop");
+}
+
+void em__emscripten_cancel_main_loop() {
+  DIE("no main loop");
 }
 
 // main
