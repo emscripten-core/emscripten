@@ -851,15 +851,15 @@ namespace emscripten {
         template<typename T>
         struct SmartPtrIfNeeded {
             template<typename U>
-            SmartPtrIfNeeded(U& cls) {
-                cls.template smart_ptr<T>();
+            SmartPtrIfNeeded(U& cls, const char* smartPtrName) {
+                cls.template smart_ptr<T>(smartPtrName);
             }
         };
 
         template<typename T>
         struct SmartPtrIfNeeded<T*> {
             template<typename U>
-            SmartPtrIfNeeded(U&) {
+            SmartPtrIfNeeded(U&, const char*) {
             }
         };
     };
@@ -949,12 +949,12 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename PointerType = WrapperType*>
-        const class_& allow_subclass(const char* wrapperClassName) const {
+        const class_& allow_subclass(const char* wrapperClassName, const char* pointerName = "<UnknownPointerName>") const {
             using namespace internal;
 
             auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
                 ;
-            SmartPtrIfNeeded<PointerType> _(cls);
+            SmartPtrIfNeeded<PointerType> _(cls, pointerName);
 
             return class_function(
                 "implement",
