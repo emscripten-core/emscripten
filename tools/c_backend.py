@@ -66,7 +66,7 @@ execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS
 
 print '[em-c-backend] converting to C'
 out = open(output, 'w')
-execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), temp_name, 'cIfy'], stderr=out, env={ 'EMCC_CORES': '1' })
+execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), temp_name, 'cIfy'], stderr=out, env={ 'EMCC_JSOPT_MIN_CHUNK_SIZE': str(2**31-1) })
 out.close()
 c = open(output).read()
 c, includes = c.split('INCLUDES: ')
