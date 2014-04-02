@@ -133,6 +133,11 @@ int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
 }
 
 int32_t em__sbrk(int32_t bytes) {
+  static int first = 1;
+  if (first) {
+    DYNAMICTOP = (DYNAMICTOP+4095)&(-4096);
+    first = 0;
+  }
   int32_t ret = DYNAMICTOP;
   if (bytes != 0) DYNAMICTOP += (bytes+7)&-8;
   return ret;
@@ -172,6 +177,12 @@ void em____assert_fail(int32_t condition, int32_t filename, int32_t line, int32_
 
 // main
 
+int32_t dynamicAlloc(int32_t bytes) {
+  int32_t ret = DYNAMICTOP;
+  DYNAMICTOP += (bytes+7)&-8;
+  return ret;
+}
+
 int main(int argc, char **argv) {''')
 
 if 'em__main(void)' in c:
@@ -183,13 +194,13 @@ else:
   o.write(r'''
   assert(sizeof(void*) == 4 && "must build this code on a 32-bit arch (use -m32 if necessary)");
   char **em_argv = (char**)(MEM + DYNAMICTOP);
-  em__sbrk(sizeof(char*)*(argc+1));
+  dynamicAlloc(sizeof(char*)*(argc+1));
   int i;
   for (i = 0; i < argc; i++) {
     char *arg = argv[i];
     int len = strlen(arg);
     char *em_arg = (char*)(MEM + DYNAMICTOP);
-    em__sbrk(len+1);
+    dynamicAlloc(len+1);
     strcpy(em_arg, arg);
     em_argv[i] = (char*)(((int32_t)em_arg) - (int32_t)MEM);
   }
