@@ -135,7 +135,7 @@ o.write('//===\n' + post_c + r'''//===
 int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
   int32_t i;
   for (i = 0; i < num; i++) {
-    MEM[8+dest+i] = MEM[8+src+i];
+    MEM[dest+i] = MEM[src+i];
   }
   return dest;
 }
