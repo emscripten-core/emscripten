@@ -148,6 +148,7 @@ int32_t em__sbrk(int32_t bytes) {
   }
   int32_t ret = DYNAMICTOP;
   if (bytes != 0) DYNAMICTOP += (bytes+7)&-8;
+  assert(DYNAMICTOP < sizeof(MEM));
   return ret;
 }
 
