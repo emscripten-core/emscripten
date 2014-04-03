@@ -41,42 +41,65 @@ The args to emcc can be anything emcc accepts, for example
 
   python c_backend.py source.cpp
 
-which will emit a.out.c, or
+which will emit a.out.js, a.out.c and a.out.exe. Or,
 
   python c_backend.py source.cpp other.cpp -O2 -o project.c
 
-This will emit project.c which will contain the output from
-two source files, optimized.
+This will emit project.* files (all 3, as before) which will
+contain the output from two source files, optimized. You can
+also do
+
+  python c_backend.py source.cpp other.cpp -O2 -o project
+
+(without a suffix).
+
+Additional arguments:
+
+  --c-compiler C_COMPILER    - the C compiler to use
 '''
   sys.exit(1)
 
 output = 'a.out.c'
+c_compiler = shared.CLANG_CC
+opts = '-O0'
+
 for i in range(len(sys.argv)):
+  if sys.argv[i] is None: continue
   if sys.argv[i] == '-o':
     output = sys.argv[i+1]
     sys.argv[i] = None
     sys.argv[i+1] = None
-    break
+  elif sys.argv[i] == '--c-compiler':
+    c_compiler = sys.argv[i+1]
+    sys.argv[i] = None
+    sys.argv[i+1] = None
+  elif sys.argv[i].startswith('-O'):
+    opts = sys.argv[i]
+    if opts == '-O3': opts = '-O2' # map js to c opts
+    # leave this one, for JS opts
 sys.argv = filter(lambda x: x is not None, sys.argv)
 
-temp_name = unsuffixed(output) + '.js'
+if '.' in output: output = unsuffixed(output)
+js_name = output + '.js'
+c_name = output + '.c'
+exe_name = output + '.exe'
 
-print '[em-c-backend] emitting asm.js, to', output, 'with temp', temp_name
-execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-s', 'SIMPLE_MEM_INIT=1', '-o', temp_name])
+print '[em-c-backend] emitting asm.js, to', js_name, c_name, exe_name
+execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-s', 'SIMPLE_MEM_INIT=1', '-o', js_name])
 
 print '[em-c-backend] converting to C'
-out = open(output, 'w')
-execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), temp_name, 'cIfy'], stderr=out, env={ 'EMCC_JSOPT_MIN_CHUNK_SIZE': str(2**31-1) })
+out = open(c_name, 'w')
+execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), js_name, 'cIfy'], stderr=out, env={ 'EMCC_JSOPT_MIN_CHUNK_SIZE': str(2**31-1) })
 out.close()
-c = open(output).read()
+c = open(c_name).read()
 c, includes = c.split('INCLUDES: ')
 pre_c, post_c = c.split('\nSPLIT\n')
 
 print '[em-c-backend] finalize C'
-asm = AsmModule(temp_name)
+asm = AsmModule(js_name)
 data = asm.mem_init_js.split('[')[1].split(']')[0]
 # add runtime and libc support code
-o = open(output, 'w')
+o = open(c_name, 'w')
 o.write(r'''
 #include <stdint.h>
 #include <math.h>
@@ -265,4 +288,9 @@ o.write(r'''}
 
 ''')
 o.close()
+
+# generate executable
+
+print '[em-c-backend] build executable (%s %s)' % (c_compiler, opts)
+execute([c_compiler, opts, '-m32', '-fno-inline', '-lm', c_name, '-o', exe_name])
 

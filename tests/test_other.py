@@ -2673,6 +2673,7 @@ int main()
   def test_c_backend(self):
     for filename, output, build_args, run_args in [
       (path_from_root('tests', 'hello_world.c'), 'hello, world!', [], []),
+      (path_from_root('tests', 'hello_world.c'), 'hello, world!', ['-o', 'waka'], []),
       (path_from_root('tests', 'hello_world.c'), 'hello, world!', ['-o', 'waka.c'], []),
       (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(4) = 4.', [], ['4']),
       (path_from_root('tests', 'fannkuch.cpp'), 'Pfannkuchen(5) = 7.', [], ['5']),
@@ -2681,9 +2682,10 @@ int main()
       self.clear()
       Popen([PYTHON, path_from_root('tools', 'c_backend.py'), '-O3', filename] + build_args).communicate()
       outfile = 'a.out.c' if '-o' not in build_args else build_args[build_args.index('-o')+1]
-      assert os.path.exists(outfile)
-      Popen([CLANG_CC, '-m32', outfile, '-Wno-shift-op-parentheses'], stderr=PIPE).communicate()
-      assert os.path.exists('a.out')
-      out, err = Popen(['./a.out'] + run_args, stdout=PIPE).communicate()
+      base = outfile if '.' not in outfile else '.'.join(outfile.split('.')[:-1])
+      assert os.path.exists(base + '.js')
+      assert os.path.exists(base + '.c')
+      assert os.path.exists(base + '.exe')
+      out, err = Popen(['./' + base + '.exe'] + run_args, stdout=PIPE).communicate()
       self.assertContained(output, out)
 

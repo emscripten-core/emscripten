@@ -137,14 +137,11 @@ class CBackendBenchmarker(Benchmarker):
     output = Popen([PYTHON, path_from_root('tools', 'c_backend.py'), filename,
                     '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
+                    '--c-compiler', os.path.join(LLVM_3_2, 'clang'),
                     '-o', final_c] + shared_args + emcc_args + self.extra_args, env=self.env, stdout=PIPE, stderr=PIPE).communicate()
     assert os.path.exists(final_c), 'Failed to compile file (1)'
-
-    final = final_c + '.exec'
-    try_delete(final)
-    output = Popen([os.path.join(LLVM_3_2, 'clang'), '-O2', '-m32', '-lm', final_c, '-o', final], stderr=PIPE).communicate()
-    assert os.path.exists(final), 'Failed to compile file (2) ' + output[1]
-    self.filename = final
+    self.filename = unsuffixed(final_c) + '.exe'
+    assert os.path.exists(self.filename), 'failed to emit exe'
 
   def run(self, args):
     process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
