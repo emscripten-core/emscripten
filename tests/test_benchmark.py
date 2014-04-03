@@ -391,7 +391,7 @@ class benchmark(RunnerCore):
     '''
     self.do_benchmark('copy', src, 'sum:')
 
-  def test_ifs(self):
+  def zzztest_ifs(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -533,7 +533,7 @@ class benchmark(RunnerCore):
       return 100.0/float(re.search('Unrolled Double  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
-  def test_linpack_float(self): # TODO: investigate if this might benefit from -ffast-math in LLVM 3.3+ which has fast math stuff in LLVM IR
+  def zzztest_linpack_float(self): # TODO: investigate if this might benefit from -ffast-math in LLVM 3.3+ which has fast math stuff in LLVM IR
     def output_parser(output):
       return 100.0/float(re.search('Unrolled Single  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_float', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Single  Precision''', force_c=True, output_parser=output_parser, shared_args=['-DSP'])
@@ -558,13 +558,13 @@ class benchmark(RunnerCore):
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
-  def test_zzz_lua_scimark(self):
+  def zzztest_zzz_lua_scimark(self):
     def output_parser(output):
       return 100.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
 
     self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 
-  def test_zzz_lua_binarytrees(self):
+  def zzztest_zzz_lua_binarytrees(self):
     # js version: ['binarytrees.lua', {0: 0, 1: 9.5, 2: 11.99, 3: 12.85, 4: 14.72, 5: 15.82}[arguments[0]]]
     self.lua('binarytrees', 'long lived tree of depth')
 
@@ -581,7 +581,7 @@ class benchmark(RunnerCore):
       return self.get_library('box2d', [os.path.join('box2d.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'box2d')], lib_builder=lib_builder)
 
-  def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  def zzztest_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read() + \
           open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
