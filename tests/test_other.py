@@ -2536,9 +2536,10 @@ int main()
       (['-Wno-error=implicit-function-declaration'], ['abort()', 'it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this'], [IMPLICIT_WARNING]), # turn error into warning
       (['-Wno-implicit-function-declaration'], ['abort()', 'it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this'], []), # turn error into nothing at all
       (['-Wno-error=implicit-function-declaration', '-s', 'ASSERTIONS=2'], ['abort()', 'This pointer might make sense in another type signature'], []),
-      (['-Wno-error=implicit-function-declaration', '-O1'], ['hello 2\nhello 5\n'], []), # invalid output - second arg is sent as varargs, but needs to be int. llvm optimizer avoided the crash silently, caused undefined behavior... at least people can debug this by running an -O0 build.
+      (['-Wno-error=implicit-function-declaration', '-O1'], ['hello 0\nhello 0\n'], []), # invalid output - second arg is sent as varargs, but needs to be int. llvm optimizer avoided the crash silently, caused undefined behavior... at least people can debug this by running an -O0 build.
     ]:
       print opts, expected
+      try_delete('a.out.js')
       stdout, stderr = Popen([PYTHON, EMCC, 'src.c'] + opts, stderr=PIPE).communicate()
       for ce in compile_expected + ['''warning: incompatible pointer types''']:
         self.assertContained(ce, stderr)
