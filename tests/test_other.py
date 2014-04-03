@@ -2580,6 +2580,19 @@ int main()
     out, err = Popen([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'warning' in err, err
     assert 'incorrect target triple' in err, err
+  
+  def test_valid_abspath(self):
+    # Test whether abspath warning appears
+    abs_include_path = path_from_root('tests')
+    process = Popen([PYTHON, EMCC, '-I%s' % abs_include_path, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
+    out, err = process.communicate()
+    warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.' % abs_include_path
+    assert(warning in err)
+    
+    # Hide warning for this include path
+    process = Popen([PYTHON, EMCC, '--valid-abspath', abs_include_path,'-I%s' % abs_include_path, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
+    out, err = process.communicate()
+    assert(warning not in err)
 
   def test_simplify_ifs(self):
     def test(src, nums):
