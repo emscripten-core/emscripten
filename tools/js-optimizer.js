@@ -5740,11 +5740,11 @@ function cIfy(ast) {
         }
         if (ALIASING_MEM_VIEWS) {
           switch (node[1][1]) {
-            case 'HEAP8':  case 'HEAPU8':  output += 'MEM8'; break;
-            case 'HEAP16': case 'HEAPU16': output += 'MEM16'; break;
-            case 'HEAP32': case 'HEAPU32': output += 'MEM32'; break;
-            case 'HEAPF32':                output += 'MEMF32'; break;
-            case 'HEAPF64':                output += 'MEMF64'; break;
+            case 'HEAP8':  case 'HEAPU8':  output += 'MEM.I8'; break;
+            case 'HEAP16': case 'HEAPU16': output += 'MEM.I16'; break;
+            case 'HEAP32': case 'HEAPU32': output += 'MEM.I32'; break;
+            case 'HEAPF32':                output += 'MEM.F32'; break;
+            case 'HEAPF64':                output += 'MEM.F64'; break;
             default: throw 'bad sub ' + node[1][1];
           }
           output += '[';
@@ -5763,7 +5763,7 @@ function cIfy(ast) {
             case 'HEAPF64':                output += 'double';  shifts = 3; break;
             default: throw 'bad sub ' + node[1][1];
           }
-          output += '*)(((int32_t)MEM) + ';
+          output += '*)(((int32_t)&MEM) + ';
           if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num' && node[2][3][1] === shifts) {
             // we can eliminate out the shifts
             walk(node[2][2], true);

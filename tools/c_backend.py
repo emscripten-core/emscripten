@@ -116,12 +116,15 @@ for i in includes.strip().split(','):
 
 o.write(r'''
 static int8_t STATIC_INIT[%d] = { %s };
-static int8_t MEM[64*1024*1024];
-static int8_t *MEM8;
-static int16_t *MEM16;
-static int32_t *MEM32;
-static float *MEMF32;
-static double *MEMF64;
+
+#define SIZE 64*1024*1024
+union memory {
+  int8_t I8[SIZE];
+  int16_t I16[SIZE/2];
+  int32_t I32[SIZE/4];
+  float F32[SIZE/4];
+  double F64[SIZE/8];
+} MEM;
 
 static int32_t STACKTOP;
 static int32_t DYNAMICTOP;
@@ -175,7 +178,7 @@ o.write('//===\n' + post_c + r'''//===
 int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num) {
   int32_t i;
   for (i = 0; i < num; i++) {
-    MEM[dest+i] = MEM[src+i];
+    MEM.I8[dest+i] = MEM.I8[src+i];
   }
   return dest;
 }
@@ -194,7 +197,7 @@ int32_t em__sbrk(int32_t bytes) {
 
 int32_t __errno = 0;
 int32_t __errno_location() {
-  return ((int32_t)&__errno) - (int32_t)MEM; // out of bounds, but so what...
+  return ((int32_t)&__errno) - (int32_t)&MEM; // out of bounds, but so what...
 }
 
 #define DIE(msg) \
@@ -226,7 +229,7 @@ void em____assert_fail(int32_t condition, int32_t filename, int32_t line, int32_
 
 int32_t relocate(int32_t ptr) {
   if (ptr == 0) return 0; // NULL is NULL
-  return ptr + (int32_t)MEM;
+  return ptr + (int32_t)&MEM;
 }
 
 void em__emscripten_run_script(int32_t code) {
@@ -261,7 +264,7 @@ void hash_mem(char *id) {
   int32_t ret = 0;
   int i;
   for (i = 0; i < sizeof(MEM)/4; i++) {
-    ret = ret*17 + MEM32[i];
+    ret = ret*17 + MEM.I32[i];
   }
   printf("%s: %d\n", id, ret);
   fflush(stdout);
@@ -294,16 +297,12 @@ int32_t dynamicAlloc(int32_t bytes) {
 }
 
 int main(int argc, char **argv) {
-  memset(MEM, 0, sizeof(MEM));
-  memcpy(MEM, STATIC_INIT, sizeof(STATIC_INIT));
+  memset(MEM.I8, 0, sizeof(MEM.I8));
+  assert(sizeof(STATIC_INIT) < sizeof(MEM.I8));
+  memcpy(MEM.I8, STATIC_INIT, sizeof(STATIC_INIT));
+
   STACKTOP = alignMemory(sizeof(STATIC_INIT));
   DYNAMICTOP = alignMemory(STACKTOP + 5242880);
-
-  MEM8   = (int8_t*)MEM;
-  MEM16  = (int16_t*)MEM;
-  MEM32  = (int32_t*)MEM;
-  MEMF32 = (float*)MEM;
-  MEMF64 = (double*)MEM;
 ''')
 
 if 'em__main(void)' in c:
@@ -314,18 +313,18 @@ else:
   # translate args
   o.write(r'''
   assert(sizeof(void*) == 4 && "must build this code on a 32-bit arch (use -m32 if necessary)");
-  char **em_argv = (char**)(MEM + DYNAMICTOP);
+  char **em_argv = (char**)(MEM.I8 + DYNAMICTOP);
   dynamicAlloc(sizeof(char*)*(argc+1));
   int i;
   for (i = 0; i < argc; i++) {
     char *arg = argv[i];
     int len = strlen(arg);
-    char *em_arg = (char*)(MEM + DYNAMICTOP);
+    char *em_arg = (char*)(MEM.I8 + DYNAMICTOP);
     dynamicAlloc(len+1);
     strcpy(em_arg, arg);
-    em_argv[i] = (char*)(((int32_t)em_arg) - (int32_t)MEM);
+    em_argv[i] = (char*)(((int32_t)em_arg) - (int32_t)&MEM);
   }
-  return em__main(argc, ((int32_t)em_argv) - (int32_t)MEM);  
+  return em__main(argc, ((int32_t)em_argv) - (int32_t)&MEM);  
 ''')
 
 o.write(r'''}
