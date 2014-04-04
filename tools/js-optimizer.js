@@ -5580,6 +5580,10 @@ function cIfy(ast) {
         break;
       }
       case 'return': {
+        if (HASH_MEM) {
+          output += 'hash_mem("leave ' + cName(currFunc[1]) + '");\n';
+          emitIndent();
+        }
         output += 'return ';
         walk(node[1], true);
         output += ';';
@@ -5829,6 +5833,7 @@ function cIfy(ast) {
   printErr('\nSPLIT\n');
 
   // implementations
+  var currFunc = null;
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1][0] !== '_') return;
     fixFunc(func);
@@ -5840,7 +5845,9 @@ function cIfy(ast) {
       emitIndent();
       output += 'hash_mem("' + cName(func[1]) + '");\n';
     }
+    currFunc = func;
     walkStatements(getStatements(func).slice(func[2].length));
+    currFunc = null;
     indent--;
     output += '}\n';
     printErr(output);

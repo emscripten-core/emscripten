@@ -256,7 +256,7 @@ void em__emscripten_cancel_main_loop() {
 void hash_mem(char *id) {
   static int counter = 0;
   counter++;
-  if (counter != 1000) return;
+  //if (counter != 1000) return;
   counter = 0;
   int32_t ret = 0;
   int i;
@@ -266,6 +266,20 @@ void hash_mem(char *id) {
   printf("%s: %d\n", id, ret);
   fflush(stdout);
 }
+
+/*
+
+clock_t clock(void) {
+  static int t = 0;
+  return t++;
+}
+
+time_t time (time_t *__timer) {
+  assert(__timer == NULL);
+  return clock();
+}
+
+*/
 
 // main
 
