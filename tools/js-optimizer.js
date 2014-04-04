@@ -5339,6 +5339,8 @@ function optimizeFrounds(ast) {
 function cIfy(ast) {
   emitAst = false;
 
+  var ALIASING_MEM_VIEWS = false;
+
   function fixFunc(func) {
     // fix up some things, like varargs
     traverse(func, function(node) {
@@ -5731,31 +5733,45 @@ function cIfy(ast) {
             break;
           }
         }
-        if (!freeParens) output += '(';
-        output += '*((';
-        assert(node[1][0] === 'name');
-        var shifts;
-        switch (node[1][1]) {
-          case 'HEAP8':  case 'HEAPU8':  output += 'int8_t';  shifts = 0; break;
-          case 'HEAP16': case 'HEAPU16': output += 'int16_t'; shifts = 1; break;
-          case 'HEAP32': case 'HEAPU32': output += 'int32_t'; shifts = 2; break;
-          case 'HEAPF32':                output += 'float';   shifts = 2; break;
-          case 'HEAPF64':                output += 'double';  shifts = 3; break;
-          default: throw 'bad sub ' + node[1][1];
-        }
-        output += '*)(((int32_t)MEM) + ';
-        if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num' && node[2][3][1] === shifts) {
-          // we can eliminate out the shifts
-          walk(node[2][2], true);
-        } else {
-          if (shifts) {
-            walk(['binary', '<<', node[2], ['num', shifts]]);
-          } else {
-            walk(node[2], true);
+        if (ALIASING_MEM_VIEWS) {
+          switch (node[1][1]) {
+            case 'HEAP8':  case 'HEAPU8':  output += 'MEM8'; break;
+            case 'HEAP16': case 'HEAPU16': output += 'MEM16'; break;
+            case 'HEAP32': case 'HEAPU32': output += 'MEM32'; break;
+            case 'HEAPF32':                output += 'MEMF32'; break;
+            case 'HEAPF64':                output += 'MEMF64'; break;
+            default: throw 'bad sub ' + node[1][1];
           }
+          output += '[';
+          walk(node[2], true);
+          output += ']';
+        } else {
+          if (!freeParens) output += '(';
+          output += '*((';
+          assert(node[1][0] === 'name');
+          var shifts;
+          switch (node[1][1]) {
+            case 'HEAP8':  case 'HEAPU8':  output += 'int8_t';  shifts = 0; break;
+            case 'HEAP16': case 'HEAPU16': output += 'int16_t'; shifts = 1; break;
+            case 'HEAP32': case 'HEAPU32': output += 'int32_t'; shifts = 2; break;
+            case 'HEAPF32':                output += 'float';   shifts = 2; break;
+            case 'HEAPF64':                output += 'double';  shifts = 3; break;
+            default: throw 'bad sub ' + node[1][1];
+          }
+          output += '*)(((int32_t)MEM) + ';
+          if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num' && node[2][3][1] === shifts) {
+            // we can eliminate out the shifts
+            walk(node[2][2], true);
+          } else {
+            if (shifts) {
+              walk(['binary', '<<', node[2], ['num', shifts]]);
+            } else {
+              walk(node[2], true);
+            }
+          }
+          output += '))';
+          if (!freeParens) output += ')';
         }
-        output += '))';
-        if (!freeParens) output += ')';
         break;
       }
       case 'seq': {

@@ -85,7 +85,9 @@ c_name = output + '.c'
 exe_name = output + '.exe'
 
 print '[em-c-backend] emitting asm.js, to', js_name, c_name, exe_name
+shared.try_delete(js_name)
 execute([shared.PYTHON, shared.EMCC, '-g2'] + sys.argv[1:] + ['-s', 'FINALIZE_JS=0', '-s', 'SIMPLE_MEM_INIT=1', '-o', js_name])
+assert os.path.exists(js_name), 'failed to generate js'
 
 print '[em-c-backend] converting to C'
 out = open(c_name, 'w')
@@ -115,6 +117,11 @@ for i in includes.strip().split(','):
 o.write(r'''
 static int8_t STATIC_INIT[%d] = { %s };
 static int8_t MEM[64*1024*1024];
+static int8_t *MEM8;
+static int16_t *MEM16;
+static int32_t *MEM32;
+static float *MEMF32;
+static double *MEMF64;
 
 static int32_t STACKTOP;
 static int32_t DYNAMICTOP;
@@ -260,6 +267,12 @@ int main(int argc, char **argv) {
   memcpy(MEM, STATIC_INIT, sizeof(STATIC_INIT));
   STACKTOP = alignMemory(sizeof(STATIC_INIT));
   DYNAMICTOP = alignMemory(STACKTOP + 5242880);
+
+  MEM8   = (int8_t*)MEM;
+  MEM16  = (int16_t*)MEM;
+  MEM32  = (int32_t*)MEM;
+  MEMF32 = (float*)MEM;
+  MEMF64 = (double*)MEM;
 ''')
 
 if 'em__main(void)' in c:
