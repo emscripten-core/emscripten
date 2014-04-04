@@ -5339,7 +5339,8 @@ function optimizeFrounds(ast) {
 function cIfy(ast) {
   emitAst = false;
 
-  var ALIASING_MEM_VIEWS = false;
+  var ALIASING_MEM_VIEWS = 0;
+  var HASH_MEM = 0;
 
   function fixFunc(func) {
     // fix up some things, like varargs
@@ -5835,6 +5836,10 @@ function cIfy(ast) {
     getArgs(func);
     output += ') {\n';
     indent++;
+    if (HASH_MEM) {
+      emitIndent();
+      output += 'hash_mem("' + cName(func[1]) + '");\n';
+    }
     walkStatements(getStatements(func).slice(func[2].length));
     indent--;
     output += '}\n';

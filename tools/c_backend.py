@@ -148,6 +148,8 @@ void em____cxa_pure_virtual();
 void em__emscripten_set_main_loop(int32_t func, int32_t fps, int32_t simulate);
 void em__emscripten_cancel_main_loop();
 
+void hash_mem(char *id);
+
 ''' % (data.count(',') + 9, ('0,'*8) + data) + pre_c)
 
 def get_c_type(s):
@@ -251,6 +253,20 @@ void em__emscripten_cancel_main_loop() {
   DIE("no main loop");
 }
 
+void hash_mem(char *id) {
+  static int counter = 0;
+  counter++;
+  if (counter != 1000) return;
+  counter = 0;
+  int32_t ret = 0;
+  int i;
+  for (i = 0; i < sizeof(MEM)/4; i++) {
+    ret = ret*17 + MEM32[i];
+  }
+  printf("%s: %d\n", id, ret);
+  fflush(stdout);
+}
+
 // main
 
 int32_t alignMemory(int32_t p) {
@@ -264,6 +280,7 @@ int32_t dynamicAlloc(int32_t bytes) {
 }
 
 int main(int argc, char **argv) {
+  memset(MEM, 0, sizeof(MEM));
   memcpy(MEM, STATIC_INIT, sizeof(STATIC_INIT));
   STACKTOP = alignMemory(sizeof(STATIC_INIT));
   DYNAMICTOP = alignMemory(STACKTOP + 5242880);
