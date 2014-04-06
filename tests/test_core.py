@@ -5971,6 +5971,16 @@ def process(filename):
 '''
       self.do_run(src, '|hello|43|world|41|', post_build=post)
 
+  def test_webidl(self):
+    output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                            path_from_root('tests', 'webidl', 'test.idl'),
+                            'glue']).communicate()[0]
+    assert os.path.exists('glue.cpp')
+    assert os.path.exists('glue.js')
+
+    self.emcc_args += ['--post-js', path_from_root('tests', 'webidl', 'post.js')]
+    self.do_run(src, '''''', post_build=(post2, post3))
+
   def test_typeinfo(self):
     if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp does not support RUNTIME_TYPE_INFO')
 

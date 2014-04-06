@@ -1,0 +1,27 @@
+
+[Constructor(long val)] 
+interface Parent {
+  long getVal();
+  void mulVal(long mul);
+};
+
+[Constructor(optional long val)]
+interface Child1 {
+  long getValSqr();
+  long getValSqr(long more);
+  long getValTimes(optional long times=1);
+};
+
+Child1 implements Parent;
+
+[Constructor]
+interface Child2 {
+  long getValCube();
+  static void printStatic();
+  void virtualFunc();
+  void virtualFunc2();
+  static void runVirtualFunc(Child2 self);
+};
+
+Child2 implements Parent;
+

@@ -1,0 +1,41 @@
+*
+84
+c1
+Parent:7
+Child1:7
+7
+14
+196
+588
+14
+28
+c1 v2
+Parent:16
+Child1:15
+15
+30
+900
+2700
+c2
+Parent:9
+Child2:9
+9
+18
+5832
+0
+0
+1
+*static*
+*virtualf*
+*virtualf*
+*virtualf2*''' + ('''
+Parent:9
+Child2:9
+*js virtualf replacement*
+*js virtualf replacement*
+*js virtualf2 replacement*
+*virtualf*
+*virtualf*
+*virtualf2*''') + '''
+*ok*
+
