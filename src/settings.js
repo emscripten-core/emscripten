@@ -338,7 +338,7 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
-                         // is necessary to use the bindings generator with asm.js
+                         // is necessary to use the WebIDL binder or bindings generator with asm.js
 var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
                                   // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
                                   // To see what is retained, look for compilerSettings in the generated code.
