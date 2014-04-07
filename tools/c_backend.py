@@ -336,5 +336,8 @@ o.close()
 # generate executable
 
 print '[em-c-backend] build executable (%s %s)' % (c_compiler, opts)
-execute([c_compiler, opts, '-m32', '-fno-inline', '-lm', c_name, '-o', exe_name])
+execute([c_compiler, opts, '-m32', '-fno-inline', '-lm', '-fno-strict-aliasing', c_name, '-o', exe_name])
+# 32-bit, since that is the arch of the generated code
+# disable inlining, since that was already done before
+# no strict aliasing, because that is how semantics of llvm ir and asm.js work - write an int, can read a float from there immediately (breaks box2d without this)
 
