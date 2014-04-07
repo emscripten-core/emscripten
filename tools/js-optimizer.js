@@ -5340,6 +5340,7 @@ function cIfy(ast) {
   emitAst = false;
 
   var ALIASING_MEM_VIEWS = 0;
+  var ALIGNMENT_MASK = 0;
   var HASH_MEM = 0;
 
   function fixFunc(func) {
@@ -5763,7 +5764,7 @@ function cIfy(ast) {
             case 'HEAPF64':                output += 'double';  shifts = 3; break;
             default: throw 'bad sub ' + node[1][1];
           }
-          output += '*)(((int32_t)MEM) + ';
+          output += '*)(((int32_t)MEM) + (';
           if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num' && node[2][3][1] === shifts) {
             // we can eliminate out the shifts
             walk(node[2][2], true);
@@ -5772,6 +5773,16 @@ function cIfy(ast) {
               walk(['binary', '<<', node[2], ['num', shifts]]);
             } else {
               walk(node[2], true);
+            }
+          }
+          output += ')';
+          if (ALIGNMENT_MASK && shifts) {
+            output += '&-';
+            switch (shifts) {
+              case 1: output += '1'; break;
+              case 2: output += '3'; break;
+              case 3: output += '7'; break;
+              default: throw 'bad shifts ' + shifts;
             }
           }
           output += '))';
