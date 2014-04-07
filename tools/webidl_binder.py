@@ -88,7 +88,7 @@ function ensureString(value) {
 
 for name, interface in interfaces.iteritems():
   gen_js.write('// ' + name + '\n')
-  #print name, dir(interface)
+  # Constructor
   args = ''
   body = ''
   cons = interface.getExtendedAttribute('Constructor')
@@ -105,11 +105,13 @@ for name, interface in interfaces.iteritems():
   body += '  this.ptr = _emscripten_bind_%s_%d(%s);\n' % (name, len(args_list), args)
   gen_js.write(r'''
 function %s(%s) {
-%s
-}
-%s.prototype = {};
+%s}
+%s.prototype = {}; // Object.create with prorotype as the parent clazz
 
 ''' % (name, args, body, name))
+  # Methods
+  for m in interface.members:
+    print m.identifier.name, m.maxArgCount, m.allowedArgCounts, m.overloadsForArgCount(0)[0]
 
 gen_c.close()
 gen_js.close()
