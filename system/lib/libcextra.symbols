@@ -22,6 +22,11 @@
          T __wcscoll_l
          T __wcsxfrm_l
          W __wctype_l
+         T atoll
+         T bcmp
+         T bcopy
+         T bzero
+         T bsearch
          T btowc
          T ecvt
          T err
@@ -40,6 +45,7 @@
          T ilogb
          T ilogbf
          T ilogbl
+         T index
          T iswalnum
          T iswalnum_l
          T iswalpha
@@ -87,6 +93,7 @@
          T mbstowcs
          T mbtowc
          T memccpy
+         T memchr
          T memmem
          T mempcpy
          W memrchr
@@ -96,21 +103,36 @@
          C optopt
          W optreset
          W putwc_unlocked
+         T qsort
          T regcomp
          T regerror
          T regexec
          T regfree
+         T rindex
          T scalbnf
          D signgam
+         T stpcpy
          T strcasecmp_l
          T strcasestr
          W strchrnul
+         T strchr
+         T strcspn
+         T strdup
          T strfmon
          T strfmon_l
          T strlcat
          T strlcpy
          T strncasecmp_l
+         T strncat
+         T strndup
+         T strnlen
+         T strpbrk
+         T strrchr
          T strsep
+         T strspn
+         T strstr
+         T strtok
+         T strtok_r
          T strverscmp
          T strxfrm
          W strxfrm_l

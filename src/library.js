@@ -3038,34 +3038,6 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  bsearch: function(key, base, num, size, compar) {
-    function cmp(x, y) {
-#if ASM_JS
-      return Module['dynCall_iii'](compar, x, y);
-#else
-      return FUNCTION_TABLE[compar](x, y);
-#endif
-    };
-    var left = 0;
-    var right = num;
-    var mid, test, addr;
-
-    while (left < right) {
-      mid = (left + right) >>> 1;
-      addr = base + (mid * size);
-      test = cmp(key, addr);
-      if (test < 0) {
-        right = mid;
-      } else if (test > 0) {
-        left = mid + 1;
-      } else {
-        return addr;
-      }
-    }
-
-    return 0;
-  },
-
   realloc__deps: ['malloc', 'memcpy', 'free'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use
@@ -3267,41 +3239,6 @@ LibraryManager.library = {
   strtoull_l__deps: ['strtoull'],
   strtoull_l: function(str, endptr, base) {
     return _strtoull(str, endptr, base); // no locale support yet
-  },
-
-  atoi__deps: ['strtol'],
-  atoi: function(ptr) {
-    return _strtol(ptr, null, 10);
-  },
-  atol: 'atoi',
-
-  atoll__deps: ['strtoll'],
-  atoll: function(ptr) {
-    return _strtoll(ptr, null, 10);
-  },
-
-  qsort__deps: ['malloc', 'memcpy', 'free'],
-  qsort: function(base, num, size, cmp) {
-    if (num == 0 || size == 0) return;
-    // forward calls to the JavaScript sort method
-    // first, sort the items logically
-    var keys = [];
-    for (var i = 0; i < num; i++) keys.push(i);
-    keys.sort(function(a, b) {
-#if ASM_JS
-      return Module['dynCall_iii'](cmp, base+a*size, base+b*size);
-#else
-      return FUNCTION_TABLE[cmp](base+a*size, base+b*size);
-#endif
-    });
-    // apply the sort
-    var temp = _malloc(num*size);
-    _memcpy(temp, base, num*size);
-    for (var i = 0; i < num; i++) {
-      if (keys[i] == i) continue; // already in place
-      _memcpy(base+i*size, temp+keys[i]*size, size);
-    }
-    _free(temp);
   },
 
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
@@ -3507,8 +3444,6 @@ LibraryManager.library = {
   // string.h
   // ==========================================================================
 
-  // FIXME: memcpy, memmove and memset should all return their destination pointers.
-
   memcpy__inline: function(dest, src, num, align) {
     var ret = '';
 #if ASSERTIONS
@@ -3590,13 +3525,6 @@ LibraryManager.library = {
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
-  bcopy__deps: ['memmove'],
-  bcopy: function(src, dest, num) {
-    // void bcopy(const void *s1, void *s2, size_t n);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/bcopy.html
-    _memmove(dest, src, num);
-  },
-
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
   },
@@ -3651,38 +3579,6 @@ LibraryManager.library = {
     return (curr - ptr)|0;
   },
 
-  strspn: function(pstr, pset) {
-    var str = pstr, set, strcurr, setcurr;
-    while (1) {
-      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
-      if (!strcurr) return str - pstr;
-      set = pset;
-      while (1) {
-        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
-        if (!setcurr || setcurr == strcurr) break;
-        set++;
-      }
-      if (!setcurr) return str - pstr;
-      str++;
-    }
-  },
-
-  strcspn: function(pstr, pset) {
-    var str = pstr, set, strcurr, setcurr;
-    while (1) {
-      strcurr = {{{ makeGetValue('str', '0', 'i8') }}};
-      if (!strcurr) return str - pstr;
-      set = pset;
-      while (1) {
-        setcurr = {{{ makeGetValue('set', '0', 'i8') }}};
-        if (!setcurr || setcurr == strcurr) break;
-        set++;
-      }
-      if (setcurr) return str - pstr;
-      str++;
-    }
-  },
-
   strcpy__asm: true,
   strcpy__sig: 'iii',
   strcpy: function(pdest, psrc) {
@@ -3693,15 +3589,6 @@ LibraryManager.library = {
       i = (i+1)|0;
     } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
     return pdest|0;
-  },
-
-  stpcpy: function(pdest, psrc) {
-    var i = 0;
-    do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest + i - 1;
   },
 
   strncpy__asm: true,
@@ -3753,184 +3640,6 @@ LibraryManager.library = {
       i = (i+1)|0;
     } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
     return pdest|0;
-  },
-
-  strncat__deps: ['strlen'],
-  strncat: function(pdest, psrc, num) {
-    var len = _strlen(pdest);
-    var i = 0;
-    while(1) {
-      {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      if ({{{ makeGetValue('pdest', 'len+i', 'i8') }}} == 0) break;
-      i ++;
-      if (i == num) {
-        {{{ makeSetValue('pdest', 'len+i', 0, 'i8') }}};
-        break;
-      }
-    }
-    return pdest;
-  },
-
-  memchr: function(ptr, chr, num) {
-    chr = unSign(chr);
-    for (var i = 0; i < num; i++) {
-      if ({{{ makeGetValue('ptr', 0, 'i8') }}} == chr) return ptr;
-      ptr++;
-    }
-    return 0;
-  },
-
-  strnlen: function(ptr, num) {
-    num = num >>> 0;
-    for (var i = 0; i < num; i++) {
-      if ({{{ makeGetValue('ptr', 0, 'i8') }}} == 0) return i;
-      ptr++;
-    }
-    return num;
-  },
-
-  strstr: function(ptr1, ptr2) {
-    var check = 0, start;
-    do {
-      if (!check) {
-        start = ptr1;
-        check = ptr2;
-      }
-      var curr1 = {{{ makeGetValue('ptr1++', 0, 'i8') }}};
-      var curr2 = {{{ makeGetValue('check++', 0, 'i8') }}};
-      if (curr2 == 0) return start;
-      if (curr2 != curr1) {
-        // rewind to one character after start, to find ez in eeez
-        ptr1 = start + 1;
-        check = 0;
-      }
-    } while (curr1);
-    return 0;
-  },
-
-  strchr: function(ptr, chr) {
-    ptr--;
-    do {
-      ptr++;
-      var val = {{{ makeGetValue('ptr', 0, 'i8') }}};
-      if (val == chr) return ptr;
-    } while (val);
-    return 0;
-  },
-  index: 'strchr',
-
-  strrchr__deps: ['strlen'],
-  strrchr: function(ptr, chr) {
-    var ptr2 = ptr + _strlen(ptr);
-    do {
-      if ({{{ makeGetValue('ptr2', 0, 'i8') }}} == chr) return ptr2;
-      ptr2--;
-    } while (ptr2 >= ptr);
-    return 0;
-  },
-  rindex: 'strrchr',
-
-  strdup__deps: ['strlen', 'malloc'],
-  strdup: function(ptr) {
-    var len = _strlen(ptr);
-    var newStr = _malloc(len + 1);
-    {{{ makeCopyValues('newStr', 'ptr', 'len', 'null', null, 1) }}};
-    {{{ makeSetValue('newStr', 'len', '0', 'i8') }}};
-    return newStr;
-  },
-
-  strndup__deps: ['strdup', 'strlen', 'malloc'],
-  strndup: function(ptr, size) {
-    var len = _strlen(ptr);
-
-    if (size >= len) {
-      return _strdup(ptr);
-    }
-
-    if (size < 0) {
-      size = 0;
-    }
-
-    var newStr = _malloc(size + 1);
-    {{{ makeCopyValues('newStr', 'ptr', 'size', 'null', null, 1) }}};
-    {{{ makeSetValue('newStr', 'size', '0', 'i8') }}};
-    return newStr;
-  },
-
-  strpbrk: function(ptr1, ptr2) {
-    var curr;
-    var searchSet = {};
-    while (1) {
-      var curr = {{{ makeGetValue('ptr2++', 0, 'i8') }}};
-      if (!curr) break;
-      searchSet[curr] = 1;
-    }
-    while (1) {
-      curr = {{{ makeGetValue('ptr1', 0, 'i8') }}};
-      if (!curr) break;
-      if (curr in searchSet) return ptr1;
-      ptr1++;
-    }
-    return 0;
-  },
-
-  __strtok_state: 0,
-  strtok__deps: ['__strtok_state', 'strtok_r'],
-  strtok__postset: '___strtok_state = Runtime.staticAlloc(4);',
-  strtok: function(s, delim) {
-    return _strtok_r(s, delim, ___strtok_state);
-  },
-
-  // Translated from newlib; for the original source and licensing, see library_strtok_r.c
-  strtok_r: function(s, delim, lasts) {
-    var skip_leading_delim = 1;
-    var spanp;
-    var c, sc;
-    var tok;
-
-
-    if (s == 0 && (s = getValue(lasts, 'i8*')) == 0) {
-      return 0;
-    }
-
-    cont: while (1) {
-      c = getValue(s++, 'i8');
-      for (spanp = delim; (sc = getValue(spanp++, 'i8')) != 0;) {
-        if (c == sc) {
-          if (skip_leading_delim) {
-            continue cont;
-          } else {
-            setValue(lasts, s, 'i8*');
-            setValue(s - 1, 0, 'i8');
-            return s - 1;
-          }
-        }
-      }
-      break;
-    }
-
-    if (c == 0) {
-      setValue(lasts, 0, 'i8*');
-      return 0;
-    }
-    tok = s - 1;
-
-    for (;;) {
-      c = getValue(s++, 'i8');
-      spanp = delim;
-      do {
-        if ((sc = getValue(spanp++, 'i8')) == c) {
-          if (c == 0) {
-            s = 0;
-          } else {
-            setValue(s - 1, 0, 'i8');
-          }
-          setValue(lasts, s, 'i8*');
-          return tok;
-        }
-      } while (sc != 0);
-    }
-    abort('strtok_r error!');
   },
 
   strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],

@@ -50,6 +50,8 @@
          T __towrite
          T __uflow
          T atof
+         T atoi
+         T atol
          W bulk_free
          W calloc
          W free

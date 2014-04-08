@@ -28,10 +28,10 @@ def calculate(temp_files, in_temp, stdout, stderr):
     o_s = []
     prev_cxx = os.environ.get('EMMAKEN_CXX')
     if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
-    musl_internal_includes = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')
+    musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes] + lib_opts, stdout=stdout, stderr=stderr)
+      execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts, stdout=stdout, stderr=stderr)
       o_s.append(o)
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     shared.Building.link(o_s, in_temp(lib_filename))
@@ -71,6 +71,8 @@ def calculate(temp_files, in_temp, stdout, stderr):
       ]],
       ['stdlib', [
        'atof.c',
+       'atoi.c',
+       'atol.c',
        'strtod.c',
       ]],
       ['string', [
@@ -221,22 +223,44 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'fputws.c',
        ]],
        ['stdlib', [
+         'atoll.c',
+         'bsearch.c',
          'ecvt.c',
          'fcvt.c',
          'gcvt.c',
+         'qsort.c',
          'wcstod.c',
          'wcstol.c',
        ]],
        ['string', [
+         'bcmp.c',
+         'bcopy.c',
+         'bzero.c',
+         'index.c',
          'memccpy.c',
          'memmem.c',
          'mempcpy.c',
+         'memchr.c',
          'memrchr.c',
+         'rindex.c',
+         'stpcpy.c',
          'strcasestr.c',
+         'strchr.c',
          'strchrnul.c',
+         'strcspn.c',
+         'strdup.c',
          'strlcat.c',
          'strlcpy.c',
+         'strncat.c',
+         'strndup.c',
+         'strnlen.c',
+         'strpbrk.c',
+         'strrchr.c',
          'strsep.c',
+         'strspn.c',
+         'strstr.c',
+         'strtok.c',
+         'strtok_r.c',
          'strverscmp.c',
          'wcpcpy.c',
          'wcpncpy.c',
