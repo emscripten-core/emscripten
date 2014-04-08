@@ -1145,62 +1145,104 @@ class Building:
     resolved_symbols = set()
     temp_dirs = []
     files = map(os.path.abspath, files)
+    # Paths of already included object files from archives.
+    added_contents = set()
+    # Map of archive name to list of extracted object file paths.
+    ar_contents = {}
     has_ar = False
     for f in files:
       has_ar = has_ar or Building.is_ar(f)
+
+    # If we have only one archive or the force_archive_contents flag is set,
+    # then we will add every object file we see, regardless of whether it
+    # resolves any undefined symbols.
+    force_add_all = len(files) == 1 or force_archive_contents
+
+    # Considers an object file for inclusion in the link. The object is included
+    # if force_add=True or if the object provides a currently undefined symbol.
+    # If the object is included, the symbol tables are updated and the function
+    # returns True.
+    def consider_object(f, force_add=False):
+      new_symbols = Building.llvm_nm(f)
+      do_add = force_add or not unresolved_symbols.isdisjoint(new_symbols.defs)
+      if do_add:
+        #print >> sys.stderr, '  adding object', content, '\n'
+        # Update resolved_symbols table with newly resolved symbols
+        resolved_symbols.update(new_symbols.defs)
+        # Update unresolved_symbols table by adding newly unresolved symbols and
+        # removing newly resolved symbols.
+        unresolved_symbols.update(new_symbols.undefs.difference(resolved_symbols))
+        unresolved_symbols.difference_update(new_symbols.defs)
+        #print >> sys.stderr, '  undef are now ', unresolved_symbols, '\n'
+        actual_files.append(f)
+      return do_add
+
+    def get_archive_contents(f):
+      if f in ar_contents:
+        return ar_contents[f]
+
+      cwd = os.getcwd()
+      try:
+        temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
+        temp_dirs.append(temp_dir)
+        safe_ensure_dirs(temp_dir)
+        os.chdir(temp_dir)
+        contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+        #print >> sys.stderr, '  considering archive', f, ':', contents
+        if len(contents) == 0:
+          logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
+        else:
+          for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
+            dirname = os.path.dirname(content)
+            if dirname:
+              safe_ensure_dirs(dirname)
+          Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+          contents = map(lambda content: os.path.join(temp_dir, content), contents)
+          contents = filter(os.path.exists, map(os.path.abspath, contents))
+          contents = filter(Building.is_bitcode, contents)
+        ar_contents[f] = contents
+      finally:
+        os.chdir(cwd)
+
+      return contents
+
+    # Traverse a single archive. The object files are repeatedly scanned for
+    # newly satisfied symbols until no new symbols are found. Returns true if
+    # any object files were added to the link.
+    def consider_archive(f):
+      added_any_objects = False
+      loop_again = True
+      #print >> sys.stderr, '  initial undef are now ', unresolved_symbols, '\n'
+      contents = get_archive_contents(f)
+      while loop_again: # repeatedly traverse until we have everything we need
+        #print >> sys.stderr, '  running loop of archive including for', f
+        loop_again = False
+        for content in contents:
+          if content in added_contents: continue
+          # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
+          #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
+          #print >> sys.stderr, content, 'DEF', new_symbols.defs, '\n'
+          if consider_object(content, force_add=force_add_all):
+            added_contents.add(content)
+            loop_again = True
+            added_any_objects = True
+      #print >> sys.stderr, '  done running loop of archive including for', f
+      return added_any_objects
+
     for f in files:
       if not Building.is_ar(f):
         if Building.is_bitcode(f):
           if has_ar:
-            new_symbols = Building.llvm_nm(f)
-            resolved_symbols = resolved_symbols.union(new_symbols.defs)
-            unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
-          actual_files.append(f)
+            consider_object(f, force_add=True)
+          else:
+            # If there are no archives then we can simply link all valid bitcode
+            # files and skip the symbol table stuff.
+            actual_files.append(f)
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        cwd = os.getcwd()
-        try:
-          temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
-          temp_dirs.append(temp_dir)
-          safe_ensure_dirs(temp_dir)
-          os.chdir(temp_dir)
-          contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
-          #print >> sys.stderr, '  considering archive', f, ':', contents
-          if len(contents) == 0:
-            logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
-          else:
-            for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
-              dirname = os.path.dirname(content)
-              if dirname:
-                safe_ensure_dirs(dirname)
-            Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
-            contents = map(lambda content: os.path.join(temp_dir, content), contents)
-            contents = filter(os.path.exists, map(os.path.abspath, contents))
-            added_contents = set()
-            added = True
-            #print >> sys.stderr, '  initial undef are now ', unresolved_symbols, '\n'
-            while added: # recursively traverse until we have everything we need
-              #print >> sys.stderr, '  running loop of archive including for', f
-              added = False
-              for content in contents:
-                if content in added_contents: continue 
-                new_symbols = Building.llvm_nm(content)
-                # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
-                #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
-                #print >> sys.stderr, content, 'DEF', new_symbols.defs, '\n'
-                if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1 or force_archive_contents:
-                  if Building.is_bitcode(content):
-                    #print >> sys.stderr, '  adding object', content, '\n'
-                    resolved_symbols = resolved_symbols.union(new_symbols.defs)
-                    unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
-                    #print >> sys.stderr, '  undef are now ', unresolved_symbols, '\n'
-                    actual_files.append(content)
-                    added_contents.add(content)
-                    added = True
-            #print >> sys.stderr, '  done running loop of archive including for', f
-        finally:
-          os.chdir(cwd)
+        consider_archive(f)
+
     try_delete(target)
 
     # Finish link
