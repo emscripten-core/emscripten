@@ -2572,6 +2572,7 @@ int main()
     assert p.returncode == 0, 'LLVM tests must pass with exit code 0'
 
   def test_odin_validation(self):
+    if not SPIDERMONKEY_ENGINE or SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('this test tests asm.js validation in SpiderMonkey')
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1'], stdout=PIPE, stderr=PIPE).communicate()
     output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
     assert 'asm.js' in output, 'spidermonkey should mention asm.js compilation: ' + output
