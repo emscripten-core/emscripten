@@ -3550,6 +3550,25 @@ function eliminate(ast, memSafe) {
                 }
               }
             }
+            // remove loop vars that are used in the rest of the else
+            for (var i = 0; i < assigns.length; i++) {
+              if (assigns[i][0] === 'stat' && assigns[i][1][0] === 'assign') {
+                var assign = assigns[i][1];
+                if (!(assign[1] === true && assign[2][0] === 'name' && assign[3][0] === 'name') || loopers.indexOf(assign[2][1]) < 0) {
+                  // this is not one of the loop assigns
+                  traverse(assign, function(node, type) {
+                    if (type === 'name') {
+                      var index = loopers.indexOf(node[1]);
+                      if (index < 0) index = helpers.indexOf(node[1]);
+                      if (index >= 0) {
+                        loopers.splice(index, 1);
+                        helpers.splice(index, 1);
+                      }
+                    }
+                  });
+                }
+              }
+            }
             if (loopers.length === 0) return;
             for (var l = 0; l < loopers.length; l++) {
               var looper = loopers[l];

@@ -857,4 +857,48 @@ function elimOneLoopVar($argc, $argv) {
  HEAP32[$vararg_buffer1 >> 2] = $curri$012;
  return $retval$0 | 0;
 }
+function elimOneLoopVar2() {
+ var $storemerge3$neg9 = 0, $18 = 0, $25 = 0, $26 = 0, $30 = 0, $jp = 0;
+ $storemerge3$neg9 = -1;
+ while (1) {
+  $25 = $jp + ($26 << 2) | 0;
+  HEAP32[$25 >> 2] = ($18 + $storemerge3$neg9 | 0) + (HEAP32[$25 >> 2] | 0) | 0;
+  $30 = $26 + 1 | 0;
+  if (($30 | 0) == 63) {
+   break;
+  } else {
+   $storemerge3$neg9 = $26 ^ -1;
+   $26 = $30;
+  }
+ }
+}
+function elimOneLoopVar3() {
+ var $storemerge3$neg9 = 0, $18 = 0, $25 = 0, $26 = 0, $30 = 0, $jp = 0;
+ $storemerge3$neg9 = -1;
+ while (1) {
+  $25 = $jp + ($26 << 2) | 0;
+  HEAP32[$25 >> 2] = ($18 + $storemerge3$neg9 | 0) + (HEAP32[$25 >> 2] | 0) | 0;
+  $30 = $26 + 1 | 0;
+  if (($30 | 0) == 63) {
+   break;
+  } else {
+   $storemerge3$neg9 = $30 ^ -1;
+   $26 = $30;
+  }
+ }
+}
+function elimOneLoopVar4() {
+ var $storemerge3$neg9 = 0, $18 = 0, $25 = 0, $26 = 0, $jp = 0;
+ $storemerge3$neg9 = -1;
+ while (1) {
+  $25 = $jp + ($26 << 2) | 0;
+  HEAP32[$25 >> 2] = ($18 + $storemerge3$neg9 | 0) + (HEAP32[$25 >> 2] | 0) | 0;
+  $26 = $26 + 1 | 0;
+  if (($26 | 0) == 63) {
+   break;
+  } else {
+   $storemerge3$neg9 = $18 ^ -1;
+  }
+ }
+}
 

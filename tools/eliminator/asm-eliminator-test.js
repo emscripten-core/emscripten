@@ -1086,5 +1086,50 @@ function elimOneLoopVar($argc, $argv) {
  HEAP32[$vararg_buffer1 >> 2] = $curri$012;
  return $retval$0 | 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign", "elimOneLoopVar"]
+function elimOneLoopVar2() {
+ var $storemerge3$neg9 = 0, $18 = 0, $25 = 0, $26 = 0, $30 = 0, $jp = 0;
+ $storemerge3$neg9 = -1;
+ while (1) {
+  $25 = $jp + ($26 << 2) | 0;
+  HEAP32[$25 >> 2] = ($18 + $storemerge3$neg9 | 0) + (HEAP32[$25 >> 2] | 0) | 0;
+  $30 = $26 + 1 | 0;
+  if (($30 | 0) == 63) {
+   break;
+  } else {
+   $storemerge3$neg9 = $26 ^ -1; // $26 is a loopvar, use here is dangerous
+   $26 = $30;
+  }
+ }
+}
+function elimOneLoopVar3() {
+ var $storemerge3$neg9 = 0, $18 = 0, $25 = 0, $26 = 0, $30 = 0, $jp = 0;
+ $storemerge3$neg9 = -1;
+ while (1) {
+  $25 = $jp + ($26 << 2) | 0;
+  HEAP32[$25 >> 2] = ($18 + $storemerge3$neg9 | 0) + (HEAP32[$25 >> 2] | 0) | 0;
+  $30 = $26 + 1 | 0;
+  if (($30 | 0) == 63) {
+   break;
+  } else {
+   $storemerge3$neg9 = $30 ^ -1; // $26 is a helper, use here is dangerous
+   $26 = $30;
+  }
+ }
+}
+function elimOneLoopVar4() {
+ var $storemerge3$neg9 = 0, $18 = 0, $25 = 0, $26 = 0, $30 = 0, $jp = 0;
+ $storemerge3$neg9 = -1;
+ while (1) {
+  $25 = $jp + ($26 << 2) | 0;
+  HEAP32[$25 >> 2] = ($18 + $storemerge3$neg9 | 0) + (HEAP32[$25 >> 2] | 0) | 0;
+  $30 = $26 + 1 | 0;
+  if (($30 | 0) == 63) {
+   break;
+  } else {
+   $storemerge3$neg9 = $18 ^ -1;
+   $26 = $30;
+  }
+ }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign", "elimOneLoopVar", "elimOneLoopVar2", "elimOneLoopVar3", "elimOneLoopVar4"]
 
