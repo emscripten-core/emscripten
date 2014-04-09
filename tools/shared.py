@@ -495,6 +495,30 @@ def build_clang_tool_path(tool):
   else:
     return os.path.join(LLVM_ROOT, tool)
 
+# Whenever building a native executable for OSX, we must provide the OSX SDK version we want to target.
+def osx_find_native_sdk_path():
+  try:
+    sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
+    sdks = os.walk(sdk_root).next()[1]
+    sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
+    logging.debug('Targeting OSX SDK found at ' + sdk_path)
+    return sdk_path
+  except:
+    logging.warning('Could not find native OSX SDK path to target!')
+    return None
+
+# These extra args need to be passed to Clang when targeting a native host system executable
+CACHED_CLANG_NATIVE_ARGS=None
+def get_clang_native_args():
+  global CACHED_CLANG_NATIVE_ARGS
+  if CACHED_CLANG_NATIVE_ARGS is not None: return CACHED_CLANG_NATIVE_ARGS
+  CACHED_CLANG_NATIVE_ARGS = []
+  if sys.platform == 'darwin':
+    sdk_path = osx_find_native_sdk_path()
+    if sdk_path:
+      CACHED_CLANG_NATIVE_ARGS = ['-isysroot', osx_find_native_sdk_path()]
+  return CACHED_CLANG_NATIVE_ARGS
+
 CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
 CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
