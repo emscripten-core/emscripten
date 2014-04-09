@@ -876,6 +876,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_from_file(src, output)
 
+  def test_stof(self):
+      if self.run_name.startswith('s_'): 
+          return self.skip('Requires libc++')
+
+      Settings.OUTLINING_LIMIT = 5000
+      self.do_run(open(path_from_root('tests', 'test_stof.cpp'), 'r').read(), '0.5')
+
   def test_fcvt(self):
       if self.emcc_args is None: return self.skip('requires emcc')
 
