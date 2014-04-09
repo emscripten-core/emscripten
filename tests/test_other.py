@@ -2533,10 +2533,8 @@ int main()
 
     for opts, expected, compile_expected in [
       ([], None, [IMPLICIT_ERROR]),
-      (['-Wno-error=implicit-function-declaration'], ['abort()', 'it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this'], [IMPLICIT_WARNING]), # turn error into warning
-      (['-Wno-implicit-function-declaration'], ['abort()', 'it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this'], []), # turn error into nothing at all
-      (['-Wno-error=implicit-function-declaration', '-s', 'ASSERTIONS=2'], ['abort()', 'This pointer might make sense in another type signature'], []),
-      (['-Wno-error=implicit-function-declaration', '-O1'], ['hello 0\nhello 0\n'], []), # invalid output - second arg is sent as varargs, but needs to be int. llvm optimizer avoided the crash silently, caused undefined behavior... at least people can debug this by running an -O0 build.
+      (['-Wno-error=implicit-function-declaration'], ['hello '], [IMPLICIT_WARNING]), # turn error into warning
+      (['-Wno-implicit-function-declaration'], ['hello '], []), # turn error into nothing at all (runtime output is incorrect)
     ]:
       print opts, expected
       try_delete('a.out.js')
