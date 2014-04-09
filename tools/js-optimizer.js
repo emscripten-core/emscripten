@@ -4491,7 +4491,7 @@ function outline(ast) {
       for (var returnType in codeInfo.hasReturnType) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', controlFromAsmType(returnType)]),
-          [['stat', ['return', makeAsmCoercion(['name', 'tempInt'], returnType | 0)]]]
+          [['stat', ['return', makeAsmCoercion(['name', returnType == ASM_INT ? 'tempInt' : 'tempDouble'], returnType | 0)]]]
         ));
       }
       if (codeInfo.hasBreak) {

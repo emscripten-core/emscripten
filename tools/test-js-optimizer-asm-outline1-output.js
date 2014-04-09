@@ -446,6 +446,32 @@ function stackSet(x1, x2, x3, x4, x5) {
  HEAP32[sp + 62 >> 2] = 0;
  stackSet$0(sp);
 }
+function linf(d) {
+ d = +d;
+ var sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 160 | 0;
+ while (1) {
+  HEAP32[sp + 24 >> 2] = 0;
+  HEAP32[sp + 28 >> 2] = 0;
+  linf$1(sp);
+  HEAPF32[sp + 8 >> 2] = d;
+  HEAP32[sp + 16 >> 2] = 0;
+  HEAP32[sp + 20 >> 2] = 0;
+  linf$0(sp);
+  tempValue = HEAP32[sp + 16 >> 2] | 0;
+  tempInt = HEAP32[sp + 20 >> 2] | 0;
+  tempDouble = +HEAPF32[sp + 20 >> 2];
+  HEAP32[sp + 16 >> 2] = 0;
+  HEAP32[sp + 20 >> 2] = 0;
+  if ((tempValue | 0) == 7) {
+   STACKTOP = sp;
+   return +tempDouble;
+  }
+ }
+ STACKTOP = sp;
+ return +d;
+}
 function lin$0(sp) {
  sp = sp | 0;
  c(14);
@@ -954,5 +980,38 @@ function stackSet$1(sp) {
  c(4);
  c(5);
  c(6);
+}
+function linf$0(sp) {
+ sp = sp | 0;
+ var d = +0;
+ d = +HEAPF32[sp + 8 >> 2];
+ OL : do {
+  c(16);
+  c(17);
+  c(18);
+  c(19);
+  c(20);
+  HEAP32[sp + 16 >> 2] = 7;
+  HEAPF32[sp + 20 >> 2] = +d;
+  break OL;
+ } while (0);
+}
+function linf$1(sp) {
+ sp = sp | 0;
+ c(1);
+ c(2);
+ c(3);
+ c(4);
+ c(5);
+ c(6);
+ c(7);
+ c(8);
+ c(9);
+ c(10);
+ c(11);
+ c(12);
+ c(13);
+ c(14);
+ c(15);
 }
 
