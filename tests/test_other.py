@@ -856,10 +856,14 @@ This pointer might make sense in another type signature: i: 0
         if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
 
       # zlib compression library. tests function pointers in initializers and many other things
-      test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
-                       self.get_zlib_library(),
-                       open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                       args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
+      try:
+        os.environ['EMCC_FORCE_STDLIBS'] = 'libcextra'
+        test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
+                         self.get_zlib_library(),
+                         open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
+                         args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
+      finally:
+        del os.environ['EMCC_FORCE_STDLIBS']
 
       use_cmake = WINDOWS
       bullet_library = get_bullet_library(self, use_cmake)
