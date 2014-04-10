@@ -4420,7 +4420,13 @@ PORT: 3979
   def test_atomic(self):
     test_path = path_from_root('tests', 'core', 'test_atomic')
     src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_from_file(src, output)
 
+  def zzztest_atomic_cxx(self):
+    if self.emcc_args is None: return self.skip('needs emcc')
+    test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_from_file(src, output)
 
   def test_phiundef(self):

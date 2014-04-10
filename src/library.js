@@ -4430,6 +4430,12 @@ LibraryManager.library = {
 
   llvm_nacl_atomic_store_i32__inline: true,
 
+  // gnu atomics
+
+  __atomic_is_lock_free: function(size, ptr) {
+    return size <= 4 && (ptr&(size-1)) == 0;
+  },
+
   // ==========================================================================
   // llvm-mono integration
   // ==========================================================================
