@@ -24,18 +24,18 @@ template<typename TYPE> void test(TYPE mask0, TYPE mask1, TYPE mask2) {
     // test atomic<int>
     std::atomic<dog> atomicDog(5);
     printf("atomic<int>.is_lock_free(): %s", atomicDog.is_lock_free() ? "true" : "false");
-    printf("atomic<int> value: %lld\n", TYPE(atomicDog));
+    printf("atomic<int> value: %lld\n", (long long)TYPE(atomicDog));
 
     // test store/load
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         atomicDog.store(i, memoryOrder[i]);
-        printf("store/load %lld: %lld\n", i, atomicDog.load(memoryOrder[i]));
+        printf("store/load %lld: %lld\n", (long long)i, (long long)atomicDog.load(memoryOrder[i]));
     }
 
     // test exchange
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         TYPE old = atomicDog.exchange(i, memoryOrder[i]);
-        printf("exchange %lld: old=%lld new=%lld\n", i, old, TYPE(atomicDog));
+        printf("exchange %lld: old=%lld new=%lld\n", (long long)i, (long long)old, (long long)TYPE(atomicDog));
     }
 
     // compare_exchange_weak
@@ -81,7 +81,7 @@ template<typename TYPE> void test(TYPE mask0, TYPE mask1, TYPE mask2) {
     atomicDog = 0;
     for (int i = 0; i < numMemoryOrders; i++) {
         int old = atomicDog.fetch_xor((1<<i), memoryOrder[i]);
-        printf("fetch_xor %ld: old=%llx, new=%lx\n", i, old, TYPE(atomicDog));
+        printf("fetch_xor %ld: old=%llx, new=%lx\n", i, (long long)old, TYPE(atomicDog));
     }
 
     // operator++, --
@@ -108,10 +108,14 @@ template<typename TYPE> void test(TYPE mask0, TYPE mask1, TYPE mask2) {
 int main() {
 
     // test 8, 16, 32 and 64-bit data types
+    printf("\n8 bits\n\n");
     test<char>(0xFF, 0xF0, 0x0F);
+    printf("\n16 bits\n\n");
     test<short>(0xFFFF, 0xF0F0, 0x0F0F);
+    printf("\n32 bits\n\n");
     test<int>(0xFFFFFFFF, 0xF0F0F0F0, 0x0F0F0F0F);
-    test<long long>(0xFFFFFFFFFFFFFFFF, 0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
+    //printf("\n64 bits\n\n");
+    //test<long long>(0xFFFFFFFFFFFFFFFF, 0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
 
     // test atomic_flag (should also have memory_orders, but probably doesn't matter 
     // to find the missing atomic functions)
