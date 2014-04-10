@@ -23,7 +23,7 @@ template<typename TYPE> void test(TYPE mask0, TYPE mask1, TYPE mask2) {
 
     // test atomic<int>
     std::atomic<dog> atomicDog(5);
-    printf("atomic<int>.is_lock_free(): %s", atomicDog.is_lock_free() ? "true" : "false");
+    printf("atomic<int>.is_lock_free(): %s\n", atomicDog.is_lock_free() ? "true" : "false");
     printf("atomic<int> value: %lld\n", (long long)TYPE(atomicDog));
 
     // test store/load
@@ -41,67 +41,67 @@ template<typename TYPE> void test(TYPE mask0, TYPE mask1, TYPE mask2) {
     // compare_exchange_weak
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         bool success = atomicDog.compare_exchange_weak(i, i + 1, memoryOrder[i], memoryOrder[i]);
-        printf("compare_exchange_weak %ld: success = %s\n", i, success ? "true" : "false");
+        printf("compare_exchange_weak %lld: success = %s\n", (long long)i, success ? "true" : "false");
     }
 
     // compare_exchange_strong
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         bool success = atomicDog.compare_exchange_strong(i, i + 1, memoryOrder[i], memoryOrder[i]);
-        printf("compare_exchange_strong %ld: success = %s\n", i, success ? "true" : "false");
+        printf("compare_exchange_strong %lld: success = %s\n", (long long)i, success ? "true" : "false");
     }
 
     // fetch_add
     atomicDog = 0;
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         TYPE old = atomicDog.fetch_add(1, memoryOrder[i]);
-        printf("fetch_add %ld: old=%d new=%ld\n", i, old, TYPE(atomicDog));
+        printf("fetch_add %lld: old=%lld new=%lld\n", (long long)i, (long long)old, TYPE(atomicDog));
     }
 
     // fetch_sub
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         TYPE old = atomicDog.fetch_sub(1, memoryOrder[i]);
-        printf("fetch_sub %ld: old=%d new=%ld\n", i, old, TYPE(atomicDog));
+        printf("fetch_sub %lld: old=%lld new=%lld\n", (long long)i, (long long)old, TYPE(atomicDog));
     }
 
     // fetch_and
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         atomicDog.store(mask0, memoryOrder[i]);
         TYPE old = atomicDog.fetch_and((1<<i), memoryOrder[i]);
-        printf("fetch_and %ld: old=%lx, new=%lx\n", i, old, TYPE(atomicDog));
+        printf("fetch_and %lld: old=%llx, new=%llx\n", (long long)i, (long long)old, TYPE(atomicDog));
     }
 
     // fetch_or
     atomicDog = 0;
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         TYPE old = atomicDog.fetch_or((1<<i), memoryOrder[i]);
-        printf("fetch_or %ld: old=%lx, new=%lx\n", i, old, TYPE(atomicDog));
+        printf("fetch_or %lld: old=%llx, new=%llx\n", (long long)i, (long long)old, TYPE(atomicDog));
     }
 
     // fetch_xor
     atomicDog = 0;
     for (int i = 0; i < numMemoryOrders; i++) {
         int old = atomicDog.fetch_xor((1<<i), memoryOrder[i]);
-        printf("fetch_xor %ld: old=%llx, new=%lx\n", i, (long long)old, TYPE(atomicDog));
+        printf("fetch_xor %lld: old=%llx, new=%llx\n", (long long)i, (long long)old, TYPE(atomicDog));
     }
 
     // operator++, --
     atomicDog = 0;
     atomicDog++;
-    printf("operator++: %ld\n", TYPE(atomicDog));
+    printf("operator++: %lld\n", TYPE(atomicDog));
     atomicDog--;
-    printf("operator--: %ld\n", TYPE(atomicDog));
+    printf("operator--: %lld\n", TYPE(atomicDog));
 
     // operator +=, -=, &=, |=, ^=
     atomicDog += 10;
-    printf("operator+=: %ld\n", TYPE(atomicDog));
+    printf("operator+=: %lld\n", TYPE(atomicDog));
     atomicDog -= 5;
-    printf("operator-=: %ld\n", TYPE(atomicDog));
+    printf("operator-=: %lld\n", TYPE(atomicDog));
     atomicDog |= mask0;
-    printf("operator|=: %lx\n", TYPE(atomicDog));
+    printf("operator|=: %llx\n", TYPE(atomicDog));
     atomicDog &= mask1;
-    printf("operator|=: %lx\n", TYPE(atomicDog));
+    printf("operator|=: %llx\n", TYPE(atomicDog));
     atomicDog ^= mask2;
-    printf("operator^=: %lx\n", TYPE(atomicDog));
+    printf("operator^=: %llx\n", TYPE(atomicDog));
 
 }
 
@@ -114,8 +114,8 @@ int main() {
     test<short>(0xFFFF, 0xF0F0, 0x0F0F);
     printf("\n32 bits\n\n");
     test<int>(0xFFFFFFFF, 0xF0F0F0F0, 0x0F0F0F0F);
-    //printf("\n64 bits\n\n");
-    //test<long long>(0xFFFFFFFFFFFFFFFF, 0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
+    printf("\n64 bits\n\n");
+    test<long long>(0xFFFFFFFFFFFFFFFF, 0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
 
     // test atomic_flag (should also have memory_orders, but probably doesn't matter 
     // to find the missing atomic functions)
