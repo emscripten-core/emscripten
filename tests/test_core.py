@@ -4424,6 +4424,7 @@ PORT: 3979
 
   def test_atomic_cxx(self):
     if self.emcc_args is None: return self.skip('needs emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
