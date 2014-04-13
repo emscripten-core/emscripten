@@ -1224,11 +1224,6 @@ try:
       value = value.replace('\\\\', '/').replace('\\', '/') # Convert backslash paths to forward slashes on Windows as well, since the JS compiler otherwise needs the backslashes escaped (alternative is to escape all input paths passing to JS, which feels clumsier to read)
     exec('shared.Settings.' + key + ' = ' + value)
 
-  # Apply effects from settings
-  if bind and shared.Settings.ASM_JS:
-    logging.warning('disabling asm.js since embind is not ready for it yet')
-    shared.Settings.ASM_JS = 0
-
   fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
 
   if fastcomp:
@@ -1245,7 +1240,6 @@ try:
       assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
       assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
       assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
-      assert not bind, 'embind not supported in fastcomp yet'
       assert shared.Settings.MAX_SETJMPS == 20, 'changing MAX_SETJMPS is not supported in fastcomp yet'
       assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
       assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
