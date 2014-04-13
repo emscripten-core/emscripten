@@ -739,11 +739,11 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, signature, 
 
 var tupleRegistrations = {};
 
-function __embind_register_value_array(rawType, name, rawConstructor, rawDestructor) {
+function __embind_register_value_array(rawType, name, constructorSignature, rawConstructor, destructorSignature, rawDestructor) {
     tupleRegistrations[rawType] = {
         name: readLatin1String(name),
-        rawConstructor: FUNCTION_TABLE[rawConstructor],
-        rawDestructor: FUNCTION_TABLE[rawDestructor],
+        rawConstructor: requireFunction(constructorSignature, rawConstructor),
+        rawDestructor: requireFunction(destructorSignature, rawDestructor),
         elements: [],
     };
 }
@@ -751,18 +751,20 @@ function __embind_register_value_array(rawType, name, rawConstructor, rawDestruc
 function __embind_register_value_array_element(
     rawTupleType,
     getterReturnType,
+    getterSignature,
     getter,
     getterContext,
     setterArgumentType,
+    setterSignature,
     setter,
     setterContext
 ) {
     tupleRegistrations[rawTupleType].elements.push({
         getterReturnType: getterReturnType,
-        getter: FUNCTION_TABLE[getter],
+        getter: requireFunction(getterSignature, getter),
         getterContext: getterContext,
         setterArgumentType: setterArgumentType,
-        setter: FUNCTION_TABLE[setter],
+        setter: requireFunction(setterSignature, setter),
         setterContext: setterContext,
     });
 }
@@ -831,13 +833,15 @@ var structRegistrations = {};
 function __embind_register_value_object(
     rawType,
     name,
+    constructorSignature,
     rawConstructor,
+    destructorSignature,
     rawDestructor
 ) {
     structRegistrations[rawType] = {
         name: readLatin1String(name),
-        rawConstructor: FUNCTION_TABLE[rawConstructor],
-        rawDestructor: FUNCTION_TABLE[rawDestructor],
+        rawConstructor: requireFunction(constructorSignature, rawConstructor),
+        rawDestructor: requireFunction(destructorSignature, rawDestructor),
         fields: [],
     };
 }
@@ -846,19 +850,21 @@ function __embind_register_value_object_field(
     structType,
     fieldName,
     getterReturnType,
+    getterSignature,
     getter,
     getterContext,
     setterArgumentType,
+    setterSignature,
     setter,
     setterContext
 ) {
     structRegistrations[structType].fields.push({
         fieldName: readLatin1String(fieldName),
         getterReturnType: getterReturnType,
-        getter: FUNCTION_TABLE[getter],
+        getter: requireFunction(getterSignature, getter),
         getterContext: getterContext,
         setterArgumentType: setterArgumentType,
-        setter: FUNCTION_TABLE[setter],
+        setter: requireFunction(setterSignature, setter),
         setterContext: setterContext,
     });
 }
