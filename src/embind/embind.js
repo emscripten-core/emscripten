@@ -622,10 +622,6 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
 
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
-    if (!isClassMethodFunc && !FUNCTION_TABLE[cppTargetFunc]) {
-        throwBindingError('Global function '+humanName+' is not defined!');
-    }
-
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
 // TODO: This omits argument count check - enable only at -O3 or similar.
 //    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
@@ -662,8 +658,8 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     }
 
     var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["throwBindingError", "classType", "invoker", "fn", "runDestructors", "retType", "classParam"];
-    var args2 = [throwBindingError, classType, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+    var args2 = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 
     if (isClassMethodFunc) {
         invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
@@ -713,7 +709,7 @@ function requireFunction(signature, rawFunction) {
     var fp;
     if (typeof FUNCTION_TABLE === "undefined") {
         // asm.js style
-        fp = asm['FUNCTION_TABLE_' + signature](rawFunction);
+        fp = asm['FUNCTION_TABLE_' + signature][rawFunction];
     } else {
         fp = FUNCTION_TABLE[rawFunction];
     }
