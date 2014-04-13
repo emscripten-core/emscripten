@@ -1,4 +1,4 @@
-/*global Module*/
+/*global Module, asm*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
@@ -708,10 +708,27 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     return invokerFunction;
 }
 
-function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker, fn) {
+function requireFunction(signature, rawFunction) {
+    signature = readLatin1String(signature);
+    var fp;
+    if (typeof FUNCTION_TABLE === "undefined") {
+        // asm.js style
+        fp = asm['FUNCTION_TABLE_' + signature](rawFunction);
+    } else {
+        fp = FUNCTION_TABLE[rawFunction];
+    }
+
+    if (typeof fp !== "function") {
+        throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
+    }
+    return fp;
+}
+
+function __embind_register_function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn) {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
+    
+    rawInvoker = requireFunction(signature, rawInvoker);
 
     exposePublicSymbol(name, function() {
         throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);

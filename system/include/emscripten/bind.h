@@ -20,6 +20,8 @@ namespace emscripten {
     namespace internal {
         typedef long GenericEnumValue;
 
+        typedef void (*GenericFunction)();
+
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
             void _embind_fatal_error(
@@ -70,6 +72,7 @@ namespace emscripten {
                 const char* name,
                 unsigned argCount,
                 TYPEID argTypes[],
+                const char* signature,
                 GenericFunction invoker,
                 GenericFunction function);
 
@@ -291,6 +294,63 @@ namespace emscripten {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
+    // SignatureCode, SignatureString
+    ////////////////////////////////////////////////////////////////////////////////
+
+    namespace internal {
+        template<typename T>
+        struct SignatureCode {
+            static constexpr char get() {
+                return 'i';
+            }
+        };
+
+        template<>
+        struct SignatureCode<void> {
+            static constexpr char get() {
+                return 'v';
+            }
+        };
+
+        template<>
+        struct SignatureCode<float> {
+            static constexpr char get() {
+                return 'd';
+            }
+        };
+
+        template<>
+        struct SignatureCode<double> {
+            static constexpr char get() {
+                return 'd';
+            }
+        };
+
+        template<typename... T>
+        struct SignatureString;
+
+        template<>
+        struct SignatureString<> {
+            char c = 0;
+        };
+
+        template<typename First, typename... Rest>
+        struct SignatureString<First, Rest...> {
+            constexpr SignatureString()
+                : c(SignatureCode<First>::get())
+            {}
+            char c;
+            SignatureString<Rest...> rest;
+        };
+
+        template<typename Return, typename... Args>
+        const char* getSignature(Return (*)(Args...)) {
+            static constexpr SignatureString<Return, Args...> sig;
+            return &sig.c;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
     // FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -302,11 +362,13 @@ namespace emscripten {
     void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         using namespace internal;
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+        auto invoker = &Invoker<ReturnType, Args...>::invoke;
         _embind_register_function(
             name,
             args.count,
             args.types,
-            reinterpret_cast<GenericFunction>(&Invoker<ReturnType, Args...>::invoke),
+            getSignature(invoker),
+            reinterpret_cast<GenericFunction>(invoker),
             reinterpret_cast<GenericFunction>(fn));
     }
 
