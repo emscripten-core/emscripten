@@ -538,7 +538,7 @@ mergeInto(LibraryManager.library, {
           adjustedX = adjustedX * (cw / rect.width);
           adjustedY = adjustedY * (ch / rect.height);
 
-          var coords = {x: adjustedX, y: adjustedY};
+          var coords = { x: adjustedX, y: adjustedY };
           
           if (event.type === 'touchstart') {
             Browser.lastTouches[touch.identifier] = coords;

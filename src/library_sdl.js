@@ -438,7 +438,7 @@ var LibrarySDL = {
           
           // Clear out any touchstart events that we've already processed
           if (event.type === 'touchstart') {
-            for(var i = 0; i < event.touches.length; i++) {
+            for (var i = 0; i < event.touches.length; i++) {
               var touch = event.touches[i];
               if (SDL.downFingers[touch.identifier] != true) {
                 SDL.downFingers[touch.identifier] = true;
@@ -450,9 +450,9 @@ var LibrarySDL = {
           }
           
           var firstTouch = touches[0];
-          if ( event.type == 'touchstart' ) {
+          if (event.type == 'touchstart') {
             SDL.DOMButtons[0] = 1;
-          };
+          }
           var mouseEventType;
           switch(event.type) {
             case 'touchstart': mouseEventType = 'mousedown'; break;
@@ -466,7 +466,7 @@ var LibrarySDL = {
           };
           SDL.events.push(mouseEvent);
 
-          for (i=0;i<touches.length;i++) {
+          for (var i = 0; i < touches.length; i++) {
             var touch = touches[i];
             SDL.events.push({
               type: event.type,
@@ -496,7 +496,7 @@ var LibrarySDL = {
           SDL.DOMButtons[0] = 0;
           SDL.events.push(mouseEvent);
           
-          for (i = 0; i < event.changedTouches.length; i++) {
+          for (var i = 0; i < event.changedTouches.length; i++) {
             var touch = event.changedTouches[i];
             SDL.events.push({
               type: 'touchend',
@@ -798,8 +798,7 @@ var LibrarySDL = {
           var ly = Browser.lastTouches[touch.identifier].y / h;
           var dx = x - lx;
           var dy = y - ly;
-          if (touch['deviceID'] === undefined)
-            touch.deviceID = SDL.TOUCH_DEFAULT_ID;
+          if (touch['deviceID'] === undefined) touch.deviceID = SDL.TOUCH_DEFAULT_ID;
           if (dx === 0 && dy === 0 && event.type === 'touchmove') return; // don't send these if nothing happened
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.timestamp, '0', 'i32') }}}; // XXX michaeljbishop - Unimplemented for now
@@ -1597,10 +1596,10 @@ var LibrarySDL = {
         var retrievedEventCount = 0;
         // this should look through the entire queue until it has filled up the events
         // array
-        while ( index < SDL.events.length && retrievedEventCount < requestedEventCount ) {
+        while (index < SDL.events.length && retrievedEventCount < requestedEventCount) {
           var event = SDL.events[index];
           var type = SDL.DOMEventToSDLEvent[event.type];
-          if ( from <= type && type <= to) {
+          if (from <= type && type <= to) {
             SDL.makeCEvent(event, events);
             SDL.events.splice(index, 1);
             retrievedEventCount++;
