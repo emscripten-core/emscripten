@@ -10,7 +10,7 @@
 //                   or otherwise).
 
 var LibrarySDL = {
-  $SDL__deps: ['$FS', '$PATH', '$Browser'],
+  $SDL__deps: ['$FS', '$PATH', '$Browser', 'SDL_GetTicks'],
   $SDL: {
     defaults: {
       width: 320,
@@ -801,14 +801,18 @@ var LibrarySDL = {
           if (touch['deviceID'] === undefined) touch.deviceID = SDL.TOUCH_DEFAULT_ID;
           if (dx === 0 && dy === 0 && event.type === 'touchmove') return; // don't send these if nothing happened
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.timestamp, '0', 'i32') }}}; // XXX michaeljbishop - Unimplemented for now
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.timestamp, '_SDL_GetTicks()', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.touchId, 'touch.deviceID', 'i64') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.fingerId, 'touch.identifier', 'i64') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.x, 'x', 'float') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.y, 'y', 'float') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.dx, 'dx', 'float') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.dy, 'dy', 'float') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.pressure, 'touch.force', 'float') }}};
+          if (touch.force !== undefined) {
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.pressure, 'touch.force', 'float') }}};
+          } else { // No pressure data, send a digital 0/1 pressure.
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.pressure, 'event.type == "touchend" ? 0 : 1', 'float') }}};
+          }
           break;
         }
         case 'unload': {
