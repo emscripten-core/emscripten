@@ -1343,17 +1343,25 @@ function __embind_register_class(
     rawPointerType,
     rawConstPointerType,
     baseClassRawType,
+    getActualTypeSignature,
     getActualType,
+    upcastSignature,
     upcast,
+    downcastSignature,
     downcast,
     name,
+    destructorSignature,
     rawDestructor
 ) {
     name = readLatin1String(name);
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
-    getActualType = FUNCTION_TABLE[getActualType];
-    upcast = FUNCTION_TABLE[upcast];
-    downcast = FUNCTION_TABLE[downcast];
+    getActualType = requireFunction(getActualTypeSignature, getActualType);
+    if (upcast) {
+        upcast = requireFunction(upcastSignature, upcast);
+    }
+    if (downcast) {
+        downcast = requireFunction(downcastSignature, downcast);
+    }
+    rawDestructor = requireFunction(destructorSignature, rawDestructor);
     var legalFunctionName = makeLegalFunctionName(name);
 
     exposePublicSymbol(legalFunctionName, function() {
@@ -1443,11 +1451,12 @@ function __embind_register_class_constructor(
     rawClassType,
     argCount,
     rawArgTypesAddr,
+    invokerSignature,
     invoker,
     rawConstructor
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    invoker = FUNCTION_TABLE[invoker];
+    invoker = requireFunction(invokerSignature, invoker);
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
@@ -1532,12 +1541,13 @@ function __embind_register_class_function(
     methodName,
     argCount,
     rawArgTypesAddr, // [ReturnType, ThisType, Args...]
+    invokerSignature,
     rawInvoker,
     context
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
+    rawInvoker = requireFunction(invokerSignature, rawInvoker);
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
@@ -1583,12 +1593,13 @@ function __embind_register_class_class_function(
     methodName,
     argCount,
     rawArgTypesAddr,
+    invokerSignature,
     rawInvoker,
     fn
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
+    rawInvoker = requireFunction(invokerSignature, rawInvoker);
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
         var humanName = classType.name + '.' + methodName;
@@ -1628,14 +1639,16 @@ function __embind_register_class_property(
     classType,
     fieldName,
     getterReturnType,
+    getterSignature,
     getter,
     getterContext,
     setterArgumentType,
+    setterSignature,
     setter,
     setterContext
 ) {
     fieldName = readLatin1String(fieldName);
-    getter = FUNCTION_TABLE[getter];
+    getter = requireFunction(getterSignature, getter);
 
     whenDependentTypesAreResolved([], [classType], function(classType) {
         classType = classType[0];
@@ -1673,7 +1686,7 @@ function __embind_register_class_property(
             };
 
             if (setter) {
-                setter = FUNCTION_TABLE[setter];
+                setter = requireFunction(setterSignature, setter);
                 var setterArgumentType = types[1];
                 desc.set = function(v) {
                     var ptr = validateThis(this, classType, humanName + ' setter');
@@ -1708,16 +1721,20 @@ function __embind_register_smart_ptr(
     rawPointeeType,
     name,
     sharingPolicy,
+    getPointeeSignature,
     rawGetPointee,
+    constructorSignature,
     rawConstructor,
+    shareSignature,
     rawShare,
+    destructorSignature,
     rawDestructor
 ) {
     name = readLatin1String(name);
-    rawGetPointee = FUNCTION_TABLE[rawGetPointee];
-    rawConstructor = FUNCTION_TABLE[rawConstructor];
-    rawShare = FUNCTION_TABLE[rawShare];
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
+    rawGetPointee = requireFunction(getPointeeSignature, rawGetPointee);
+    rawConstructor = requireFunction(constructorSignature, rawConstructor);
+    rawShare = requireFunction(shareSignature, rawShare);
+    rawDestructor = requireFunction(destructorSignature, rawDestructor);
 
     whenDependentTypesAreResolved([rawType], [rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
