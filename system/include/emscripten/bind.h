@@ -813,7 +813,7 @@ namespace emscripten {
         // NOTE: this returns the class type, not the pointer type
         template<typename T>
         inline TYPEID getActualType(T* ptr) {
-            return reinterpret_cast<TYPEID>(&typeid(*ptr));
+            return getLightTypeID(*ptr);
         };
     }
 
@@ -851,15 +851,15 @@ namespace emscripten {
         template<typename T>
         struct SmartPtrIfNeeded {
             template<typename U>
-            SmartPtrIfNeeded(U& cls) {
-                cls.template smart_ptr<T>();
+            SmartPtrIfNeeded(U& cls, const char* smartPtrName) {
+                cls.template smart_ptr<T>(smartPtrName);
             }
         };
 
         template<typename T>
         struct SmartPtrIfNeeded<T*> {
             template<typename U>
-            SmartPtrIfNeeded(U&) {
+            SmartPtrIfNeeded(U&, const char*) {
             }
         };
     };
@@ -890,7 +890,7 @@ namespace emscripten {
         }
 
         template<typename PointerType>
-        const class_& smart_ptr() const {
+        const class_& smart_ptr(const char* name) const {
             using namespace internal;
 
             typedef smart_ptr_trait<PointerType> PointerTrait;
@@ -901,7 +901,7 @@ namespace emscripten {
             _embind_register_smart_ptr(
                 TypeID<PointerType>::get(),
                 TypeID<PointeeType>::get(),
-                typeid(PointerType).name(),
+                name,
                 PointerTrait::get_sharing_policy(),
                 reinterpret_cast<GenericFunction>(&PointerTrait::get),
                 reinterpret_cast<GenericFunction>(&PointerTrait::construct_null),
@@ -933,10 +933,10 @@ namespace emscripten {
         }
 
         template<typename SmartPtr, typename... Args, typename... Policies>
-        const class_& smart_ptr_constructor(SmartPtr (*factory)(Args...), Policies...) const {
+        const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
             using namespace internal;
 
-            smart_ptr<SmartPtr>();
+            smart_ptr<SmartPtr>(smartPtrName);
 
             typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
             _embind_register_class_constructor(
@@ -949,12 +949,12 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename PointerType = WrapperType*>
-        const class_& allow_subclass() const {
+        const class_& allow_subclass(const char* wrapperClassName, const char* pointerName = "<UnknownPointerName>") const {
             using namespace internal;
 
-            auto cls = class_<WrapperType, base<ClassType>>(typeid(WrapperType).name())
+            auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
                 ;
-            SmartPtrIfNeeded<PointerType> _(cls);
+            SmartPtrIfNeeded<PointerType> _(cls, pointerName);
 
             return class_function(
                 "implement",

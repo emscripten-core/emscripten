@@ -1408,7 +1408,7 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.passThroughCustomSmartPtr(o);
             });
-            assert.equal('Cannot convert argument of type NSt3__110shared_ptrI20HeldByCustomSmartPtrEE to parameter type 14CustomSmartPtrI20HeldByCustomSmartPtrE', e.message);
+            assert.equal('Cannot convert argument of type shared_ptr<HeldByCustomSmartPtr> to parameter type CustomSmartPtr<HeldByCustomSmartPtr>', e.message);
             o.delete();
         });
 
@@ -1646,6 +1646,10 @@ module({
     if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
 
     BaseFixture.extend("unbound types", function() {
+        if (!cm.hasUnboundTypeNames) {
+            return;
+        }
+
         function assertMessage(fn, message) {
             var e = assert.throws(cm.UnboundTypeError, fn);
             assert.equal(message, e.message);
