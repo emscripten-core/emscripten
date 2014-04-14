@@ -103,15 +103,19 @@ for name, interface in interfaces.iteritems():
   else:
     args_list = []
   body += '  this.ptr = _emscripten_bind_%s_%d(%s);\n' % (name, len(args_list), args)
+  parent = '{}'
+  if name in implements:
+    assert len(implements[name]) == 1, 'cannot handle multiple inheritance yet'
+    parent = 'Object.create(%s)' % implements[name][0]
   gen_js.write(r'''
 function %s(%s) {
 %s}
-%s.prototype = {}; // Object.create with prorotype as the parent clazz
+%s.prototype = %s;
 
-''' % (name, args, body, name))
+''' % (name, args, body, name, parent))
   # Methods
   for m in interface.members:
-    print m.identifier.name, m.maxArgCount, m.allowedArgCounts, m.overloadsForArgCount(0)[0]
+    print 'member', m.identifier.name, m.maxArgCount, m.allowedArgCounts, m.overloadsForArgCount(0)
 
 gen_c.close()
 gen_js.close()
