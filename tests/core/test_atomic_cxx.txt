@@ -29,12 +29,12 @@ fetch_sub 2: old=4 new=3
 fetch_sub 3: old=3 new=2
 fetch_sub 4: old=2 new=1
 fetch_sub 5: old=1 new=0
-fetch_and 0: old=ffffffffffffffff, new=1
-fetch_and 1: old=ffffffffffffffff, new=2
-fetch_and 2: old=ffffffffffffffff, new=4
-fetch_and 3: old=ffffffffffffffff, new=8
-fetch_and 4: old=ffffffffffffffff, new=10
-fetch_and 5: old=ffffffffffffffff, new=20
+fetch_and 0: old=ff, new=1
+fetch_and 1: old=ff, new=2
+fetch_and 2: old=ff, new=4
+fetch_and 3: old=ff, new=8
+fetch_and 4: old=ff, new=10
+fetch_and 5: old=ff, new=20
 fetch_or 0: old=0, new=1
 fetch_or 1: old=1, new=3
 fetch_or 2: old=3, new=7
@@ -51,9 +51,9 @@ operator++: 1
 operator--: 0
 operator+=: 10
 operator-=: 5
-operator|=: ffffffff
-operator|=: fffffff0
-operator^=: ffffffff
+operator|=: ff
+operator&=: f0
+operator^=: ff
 
 16 bits
 
@@ -85,12 +85,12 @@ fetch_sub 2: old=4 new=3
 fetch_sub 3: old=3 new=2
 fetch_sub 4: old=2 new=1
 fetch_sub 5: old=1 new=0
-fetch_and 0: old=ffffffffffffffff, new=1
-fetch_and 1: old=ffffffffffffffff, new=2
-fetch_and 2: old=ffffffffffffffff, new=4
-fetch_and 3: old=ffffffffffffffff, new=8
-fetch_and 4: old=ffffffffffffffff, new=10
-fetch_and 5: old=ffffffffffffffff, new=20
+fetch_and 0: old=ffff, new=1
+fetch_and 1: old=ffff, new=2
+fetch_and 2: old=ffff, new=4
+fetch_and 3: old=ffff, new=8
+fetch_and 4: old=ffff, new=10
+fetch_and 5: old=ffff, new=20
 fetch_or 0: old=0, new=1
 fetch_or 1: old=1, new=3
 fetch_or 2: old=3, new=7
@@ -107,9 +107,9 @@ operator++: 1
 operator--: 0
 operator+=: 10
 operator-=: 5
-operator|=: ffffffff
-operator|=: fffff0f0
-operator^=: ffffffff
+operator|=: ffff
+operator&=: f0f0
+operator^=: ffff
 
 32 bits
 
@@ -141,12 +141,12 @@ fetch_sub 2: old=4 new=3
 fetch_sub 3: old=3 new=2
 fetch_sub 4: old=2 new=1
 fetch_sub 5: old=1 new=0
-fetch_and 0: old=ffffffffffffffff, new=1
-fetch_and 1: old=ffffffffffffffff, new=2
-fetch_and 2: old=ffffffffffffffff, new=4
-fetch_and 3: old=ffffffffffffffff, new=8
-fetch_and 4: old=ffffffffffffffff, new=10
-fetch_and 5: old=ffffffffffffffff, new=20
+fetch_and 0: old=ffffffff, new=1
+fetch_and 1: old=ffffffff, new=2
+fetch_and 2: old=ffffffff, new=4
+fetch_and 3: old=ffffffff, new=8
+fetch_and 4: old=ffffffff, new=10
+fetch_and 5: old=ffffffff, new=20
 fetch_or 0: old=0, new=1
 fetch_or 1: old=1, new=3
 fetch_or 2: old=3, new=7
@@ -164,7 +164,7 @@ operator--: 0
 operator+=: 10
 operator-=: 5
 operator|=: ffffffff
-operator|=: f0f0f0f0
+operator&=: f0f0f0f0
 operator^=: ffffffff
 
 64 bits
@@ -220,7 +220,7 @@ operator--: 0
 operator+=: 10
 operator-=: 5
 operator|=: ffffffffffffffff
-operator|=: f0f0f0f0f0f0f0f0
+operator&=: f0f0f0f0f0f0f0f0
 operator^=: ffffffffffffffff
 atomic_flag: false
 done.
