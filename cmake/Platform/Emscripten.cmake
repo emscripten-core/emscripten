@@ -66,11 +66,11 @@ if ("${CMAKE_CXX_COMPILER}" STREQUAL "")
 endif()
 
 if ("${CMAKE_AR}" STREQUAL "")
-	set(CMAKE_AR "${EMSCRIPTEN_ROOT_PATH}/emar${EMCC_SUFFIX}")
+	set(CMAKE_AR "${EMSCRIPTEN_ROOT_PATH}/emar${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ar")
 endif()
 
 if ("${CMAKE_RANLIB}" STREQUAL "")
-	set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}")
+	set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
 endif()
 
 # Don't do compiler autodetection, since we are cross-compiling.
@@ -113,8 +113,7 @@ set(CMAKE_CXX_ARCHIVE_APPEND "${CMAKE_AR} r <TARGET> ${CMAKE_START_TEMP_FILE} <L
 set(CMAKE_C_ARCHIVE_APPEND "${CMAKE_AR} r <TARGET> ${CMAKE_START_TEMP_FILE} <LINK_FLAGS> <OBJECTS>${CMAKE_END_TEMP_FILE}")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
-# There seems to be some kind of bug with CMake, so you might need to define this manually on the command line with "-DEMSCRIPTEN=1".
-set(EMSCRIPTEN 1)
+set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
 
 # We are cross-compiling, so unset the common CMake variables that represent the target platform. Leave UNIX define enabled, since Emscripten
 # mimics a Linux environment.
