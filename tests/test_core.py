@@ -2983,7 +2983,7 @@ def process(filename):
                 output_nicerizer=lambda x, err: x.replace('\n', '*'),
                 post_build=self.dlfcn_post_build)
 
-    if Settings.ASM_JS and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+    if Settings.ASM_JS and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
       out = run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
       if 'asm' in out:
         self.validate_asmjs(out)

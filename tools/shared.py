@@ -746,13 +746,14 @@ else:
 # Engine tweaks
 
 try:
-  new_spidermonkey = listify(SPIDERMONKEY_ENGINE)
-  if 'gcparam' not in str(new_spidermonkey):
-    new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
-  if '-w' not in str(new_spidermonkey):
-    new_spidermonkey += ['-w']
-  JS_ENGINES = map(lambda x: new_spidermonkey if x == SPIDERMONKEY_ENGINE else x, JS_ENGINES)
-  SPIDERMONKEY_ENGINE = new_spidermonkey
+  if SPIDERMONKEY_ENGINE:
+    new_spidermonkey = listify(SPIDERMONKEY_ENGINE)
+    if 'gcparam' not in str(new_spidermonkey):
+      new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
+    if '-w' not in str(new_spidermonkey):
+      new_spidermonkey += ['-w']
+    JS_ENGINES = map(lambda x: new_spidermonkey if x == SPIDERMONKEY_ENGINE else x, JS_ENGINES)
+    SPIDERMONKEY_ENGINE = new_spidermonkey
 except NameError:
   pass
 
