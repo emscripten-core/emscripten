@@ -1793,6 +1793,11 @@ Module["preRun"].push(function () {
       print opts
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
 
+  def test_sdl_touch(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+      print opts
+      self.btest(path_from_root('tests', 'sdl_touch.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
+
   def test_html5_mouse(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print opts
