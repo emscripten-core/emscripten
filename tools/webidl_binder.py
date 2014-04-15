@@ -86,31 +86,55 @@ function ensureString(value) {
 
 ''')
 
-def render_function(self_name, bindings_name, min_args, max_args, call_prefix):
-  print >> sys.stderr, 'renderfunc', name, min_args, max_args
+def type_to_c(t):
+  #print 'to c ', t
+  if t == 'Long':
+    return 'int'
+  elif t == 'Short':
+    return 'short'
+  elif t == 'Void':
+    return 'void'
+  else:
+    return t
+
+def render_function(self_name, bindings_name, min_args, arg_types, call_prefix):
+  print >> sys.stderr, 'renderfunc', name, min_args, arg_types
+  max_args = len(arg_types)
+
+  c_names = {}
+
+  # JS
   args = ['arg%d' % i for i in range(max_args)]
   body = ''
   for i in range(max_args):
     # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
     body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
   for i in range(min_args, max_args):
-    body += '  if (arg%d === undefined) { %s_emscripten_bind_%s_%d(%s)%s }\n' % (i, call_prefix, bindings_name, i, ','.join(args[:i]), '' if 'return ' in call_prefix else '; return')
+    c_names[i] = '_emscripten_bind_%s_%d' % (bindings_name, i)
+    body += '  if (arg%d === undefined) { %s(%s)%s }\n' % (i, call_prefix, ','.join(args[:i]), '' if 'return ' in call_prefix else '; return')
   body += '  %s_emscripten_bind_%s_%d(%s);\n' % (call_prefix, bindings_name, max_args, ','.join(args))
+  c_names[max_args] = '_emscripten_bind_%s_%d' % (bindings_name, max_args)
   gen_js.write(r'''function%s(%s) {
 %s
 }''' % ((' ' + self_name) if self_name is not None else '', ','.join(args), body[:-1]))
+
+  # C
+  for i in range(min_args, max_args+1):
+    args = ','.join(['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
+    gen_c.write(r'''%s %s(%s) {
+}''' % ('?', c_names[i], args))
 
 for name, interface in interfaces.iteritems():
   gen_js.write('\n// ' + name + '\n')
   # Constructor
   min_args = 0
-  max_args = 0
+  arg_types = []
   cons = interface.getExtendedAttribute('Constructor')
   if type(cons) == list:
     args_list = cons[0]
-    max_args = len(args_list)
     for i in range(len(args_list)):
       arg = args_list[i]
+      arg_types.append(str(arg.type))
       if arg.optional:
         break
       min_args = i+1
@@ -119,7 +143,7 @@ for name, interface in interfaces.iteritems():
     assert len(implements[name]) == 1, 'cannot handle multiple inheritance yet'
     parent = 'Object.create(%s)' % implements[name][0]
   gen_js.write('\n')
-  render_function(name, name, min_args, max_args, 'this.ptr = ')
+  render_function(name, name, min_args, arg_types, 'this.ptr = ')
   gen_js.write(r'''
 %s.prototype = %s;
 ''' % (name, parent))
@@ -128,7 +152,7 @@ for name, interface in interfaces.iteritems():
     #print dir(m)
     gen_js.write(r'''
 %s.%s = ''' % (name, m.identifier.name))
-    render_function(None, m.identifier.name, min(m.allowedArgCounts), max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return ')
+    render_function(None, m.identifier.name, min(m.allowedArgCounts), ['?']*max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return ')
     gen_js.write(';\n')
 
 gen_c.write('\n}\n\n');
