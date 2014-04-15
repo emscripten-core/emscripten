@@ -86,13 +86,13 @@ function ensureString(value) {
 
 ''')
 
-def render_function(self_name, bindings_name, min_args, max_args):
+def render_function(self_name, bindings_name, min_args, max_args, call_prefix):
   print >> sys.stderr, 'renderfunc', name, min_args, max_args
   args = ['arg%d' % i for i in range(max_args)]
   body = ''
   for i in range(min_args, max_args):
-    body += '  if (arg%d === undefined) { this.ptr = _emscripten_bind_%s_%d(%s); return }\n' % (i, bindings_name, i, ','.join(args[:i]))
-  body += '  this.ptr = _emscripten_bind_%s_%d(%s);\n' % (bindings_name, max_args, ','.join(args))
+    body += '  if (arg%d === undefined) { %s_emscripten_bind_%s_%d(%s)%s }\n' % (i, call_prefix, bindings_name, i, ','.join(args[:i]), '' if 'return ' in call_prefix else '; return')
+  body += '  %s_emscripten_bind_%s_%d(%s);\n' % (call_prefix, bindings_name, max_args, ','.join(args))
   return r'''function%s(%s) {
 %s
 }''' % ((' ' + self_name) if self_name is not None else '', ','.join(args), body[:-1])
@@ -118,13 +118,13 @@ for name, interface in interfaces.iteritems():
   gen_js.write(r'''
 %s
 %s.prototype = %s;
-''' % (render_function(name, name, min_args, max_args)  , name, parent))
+''' % (render_function(name, name, min_args, max_args, 'this.ptr = '), name, parent))
   # Methods
   for m in interface.members:
+    #print dir(m)
     gen_js.write(r'''
 %s.%s = %s;
-''' % (name, m.identifier.name, render_function(None, m.identifier.name, min(m.allowedArgCounts), max(m.allowedArgCounts))))
-    #print 'member', m.identifier.name, m.maxArgCount, m.allowedArgCounts, m.overloadsForArgCount(0)
+''' % (name, m.identifier.name, render_function(None, m.identifier.name, min(m.allowedArgCounts), max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return ')))
 
 gen_js.write('\n');
 
