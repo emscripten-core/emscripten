@@ -132,11 +132,11 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
     else:
       call = 'self->'
     call += func_name + '(' + call_args + ')'
-    gen_c.write(r'''%s %s(%s) {
+    gen_c.write(r'''
+%s %s(%s) {
   %s%s;
 }
-
-''' % ('?', c_names[i], full_args, 'return ' if return_type is not 'Void' or constructor else '', call))
+''' % (type_to_c(return_type), c_names[i], full_args, 'return ' if return_type is not 'Void' or constructor else '', call))
 
 for name, interface in interfaces.iteritems():
   gen_js.write('\n// ' + name + '\n')
