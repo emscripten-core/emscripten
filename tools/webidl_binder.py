@@ -127,8 +127,8 @@ for name, interface in interfaces.iteritems():
   for m in interface.members:
     #print dir(m)
     gen_js.write(r'''
-%s.%s = ''' % (name, m.identifier.name)
-    render_function(None, m.identifier.name, min(m.allowedArgCounts), max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return '))
+%s.%s = ''' % (name, m.identifier.name))
+    render_function(None, m.identifier.name, min(m.allowedArgCounts), max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return ')
     gen_js.write(';\n')
 
 gen_c.write('\n}\n\n');
