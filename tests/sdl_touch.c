@@ -66,9 +66,12 @@ int main() {
       for(var d in data) event[d] = data[d];
       Module['canvas'].dispatchEvent(event);
     }
-    sendEvent('touchstart', { touches: [ { pageX: 300, pageY: 400, deviceID: 1, identifier: 1, force: 1 } ] });
-    sendEvent('touchmove', { touches: [ { pageX: 350, pageY: 400, deviceID: 1, identifier: 1, force: 1 } ] });
-    sendEvent('touchend', { changedTouches: [ { pageX: 350, pageY: 400, deviceID: 1, identifier: 1, force: 1 } ] });
+    // Pass test coordinates in canvas element coordinate frame.
+    var x = Module['canvas'].getBoundingClientRect().x;
+    var y = Module['canvas'].getBoundingClientRect().y;
+    sendEvent('touchstart', { touches: [ { pageX: x+300, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
+    sendEvent('touchmove', { touches: [ { pageX: x+400, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
+    sendEvent('touchend', { changedTouches: [ { pageX: x+400, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
   );
 #endif
 
