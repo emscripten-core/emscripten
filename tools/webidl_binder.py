@@ -90,6 +90,9 @@ def render_function(self_name, bindings_name, min_args, max_args, call_prefix):
   print >> sys.stderr, 'renderfunc', name, min_args, max_args
   args = ['arg%d' % i for i in range(max_args)]
   body = ''
+  for i in range(max_args):
+    # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
+    body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
   for i in range(min_args, max_args):
     body += '  if (arg%d === undefined) { %s_emscripten_bind_%s_%d(%s)%s }\n' % (i, call_prefix, bindings_name, i, ','.join(args[:i]), '' if 'return ' in call_prefix else '; return')
   body += '  %s_emscripten_bind_%s_%d(%s);\n' % (call_prefix, bindings_name, max_args, ','.join(args))
