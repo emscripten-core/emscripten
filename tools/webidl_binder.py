@@ -30,7 +30,11 @@ print implements
 gen_c = open(output_base + '.cpp', 'w')
 gen_js = open(output_base + '.js', 'w')
 
-gen_c.write('extern "C" {\n')
+gen_c.write(r'''
+#include <emscripten.h>
+
+extern "C" {
+''')
 
 gen_js.write('''
 // Bindings utilities
@@ -139,7 +143,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
       call = 'self->'
     call += func_name + '(' + call_args + ')'
     gen_c.write(r'''
-%s %s(%s) {
+%s EMSCRIPTEN_KEEPALIVE %s(%s) {
   %s%s;
 }
 ''' % ((class_name + '*') if constructor else type_to_c(return_type), c_names[i], full_args, 'return ' if return_type is not 'Void' or constructor else '', call))
