@@ -142,7 +142,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
 %s %s(%s) {
   %s%s;
 }
-''' % (type_to_c(return_type), c_names[i], full_args, 'return ' if return_type is not 'Void' or constructor else '', call))
+''' % ((class_name + '*') if constructor else type_to_c(return_type), c_names[i], full_args, 'return ' if return_type is not 'Void' or constructor else '', call))
 
 for name, interface in interfaces.iteritems():
   gen_js.write('\n// ' + name + '\n')
@@ -167,14 +167,15 @@ for name, interface in interfaces.iteritems():
   gen_js.write('\n')
   render_function(name, name, name, min_args, arg_types, 'Void', constructor=True)
   gen_js.write(r'''
+Module['%s'] = %s;
 %s.prototype = %s;
-''' % (name, parent))
+''' % (name, name, name, parent))
 
   # Methods
   for m in interface.members:
     #print dir(m)
     gen_js.write(r'''
-%s.%s = ''' % (name, m.identifier.name))
+%s.prototype.%s = ''' % (name, m.identifier.name))
     return_type, args = m.signatures()[0]
     arg_types = [arg.type.name for arg in args]
     render_function(None, name, m.identifier.name, min(m.allowedArgCounts), arg_types, return_type.name)
