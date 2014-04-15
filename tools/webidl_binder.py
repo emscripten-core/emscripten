@@ -94,6 +94,8 @@ def type_to_c(t):
     return 'short'
   elif t == 'Void':
     return 'void'
+  elif t in interfaces:
+    return t + '*'
   else:
     return t
 
@@ -122,7 +124,9 @@ def render_function(self_name, bindings_name, min_args, arg_types, call_prefix):
   for i in range(min_args, max_args+1):
     args = ','.join(['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
     gen_c.write(r'''%s %s(%s) {
-}''' % ('?', c_names[i], args))
+}
+
+''' % ('?', c_names[i], args))
 
 for name, interface in interfaces.iteritems():
   gen_js.write('\n// ' + name + '\n')
@@ -152,7 +156,9 @@ for name, interface in interfaces.iteritems():
     #print dir(m)
     gen_js.write(r'''
 %s.%s = ''' % (name, m.identifier.name))
-    render_function(None, m.identifier.name, min(m.allowedArgCounts), ['?']*max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return ')
+    return_type, args = m.signatures()[0]
+    arg_types = [arg.type.name for arg in args]
+    render_function(None, m.identifier.name, min(m.allowedArgCounts), arg_types, '' if return_type.name == 'Void' else 'return ')
     gen_js.write(';\n')
 
 gen_c.write('\n}\n\n');
