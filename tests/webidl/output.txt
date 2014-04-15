@@ -28,7 +28,7 @@ Child2:9
 *static*
 *virtualf*
 *virtualf*
-*virtualf2*''' + ('''
+*virtualf2*
 Parent:9
 Child2:9
 *js virtualf replacement*
@@ -36,6 +36,6 @@ Child2:9
 *js virtualf2 replacement*
 *virtualf*
 *virtualf*
-*virtualf2*''') + '''
+*virtualf2*
 *ok*
 
