@@ -96,9 +96,9 @@ def render_function(self_name, bindings_name, min_args, max_args, call_prefix):
   for i in range(min_args, max_args):
     body += '  if (arg%d === undefined) { %s_emscripten_bind_%s_%d(%s)%s }\n' % (i, call_prefix, bindings_name, i, ','.join(args[:i]), '' if 'return ' in call_prefix else '; return')
   body += '  %s_emscripten_bind_%s_%d(%s);\n' % (call_prefix, bindings_name, max_args, ','.join(args))
-  return r'''function%s(%s) {
+  gen_js.write(r'''function%s(%s) {
 %s
-}''' % ((' ' + self_name) if self_name is not None else '', ','.join(args), body[:-1])
+}''' % ((' ' + self_name) if self_name is not None else '', ','.join(args), body[:-1]))
 
 for name, interface in interfaces.iteritems():
   gen_js.write('\n// ' + name + '\n')
@@ -118,17 +118,20 @@ for name, interface in interfaces.iteritems():
   if name in implements:
     assert len(implements[name]) == 1, 'cannot handle multiple inheritance yet'
     parent = 'Object.create(%s)' % implements[name][0]
+  gen_js.write('\n')
+  render_function(name, name, min_args, max_args, 'this.ptr = ')
   gen_js.write(r'''
-%s
 %s.prototype = %s;
-''' % (render_function(name, name, min_args, max_args, 'this.ptr = '), name, parent))
+''' % (name, parent))
   # Methods
   for m in interface.members:
     #print dir(m)
     gen_js.write(r'''
-%s.%s = %s;
-''' % (name, m.identifier.name, render_function(None, m.identifier.name, min(m.allowedArgCounts), max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return ')))
+%s.%s = ''' % (name, m.identifier.name)
+    render_function(None, m.identifier.name, min(m.allowedArgCounts), max(m.allowedArgCounts), '' if m.signatures()[0][0].name == 'Void' else 'return '))
+    gen_js.write(';\n')
 
+gen_c.write('\n}\n\n');
 gen_js.write('\n');
 
 gen_c.close()
