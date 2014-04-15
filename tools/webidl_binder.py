@@ -125,10 +125,10 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
     # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
     body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
   for i in range(min_args, max_args):
-    c_names[i] = '_emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; return')
-  c_names[max_args] = '_emscripten_bind_%s_%d' % (bindings_name, max_args)
-  body += '  %s%s(%s);\n' % (call_prefix, c_names[max_args], ', '.join(pre_arg + args))
+    c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
+    body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; return')
+  c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
+  body += '  %s%s(%s);\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args))
   gen_js.write(r'''function%s(%s) {
 %s
 }''' % ((' ' + self_name) if self_name is not None else '', ', '.join(args), body[:-1]))
