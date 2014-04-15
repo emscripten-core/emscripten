@@ -86,36 +86,47 @@ function ensureString(value) {
 
 ''')
 
-for name, interface in interfaces.iteritems():
-  gen_js.write('// ' + name + '\n')
-  # Constructor
-  args = ''
+def render_function(name, min_args, max_args):
+  print >> sys.stderr, 'renderfunc', name, min_args, max_args
+  args = ['arg%d' % i for i in range(max_args)]
   body = ''
+  for i in range(min_args, max_args):
+    body += '  if (arg%d === undefined) { this.ptr = _emscripten_bind_%s_%d(%s); return }\n' % (i, name, i, ','.join(args[:i]))
+  body += '  this.ptr = _emscripten_bind_%s_%d(%s);\n' % (name, max_args, ','.join(args))
+  return r'''function%s(%s) {
+%s
+}''' % ((' ' + name) if name is not None else '', ','.join(args), body[:-1])
+
+for name, interface in interfaces.iteritems():
+  gen_js.write('\n// ' + name + '\n')
+  # Constructor
+  min_args = 0
+  max_args = 0
   cons = interface.getExtendedAttribute('Constructor')
   if type(cons) == list:
     args_list = cons[0]
+    max_args = len(args_list)
     for i in range(len(args_list)):
       arg = args_list[i]
       if arg.optional:
-        body += '  if (' + arg.identifier.name + ' === undefined) { this.ptr = _emscripten_bind_%s_%d(%s); return }\n' % (name, i, args)
-      if len(args) > 0: args += ', '
-      args += arg.identifier.name
-  else:
-    args_list = []
-  body += '  this.ptr = _emscripten_bind_%s_%d(%s);\n' % (name, len(args_list), args)
+        break
+      min_args = i+1
   parent = '{}'
   if name in implements:
     assert len(implements[name]) == 1, 'cannot handle multiple inheritance yet'
     parent = 'Object.create(%s)' % implements[name][0]
   gen_js.write(r'''
-function %s(%s) {
-%s}
+%s
 %s.prototype = %s;
-
-''' % (name, args, body, name, parent))
+''' % (render_function(name, min_args, max_args)  , name, parent))
   # Methods
   for m in interface.members:
-    print 'member', m.identifier.name, m.maxArgCount, m.allowedArgCounts, m.overloadsForArgCount(0)
+    gen_js.write(r'''
+%s.%s = %s;
+''' % (name, m.identifier.name, render_function(None, min(m.allowedArgCounts), max(m.allowedArgCounts))))
+    #print 'member', m.identifier.name, m.maxArgCount, m.allowedArgCounts, m.overloadsForArgCount(0)
+
+gen_js.write('\n');
 
 gen_c.close()
 gen_js.close()
