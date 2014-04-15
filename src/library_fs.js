@@ -394,16 +394,12 @@ mergeInto(LibraryManager.library, {
           }
         });
       }
-      if (stream.__proto__) {
-        // reuse the object
-        stream.__proto__ = FS.FSStream.prototype;
-      } else {
-        var newStream = new FS.FSStream();
-        for (var p in stream) {
-          newStream[p] = stream[p];
-        }
-        stream = newStream;
+      // clone it, so we can return an instance of FSStream
+      var newStream = new FS.FSStream();
+      for (var p in stream) {
+        newStream[p] = stream[p];
       }
+      stream = newStream;
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;
