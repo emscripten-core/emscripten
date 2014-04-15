@@ -110,14 +110,20 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
   call_prefix = '' if not constructor else 'this.ptr = '
   if return_type != 'Void' and not constructor: call_prefix = 'return '
   args = ['arg%d' % i for i in range(max_args)]
-  body = '  var self = this.ptr;\n'
+  if not constructor:
+    body = '  var self = this.ptr;\n'
+    pre_arg = ['self']
+  else:
+    body = ''
+    pre_arg = []
+
   for i in range(max_args):
     # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
     body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
   for i in range(min_args, max_args):
     c_names[i] = '_emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (arg%d === undefined) { %s(%s)%s }\n' % (i, call_prefix, ', '.join(['self'] + args[:i]), '' if 'return ' in call_prefix else '; return')
-  body += '  %s_emscripten_bind_%s_%d(%s);\n' % (call_prefix, bindings_name, max_args, ', '.join(['self'] + args))
+    body += '  if (arg%d === undefined) { %s(%s)%s }\n' % (i, call_prefix, ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; return')
+  body += '  %s_emscripten_bind_%s_%d(%s);\n' % (call_prefix, bindings_name, max_args, ', '.join(pre_arg + args))
   c_names[max_args] = '_emscripten_bind_%s_%d' % (bindings_name, max_args)
   gen_js.write(r'''function%s(%s) {
 %s
@@ -125,7 +131,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
 
   # C
   for i in range(min_args, max_args+1):
-    full_args = ', '.join([class_name + '* self'] + ['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
+    full_args = ', '.join(([class_name + '* self'] if not constructor else []) + ['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
     call_args = ', '.join(['arg%d' % j for j in range(i)])
     if constructor:
       call = 'new '
@@ -140,6 +146,8 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
 
 for name, interface in interfaces.iteritems():
   gen_js.write('\n// ' + name + '\n')
+  gen_c.write('\n// ' + name + '\n')
+
   # Constructor
   min_args = 0
   arg_types = []
@@ -161,6 +169,7 @@ for name, interface in interfaces.iteritems():
   gen_js.write(r'''
 %s.prototype = %s;
 ''' % (name, parent))
+
   # Methods
   for m in interface.members:
     #print dir(m)
