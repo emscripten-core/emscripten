@@ -243,7 +243,7 @@ void Block::Render(bool InLoop) {
       Details = ProcessedBranchesOut[DefaultTarget];
     }
     bool SetCurrLabel = (SetLabel && Target->IsCheckedMultipleEntry) || ForceSetLabel;
-    bool HasFusedContent = Fused && contains(Fused->InnerMap, Target);
+    bool HasFusedContent = Fused && contains(Fused->InnerMap, Target->Id);
     bool HasContent = SetCurrLabel || Details->Type != Branch::Direct || HasFusedContent || Details->Code;
     if (iter != ProcessedBranchesOut.end()) {
       // If there is nothing to show in this branch, omit the condition
@@ -286,7 +286,7 @@ void Block::Render(bool InLoop) {
     if (!First) Indenter::Indent();
     Details->Render(Target, SetCurrLabel);
     if (HasFusedContent) {
-      Fused->InnerMap.find(Target)->second->Render(InLoop);
+      Fused->InnerMap.find(Target->Id)->second->Render(InLoop);
     } else if (Details->Type == Branch::Nested) {
       // Nest the parent content here, and remove it from showing up afterwards as Next
       assert(Parent->Next);
@@ -335,14 +335,14 @@ void MultipleShape::Render(bool InLoop) {
   // We know that blocks with the same Id were split from the same source, so their contents are identical and they are logically the same, so re-merge them here
   typedef std::map<int, Shape*> IdShapeMap;
   IdShapeMap IdMap;
-  for (BlockShapeMap::iterator iter = InnerMap.begin(); iter != InnerMap.end(); iter++) {
-    int Id = iter->first->Id;
+  for (IdShapeMap::iterator iter = InnerMap.begin(); iter != InnerMap.end(); iter++) {
+    int Id = iter->first;
     IdShapeMap::iterator Test = IdMap.find(Id);
     if (Test != IdMap.end()) {
       assert(Shape::IsSimple(iter->second) && Shape::IsSimple(Test->second)); // we can only merge simple blocks, something horrible has gone wrong if we see anything else
       continue;
     }
-    IdMap[iter->first->Id] = iter->second;
+    IdMap[iter->first] = iter->second;
   }
 
   bool First = true;
@@ -853,7 +853,7 @@ void Relooper::Calculate(Block *Entry) {
             iter = Next; // increment carefully because Solipsize can remove us
           }
         }
-        Multiple->InnerMap[CurrEntry] = Process(CurrBlocks, CurrEntries, NULL);
+        Multiple->InnerMap[CurrEntry->Id] = Process(CurrBlocks, CurrEntries, NULL);
         // If we are not fused, then our entries will actually be checked
         if (!Fused) {
           CurrEntry->IsCheckedMultipleEntry = true;
@@ -1021,7 +1021,7 @@ void Relooper::Calculate(Block *Entry) {
     PostOptimizer(Relooper *ParentInit) : Parent(ParentInit), Closure(NULL) {}
 
     #define RECURSE_Multiple(shape, func) \
-      for (BlockShapeMap::iterator iter = shape->InnerMap.begin(); iter != shape->InnerMap.end(); iter++) { \
+      for (IdShapeMap::iterator iter = shape->InnerMap.begin(); iter != shape->InnerMap.end(); iter++) { \
         func(iter->second); \
       }
     #define RECURSE_Loop(shape, func) \
@@ -1042,7 +1042,7 @@ void Relooper::Calculate(Block *Entry) {
       SHAPE_SWITCH(S, {
         Out.insert(Simple->Inner);
       }, {
-        for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+        for (IdShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
           FollowNaturalFlow(iter->second, Out);
         }
         FollowNaturalFlow(Multiple->Next, Out);
@@ -1061,7 +1061,7 @@ void Relooper::Calculate(Block *Entry) {
 
       SHAPE_SWITCH(Root, {
       }, {
-        for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+        for (IdShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
           FindNaturals(iter->second, Root->Natural);
         }
       }, {
@@ -1142,7 +1142,7 @@ void Relooper::Calculate(Block *Entry) {
             }
           }
         }, {
-          for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+          for (IdShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
             RemoveUnneededFlows(iter->second, Multiple->Next, Multiple->NeedLoop ? NULL : LastLoop);
           }
           Next = Multiple->Next;
@@ -1290,8 +1290,8 @@ void Debugging::Dump(Shape *S, const char *prefix) {
     printf("<< Simple with block %d\n", Simple->Inner->Id);
   }, {
     printf("<< Multiple\n");
-    for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
-      printf("     with entry %d\n", iter->first->Id);
+    for (IdShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+      printf("     with entry %d\n", iter->first);
     }
   }, {
     printf("<< Loop\n");
