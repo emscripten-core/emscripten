@@ -7,8 +7,7 @@ interface Parent {
 
 [Constructor(optional long val)]
 interface Child1 {
-  long getValSqr();
-  long getValSqr(long more);
+  long getValSqr(optional long more);
   long getValTimes(optional long times=1);
 };
 
