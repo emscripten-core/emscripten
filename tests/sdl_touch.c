@@ -67,8 +67,8 @@ int main() {
       Module['canvas'].dispatchEvent(event);
     }
     // Pass test coordinates in canvas element coordinate frame.
-    var x = Module['canvas'].getBoundingClientRect().x;
-    var y = Module['canvas'].getBoundingClientRect().y;
+    var x = Module['canvas'].getBoundingClientRect().left;
+    var y = Module['canvas'].getBoundingClientRect().top;
     sendEvent('touchstart', { touches: [ { pageX: x+300, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
     sendEvent('touchmove', { touches: [ { pageX: x+400, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
     sendEvent('touchend', { changedTouches: [ { pageX: x+400, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
