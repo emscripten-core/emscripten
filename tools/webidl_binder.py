@@ -24,8 +24,8 @@ for thing in data:
   elif isinstance(thing, WebIDL.IDLImplementsStatement):
     implements.setdefault(thing.implementor.identifier.name, []).append(thing.implementee.identifier.name)
 
-print interfaces
-print implements
+#print interfaces
+#print implements
 
 gen_c = open(output_base + '.cpp', 'w')
 gen_js = open(output_base + '.js', 'w')
@@ -104,7 +104,7 @@ def type_to_c(t):
     return t
 
 def render_function(self_name, class_name, func_name, min_args, arg_types, return_type, constructor=False):
-  print >> sys.stderr, 'renderfunc', name, min_args, arg_types
+  #print >> sys.stderr, 'renderfunc', name, min_args, arg_types
   bindings_name = class_name + '_' + func_name
   max_args = len(arg_types)
 
