@@ -539,8 +539,15 @@ var LibrarySDL = {
           } else {
             code = SDL.keyCodes[event.keyCode] || event.keyCode;
           }
+          
+          var scan;
+          if (code >= 1024) {
+            scan = code - 1024;
+          } else {
+            scan = SDL.scanCodes[code] || code;
+          }
 
-          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
+          {{{ makeSetValue('SDL.keyboardState', 'scan', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
           SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
             ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
