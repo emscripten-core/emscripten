@@ -983,6 +983,8 @@ class IDLInterface(IDLObjectWithScope):
                 if not attr.noArguments():
                     raise WebIDLError("[%s] must take no arguments" % identifier,
                                       [attr.location])
+            elif identifier == "JSImplementation":
+              pass # XXX Emscripten, no need for value to this one
             elif (identifier == "Pref" or
                   identifier == "JSImplementation" or
                   identifier == "HeaderFile" or
