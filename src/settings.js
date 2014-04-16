@@ -39,7 +39,7 @@ var CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
 
 var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // check that each allocation to the stack does not
-                    // exceed it's size, whether all allocations (stack and static) are
+                    // exceed its size, whether all allocations (stack and static) are
                     // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
                     // if code flow runs into a fault
                     // ASSERTIONS == 2 gives even more runtime checks
