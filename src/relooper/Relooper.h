@@ -144,10 +144,11 @@ typedef std::map<int, Shape*> IdShapeMap;
 
 struct MultipleShape : public LabeledShape {
   IdShapeMap InnerMap; // entry block ID -> shape
-  int NeedLoop; // If we have branches, we need a loop. This is a counter of loop requirements,
-                // if we optimize it to 0, the loop is unneeded
+  int Breaks; // If we have branches on us, we need a loop (or a switch). This is a counter of requirements,
+                     // if we optimize it to 0, the loop is unneeded
+  bool UseSwitch; // Whether to switch on label as opposed to an if-else chain
 
-  MultipleShape() : LabeledShape(Multiple), NeedLoop(0) {}
+  MultipleShape() : LabeledShape(Multiple), Breaks(0), UseSwitch(false) {}
 
   void RenderLoopPrefix();
   void RenderLoopPostfix();

@@ -312,18 +312,28 @@ void Block::Render(bool InLoop) {
 // MultipleShape
 
 void MultipleShape::RenderLoopPrefix() {
-  if (NeedLoop) {
-    if (Labeled) {
-      PrintIndented("L%d: do {\n", Id);
+  if (Breaks) {
+    if (UseSwitch) {
+      if (Labeled) {
+        PrintIndented("L%d: ", Id);
+      }
     } else {
-      PrintIndented("do {\n");
+      if (Labeled) {
+        if (UseSwitch) {
+          PrintIndented("L%d: ", Id);
+        } else {
+          PrintIndented("L%d: do {\n", Id);
+        }
+      } else {
+        PrintIndented("do {\n");
+      }
+      Indenter::Indent();
     }
-    Indenter::Indent();
   }
 }
 
 void MultipleShape::RenderLoopPostfix() {
-  if (NeedLoop) {
+  if (Breaks && !UseSwitch) {
     Indenter::Unindent();
     PrintIndented("} while(0);\n");
   }
@@ -332,19 +342,41 @@ void MultipleShape::RenderLoopPostfix() {
 void MultipleShape::Render(bool InLoop) {
   RenderLoopPrefix();
 
-  bool First = true;
-  for (IdShapeMap::iterator iter = InnerMap.begin(); iter != InnerMap.end(); iter++) {
-    if (AsmJS) {
-      PrintIndented("%sif ((label|0) == %d) {\n", First ? "" : "else ", iter->first);
-    } else {
-      PrintIndented("%sif (label == %d) {\n", First ? "" : "else ", iter->first);
+  if (!UseSwitch) {
+    // emit an if-else chain
+    bool First = true;
+    for (IdShapeMap::iterator iter = InnerMap.begin(); iter != InnerMap.end(); iter++) {
+      if (AsmJS) {
+        PrintIndented("%sif ((label|0) == %d) {\n", First ? "" : "else ", iter->first);
+      } else {
+        PrintIndented("%sif (label == %d) {\n", First ? "" : "else ", iter->first);
+      }
+      First = false;
+      Indenter::Indent();
+      iter->second->Render(InLoop);
+      Indenter::Unindent();
+      PrintIndented("}\n");
     }
-    First = false;
+  } else {
+    // emit a switch
+    if (AsmJS) {
+      PrintIndented("switch (label|0) {\n");
+    } else {
+      PrintIndented("switch (label) {\n");
+    }
     Indenter::Indent();
-    iter->second->Render(InLoop);
+    for (IdShapeMap::iterator iter = InnerMap.begin(); iter != InnerMap.end(); iter++) {
+      PrintIndented("case %d: {\n", iter->first);
+      Indenter::Indent();
+      iter->second->Render(InLoop);
+      PrintIndented("break;\n");
+      Indenter::Unindent();
+      PrintIndented("}\n");
+    }
     Indenter::Unindent();
     PrintIndented("}\n");
   }
+
   RenderLoopPostfix();
   if (Next) Next->Render(InLoop);
 }
@@ -534,7 +566,7 @@ void Relooper::Calculate(Block *Entry) {
         PriorOut->Ancestor = Ancestor;
         PriorOut->Type = Type;
         if (MultipleShape *Multiple = Shape::IsMultiple(Ancestor)) {
-          Multiple->NeedLoop++; // We are breaking out of this Multiple, so need a loop
+          Multiple->Breaks++; // We are breaking out of this Multiple, so need a loop
         }
         iter++; // carefully increment iter before erasing
         Target->BranchesIn.erase(Prior);
@@ -854,6 +886,11 @@ void Relooper::Calculate(Block *Entry) {
           NextEntries.insert(Entry);
         }
       }
+      // The multiple has been created, we can decide how to implement it
+      if (Multiple->InnerMap.size() >= 10) {
+        Multiple->UseSwitch = true;
+        Multiple->Breaks++; // switch captures breaks
+      }
       return Multiple;
     }
 
@@ -1098,7 +1135,7 @@ void Relooper::Calculate(Block *Entry) {
                   if (Details->Type == Branch::Break) {
                     Details->Type = Branch::Direct;
                     if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
-                      Multiple->NeedLoop--;
+                      Multiple->Breaks--;
                     }
                   } else {
                     assert(Details->Type == Branch::Direct);
@@ -1117,20 +1154,20 @@ void Relooper::Calculate(Block *Entry) {
               if (Details->Type != Branch::Direct && contains(NaturalBlocks, Target)) { // note: cannot handle split blocks
                 Details->Type = Branch::Direct;
                 if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
-                  Multiple->NeedLoop--;
+                  Multiple->Breaks--;
                 }
               } else if (Details->Type == Branch::Break && LastLoop && LastLoop->Natural == Details->Ancestor->Natural) {
                 // it is important to simplify breaks, as simpler breaks enable other optimizations
                 Details->Labeled = false;
                 if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
-                  Multiple->NeedLoop--;
+                  Multiple->Breaks--;
                 }
               }
             }
           }
         }, {
           for (IdShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
-            RemoveUnneededFlows(iter->second, Multiple->Next, Multiple->NeedLoop ? NULL : LastLoop);
+            RemoveUnneededFlows(iter->second, Multiple->Next, Multiple->Breaks ? NULL : LastLoop);
           }
           Next = Multiple->Next;
         }, {
@@ -1156,13 +1193,16 @@ void Relooper::Calculate(Block *Entry) {
         SHAPE_SWITCH(Root, {
           MultipleShape *Fused = Shape::IsMultiple(Root->Next);
           // If we are fusing a Multiple with a loop into this Simple, then visit it now
-          if (Fused && Fused->NeedLoop) {
+          if (Fused && Fused->Breaks) {
             LoopStack.push(Fused);
           }
           if (Simple->Inner->BranchVar) {
             LoopStack.push(NULL); // a switch means breaks are now useless, push a dummy
           }
           if (Fused) {
+            if (Fused->UseSwitch) {
+              LoopStack.push(NULL); // a switch means breaks are now useless, push a dummy
+            }
             RECURSE_Multiple(Fused, FindLabeledLoops);
           }
           for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
@@ -1178,10 +1218,13 @@ void Relooper::Calculate(Block *Entry) {
               }
             }
           }
+          if (Fused && Fused->UseSwitch) {
+            LoopStack.pop();
+          }
           if (Simple->Inner->BranchVar) {
             LoopStack.pop();
           }
-          if (Fused && Fused->NeedLoop) {
+          if (Fused && Fused->Breaks) {
             LoopStack.pop();
           }
           if (Fused) {
@@ -1190,11 +1233,11 @@ void Relooper::Calculate(Block *Entry) {
             Next = Root->Next;
           }
         }, {
-          if (Multiple->NeedLoop) {
+          if (Multiple->Breaks) {
             LoopStack.push(Multiple);
           }
           RECURSE(Multiple, FindLabeledLoops);
-          if (Multiple->NeedLoop) {
+          if (Multiple->Breaks) {
             LoopStack.pop();
           }
           Next = Root->Next;
