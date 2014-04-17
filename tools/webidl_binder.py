@@ -144,7 +144,10 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
   # C
   for i in range(min_args, max_args+1):
     normal_args = ', '.join(['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
-    full_args = class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
+    if constructor:
+      full_args = normal_args
+    else:
+      full_args = class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
     call_args = ', '.join(['arg%d' % j for j in range(i)])
     if constructor:
       call = 'new '
