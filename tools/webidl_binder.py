@@ -50,7 +50,6 @@ function wrapPointer(ptr, __class__) {
   __class__ = __class__ || Object;
   ret = Object.create(__class__.prototype);
   ret.ptr = ptr;
-  ret.__class__ = __class__;
   return cache[ptr] = ret;
 }
 Module['wrapPointer'] = wrapPointer;
@@ -118,6 +117,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
   c_names = {}
 
   # JS
+  cache = 'Object__cache[this.ptr] = this'
   call_prefix = '' if not constructor else 'this.ptr = '
   if return_type != 'Void' and not constructor: call_prefix = 'return '
   args = ['arg%d' % i for i in range(max_args)]
@@ -133,9 +133,10 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
     body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; return')
+    body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; ' + cache + '; return')
   c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
   body += '  %s%s(%s);\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args))
+  body += '  ' + cache + ';\n'
   mid_js += [r'''function%s(%s) {
 %s
 }''' % ((' ' + self_name) if self_name is not None else '', ', '.join(args), body[:-1])]
