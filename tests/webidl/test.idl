@@ -28,7 +28,6 @@ interface Child2 {
 
 Child2 implements Parent;
 
-// TODO: document
 [Constructor, JSImplementation="Child2"]
 interface Child2JS {
   void virtualFunc();
