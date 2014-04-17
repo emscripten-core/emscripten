@@ -21,6 +21,8 @@ interface Child2 {
   static void printStatic();
   void virtualFunc();
   void virtualFunc2();
+  void virtualFunc3(long x);
+  void virtualFunc4(long x);
   static void runVirtualFunc(Child2 self);
 };
 
@@ -31,6 +33,8 @@ Child2 implements Parent;
 interface Child2JS {
   void virtualFunc();
   void virtualFunc2();
+  void virtualFunc3(long x);
+  void virtualFunc4(long x);
 };
 
 // Part 2

@@ -69,10 +69,19 @@ c3.virtualFunc = function() {
 c3.virtualFunc2 = function() {
   Module.print('*js virtualf2 replacement*');
 };
+c3.virtualFunc3 = function(x) {
+  Module.print('*js virtualf3 replacement ' + x + '*');
+};
 
 c3.virtualFunc();
 Module.Child2.prototype.runVirtualFunc(c3);
 c3.virtualFunc2();
+c3.virtualFunc3(123); // this one is not replaced!
+try {
+  c3.virtualFunc4(123);
+} catch(e) {
+  Module.print('caught: ' + e);
+}
 
 c2.virtualFunc(); // original should remain the same
 Module.Child2.prototype.runVirtualFunc(c2);

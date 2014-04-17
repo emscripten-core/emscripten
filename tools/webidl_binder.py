@@ -172,9 +172,13 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
       if i == max_args:
         js_impl_methods += [r'''  %s %s(%s) {
     %sEM_ASM_%s({
-      %sModule['Object__cache'][$0].%s(%s);
+      var self = Module['Object__cache'][$0];
+      if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
+      %sself.%s(%s);
     }, (int)this%s);
-  }''' % (c_return_type, func_name, normal_args, return_statement, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+  }''' % (c_return_type, func_name, normal_args,
+          return_statement, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          func_name, class_name, func_name,
           return_statement,
           func_name,
           ','.join(['$%d' % i for i in range(1, max_args)]),
