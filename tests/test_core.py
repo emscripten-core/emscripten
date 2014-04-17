@@ -5272,8 +5272,10 @@ def process(filename):
         if 'newfail' in name: continue
         if os.environ.get('EMCC_FAST_COMPILER') == '0' and os.path.basename(name) in [
           '18.cpp', '15.c'
-        ]:
-          continue # works only in fastcomp
+        ]: continue # works only in fastcomp
+        if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
+          '19.c'
+        ]: continue # LLVM LTO bug
 
         print name
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
