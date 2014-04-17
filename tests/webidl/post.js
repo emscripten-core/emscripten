@@ -1,3 +1,6 @@
+
+// Part 1
+
 var sme = new Module.Parent(42);
 sme.mulVal(2);
 Module.print('*')
@@ -75,4 +78,11 @@ c2.virtualFunc(); // original should remain the same
 Module.Child2.prototype.runVirtualFunc(c2);
 c2.virtualFunc2();
 Module.print('*ok*');
+
+// Part 2
+
+var suser = new Module.StringUser("hello", 43);
+suser.Print(41, "world");
+
+Module.print('\ndone.')
 

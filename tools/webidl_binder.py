@@ -86,8 +86,8 @@ Module['getClass'] = getClass;
 
 // Converts a value into a C-style string.
 function ensureString(value) {
-  if (typeof value == 'number') return value;
-  return allocate(intArrayFromString(value), 'i8', ALLOC_STACK);
+  if (typeof value == 'string') return allocate(intArrayFromString(value), 'i8', ALLOC_STACK);
+  return value;
 }
 
 ''']
@@ -102,6 +102,8 @@ def type_to_c(t):
     return 'short'
   elif t == 'Void':
     return 'void'
+  elif t == 'String':
+    return 'char*'
   elif t in interfaces:
     return t + '*'
   else:
@@ -113,6 +115,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
   #print >> sys.stderr, 'renderfunc', name, min_args, arg_types
   bindings_name = class_name + '_' + func_name
   max_args = len(arg_types)
+  c_arg_types = map(type_to_c, arg_types)
 
   c_names = {}
 
@@ -131,6 +134,9 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
   for i in range(max_args):
     # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
     body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
+    if c_arg_types[i] == 'char*':
+      body += "  arg%d = ensureString(arg%d);\n" % (i, i)
+
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
     body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; ' + cache + '; return')
@@ -143,7 +149,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
 
   # C
   for i in range(min_args, max_args+1):
-    normal_args = ', '.join(['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
+    normal_args = ', '.join(['%s arg%d' % (c_arg_types[j], j) for j in range(i)])
     if constructor:
       full_args = normal_args
     else:

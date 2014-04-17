@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+// Part 1
+
 class Parent {
 protected:
   int value;
@@ -30,5 +32,20 @@ public:
   static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
 private:
   void doSomethingSecret() { printf("security breached!\n"); }; // we should not be able to do this
+};
+
+// Part 2
+
+#include <string.h>
+
+class StringUser {
+  char *s;
+  int i;
+public:
+  StringUser(char *string, int integer) : s(strdup(string)), i(integer) {}
+  void Print(int anotherInteger, char *anotherString) {
+    printf("|%s|%d|%s|%d|\n", s, i, anotherString, anotherInteger);
+  }
+  void CallOther(StringUser *fr) { fr->Print(i, s); }
 };
 

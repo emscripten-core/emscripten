@@ -1,4 +1,6 @@
 
+// Part 1
+
 [Constructor(long val)] 
 interface Parent {
   long getVal();
@@ -29,5 +31,13 @@ Child2 implements Parent;
 interface Child2JS {
   void virtualFunc();
   void virtualFunc2();
+};
+
+// Part 2
+
+[Constructor(DOMString str, long i)]
+interface StringUser {
+  void Print(long anotherInteger, DOMString anotherString);
+  void CallOther(StringUser fr);
 };
 
