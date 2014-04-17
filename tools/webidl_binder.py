@@ -187,6 +187,11 @@ Module['%s'] = %s;
     render_function(None, name, m.identifier.name, min(m.allowedArgCounts), arg_types, return_type.name)
     gen_js += [';\n']
 
+  js_impl = interface.getExtendedAttribute('JSImplementation')
+  if js_impl:
+    js_impl = js_impl[0]
+    print "JS!", js_impl
+
 gen_c += ['\n}\n\n']
 gen_js += ['\n']
 

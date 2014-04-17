@@ -13,7 +13,7 @@ interface Child1 {
 
 Child1 implements Parent;
 
-[Constructor, JSImplementation]
+[Constructor, JSImplementation="Child2JS"]
 interface Child2 {
   long getValCube();
   static void printStatic();
