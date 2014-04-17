@@ -3908,12 +3908,18 @@ LibraryManager.library = {
     {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
   },
 
+  llvm_bswap_i16__asm: true,
+  llvm_bswap_i16__sig: 'ii',
   llvm_bswap_i16: function(x) {
-    return ((x&0xff)<<8) | ((x>>8)&0xff);
+    x = x|0;
+    return (((x&0xff)<<8) | ((x>>8)&0xff))|0;
   },
 
+  llvm_bswap_i32__asm: true,
+  llvm_bswap_i32__sig: 'ii',
   llvm_bswap_i32: function(x) {
-    return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
+    x = x|0;
+    return (((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24))|0;
   },
 
   llvm_bswap_i64__deps: ['llvm_bswap_i32'],
