@@ -147,27 +147,25 @@ function looop3() {
  }
 }
 function looop4() {
- var i = 0, helper = 0;
+ var i = 0, i$looptemp = 0;
  while (1) {
   do_it();
-  helper = i + 1 | 0;
-  f(i, helper);
-  if (condition()) {
-   i = helper;
-  } else {
+  i$looptemp = i;
+  i = i + 1 | 0;
+  f(i$looptemp, i);
+  if (!condition()) {
    break;
   }
  }
 }
 function looop4b() {
- var i = 0, helper = 0;
+ var i = 0, i$looptemp = 0;
  while (1) {
   do_it();
-  helper = i + 1 | 0;
-  g(helper);
-  if (condition(i)) {
-   i = helper;
-  } else {
+  i$looptemp = i;
+  i = i + 1 | 0;
+  g(i);
+  if (!condition(i$looptemp)) {
    break;
   }
  }
@@ -251,24 +249,22 @@ function multiloop($n_0, $35) {
 function multiloop2($n_0, $35) {
  $n_0 = $n_0 | 0;
  $35 = $35 | 0;
- var $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
+ var $p_0 = 0, $41 = 0, $p_0$looptemp = 0;
  $n_0 = $35;
  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
  while (1) {
-  $39 = $p_0 - 2 | 0;
-  $41 = HEAPU16[$39 >> 1] | 0;
+  $p_0$looptemp = $p_0;
+  $p_0 = $p_0 - 2 | 0;
+  $41 = HEAPU16[$p_0 >> 1] | 0;
   if ($41 >>> 0 < $2 >>> 0) {
    $_off0 = 0;
   } else {
    $_off0 = $41 - $2 & 65535;
   }
-  HEAP16[$39 >> 1] = $p_0;
-  $46 = $n_0 - 1 | 0;
-  if (($46 | 0) == 0) {
+  HEAP16[$p_0 >> 1] = $p_0$looptemp;
+  $n_0 = $n_0 - 1 | 0;
+  if (($n_0 | 0) == 0) {
    break;
-  } else {
-   $n_0 = $46;
-   $p_0 = $39;
   }
  }
 }
@@ -900,5 +896,19 @@ function elimOneLoopVar4() {
    $storemerge3$neg9 = $18 ^ -1;
   }
  }
+}
+function elimOneLoopVarStillUsed() {
+ var $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $retval$0 = 0, $j$010$looptemp = 0;
+ while (1) {
+  $j$010$looptemp = $j$010;
+  $j$010 = $j$010 + 1 | 0;
+  if ((($curri$012 | 0) % ($j$010$looptemp | 0) & -1 | 0) == 0) {
+   break;
+  }
+  if (!(Math_fround($j$010 | 0) < $call10)) {
+   break;
+  }
+ }
+ return $retval$0 | 0;
 }
 

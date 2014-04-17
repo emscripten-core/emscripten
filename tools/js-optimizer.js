@@ -3519,12 +3519,15 @@ function eliminate(ast, memSafe) {
           seenUses[name]++;
         }
       } else if (type === 'while') {
+        if (!asm) return;
         // try to remove loop helper variables specifically
         var stats = node[2][1];
         var last = stats[stats.length-1];
         if (last && last[0] === 'if' && last[2][0] === 'block' && last[3] && last[3][0] === 'block') {
           var ifTrue = last[2];
           var ifFalse = last[3];
+          clearEmptyNodes(ifTrue[1]);
+          clearEmptyNodes(ifFalse[1]);
           var flip = false;
           if (ifFalse[1][0] && ifFalse[1][0][0] === 'break') { // canonicalize break in the if
             var temp = ifFalse;
@@ -3589,17 +3592,25 @@ function eliminate(ast, memSafe) {
                 }
               }
               if (found < 0) return;
+              // if a loop variable is used after we assigned to the helper, we must save its value and use that.
+              // (note that this can happen due to elimination, if we eliminate an expression containing the
+              // loop var far down, past the assignment!)
+              var temp = looper + '$looptemp';
               var looperUsed = false;
-              for (var i = found+1; i < stats.length && !looperUsed; i++) {
+              assert(!(temp in asmData.vars)); 
+              for (var i = found+1; i < stats.length; i++) {
                 var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                 traverse(curr, function(node, type) {
                   if (type === 'name' && node[1] === looper) {
+                    node[1] = temp;
                     looperUsed = true;
-                    return true;
                   }
                 });
               }
-              if (looperUsed) return;
+              if (looperUsed) {
+                asmData.vars[temp] = asmData.vars[looper];
+                stats.splice(found, 0, ['stat', ['assign', true, ['name', temp], ['name', looper]]]);
+              }
             }
             for (var l = 0; l < helpers.length; l++) {
               for (var k = 0; k < helpers.length; k++) {
