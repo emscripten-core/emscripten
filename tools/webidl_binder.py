@@ -42,7 +42,7 @@ extern "C" {
 mid_js += ['''
 // Bindings utilities
 
-var Object__cache = {}; // we do it this way so we do not modify |Object|
+var Object__cache = Module['Object__cache'] = {}; // we do it this way so we do not modify |Object|
 function wrapPointer(ptr, __class__) {
   var cache = Object__cache;
   var ret = cache[ptr];
@@ -159,10 +159,15 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
 ''' % ((class_name + '*') if constructor else c_return_type, c_names[i], full_args, return_statement, call)]
 
     if not constructor:
-      js_impl_methods += [r'''  %s %s(%s) {
+      if i == max_args:
+        js_impl_methods += [r'''  %s %s(%s) {
     %sEM_ASM_%s({
-    }%s);
+      %sModule['Object__cache'][$0].%s(%s);
+    }, (int)this%s);
   }''' % (c_return_type, func_name, normal_args, return_statement, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          return_statement,
+          func_name,
+          ','.join(['$%d' % i for i in range(1, max_args)]),
           (', ' if call_args else '') + call_args)]
 
 for name, interface in interfaces.iteritems():
