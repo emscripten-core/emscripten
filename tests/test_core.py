@@ -5972,6 +5972,8 @@ def process(filename):
       self.do_run(src, '|hello|43|world|41|', post_build=post)
 
   def test_webidl(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
     output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
                             path_from_root('tests', 'webidl', 'test.idl'),
                             'glue']).communicate()[0]
