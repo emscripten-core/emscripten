@@ -57,20 +57,16 @@ c2.virtualFunc();
 Module.Child2.prototype.runVirtualFunc(c2);
 c2.virtualFunc2();
 
-/*
-// extend the class from JS
-var c3 = new Module.Child2;
-Module.customizeVTable(c3, [{
-  original: Module.Child2.prototype.virtualFunc,
-  replacement: function() {
-    Module.print('*js virtualf replacement*');
-  }
-}, {
-  original: Module.Child2.prototype.virtualFunc2,
-  replacement: function() {
-    Module.print('*js virtualf2 replacement*');
-  }
-}]);
+// extend a class from JS
+var c3 = new Module.Child2JS;
+
+c3.virtualFunc = function() {
+  Module.print('*js virtualf replacement*');
+};
+c3.virtualFunc2 = function() {
+  Module.print('*js virtualf2 replacement*');
+};
+
 c3.virtualFunc();
 Module.Child2.prototype.runVirtualFunc(c3);
 c3.virtualFunc2();
@@ -79,5 +75,4 @@ c2.virtualFunc(); // original should remain the same
 Module.Child2.prototype.runVirtualFunc(c2);
 c2.virtualFunc2();
 Module.print('*ok*');
-*/
 
