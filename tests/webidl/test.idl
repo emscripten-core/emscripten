@@ -13,7 +13,7 @@ interface Child1 {
 
 Child1 implements Parent;
 
-[Constructor, JSImplementation="Child2JS"]
+[Constructor]
 interface Child2 {
   long getValCube();
   static void printStatic();
@@ -23,4 +23,11 @@ interface Child2 {
 };
 
 Child2 implements Parent;
+
+// TODO: document
+[Constructor, JSImplementation="Child2"]
+interface Child2JS {
+  void virtualFunc();
+  void virtualFunc2();
+};
 

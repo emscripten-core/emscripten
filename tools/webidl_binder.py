@@ -27,16 +27,17 @@ for thing in data:
 #print interfaces
 #print implements
 
-gen_c = []
-gen_js = []
+pre_c = []
+mid_c = []
+mid_js = []
 
-gen_c += [r'''
+mid_c += [r'''
 #include <emscripten.h>
 
 extern "C" {
 ''']
 
-gen_js += ['''
+mid_js += ['''
 // Bindings utilities
 
 var Object__cache = {}; // we do it this way so we do not modify |Object|
@@ -104,7 +105,7 @@ def type_to_c(t):
     return t
 
 def render_function(self_name, class_name, func_name, min_args, arg_types, return_type, constructor=False):
-  global gen_c, gen_js
+  global mid_c, mid_js
 
   #print >> sys.stderr, 'renderfunc', name, min_args, arg_types
   bindings_name = class_name + '_' + func_name
@@ -131,7 +132,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
     body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; return')
   c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
   body += '  %s%s(%s);\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args))
-  gen_js += [r'''function%s(%s) {
+  mid_js += [r'''function%s(%s) {
 %s
 }''' % ((' ' + self_name) if self_name is not None else '', ', '.join(args), body[:-1])]
 
@@ -144,15 +145,15 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
     else:
       call = 'self->'
     call += func_name + '(' + call_args + ')'
-    gen_c += [r'''
+    mid_c += [r'''
 %s EMSCRIPTEN_KEEPALIVE %s(%s) {
   %s%s;
 }
 ''' % ((class_name + '*') if constructor else type_to_c(return_type), c_names[i], full_args, 'return ' if return_type is not 'Void' or constructor else '', call)]
 
 for name, interface in interfaces.iteritems():
-  gen_js += ['\n// ' + name + '\n']
-  gen_c += ['\n// ' + name + '\n']
+  mid_js += ['\n// ' + name + '\n']
+  mid_c += ['\n// ' + name + '\n']
 
   # Constructor
   min_args = 0
@@ -166,13 +167,21 @@ for name, interface in interfaces.iteritems():
       if arg.optional:
         break
       min_args = i+1
+
+  js_impl = interface.getExtendedAttribute('JSImplementation')
+  if js_impl:
+    js_impl = js_impl[0]
+
   parent = '{}'
   if name in implements:
     assert len(implements[name]) == 1, 'cannot handle multiple inheritance yet'
     parent = 'Object.create(%s)' % implements[name][0]
-  gen_js += ['\n']
+  elif js_impl:
+    parent = js_impl
+
+  mid_js += ['\n']
   render_function(name, name, name, min_args, arg_types, 'Void', constructor=True)
-  gen_js += [r'''
+  mid_js += [r'''
 Module['%s'] = %s;
 %s.prototype = %s;
 ''' % (name, name, name, parent)]
@@ -180,28 +189,32 @@ Module['%s'] = %s;
   # Methods
   for m in interface.members:
     #print dir(m)
-    gen_js += [r'''
+    mid_js += [r'''
 %s.prototype.%s = ''' % (name, m.identifier.name)]
     return_type, args = m.signatures()[0]
     arg_types = [arg.type.name for arg in args]
     render_function(None, name, m.identifier.name, min(m.allowedArgCounts), arg_types, return_type.name)
-    gen_js += [';\n']
+    mid_js += [';\n']
 
-  js_impl = interface.getExtendedAttribute('JSImplementation')
+  # Emit C++ class implementation that calls into JS implementation
   if js_impl:
-    js_impl = js_impl[0]
-    print "JS!", js_impl
+    pre_c += [r'''
+class %s : public %s {
+public:
+};
+''' % (name, js_impl)]
 
-gen_c += ['\n}\n\n']
-gen_js += ['\n']
+mid_c += ['\n}\n\n']
+mid_js += ['\n']
 
 # Write
 
 c = open(output_base + '.cpp', 'w')
-for x in gen_c: c.write(x)
+for x in pre_c: c.write(x)
+for x in mid_c: c.write(x)
 c.close()
 
 js = open(output_base + '.js', 'w')
-for x in gen_js: js.write(x)
+for x in mid_js: js.write(x)
 js.close()
 
