@@ -31,9 +31,11 @@ pre_c = []
 mid_c = []
 mid_js = []
 
-mid_c += [r'''
+pre_c += [r'''
 #include <emscripten.h>
+''']
 
+mid_c += [r'''
 extern "C" {
 ''']
 
@@ -91,6 +93,8 @@ function ensureString(value) {
 
 ''']
 
+C_FLOATS = ['float', 'double']
+
 def type_to_c(t):
   #print 'to c ', t
   if t == 'Long':
@@ -105,7 +109,7 @@ def type_to_c(t):
     return t
 
 def render_function(self_name, class_name, func_name, min_args, arg_types, return_type, constructor=False):
-  global mid_c, mid_js
+  global mid_c, mid_js, js_impl_methods
 
   #print >> sys.stderr, 'renderfunc', name, min_args, arg_types
   bindings_name = class_name + '_' + func_name
@@ -138,24 +142,38 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
 
   # C
   for i in range(min_args, max_args+1):
-    full_args = ', '.join(([class_name + '* self'] if not constructor else []) + ['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
+    normal_args = ', '.join(['%s arg%d' % (type_to_c(arg_types[j]), j) for j in range(i)])
+    full_args = class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
     call_args = ', '.join(['arg%d' % j for j in range(i)])
     if constructor:
       call = 'new '
     else:
       call = 'self->'
     call += func_name + '(' + call_args + ')'
+    return_statement = 'return ' if return_type is not 'Void' or constructor else ''
+    c_return_type = type_to_c(return_type)
     mid_c += [r'''
 %s EMSCRIPTEN_KEEPALIVE %s(%s) {
   %s%s;
 }
-''' % ((class_name + '*') if constructor else type_to_c(return_type), c_names[i], full_args, 'return ' if return_type is not 'Void' or constructor else '', call)]
+''' % ((class_name + '*') if constructor else c_return_type, c_names[i], full_args, return_statement, call)]
+
+    if not constructor:
+      js_impl_methods += [r'''  %s %s(%s) {
+    %sEM_ASM_%s({
+    }%s);
+  }''' % (c_return_type, func_name, normal_args, return_statement, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          (', ' if call_args else '') + call_args)]
 
 for name, interface in interfaces.iteritems():
   mid_js += ['\n// ' + name + '\n']
   mid_c += ['\n// ' + name + '\n']
 
+  global js_impl_methods
+  js_impl_methods = []
+
   # Constructor
+
   min_args = 0
   arg_types = []
   cons = interface.getExtendedAttribute('Constructor')
@@ -187,6 +205,7 @@ Module['%s'] = %s;
 ''' % (name, name, name, parent)]
 
   # Methods
+
   for m in interface.members:
     #print dir(m)
     mid_js += [r'''
@@ -197,12 +216,14 @@ Module['%s'] = %s;
     mid_js += [';\n']
 
   # Emit C++ class implementation that calls into JS implementation
+
   if js_impl:
     pre_c += [r'''
 class %s : public %s {
 public:
+%s
 };
-''' % (name, js_impl)]
+''' % (name, js_impl, '\n'.join(js_impl_methods))]
 
 mid_c += ['\n}\n\n']
 mid_js += ['\n']
