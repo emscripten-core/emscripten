@@ -3912,18 +3912,14 @@ LibraryManager.library = {
   llvm_bswap_i16__sig: 'ii',
   llvm_bswap_i16: function(x) {
     x = x|0;
-    return (((((x&0xff)|0)<<8)|0) | 
-            (((x>>8)|0)&0xff)|0)|0;
+    return (((x&0xff)<<8) | ((x>>8)&0xff))|0;
   },
 
   llvm_bswap_i32__asm: true,
   llvm_bswap_i32__sig: 'ii',
   llvm_bswap_i32: function(x) {
     x = x|0;
-    return (((((x&0xff)|0)<<24)|0) | 
-            ((((((x>>8)|0)&0xff)|0)<<16)|0) | 
-            ((((((x>>16)|0)&0xff)|0)<<8)|0) | 
-            ((x>>>24)|0))|0;
+    return (((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24))|0;
   },
 
   llvm_bswap_i64__deps: ['llvm_bswap_i32'],
