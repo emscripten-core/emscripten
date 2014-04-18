@@ -11,6 +11,9 @@ import WebIDL
 input_file = sys.argv[1]
 output_base = sys.argv[2]
 
+shared.try_delete(output_base + '.cpp')
+shared.try_delete(output_base + '.js')
+
 p = WebIDL.Parser()
 p.parse(open(input_file).read())
 data = p.finish()
@@ -104,6 +107,10 @@ def type_to_c(t):
     return 'void'
   elif t == 'String':
     return 'char*'
+  elif t == 'Float':
+    return 'float'
+  elif t == 'Double':
+    return 'double'
   elif t in interfaces:
     return t + '*'
   else:

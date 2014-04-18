@@ -41,6 +41,6 @@ interface Child2JS {
 [Constructor(DOMString str, long i)]
 interface StringUser {
   void Print(long anotherInteger, DOMString anotherString);
-  void CallOther(StringUser fr);
+  void PrintFloat(float f);
 };
 

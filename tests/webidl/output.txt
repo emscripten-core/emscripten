@@ -42,5 +42,6 @@ caught: a JSImplementation must implement all functions, you forgot Child2JS::vi
 *virtualf2*
 *ok*
 |hello|43|world|41|
+12.35
 
 done.

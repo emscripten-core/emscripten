@@ -49,6 +49,6 @@ public:
   void Print(int anotherInteger, char *anotherString) {
     printf("|%s|%d|%s|%d|\n", s, i, anotherString, anotherInteger);
   }
-  void CallOther(StringUser *fr) { fr->Print(i, s); }
+  void PrintFloat(float f) { printf("%.2f\n", f); }
 };
 
