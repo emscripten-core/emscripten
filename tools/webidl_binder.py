@@ -99,6 +99,7 @@ C_FLOATS = ['float', 'double']
 
 def type_to_c(t):
   #print 'to c ', t
+  t = t.replace(' (Wrapper)', '')
   if t == 'Long':
     return 'int'
   elif t == 'Short':
