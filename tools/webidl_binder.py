@@ -117,13 +117,14 @@ def type_to_c(t):
   else:
     return t
 
-def render_function(self_name, class_name, func_name, min_args, arg_types, return_type, constructor=False):
+def render_function(class_name, func_name, sigs, return_type, constructor):
   global mid_c, mid_js, js_impl_methods
 
-  #print >> sys.stderr, 'renderfunc', name, min_args, arg_types
+  print 'renderfunc', class_name, func_name, sigs, return_type, constructor
+
   bindings_name = class_name + '_' + func_name
-  max_args = len(arg_types)
-  c_arg_types = map(type_to_c, arg_types)
+  min_args = min(sigs.keys())
+  max_args = max(sigs.keys())
 
   c_names = {}
 
@@ -142,8 +143,7 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
   for i in range(max_args):
     # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
     body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
-    if c_arg_types[i] == 'char*':
-      body += "  arg%d = ensureString(arg%d);\n" % (i, i)
+    body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
 
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
@@ -153,10 +153,15 @@ def render_function(self_name, class_name, func_name, min_args, arg_types, retur
   body += '  ' + cache + ';\n'
   mid_js += [r'''function%s(%s) {
 %s
-}''' % ((' ' + self_name) if self_name is not None else '', ', '.join(args), body[:-1])]
+}''' % ((' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
 
   # C
+
   for i in range(min_args, max_args+1):
+    sig = sigs.get(i)
+    if sig is None: continue
+    c_arg_types = map(type_to_c, sig)
+ 
     normal_args = ', '.join(['%s arg%d' % (c_arg_types[j], j) for j in range(i)])
     if constructor:
       full_args = normal_args
@@ -199,48 +204,37 @@ for name, interface in interfaces.iteritems():
   global js_impl_methods
   js_impl_methods = []
 
-  # Constructor
-
-  min_args = 0
-  arg_types = []
   cons = interface.getExtendedAttribute('Constructor')
-  if type(cons) == list:
-    args_list = cons[0]
-    for i in range(len(args_list)):
-      arg = args_list[i]
-      arg_types.append(str(arg.type))
-      if arg.optional:
-        break
-      min_args = i+1
+  if type(cons) == list: raise Exception('do not use "Constructor", instead create methods with the name of the interface')
 
   js_impl = interface.getExtendedAttribute('JSImplementation')
   if js_impl:
     js_impl = js_impl[0]
 
-  parent = '{}'
-  if name in implements:
-    assert len(implements[name]) == 1, 'cannot handle multiple inheritance yet'
-    parent = 'Object.create(%s)' % implements[name][0]
-  elif js_impl:
-    parent = js_impl
-
-  mid_js += ['\n']
-  render_function(name, name, name, min_args, arg_types, 'Void', constructor=True)
-  mid_js += [r'''
-Module['%s'] = %s;
-%s.prototype = %s;
-''' % (name, name, name, parent)]
-
   # Methods
 
   for m in interface.members:
-    #print dir(m)
-    mid_js += [r'''
+    if m.identifier.name in (implements.get(name) or []): continue
+    constructor = m.identifier.name == name
+    if not constructor:
+      mid_js += [r'''
 %s.prototype.%s = ''' % (name, m.identifier.name)]
-    return_type, args = m.signatures()[0]
-    arg_types = [arg.type.name for arg in args]
-    render_function(None, name, m.identifier.name, min(m.allowedArgCounts), arg_types, return_type.name)
+    sigs = {}
+    return_type = None
+    for ret, args in m.signatures():
+      if return_type is None:
+        return_type = ret.name
+      else:
+        assert return_type == ret.name, 'overloads must have the same return type'
+      for i in range(len(args)+1):
+        if i == len(args) or args[i].optional:
+          assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
+          sigs[i] = [arg.type.name for arg in args[:i]]
+    render_function(name, m.identifier.name, sigs, return_type, constructor)
     mid_js += [';\n']
+    if constructor:
+      mid_js += [r'''Module['%s'] = %s;
+''' % (name, name)]
 
   # Emit C++ class implementation that calls into JS implementation
 

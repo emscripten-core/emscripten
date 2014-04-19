@@ -1,22 +1,22 @@
 
 // Part 1
 
-[Constructor(long val)] 
 interface Parent {
+  void Parent(long val);
   long getVal();
   void mulVal(long mul);
 };
 
-[Constructor(optional long val)]
 interface Child1 {
+  void Child1(optional long val);
   long getValSqr(optional long more);
   long getValTimes(optional long times=1);
 };
 
 Child1 implements Parent;
 
-[Constructor]
 interface Child2 {
+  void Child2();
   long getValCube();
   static void printStatic();
   void virtualFunc();
@@ -28,8 +28,9 @@ interface Child2 {
 
 Child2 implements Parent;
 
-[Constructor, JSImplementation="Child2"]
+[JSImplementation="Child2"]
 interface Child2JS {
+  void Child2JS();
   void virtualFunc();
   void virtualFunc2();
   void virtualFunc3(long x);
@@ -38,8 +39,8 @@ interface Child2JS {
 
 // Part 2
 
-[Constructor(DOMString str, long i)]
 interface StringUser {
+  void StringUser(DOMString str, long i);
   void Print(long anotherInteger, DOMString anotherString);
   void PrintFloat(float f);
 };
