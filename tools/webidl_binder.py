@@ -238,7 +238,17 @@ for name, interface in interfaces.iteritems():
   # Methods
 
   for m in interface.members:
-    if m.identifier.name in (implements.get(name) or []): continue
+    ancestor = False
+    temp = name
+    while True:
+      impls = implements.get(temp)
+      if not impls: break
+      assert len(impls) == 1, 'no multiple inheritance yet'
+      if m.identifier.name == impls[0]:
+        ancestor = True
+      temp = impls[0]
+    if ancestor: continue
+
     constructor = m.identifier.name == name
     if not constructor:
       mid_js += [r'''
