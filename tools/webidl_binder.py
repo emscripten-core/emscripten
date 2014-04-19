@@ -129,7 +129,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, const
   c_names = {}
 
   # JS
-  cache = 'Object__cache[this.ptr] = this'
+  cache = 'Object__cache[this.ptr] = this;' if constructor else ''
   call_prefix = '' if not constructor else 'this.ptr = '
   if return_type != 'Void' and not constructor: call_prefix = 'return '
   args = ['arg%d' % i for i in range(max_args)]
@@ -147,10 +147,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, const
 
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; ' + cache + '; return')
+    body += '  if (arg%d === undefined) { %s%s(%s)%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
   c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
   body += '  %s%s(%s);\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args))
-  body += '  ' + cache + ';\n'
+  if cache:
+    body += '  ' + cache + '\n'
   mid_js += [r'''function%s(%s) {
 %s
 }''' % ((' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
