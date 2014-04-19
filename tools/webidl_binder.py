@@ -117,7 +117,7 @@ def type_to_c(t):
   else:
     return t
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, constructor):
+def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, constructor):
   global mid_c, mid_js, js_impl_methods
 
   #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
@@ -183,17 +183,26 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, const
     else:
       call = 'self->'
     call += func_name + '(' + call_args + ')'
-    return_statement = ''
-    if constructor or return_type is not 'Void':
-      return_statement = 'return '
-      if non_pointer:
-        return_statement += '&';
+
+    pre = ''
+
+    basic_return = 'return ' if constructor or return_type is not 'Void' else ''
+    return_prefix = basic_return
+    return_postfix = ''
+    if non_pointer:
+      return_prefix += '&';
+    if copy:
+      pre += '  static %s temp;\n' % class_name
+      return_prefix += '(temp = '
+      return_postfix += ', &temp)'
+
     c_return_type = type_to_c(return_type)
     mid_c += [r'''
 %s EMSCRIPTEN_KEEPALIVE %s(%s) {
-  %s%s;
+%s
+  %s%s%s;
 }
-''' % ((class_name + '*') if constructor else c_return_type, c_names[i], full_args, return_statement, call)]
+''' % ((class_name + '*') if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
 
     if not constructor:
       if i == max_args:
@@ -201,14 +210,15 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, const
     %sEM_ASM_%s({
       var self = Module['Object__cache'][$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
-      %sself.%s(%s);
+      %sself.%s(%s)%s;
     }, (int)this%s);
   }''' % (c_return_type, func_name, normal_args,
-          return_statement, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
           func_name, class_name, func_name,
-          return_statement,
+          return_prefix,
           func_name,
           ','.join(['$%d' % i for i in range(1, max_args)]),
+          return_postfix,
           (', ' if call_args else '') + call_args)]
 
 for name, interface in interfaces.iteritems():
@@ -244,7 +254,10 @@ for name, interface in interfaces.iteritems():
         if i == len(args) or args[i].optional:
           assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
           sigs[i] = args[:i]
-    render_function(name, m.identifier.name, sigs, return_type, m.getExtendedAttribute('NonPointer'), constructor)
+    render_function(name, m.identifier.name, sigs, return_type,
+                    m.getExtendedAttribute('NonPointer'),
+                    m.getExtendedAttribute('Copy'),
+                    constructor)
     mid_js += [';\n']
     if constructor:
       mid_js += [r'''Module['%s'] = %s;

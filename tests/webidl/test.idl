@@ -46,8 +46,10 @@ interface StringUser {
 };
 
 interface NonPointerUser {
+  void NonPointerUser();
   void NonPointerUser(long value);
   long getValue([NonPointer] NonPointerUser b);
   [NonPointer] NonPointerUser getMe();
+  [Copy] NonPointerUser getCopy(); // must have zero-arg constructor
 };
 

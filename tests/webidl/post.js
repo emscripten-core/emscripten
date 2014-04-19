@@ -100,6 +100,9 @@ Module.print(bv2.getValue(bv));
 Module.print(typeof bv2.getMe());
 Module.print(bv2.getMe().getValue(bv));
 Module.print(bv2.getMe().getValue(bv2));
+Module.print(typeof bv2.getCopy());
+Module.print(bv2.getCopy().getValue(bv));
+Module.print(bv2.getCopy().getValue(bv2));
 
 //
 

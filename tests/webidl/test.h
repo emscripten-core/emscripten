@@ -54,8 +54,9 @@ public:
 
 struct NonPointerUser {
   int value;
-  NonPointerUser(int x) : value(x) {}
+  NonPointerUser(int x = 77) : value(x) {}
   int getValue(NonPointerUser b) { return b.value; }
   NonPointerUser &getMe() { return *this; }
+  NonPointerUser getCopy() { return NonPointerUser(value*2); }
 };
 

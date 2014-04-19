@@ -47,5 +47,8 @@ caught: a JSImplementation must implement all functions, you forgot Child2JS::vi
 object
 10
 11
+object
+10
+11
 
 done.
