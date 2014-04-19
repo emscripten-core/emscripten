@@ -97,7 +97,7 @@ function ensureString(value) {
 
 C_FLOATS = ['float', 'double']
 
-def type_to_c(t):
+def type_to_c(t, non_pointing=False):
   #print 'to c ', t
   t = t.replace(' (Wrapper)', '')
   if t == 'Long':
@@ -112,7 +112,7 @@ def type_to_c(t):
     return 'float'
   elif t == 'Double':
     return 'double'
-  elif t in interfaces:
+  elif t in interfaces and not non_pointing:
     return t + '*'
   else:
     return t
@@ -192,7 +192,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     if non_pointer:
       return_prefix += '&';
     if copy:
-      pre += '  static %s temp;\n' % class_name
+      pre += '  static %s temp;\n' % type_to_c(return_type, non_pointing=True)
       return_prefix += '(temp = '
       return_postfix += ', &temp)'
 
