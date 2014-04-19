@@ -169,7 +169,7 @@ def render_function(class_name, func_name, sigs, return_type, constructor):
       full_args = normal_args
     else:
       full_args = class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
-    call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('ByValue') else '', j) for j in range(i)])
+    call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('NonPointer') else '', j) for j in range(i)])
     if constructor:
       call = 'new '
     else:

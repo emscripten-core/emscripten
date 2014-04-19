@@ -94,8 +94,8 @@ var suser = new Module.StringUser("hello", 43);
 suser.Print(41, "world");
 suser.PrintFloat(12.3456);
 
-var bv = new Module.ByValueUser(10);
-var bv2 = new Module.ByValueUser(11);
+var bv = new Module.NonPointerUser(10);
+var bv2 = new Module.NonPointerUser(11);
 Module.print(bv2.getValue(bv));
 
 //

@@ -52,10 +52,10 @@ public:
   void PrintFloat(float f) { printf("%.2f\n", f); }
 };
 
-struct ByValueUser {
+struct NonPointerUser {
   int value;
-  ByValueUser(int x) : value(x) {}
-  int getValue(ByValueUser b) { return b.value; }
+  NonPointerUser(int x) : value(x) {}
+  int getValue(NonPointerUser b) { return b.value; }
 };
 
 

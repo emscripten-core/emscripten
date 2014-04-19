@@ -45,8 +45,8 @@ interface StringUser {
   void PrintFloat(float f);
 };
 
-interface ByValueUser {
-  void ByValueUser(long value);
-  long getValue([ByValue] ByValueUser b);
+interface NonPointerUser {
+  void NonPointerUser(long value);
+  long getValue([NonPointer] NonPointerUser b);
 };
 
