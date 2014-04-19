@@ -56,6 +56,6 @@ struct NonPointerUser {
   int value;
   NonPointerUser(int x) : value(x) {}
   int getValue(NonPointerUser b) { return b.value; }
+  NonPointerUser &getMe() { return *this; }
 };
-
 

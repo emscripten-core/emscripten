@@ -117,7 +117,7 @@ def type_to_c(t):
   else:
     return t
 
-def render_function(class_name, func_name, sigs, return_type, constructor):
+def render_function(class_name, func_name, sigs, return_type, non_pointer, constructor):
   global mid_c, mid_js, js_impl_methods
 
   #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
@@ -175,7 +175,11 @@ def render_function(class_name, func_name, sigs, return_type, constructor):
     else:
       call = 'self->'
     call += func_name + '(' + call_args + ')'
-    return_statement = 'return ' if return_type is not 'Void' or constructor else ''
+    return_statement = ''
+    if constructor or return_type is not 'Void':
+      return_statement = 'return '
+      if non_pointer:
+        return_statement += '&';
     c_return_type = type_to_c(return_type)
     mid_c += [r'''
 %s EMSCRIPTEN_KEEPALIVE %s(%s) {
@@ -232,7 +236,7 @@ for name, interface in interfaces.iteritems():
         if i == len(args) or args[i].optional:
           assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
           sigs[i] = args[:i]
-    render_function(name, m.identifier.name, sigs, return_type, constructor)
+    render_function(name, m.identifier.name, sigs, return_type, m.getExtendedAttribute('NonPointer'), constructor)
     mid_js += [';\n']
     if constructor:
       mid_js += [r'''Module['%s'] = %s;

@@ -3434,6 +3434,7 @@ class IDLMethod(IDLInterfaceMember, IDLScope):
               identifier == "AvailableIn" or
               identifier == "Pure" or
               identifier == "CrossOriginCallable" or
+              identifier == "NonPointer" or
               identifier == "WebGLHandlesContextLoss"):
             # Known attributes that we don't need to do anything with here
             pass

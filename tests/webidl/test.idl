@@ -48,5 +48,6 @@ interface StringUser {
 interface NonPointerUser {
   void NonPointerUser(long value);
   long getValue([NonPointer] NonPointerUser b);
+  [NonPointer] NonPointerUser getMe();
 };
 
