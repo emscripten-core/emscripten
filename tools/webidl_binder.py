@@ -120,7 +120,7 @@ def type_to_c(t):
 def render_function(class_name, func_name, sigs, return_type, constructor):
   global mid_c, mid_js, js_impl_methods
 
-  print 'renderfunc', class_name, func_name, sigs, return_type, constructor
+  #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
 
   bindings_name = class_name + '_' + func_name
   min_args = min(sigs.keys())

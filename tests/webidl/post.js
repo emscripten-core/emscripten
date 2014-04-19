@@ -92,7 +92,7 @@ Module.print('*ok*');
 
 var suser = new Module.StringUser("hello", 43);
 suser.Print(41, "world");
-suser.PrintFloat('12.3456');
+suser.PrintFloat(12.3456);
 
 Module.print('\ndone.')
 
