@@ -158,8 +158,10 @@ def render_function(class_name, func_name, sigs, return_type, constructor):
   # C
 
   for i in range(min_args, max_args+1):
-    sig = sigs.get(i)
-    if sig is None: continue
+    raw = sigs.get(i)
+    if raw is None: continue
+    sig = [arg.type.name for arg in raw]
+
     c_arg_types = map(type_to_c, sig)
  
     normal_args = ', '.join(['%s arg%d' % (c_arg_types[j], j) for j in range(i)])
@@ -167,7 +169,7 @@ def render_function(class_name, func_name, sigs, return_type, constructor):
       full_args = normal_args
     else:
       full_args = class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
-    call_args = ', '.join(['arg%d' % j for j in range(i)])
+    call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('ByValue') else '', j) for j in range(i)])
     if constructor:
       call = 'new '
     else:
@@ -229,7 +231,7 @@ for name, interface in interfaces.iteritems():
       for i in range(len(args)+1):
         if i == len(args) or args[i].optional:
           assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
-          sigs[i] = [arg.type.name for arg in args[:i]]
+          sigs[i] = args[:i]
     render_function(name, m.identifier.name, sigs, return_type, constructor)
     mid_js += [';\n']
     if constructor:

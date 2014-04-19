@@ -52,3 +52,10 @@ public:
   void PrintFloat(float f) { printf("%.2f\n", f); }
 };
 
+struct ByValueUser {
+  int value;
+  ByValueUser(int x) : value(x) {}
+  int getValue(ByValueUser b) { return b.value; }
+};
+
+

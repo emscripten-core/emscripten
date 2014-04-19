@@ -45,3 +45,8 @@ interface StringUser {
   void PrintFloat(float f);
 };
 
+interface ByValueUser {
+  void ByValueUser(long value);
+  long getValue([ByValue] ByValueUser b);
+};
+

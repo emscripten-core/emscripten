@@ -2891,7 +2891,12 @@ class IDLArgument(IDLObjectWithIdentifier):
         self.clamp = False
         self._allowTreatNonCallableAsNull = False
 
+        self._extraAttributes = {}
+
         assert not variadic or optional
+
+    def getExtendedAttribute(self, name):
+        return self._extraAttributes.get(name)
 
     def addExtendedAttributes(self, attrs):
         attrs = self.checkForStringHandlingExtendedAttributes(
@@ -2918,6 +2923,9 @@ class IDLArgument(IDLObjectWithIdentifier):
                 self.enforceRange = True
             elif identifier == "TreatNonCallableAsNull":
                 self._allowTreatNonCallableAsNull = True
+            elif identifier in ['ByValue']:
+                # ok in emscripten
+                self._extraAttributes[identifier] = True
             else:
                 raise WebIDLError("Unhandled extended attribute on an argument",
                                   [attribute.location])
