@@ -137,7 +137,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   if not constructor:
     if return_type in interfaces:
       call_prefix += 'wrapPointer('
-      call_postfix += ', ' + class_name + ')'
+      call_postfix += ', ' + type_to_c(return_type, non_pointing=True) + ')'
 
   args = ['arg%d' % i for i in range(max_args)]
   if not constructor:

@@ -40,6 +40,7 @@ interface Child2JS {
 // Part 2
 
 interface StringUser {
+  void StringUser();
   void StringUser(DOMString str, long i);
   void Print(long anotherInteger, DOMString anotherString);
   void PrintFloat(float f);
@@ -51,5 +52,6 @@ interface NonPointerUser {
   long getValue([NonPointer] NonPointerUser b);
   [NonPointer] NonPointerUser getMe();
   [Copy] NonPointerUser getCopy(); // must have zero-arg constructor
+  [Copy] StringUser getAnother();
 };
 

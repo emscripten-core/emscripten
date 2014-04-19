@@ -45,7 +45,7 @@ class StringUser {
   char *s;
   int i;
 public:
-  StringUser(char *string, int integer) : s(strdup(string)), i(integer) {}
+  StringUser(char *string="NO", int integer=99) : s(strdup(string)), i(integer) {}
   void Print(int anotherInteger, char *anotherString) {
     printf("|%s|%d|%s|%d|\n", s, i, anotherString, anotherInteger);
   }
@@ -58,5 +58,6 @@ struct NonPointerUser {
   int getValue(NonPointerUser b) { return b.value; }
   NonPointerUser &getMe() { return *this; }
   NonPointerUser getCopy() { return NonPointerUser(value*2); }
+  StringUser getAnother() { return StringUser("another", 5); }
 };
 
