@@ -117,7 +117,7 @@ def type_to_c(t, non_pointing=False):
   else:
     return t
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, constructor):
+def render_function(prefix, class_name, func_name, sigs, return_type, non_pointer, copy, constructor):
   global mid_c, mid_js, js_impl_methods
 
   #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
@@ -176,10 +176,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     if constructor:
       full_args = normal_args
     else:
-      full_args = class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
+      full_args = prefix + class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
     call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('NonPointer') else '', j) for j in range(i)])
     if constructor:
-      call = 'new '
+      call = 'new ' + prefix
     else:
       call = 'self->'
     call += func_name + '(' + call_args + ')'
@@ -202,7 +202,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 %s
   %s%s%s;
 }
-''' % ((class_name + '*') if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
+''' % ((prefix + class_name + '*') if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
 
     if not constructor:
       if i == max_args:
@@ -264,7 +264,9 @@ for name, interface in interfaces.iteritems():
         if i == len(args) or args[i].optional:
           assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
           sigs[i] = args[:i]
-    render_function(name, m.identifier.name, sigs, return_type,
+    render_function((interface.getExtendedAttribute('Prefix') or [''])[0],
+                    name,
+                    m.identifier.name, sigs, return_type,
                     m.getExtendedAttribute('NonPointer'),
                     m.getExtendedAttribute('Copy'),
                     constructor)

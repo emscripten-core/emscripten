@@ -988,6 +988,7 @@ class IDLInterface(IDLObjectWithScope):
                   identifier == "HeaderFile" or
                   identifier == "NavigatorProperty" or
                   identifier == "AvailableIn" or
+                  identifier == "Prefix" or
                   identifier == "Func"):
                 # Known extended attributes that take a string value
                 if not attr.hasValue():

@@ -61,3 +61,10 @@ struct NonPointerUser {
   StringUser getAnother() { return StringUser("another", 5); }
 };
 
+namespace Space {
+  struct Inner {
+    Inner() {}
+    int get() { return 198; }
+  };
+}
+

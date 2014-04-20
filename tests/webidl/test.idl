@@ -55,3 +55,9 @@ interface NonPointerUser {
   [Copy] StringUser getAnother();
 };
 
+[Prefix="Space::"]
+interface Inner {
+  void Inner();
+  long get();
+};
+

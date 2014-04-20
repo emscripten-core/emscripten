@@ -108,6 +108,8 @@ Module.print(bv2.getCopy().getValue(bv2));
 
 bv2.getAnother().PrintFloat(21.12);
 
+Module.print(new Module.Inner().get());
+
 //
 
 Module.print('\ndone.')
