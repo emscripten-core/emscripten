@@ -254,6 +254,22 @@ for name in names:
 
   # Methods
 
+  def emit_constructor(name):
+    global mid_js
+    mid_js += [r'''%s.prototype = %s;
+%s.prototype.constructor = %s;
+Module['%s'] = %s;
+''' % (name, ('Object.create(%s.prototype)' % implements[name][0]) if implements.get(name) else '{}', name, name, name, name)]
+
+  seen_constructor = False # ensure a constructor, even for abstract base classes
+  for m in interface.members:
+    if m.identifier.name == name:
+      seen_constructor = True
+      break
+  if not seen_constructor:
+    mid_js += ['function %s() {}\n' % name]
+    emit_constructor(name)
+
   for m in interface.members:
     constructor = m.identifier.name == name
     if not constructor:
@@ -288,10 +304,7 @@ for name in names:
                     func_scope=m.parentScope.identifier.name)
     mid_js += [';\n']
     if constructor:
-      mid_js += [r'''%s.prototype = %s;
-%s.prototype.constructor = %s;
-Module['%s'] = %s;
-''' % (name, ('Object.create(%s.prototype)' % implements[name][0]) if implements.get(name) else '{}', name, name, name, name)]
+      emit_constructor(name)
 
   # Emit C++ class implementation that calls into JS implementation
 
