@@ -223,7 +223,18 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
           return_postfix,
           (', ' if call_args else '') + call_args)]
 
+
 for name, interface in interfaces.iteritems():
+  js_impl = interface.getExtendedAttribute('JSImplementation')
+  if not js_impl: continue
+  implements[name] = [js_impl[0]]
+
+names = interfaces.keys()
+names.sort(lambda x, y: 1 if implements.get(x) and implements[x][0] == y else (-1 if implements.get(y) and implements[y][0] == x else 0))
+
+for name in names:
+  interface = interfaces[name]
+
   mid_js += ['\n// ' + name + '\n']
   mid_c += ['\n// ' + name + '\n']
 
@@ -240,18 +251,16 @@ for name, interface in interfaces.iteritems():
   # Methods
 
   for m in interface.members:
-    ancestor = False
-    temp = name
-    while True:
-      impls = implements.get(temp)
-      if not impls: break
-      assert len(impls) == 1, 'no multiple inheritance yet'
-      if m.identifier.name == impls[0]:
-        ancestor = True
-      temp = impls[0]
-    if ancestor: continue
-
     constructor = m.identifier.name == name
+    if not constructor:
+      parent_constructor = False
+      temp = m.parentScope
+      while temp.parentScope:
+        if temp.identifier.name == m.identifier.name:
+          parent_constructor = True
+        temp = temp.parentScope
+      if parent_constructor:
+        continue
     if not constructor:
       mid_js += [r'''
 %s.prototype.%s = ''' % (name, m.identifier.name)]
@@ -274,8 +283,10 @@ for name, interface in interfaces.iteritems():
                     constructor)
     mid_js += [';\n']
     if constructor:
-      mid_js += [r'''Module['%s'] = %s;
-''' % (name, name)]
+      mid_js += [r'''%s.prototype = %s;
+%s.prototype.constructor = %s;
+Module['%s'] = %s;
+''' % (name, ('Object.create(%s.prototype)' % implements[name][0]) if implements.get(name) else '{}', name, name, name, name)]
 
   # Emit C++ class implementation that calls into JS implementation
 

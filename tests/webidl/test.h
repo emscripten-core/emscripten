@@ -21,6 +21,7 @@ public:
   int getValTimes(int times=1) { return value*times; }
 };
 
+// Child2 has vtable, parent does not. Checks we cast child->parent properly - (Parent*)child is not a no-op, must offset
 class Child2 : public Parent {
 public:
   Child2() : Parent(9) { printf("Child2:%d\n", value); };
