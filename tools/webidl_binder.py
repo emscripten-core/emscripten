@@ -202,8 +202,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     c_return_type = type_to_c(return_type)
     mid_c += [r'''
 %s EMSCRIPTEN_KEEPALIVE %s(%s) {
-%s
-  %s%s%s;
+%s  %s%s%s;
 }
 ''' % (type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
 
