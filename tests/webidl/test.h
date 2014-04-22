@@ -52,12 +52,12 @@ public:
   void PrintFloat(float f) { printf("%.2f\n", f); }
 };
 
-struct NonPointerUser {
+struct RefUser {
   int value;
-  NonPointerUser(int x = 77) : value(x) {}
-  int getValue(NonPointerUser b) { return b.value; }
-  NonPointerUser &getMe() { return *this; }
-  NonPointerUser getCopy() { return NonPointerUser(value*2); }
+  RefUser(int x = 77) : value(x) {}
+  int getValue(RefUser b) { return b.value; }
+  RefUser &getMe() { return *this; }
+  RefUser getCopy() { return RefUser(value*2); }
   StringUser getAnother() { return StringUser("another", 5); }
 };
 

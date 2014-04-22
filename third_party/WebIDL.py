@@ -2924,7 +2924,7 @@ class IDLArgument(IDLObjectWithIdentifier):
                 self.enforceRange = True
             elif identifier == "TreatNonCallableAsNull":
                 self._allowTreatNonCallableAsNull = True
-            elif identifier in ['NonPointer']:
+            elif identifier in ['Ref']:
                 # ok in emscripten
                 self._extraAttributes[identifier] = True
             else:
@@ -3435,8 +3435,8 @@ class IDLMethod(IDLInterfaceMember, IDLScope):
               identifier == "AvailableIn" or
               identifier == "Pure" or
               identifier == "CrossOriginCallable" or
-              identifier == "NonPointer" or
-              identifier == "Copy" or
+              identifier == "Ref" or
+              identifier == "Value" or
               identifier == "WebGLHandlesContextLoss"):
             # Known attributes that we don't need to do anything with here
             pass

@@ -177,7 +177,7 @@ def render_function(prefix, class_name, func_name, sigs, return_type, non_pointe
       full_args = normal_args
     else:
       full_args = prefix + class_name + '* self' + ('' if not normal_args else ', ' + normal_args)
-    call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('NonPointer') else '', j) for j in range(i)])
+    call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('Ref') else '', j) for j in range(i)])
     if constructor:
       call = 'new ' + prefix
     else:
@@ -267,8 +267,8 @@ for name, interface in interfaces.iteritems():
     render_function((interface.getExtendedAttribute('Prefix') or [''])[0],
                     name,
                     m.identifier.name, sigs, return_type,
-                    m.getExtendedAttribute('NonPointer'),
-                    m.getExtendedAttribute('Copy'),
+                    m.getExtendedAttribute('Ref'),
+                    m.getExtendedAttribute('Value'),
                     constructor)
     mid_js += [';\n']
     if constructor:
