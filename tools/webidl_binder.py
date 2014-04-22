@@ -189,7 +189,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       if class_name != func_scope:
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = '((' + type_to_c(func_scope) + ')' + cast_self + ')'
-      call = '(*%s %s *arg0)' % (cast_self, operator)
+      call = '(*%s %s %sarg0)' % (cast_self, operator, '*' if sig[0] in interfaces else '')
 
     pre = ''
 
