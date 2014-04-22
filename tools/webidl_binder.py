@@ -117,7 +117,7 @@ def type_to_c(t, non_pointing=False):
   else:
     return t
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor):
+def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope):
   global mid_c, mid_js, js_impl_methods
 
   #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
@@ -185,7 +185,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     call += '(' + call_args + ')'
 
     if operator:
-      call = '((*self) %s arg0)' % operator
+      cast_self = 'self'
+      if class_name != func_scope:
+        # this function comes from an ancestor class; for operators, we must cast it
+        cast_self = '((' + type_to_c(func_scope) + ')' + cast_self + ')'
+      call = '(*%s %s *arg0)' % (cast_self, operator)
 
     pre = ''
 
@@ -280,7 +284,8 @@ for name in names:
                     m.getExtendedAttribute('Ref'),
                     m.getExtendedAttribute('Value'),
                     (m.getExtendedAttribute('Operator') or [None])[0],
-                    constructor)
+                    constructor,
+                    func_scope=m.parentScope.identifier.name)
     mid_js += [';\n']
     if constructor:
       mid_js += [r'''%s.prototype = %s;
