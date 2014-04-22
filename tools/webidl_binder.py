@@ -137,7 +137,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   if not constructor:
     if return_type in interfaces:
       call_prefix += 'wrapPointer('
-      call_postfix += ', ' + type_to_c(return_type, non_pointing=True) + ')'
+      call_postfix += ', ' + return_type + ')'
 
   args = ['arg%d' % i for i in range(max_args)]
   if not constructor:
@@ -185,10 +185,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     call += '(' + call_args + ')'
 
     if operator:
+      assert '=' in operator, 'can only do += *= etc. for now, all with "="'
       cast_self = 'self'
       if class_name != func_scope:
         # this function comes from an ancestor class; for operators, we must cast it
-        cast_self = '((' + type_to_c(func_scope) + ')' + cast_self + ')'
+        cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
       call = '(*%s %s %sarg0)' % (cast_self, operator, '*' if sig[0] in interfaces else '')
 
     pre = ''

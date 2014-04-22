@@ -66,7 +66,7 @@ namespace Space {
   struct Inner {
     Inner() {}
     int get() { return 198; }
-    float operator*(float x) { return 3*x; }
+    Inner& operator*=(float x) { return *this; }
   };
 }
 

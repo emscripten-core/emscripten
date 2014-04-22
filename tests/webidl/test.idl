@@ -59,6 +59,6 @@ interface RefUser {
 interface Inner {
   void Inner();
   long get();
-  [Operator="*"] float mul(float x);
+  [Operator="*=", Ref] Inner mul(float x);
 };
 
