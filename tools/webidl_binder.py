@@ -185,7 +185,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     call += '(' + call_args + ')'
 
     if operator:
-      call = '(*self) %s arg0' % operator
+      call = '((*self) %s arg0)' % operator
 
     pre = ''
 
