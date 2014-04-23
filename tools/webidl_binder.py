@@ -259,8 +259,9 @@ for name in names:
     global mid_js
     mid_js += [r'''%s.prototype = %s;
 %s.prototype.constructor = %s;
+%s.prototype.__class__ = %s;
 Module['%s'] = %s;
-''' % (name, ('Object.create(%s.prototype)' % implements[name][0]) if implements.get(name) else '{}', name, name, name, name)]
+''' % (name, ('Object.create(%s.prototype)' % implements[name][0]) if implements.get(name) else '{}', name, name, name, name, name, name)]
 
   seen_constructor = False # ensure a constructor, even for abstract base classes
   for m in interface.members:
