@@ -139,6 +139,11 @@ def type_to_c(t, non_pointing=False):
   else:
     return t
 
+def deref_if_nonpointer(m):
+  if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
+    return '&'
+  return ''
+
 def type_to_cdec(raw):
   ret = type_to_c(raw.type.name, non_pointing=True)
   if ret not in interfaces: return ret
@@ -148,7 +153,7 @@ def type_to_cdec(raw):
     return ret
   return ret + '*'
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope):
+def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False):
   global mid_c, mid_js, js_impl_methods
 
   #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
@@ -212,8 +217,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     if constructor:
       call = 'new ' + type_to_c(class_name, non_pointing=True)
       call += '(' + call_args + ')'
-    elif func_name == '__destroy__':
-      call = 'delete self'
+    elif call_content is not None:
+      call = call_content
     else:
       call = 'self->' + func_name
       call += '(' + call_args + ')'
@@ -240,10 +245,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     c_return_type = type_to_c(return_type)
     mid_c += [r'''
-%s EMSCRIPTEN_KEEPALIVE %s(%s) {
+%s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
 %s  %s%s%s;
 }
-''' % (type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
+''' % ('const ' if const else '', type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
 
     if not constructor:
       if i == max_args:
@@ -303,6 +308,7 @@ for name in names:
     emit_constructor(name)
 
   for m in interface.members:
+    if not m.isMethod(): continue
     constructor = m.identifier.name == name
     if not constructor:
       parent_constructor = False
@@ -338,6 +344,23 @@ for name in names:
     if constructor:
       emit_constructor(name)
 
+  for m in interface.members:
+    if not m.isAttr(): continue
+    attr = m.identifier.name
+    get_name = 'get_' + attr
+    mid_js += [r'''
+  %s.prototype.%s= ''' % (name, get_name)]
+
+    render_function(name,
+                    get_name, { 0: [] }, m.type.name,
+                    None,
+                    None,
+                    None,
+                    False,
+                    func_scope=interface,
+                    call_content=deref_if_nonpointer(m) + 'self->' + attr,
+                    const=m.getExtendedAttribute('Const'))
+
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''
   %s.prototype.__destroy__ = ''' % name]
@@ -347,7 +370,8 @@ for name in names:
                     None,
                     None,
                     False,
-                    func_scope=interface)
+                    func_scope=interface,
+                    call_content='delete self')
 
   # Emit C++ class implementation that calls into JS implementation
 

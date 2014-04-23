@@ -2851,6 +2851,8 @@ class IDLAttribute(IDLInterfaceMember):
               identifier == "Func" or
               identifier == "Frozen" or
               identifier == "AvailableIn" or
+              identifier == "Const" or
+              identifier == "Value" or
               identifier == "NewObject"):
             # Known attributes that we don't need to do anything with here
             pass
