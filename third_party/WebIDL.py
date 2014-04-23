@@ -978,6 +978,7 @@ class IDLInterface(IDLObjectWithScope):
                 self._isOnGlobalProtoChain = True
             elif (identifier == "NeedNewResolve" or
                   identifier == "OverrideBuiltins" or
+                  identifier == "NoDelete" or
                   identifier == "ChromeOnly"):
                 # Known extended attributes that do not take values
                 if not attr.noArguments():

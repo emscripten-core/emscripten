@@ -336,15 +336,16 @@ for name in names:
     if constructor:
       emit_constructor(name)
 
-  mid_js += [r'''
-%s.prototype.__destroy__ = ''' % name]
-  render_function(name,
-                  '__destroy__', { 0: [] }, 'Void',
-                  None,
-                  None,
-                  None,
-                  False,
-                  func_scope=interface)
+  if not interface.getExtendedAttribute('NoDelete'):
+    mid_js += [r'''
+  %s.prototype.__destroy__ = ''' % name]
+    render_function(name,
+                    '__destroy__', { 0: [] }, 'Void',
+                    None,
+                    None,
+                    None,
+                    False,
+                    func_scope=interface)
 
   # Emit C++ class implementation that calls into JS implementation
 
