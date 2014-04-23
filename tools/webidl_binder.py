@@ -180,9 +180,12 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('Ref') else '', j) for j in range(i)])
     if constructor:
       call = 'new ' + type_to_c(class_name, non_pointing=True)
+      call += '(' + call_args + ')'
+    elif func_name == '__destroy__':
+      call = 'delete self'
     else:
       call = 'self->' + func_name
-    call += '(' + call_args + ')'
+      call += '(' + call_args + ')'
 
     if operator:
       assert '=' in operator, 'can only do += *= etc. for now, all with "="'
@@ -307,6 +310,16 @@ Module['%s'] = %s;
     mid_js += [';\n']
     if constructor:
       emit_constructor(name)
+
+  mid_js += [r'''
+%s.prototype.__destroy__ = ''' % name]
+  render_function(name,
+                  '__destroy__', { 0: [] }, 'Void',
+                  None,
+                  None,
+                  None,
+                  False,
+                  func_scope=interface)
 
   # Emit C++ class implementation that calls into JS implementation
 
