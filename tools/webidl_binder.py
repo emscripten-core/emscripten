@@ -342,7 +342,7 @@ class %s : public %s {
 public:
 %s
 };
-''' % (name, js_impl, '\n'.join(js_impl_methods))]
+''' % (name, type_to_c(js_impl, non_pointing=True), '\n'.join(js_impl_methods))]
 
 mid_c += ['\n}\n\n']
 mid_js += ['\n']
