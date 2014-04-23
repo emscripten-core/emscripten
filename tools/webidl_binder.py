@@ -42,16 +42,36 @@ mid_c += [r'''
 extern "C" {
 ''']
 
+def emit_constructor(name):
+  global mid_js
+  mid_js += [r'''%s.prototype = %s;
+%s.prototype.constructor = %s;
+%s.prototype.__class__ = %s;
+%s.__cache__ = {};
+Module['%s'] = %s;
+''' % (name, 'Object.create(%s.prototype)' % (implements[name][0] if implements.get(name) else 'WrapperObject'), name, name, name, name, name, name, name)]
+
+
 mid_js += ['''
 // Bindings utilities
 
-var Object__cache = Module['Object__cache'] = {}; // we do it this way so we do not modify |Object|
+function WrapperObject() {
+}
+''']
+
+emit_constructor('WrapperObject')
+
+mid_js += ['''
+function getCache(__class__) {
+  return (__class__ || WrapperObject).__cache__;
+}
+Module['getCache'] = getCache;
+
 function wrapPointer(ptr, __class__) {
-  var cache = Object__cache;
+  var cache = getCache(__class__);
   var ret = cache[ptr];
   if (ret) return ret;
-  __class__ = __class__ || Object;
-  ret = Object.create(__class__.prototype);
+  ret = Object.create((__class__ || WrapperObject).prototype);
   ret.ptr = ptr;
   return cache[ptr] = ret;
 }
@@ -68,7 +88,7 @@ function destroy(obj) {
   if (!obj['__destroy__']) throw 'Error: Cannot destroy object. (Did you create it yourself?)';
   obj['__destroy__']();
   // Remove from cache, so the object can be GC'd and refs added onto it released
-  delete Object__cache[obj.ptr];
+  delete getCache(obj.__class__)[obj.ptr];
 }
 Module['destroy'] = destroy;
 
@@ -130,7 +150,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
   # JS
 
-  cache = 'Object__cache[this.ptr] = this;' if constructor else ''
+  cache = ('getCache(%s)[this.ptr] = this;' % class_name) if constructor else ''
   call_prefix = '' if not constructor else 'this.ptr = '
   call_postfix = ''
   if return_type != 'Void' and not constructor: call_prefix = 'return '
@@ -218,12 +238,13 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       if i == max_args:
         js_impl_methods += [r'''  %s %s(%s) {
     %sEM_ASM_%s({
-      var self = Module['Object__cache'][$0];
+      var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself.%s(%s)%s;
     }, (int)this%s);
   }''' % (c_return_type, func_name, normal_args,
           basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          class_name,
           func_name, class_name, func_name,
           return_prefix,
           func_name,
@@ -257,14 +278,6 @@ for name in names:
     js_impl = js_impl[0]
 
   # Methods
-
-  def emit_constructor(name):
-    global mid_js
-    mid_js += [r'''%s.prototype = %s;
-%s.prototype.constructor = %s;
-%s.prototype.__class__ = %s;
-Module['%s'] = %s;
-''' % (name, ('Object.create(%s.prototype)' % implements[name][0]) if implements.get(name) else '{}', name, name, name, name, name, name)]
 
   seen_constructor = False # ensure a constructor, even for abstract base classes
   for m in interface.members:
