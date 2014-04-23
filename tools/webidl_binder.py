@@ -137,6 +137,15 @@ def type_to_c(t, non_pointing=False):
   else:
     return t
 
+def type_to_cdec(raw):
+  ret = type_to_c(raw.type.name, non_pointing=True)
+  if ret not in interfaces: return ret
+  if raw.getExtendedAttribute('Ref'):
+    return ret + '&'
+  if raw.getExtendedAttribute('Value'):
+    return ret
+  return ret + '*'
+
 def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope):
   global mid_c, mid_js, js_impl_methods
 
@@ -236,13 +245,16 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     if not constructor:
       if i == max_args:
+        dec_args = ', '.join(map(lambda j: type_to_cdec(raw[j]) + ' arg' + str(j), range(i)))
+        js_call_args = ', '.join(['%sarg%d' % (('(int)' if sig[j] in interfaces else '') + ('&' if raw[j].getExtendedAttribute('Ref') or raw[j].getExtendedAttribute('Value') else ''), j) for j in range(i)])
+
         js_impl_methods += [r'''  %s %s(%s) {
     %sEM_ASM_%s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself.%s(%s)%s;
     }, (int)this%s);
-  }''' % (c_return_type, func_name, normal_args,
+  }''' % (c_return_type, func_name, dec_args,
           basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
           class_name,
           func_name, class_name, func_name,
@@ -250,7 +262,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
           func_name,
           ','.join(['$%d' % i for i in range(1, max_args)]),
           return_postfix,
-          (', ' if call_args else '') + call_args)]
+          (', ' if js_call_args else '') + js_call_args)]
 
 
 for name, interface in interfaces.iteritems():
