@@ -2927,7 +2927,7 @@ class IDLArgument(IDLObjectWithIdentifier):
                 self.enforceRange = True
             elif identifier == "TreatNonCallableAsNull":
                 self._allowTreatNonCallableAsNull = True
-            elif identifier in ['Ref']:
+            elif identifier in ['Ref', 'Const']:
                 # ok in emscripten
                 self._extraAttributes[identifier] = True
             else:
