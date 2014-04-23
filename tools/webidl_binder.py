@@ -317,7 +317,7 @@ for name in names:
       seen_constructor = True
       break
   if not seen_constructor:
-    mid_js += ['function %s() {}\n' % name]
+    mid_js += ['function %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (name, name)]
     emit_constructor(name)
 
   for m in interface.members:
