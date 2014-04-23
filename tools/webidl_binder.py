@@ -8,6 +8,14 @@ sys.path.append(shared.path_from_root('third_party', 'ply'))
 
 import WebIDL
 
+class Dummy:
+  def __init__(self, init):
+    for k, v in init.iteritems():
+      self.__dict__[k] = v
+
+  def getExtendedAttribute(self, name):
+    return None
+
 input_file = sys.argv[1]
 output_base = sys.argv[2]
 
@@ -139,9 +147,14 @@ def type_to_c(t, non_pointing=False):
   else:
     return t
 
-def deref_if_nonpointer(m):
+def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
     return '&'
+  return ''
+
+def deref_if_nonpointer(m):
+  if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
+    return '*'
   return ''
 
 def type_to_cdec(raw):
@@ -347,10 +360,10 @@ for name in names:
   for m in interface.members:
     if not m.isAttr(): continue
     attr = m.identifier.name
+
     get_name = 'get_' + attr
     mid_js += [r'''
   %s.prototype.%s= ''' % (name, get_name)]
-
     render_function(name,
                     get_name, { 0: [] }, m.type.name,
                     None,
@@ -358,7 +371,20 @@ for name in names:
                     None,
                     False,
                     func_scope=interface,
-                    call_content=deref_if_nonpointer(m) + 'self->' + attr,
+                    call_content=take_addr_if_nonpointer(m) + 'self->' + attr,
+                    const=m.getExtendedAttribute('Const'))
+
+    set_name = 'set_' + attr
+    mid_js += [r'''
+  %s.prototype.%s= ''' % (name, set_name)]
+    render_function(name,
+                    set_name, { 1: [Dummy({ 'type': m.type })] }, 'Void',
+                    None,
+                    None,
+                    None,
+                    False,
+                    func_scope=interface,
+                    call_content='self->' + attr + ' = ' + deref_if_nonpointer(m) + 'arg0',
                     const=m.getExtendedAttribute('Const'))
 
   if not interface.getExtendedAttribute('NoDelete'):
