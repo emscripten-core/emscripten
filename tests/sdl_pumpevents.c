@@ -19,7 +19,7 @@ int loop1()
    while (SDL_PollEvent(&e));
 
    const Uint8 *keys = SDL_GetKeyState(NULL);
-   if (keys[SDLK_LEFT])
+   if (keys[SDL_SCANCODE_LEFT])
       r = 1;
 
    return r;
@@ -34,7 +34,7 @@ int loop2()
    SDL_PumpEvents();
 
    const Uint8 *keys = SDL_GetKeyState(NULL);
-   if (keys[SDLK_RIGHT])
+   if (keys[SDL_SCANCODE_RIGHT])
       r = 2;
 
    return r;
@@ -48,7 +48,7 @@ int alphakey()
    SDL_PumpEvents();
 
    const Uint8 *keys = SDL_GetKeyState(NULL);
-   if (keys[SDLK_a])
+   if (keys[SDL_SCANCODE_A])
       r = 4;
 
    return r;
