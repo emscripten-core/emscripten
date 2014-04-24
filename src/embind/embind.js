@@ -721,6 +721,10 @@ function requireFunction(signature, rawFunction) {
         // - Function.prototype.bind generally benchmarks poorly relative to
         //   function objects, but using 'arguments' would confound JITs and
         //   possibly allocate.
+        var dc = asm['dynCall_' + signature];
+        if (dc === undefined) {
+            throwBindingError("No dynCall invoker for signature: " + signature);
+        }
         fp = asm['dynCall_' + signature].bind(undefined, rawFunction);
     } else {
         fp = FUNCTION_TABLE[rawFunction];
