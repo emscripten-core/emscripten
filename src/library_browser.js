@@ -196,41 +196,42 @@ mergeInto(LibraryManager.library, {
       // Canvas event setup
 
       var canvas = Module['canvas'];
-      
-      // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
-      // Module['forcedAspectRatio'] = 4 / 3;
-      
-      canvas.requestPointerLock = canvas['requestPointerLock'] ||
-                                  canvas['mozRequestPointerLock'] ||
-                                  canvas['webkitRequestPointerLock'] ||
-                                  canvas['msRequestPointerLock'] ||
-                                  function(){};
-      canvas.exitPointerLock = document['exitPointerLock'] ||
-                               document['mozExitPointerLock'] ||
-                               document['webkitExitPointerLock'] ||
-                               document['msExitPointerLock'] ||
-                               function(){}; // no-op if function does not exist
-      canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
+      if (canvas) {
+        // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
+        // Module['forcedAspectRatio'] = 4 / 3;
+        
+        canvas.requestPointerLock = canvas['requestPointerLock'] ||
+                                    canvas['mozRequestPointerLock'] ||
+                                    canvas['webkitRequestPointerLock'] ||
+                                    canvas['msRequestPointerLock'] ||
+                                    function(){};
+        canvas.exitPointerLock = document['exitPointerLock'] ||
+                                 document['mozExitPointerLock'] ||
+                                 document['webkitExitPointerLock'] ||
+                                 document['msExitPointerLock'] ||
+                                 function(){}; // no-op if function does not exist
+        canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
 
-      function pointerLockChange() {
-        Browser.pointerLock = document['pointerLockElement'] === canvas ||
-                              document['mozPointerLockElement'] === canvas ||
-                              document['webkitPointerLockElement'] === canvas ||
-                              document['msPointerLockElement'] === canvas;
-      }
+        function pointerLockChange() {
+          Browser.pointerLock = document['pointerLockElement'] === canvas ||
+                                document['mozPointerLockElement'] === canvas ||
+                                document['webkitPointerLockElement'] === canvas ||
+                                document['msPointerLockElement'] === canvas;
+        }
 
-      document.addEventListener('pointerlockchange', pointerLockChange, false);
-      document.addEventListener('mozpointerlockchange', pointerLockChange, false);
-      document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
-      document.addEventListener('mspointerlockchange', pointerLockChange, false);
+        document.addEventListener('pointerlockchange', pointerLockChange, false);
+        document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+        document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
+        document.addEventListener('mspointerlockchange', pointerLockChange, false);
 
-      if (Module['elementPointerLock']) {
-        canvas.addEventListener("click", function(ev) {
-          if (!Browser.pointerLock && canvas.requestPointerLock) {
-            canvas.requestPointerLock();
-            ev.preventDefault();
-          }
-        }, false);
+        if (Module['elementPointerLock']) {
+          canvas.addEventListener("click", function(ev) {
+            if (!Browser.pointerLock && canvas.requestPointerLock) {
+              canvas.requestPointerLock();
+              ev.preventDefault();
+            }
+          }, false);
+        }
       }
     },
 
