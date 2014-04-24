@@ -691,10 +691,16 @@ var LibrarySDL = {
           scan = SDL.scanCodes[scan] || scan;
 
           {{{ makeSetValue('SDL.keyboardState', 'scan', 'down', 'i8') }}};
-          // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
-          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+          SDL.modState =
+            ({{{ makeGetValue('SDL.keyboardState',  '83', 'i8') }}} ? 0x1000 : 0) | // KMOD_NUM
+            ({{{ makeGetValue('SDL.keyboardState',  '57', 'i8') }}} ? 0x2000 : 0) | // KMOD_CAPS
+            ({{{ makeGetValue('SDL.keyboardState', '257', 'i8') }}} ? 0x4000 : 0) | // KMOD_MODE
+            ({{{ makeGetValue('SDL.keyboardState', '224', 'i8') }}} ? 0x0040 : 0) | // KMOD_LCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '228', 'i8') }}} ? 0x0080 : 0) | // KMOD_RCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '225', 'i8') }}} ? 0x0001 : 0) | // KMOD_LSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '229', 'i8') }}} ? 0x0002 : 0) | // KMOD_RSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '226', 'i8') }}} ? 0x0100 : 0) | // KMOD_LALT
+            ({{{ makeGetValue('SDL.keyboardState', '230', 'i8') }}} ? 0x0200 : 0) ; // KMOD_RALT
 
           if (down) {
             SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
