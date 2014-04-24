@@ -2710,3 +2710,35 @@ int main()
     assert os.path.exists('hello_world.o')
     assert os.path.exists('hello_world.bc')
 
+  def test_bad_function_pointer_cast(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+
+typedef int (*callback) (int, ...);
+
+int impl(int foo) {
+  printf("Hello, world.\n");
+  return 0;
+}
+
+int main() {
+  volatile callback f = (callback) impl;
+  f(0); /* This fails with or without additional arguments. */
+  return 0;
+}
+''')
+
+    for opts in [0, 1, 2]:
+      for safe in [0, 1]:
+        cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+        print cmd
+        Popen(cmd).communicate()
+        output = run_js('a.out.js', stderr=PIPE, full_output=True)
+        if safe:
+          assert 'Function table mask error' in output, output
+        else:
+          if opts == 0:
+            assert 'Invalid function pointer called' in output, output
+          else:
+            assert 'abort()' in output, output
+

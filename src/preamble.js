@@ -207,6 +207,14 @@ function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
   return ret;
 }
 
+function SAFE_FT_MASK(value, mask) {
+  var ret = value & mask;
+  if (ret !== value) {
+    abort('Function table mask error: function pointer is ' + value + ' which is masked by ' + mask + ', the likely cause of this is that the function pointer is being called by the wrong type.');
+  }
+  return ret;
+}
+
 #endif
 #endif
 
