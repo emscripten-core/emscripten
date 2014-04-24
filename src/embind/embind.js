@@ -1,4 +1,4 @@
-/*global Module, asm*/
+/*global Module*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
@@ -707,9 +707,21 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
 function requireFunction(signature, rawFunction) {
     signature = readLatin1String(signature);
     var fp;
+    // asm.js does not define FUNCTION_TABLE
     if (typeof FUNCTION_TABLE === "undefined") {
-        // asm.js style
-        fp = asm['FUNCTION_TABLE_' + signature][rawFunction];
+        // asm.js does not give direct access to the function tables,
+        // and thus we must go through the dynCall interface which allows
+        // calling into a signature's function table by pointer value.
+        //
+        // https://github.com/dherman/asm.js/issues/83
+        //
+        // This has three main penalties:
+        // - dynCall is another function call in the path from JavaScript to C++.
+        // - JITs may not predict through the function table indirection at runtime.
+        // - Function.prototype.bind generally benchmarks poorly relative to
+        //   function objects, but using 'arguments' would confound JITs and
+        //   possibly allocate.
+        fp = Module['dynCall_' + signature].bind(undefined, rawFunction);
     } else {
         fp = FUNCTION_TABLE[rawFunction];
     }
