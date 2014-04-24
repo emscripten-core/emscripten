@@ -1207,7 +1207,7 @@ function copyTempDouble(ptr) {
   HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
   HEAP8[tempDoublePtr+4|0] = HEAP8[ptr+4|0];
   HEAP8[tempDoublePtr+5|0] = HEAP8[ptr+5|0];
-  HEAP8[tempDoublePtr+6|0] = HEAP8[ptr+6|0];f
+  HEAP8[tempDoublePtr+6|0] = HEAP8[ptr+6|0];
   HEAP8[tempDoublePtr+7|0] = HEAP8[ptr+7|0];
 }
 ''' + ''.join(['''
