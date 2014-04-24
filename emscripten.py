@@ -480,7 +480,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
-    function_tables_arrays = ['FUNCTION_TABLE_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
 
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -517,7 +516,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     exported_implemented_functions.append('runPostSets')
     exports = []
     if not simple:
-      for export in exported_implemented_functions + asm_runtime_funcs + function_tables + function_tables_arrays:
+      for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
         exports.append("%s: %s" % (export, export))
       exports = '{ ' + ', '.join(exports) + ' }'
     else:
@@ -1060,7 +1059,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
-    function_tables_arrays = ['FUNCTION_TABLE_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
 
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -1097,7 +1095,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     exported_implemented_functions.append('runPostSets')
     exports = []
     if not simple:
-      for export in exported_implemented_functions + asm_runtime_funcs + function_tables + function_tables_arrays:
+      for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
         exports.append("%s: %s" % (export, export))
       exports = '{ ' + ', '.join(exports) + ' }'
     else:
