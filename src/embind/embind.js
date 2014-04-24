@@ -1,4 +1,4 @@
-/*global Module*/
+/*global Module, asm*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
@@ -721,7 +721,7 @@ function requireFunction(signature, rawFunction) {
         // - Function.prototype.bind generally benchmarks poorly relative to
         //   function objects, but using 'arguments' would confound JITs and
         //   possibly allocate.
-        fp = Module['dynCall_' + signature].bind(undefined, rawFunction);
+        fp = asm['dynCall_' + signature].bind(undefined, rawFunction);
     } else {
         fp = FUNCTION_TABLE[rawFunction];
     }
