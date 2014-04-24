@@ -1,4 +1,10 @@
 
+'''
+WebIDL binder
+
+https://github.com/kripken/emscripten/wiki/WebIDL-Binder
+'''
+
 import os, sys
 
 import shared
