@@ -1880,7 +1880,6 @@ This pointer might make sense in another type signature: i: 0
 
   def test_embind(self):
     def nonfc():
-      if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
       for args, fail in [
         ([], True), # without --bind, we fail
         (['--bind'], False),

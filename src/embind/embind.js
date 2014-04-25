@@ -1,4 +1,4 @@
-/*global Module*/
+/*global Module, asm*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
@@ -622,10 +622,6 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
 
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
-    if (!isClassMethodFunc && !FUNCTION_TABLE[cppTargetFunc]) {
-        throwBindingError('Global function '+humanName+' is not defined!');
-    }
-
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
 // TODO: This omits argument count check - enable only at -O3 or similar.
 //    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
@@ -662,8 +658,8 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     }
 
     var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["throwBindingError", "classType", "invoker", "fn", "runDestructors", "retType", "classParam"];
-    var args2 = [throwBindingError, classType, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+    var args2 = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 
     if (isClassMethodFunc) {
         invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
@@ -708,10 +704,43 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     return invokerFunction;
 }
 
-function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker, fn) {
+function requireFunction(signature, rawFunction) {
+    signature = readLatin1String(signature);
+    var fp;
+    // asm.js does not define FUNCTION_TABLE
+    if (typeof FUNCTION_TABLE === "undefined") {
+        // asm.js does not give direct access to the function tables,
+        // and thus we must go through the dynCall interface which allows
+        // calling into a signature's function table by pointer value.
+        //
+        // https://github.com/dherman/asm.js/issues/83
+        //
+        // This has three main penalties:
+        // - dynCall is another function call in the path from JavaScript to C++.
+        // - JITs may not predict through the function table indirection at runtime.
+        // - Function.prototype.bind generally benchmarks poorly relative to
+        //   function objects, but using 'arguments' would confound JITs and
+        //   possibly allocate.
+        var dc = asm['dynCall_' + signature];
+        if (dc === undefined) {
+            throwBindingError("No dynCall invoker for signature: " + signature);
+        }
+        fp = asm['dynCall_' + signature].bind(undefined, rawFunction);
+    } else {
+        fp = FUNCTION_TABLE[rawFunction];
+    }
+
+    if (typeof fp !== "function") {
+        throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
+    }
+    return fp;
+}
+
+function __embind_register_function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn) {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
+    
+    rawInvoker = requireFunction(signature, rawInvoker);
 
     exposePublicSymbol(name, function() {
         throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
@@ -726,11 +755,11 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
 
 var tupleRegistrations = {};
 
-function __embind_register_value_array(rawType, name, rawConstructor, rawDestructor) {
+function __embind_register_value_array(rawType, name, constructorSignature, rawConstructor, destructorSignature, rawDestructor) {
     tupleRegistrations[rawType] = {
         name: readLatin1String(name),
-        rawConstructor: FUNCTION_TABLE[rawConstructor],
-        rawDestructor: FUNCTION_TABLE[rawDestructor],
+        rawConstructor: requireFunction(constructorSignature, rawConstructor),
+        rawDestructor: requireFunction(destructorSignature, rawDestructor),
         elements: [],
     };
 }
@@ -738,18 +767,20 @@ function __embind_register_value_array(rawType, name, rawConstructor, rawDestruc
 function __embind_register_value_array_element(
     rawTupleType,
     getterReturnType,
+    getterSignature,
     getter,
     getterContext,
     setterArgumentType,
+    setterSignature,
     setter,
     setterContext
 ) {
     tupleRegistrations[rawTupleType].elements.push({
         getterReturnType: getterReturnType,
-        getter: FUNCTION_TABLE[getter],
+        getter: requireFunction(getterSignature, getter),
         getterContext: getterContext,
         setterArgumentType: setterArgumentType,
-        setter: FUNCTION_TABLE[setter],
+        setter: requireFunction(setterSignature, setter),
         setterContext: setterContext,
     });
 }
@@ -818,13 +849,15 @@ var structRegistrations = {};
 function __embind_register_value_object(
     rawType,
     name,
+    constructorSignature,
     rawConstructor,
+    destructorSignature,
     rawDestructor
 ) {
     structRegistrations[rawType] = {
         name: readLatin1String(name),
-        rawConstructor: FUNCTION_TABLE[rawConstructor],
-        rawDestructor: FUNCTION_TABLE[rawDestructor],
+        rawConstructor: requireFunction(constructorSignature, rawConstructor),
+        rawDestructor: requireFunction(destructorSignature, rawDestructor),
         fields: [],
     };
 }
@@ -833,19 +866,21 @@ function __embind_register_value_object_field(
     structType,
     fieldName,
     getterReturnType,
+    getterSignature,
     getter,
     getterContext,
     setterArgumentType,
+    setterSignature,
     setter,
     setterContext
 ) {
     structRegistrations[structType].fields.push({
         fieldName: readLatin1String(fieldName),
         getterReturnType: getterReturnType,
-        getter: FUNCTION_TABLE[getter],
+        getter: requireFunction(getterSignature, getter),
         getterContext: getterContext,
         setterArgumentType: setterArgumentType,
-        setter: FUNCTION_TABLE[setter],
+        setter: requireFunction(setterSignature, setter),
         setterContext: setterContext,
     });
 }
@@ -1324,17 +1359,25 @@ function __embind_register_class(
     rawPointerType,
     rawConstPointerType,
     baseClassRawType,
+    getActualTypeSignature,
     getActualType,
+    upcastSignature,
     upcast,
+    downcastSignature,
     downcast,
     name,
+    destructorSignature,
     rawDestructor
 ) {
     name = readLatin1String(name);
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
-    getActualType = FUNCTION_TABLE[getActualType];
-    upcast = FUNCTION_TABLE[upcast];
-    downcast = FUNCTION_TABLE[downcast];
+    getActualType = requireFunction(getActualTypeSignature, getActualType);
+    if (upcast) {
+        upcast = requireFunction(upcastSignature, upcast);
+    }
+    if (downcast) {
+        downcast = requireFunction(downcastSignature, downcast);
+    }
+    rawDestructor = requireFunction(destructorSignature, rawDestructor);
     var legalFunctionName = makeLegalFunctionName(name);
 
     exposePublicSymbol(legalFunctionName, function() {
@@ -1424,11 +1467,12 @@ function __embind_register_class_constructor(
     rawClassType,
     argCount,
     rawArgTypesAddr,
+    invokerSignature,
     invoker,
     rawConstructor
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    invoker = FUNCTION_TABLE[invoker];
+    invoker = requireFunction(invokerSignature, invoker);
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
@@ -1513,12 +1557,13 @@ function __embind_register_class_function(
     methodName,
     argCount,
     rawArgTypesAddr, // [ReturnType, ThisType, Args...]
+    invokerSignature,
     rawInvoker,
     context
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
+    rawInvoker = requireFunction(invokerSignature, rawInvoker);
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
@@ -1564,12 +1609,13 @@ function __embind_register_class_class_function(
     methodName,
     argCount,
     rawArgTypesAddr,
+    invokerSignature,
     rawInvoker,
     fn
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
+    rawInvoker = requireFunction(invokerSignature, rawInvoker);
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
         var humanName = classType.name + '.' + methodName;
@@ -1609,14 +1655,16 @@ function __embind_register_class_property(
     classType,
     fieldName,
     getterReturnType,
+    getterSignature,
     getter,
     getterContext,
     setterArgumentType,
+    setterSignature,
     setter,
     setterContext
 ) {
     fieldName = readLatin1String(fieldName);
-    getter = FUNCTION_TABLE[getter];
+    getter = requireFunction(getterSignature, getter);
 
     whenDependentTypesAreResolved([], [classType], function(classType) {
         classType = classType[0];
@@ -1654,7 +1702,7 @@ function __embind_register_class_property(
             };
 
             if (setter) {
-                setter = FUNCTION_TABLE[setter];
+                setter = requireFunction(setterSignature, setter);
                 var setterArgumentType = types[1];
                 desc.set = function(v) {
                     var ptr = validateThis(this, classType, humanName + ' setter');
@@ -1689,16 +1737,20 @@ function __embind_register_smart_ptr(
     rawPointeeType,
     name,
     sharingPolicy,
+    getPointeeSignature,
     rawGetPointee,
+    constructorSignature,
     rawConstructor,
+    shareSignature,
     rawShare,
+    destructorSignature,
     rawDestructor
 ) {
     name = readLatin1String(name);
-    rawGetPointee = FUNCTION_TABLE[rawGetPointee];
-    rawConstructor = FUNCTION_TABLE[rawConstructor];
-    rawShare = FUNCTION_TABLE[rawShare];
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
+    rawGetPointee = requireFunction(getPointeeSignature, rawGetPointee);
+    rawConstructor = requireFunction(constructorSignature, rawConstructor);
+    rawShare = requireFunction(shareSignature, rawShare);
+    rawDestructor = requireFunction(destructorSignature, rawDestructor);
 
     whenDependentTypesAreResolved([rawType], [rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
