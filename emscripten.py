@@ -748,6 +748,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
   if settings['ASSERTIONS'] > 0:
     backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
+  if settings['ALIASING_FUNCTION_POINTERS'] == 0:
+    backend_args += ['-emscripten-no-aliasing-function-pointers']
   backend_args += ['-O' + str(settings['OPT_LEVEL'])]
   if DEBUG:
     logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))

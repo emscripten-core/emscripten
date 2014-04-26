@@ -2741,3 +2741,50 @@ int main() {
           else:
             assert 'abort()' in output, output
 
+  def test_aliased_func_pointers(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+
+int impl1(int foo) { return foo; }
+float impla(float foo) { return foo; }
+int impl2(int foo) { return foo+1; }
+float implb(float foo) { return foo+1; }
+int impl3(int foo) { return foo+2; }
+float implc(float foo) { return foo+2; }
+
+int main(int argc, char **argv) {
+  volatile void *f = (void*)impl1;
+  if (argc == 50) f = (void*)impla;
+  if (argc == 51) f = (void*)impl2;
+  if (argc == 52) f = (void*)implb;
+  if (argc == 53) f = (void*)impl3;
+  if (argc == 54) f = (void*)implc;
+  return (int)f;
+}
+''')
+
+    print 'aliasing'
+
+    sizes_ii = {}
+    sizes_dd = {}
+  
+    for alias in [None, 0, 1]:
+      cmd = [PYTHON, EMCC, 'src.cpp', '-O1']
+      if alias is not None:
+        cmd += ['-s', 'ALIASING_FUNCTION_POINTERS=' + str(alias)]
+      else:
+        alias = -1
+      print cmd
+      Popen(cmd).communicate()
+      src = open('a.out.js').read().split('\n')
+      for line in src:
+        if line.strip().startswith('var FUNCTION_TABLE_ii = '):
+          sizes_ii[alias] = line.count(',')
+        if line.strip().startswith('var FUNCTION_TABLE_dd = '):
+          sizes_dd[alias] = line.count(',')
+
+    for sizes in [sizes_ii, sizes_dd]:
+      assert sizes[-1] == 3 # default - let them alias
+      assert sizes[0] == 7 # no aliasing, all unique, fat tables
+      assert sizes[1] == 3 # aliased once more
+
