@@ -442,6 +442,21 @@ module({
             var e = cm.emval_test_take_and_return_std_string((new Int8Array([65, 66, 67, 68])).buffer);
             assert.equal('ABCD', e);
         });
+        
+        test("can pass Uint8Array to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8Array([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
+        test("can pass Int8Array to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Int8Array([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
+        test("can pass ArrayBuffer to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char((new Int8Array([65, 66, 67, 68])).buffer);
+            assert.equal('ABCD', e);
+        });
 
         test("non-ascii wstrings", function() {
             var expected = String.fromCharCode(10) +

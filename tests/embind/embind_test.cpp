@@ -109,6 +109,10 @@ std::string emval_test_take_and_return_std_string_const_ref(const std::string& s
     return str;
 }
 
+std::basic_string<unsigned char> emval_test_take_and_return_std_basic_string_unsigned_char(std::basic_string<unsigned char> str) {
+    return str;
+}
+
 std::wstring take_and_return_std_wstring(std::wstring str) {
     return str;
 }
