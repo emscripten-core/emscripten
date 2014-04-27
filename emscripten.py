@@ -1061,7 +1061,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if '_rand' in exported_implemented_functions or '_srand' in exported_implemented_functions:
       basic_vars += ['___rand_seed']
 
-    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)] + ['getTempRet%d' % i for i in range(10)]
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
@@ -1210,16 +1210,14 @@ function copyTempDouble(ptr) {
   HEAP8[tempDoublePtr+6|0] = HEAP8[ptr+6|0];
   HEAP8[tempDoublePtr+7|0] = HEAP8[ptr+7|0];
 }
-''' + ''.join(['''
-function setTempRet%d(value) {
+function setTempRet0(value) {
   value = value|0;
-  tempRet%d = value;
+  tempRet0 = value;
 }
-''' % (i, i) for i in range(10)]) + ''.join(['''
-function getTempRet%d() {
-  return tempRet%d|0;
+function getTempRet0() {
+  return tempRet0|0;
 }
-''' % (i, i) for i in range(10)])] + funcs_js + ['''
+'''] + funcs_js + ['''
   %s
 
   return %s;
