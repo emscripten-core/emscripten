@@ -339,15 +339,12 @@ function getCFunc(ident) {
 var ccallFunc = (function () {
   var stack;
   function toC(value, type) {
-    if (type == 'string') {
+    if (type === 'string' || type === 'array') {
       if (value === null || value === undefined || value === 0) return 0; // null string
-      value = intArrayFromString(value);
-      type = 'array';
-    }
-    if (type == 'array') {
       if (!stack) stack = Runtime.stackSave();
       var ret = Runtime.stackAlloc(value.length);
-      writeArrayToMemory(value, ret);
+      var writeToMemory = (type === 'string') ? writeStringToMemory : writeArrayToMemory;
+      writeToMemory (value, ret);
       return ret;
     }
     return value;
@@ -356,13 +353,13 @@ var ccallFunc = (function () {
     if (type == 'string') {
       return Pointer_stringify(value);
     }
-    assert(type != 'array');
     return value;
   }
 
   function ccallFunc (func, returnType, argTypes, args) {
     stack = 0;
     var cArgs = [];
+    assert(returnType != 'array');
     for (var i=0; i<args.length; i++) {
       cArgs[i] = toC(args[i], argTypes[i]);
     }
