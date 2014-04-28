@@ -336,8 +336,8 @@ function getCFunc(ident) {
 }
 
 // Internal function that does a C call using a function, not an identifier
-function ccallFunc(func, returnType, argTypes, args) {
-  var stack = 0;
+var ccallFunc = (function () {
+  var stack;
   function toC(value, type) {
     if (type == 'string') {
       if (value === null || value === undefined || value === 0) return 0; // null string
@@ -359,14 +359,19 @@ function ccallFunc(func, returnType, argTypes, args) {
     assert(type != 'array');
     return value;
   }
-  var i = 0;
-  var cArgs = args ? args.map(function(arg) {
-    return toC(arg, argTypes[i++]);
-  }) : [];
-  var ret = fromC(func.apply(null, cArgs), returnType);
-  if (stack) Runtime.stackRestore(stack);
-  return ret;
-}
+
+  function ccallFunc (func, returnType, argTypes, args) {
+    stack = 0;
+    var cArgs = [];
+    for (var i=0; i<args.length; i++) {
+      cArgs[i] = toC(args[i], argTypes[i]);
+    }
+    var ret = fromC(func.apply(null, cArgs), returnType);
+    if (stack) Runtime.stackRestore(stack);
+    return ret;
+  }
+  return ccallFunc;
+})();
 
 // Returns a native JS wrapper for a C function. This is similar to ccall, but
 // returns a function you can call repeatedly in a normal way. For example:
@@ -375,12 +380,50 @@ function ccallFunc(func, returnType, argTypes, args) {
 //   alert(my_function(5, 22));
 //   alert(my_function(99, 12));
 //
-function cwrap(ident, returnType, argTypes) {
-  var func = getCFunc(ident);
-  return function() {
-    return ccallFunc(func, returnType, argTypes, Array.prototype.slice.call(arguments));
+function cwrap (ident, returnType, argTypes) {
+
+  var cfunc = getCFunc(ident);
+  var nargs = argTypes.length;
+
+  var hasStack = false; // Does the function need to run stack functions
+  // Add function arguments
+  var joinedArgs = argTypes.map(function(s,i){return 'arg'+i}).join(',');
+  var funcstr = "(function "+ident+" ("+joinedArgs+"){";
+  // function body
+  // convert all arguments to c
+  for (var i=0; i<nargs; i++) {
+    var argName = 'arg' + i;
+    if (argTypes[i] === 'string') {
+      funcstr += 'if ('+argName+' === null || '+argName+' === undefined || '+argName+' === 0)';
+      funcstr += argName + '=0;';
+      funcstr += 'else {' + argName + '=intArrayFromString(' + argName + ');';
+    }
+    if (argTypes[i] === 'string' || argTypes[i] === 'array') {
+      if (!hasStack) {
+        funcstr += 'var stack = Runtime.stackSave();';
+        hasStack = true;
+      }
+      funcstr += 'var ret = Runtime.stackAlloc(' + argName + '.length);';
+      funcstr += 'writeArrayToMemory(' + argName + ', ret);';
+      funcstr += argName + '=ret;';
+      if (argTypes[i] === 'string') {
+        funcstr += '}'; //Close the else
+      }
+    }
   }
+  // call the function
+  funcstr += 'var ret = cfunc(' + joinedArgs + ');';
+  //Convert the result to javascript
+  if (returnType === 'string') {
+    funcstr += 'ret = Pointer_stringify(ret);';
+  }
+  if (hasStack) {
+    funcstr += 'Runtime.stackRestore(stack);';
+  }
+  funcstr += 'return ret;})';
+  return eval(funcstr);
 }
+
 Module["cwrap"] = cwrap;
 
 // Sets a value in memory in a dynamic way at run-time. Uses the
