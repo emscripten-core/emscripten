@@ -386,25 +386,34 @@ function cwrap (ident, returnType, argTypes) {
   var nargs = argTypes.length;
 
   var hasStack = false; // Does the function need to run stack functions
+  var numberFunction = (returnType === 'number'); // Does the function operate only on numbers
   // Add function arguments
-  var joinedArgs = argTypes.map(function(s,i){return 'arg'+i}).join(',');
+  for (var i=0, joinedArgs=''; i<nargs; i++) {
+    joinedArgs += '$'+i; // Arguments are named $0, $1, ..., $(nargs-1)
+    if (i !== nargs-1) joinedArgs += ',';
+    if (argTypes[i] !== 'number') numberFunction = false;
+  }
+  if (numberFunction) {
+    // No type conversion needed for return values, nor for arguments
+    return cfunc;
+  }
   var funcstr = "(function "+ident+" ("+joinedArgs+"){";
   // function body
   // convert all arguments to c
   for (var i=0; i<nargs; i++) {
-    var argName = 'arg' + i;
-    if (argTypes[i] === 'string') {
-      funcstr += 'if ('+argName+' === null || '+argName+' === undefined || '+argName+' === 0)';
-      funcstr += argName + '=0;';
-      funcstr += 'else {' + argName + '=intArrayFromString(' + argName + ');';
-    }
-    if (argTypes[i] === 'string' || argTypes[i] === 'array') {
+    var argName = '$' + i, type = argTypes[i];
+    if (type === 'string' || type === 'array') {
       if (!hasStack) {
-        funcstr += 'var stack = Runtime.stackSave();';
+        funcstr += 'var stack = 0;';
         hasStack = true;
       }
+      funcstr += 'if ('+argName+' === null || '+argName+' === undefined || '+argName+' === 0)';
+      funcstr += argName + '=0;';
+      funcstr += 'else {'
+      funcstr += 'if (stack === 0) stack = Runtime.stackSave();';
       funcstr += 'var ret = Runtime.stackAlloc(' + argName + '.length);';
-      funcstr += 'writeArrayToMemory(' + argName + ', ret);';
+      var ucfirstType = (type === 'string') ? 'String' : 'Array';
+      funcstr += 'write' + ucfirstType + 'ToMemory(' + argName + ', ret);';
       funcstr += argName + '=ret;';
       if (argTypes[i] === 'string') {
         funcstr += '}'; //Close the else
@@ -418,7 +427,7 @@ function cwrap (ident, returnType, argTypes) {
     funcstr += 'ret = Pointer_stringify(ret);';
   }
   if (hasStack) {
-    funcstr += 'Runtime.stackRestore(stack);';
+    funcstr += 'if (stack !== 0) Runtime.stackRestore(stack);';
   }
   funcstr += 'return ret;})';
   return eval(funcstr);
