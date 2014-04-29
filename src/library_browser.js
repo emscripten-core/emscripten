@@ -430,11 +430,13 @@ mergeInto(LibraryManager.library, {
       });
     },
     safeSetTimeout: function(func, timeout) {
+      Module['noExitRuntime'] = true;
       return setTimeout(function() {
         if (!ABORT) func();
       }, timeout);
     },
     safeSetInterval: function(func, timeout) {
+      Module['noExitRuntime'] = true;
       return setInterval(function() {
         if (!ABORT) func();
       }, timeout);
