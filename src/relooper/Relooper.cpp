@@ -324,11 +324,7 @@ void MultipleShape::RenderLoopPrefix() {
       }
     } else {
       if (Labeled) {
-        if (UseSwitch) {
-          PrintIndented("L%d: ", Id);
-        } else {
-          PrintIndented("L%d: do {\n", Id);
-        }
+        PrintIndented("L%d: do {\n", Id);
       } else {
         PrintIndented("do {\n");
       }
