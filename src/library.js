@@ -1584,7 +1584,6 @@ LibraryManager.library = {
     return /^[+-]?[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?/.exec(text);
   },
 
-  // TODO: Document.
   _scanString__deps: ['_getFloat'],
   _scanString: function(format, get, unget, varargs) {
     if (!__scanString.whiteSpace) {
@@ -1726,6 +1725,7 @@ LibraryManager.library = {
         }
         var long_ = false;
         var half = false;
+        var quarter = false;
         var longLong = false;
         if (format[formatIndex] == 'l') {
           long_ = true;
@@ -1737,6 +1737,10 @@ LibraryManager.library = {
         } else if (format[formatIndex] == 'h') {
           half = true;
           formatIndex++;
+          if (format[formatIndex] == 'h') {
+            quarter = true;
+            formatIndex++;
+          }
         }
         var type = format[formatIndex];
         formatIndex++;
@@ -1795,19 +1799,20 @@ LibraryManager.library = {
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getAlignSize('void*', null, true);
+        var base = 10;
         switch (type) {
+          case 'X': case 'x':
+            base = 16;
           case 'd': case 'u': case 'i':
-            if (half) {
-              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
+            if (quarter) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i8') }}};
+            } else if (half) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i16') }}};
             } else if (longLong) {
-              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i64') }}};
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i64') }}};
             } else {
-              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i32') }}};
             }
-            break;
-          case 'X':
-          case 'x':
-            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}};
             break;
           case 'F':
           case 'f':
