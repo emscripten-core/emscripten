@@ -2380,6 +2380,11 @@ int main() {
     err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
     assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1], err[1]
 
+    # with specified target via -o
+    try_delete('header.h.gch')
+    Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.gch']).communicate()
+    assert os.path.exists('my.gch')
+
   def test_warn_unaligned(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('need fastcomp')
     open('src.cpp', 'w').write(r'''

@@ -1366,7 +1366,9 @@ try:
     for header in input_files:
       assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(input_files) + ' : ' + header
     args = newargs + shared.EMSDK_CXX_OPTS + input_files
-    logging.debug("running (for precompiled headers: " + call + ' ' + ' '.join(args))
+    if specified_target:
+      args += ['-o', specified_target]
+    logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
     execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
     sys.exit(1)
 
