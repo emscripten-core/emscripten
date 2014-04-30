@@ -5659,7 +5659,6 @@ def process(filename):
 
   def test_embind_2(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if self.run_name == 'asm2f': return self.skip('embind/asm.js not compatible with PRECISE_F32 because it changes signature strings')
     if self.run_name == 'slow2asm': return self.skip('embind/asm.js requires fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''

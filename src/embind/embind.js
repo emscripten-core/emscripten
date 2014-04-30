@@ -723,9 +723,16 @@ function requireFunction(signature, rawFunction) {
         //   possibly allocate.
         var dc = asm['dynCall_' + signature];
         if (dc === undefined) {
-            throwBindingError("No dynCall invoker for signature: " + signature);
+            // We will always enter this branch if the signature
+            // contains 'f' and PRECISE_F32 is not enabled.
+            //
+            // Try again, replacing 'f' with 'd'.
+            dc = asm['dynCall_' + signature.replace(/f/g, 'd')];
+            if (dc === undefined) {
+                throwBindingError("No dynCall invoker for signature: " + signature);
+            }
         }
-        fp = asm['dynCall_' + signature].bind(undefined, rawFunction);
+        fp = dc.bind(undefined, rawFunction);
     } else {
         fp = FUNCTION_TABLE[rawFunction];
     }

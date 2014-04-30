@@ -330,7 +330,7 @@ namespace emscripten {
         template<>
         struct SignatureCode<float> {
             static constexpr char get() {
-                return 'd';
+                return 'f';
             }
         };
 
