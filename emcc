@@ -1370,7 +1370,7 @@ try:
       args += ['-o', specified_target]
     logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
     execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
-    sys.exit(1)
+    sys.exit(0)
 
   def get_bitcode_file(input_file):
     if final_suffix not in JS_CONTAINING_SUFFIXES:
