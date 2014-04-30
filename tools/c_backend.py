@@ -91,7 +91,7 @@ assert os.path.exists(js_name), 'failed to generate js'
 
 print '[em-c-backend] converting to C'
 out = open(c_name, 'w')
-execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), js_name, 'cIfy'], stderr=out, env={ 'EMCC_JSOPT_MIN_CHUNK_SIZE': str(2**31-1) })
+execute([shared.PYTHON, shared.path_from_root('tools', 'js_optimizer.py'), js_name, 'cIfy'], stderr=out, env={ 'EMCC_JSOPT_MIN_CHUNK_SIZE': str(2**31-1), 'EMCC_JSOPT_MAX_CHUNK_SIZE': str(2**31-1) })
 out.close()
 c = open(c_name).read()
 c, includes = c.split('INCLUDES: ')
@@ -126,6 +126,13 @@ static double *MEMF64;
 static int32_t STACKTOP;
 static int32_t DYNAMICTOP;
 static int32_t tempDoublePtr = 0;
+static int32_t tempRet0 = 0;
+
+static int32_t em__stdin = 0;
+static int32_t em__stdout = 0;
+static int32_t em__stderr = 0;
+
+static int32_t em____dso_handle = 0;
 
 int32_t em__emscripten_memcpy_big(int32_t dest, int32_t src, int32_t num);
 int32_t em__sbrk(int32_t bytes);
@@ -138,6 +145,7 @@ int32_t em__llvm_bswap_i32(int32_t);
 void em____assert_fail(int32_t, int32_t, int32_t, int32_t);
 
 int32_t relocate(int32_t ptr);
+int32_t derelocate(int32_t ptr);
 
 void em__emscripten_run_script(int32_t code);
 
@@ -229,6 +237,11 @@ int32_t relocate(int32_t ptr) {
   return ptr + (int32_t)MEM;
 }
 
+int32_t derelocate(int32_t ptr) {
+  if (ptr == 0) return 0; // NULL is NULL
+  return ptr - (int32_t)MEM;
+}
+
 void em__emscripten_run_script(int32_t code) {
   printf("[not running script code]\n");
 }
@@ -304,6 +317,10 @@ int main(int argc, char **argv) {
   MEM32  = (int32_t*)MEM;
   MEMF32 = (float*)MEM;
   MEMF64 = (double*)MEM;
+
+  em__stdin = (int)stdin; // XXX
+  em__stdout = (int)stdout; // XXX
+  em__stderr = (int)stderr; // XXX
 ''')
 
 if 'em__main(void)' in c:

@@ -5417,11 +5417,14 @@ function cIfy(ast) {
   };
 
   // shows for each function which of its arguments must be relocated == which are pointers
+  // return value, arg0, arg1, etc.
   var relocationInfo = {
-    puts: ['char*'],
-    printf: ['char*'],
-    atoi: ['char*'],
-    time: ['time_t*'],
+    puts: [null, 'char*'],
+    printf: [null, 'char*'],
+    atoi: [null, 'char*'],
+    time: [null, 'time_t*'],
+    strerror: ['char*'],
+    dlerror: ['char*'],
   };
 
   var cExterns = set('stdout', 'stderr', 'stdin');
@@ -5430,6 +5433,7 @@ function cIfy(ast) {
     time: 'time.h',
     clock: 'time.h',
     sysconf: 'unistd.h',
+    dlerror: 'dlfcn.h',
   };
 
   var includes = [];
@@ -5457,15 +5461,17 @@ function cIfy(ast) {
     }
   }
   function cName(name) {
+    if (name[0] === '_' && (name.substr(1) in relocationInfo)) return name.substr(1);
     switch (name) {
       // whitelist some libc functions we can just call
-      case '_puts': case '_abort': case '_printf': case '_atoi': case '_putchar': case '_sysconf': case '_time':
+      case '_abort': case '_putchar': case '_sysconf':
       case '___errno_location': case '_clock': {
         return name.substr(1);
       }
       // special numerics
       case 'inf': return 'INFINITY';
       case 'nan': return 'NAN';
+      case 'i386': return 'lv_i386'; // i386 is defined in C headers!
     }
     if (name[0] === '$') return '_' + name.substr(1);
     if (name[0] === '_') return 'em_' + name; // avoid collisions with system malloc etc
@@ -5601,15 +5607,17 @@ function cIfy(ast) {
           if (funcIncludes[name]) includes.push(funcIncludes[name]);
         }
         relocations = relocations || [];
+        if (relocations[0]) output += 'derelocate((int32_t)';
         walk(node[1]);
         output += '(';
         node[2].forEach(function(arg, i) {
           if (i > 0) output += ', ';
-          if (relocations[i]) output += '(' + relocations[i] + ')relocate(';
+          if (relocations[i+1]) output += '(' + relocations[i+1] + ')relocate(';
           walk(arg, true);
-          if (relocations[i]) output += ')';
+          if (relocations[i+1]) output += ')';
         });
         output += ')';
+        if (relocations[0]) output += ')';
         break;
       }
       case 'if': {
