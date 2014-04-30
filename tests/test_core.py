@@ -3905,6 +3905,8 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_hex(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+
     test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
     src, output = (test_path + s for s in ('.in', '.out'))
 
