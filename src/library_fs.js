@@ -739,11 +739,9 @@ mergeInto(LibraryManager.library, {
         FS.hashAddNode(old_node);
       }
       try {
-        if (FS.trackingDelegate['didMovePath']) {
-          FS.trackingDelegate['didMovePath'](old_path, new_path);
-        }
+        if (FS.trackingDelegate['onMovePath']) FS.trackingDelegate['onMovePath'](old_path, new_path);
       } catch(e) {
-        console.log("FS.trackingDelegate['didMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
     },
     rmdir: function(path) {
@@ -771,11 +769,9 @@ mergeInto(LibraryManager.library, {
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
       try {
-        if (FS.trackingDelegate['didDeletePath']) {
-          FS.trackingDelegate['didDeletePath'](path);
-        }
+        if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['didDeletePath']('"+path+"') threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readdir: function(path) {
@@ -813,11 +809,9 @@ mergeInto(LibraryManager.library, {
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
       try {
-        if (FS.trackingDelegate['didDeletePath']) {
-          FS.trackingDelegate['didDeletePath'](path);
-        }
+        if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['didDeletePath']('"+path+"') threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readlink: function(path) {
@@ -1014,16 +1008,18 @@ mergeInto(LibraryManager.library, {
         }
       }
       try {
-        if (FS.trackingDelegate['didOpenFile']) {
+        if (FS.trackingDelegate['onOpenFile']) {
           var trackingFlags = 0;
-          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}})
+          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}) {
             trackingFlags |= FS.tracking.openFlags.READ;
-          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}})
+          }
+          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}) {
             trackingFlags |= FS.tracking.openFlags.WRITE;
-          FS.trackingDelegate['didOpenFile'](path, trackingFlags);
+          }
+          FS.trackingDelegate['onOpenFile'](path, trackingFlags);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['didOpenFile']('"+path+"', flags) threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
       }
       return stream;
     },
@@ -1095,11 +1091,9 @@ mergeInto(LibraryManager.library, {
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
       try {
-        if (stream.path && FS.trackingDelegate['didWriteToFile']) {
-          FS.trackingDelegate['didWriteToFile'](stream.path);
-        }
+        if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
       } catch(e) {
-        console.log("FS.trackingDelegate['didWriteToFile']('"+path+"') threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onWriteToFile']('"+path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
