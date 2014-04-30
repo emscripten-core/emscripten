@@ -356,11 +356,11 @@ var ccallFunc = (function () {
     return value;
   }
 
-  function ccallFunc (func, returnType, argTypes, args) {
+  function ccallFunc(func, returnType, argTypes, args) {
     stack = 0;
     var cArgs = [];
     assert(returnType != 'array');
-    for (var i=0; i<args.length; i++) {
+    for (var i = 0; i < args.length; i++) {
       cArgs[i] = toC(args[i], argTypes[i]);
     }
     var ret = fromC(func.apply(null, cArgs), returnType);
@@ -394,7 +394,7 @@ function cwrap (ident, returnType, argTypes) {
     // No type conversion needed for return values, nor for arguments
     return cfunc;
   }
-  var funcstr = "(function "+ident+" ("+joinedArgs+"){";
+  var funcstr = "(function " + ident + " ("+joinedArgs+"){";
   // function body
   // convert all arguments to c
   for (var i=0; i<nargs; i++) {
@@ -419,7 +419,7 @@ function cwrap (ident, returnType, argTypes) {
   }
   // call the function
   funcstr += 'var ret = cfunc(' + joinedArgs + ');';
-  //Convert the result to javascript
+  // Convert the result to javascript
   if (returnType === 'string') {
     funcstr += 'ret = Pointer_stringify(ret);';
   }

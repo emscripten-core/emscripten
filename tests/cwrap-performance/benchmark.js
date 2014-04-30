@@ -382,14 +382,10 @@ var Runtime = {
   },
   dynCall: function (sig, ptr, args) {
     if (args && args.length) {
-      assert(args.length == sig.length-1);
       if (!args.splice) args = Array.prototype.slice.call(args);
       args.splice(0, 0, ptr);
-      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
       return Module['dynCall_' + sig].apply(null, args);
     } else {
-      assert(sig.length == 1);
-      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
       return Module['dynCall_' + sig].call(null, ptr);
     }
   },
@@ -514,11 +510,11 @@ var Runtime = {
   getCompilerSetting: function (name) {
     throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for Runtime.getCompilerSetting or emscripten_get_compiler_setting to work';
   },
-  stackAlloc: function (size) { var ret = STACKTOP;STACKTOP = (STACKTOP + size)|0;STACKTOP = (((STACKTOP)+7)&-8);(assert((((STACKTOP|0) < (STACK_MAX|0))|0))|0); return ret; },
-  staticAlloc: function (size) { var ret = STATICTOP;STATICTOP = (STATICTOP + (assert(!staticSealed),size))|0;STATICTOP = (((STATICTOP)+7)&-8); return ret; },
-  dynamicAlloc: function (size) { var ret = DYNAMICTOP;DYNAMICTOP = (DYNAMICTOP + (assert(DYNAMICTOP > 0),size))|0;DYNAMICTOP = (((DYNAMICTOP)+7)&-8); if (DYNAMICTOP >= TOTAL_MEMORY) enlargeMemory();; return ret; },
+  stackAlloc: function (size) { var ret = STACKTOP;STACKTOP = (STACKTOP + size)|0;STACKTOP = (((STACKTOP)+7)&-8); return ret; },
+  staticAlloc: function (size) { var ret = STATICTOP;STATICTOP = (STATICTOP + size)|0;STATICTOP = (((STATICTOP)+7)&-8); return ret; },
+  dynamicAlloc: function (size) { var ret = DYNAMICTOP;DYNAMICTOP = (DYNAMICTOP + size)|0;DYNAMICTOP = (((DYNAMICTOP)+7)&-8); if (DYNAMICTOP >= TOTAL_MEMORY) enlargeMemory();; return ret; },
   alignMemory: function (size,quantum) { var ret = size = Math.ceil((size)/(quantum ? quantum : 8))*(quantum ? quantum : 8); return ret; },
-  makeBigInt: function (low,high,unsigned) { var ret = (unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0))); return ret; },
+  makeBigInt: function (low,high,unsigned) { var ret = (unsigned ? ((+((low>>>0)))+((+((high>>>0)))*(+4294967296))) : ((+((low>>>0)))+((+((high|0)))*(+4294967296)))); return ret; },
   GLOBAL_BASE: 8,
   QUANTUM_SIZE: 4,
   __dummy__: 0
@@ -705,7 +701,7 @@ function setValue(ptr, value, type, noSafe) {
       case 'i8': HEAP8[(ptr)]=value; break;
       case 'i16': HEAP16[((ptr)>>1)]=value; break;
       case 'i32': HEAP32[((ptr)>>2)]=value; break;
-      case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math_abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math_min((+(Math_floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math_ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((ptr)>>2)]=tempI64[0],HEAP32[(((ptr)+(4))>>2)]=tempI64[1]); break;
+      case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math_abs(tempDouble))) >= (+1) ? (tempDouble > (+0) ? ((Math_min((+(Math_floor((tempDouble)/(+4294967296)))), (+4294967295)))|0)>>>0 : (~~((+(Math_ceil((tempDouble - +(((~~(tempDouble)))>>>0))/(+4294967296))))))>>>0) : 0)],HEAP32[((ptr)>>2)]=tempI64[0],HEAP32[(((ptr)+(4))>>2)]=tempI64[1]); break;
       case 'float': HEAPF32[((ptr)>>2)]=value; break;
       case 'double': HEAPF64[((ptr)>>3)]=value; break;
       default: abort('invalid type for setValue: ' + type);
@@ -810,7 +806,6 @@ function allocate(slab, types, allocator, ptr) {
       i++;
       continue;
     }
-    assert(type, 'Must know what type to store in allocate!');
 
     if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
 
@@ -835,7 +830,6 @@ function Pointer_stringify(ptr, /* optional */ length) {
   var t;
   var i = 0;
   while (1) {
-    assert(ptr + i < TOTAL_MEMORY);
     t = HEAPU8[(((ptr)+(i))|0)];
     if (t >= 128) hasUtf = true;
     else if (t == 0 && !length) break;
@@ -860,7 +854,6 @@ function Pointer_stringify(ptr, /* optional */ length) {
 
   var utf8 = new Runtime.UTF8Processor();
   for (i = 0; i < length; i++) {
-    assert(ptr + i < TOTAL_MEMORY);
     t = HEAPU8[(((ptr)+(i))|0)];
     ret += utf8.processCChar(t);
   }
@@ -1214,9 +1207,6 @@ function preMain() {
 }
 
 function exitRuntime() {
-  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-    Module.printErr('Exiting runtime. Any attempt to access the compiled C code may fail from now. If you want to keep the runtime alive, set Module["noExitRuntime"] = true or build with -s NO_EXIT_RUNTIME=1');
-  }
   callRuntimeCallbacks(__ATEXIT__);
 }
 
@@ -1277,7 +1267,6 @@ function intArrayToString(array) {
   for (var i = 0; i < array.length; i++) {
     var chr = array[i];
     if (chr > 0xFF) {
-        assert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ')  at offset ' + i + ' not in 0x00-0xFF.');
       chr &= 0xFF;
     }
     ret.push(String.fromCharCode(chr));
@@ -1307,7 +1296,6 @@ Module['writeArrayToMemory'] = writeArrayToMemory;
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
   for (var i = 0; i < str.length; i++) {
-    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
     HEAP8[(((buffer)+(i))|0)]=str.charCodeAt(i);
   }
   if (!dontAddNull) HEAP8[(((buffer)+(str.length))|0)]=0;
@@ -1374,34 +1362,11 @@ var Math_min = Math.min;
 var runDependencies = 0;
 var runDependencyWatcher = null;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
-var runDependencyTracking = {};
 
 function addRunDependency(id) {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
-  }
-  if (id) {
-    assert(!runDependencyTracking[id]);
-    runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
-      // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(function() {
-        var shown = false;
-        for (var dep in runDependencyTracking) {
-          if (!shown) {
-            shown = true;
-            Module.printErr('still waiting on run dependencies:');
-          }
-          Module.printErr('dependency: ' + dep);
-        }
-        if (shown) {
-          Module.printErr('(end of list)');
-        }
-      }, 10000);
-    }
-  } else {
-    Module.printErr('warning: run dependency added without ID');
   }
 }
 Module['addRunDependency'] = addRunDependency;
@@ -1409,12 +1374,6 @@ function removeRunDependency(id) {
   runDependencies--;
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
-  }
-  if (id) {
-    assert(runDependencyTracking[id]);
-    delete runDependencyTracking[id];
-  } else {
-    Module.printErr('warning: run dependency removed without ID');
   }
   if (runDependencies == 0) {
     if (runDependencyWatcher !== null) {
@@ -1828,7 +1787,6 @@ function copyTempDouble(ptr) {
           var contents = node.contents;
           if (length && contents.length === 0 && position === 0 && buffer.subarray) {
             // just replace it with the new data
-            assert(buffer.length);
             if (canOwn && offset === 0) {
               node.contents = buffer; // this could be a subarray of Emscripten HEAP, or allocated from some other source.
               node.contentMode = (buffer.buffer === HEAP8.buffer) ? MEMFS.CONTENT_OWNING : MEMFS.CONTENT_FIXED;
@@ -3394,7 +3352,6 @@ function copyTempDouble(ptr) {
             }
           }
           this.message = ERRNO_MESSAGES[errno];
-          if (this.stack) this.stack = demangleAll(this.stack);
         };
         FS.ErrnoError.prototype = new Error();
         FS.ErrnoError.prototype.constructor = FS.ErrnoError;
@@ -4033,7 +3990,6 @@ function copyTempDouble(ptr) {
             b = bb.getBlob();
           }
           var url = Browser.URLObject.createObjectURL(b);
-          assert(typeof url == 'string', 'createObjectURL must return a url as a string');
           var img = new Image();
           img.onload = function img_onload() {
             assert(img.complete, 'Image ' + name + ' could not be decoded');
@@ -4079,7 +4035,6 @@ function copyTempDouble(ptr) {
               return fail();
             }
             var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
-            assert(typeof url == 'string', 'createObjectURL must return a url as a string');
             var audio = new Audio();
             audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
             audio.onerror = function audio_onerror(event) {
@@ -4363,9 +4318,6 @@ function copyTempDouble(ptr) {
           // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
           var scrollX = ((typeof window.scrollX !== 'undefined') ? window.scrollX : window.pageXOffset);
           var scrollY = ((typeof window.scrollY !== 'undefined') ? window.scrollY : window.pageYOffset);
-          // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
-          // and we have no viable fallback.
-          assert((typeof scrollX !== 'undefined') && (typeof scrollY !== 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
   
           if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
             var touch = event.touch;
@@ -4549,318 +4501,17 @@ function asmPrintFloat(x, y) {
   Module.print('float ' + x + ',' + y);// + ' ' + new Error().stack);
 }
 // EMSCRIPTEN_START_ASM
-var asm = (function(global, env, buffer) {
-  'almost asm';
-  var HEAP8 = new global.Int8Array(buffer);
-  var HEAP16 = new global.Int16Array(buffer);
-  var HEAP32 = new global.Int32Array(buffer);
-  var HEAPU8 = new global.Uint8Array(buffer);
-  var HEAPU16 = new global.Uint16Array(buffer);
-  var HEAPU32 = new global.Uint32Array(buffer);
-  var HEAPF32 = new global.Float32Array(buffer);
-  var HEAPF64 = new global.Float64Array(buffer);
-
-  var STACKTOP=env.STACKTOP|0;
-  var STACK_MAX=env.STACK_MAX|0;
-  var tempDoublePtr=env.tempDoublePtr|0;
-  var ABORT=env.ABORT|0;
-
-  var __THREW__ = 0;
-  var threwValue = 0;
-  var setjmpId = 0;
-  var undef = 0;
-  var nan = +env.NaN, inf = +env.Infinity;
-  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
-
-  var tempRet0 = 0;
-  var tempRet1 = 0;
-  var tempRet2 = 0;
-  var tempRet3 = 0;
-  var tempRet4 = 0;
-  var tempRet5 = 0;
-  var tempRet6 = 0;
-  var tempRet7 = 0;
-  var tempRet8 = 0;
-  var tempRet9 = 0;
-  var Math_floor=global.Math.floor;
-  var Math_abs=global.Math.abs;
-  var Math_sqrt=global.Math.sqrt;
-  var Math_pow=global.Math.pow;
-  var Math_cos=global.Math.cos;
-  var Math_sin=global.Math.sin;
-  var Math_tan=global.Math.tan;
-  var Math_acos=global.Math.acos;
-  var Math_asin=global.Math.asin;
-  var Math_atan=global.Math.atan;
-  var Math_atan2=global.Math.atan2;
-  var Math_exp=global.Math.exp;
-  var Math_log=global.Math.log;
-  var Math_ceil=global.Math.ceil;
-  var Math_imul=global.Math.imul;
-  var abort=env.abort;
-  var assert=env.assert;
-  var asmPrintInt=env.asmPrintInt;
-  var asmPrintFloat=env.asmPrintFloat;
-  var Math_min=env.min;
-  var _malloc=env._malloc;
-  var _fflush=env._fflush;
-  var _free=env._free;
-  var _emscripten_memcpy_big=env._emscripten_memcpy_big;
-  var ___setErrNo=env.___setErrNo;
-  var tempFloat = 0.0;
-
+var asm=(function(global,env,buffer){"use asm";var a=new global.Int8Array(buffer);var b=new global.Int16Array(buffer);var c=new global.Int32Array(buffer);var d=new global.Uint8Array(buffer);var e=new global.Uint16Array(buffer);var f=new global.Uint32Array(buffer);var g=new global.Float32Array(buffer);var h=new global.Float64Array(buffer);var i=env.STACKTOP|0;var j=env.STACK_MAX|0;var k=env.tempDoublePtr|0;var l=env.ABORT|0;var m=0;var n=0;var o=0;var p=0;var q=+env.NaN,r=+env.Infinity;var s=0,t=0,u=0,v=0,w=0.0,x=0,y=0,z=0,A=0.0;var B=0;var C=0;var D=0;var E=0;var F=0;var G=0;var H=0;var I=0;var J=0;var K=0;var L=global.Math.floor;var M=global.Math.abs;var N=global.Math.sqrt;var O=global.Math.pow;var P=global.Math.cos;var Q=global.Math.sin;var R=global.Math.tan;var S=global.Math.acos;var T=global.Math.asin;var U=global.Math.atan;var V=global.Math.atan2;var W=global.Math.exp;var X=global.Math.log;var Y=global.Math.ceil;var Z=global.Math.imul;var _=env.abort;var $=env.assert;var aa=env.asmPrintInt;var ba=env.asmPrintFloat;var ca=env.min;var da=env._malloc;var ea=env._fflush;var fa=env._free;var ga=env._emscripten_memcpy_big;var ha=env.___setErrNo;var ia=0.0;
 // EMSCRIPTEN_START_FUNCS
-function stackAlloc(size) {
-  size = size|0;
-  var ret = 0;
-  ret = STACKTOP;
-  STACKTOP = (STACKTOP + size)|0;
-STACKTOP = (STACKTOP + 7)&-8;
-  return ret|0;
-}
-function stackSave() {
-  return STACKTOP|0;
-}
-function stackRestore(top) {
-  top = top|0;
-  STACKTOP = top;
-}
-function setThrew(threw, value) {
-  threw = threw|0;
-  value = value|0;
-  if ((__THREW__|0) == 0) {
-    __THREW__ = threw;
-    threwValue = value;
-  }
-}
-function copyTempFloat(ptr) {
-  ptr = ptr|0;
-  HEAP8[tempDoublePtr] = HEAP8[ptr];
-  HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
-  HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
-  HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
-}
-function copyTempDouble(ptr) {
-  ptr = ptr|0;
-  HEAP8[tempDoublePtr] = HEAP8[ptr];
-  HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
-  HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
-  HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
-  HEAP8[tempDoublePtr+4|0] = HEAP8[ptr+4|0];
-  HEAP8[tempDoublePtr+5|0] = HEAP8[ptr+5|0];
-  HEAP8[tempDoublePtr+6|0] = HEAP8[ptr+6|0];
-  HEAP8[tempDoublePtr+7|0] = HEAP8[ptr+7|0];
-}
+function ja(a){a=a|0;var b=0;b=i;i=i+a|0;i=i+7&-8;return b|0}function ka(){return i|0}function la(a){a=a|0;i=a}function ma(a,b){a=a|0;b=b|0;if((m|0)==0){m=a;n=b}}function na(b){b=b|0;a[k]=a[b];a[k+1|0]=a[b+1|0];a[k+2|0]=a[b+2|0];a[k+3|0]=a[b+3|0]}function oa(b){b=b|0;a[k]=a[b];a[k+1|0]=a[b+1|0];a[k+2|0]=a[b+2|0];a[k+3|0]=a[b+3|0];a[k+4|0]=a[b+4|0];a[k+5|0]=a[b+5|0];a[k+6|0]=a[b+6|0];a[k+7|0]=a[b+7|0]}function pa(a){a=a|0;B=a}function qa(a){a=a|0;C=a}function ra(a){a=a|0;D=a}function sa(a){a=a|0;E=a}function ta(a){a=a|0;F=a}function ua(a){a=a|0;G=a}function va(a){a=a|0;H=a}function wa(a){a=a|0;I=a}function xa(a){a=a|0;J=a}function ya(a){a=a|0;K=a}function za(a,b){a=a|0;b=b|0;return b+a|0}function Aa(b,c,d){b=b|0;c=c|0;d=d|0;var e=0,f=0,g=0,h=0,j=0,k=0,l=0,m=0,n=0,o=0;e=i;f=a[b]|0;if(f<<24>>24==0){g=0}else{h=f;f=0;while(1){a[d+f|0]=h;j=f+1|0;k=a[b+j|0]|0;if(k<<24>>24==0){g=j;break}else{h=k;f=j}}}f=a[c]|0;h=d+g|0;if(f<<24>>24==0){l=h;a[l]=0;i=e;return}else{m=f;n=h;o=0}while(1){a[n]=m;h=o+1|0;f=a[c+h|0]|0;b=d+(h+g)|0;if(f<<24>>24==0){l=b;break}else{m=f;n=b;o=h}}a[l]=0;i=e;return}function Ba(){}function Ca(b,d,e){b=b|0;d=d|0;e=e|0;var f=0,g=0,h=0,i=0;f=b+e|0;if((e|0)>=20){d=d&255;g=b&3;h=d|d<<8|d<<16|d<<24;i=f&~3;if(g){g=b+4-g|0;while((b|0)<(g|0)){a[b]=d;b=b+1|0}}while((b|0)<(i|0)){c[b>>2]=h;b=b+4|0}}while((b|0)<(f|0)){a[b]=d;b=b+1|0}return b-e|0}function Da(b){b=b|0;var c=0;c=b;while(a[c]|0){c=c+1|0}return c-b|0}function Ea(b,d,e){b=b|0;d=d|0;e=e|0;var f=0;if((e|0)>=4096)return ga(b|0,d|0,e|0)|0;f=b|0;if((b&3)==(d&3)){while(b&3){if((e|0)==0)return f|0;a[b]=a[d]|0;b=b+1|0;d=d+1|0;e=e-1|0}while((e|0)>=4){c[b>>2]=c[d>>2];b=b+4|0;d=d+4|0;e=e-4|0}}while((e|0)>0){a[b]=a[d]|0;b=b+1|0;d=d+1|0;e=e-1|0}return f|0}
 
-function setTempRet0(value) {
-  value = value|0;
-  tempRet0 = value;
-}
 
-function setTempRet1(value) {
-  value = value|0;
-  tempRet1 = value;
-}
 
-function setTempRet2(value) {
-  value = value|0;
-  tempRet2 = value;
-}
-
-function setTempRet3(value) {
-  value = value|0;
-  tempRet3 = value;
-}
-
-function setTempRet4(value) {
-  value = value|0;
-  tempRet4 = value;
-}
-
-function setTempRet5(value) {
-  value = value|0;
-  tempRet5 = value;
-}
-
-function setTempRet6(value) {
-  value = value|0;
-  tempRet6 = value;
-}
-
-function setTempRet7(value) {
-  value = value|0;
-  tempRet7 = value;
-}
-
-function setTempRet8(value) {
-  value = value|0;
-  tempRet8 = value;
-}
-
-function setTempRet9(value) {
-  value = value|0;
-  tempRet9 = value;
-}
-
-function _add($x,$y) {
- $x = $x|0;
- $y = $y|0;
- var $0 = 0, $1 = 0, $2 = 0, $3 = 0, $4 = 0, label = 0, sp = 0;
- sp = STACKTOP;
- STACKTOP = STACKTOP + 16|0;
- $0 = $x;
- $1 = $y;
- $2 = $0;
- $3 = $1;
- $4 = (($2) + ($3))|0;
- STACKTOP = sp;return ($4|0);
-}
-function _concat($str1,$str2,$result) {
- $str1 = $str1|0;
- $str2 = $str2|0;
- $result = $result|0;
- var $0 = 0, $1 = 0, $10 = 0, $11 = 0, $12 = 0, $13 = 0, $14 = 0, $15 = 0, $16 = 0, $17 = 0, $18 = 0, $19 = 0, $2 = 0, $20 = 0, $21 = 0, $22 = 0, $23 = 0, $24 = 0, $25 = 0, $26 = 0;
- var $27 = 0, $28 = 0, $29 = 0, $3 = 0, $30 = 0, $31 = 0, $32 = 0, $33 = 0, $34 = 0, $35 = 0, $36 = 0, $37 = 0, $38 = 0, $39 = 0, $4 = 0, $5 = 0, $6 = 0, $7 = 0, $8 = 0, $9 = 0;
- var $i = 0, $j = 0, label = 0, sp = 0;
- sp = STACKTOP;
- STACKTOP = STACKTOP + 32|0;
- $0 = $str1;
- $1 = $str2;
- $2 = $result;
- $i = 0;
- $j = 0;
- while(1) {
-  $3 = $i;
-  $4 = $0;
-  $5 = (($4) + ($3)|0);
-  $6 = HEAP8[$5]|0;
-  $7 = $6 << 24 >> 24;
-  $8 = ($7|0)!=(0);
-  if (!($8)) {
-   break;
-  }
-  $9 = $i;
-  $10 = $0;
-  $11 = (($10) + ($9)|0);
-  $12 = HEAP8[$11]|0;
-  $13 = $i;
-  $14 = $2;
-  $15 = (($14) + ($13)|0);
-  HEAP8[$15] = $12;
-  $16 = $i;
-  $17 = (($16) + 1)|0;
-  $i = $17;
- }
- while(1) {
-  $18 = $j;
-  $19 = $1;
-  $20 = (($19) + ($18)|0);
-  $21 = HEAP8[$20]|0;
-  $22 = $21 << 24 >> 24;
-  $23 = ($22|0)!=(0);
-  if (!($23)) {
-   break;
-  }
-  $24 = $j;
-  $25 = $1;
-  $26 = (($25) + ($24)|0);
-  $27 = HEAP8[$26]|0;
-  $28 = $i;
-  $29 = $j;
-  $30 = (($28) + ($29))|0;
-  $31 = $2;
-  $32 = (($31) + ($30)|0);
-  HEAP8[$32] = $27;
-  $33 = $j;
-  $34 = (($33) + 1)|0;
-  $j = $34;
- }
- $35 = $i;
- $36 = $j;
- $37 = (($35) + ($36))|0;
- $38 = $2;
- $39 = (($38) + ($37)|0);
- HEAP8[$39] = 0;
- STACKTOP = sp;return;
-}
-function runPostSets() {
- 
-}
-function _memset(ptr, value, num) {
-    ptr = ptr|0; value = value|0; num = num|0;
-    var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
-    stop = (ptr + num)|0;
-    if ((num|0) >= 20) {
-      // This is unaligned, but quite large, so work hard to get to aligned settings
-      value = value & 0xff;
-      unaligned = ptr & 3;
-      value4 = value | (value << 8) | (value << 16) | (value << 24);
-      stop4 = stop & ~3;
-      if (unaligned) {
-        unaligned = (ptr + 4 - unaligned)|0;
-        while ((ptr|0) < (unaligned|0)) { // no need to check for stop, since we have large num
-          HEAP8[(ptr)]=value;
-          ptr = (ptr+1)|0;
-        }
-      }
-      while ((ptr|0) < (stop4|0)) {
-        HEAP32[((ptr)>>2)]=value4;
-        ptr = (ptr+4)|0;
-      }
-    }
-    while ((ptr|0) < (stop|0)) {
-      HEAP8[(ptr)]=value;
-      ptr = (ptr+1)|0;
-    }
-    return (ptr-num)|0;
-}
-function _strlen(ptr) {
-    ptr = ptr|0;
-    var curr = 0;
-    curr = ptr;
-    while (((HEAP8[(curr)])|0)) {
-      curr = (curr + 1)|0;
-    }
-    return (curr - ptr)|0;
-}
-function _memcpy(dest, src, num) {
-    dest = dest|0; src = src|0; num = num|0;
-    var ret = 0;
-    if ((num|0) >= 4096) return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
-    ret = dest|0;
-    if ((dest&3) == (src&3)) {
-      while (dest & 3) {
-        if ((num|0) == 0) return ret|0;
-        HEAP8[(dest)]=((HEAP8[(src)])|0);
-        dest = (dest+1)|0;
-        src = (src+1)|0;
-        num = (num-1)|0;
-      }
-      while ((num|0) >= 4) {
-        HEAP32[((dest)>>2)]=((HEAP32[((src)>>2)])|0);
-        dest = (dest+4)|0;
-        src = (src+4)|0;
-        num = (num-4)|0;
-      }
-    }
-    while ((num|0) > 0) {
-      HEAP8[(dest)]=((HEAP8[(src)])|0);
-      dest = (dest+1)|0;
-      src = (src+1)|0;
-      num = (num-1)|0;
-    }
-    return ret|0;
-}
 
 // EMSCRIPTEN_END_FUNCS
+return{_add:za,_concat:Aa,_strlen:Da,_memcpy:Ea,_memset:Ca,runPostSets:Ba,stackAlloc:ja,stackSave:ka,stackRestore:la,setThrew:ma,setTempRet0:pa,setTempRet1:qa,setTempRet2:ra,setTempRet3:sa,setTempRet4:ta,setTempRet5:ua,setTempRet6:va,setTempRet7:wa,setTempRet8:xa,setTempRet9:ya}})
 
-  
 
-  // EMSCRIPTEN_END_FUNCS
-  
-
-  return { _add: _add, _concat: _concat, _strlen: _strlen, _memcpy: _memcpy, _memset: _memset, runPostSets: runPostSets, stackAlloc: stackAlloc, stackSave: stackSave, stackRestore: stackRestore, setThrew: setThrew, setTempRet0: setTempRet0, setTempRet1: setTempRet1, setTempRet2: setTempRet2, setTempRet3: setTempRet3, setTempRet4: setTempRet4, setTempRet5: setTempRet5, setTempRet6: setTempRet6, setTempRet7: setTempRet7, setTempRet8: setTempRet8, setTempRet9: setTempRet9 };
-})
 // EMSCRIPTEN_END_ASM
 ({ "Math": Math, "Int8Array": Int8Array, "Int16Array": Int16Array, "Int32Array": Int32Array, "Uint8Array": Uint8Array, "Uint16Array": Uint16Array, "Uint32Array": Uint32Array, "Float32Array": Float32Array, "Float64Array": Float64Array }, { "abort": abort, "assert": assert, "asmPrintInt": asmPrintInt, "asmPrintFloat": asmPrintFloat, "min": Math_min, "_malloc": _malloc, "_fflush": _fflush, "_free": _free, "_emscripten_memcpy_big": _emscripten_memcpy_big, "___setErrNo": ___setErrNo, "STACKTOP": STACKTOP, "STACK_MAX": STACK_MAX, "tempDoublePtr": tempDoublePtr, "ABORT": ABORT, "NaN": NaN, "Infinity": Infinity }, buffer);
 var _add = Module["_add"] = asm["_add"];
@@ -5047,7 +4698,7 @@ function abort(text) {
   ABORT = true;
   EXITSTATUS = 1;
 
-  var extra = '';
+  var extra = '\nIf this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.';
 
   throw 'abort() at ' + stackTrace() + extra;
 }
@@ -5079,6 +4730,8 @@ run();
 
 
 // {{MODULE_ADDITIONS}}
+
+
 
 
 
@@ -5149,4 +4802,4 @@ var res = Pointer_stringify(strPtr);
 assert(res == "AB", 'concat returns correct result');
 console.log('Time to execute "concat" 10,000 times: ' + diff + 'ms');
 
-//# sourceMappingURL=benchmark.js.map
+
