@@ -1144,14 +1144,20 @@ class Building:
     unresolved_symbols = set([func[1:] for func in Settings.EXPORTED_FUNCTIONS])
     resolved_symbols = set()
     temp_dirs = []
-    files = map(os.path.abspath, files)
+    def make_paths_absolute(f):
+      if f.startswith('-'): # skip flags
+        return f
+      else:
+        return os.path.abspath(f)
+    files = map(make_paths_absolute, files)
     # Paths of already included object files from archives.
     added_contents = set()
     # Map of archive name to list of extracted object file paths.
     ar_contents = {}
     has_ar = False
     for f in files:
-      has_ar = has_ar or Building.is_ar(f)
+      if not f.startswith('-'):
+        has_ar = has_ar or Building.is_ar(f)
 
     # If we have only one archive or the force_archive_contents flag is set,
     # then we will add every object file we see, regardless of whether it
@@ -1229,8 +1235,26 @@ class Building:
       #print >> sys.stderr, '  done running loop of archive including for', f
       return added_any_objects
 
+    current_archive_group = None
     for f in files:
-      if not Building.is_ar(f):
+      if f.startswith('-'):
+        if f in ['--start-group', '-(']:
+          assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
+          current_archive_group = []
+        elif f in ['--end-group', '-)']:
+          assert current_archive_group is not None, '--end-group without --start-group'
+          # rescan the archives in the group until we don't find any more
+          # objects to link.
+          loop_again = True
+          while loop_again:
+            loop_again = False
+            for archive in current_archive_group:
+              if consider_archive(archive):
+                loop_again = True
+          current_archive_group = None
+        else:
+          logging.debug('Ignoring unsupported link flag: %s' % f)
+      elif not Building.is_ar(f):
         if Building.is_bitcode(f):
           if has_ar:
             consider_object(f, force_add=True)
@@ -1242,6 +1266,9 @@ class Building:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         consider_archive(f)
+        if current_archive_group is not None:
+          current_archive_group.append(f)
+    assert current_archive_group is None, '--start-group without matching --end-group'
 
     try_delete(target)
 
