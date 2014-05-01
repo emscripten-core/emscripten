@@ -129,7 +129,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 
 #if SAFE_HEAP_LOG
     Module.print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
-#endif
+#endif  
 
 #if USE_TYPED_ARRAYS == 2
   // Check alignment
@@ -360,8 +360,10 @@ var ccallFunc = (function () {
     stack = 0;
     var cArgs = [];
     assert(returnType != 'array');
-    for (var i = 0; i < args.length; i++) {
-      cArgs[i] = toC(args[i], argTypes[i]);
+    if (args !== undefined) {
+      for (var i = 0; i < args.length; i++) {
+        cArgs[i] = toC(args[i], argTypes[i]);
+      }
     }
     var ret = fromC(func.apply(null, cArgs), returnType);
     if (stack) Runtime.stackRestore(stack);
@@ -377,6 +379,7 @@ var ccallFunc = (function () {
 //   alert(my_function(5, 22));
 //   alert(my_function(99, 12));
 //
+
 function cwrap (ident, returnType, argTypes) {
 
   var cfunc = getCFunc(ident);
@@ -394,11 +397,14 @@ function cwrap (ident, returnType, argTypes) {
     // No type conversion needed for return values, nor for arguments
     return cfunc;
   }
-  var funcstr = "(function " + ident + " ("+joinedArgs+"){";
+
+  var args = [];
   // function body
+  var funcstr = "";
   // convert all arguments to c
   for (var i=0; i<nargs; i++) {
     var argName = '$' + i, type = argTypes[i];
+    args.push(argName);
     if (type === 'string' || type === 'array') {
       if (!hasStack) {
         funcstr += 'var stack = 0;';
@@ -407,8 +413,8 @@ function cwrap (ident, returnType, argTypes) {
       funcstr += 'if ('+argName+' === null || '+argName+' === undefined || '+argName+' === 0)';
       funcstr += argName + '=0;';
       funcstr += 'else {'
-      funcstr += 'if (stack === 0) stack = Runtime.stackSave();';
-      funcstr += 'var ret = Runtime.stackAlloc(' + argName + '.length);';
+      funcstr += 'if (stack === 0) stack = stackSave();';
+      funcstr += 'var ret = stackAlloc(' + argName + '.length);';
       var ucfirstType = (type === 'string') ? 'String' : 'Array';
       funcstr += 'write' + ucfirstType + 'ToMemory(' + argName + ', ret);';
       funcstr += argName + '=ret;';
@@ -424,10 +430,20 @@ function cwrap (ident, returnType, argTypes) {
     funcstr += 'ret = Pointer_stringify(ret);';
   }
   if (hasStack) {
-    funcstr += 'if (stack !== 0) Runtime.stackRestore(stack);';
+    funcstr += 'if (stack !== 0) stackRestore(stack);';
   }
-  funcstr += 'return ret;})';
-  return eval(funcstr);
+  funcstr += 'return ret;';
+
+  var stackAlloc = Runtime.stackAlloc.bind(Runtime);
+  var stackSave = Runtime.stackSave.bind(Runtime);
+  var stackRestore = Runtime.stackRestore.bind(Runtime);
+
+  // Arguments to pass to the generated function
+  var args = ['stackSave', 'stackAlloc', 'stackRestore', 'writeArrayToMemory',
+  'writeStringToMemory', 'Pointer_stringify', 'cfunc'].concat([args, funcstr]);
+  var retfunc = Function.apply(null, args);
+  return retfunc.bind(null,stackSave, stackAlloc, stackRestore, writeArrayToMemory,
+  writeStringToMemory, Pointer_stringify, cfunc);
 }
 
 Module["cwrap"] = cwrap;

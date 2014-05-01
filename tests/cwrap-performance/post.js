@@ -1,7 +1,7 @@
 if (typeof process !== "undefined") {
-	performance = {
+	var performance = {
 		now : function() {
-			var t = process.hrtime();
+			var t = process['hrtime']();
 			return t[0]*1e3 + t[1]/1e6; // result in ms
 		}
 	}
@@ -9,13 +9,13 @@ if (typeof process !== "undefined") {
 
 // wrap add
 var t = performance.now();
-var c_add = Module.cwrap('add', 'number', ['number', 'number']);
+var c_add = Module['cwrap']('add', 'number', ['number', 'number']);
 var diff = performance.now() - t;
 console.log('Time to wrap "add": ' + diff + 'ms');
 
 // wrap concat
 var t = performance.now();
-var c_concat = Module.cwrap('concat', 'number', ['string', 'string', 'number']);
+var c_concat = Module['cwrap']('concat', 'number', ['string', 'string', 'number']);
 var diff = performance.now() - t;
 console.log('Time to wrap "concat": ' + diff + 'ms');
 
@@ -24,7 +24,7 @@ console.log('\n');
 // execute add
 t = performance.now();
 for (var i=0; i<1e5; i++) {
-	var res = Module.ccall('add', 'number', ['number', 'number'], [1,3]);
+	var res = Module['ccall']('add', 'number', ['number', 'number'], [1,3]);
 }
 diff = performance.now() - t;
 assert(res == 4, 'add returns correct result. Expecting 4, got '+res);
@@ -34,7 +34,7 @@ console.log('Time to execute ccall on "add" 10,000 times: ' + diff + 'ms');
 var strPtr = Runtime.stackAlloc(20);
 t = performance.now();
 for (var i=0; i<1e5; i++) {
-	Module.ccall('concat', 'number', ['string', 'string', 'number'], ["A", 'B', strPtr]);
+	Module['ccall']('concat', 'number', ['string', 'string', 'number'], ["A", 'B', strPtr]);
 }
 diff = performance.now() - t;
 var res = Pointer_stringify(strPtr);
