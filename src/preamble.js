@@ -342,7 +342,7 @@ var ccallFunc = (function () {
     if (type === 'string' || type === 'array') {
       if (value === null || value === undefined || value === 0) return 0; // null string
       if (!stack) stack = Runtime.stackSave();
-      var ret = Runtime.stackAlloc(value.length);
+      var ret = Runtime.stackAlloc(value.length + 1);
       var writeToMemory = (type === 'string') ? writeStringToMemory : writeArrayToMemory;
       writeToMemory (value, ret);
       return ret;
@@ -350,7 +350,7 @@ var ccallFunc = (function () {
     return value;
   }
   function fromC(value, type) {
-    if (type == 'string') {
+    if (type === 'string') {
       return Pointer_stringify(value);
     }
     return value;
@@ -414,7 +414,7 @@ function cwrap (ident, returnType, argTypes) {
       funcstr += argName + '=0;';
       funcstr += 'else {'
       funcstr += 'if (stack === 0) stack = stackSave();';
-      funcstr += 'var ret = stackAlloc(' + argName + '.length);';
+      funcstr += 'var ret = stackAlloc(' + argName + '.length + 1);';
       var ucfirstType = (type === 'string') ? 'String' : 'Array';
       funcstr += 'write' + ucfirstType + 'ToMemory(' + argName + ', ret);';
       funcstr += argName + '=ret;';
