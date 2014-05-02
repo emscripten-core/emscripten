@@ -61,7 +61,8 @@ namespace emscripten {
                 EM_VAR_ARGS argv);
             bool _emval_has_function(
                 EM_VAL value,
-                const char* methodName);
+                const char* methodName,
+                internal::TYPEID filter);
             EM_VAL _emval_typeof(EM_VAL value);
         }
 
@@ -392,8 +393,10 @@ namespace emscripten {
             return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
         }
 
-        bool has_function(const char* name) const {
-            return _emval_has_function(handle, name);
+        template<typename ClassType>
+        bool has_implementation_defined_function(const char* name) const {
+            using namespace internal;
+            return _emval_has_function(handle, name, TypeID<ClassType>::get());
         }
 
         template<typename T>

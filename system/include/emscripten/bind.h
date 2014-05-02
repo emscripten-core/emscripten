@@ -899,7 +899,7 @@ namespace emscripten {
 
         template<typename ReturnType, typename... Args, typename Default>
         ReturnType optional_call(const char* name, Default def, Args&&... args) const {
-            if (wrapped.has_function(name)) {
+            if (wrapped.has_implementation_defined_function<T>(name)) {
                 return call<ReturnType>(name, std::forward<Args>(args)...);
             } else {
                 return def();

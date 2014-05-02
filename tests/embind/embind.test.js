@@ -1693,8 +1693,6 @@ module({
             assert.equal("concrete", result);
         });
 
-/* ENABLE THESE AS THEY PASS
-
         test("optional methods are externally visible", function() {
             var instance = new Empty;
             var result = instance.optionalMethod("_123");
@@ -1702,16 +1700,17 @@ module({
             assert.equal("optional_123", result);
         });
 
-        test("optional methods", function() {
+        test("optional methods: not defined", function() {
             var instance = new Empty;
             var result = cm.callOptionalMethod(instance, "_123");
             instance.delete();
             assert.equal("optional_123", result);
         });
 
+/* ENABLE THESE AS THEY PASS
         test("can call parent implementation from within derived implementation", function() {
             var parent = cm.AbstractClass;
-            var ExtendsOptionalMethod = parent.extend({
+            var ExtendsOptionalMethod = parent.extend("ExtendsOptionalMethod", {
                 optionalMethod: function(s) {
                     return "optionaljs_" + parent.prototype.optionalMethod.call(this, s);
                 },

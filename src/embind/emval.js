@@ -281,10 +281,13 @@ function __emval_call_method(caller, handle, methodName, destructorsRef, args) {
     return caller(handle, methodName, allocateDestructors(destructorsRef), args);
 }
 
-function __emval_has_function(handle, name) {
+function __emval_has_function(handle, name, classType) {
     handle = requireHandle(handle);
     name = getStringOrSymbol(name);
-    return handle[name] instanceof Function;
+    classType = requireRegisteredType(classType, 'class wrapper filter');
+
+    var filter = classType.registeredClass.instancePrototype[name];
+    return (handle[name] instanceof Function) && (filter === undefined || handle[name] !== filter);
 }
 
 function __emval_typeof(handle) {
