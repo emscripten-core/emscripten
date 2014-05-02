@@ -1640,6 +1640,75 @@ module({
         });
     });
 
+    /* ENABLE THESE AS THEY PASS
+    BaseFixture.extend("new-style class inheritance", function() {
+        var Empty = cm.AbstractClass.extend({});
+
+        test("can extend, construct, and delete", function() {
+            var instance = new Empty;
+            instance.delete();
+        });
+
+        test("properties set in constructor are externally visible", function() {
+            var HasProperty = cm.AbstractClass.extend({
+                initialize: function(x) {
+                    this.property = x;
+                }
+            });
+            var instance = new HasProperty(10);
+            assert.equal(10, instance.set_property);
+            instance.delete();
+        });
+        
+        test("pass derived object to c++", function() {
+            var Implementation = cm.AbstractClass.extend({
+                abstractMethod: function() {
+                    return "abc";
+                },
+            });
+            var instance = new Implementation;
+            var result = cm.callAbstractMethod(instance);
+            instance.delete();
+            assert.equal("abc", result);
+        });
+
+        test("properties set in constructor are visible in overridden methods", function() {
+            var HasProperty = cm.AbstractClass.extend({
+                initialize: function(x) {
+                    this.x = x;
+                },
+                abstractMethod: function() {
+                    return this.x;
+                },
+            });
+            var instance = new HasProperty("xyz");
+            var result = cm.callAbstractMethod(instance);
+            instance.delete();
+            assert.equal("xyz", result);
+        });
+
+        test("interface methods are externally visible", function() {
+            var instance = new Empty;
+            var result = cm.callOptionalMethod(instance, "_123");
+            instance.delete();
+            assert.equal("optional_123", result);
+        });
+
+        test("can call parent implementation from within derived implementation", function() {
+            var parent = cm.AbstractClass;
+            var ExtendsOptionalMethod = parent.extend({
+                optionalMethod: function(s) {
+                    return "optionaljs_" + parent.prototype.optionalMethod.call(this, s);
+                },
+            });
+            var instance = new ExtendsOptionalMethod;
+            var result = cm.callOptionalMethod(instance, "_123");
+            instance.delete();
+            assert.equal("optionaljs_optional_123", result);
+        });
+    });
+    */
+
     BaseFixture.extend("registration order", function() {
         test("registration of tuple elements out of order leaves them in order", function() {
             var ot = cm.getOrderedTuple();
