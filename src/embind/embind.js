@@ -1735,9 +1735,12 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType) {
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
     var registeredClass = wrapperType.registeredClass;
     var wrapperPrototype = registeredClass.instancePrototype;
+    var baseConstructor = registeredClass.baseClass.constructor;
     var ctor = createNamedFunction(constructorName, function() {
-        return new registeredClass.baseClass.constructor.implement(this);
+        var inner = baseConstructor.implement(this);
+        this.$$ = inner.$$;
     });
+    ctor.prototype = Object.create(wrapperPrototype);
     return __emval_register(ctor);
 }
 

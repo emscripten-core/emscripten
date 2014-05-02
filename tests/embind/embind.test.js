@@ -1707,6 +1707,7 @@ module({
             instance.delete();
             assert.equal("optionaljs_optional_123", result);
         });
+*/
 
         test("instanceof", function() {
             var instance = new Empty;
@@ -1714,7 +1715,6 @@ module({
             assert.instanceof(instance, cm.AbstractClass);
             instance.delete();
         });
-*/
     });
 
     BaseFixture.extend("registration order", function() {
