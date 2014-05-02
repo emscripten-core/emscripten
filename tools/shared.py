@@ -1650,12 +1650,17 @@ class JS:
       return '+0'
 
   @staticmethod
-  def make_coercion(value, sig, settings=None):
+  def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False):
     settings = settings or Settings
     if sig == 'i':
       return value + '|0'
     elif sig == 'f' and settings.get('PRECISE_F32'):
-      return 'Math_fround(' + value + ')'
+      if ffi_arg:
+        return '+Math_fround(' + value + ')'
+      elif ffi_result:
+        return 'Math_fround(+(' + value + '))'
+      else:
+        return 'Math_fround(' + value + ')'
     elif sig == 'd' or sig == 'f':
       return '+' + value
     else:

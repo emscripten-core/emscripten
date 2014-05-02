@@ -1076,8 +1076,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
 
+      ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
       for i in range(settings['RESERVED_FUNCTION_POINTERS']):
-        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall(%d%s%s)' % (i, ',' if coerced_args else '', coerced_args), sig[0], settings)
+        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall(%d%s%s)' % (i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
         function_tables_impls.append('''
   function jsCall_%s_%s(%s) {
     %s
