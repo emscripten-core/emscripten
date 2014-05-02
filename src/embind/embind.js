@@ -1614,53 +1614,6 @@ function __embind_register_class_function(
     });
 }
 
-function __embind_register_class_class_function(
-    rawClassType,
-    methodName,
-    argCount,
-    rawArgTypesAddr,
-    invokerSignature,
-    rawInvoker,
-    fn
-) {
-    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    methodName = readLatin1String(methodName);
-    rawInvoker = requireFunction(invokerSignature, rawInvoker);
-    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
-        classType = classType[0];
-        var humanName = classType.name + '.' + methodName;
-
-        var unboundTypesHandler = function() {
-                throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
-            };
-
-        var proto = classType.registeredClass.constructor;
-        if (undefined === proto[methodName]) {
-            // This is the first function to be registered with this name.
-            unboundTypesHandler.argCount = argCount-1;
-            proto[methodName] = unboundTypesHandler;
-        } else {
-            // There was an existing function with the same name registered. Set up a function overload routing table.
-            ensureOverloadTable(proto, methodName, humanName);
-            proto[methodName].overloadTable[argCount-1] = unboundTypesHandler;
-        }
-
-        whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-            // Replace the initial unbound-types-handler stub with the proper function. If multiple overloads are registered,
-            // the function handlers go into an overload table.
-            var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
-            var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn);
-            if (undefined === proto[methodName].overloadTable) {
-                proto[methodName] = func;
-            } else {
-                proto[methodName].overloadTable[argCount-1] = func;
-            }
-            return [];
-        });
-        return [];
-    });
-}
-
 function __embind_register_class_property(
     classType,
     fieldName,
@@ -1728,6 +1681,64 @@ function __embind_register_class_property(
 
         return [];
     });
+}
+
+function __embind_register_class_class_function(
+    rawClassType,
+    methodName,
+    argCount,
+    rawArgTypesAddr,
+    invokerSignature,
+    rawInvoker,
+    fn
+) {
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+    methodName = readLatin1String(methodName);
+    rawInvoker = requireFunction(invokerSignature, rawInvoker);
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+        classType = classType[0];
+        var humanName = classType.name + '.' + methodName;
+
+        var unboundTypesHandler = function() {
+                throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+            };
+
+        var proto = classType.registeredClass.constructor;
+        if (undefined === proto[methodName]) {
+            // This is the first function to be registered with this name.
+            unboundTypesHandler.argCount = argCount-1;
+            proto[methodName] = unboundTypesHandler;
+        } else {
+            // There was an existing function with the same name registered. Set up a function overload routing table.
+            ensureOverloadTable(proto, methodName, humanName);
+            proto[methodName].overloadTable[argCount-1] = unboundTypesHandler;
+        }
+
+        whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+            // Replace the initial unbound-types-handler stub with the proper function. If multiple overloads are registered,
+            // the function handlers go into an overload table.
+            var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
+            var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn);
+            if (undefined === proto[methodName].overloadTable) {
+                proto[methodName] = func;
+            } else {
+                proto[methodName].overloadTable[argCount-1] = func;
+            }
+            return [];
+        });
+        return [];
+    });
+}
+
+function __embind_create_inheriting_constructor(constructorName, wrapperType) {
+    constructorName = readLatin1String(constructorName);
+    wrapperType = requireRegisteredType(wrapperType, 'wrapper');
+    var registeredClass = wrapperType.registeredClass;
+    var wrapperPrototype = registeredClass.instancePrototype;
+    var ctor = createNamedFunction(constructorName, function() {
+        return new registeredClass.baseClass.constructor.implement(this);
+    });
+    return __emval_register(ctor);
 }
 
 var char_0 = '0'.charCodeAt(0);

@@ -172,6 +172,10 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction method);
 
+            EM_VAL _embind_create_inheriting_constructor(
+                const char* constructorName,
+                TYPEID wrapperType);
+
             void _embind_register_enum(
                 TYPEID enumType,
                 const char* name,
@@ -988,9 +992,11 @@ namespace emscripten {
             }
         };
 
-        template<typename PointerType, typename WrapperType>
-        val wrapped_extend(const val& properties) {
-            return val::undefined();
+        template<typename WrapperType>
+        val wrapped_extend(const std::string& name, const val& properties) {
+            return val::take_ownership(_embind_create_inheriting_constructor(
+                name.c_str(),
+                TypeID<WrapperType>::get()));
         }
     };
 
@@ -1115,7 +1121,7 @@ namespace emscripten {
                     allow_raw_pointer<ret_val>())
                 .class_function(
                     "extend",
-                    &wrapped_extend<PointerType, WrapperType>)
+                    &wrapped_extend<WrapperType>)
                 ;
         }
 

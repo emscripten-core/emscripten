@@ -1641,16 +1641,17 @@ module({
     });
 
     BaseFixture.extend("new-style class inheritance", function() {
-        var Empty = cm.AbstractClass.extend({});
-        // ENABLE THESE AS THEY PASS
-/*
+        var Empty = cm.AbstractClass.extend("Empty", {});
+
         test("can extend, construct, and delete", function() {
             var instance = new Empty;
             instance.delete();
         });
 
+/* ENABLE THESE AS THEY PASS
+
         test("properties set in constructor are externally visible", function() {
-            var HasProperty = cm.AbstractClass.extend({
+            var HasProperty = cm.AbstractClass.extend("AbstractClass", {
                 initialize: function(x) {
                     this.property = x;
                 }
@@ -1661,7 +1662,7 @@ module({
         });
         
         test("pass derived object to c++", function() {
-            var Implementation = cm.AbstractClass.extend({
+            var Implementation = cm.AbstractClass.extend("AbstractClass", {
                 abstractMethod: function() {
                     return "abc";
                 },
