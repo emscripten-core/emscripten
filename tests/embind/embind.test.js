@@ -1686,9 +1686,23 @@ module({
             assert.equal("xyz", result);
         });
 
+        test("interface methods are externally visible", function() {
+            var instance = new Empty;
+            var result = instance.concreteMethod();
+            instance.delete();
+            assert.equal("concrete", result);
+        });
+
 /* ENABLE THESE AS THEY PASS
 
-        test("interface methods are externally visible", function() {
+        test("optional methods are externally visible", function() {
+            var instance = new Empty;
+            var result = instance.optionalMethod("_123");
+            instance.delete();
+            assert.equal("optional_123", result);
+        });
+
+        test("optional methods", function() {
             var instance = new Empty;
             var result = cm.callOptionalMethod(instance, "_123");
             instance.delete();
@@ -1706,9 +1720,6 @@ module({
             var result = cm.callOptionalMethod(instance, "_123");
             instance.delete();
             assert.equal("optionaljs_optional_123", result);
-        });
-
-        test("extend extended class", function() {
         });
 */
 

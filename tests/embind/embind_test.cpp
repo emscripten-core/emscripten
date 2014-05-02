@@ -1090,6 +1090,10 @@ public:
 
     virtual std::shared_ptr<Derived> returnsSharedPtr() = 0;
     virtual void differentArguments(int i, double d, unsigned char f, double q, std::string) = 0;
+
+    std::string concreteMethod() const {
+        return "concrete";
+    }
 };
 
 EMSCRIPTEN_SYMBOL(optionalMethod);
@@ -1158,6 +1162,7 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
         .function("abstractMethod", &AbstractClass::abstractMethod)
         .function("optionalMethod", &AbstractClass::optionalMethod)
+        .function("concreteMethod", &AbstractClass::concreteMethod)
         ;
     
     function("getAbstractClass", &getAbstractClass);
