@@ -5782,7 +5782,7 @@ LibraryManager.library = {
       pattern = pattern.replace(new RegExp('\\%'+pattern[i+1], 'g'), '');
     }
 
-    var matches = new RegExp('^'+pattern).exec(Pointer_stringify(buf))
+    var matches = new RegExp('^'+pattern, "i").exec(Pointer_stringify(buf))
     // Module['print'](Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
     function initDate() {
