@@ -411,6 +411,11 @@ namespace emscripten {
             return fromGenericWireType<T>(result);
         }
 
+        // private: TODO: use a friend?
+        internal::EM_VAL __get_handle() const {
+            return handle;
+        }
+
         val typeof() const {
             return val(_emval_typeof(handle));
         }

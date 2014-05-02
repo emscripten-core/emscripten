@@ -1648,8 +1648,6 @@ module({
             instance.delete();
         });
 
-/* ENABLE THESE AS THEY PASS
-
         test("properties set in constructor are externally visible", function() {
             var HasProperty = cm.AbstractClass.extend("AbstractClass", {
                 initialize: function(x) {
@@ -1657,10 +1655,12 @@ module({
                 }
             });
             var instance = new HasProperty(10);
-            assert.equal(10, instance.set_property);
+            assert.equal(10, instance.property);
             instance.delete();
         });
         
+/* ENABLE THESE AS THEY PASS
+
         test("pass derived object to c++", function() {
             var Implementation = cm.AbstractClass.extend("AbstractClass", {
                 abstractMethod: function() {

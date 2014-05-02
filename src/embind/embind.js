@@ -1730,17 +1730,24 @@ function __embind_register_class_class_function(
     });
 }
 
-function __embind_create_inheriting_constructor(constructorName, wrapperType) {
+function __embind_create_inheriting_constructor(constructorName, wrapperType, properties) {
     constructorName = readLatin1String(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
+    properties = requireHandle(properties);
+
     var registeredClass = wrapperType.registeredClass;
     var wrapperPrototype = registeredClass.instancePrototype;
     var baseConstructor = registeredClass.baseClass.constructor;
     var ctor = createNamedFunction(constructorName, function() {
         var inner = baseConstructor.implement(this);
         this.$$ = inner.$$;
+        this.initialize.apply(this, Array.prototype.slice.call(arguments));
     });
     ctor.prototype = Object.create(wrapperPrototype);
+    ctor.prototype.initialize = function initialize() {};
+    for (var p in properties) {
+        ctor.prototype[p] = properties[p];
+    }
     return __emval_register(ctor);
 }
 

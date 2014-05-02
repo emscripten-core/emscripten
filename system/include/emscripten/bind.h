@@ -174,7 +174,8 @@ namespace emscripten {
 
             EM_VAL _embind_create_inheriting_constructor(
                 const char* constructorName,
-                TYPEID wrapperType);
+                TYPEID wrapperType,
+                EM_VAL properties);
 
             void _embind_register_enum(
                 TYPEID enumType,
@@ -996,7 +997,8 @@ namespace emscripten {
         val wrapped_extend(const std::string& name, const val& properties) {
             return val::take_ownership(_embind_create_inheriting_constructor(
                 name.c_str(),
-                TypeID<WrapperType>::get()));
+                TypeID<WrapperType>::get(),
+                properties.__get_handle()));
         }
     };
 
