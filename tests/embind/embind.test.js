@@ -1641,7 +1641,7 @@ module({
     });
 
     BaseFixture.extend("new-style class inheritance", function() {
-        var Empty = cm.AbstractClass.extend("Empty", {});
+        var Empty = cm.AbstractClass.extend("Empty", undefined);
 
         test("can extend, construct, and delete", function() {
             var instance = new Empty;
@@ -1649,7 +1649,7 @@ module({
         });
 
         test("properties set in constructor are externally visible", function() {
-            var HasProperty = cm.AbstractClass.extend("AbstractClass", {
+            var HasProperty = cm.AbstractClass.extend("HasProperty", {
                 initialize: function(x) {
                     this.property = x;
                 }
@@ -1659,10 +1659,8 @@ module({
             instance.delete();
         });
         
-/* ENABLE THESE AS THEY PASS
-
         test("pass derived object to c++", function() {
-            var Implementation = cm.AbstractClass.extend("AbstractClass", {
+            var Implementation = cm.AbstractClass.extend("Implementation", {
                 abstractMethod: function() {
                     return "abc";
                 },
@@ -1674,7 +1672,7 @@ module({
         });
 
         test("properties set in constructor are visible in overridden methods", function() {
-            var HasProperty = cm.AbstractClass.extend({
+            var HasProperty = cm.AbstractClass.extend("HasProperty", {
                 initialize: function(x) {
                     this.x = x;
                 },
@@ -1687,6 +1685,8 @@ module({
             instance.delete();
             assert.equal("xyz", result);
         });
+
+/* ENABLE THESE AS THEY PASS
 
         test("interface methods are externally visible", function() {
             var instance = new Empty;
@@ -1706,6 +1706,9 @@ module({
             var result = cm.callOptionalMethod(instance, "_123");
             instance.delete();
             assert.equal("optionaljs_optional_123", result);
+        });
+
+        test("extend extended class", function() {
         });
 */
 
