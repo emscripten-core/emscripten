@@ -1879,24 +1879,20 @@ This pointer might make sense in another type signature: i: 0
     assert 'If you see this - the world is all right!' in output
 
   def test_embind(self):
-    def nonfc():
-      for args, fail in [
-        ([], True), # without --bind, we fail
-        (['--bind'], False),
-        (['--bind', '-O1'], False),
-        (['--bind', '-O2'], False),
-        (['--bind', '-O1', '-s', 'ASM_JS=0'], False),
-        (['--bind', '-O2', '-s', 'ASM_JS=0'], False)
-      ]:
-        print args, fail
-        self.clear()
-        try_delete(self.in_dir('a.out.js'))
-        Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None).communicate()
-        assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
-        if not fail:
-          output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True)
-          assert "FAIL" not in output, output
-    nonfastcomp(nonfc)
+    for args, fail in [
+      ([], True), # without --bind, we fail
+      (['--bind'], False),
+      (['--bind', '-O1'], False),
+      (['--bind', '-O2'], False),
+    ]:
+      print args, fail
+      self.clear()
+      try_delete(self.in_dir('a.out.js'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None).communicate()
+      assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
+      if not fail:
+        output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True)
+        assert "FAIL" not in output, output
 
   def test_llvm_nativizer(self):
     try:
