@@ -121,7 +121,11 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(void
  *
  * If you want your main loop function to receive a void*
  * argument, use emscripten_set_main_loop_arg.
-
+ *
+ * There can be only *one* main loop function at a time. You
+ * can cancel the current one and set another, if you want to
+ * change it.
+ *
  * @simulate_infinite_loop If true, this function will throw an
  *    exception in order to stop execution of the caller. This
  *    will lead to the main loop being entered instead of code
