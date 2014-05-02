@@ -1640,10 +1640,10 @@ module({
         });
     });
 
-    /* ENABLE THESE AS THEY PASS
     BaseFixture.extend("new-style class inheritance", function() {
         var Empty = cm.AbstractClass.extend({});
-
+        // ENABLE THESE AS THEY PASS
+/*
         test("can extend, construct, and delete", function() {
             var instance = new Empty;
             instance.delete();
@@ -1713,8 +1713,8 @@ module({
             assert.instanceof(instance, cm.AbstractClass);
             instance.delete();
         });
+*/
     });
-    */
 
     BaseFixture.extend("registration order", function() {
         test("registration of tuple elements out of order leaves them in order", function() {

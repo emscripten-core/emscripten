@@ -987,6 +987,11 @@ namespace emscripten {
             SmartPtrIfNeeded(U&, const char*) {
             }
         };
+
+        template<typename PointerType, typename WrapperType>
+        val wrapped_extend(const val& properties) {
+            return val::undefined();
+        }
     };
 
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
@@ -1103,10 +1108,15 @@ namespace emscripten {
                 ;
             SmartPtrIfNeeded<PointerType> _(cls, pointerName);
 
-            return class_function(
-                "implement",
-                &wrapped_new<PointerType, WrapperType, val>,
-                allow_raw_pointer<ret_val>());
+            return
+                class_function(
+                    "implement",
+                    &wrapped_new<PointerType, WrapperType, val>,
+                    allow_raw_pointer<ret_val>())
+                .class_function(
+                    "extend",
+                    &wrapped_extend<PointerType, WrapperType>)
+                ;
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
