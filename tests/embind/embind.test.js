@@ -1706,6 +1706,13 @@ module({
             instance.delete();
             assert.equal("optionaljs_optional_123", result);
         });
+
+        test("instanceof", function() {
+            var instance = new Empty;
+            assert.instanceof(instance, Empty);
+            assert.instanceof(instance, cm.AbstractClass);
+            instance.delete();
+        });
     });
     */
 
