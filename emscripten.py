@@ -648,9 +648,9 @@ function getTempRet%d() {
 
     if not settings.get('SIDE_MODULE'):
       funcs_js.append('''
-Runtime.stackAlloc = function(size) { return asm['stackAlloc'](size) };
-Runtime.stackSave = function() { return asm['stackSave']() };
-Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
+Runtime.stackAlloc = asm['stackAlloc'];
+Runtime.stackSave = asm['stackSave'];
+Runtime.stackRestore = asm['stackRestore'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')
 
@@ -1229,9 +1229,9 @@ function getTempRet0() {
 
     if not settings.get('SIDE_MODULE'):
       funcs_js.append('''
-Runtime.stackAlloc = function(size) { return asm['stackAlloc'](size) };
-Runtime.stackSave = function() { return asm['stackSave']() };
-Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
+Runtime.stackAlloc = asm['stackAlloc'];
+Runtime.stackSave = asm['stackSave'];
+Runtime.stackRestore = asm['stackRestore'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')
 
