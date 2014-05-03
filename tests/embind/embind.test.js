@@ -1707,7 +1707,8 @@ module({
             assert.equal("optional_123", result);
         });
 
-/* ENABLE THESE AS THEY PASS
+/* How can I call the binding of a virtual function and get anything but the most-derived implementation?
+
         test("can call parent implementation from within derived implementation", function() {
             var parent = cm.AbstractClass;
             var ExtendsOptionalMethod = parent.extend("ExtendsOptionalMethod", {
@@ -1721,6 +1722,8 @@ module({
             assert.equal("optionaljs_optional_123", result);
         });
 */
+
+        // TODO: deriving from classes with constructors?
 
         test("instanceof", function() {
             var instance = new Empty;
