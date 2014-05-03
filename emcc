@@ -1727,7 +1727,7 @@ try:
       # with commaified code breaks late aggressive variable elimination)
       if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0: js_optimizer_queue += ['simplifyIfs']
 
-      if opt_level >= 3 and shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
+      if shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
 
   if closure and not shared.Settings.ASM_JS:
     flush_js_optimizer_queue()
