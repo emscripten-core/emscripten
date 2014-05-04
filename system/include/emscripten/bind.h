@@ -1117,8 +1117,11 @@ namespace emscripten {
             SmartPtrIfNeeded<PointerType> _(cls, pointerName);
 
             return
+                // rather than use an internal-yet-accessible
+                // constructor function, we could call something like
+                // _embind_register_wrapper_constructor
                 class_function(
-                    "implement",
+                    "__$implement",
                     &wrapped_new<PointerType, WrapperType, val>,
                     allow_raw_pointer<ret_val>())
                 .class_function(

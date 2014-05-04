@@ -1554,92 +1554,6 @@ module({
             assert.equal("from concrete", obj.abstractMethod());
             obj.delete();
         });
-
-        test("can implement abstract methods in JavaScript", function() {
-            var expected = "my JS string";
-            function MyImplementation() {
-                this.rv = expected;
-            }
-            MyImplementation.prototype.abstractMethod = function() {
-                return this.rv;
-            };
-
-            var impl = cm.AbstractClass.implement(new MyImplementation);
-            assert.equal(expected, impl.abstractMethod());
-            assert.equal(expected, cm.callAbstractMethod(impl));
-            impl.delete();
-        });
-
-        test("can implement optional methods in JavaScript", function() {
-            var expected = "my JS string";
-            function MyImplementation() {
-                this.rv = expected;
-            }
-            MyImplementation.prototype.optionalMethod = function() {
-                return this.rv;
-            };
-
-            var impl = cm.AbstractClass.implement(new MyImplementation);
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal(expected, impl.optionalMethod(expected));
-            assert.equal(expected, cm.callOptionalMethod(impl, expected));
-            impl.delete();
-        });
-
-        test("if not implemented then optional method runs default", function() {
-            var impl = cm.AbstractClass.implement({});
-            assert.equal("optionalfoo", impl.optionalMethod("foo"));
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
-            impl.delete();
-        });
-
-        test("returning null shared pointer from interfaces implemented in JS code does not leak", function() {
-            var impl = cm.AbstractClass.implement({
-                returnsSharedPtr: function() {
-                    return null;
-                }
-            });
-            cm.callReturnsSharedPtrMethod(impl);
-            impl.delete();
-            // Let the memory leak test superfixture check that no leaks occurred.
-        });
-
-        test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
-            var impl = cm.AbstractClass.implement({
-                returnsSharedPtr: function() {
-                    return cm.embind_test_return_smart_derived_ptr().deleteLater();
-                }
-            });
-            cm.callReturnsSharedPtrMethod(impl);
-            impl.delete();
-            // Let the memory leak test superfixture check that no leaks occurred.
-        });
-
-        test("void methods work", function() {
-            var saved = {};
-            var impl = cm.AbstractClass.implement({
-                differentArguments: function(i, d, f, q, s) {
-                    saved.i = i;
-                    saved.d = d;
-                    saved.f = f;
-                    saved.q = q;
-                    saved.s = s;
-                }
-            });
-
-            cm.callDifferentArguments(impl, 1, 2, 3, 4, "foo");
-
-            assert.deepEqual(saved, {
-                i: 1,
-                d: 2,
-                f: 3,
-                q: 4,
-                s: "foo",
-            });
-
-            impl.delete();
-        });
     });
 
     BaseFixture.extend("new-style class inheritance", function() {
@@ -1745,6 +1659,70 @@ module({
             assert.instanceof(instance, Empty);
             assert.instanceof(instance, cm.AbstractClass);
             instance.delete();
+        });
+
+        test("returning null shared pointer from interfaces implemented in JS code does not leak", function() {
+            var C = cm.AbstractClass.extend("C", {
+                returnsSharedPtr: function() {
+                    return null;
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var C = cm.AbstractClass.extend("C", {
+                returnsSharedPtr: function() {
+                    return cm.embind_test_return_smart_derived_ptr().deleteLater();
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("void methods work", function() {
+            var saved = {};
+            var C = cm.AbstractClass.extend("C", {
+                differentArguments: function(i, d, f, q, s) {
+                    saved.i = i;
+                    saved.d = d;
+                    saved.f = f;
+                    saved.q = q;
+                    saved.s = s;
+                }
+            });
+            var impl = new C;
+
+            cm.callDifferentArguments(impl, 1, 2, 3, 4, "foo");
+
+            assert.deepEqual(saved, {
+                i: 1,
+                d: 2,
+                f: 3,
+                q: 4,
+                s: "foo",
+            });
+
+            impl.delete();
+        });
+
+        test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var derived = cm.embind_test_return_smart_derived_ptr();
+            var C = cm.AbstractClass.extend("C", {
+                returnsSharedPtr: function() {
+                    return derived;
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            derived.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
         });
     });
 
@@ -2051,19 +2029,6 @@ module({
             assert.equal(10, a.get10());
             a.delete();
         });
-    });
-
-    test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
-        var derived = cm.embind_test_return_smart_derived_ptr();
-        var impl = cm.AbstractClass.implement({
-            returnsSharedPtr: function() {
-                return derived;
-            }
-        });
-        cm.callReturnsSharedPtrMethod(impl);
-        impl.delete();
-        derived.delete();
-        // Let the memory leak test superfixture check that no leaks occurred.
     });
 
     BaseFixture.extend("val::as", function() {

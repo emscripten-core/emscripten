@@ -1740,7 +1740,7 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
     var wrapperPrototype = registeredClass.instancePrototype;
     var baseConstructor = registeredClass.baseClass.constructor;
     var ctor = createNamedFunction(constructorName, function() {
-        var inner = baseConstructor.implement(this);
+        var inner = baseConstructor.__$implement(this);
         this.$$ = inner.$$;
         this.initialize.apply(this, Array.prototype.slice.call(arguments));
     });
