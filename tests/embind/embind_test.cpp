@@ -1107,9 +1107,10 @@ public:
     }
 
     std::string optionalMethod(std::string s) const {
-        return optional_call<std::string>(optionalMethod_symbol, [&] {
-            return AbstractClass::optionalMethod(s);
-        }, s);
+        return call<std::string>("optionalMethod", s);
+        //return optional_call<std::string>(optionalMethod_symbol, [&] {
+        //    return AbstractClass::optionalMethod(s);
+        //}, s);
     }
 
     std::shared_ptr<Derived> returnsSharedPtr() {
@@ -1161,7 +1162,13 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
         .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
         .function("abstractMethod", &AbstractClass::abstractMethod)
-        .function("optionalMethod", &AbstractClass::optionalMethod)
+        // The select_overload is necessary because, otherwise, the C++ compiler
+        // cannot deduce the signature of the lambda function.
+        .function("optionalMethod", select_overload<std::string(AbstractClass&, std::string)>(
+            [](AbstractClass& this_, std::string s) {
+                return this_.AbstractClass::optionalMethod(s);
+            }
+        ))
         .function("concreteMethod", &AbstractClass::concreteMethod)
         ;
     
