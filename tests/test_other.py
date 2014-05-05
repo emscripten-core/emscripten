@@ -1891,7 +1891,7 @@ This pointer might make sense in another type signature: i: 0
       Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None).communicate()
       assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
       if not fail:
-        output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True)
+        output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True, assert_returncode=0)
         assert "FAIL" not in output, output
 
   def test_llvm_nativizer(self):
