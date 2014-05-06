@@ -1525,9 +1525,12 @@ function downcastPointer(ptr, ptrClass, desiredClass) {
     if (undefined === desiredClass.baseClass) {
         return null; // no conversion
     }
-    // O(depth) stack space used
-    return desiredClass.downcast(
-        downcastPointer(ptr, ptrClass, desiredClass.baseClass));
+
+    var rv = downcastPointer(ptr, ptrClass, desiredClass.baseClass);
+    if (rv === null) {
+        return null;
+    }
+    return desiredClass.downcast(rv);
 }
 
 function upcastPointer(ptr, ptrClass, desiredClass) {
