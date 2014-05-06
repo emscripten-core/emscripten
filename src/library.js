@@ -762,12 +762,18 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/crypt.html
     // TODO: Implement (probably compile from C).
     ___setErrNo(ERRNO_CODES.ENOSYS);
+#if ASSERTIONS
+    Runtime.warnOnce('crypt() returning an error as we do not support it');
+#endif
     return 0;
   },
   encrypt: function(block, edflag) {
     // void encrypt(char block[64], int edflag);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // TODO: Implement (probably compile from C).
+#if ASSERTIONS
+    Runtime.warnOnce('encrypt() returning an error as we do not support it');
+#endif
     ___setErrNo(ERRNO_CODES.ENOSYS);
   },
   fpathconf__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -940,6 +946,9 @@ LibraryManager.library = {
     // It is possible to implement this using two device streams, but pipes make
     // little sense in a single-threaded environment, so we do not support them.
     ___setErrNo(ERRNO_CODES.ENOSYS);
+#if ASSERTIONS
+    Runtime.warnOnce('pipe() returning an error as we do not support them');
+#endif
     return -1;
   },
   pread__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -6208,8 +6217,10 @@ LibraryManager.library = {
 
   raise__deps: ['$ERRNO_CODES', '__setErrNo'],
   raise: function(sig) {
-    // TODO:
     ___setErrNo(ERRNO_CODES.ENOSYS);
+#if ASSERTIONS
+    Runtime.warnOnce('raise() returning an error as we do not support it');
+#endif
     return -1;
   },
 
