@@ -9,6 +9,7 @@
 var InternalError = Module['InternalError'] = extendError(Error, 'InternalError');
 var BindingError = Module['BindingError'] = extendError(Error, 'BindingError');
 var UnboundTypeError = Module['UnboundTypeError'] = extendError(BindingError, 'UnboundTypeError');
+var PureVirtualError = Module['PureVirtualError'] = extendError(BindingError, 'PureVirtualError');
 
 function throwInternalError(message) {
     throw new InternalError(message);
@@ -631,7 +632,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
 
     var argsList = "";
     var argsListWired = "";
-    for(var i = 0; i < argCount-2; ++i) {
+    for(var i = 0; i < argCount - 2; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i;
         argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
     }
@@ -666,7 +667,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
         invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
     }
 
-    for(var i = 0; i < argCount-2; ++i) {
+    for(var i = 0; i < argCount - 2; ++i) {
         invokerFnBody += "var arg"+i+"Wired = argType"+i+".toWireType("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
         args1.push("argType"+i);
         args2.push(argTypes[i+2]);
@@ -685,7 +686,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
         invokerFnBody += "runDestructors(destructors);\n";
     } else {
         for(var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-            var paramName = (i === 1 ? "thisWired" : ("arg"+(i-2)+"Wired"));
+            var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
             if (argTypes[i].destructorFunction !== null) {
                 invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";
                 args1.push(paramName+"_dtor");
@@ -1125,14 +1126,14 @@ function RegisteredPointer(
     }
 }
 
-RegisteredPointer.prototype.getPointee = function(ptr) {
+RegisteredPointer.prototype.getPointee = function getPointee(ptr) {
     if (this.rawGetPointee) {
         ptr = this.rawGetPointee(ptr);
     }
     return ptr;
 };
 
-RegisteredPointer.prototype.destructor = function(ptr) {
+RegisteredPointer.prototype.destructor = function destructor(ptr) {
     if (this.rawDestructor) {
         this.rawDestructor(ptr);
     }
@@ -1141,7 +1142,7 @@ RegisteredPointer.prototype.destructor = function(ptr) {
 RegisteredPointer.prototype['argPackAdvance'] = 8;
 RegisteredPointer.prototype['readValueFromPointer'] = simpleReadValueFromPointer;
 
-RegisteredPointer.prototype['fromWireType'] = function(ptr) {
+RegisteredPointer.prototype['fromWireType'] = function fromWireType(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)
 
     // rawPointer is a maybe-null raw pointer
@@ -1226,7 +1227,7 @@ function getInstanceTypeName(handle) {
     return handle.$$.ptrType.registeredClass.name;
 }
 
-ClassHandle.prototype['isAliasOf'] = function(other) {
+ClassHandle.prototype['isAliasOf'] = function isAliasOf(other) {
     if (!(this instanceof ClassHandle)) {
         return false;
     }
@@ -1256,7 +1257,7 @@ function throwInstanceAlreadyDeleted(obj) {
     throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
 }
 
-ClassHandle.prototype['clone'] = function() {
+ClassHandle.prototype['clone'] = function clone() {
     if (!this.$$.ptr) {
         throwInstanceAlreadyDeleted(this);
     }
@@ -1352,6 +1353,7 @@ function RegisteredClass(
     this.getActualType = getActualType;
     this.upcast = upcast;
     this.downcast = downcast;
+    this.pureVirtualFunctions = [];
 }
 
 function shallowCopy(o) {
@@ -1492,12 +1494,12 @@ function __embind_register_class_constructor(
         if (undefined !== classType.registeredClass.constructor_body[argCount - 1]) {
             throw new BindingError("Cannot register multiple constructors with identical number of parameters (" + (argCount-1) + ") for class '" + classType.name + "'! Overload resolution is currently only performed using the parameter count, not actual type info!");
         }
-        classType.registeredClass.constructor_body[argCount - 1] = function() {
+        classType.registeredClass.constructor_body[argCount - 1] = function unboundTypeHandler() {
             throwUnboundTypeError('Cannot construct ' + classType.name + ' due to unbound types', rawArgTypes);
         };
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-            classType.registeredClass.constructor_body[argCount - 1] = function() {
+            classType.registeredClass.constructor_body[argCount - 1] = function constructor_body() {
                 if (arguments.length !== argCount - 1) {
                     throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
                 }
@@ -1570,7 +1572,8 @@ function __embind_register_class_function(
     rawArgTypesAddr, // [ReturnType, ThisType, Args...]
     invokerSignature,
     rawInvoker,
-    context
+    context,
+    isPureVirtual
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
@@ -1580,21 +1583,25 @@ function __embind_register_class_function(
         classType = classType[0];
         var humanName = classType.name + '.' + methodName;
 
-        var unboundTypesHandler = function() {
+        if (isPureVirtual) {
+            classType.registeredClass.pureVirtualFunctions.push(methodName)
+        }
+
+        function unboundTypesHandler() {
             throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
-        };
+        }
 
         var proto = classType.registeredClass.instancePrototype;
         var method = proto[methodName];
-        if (undefined === method || (undefined === method.overloadTable && method.className !== classType.name && method.argCount === argCount-2)) {
+        if (undefined === method || (undefined === method.overloadTable && method.className !== classType.name && method.argCount === argCount - 2)) {
             // This is the first overload to be registered, OR we are replacing a function in the base class with a function in the derived class.
-            unboundTypesHandler.argCount = argCount-2;
+            unboundTypesHandler.argCount = argCount - 2;
             unboundTypesHandler.className = classType.name;
             proto[methodName] = unboundTypesHandler;
         } else {
             // There was an existing function with the same name registered. Set up a function overload routing table.
             ensureOverloadTable(proto, methodName, humanName);
-            proto[methodName].overloadTable[argCount-2] = unboundTypesHandler;
+            proto[methodName].overloadTable[argCount - 2] = unboundTypesHandler;
         }
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
@@ -1606,7 +1613,7 @@ function __embind_register_class_function(
             if (undefined === proto[methodName].overloadTable) {
                 proto[methodName] = memberFunction;
             } else {
-                proto[methodName].overloadTable[argCount-2] = memberFunction;
+                proto[methodName].overloadTable[argCount - 2] = memberFunction;
             }
 
             return [];
@@ -1700,9 +1707,9 @@ function __embind_register_class_class_function(
         classType = classType[0];
         var humanName = classType.name + '.' + methodName;
 
-        var unboundTypesHandler = function() {
-                throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
-            };
+        function unboundTypesHandler() {
+            throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+        };
 
         var proto = classType.registeredClass.constructor;
         if (undefined === proto[methodName]) {
@@ -1738,8 +1745,16 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
 
     var registeredClass = wrapperType.registeredClass;
     var wrapperPrototype = registeredClass.instancePrototype;
+    var baseClass = registeredClass.baseClass;
+    var baseClassPrototype = baseClass.instancePrototype;
     var baseConstructor = registeredClass.baseClass.constructor;
     var ctor = createNamedFunction(constructorName, function() {
+        registeredClass.baseClass.pureVirtualFunctions.forEach(function(name) {
+            if (this[name] === baseClassPrototype[name]) {
+                throw new PureVirtualError('Pure virtual function ' + name + ' must be implemented in JavaScript');
+            }
+        }.bind(this));
+
         var inner = baseConstructor.__$implement(this);
         this.$$ = inner.$$;
         this.initialize.apply(this, Array.prototype.slice.call(arguments));

@@ -1557,7 +1557,10 @@ module({
     });
 
     BaseFixture.extend("new-style class inheritance", function() {
-        var Empty = cm.AbstractClass.extend("Empty", undefined);
+        var Empty = cm.AbstractClass.extend("Empty", {
+            abstractMethod: function() {
+            }
+        });
 
         test("can extend, construct, and delete", function() {
             var instance = new Empty;
@@ -1568,6 +1571,8 @@ module({
             var HasProperty = cm.AbstractClass.extend("HasProperty", {
                 initialize: function(x) {
                     this.property = x;
+                },
+                abstractMethod: function() {
                 }
             });
             var instance = new HasProperty(10);
@@ -1642,6 +1647,8 @@ module({
         test("can call parent implementation from within derived implementation", function() {
             var parent = cm.AbstractClass;
             var ExtendsOptionalMethod = parent.extend("ExtendsOptionalMethod", {
+                abstractMethod: function() {
+                },
                 optionalMethod: function(s) {
                     return "optionaljs_" + parent.prototype.optionalMethod.call(this, s);
                 },
@@ -1663,6 +1670,8 @@ module({
 
         test("returning null shared pointer from interfaces implemented in JS code does not leak", function() {
             var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
                 returnsSharedPtr: function() {
                     return null;
                 }
@@ -1675,6 +1684,8 @@ module({
 
         test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
             var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
                 returnsSharedPtr: function() {
                     return cm.embind_test_return_smart_derived_ptr().deleteLater();
                 }
@@ -1688,6 +1699,8 @@ module({
         test("void methods work", function() {
             var saved = {};
             var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
                 differentArguments: function(i, d, f, q, s) {
                     saved.i = i;
                     saved.d = d;
@@ -1714,6 +1727,8 @@ module({
         test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
             var derived = cm.embind_test_return_smart_derived_ptr();
             var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
                 returnsSharedPtr: function() {
                     return derived;
                 }
@@ -1723,6 +1738,14 @@ module({
             impl.delete();
             derived.delete();
             // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("calling pure virtual function gives good error message", function() {
+            var C = cm.AbstractClass.extend("C", {});
+            var error = assert.throws(cm.PureVirtualError, function() {
+                new C;
+            });
+            assert.equal('Pure virtual function abstractMethod must be implemented in JavaScript', error.message);
         });
     });
 

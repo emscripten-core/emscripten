@@ -1161,7 +1161,7 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
     class_<AbstractClass>("AbstractClass")
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
         .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
-        .function("abstractMethod", &AbstractClass::abstractMethod)
+        .function("abstractMethod", &AbstractClass::abstractMethod, pure_virtual())
         // The select_overload is necessary because, otherwise, the C++ compiler
         // cannot deduce the signature of the lambda function.
         .function("optionalMethod", select_overload<std::string(AbstractClass&, std::string)>(
