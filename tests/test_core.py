@@ -4259,6 +4259,12 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
+  def test_fs_writeFile(self):
+    self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1']
+    src = path_from_root('tests', 'fs', 'test_writeFile.cc')
+    out = path_from_root('tests', 'fs', 'test_writeFile.out')
+    self.do_run_from_file(src, out)
+
   def test_unistd_access(self):
     self.clear()
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
