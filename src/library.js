@@ -1584,7 +1584,6 @@ LibraryManager.library = {
     return /^[+-]?[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?/.exec(text);
   },
 
-  // TODO: Document.
   _scanString__deps: ['_getFloat'],
   _scanString: function(format, get, unget, varargs) {
     if (!__scanString.whiteSpace) {
@@ -1726,6 +1725,7 @@ LibraryManager.library = {
         }
         var long_ = false;
         var half = false;
+        var quarter = false;
         var longLong = false;
         if (format[formatIndex] == 'l') {
           long_ = true;
@@ -1737,6 +1737,10 @@ LibraryManager.library = {
         } else if (format[formatIndex] == 'h') {
           half = true;
           formatIndex++;
+          if (format[formatIndex] == 'h') {
+            quarter = true;
+            formatIndex++;
+          }
         }
         var type = format[formatIndex];
         formatIndex++;
@@ -1795,19 +1799,20 @@ LibraryManager.library = {
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getAlignSize('void*', null, true);
+        var base = 10;
         switch (type) {
+          case 'X': case 'x':
+            base = 16;
           case 'd': case 'u': case 'i':
-            if (half) {
-              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
+            if (quarter) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i8') }}};
+            } else if (half) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i16') }}};
             } else if (longLong) {
-              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i64') }}};
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i64') }}};
             } else {
-              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, base)', 'i32') }}};
             }
-            break;
-          case 'X':
-          case 'x':
-            {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}};
             break;
           case 'F':
           case 'f':
@@ -3908,12 +3913,18 @@ LibraryManager.library = {
     {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
   },
 
+  llvm_bswap_i16__asm: true,
+  llvm_bswap_i16__sig: 'ii',
   llvm_bswap_i16: function(x) {
-    return ((x&0xff)<<8) | ((x>>8)&0xff);
+    x = x|0;
+    return (((x&0xff)<<8) | ((x>>8)&0xff))|0;
   },
 
+  llvm_bswap_i32__asm: true,
+  llvm_bswap_i32__sig: 'ii',
   llvm_bswap_i32: function(x) {
-    return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
+    x = x|0;
+    return (((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24))|0;
   },
 
   llvm_bswap_i64__deps: ['llvm_bswap_i32'],
@@ -5771,7 +5782,7 @@ LibraryManager.library = {
       pattern = pattern.replace(new RegExp('\\%'+pattern[i+1], 'g'), '');
     }
 
-    var matches = new RegExp('^'+pattern).exec(Pointer_stringify(buf))
+    var matches = new RegExp('^'+pattern, "i").exec(Pointer_stringify(buf))
     // Module['print'](Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
     function initDate() {

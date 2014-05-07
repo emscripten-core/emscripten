@@ -3905,6 +3905,8 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_hex(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+
     test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -4251,6 +4253,11 @@ def process(filename):
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+
+  def test_fs_trackingdelegate(self):
+    src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
+    out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
+    self.do_run_from_file(src, out)
 
   def test_unistd_access(self):
     self.clear()
@@ -5272,8 +5279,10 @@ def process(filename):
         if 'newfail' in name: continue
         if os.environ.get('EMCC_FAST_COMPILER') == '0' and os.path.basename(name) in [
           '18.cpp', '15.c'
-        ]:
-          continue # works only in fastcomp
+        ]: continue # works only in fastcomp
+        if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
+          '19.c'
+        ]: continue # LLVM LTO bug
 
         print name
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
@@ -5633,7 +5642,6 @@ def process(filename):
 
   def test_embind(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind']
 
     src = r'''
@@ -5656,7 +5664,7 @@ def process(filename):
 
   def test_embind_2(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
+    if self.run_name == 'slow2asm': return self.skip('embind/asm.js requires fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       Module.print('lerp ' + Module.lerp(1, 2, 0.66) + '.');
@@ -5968,6 +5976,22 @@ def process(filename):
   src.close()
 '''
       self.do_run(src, '|hello|43|world|41|', post_build=post)
+
+  def test_webidl(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
+    output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                            path_from_root('tests', 'webidl', 'test.idl'),
+                            'glue']).communicate()[0]
+    assert os.path.exists('glue.cpp')
+    assert os.path.exists('glue.js')
+
+    self.emcc_args += ['--post-js', 'glue.js',
+                       '--post-js', path_from_root('tests', 'webidl', 'post.js')]
+    shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
+    shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
+    src = open('test.cpp').read()
+    self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read())
 
   def test_typeinfo(self):
     if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp does not support RUNTIME_TYPE_INFO')

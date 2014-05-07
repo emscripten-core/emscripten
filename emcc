@@ -1224,11 +1224,6 @@ try:
       value = value.replace('\\\\', '/').replace('\\', '/') # Convert backslash paths to forward slashes on Windows as well, since the JS compiler otherwise needs the backslashes escaped (alternative is to escape all input paths passing to JS, which feels clumsier to read)
     exec('shared.Settings.' + key + ' = ' + value)
 
-  # Apply effects from settings
-  if bind and shared.Settings.ASM_JS:
-    logging.warning('disabling asm.js since embind is not ready for it yet')
-    shared.Settings.ASM_JS = 0
-
   fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
 
   if fastcomp:
@@ -1245,7 +1240,6 @@ try:
       assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
       assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
       assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
-      assert not bind, 'embind not supported in fastcomp yet'
       assert shared.Settings.MAX_SETJMPS == 20, 'changing MAX_SETJMPS is not supported in fastcomp yet'
       assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
       assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
@@ -1372,9 +1366,11 @@ try:
     for header in input_files:
       assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(input_files) + ' : ' + header
     args = newargs + shared.EMSDK_CXX_OPTS + input_files
-    logging.debug("running (for precompiled headers: " + call + ' ' + ' '.join(args))
+    if specified_target:
+      args += ['-o', specified_target]
+    logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
     execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
-    sys.exit(1)
+    sys.exit(0)
 
   def get_bitcode_file(input_file):
     if final_suffix not in JS_CONTAINING_SUFFIXES:
@@ -1731,7 +1727,7 @@ try:
       # with commaified code breaks late aggressive variable elimination)
       if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0: js_optimizer_queue += ['simplifyIfs']
 
-      if opt_level >= 3 and shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
+      if shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
 
   if closure and not shared.Settings.ASM_JS:
     flush_js_optimizer_queue()
@@ -1750,7 +1746,7 @@ try:
       js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
     if opt_level >= 2 and (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
-      if shared.Settings.ASM_JS and opt_level >= 3 and shared.Settings.OUTLINING_LIMIT == 0:
+      if shared.Settings.ASM_JS and opt_level >= 3:
         js_optimizer_queue += ['registerizeHarder']
       else:
         js_optimizer_queue += ['registerize']

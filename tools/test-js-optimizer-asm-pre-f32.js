@@ -14,4 +14,10 @@ function dupe() {
  x = Math_fround(Math_fround(Math_fround(x)));
  x = Math_fround(Math_fround(Math_fround(Math_fround(x))));
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["badf", "badf2", "dupe"]
+function zeros(x) {
+  x = Math_fround(x);
+  var y = Math_fround(0);
+  print(Math_fround(y) + Math_fround(0));
+  return Math_fround(0); // return needs to stay as is
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["badf", "badf2", "dupe", "zeros"]

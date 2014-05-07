@@ -186,17 +186,17 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #if SAFE_HEAP_LOG
   Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat]);
 #endif
-  assert(dest > 0, 'segmentation fault');
-  assert(dest % bytes === 0, 'alignment error');
-  assert(dest < Math.max(DYNAMICTOP, STATICTOP), 'segmentation fault (high)');
+  if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
+  if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
   assert(DYNAMICTOP <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
 
 function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
-  assert(dest > 0, 'segmentation fault');
-  assert(dest % bytes === 0, 'alignment error');
-  assert(dest < Math.max(DYNAMICTOP, STATICTOP), 'segmentation fault (high)');
+  if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
+  if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
   assert(DYNAMICTOP <= TOTAL_MEMORY);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
@@ -204,6 +204,14 @@ function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
 #if SAFE_HEAP_LOG
   Module.print('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned]);
 #endif
+  return ret;
+}
+
+function SAFE_FT_MASK(value, mask) {
+  var ret = value & mask;
+  if (ret !== value) {
+    abort('Function table mask error: function pointer is ' + value + ' which is masked by ' + mask + ', the likely cause of this is that the function pointer is being called by the wrong type.');
+  }
   return ret;
 }
 

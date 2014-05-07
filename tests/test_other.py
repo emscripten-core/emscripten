@@ -1879,25 +1879,20 @@ This pointer might make sense in another type signature: i: 0
     assert 'If you see this - the world is all right!' in output
 
   def test_embind(self):
-    def nonfc():
-      if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
-      for args, fail in [
-        ([], True), # without --bind, we fail
-        (['--bind'], False),
-        (['--bind', '-O1'], False),
-        (['--bind', '-O2'], False),
-        (['--bind', '-O1', '-s', 'ASM_JS=0'], False),
-        (['--bind', '-O2', '-s', 'ASM_JS=0'], False)
-      ]:
-        print args, fail
-        self.clear()
-        try_delete(self.in_dir('a.out.js'))
-        Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None).communicate()
-        assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
-        if not fail:
-          output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True)
-          assert "FAIL" not in output, output
-    nonfastcomp(nonfc)
+    for args, fail in [
+      ([], True), # without --bind, we fail
+      (['--bind'], False),
+      (['--bind', '-O1'], False),
+      (['--bind', '-O2'], False),
+    ]:
+      print args, fail
+      self.clear()
+      try_delete(self.in_dir('a.out.js'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None).communicate()
+      assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
+      if not fail:
+        output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True, assert_returncode=0)
+        assert "FAIL" not in output, output
 
   def test_llvm_nativizer(self):
     try:
@@ -2381,6 +2376,11 @@ int main() {
     err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
     assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1], err[1]
 
+    # with specified target via -o
+    try_delete('header.h.gch')
+    Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.gch']).communicate()
+    assert os.path.exists('my.gch')
+
   def test_warn_unaligned(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('need fastcomp')
     open('src.cpp', 'w').write(r'''
@@ -2709,4 +2709,83 @@ int main()
     cmd = Popen([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.bc']).communicate()
     assert os.path.exists('hello_world.o')
     assert os.path.exists('hello_world.bc')
+
+  def test_bad_function_pointer_cast(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+
+typedef int (*callback) (int, ...);
+
+int impl(int foo) {
+  printf("Hello, world.\n");
+  return 0;
+}
+
+int main() {
+  volatile callback f = (callback) impl;
+  f(0); /* This fails with or without additional arguments. */
+  return 0;
+}
+''')
+
+    for opts in [0, 1, 2]:
+      for safe in [0, 1]:
+        cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+        print cmd
+        Popen(cmd).communicate()
+        output = run_js('a.out.js', stderr=PIPE, full_output=True)
+        if safe:
+          assert 'Function table mask error' in output, output
+        else:
+          if opts == 0:
+            assert 'Invalid function pointer called' in output, output
+          else:
+            assert 'abort()' in output, output
+
+  def test_aliased_func_pointers(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+
+int impl1(int foo) { return foo; }
+float impla(float foo) { return foo; }
+int impl2(int foo) { return foo+1; }
+float implb(float foo) { return foo+1; }
+int impl3(int foo) { return foo+2; }
+float implc(float foo) { return foo+2; }
+
+int main(int argc, char **argv) {
+  volatile void *f = (void*)impl1;
+  if (argc == 50) f = (void*)impla;
+  if (argc == 51) f = (void*)impl2;
+  if (argc == 52) f = (void*)implb;
+  if (argc == 53) f = (void*)impl3;
+  if (argc == 54) f = (void*)implc;
+  return (int)f;
+}
+''')
+
+    print 'aliasing'
+
+    sizes_ii = {}
+    sizes_dd = {}
+  
+    for alias in [None, 0, 1]:
+      cmd = [PYTHON, EMCC, 'src.cpp', '-O1']
+      if alias is not None:
+        cmd += ['-s', 'ALIASING_FUNCTION_POINTERS=' + str(alias)]
+      else:
+        alias = -1
+      print cmd
+      Popen(cmd).communicate()
+      src = open('a.out.js').read().split('\n')
+      for line in src:
+        if line.strip().startswith('var FUNCTION_TABLE_ii = '):
+          sizes_ii[alias] = line.count(',')
+        if line.strip().startswith('var FUNCTION_TABLE_dd = '):
+          sizes_dd[alias] = line.count(',')
+
+    for sizes in [sizes_ii, sizes_dd]:
+      assert sizes[-1] == 3 # default - let them alias
+      assert sizes[0] == 7 # no aliasing, all unique, fat tables
+      assert sizes[1] == 3 # aliased once more
 

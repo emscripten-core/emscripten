@@ -467,7 +467,7 @@ function parseParamTokens(params) {
       // handle 'byval' and 'byval align X'. We store the alignment in 'byVal'
       byVal = QUANTUM_SIZE;
       segment.splice(1, 1);
-      if (segment[1] && (segment[1].text === 'nocapture' || segment[1].text === 'readonly')) {
+      if (segment[1] && (segment[1].text in LLVM.PARAM_IGNORABLES)) {
         segment.splice(1, 1);
       }
       if (segment[1] && segment[1].text === 'align') {
@@ -476,7 +476,7 @@ function parseParamTokens(params) {
         segment.splice(1, 2);
       }
     }
-    if (segment[1] && (segment[1].text === 'nocapture' || segment[1].text === 'readonly')) {
+    if (segment[1] && (segment[1].text in LLVM.PARAM_IGNORABLES)) {
       segment.splice(1, 1);
     }
     if (segment.length == 1) {

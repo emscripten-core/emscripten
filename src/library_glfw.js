@@ -130,9 +130,11 @@ var LibraryGLFW = {
 
     onKeyChanged: function(event, status) {
       var key = GLFW.DOMToGLFWKeyCode(event.keyCode);
-      if (key && GLFW.keyFunc) {
+      if (key) {
         GLFW.keys[key] = status;
-        Runtime.dynCall('vii', GLFW.keyFunc, [key, status]);
+        if (GLFW.keyFunc) {
+          Runtime.dynCall('vii', GLFW.keyFunc, [key, status]);
+        }
       }
     },
 
@@ -209,7 +211,7 @@ var LibraryGLFW = {
     },
 
     onMouseWheel: function(event) {
-      GLFW.wheelPos += Browser.getMouseWheelDelta(event);
+      GLFW.wheelPos -= Browser.getMouseWheelDelta(event);
 
       if (GLFW.mouseWheelFunc && event.target == Module["canvas"]) {
         Runtime.dynCall('vi', GLFW.mouseWheelFunc, [GLFW.wheelPos]);

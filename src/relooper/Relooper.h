@@ -132,8 +132,6 @@ struct SimpleShape : public Shape {
   }
 };
 
-typedef std::map<Block*, Shape*> BlockShapeMap;
-
 // A shape that may be implemented with a labeled loop.
 struct LabeledShape : public Shape {
   bool Labeled; // If we have a loop, whether it needs to be labeled
@@ -141,12 +139,16 @@ struct LabeledShape : public Shape {
   LabeledShape(ShapeType TypeInit) : Shape(TypeInit), Labeled(false) {}
 };
 
-struct MultipleShape : public LabeledShape {
-  BlockShapeMap InnerMap; // entry block -> shape
-  int NeedLoop; // If we have branches, we need a loop. This is a counter of loop requirements,
-                // if we optimize it to 0, the loop is unneeded
+// Blocks with the same id were split and are identical, so we just care about ids in Multiple entries
+typedef std::map<int, Shape*> IdShapeMap;
 
-  MultipleShape() : LabeledShape(Multiple), NeedLoop(0) {}
+struct MultipleShape : public LabeledShape {
+  IdShapeMap InnerMap; // entry block ID -> shape
+  int Breaks; // If we have branches on us, we need a loop (or a switch). This is a counter of requirements,
+                     // if we optimize it to 0, the loop is unneeded
+  bool UseSwitch; // Whether to switch on label as opposed to an if-else chain
+
+  MultipleShape() : LabeledShape(Multiple), Breaks(0), UseSwitch(false) {}
 
   void RenderLoopPrefix();
   void RenderLoopPostfix();

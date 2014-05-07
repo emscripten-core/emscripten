@@ -586,12 +586,6 @@ function module(ignore, func) {
         throw new AssertionError("Don't call setInterval in tests.  Use fakes.");
     };
 
-    if (typeof process !== 'undefined') {
-        process.nextTick = function() {
-            throw new AssertionError("Don't call process.nextTick in tests.  Use fakes.");
-        };
-    }
-
     Math.random = function() {
         throw new AssertionError("Don't call Math.random in tests.  Use fakes.");
     };

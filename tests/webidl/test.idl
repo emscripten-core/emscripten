@@ -1,0 +1,64 @@
+
+// Part 1
+
+interface Parent {
+  void Parent(long val);
+  long getVal();
+  void mulVal(long mul);
+};
+
+interface Child1 {
+  void Child1(optional long val);
+  long getValSqr(optional long more);
+  long getValTimes(optional long times=1);
+};
+
+Child1 implements Parent;
+
+interface Child2 {
+  void Child2();
+  long getValCube();
+  static void printStatic();
+  void virtualFunc();
+  void virtualFunc2();
+  void virtualFunc3(long x);
+  void virtualFunc4(long x);
+  static void runVirtualFunc(Child2 self);
+};
+
+Child2 implements Parent;
+
+[JSImplementation="Child2"]
+interface Child2JS {
+  void Child2JS();
+  void virtualFunc();
+  void virtualFunc2();
+  void virtualFunc3(long x);
+  void virtualFunc4(long x);
+};
+
+// Part 2
+
+interface StringUser {
+  void StringUser();
+  void StringUser(DOMString str, long i);
+  void Print(long anotherInteger, DOMString anotherString);
+  void PrintFloat(float f);
+};
+
+interface RefUser {
+  void RefUser();
+  void RefUser(long value);
+  long getValue([Ref] RefUser b);
+  [Ref] RefUser getMe();
+  [Value] RefUser getCopy(); // must have zero-arg constructor
+  [Value] StringUser getAnother();
+};
+
+[Prefix="Space::"]
+interface Inner {
+  void Inner();
+  long get();
+  [Operator="*=", Ref] Inner mul(float x);
+};
+
