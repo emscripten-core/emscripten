@@ -651,6 +651,7 @@ function getTempRet%d() {
 Runtime.stackAlloc = asm['stackAlloc'];
 Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
+Runtime.setTempRet0 = asm['setTempRet0'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')
 
@@ -1232,6 +1233,7 @@ function getTempRet0() {
 Runtime.stackAlloc = asm['stackAlloc'];
 Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
+Runtime.setTempRet0 = asm['setTempRet0'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')
 
