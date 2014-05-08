@@ -96,6 +96,15 @@ function unInline(name_, params) {
 }
 
 var Runtime = {
+  // When a 64 bit long is returned from a compiled function the least significant
+  // 32 bit word is passed in the return value, but the most significant 32 bit
+  // word is placed in tempRet0. This provides an accessor for that value.
+  setTempRet0: function(value) {
+    tempRet0 = value;
+  },
+  getTempRet0: function() {
+    return tempRet0;
+  },
   stackSave: function() {
     return STACKTOP;
   },
