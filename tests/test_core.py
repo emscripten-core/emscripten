@@ -4934,6 +4934,8 @@ def process(filename):
       print "disabling inlining" # without registerize (which -g disables), we generate huge amounts of code
       Settings.INLINING_LIMIT = 50
 
+    #Settings.OUTLINING_LIMIT = 60000
+
     self.do_run(r'''
                       #define SQLITE_DISABLE_LFS
                       #define LONGDOUBLE_TYPE double
