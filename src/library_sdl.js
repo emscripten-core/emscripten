@@ -541,21 +541,12 @@ var LibrarySDL = {
             event.preventDefault();
           }
 
-          if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
-            var button = Browser.getMouseWheelDelta(event) > 0 ? 4 : 3;
-            var event2 = {
-              type: 'mousedown',
-              button: button,
-              pageX: event.pageX,
-              pageY: event.pageY
-            };
-            SDL.events.push(event2);
-            event = {
-              type: 'mouseup',
-              button: button,
-              pageX: event.pageX,
-              pageY: event.pageY
-            };
+          if (event.type == 'DOMMouseScroll') {
+            SDL.events.push({
+              type: 'mousewheel',
+              wheelDelta: -event.detail,
+            });
+            break;
           } else if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
             SDL.events.push({
@@ -786,6 +777,12 @@ var LibrarySDL = {
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseMotionEvent.yrel, 'Browser.mouseMovementY', 'i32') }}};
           }
           break;
+        }
+        case 'mousewheel': {
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseWheelEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseWheelEvent.x, '0', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseWheelEvent.y, 'Browser.getMouseWheelDelta(event)', 'i32') }}}; 
+          break;       
         }
         case 'touchstart': case 'touchend': case 'touchmove': {
           var touch = event.touch;
@@ -1064,6 +1061,7 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['mousedown']  = 0x401  /* SDL_MOUSEBUTTONDOWN */;
     SDL.DOMEventToSDLEvent['mouseup']    = 0x402  /* SDL_MOUSEBUTTONUP */;
     SDL.DOMEventToSDLEvent['mousemove']  = 0x400  /* SDL_MOUSEMOTION */;
+    SDL.DOMEventToSDLEvent['mousewheel'] = 0x403 /* SDL_MOUSEWHEEL */; 
     SDL.DOMEventToSDLEvent['touchstart'] = 0x700  /* SDL_FINGERDOWN */;
     SDL.DOMEventToSDLEvent['touchend']   = 0x701  /* SDL_FINGERUP */;
     SDL.DOMEventToSDLEvent['touchmove']  = 0x702  /* SDL_FINGERMOTION */;
