@@ -917,7 +917,10 @@ namespace emscripten {
     template<typename... Args>                                          \
     T(::emscripten::val&& v, Args&&... args)                            \
         : wrapper(std::forward<::emscripten::val>(v), std::forward<Args>(args)...) \
-    {}
+    {}                                                                  \
+    ~T() {                                                              \
+        call<void>("__destruct");                                       \
+    }
 
     namespace internal {
         struct NoBaseClass {

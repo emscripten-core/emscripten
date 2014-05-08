@@ -1773,6 +1773,9 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
         });
     };
 
+    wrapperPrototype.__destruct = function __destruct() {
+    };
+
     ctor.prototype = Object.create(wrapperPrototype);
     for (var p in properties) {
         ctor.prototype[p] = properties[p];

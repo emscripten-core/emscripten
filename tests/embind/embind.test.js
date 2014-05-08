@@ -1768,6 +1768,24 @@ module({
             assert.equal("hi", rv);
         });
 
+        test("__destruct is called when object is destroyed", function() {
+            var parent = cm.HeldAbstractClass;
+            var calls = [];
+            var C = parent.extend("C", {
+                method: function() {
+                },
+                __destruct: function() {
+                    calls.push("__destruct");
+                }
+            });
+            var impl = new C;
+            var copy = impl.clone();
+            impl.delete();
+            assert.deepEqual([], calls);
+            copy.delete();
+            assert.deepEqual(["__destruct"], calls);
+        });
+
 /* does not pass yet
         test("if JavaScript implementation of interface is returned, don't wrap in new handle", function() {
             var parent = cm.HeldAbstractClass;
