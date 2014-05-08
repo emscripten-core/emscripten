@@ -789,6 +789,7 @@ var LibrarySDL = {
         }
         case 'touchstart': case 'touchend': case 'touchmove': {
           var touch = event.touch;
+          if (!Browser.touches[touch.identifier]) break;
           var w = Module['canvas'].width;
           var h = Module['canvas'].height;
           var x = Browser.touches[touch.identifier].x / w;
