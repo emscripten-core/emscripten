@@ -1760,11 +1760,11 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
         Object.defineProperty(this, '__parent', {
             value: wrapperPrototype
         });
-        this.initialize.apply(this, arraySlice.call(arguments));
+        this.__construct.apply(this, arraySlice.call(arguments));
     });
 
     // It's a little nasty that we're modifying the wrapper prototype here.
-    wrapperPrototype.initialize = function initialize() {
+    wrapperPrototype.__construct = function __construct() {
         var inner = baseConstructor.__$implement.apply(
             undefined,
             [this].concat(arraySlice.call(arguments)));
