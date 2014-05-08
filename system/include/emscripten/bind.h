@@ -889,8 +889,10 @@ namespace emscripten {
     public:
         typedef T class_type;
 
-        explicit wrapper(val&& wrapped)
-            : wrapped(std::forward<val>(wrapped))
+        template<typename... Args>
+        explicit wrapper(val&& wrapped, Args&&... args)
+            : T(std::forward<Args>(args)...)
+            , wrapped(std::forward<val>(wrapped))
         {}
 
         template<typename ReturnType, typename... Args>
@@ -911,8 +913,11 @@ namespace emscripten {
         val wrapped;
     };
 
-#define EMSCRIPTEN_WRAPPER(T) \
-    T(::emscripten::val&& v): wrapper(std::forward<::emscripten::val>(v)) {}
+#define EMSCRIPTEN_WRAPPER(T)                                           \
+    template<typename... Args>                                          \
+    T(::emscripten::val&& v, Args&&... args)                            \
+        : wrapper(std::forward<::emscripten::val>(v), std::forward<Args>(args)...) \
+    {}
 
     namespace internal {
         struct NoBaseClass {
@@ -1030,6 +1035,10 @@ namespace emscripten {
         };
     }
 
+    template<typename... ConstructorArgs>
+    struct constructor {
+    };
+
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
     class class_ {
     public:
@@ -1136,8 +1145,12 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename WrapperType, typename PointerType = WrapperType*>
-        const class_& allow_subclass(const char* wrapperClassName, const char* pointerName = "<UnknownPointerName>") const {
+        template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
+        const class_& allow_subclass(
+            const char* wrapperClassName,
+            const char* pointerName = "<UnknownPointerName>",
+            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
+        ) const {
             using namespace internal;
 
             auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
@@ -1150,12 +1163,20 @@ namespace emscripten {
                 // _embind_register_wrapper_constructor
                 class_function(
                     "__$implement",
-                    &wrapped_new<PointerType, WrapperType, val>,
+                    &wrapped_new<PointerType, WrapperType, val, ConstructorArgs...>,
                     allow_raw_pointer<ret_val>())
                 .class_function(
                     "extend",
                     &wrapped_extend<WrapperType>)
                 ;
+        }
+
+        template<typename WrapperType, typename... ConstructorArgs>
+        const class_& allow_subclass(
+            const char* wrapperClassName,
+            ::emscripten::constructor<ConstructorArgs...> constructor
+        ) const {
+            return allow_subclass<WrapperType, WrapperType*>(wrapperClassName, "<UnknownPointerName>", constructor);
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>

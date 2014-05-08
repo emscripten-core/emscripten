@@ -1743,6 +1743,8 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
     properties = requireHandle(properties);
 
+    var arraySlice = [].slice;
+
     var registeredClass = wrapperType.registeredClass;
     var wrapperPrototype = registeredClass.instancePrototype;
     var baseClass = registeredClass.baseClass;
@@ -1755,12 +1757,19 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
             }
         }.bind(this));
 
-        var inner = baseConstructor.__$implement(this);
-        this.$$ = inner.$$;
-        this.initialize.apply(this, Array.prototype.slice.call(arguments));
+        this.__parent = wrapperPrototype;
+        this.initialize.apply(this, arraySlice.call(arguments));
     });
+
+    // It's a little nasty that we're modifying the wrapper prototype here.
+    wrapperPrototype.initialize = function initialize() {
+        var inner = baseConstructor.__$implement.apply(
+            undefined,
+            [this].concat(arraySlice.call(arguments)));
+        this.$$ = inner.$$;
+    };
+
     ctor.prototype = Object.create(wrapperPrototype);
-    ctor.prototype.initialize = function initialize() {};
     for (var p in properties) {
         ctor.prototype[p] = properties[p];
     }

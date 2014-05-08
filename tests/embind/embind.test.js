@@ -1570,6 +1570,7 @@ module({
         test("properties set in constructor are externally visible", function() {
             var HasProperty = cm.AbstractClass.extend("HasProperty", {
                 initialize: function(x) {
+                    this.__parent.initialize.call(this);
                     this.property = x;
                 },
                 abstractMethod: function() {
@@ -1595,6 +1596,7 @@ module({
         test("properties set in constructor are visible in overridden methods", function() {
             var HasProperty = cm.AbstractClass.extend("HasProperty", {
                 initialize: function(x) {
+                    this.__parent.initialize.call(this);
                     this.x = x;
                 },
                 abstractMethod: function() {
@@ -1746,6 +1748,24 @@ module({
                 new C;
             });
             assert.equal('Pure virtual function abstractMethod must be implemented in JavaScript', error.message);
+        });
+
+        test("can extend from C++ class with constructor arguments", function() {
+            var parent = cm.AbstractClassWithConstructor;
+            var C = parent.extend("C", {
+                initialize: function(x) {
+                    this.__parent.initialize.call(this, x);
+                },
+                abstractMethod: function() {
+                    return this.concreteMethod();
+                }
+            });
+
+            var impl = new C("hi");
+            var rv = cm.callAbstractMethod2(impl);
+            impl.delete();
+
+            assert.equal("hi", rv);
         });
     });
 
