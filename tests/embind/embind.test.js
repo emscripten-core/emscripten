@@ -1767,6 +1767,21 @@ module({
 
             assert.equal("hi", rv);
         });
+
+/* does not pass yet
+        test("if JavaScript implementation of interface is returned, don't wrap in new handle", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            assert.equal(impl, rv);
+
+            impl.delete();
+        });
+*/
     });
 
     BaseFixture.extend("registration order", function() {

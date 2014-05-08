@@ -1757,7 +1757,9 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
             }
         }.bind(this));
 
-        this.__parent = wrapperPrototype;
+        Object.defineProperty(this, '__parent', {
+            value: wrapperPrototype
+        });
         this.initialize.apply(this, arraySlice.call(arguments));
     });
 
@@ -1766,7 +1768,9 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
         var inner = baseConstructor.__$implement.apply(
             undefined,
             [this].concat(arraySlice.call(arguments)));
-        this.$$ = inner.$$;
+        Object.defineProperty(this, '$$', {
+            value: inner.$$
+        });
     };
 
     ctor.prototype = Object.create(wrapperPrototype);

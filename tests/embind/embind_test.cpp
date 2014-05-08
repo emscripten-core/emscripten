@@ -1181,6 +1181,21 @@ std::string callAbstractMethod2(AbstractClassWithConstructor& ac) {
     return ac.abstractMethod();
 }
 
+struct HeldAbstractClass {
+    virtual void method() = 0;
+};
+struct HeldAbstractClassWrapper : wrapper<HeldAbstractClass> {
+    EMSCRIPTEN_WRAPPER(HeldAbstractClassWrapper);
+
+    virtual void method() override {
+        return call<void>("method");
+    }
+};
+
+std::shared_ptr<HeldAbstractClass> passHeldAbstractClass(std::shared_ptr<HeldAbstractClass> p) {
+    return p;
+}
+
 EMSCRIPTEN_BINDINGS(interface_tests) {
     class_<AbstractClass>("AbstractClass")
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
@@ -1208,6 +1223,13 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         .function("concreteMethod", &AbstractClassWithConstructor::concreteMethod)
         ;
     function("callAbstractMethod2", &callAbstractMethod2);
+
+    class_<HeldAbstractClass>("HeldAbstractClass")
+        .smart_ptr<std::shared_ptr<HeldAbstractClass>>("shared_ptr<HeldAbstractClass>")
+        .allow_subclass<HeldAbstractClassWrapper, std::shared_ptr<HeldAbstractClassWrapper>>("HeldAbstractClassWrapper")
+        .function("method", &HeldAbstractClass::method, pure_virtual())
+        ;
+    function("passHeldAbstractClass", &passHeldAbstractClass);
 }
 
 template<typename T, size_t sizeOfArray>
