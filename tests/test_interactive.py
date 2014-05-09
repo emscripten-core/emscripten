@@ -59,12 +59,6 @@ class interactive(BrowserCore):
     Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
-  def test_sdl_audio_quickload(self):
-    open(os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_quickload.c')).read()))
-
-    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
-
   def test_sdl_audio_beeps(self):
     open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
 
