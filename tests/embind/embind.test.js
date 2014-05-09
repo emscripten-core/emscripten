@@ -1776,6 +1776,7 @@ module({
                 },
                 __destruct: function() {
                     calls.push("__destruct");
+                    this.__parent.__destruct.call(this);
                 }
             });
             var impl = new C;
@@ -1786,7 +1787,6 @@ module({
             assert.deepEqual(["__destruct"], calls);
         });
 
-/* does not pass yet
         test("if JavaScript implementation of interface is returned, don't wrap in new handle", function() {
             var parent = cm.HeldAbstractClass;
             var C = parent.extend("C", {
@@ -1795,11 +1795,10 @@ module({
             });
             var impl = new C;
             var rv = cm.passHeldAbstractClass(impl);
-            assert.equal(impl, rv);
-
             impl.delete();
+            assert.equal(impl, rv);
+            rv.delete();
         });
-*/
     });
 
     BaseFixture.extend("registration order", function() {
