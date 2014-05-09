@@ -969,6 +969,14 @@
                 "x", 
                 "y"
             ],
+            "SDL_MouseWheelEvent": [
+                "type", 
+                "timestamp", 
+                "windowID", 
+                "which", 
+                "x", 
+                "y"
+            ],
             "SDL_JoyAxisEvent": [
                 "type", 
                 "which", 
