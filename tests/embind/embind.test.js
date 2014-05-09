@@ -1799,6 +1799,32 @@ module({
             assert.equal(impl, rv);
             rv.delete();
         });
+
+        test("deleteLater() works for JavaScript implementations", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.deleteLater();
+            rv.deleteLater();
+            cm.flushPendingDeletes();
+        });
+
+        test("deleteLater() combined with delete() works for JavaScript implementations", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.deleteLater();
+            rv.delete();
+            cm.flushPendingDeletes();
+        });
     });
 
     BaseFixture.extend("registration order", function() {
