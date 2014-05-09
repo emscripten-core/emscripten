@@ -2291,15 +2291,17 @@ mergeInto(LibraryManager.library, {
 
     self.clear()
     os.mkdir(outdir)
-    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir])
-    process.communicate()
-    assert(os.path.isfile(outdir + 'hello_world.o'))
+    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir], stderr=PIPE)
+    out, err = process.communicate()
+    assert not err, err
+    assert os.path.isfile(outdir + 'hello_world.o')
 
     self.clear()
     os.mkdir(outdir)
-    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'])
-    process.communicate()
-    assert(os.path.isfile(outdir + 'hello_world.obj'))
+    process = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'], stderr=PIPE)
+    out, err = process.communicate()
+    assert not err, err
+    assert os.path.isfile(outdir + 'hello_world.obj')
 
   def test_doublestart_bug(self):
     open('code.cpp', 'w').write(r'''
