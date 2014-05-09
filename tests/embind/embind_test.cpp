@@ -1181,7 +1181,7 @@ std::string callAbstractMethod2(AbstractClassWithConstructor& ac) {
     return ac.abstractMethod();
 }
 
-struct HeldAbstractClass {
+struct HeldAbstractClass : public PolyBase, public PolySecondBase {
     virtual void method() = 0;
 };
 struct HeldAbstractClassWrapper : wrapper<HeldAbstractClass> {
@@ -1192,7 +1192,7 @@ struct HeldAbstractClassWrapper : wrapper<HeldAbstractClass> {
     }
 };
 
-std::shared_ptr<HeldAbstractClass> passHeldAbstractClass(std::shared_ptr<HeldAbstractClass> p) {
+std::shared_ptr<PolySecondBase> passHeldAbstractClass(std::shared_ptr<HeldAbstractClass> p) {
     return p;
 }
 
@@ -1224,7 +1224,7 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         ;
     function("callAbstractMethod2", &callAbstractMethod2);
 
-    class_<HeldAbstractClass>("HeldAbstractClass")
+    class_<HeldAbstractClass, base<PolySecondBase>>("HeldAbstractClass")
         .smart_ptr<std::shared_ptr<HeldAbstractClass>>("shared_ptr<HeldAbstractClass>")
         .allow_subclass<HeldAbstractClassWrapper, std::shared_ptr<HeldAbstractClassWrapper>>("HeldAbstractClassWrapper")
         .function("method", &HeldAbstractClass::method, pure_virtual())
