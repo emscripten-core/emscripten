@@ -1823,6 +1823,10 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
     // It's a little nasty that we're modifying the wrapper prototype here.
 
     wrapperPrototype.__construct = function __construct() {
+        if (this === wrapperPrototype) {
+            throwBindingError("Pass correct 'this' to __construct");
+        }
+
         var inner = baseConstructor.__$implement.apply(
             undefined,
             [this].concat(arraySlice.call(arguments)));
@@ -1835,6 +1839,10 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
     };
 
     wrapperPrototype.__destruct = function __destruct() {
+        if (this === wrapperPrototype) {
+            throwBindingError("Pass correct 'this' to __destruct");
+        }
+
         unregisterInheritedInstance(registeredClass, this.$$.ptr);
     };
 

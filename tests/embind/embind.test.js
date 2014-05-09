@@ -1800,6 +1800,35 @@ module({
             rv.delete();
         });
 
+        test("can instantiate two wrappers with constructors", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                __construct: function() {
+                    this.__parent.__construct.call(this);
+                },
+                method: function() {
+                }
+            });
+            var a = new C;
+            var b = new C;
+            a.delete();
+            b.delete();
+        });
+
+        test("incorrectly calling parent is an error", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                __construct: function() {
+                    this.__parent.__construct();
+                },
+                method: function() {
+                }
+            });
+            assert.throws(cm.BindingError, function() {
+                new C;
+            });
+        });
+
         test("deleteLater() works for JavaScript implementations", function() {
             var parent = cm.HeldAbstractClass;
             var C = parent.extend("C", {
