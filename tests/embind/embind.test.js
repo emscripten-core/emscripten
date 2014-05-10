@@ -2234,6 +2234,29 @@ module({
         });
     });
 
+    BaseFixture.extend("intrusive pointers", function() {
+        test("can pass intrusive pointers", function() {
+            var ic = new cm.IntrusiveClass;
+            var d = cm.passThroughIntrusiveClass(ic);
+            assert.true(ic.isAliasOf(d));
+            ic.delete();
+            d.delete();
+        });
+
+        test("can hold intrusive pointers", function() {
+            var ic = new cm.IntrusiveClass;
+            var holder = new cm.IntrusiveClassHolder;
+            holder.set(ic);
+            ic.delete();
+            var d = holder.get();
+            d.delete();
+            holder.delete();
+        });
+
+        test("can extend from intrusive pointer class and still preserve reference in JavaScript", function() {
+        });
+    });
+
     BaseFixture.extend("typeof", function() {
         test("typeof", function() {
             assert.equal("object", cm.getTypeOfVal(null));

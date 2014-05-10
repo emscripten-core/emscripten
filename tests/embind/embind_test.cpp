@@ -2434,6 +2434,175 @@ EMSCRIPTEN_BINDINGS(val_new_) {
     function("construct_with_ints_and_float", &construct_with_ints_and_float);
 }
 
+template <typename T>
+class intrusive_ptr {
+public:
+    typedef T element_type;
+
+    intrusive_ptr(std::nullptr_t = nullptr)
+        : px(nullptr)
+    {}
+
+    template <typename U>
+    explicit intrusive_ptr(U* px)
+        : px(px)
+    {
+        addRef(px);
+    }
+
+    intrusive_ptr(const intrusive_ptr& that)
+        : px(that.px)
+    {
+        addRef(px);
+    }
+
+    template<typename U>
+    intrusive_ptr(const intrusive_ptr<U>& that)
+        : px(that.get())
+    {
+        addRef(px);
+    }
+
+    intrusive_ptr& operator=(const intrusive_ptr& that) {
+        reset(that.get());
+        return *this;
+    }
+
+    intrusive_ptr& operator=(intrusive_ptr&& that) {
+        release(px);
+        px = that.px;
+        that.px = 0;
+        return *this;
+    }
+
+    template<typename U>
+    intrusive_ptr& operator=(const intrusive_ptr<U>& that) {
+        reset(that.get());
+        return *this;
+    }
+
+    template<typename U>
+    intrusive_ptr& operator=(intrusive_ptr<U>&& that) {
+        release(px);
+        px = that.px;
+        that.px = 0;
+        return *this;
+    }
+
+    ~intrusive_ptr() {
+        release(px);
+    }
+
+    void reset(T* nx = nullptr) {
+        addRef(nx);
+        release(px);
+        px = nx;
+    }
+
+    T* get() const {
+        return px;
+    }
+
+    T& operator*() const {
+        return *px;
+    }
+
+    T* operator->() const {
+        return px;
+    }
+
+    explicit operator bool() const {
+        return px != nullptr;
+    }
+
+    void swap(intrusive_ptr& rhs) {
+        std::swap(px, rhs.px);
+    }
+
+private:
+    void addRef(T* px) {
+        if (px) {
+            ++px->referenceCount;
+        }
+    }
+
+    void release(T* px) {
+        if (--px->referenceCount == 0) {
+            delete px;
+        }
+    }
+
+    T* px;
+
+    template<typename U>
+    friend class intrusive_ptr;
+};
+
+template<typename T>
+intrusive_ptr<T> make_intrusive_ptr() {
+    return intrusive_ptr<T>(new T);
+}
+
+struct IntrusiveClass {
+    virtual ~IntrusiveClass() {}
+    long referenceCount = 0;
+};
+
+struct IntrusiveClassWrapper : public wrapper<IntrusiveClass> {
+    EMSCRIPTEN_WRAPPER(IntrusiveClassWrapper);
+};
+
+template<typename T>
+struct Holder {
+    void set(const T& v) {
+        value = v;
+    }
+    const T& get() const {
+        return value;
+    }
+    T value;
+};
+
+EMSCRIPTEN_BINDINGS(intrusive_pointers) {
+    class_<IntrusiveClass>("IntrusiveClass")
+        .smart_ptr_constructor("intrusive_ptr<IntrusiveClass>", &make_intrusive_ptr<IntrusiveClass>)
+        .allow_subclass<IntrusiveClassWrapper, intrusive_ptr<IntrusiveClassWrapper>>("IntrusiveClassWrapper")
+        ;
+
+    typedef Holder<intrusive_ptr<IntrusiveClass>> IntrusiveClassHolder;
+    class_<IntrusiveClassHolder>("IntrusiveClassHolder")
+        .constructor<>()
+        .function("set", &IntrusiveClassHolder::set)
+        .function("get", &IntrusiveClassHolder::get)
+        ;
+
+    function("passThroughIntrusiveClass", &passThrough<intrusive_ptr<IntrusiveClass>>);
+}
+
+
+/*
+#define NORTHSTAR_IMPLEMENT_REFCOUNT(T)                                 \
+    template<>                                                          \
+    NS_ALWAYS_INLINE void ::northstar::IntrusiveImplementation<T>::incRef(const T* ptr) { \
+        ++ptr->referenceCount;                                          \
+    }                                                                   \
+    template<>                                                          \
+    void ::northstar::IntrusiveImplementation<T>::decRef(const T* ptr) { \
+        if (ptr && --ptr->referenceCount == 0) {                        \
+            ptr->onStartDestruction();                                  \
+            delete ptr;                                                 \
+        }                                                               \
+    }                                                                   \
+    template<>                                                          \
+    NS_ALWAYS_INLINE const ::northstar::PointerTarget* ::northstar::IntrusiveImplementation<T>::toPointerTarget(const T* ptr) { \
+        return ptr;                                                     \
+    }                                                                   \
+    template<>                                                          \
+    NS_ALWAYS_INLINE T* ::northstar::IntrusiveImplementation<T>::fromPointerTarget(const ::northstar::PointerTarget* t) { \
+        return static_cast<T*>(const_cast<PointerTarget*>(t));          \
+    }
+*/
+
 std::string getTypeOfVal(const val& v) {
     return v.typeof().as<std::string>();
 }
