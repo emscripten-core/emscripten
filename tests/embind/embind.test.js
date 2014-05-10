@@ -2254,6 +2254,16 @@ module({
         });
 
         test("can extend from intrusive pointer class and still preserve reference in JavaScript", function() {
+            var C = cm.IntrusiveClass.extend("C", {
+            });
+            var instance = new C;
+            var holder = new cm.IntrusiveClassHolder;
+            holder.set(instance);
+            instance.delete();
+
+            var back = holder.get();
+            assert.equal(back, instance);
+            holder.delete();
         });
     });
 

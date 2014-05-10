@@ -2538,6 +2538,30 @@ private:
     friend class intrusive_ptr;
 };
 
+namespace emscripten {
+    template<typename T>
+    struct smart_ptr_trait<intrusive_ptr<T>> {
+        typedef intrusive_ptr<T> pointer_type;
+        typedef T element_type;
+
+        static sharing_policy get_sharing_policy() {
+            return sharing_policy::INTRUSIVE;
+        }
+
+        static T* get(const intrusive_ptr<T>& p) {
+            return p.get();
+        }
+
+        static intrusive_ptr<T> share(const intrusive_ptr<T>& r, T* ptr) {
+            return intrusive_ptr<T>(ptr);
+        }
+
+        static pointer_type* construct_null() {
+            return new pointer_type;
+        }
+    };
+}
+
 template<typename T>
 intrusive_ptr<T> make_intrusive_ptr() {
     return intrusive_ptr<T>(new T);
@@ -2578,30 +2602,6 @@ EMSCRIPTEN_BINDINGS(intrusive_pointers) {
 
     function("passThroughIntrusiveClass", &passThrough<intrusive_ptr<IntrusiveClass>>);
 }
-
-
-/*
-#define NORTHSTAR_IMPLEMENT_REFCOUNT(T)                                 \
-    template<>                                                          \
-    NS_ALWAYS_INLINE void ::northstar::IntrusiveImplementation<T>::incRef(const T* ptr) { \
-        ++ptr->referenceCount;                                          \
-    }                                                                   \
-    template<>                                                          \
-    void ::northstar::IntrusiveImplementation<T>::decRef(const T* ptr) { \
-        if (ptr && --ptr->referenceCount == 0) {                        \
-            ptr->onStartDestruction();                                  \
-            delete ptr;                                                 \
-        }                                                               \
-    }                                                                   \
-    template<>                                                          \
-    NS_ALWAYS_INLINE const ::northstar::PointerTarget* ::northstar::IntrusiveImplementation<T>::toPointerTarget(const T* ptr) { \
-        return ptr;                                                     \
-    }                                                                   \
-    template<>                                                          \
-    NS_ALWAYS_INLINE T* ::northstar::IntrusiveImplementation<T>::fromPointerTarget(const ::northstar::PointerTarget* t) { \
-        return static_cast<T*>(const_cast<PointerTarget*>(t));          \
-    }
-*/
 
 std::string getTypeOfVal(const val& v) {
     return v.typeof().as<std::string>();
