@@ -129,7 +129,7 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
 
 #if SAFE_HEAP_LOG
     Module.print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
-#endif  
+#endif
 
 #if USE_TYPED_ARRAYS == 2
   // Check alignment
