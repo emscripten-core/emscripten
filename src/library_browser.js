@@ -479,13 +479,12 @@ mergeInto(LibraryManager.library, {
 
     getMouseWheelDelta: function(event) {
       var delta = 0;
-      switch (event.type)
-      {
+      switch (event.type) {
         case 'DOMMouseScroll': 
           delta = event.detail;
           break;
         case 'mousewheel': 
-          delta = event.wheelDelta;
+          delta = -event.wheelDelta;
           break;
         case 'wheel': 
           delta = event.deltaY;
