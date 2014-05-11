@@ -437,7 +437,7 @@ var cwrap, ccall;
       }
     }
 
-    // When the code is compressed, the name of cfunc is not litterally 'cfunc' anymore
+    // When the code is compressed, the name of cfunc is not literally 'cfunc' anymore
     var cfuncname = parseJSFunc(function(){return cfunc}).returnValue;
     // Call the function
     funcstr += 'var ret = ' + cfuncname + '(' + argNames.join(',') + ');';
