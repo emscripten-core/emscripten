@@ -195,6 +195,17 @@ function getInheritedInstanceCount() {
 }
 Module['getInheritedInstanceCount'] = getInheritedInstanceCount;
 
+function getLiveInheritedInstances() {
+    var rv = [];
+    for (var k in registeredInstances) {
+        if (registeredInstances.hasOwnProperty(k)) {
+            rv.push(registeredInstances[k]);
+        }
+    }
+    return rv;
+}
+Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
+
 // typeID -> { toWireType: ..., fromWireType: ... }
 var registeredTypes = {};
 
