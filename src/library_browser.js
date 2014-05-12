@@ -478,7 +478,21 @@ mergeInto(LibraryManager.library, {
     },
 
     getMouseWheelDelta: function(event) {
-      return Math.max(-1, Math.min(1, event.type === 'DOMMouseScroll' ? event.detail : -event.wheelDelta));
+      var delta = 0;
+      switch (event.type) {
+        case 'DOMMouseScroll': 
+          delta = event.detail;
+          break;
+        case 'mousewheel': 
+          delta = -event.wheelDelta;
+          break;
+        case 'wheel': 
+          delta = event.deltaY;
+          break;
+        default:
+          throw 'unrecognized mouse wheel event: ' + event.type;
+      }
+      return Math.max(-1, Math.min(1, delta));
     },
 
     mouseX: 0,
