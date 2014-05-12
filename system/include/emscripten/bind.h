@@ -895,6 +895,12 @@ namespace emscripten {
             , wrapped(std::forward<val>(wrapped))
         {}
 
+        ~wrapper() {
+            if (notifyJSOnDestruction) {
+                call<void>("__destruct");
+            }
+        }
+
         template<typename ReturnType, typename... Args>
         ReturnType call(const char* name, Args&&... args) const {
             return wrapped.call<ReturnType>(name, std::forward<Args>(args)...);
@@ -909,18 +915,20 @@ namespace emscripten {
             }
         }
 
+        void setNotifyJSOnDestruction(bool notify) {
+            notifyJSOnDestruction = notify;
+        }
+
     private:
         val wrapped;
+        bool notifyJSOnDestruction = true;
     };
 
 #define EMSCRIPTEN_WRAPPER(T)                                           \
     template<typename... Args>                                          \
     T(::emscripten::val&& v, Args&&... args)                            \
         : wrapper(std::forward<::emscripten::val>(v), std::forward<Args>(args)...) \
-    {}                                                                  \
-    ~T() {                                                              \
-        call<void>("__destruct");                                       \
-    }
+    {}
 
     namespace internal {
         struct NoBaseClass {
