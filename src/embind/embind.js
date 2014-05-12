@@ -1830,10 +1830,11 @@ function __embind_create_inheriting_constructor(constructorName, wrapperType, pr
             throwBindingError("Pass correct 'this' to __construct");
         }
 
-        var inner = baseConstructor.__$implement.apply(
+        var inner = baseConstructor.implement.apply(
             undefined,
             [this].concat(arraySlice.call(arguments)));
         var $$ = inner.$$;
+        inner.notifyOnDestruction();
         $$.preservePointerOnDelete = true;
         Object.defineProperty(this, '$$', {
             value: $$

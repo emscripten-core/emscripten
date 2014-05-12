@@ -879,13 +879,26 @@ namespace emscripten {
         };
     };
 
+
     ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
     ////////////////////////////////////////////////////////////////////////////////
 
+    namespace internal {
+        class WrapperBase {
+        public:
+            void setNotifyJSOnDestruction(bool notify) {
+                notifyJSOnDestruction = notify;
+            }
+
+        protected:
+            bool notifyJSOnDestruction = false;
+        };
+    }
+
     // abstract classes
     template<typename T>
-    class wrapper : public T {
+    class wrapper : public T, public internal::WrapperBase {
     public:
         typedef T class_type;
 
@@ -906,22 +919,8 @@ namespace emscripten {
             return wrapped.call<ReturnType>(name, std::forward<Args>(args)...);
         }
 
-        template<typename ReturnType, typename... Args, typename Default>
-        ReturnType optional_call(const char* name, Default def, Args&&... args) const {
-            if (wrapped.has_implementation_defined_function<T>(name)) {
-                return call<ReturnType>(name, std::forward<Args>(args)...);
-            } else {
-                return def();
-            }
-        }
-
-        void setNotifyJSOnDestruction(bool notify) {
-            notifyJSOnDestruction = notify;
-        }
-
     private:
         val wrapped;
-        bool notifyJSOnDestruction = true;
     };
 
 #define EMSCRIPTEN_WRAPPER(T)                                           \
@@ -1165,15 +1164,15 @@ namespace emscripten {
             using namespace internal;
 
             auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
+                .function("notifyOnDestruction", select_overload<void(WrapperType&)>([](WrapperType& wrapper) {
+                    wrapper.setNotifyJSOnDestruction(true);
+                }))
                 ;
             SmartPtrIfNeeded<PointerType> _(cls, pointerName);
 
             return
-                // rather than use an internal-yet-accessible
-                // constructor function, we could call something like
-                // _embind_register_wrapper_constructor
                 class_function(
-                    "__$implement",
+                    "implement",
                     &wrapped_new<PointerType, WrapperType, val, ConstructorArgs...>,
                     allow_raw_pointer<ret_val>())
                 .class_function(
