@@ -636,6 +636,12 @@ extern EMSCRIPTEN_RESULT emscripten_set_beforeunload_callback(void *userData, co
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const void *reserved, void *userData));
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const void *reserved, void *userData));
 
+/*
+ * Queries the given canvas element for whether its WebGL context is in a lost state.
+ * target: Reserved for future use, pass in 0.
+ */
+extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
+
 #ifdef __cplusplus
 } // ~extern "C"
 #endif
