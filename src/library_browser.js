@@ -765,8 +765,8 @@ mergeInto(LibraryManager.library, {
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
-      if (e.lengthComputable || (e.lengthComputable === undefined && e.totalSize != 0)) {
-        var percentComplete = (e.position / e.totalSize)*100;
+      if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
+        var percentComplete = (e.loaded / e.total)*100;
         if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
       }
     };
