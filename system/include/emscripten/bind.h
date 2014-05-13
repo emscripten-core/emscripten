@@ -282,6 +282,33 @@ namespace emscripten {
         return method;
     }
 
+    namespace internal {        
+        // this should be in <type_traits>, but alas, it's not
+        template<typename T> struct remove_class;
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...)> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) const> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) volatile> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) const volatile> { using type = R(A...); };
+
+        template<typename LambdaType>
+        struct CalculateLambdaSignature {
+            using type = typename std::add_pointer<
+                typename remove_class<
+                    decltype(&LambdaType::operator())
+                >::type
+            >::type;
+        };
+    }
+
+    template<typename LambdaType>
+    typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp) {
+        return fp;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Invoker
     ////////////////////////////////////////////////////////////////////////////////

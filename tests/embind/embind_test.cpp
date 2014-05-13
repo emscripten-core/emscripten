@@ -1226,7 +1226,7 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         .function("abstractMethod", &AbstractClass::abstractMethod, pure_virtual())
         // The select_overload is necessary because, otherwise, the C++ compiler
         // cannot deduce the signature of the lambda function.
-        .function("optionalMethod", select_overload<std::string(AbstractClass&, std::string)>(
+        .function("optionalMethod", optional_override(
             [](AbstractClass& this_, std::string s) {
                 return this_.AbstractClass::optionalMethod(s);
             }
