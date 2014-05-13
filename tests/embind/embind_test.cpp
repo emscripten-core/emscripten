@@ -1094,6 +1094,12 @@ public:
     std::string concreteMethod() const {
         return "concrete";
     }
+
+    virtual void passShared(const std::shared_ptr<Derived>&) {
+    }
+
+    virtual void passVal(const val& v) {
+    }
 };
 
 EMSCRIPTEN_SYMBOL(optionalMethod);
@@ -1119,6 +1125,14 @@ public:
 
     void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
         return call<void>("differentArguments", i, d, f, q, s);
+    }
+
+    virtual void passShared(const std::shared_ptr<Derived>& p) override {
+        return call<void>("passShared", p);
+    }
+
+    virtual void passVal(const val& v) override {
+        return call<void>("passVal", v);
     }
 };
 
@@ -1196,6 +1210,15 @@ std::shared_ptr<PolySecondBase> passHeldAbstractClass(std::shared_ptr<HeldAbstra
     return p;
 }
 
+void passShared(AbstractClass& ac) {
+    auto p = std::make_shared<Derived>();
+    ac.passShared(p);
+}
+
+void passVal(AbstractClass& ac, val v) {
+    return ac.passVal(v);
+}
+
 EMSCRIPTEN_BINDINGS(interface_tests) {
     class_<AbstractClass>("AbstractClass")
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
@@ -1209,6 +1232,12 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
             }
         ))
         .function("concreteMethod", &AbstractClass::concreteMethod)
+        .function("passShared", select_overload<void(AbstractClass&, const std::shared_ptr<Derived>&)>([](AbstractClass& self, const std::shared_ptr<Derived>& derived) {
+            self.AbstractClass::passShared(derived);
+        }))
+        .function("passVal", select_overload<void(AbstractClass&, const val&)>([](AbstractClass& self, const val& v) {
+            self.AbstractClass::passVal(v);
+        }))
         ;
     
     function("getAbstractClass", &getAbstractClass);
@@ -1216,6 +1245,8 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
     function("callOptionalMethod", &callOptionalMethod);
     function("callReturnsSharedPtrMethod", &callReturnsSharedPtrMethod);
     function("callDifferentArguments", &callDifferentArguments);
+    function("passShared", &passShared);
+    function("passVal", &passVal);
 
     class_<AbstractClassWithConstructor>("AbstractClassWithConstructor")
         .allow_subclass<AbstractClassWithConstructorWrapper>("AbstractClassWithConstructorWrapper", constructor<std::string>())

@@ -590,6 +590,9 @@ function __embind_register_emval(rawType, name) {
         'argPackAdvance': 8,
         'readValueFromPointer': simpleReadValueFromPointer,
         destructorFunction: null, // This type does not need a destructor
+
+        // TODO: do we need a deleteObject here?  write a test where
+        // emval is passed into JS via an interface
     });
 }
 
@@ -1194,6 +1197,12 @@ RegisteredPointer.prototype.destructor = function destructor(ptr) {
 
 RegisteredPointer.prototype['argPackAdvance'] = 8;
 RegisteredPointer.prototype['readValueFromPointer'] = simpleReadValueFromPointer;
+
+RegisteredPointer.prototype['deleteObject'] = function deleteObject(handle) {
+    if (handle !== null) {
+        handle['delete']();
+    }
+};
 
 RegisteredPointer.prototype['fromWireType'] = function fromWireType(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)

@@ -1953,6 +1953,53 @@ module({
             rv.delete();
             cm.flushPendingDeletes();
         });
+
+        test("method arguments with pointer ownership semantics are cleaned up after call", function() {
+            var parent = cm.AbstractClass;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+            });
+            var impl = new C;
+            cm.passShared(impl);
+            impl.delete();
+        });
+
+        test("method arguments with pointer ownership semantics can be cloned", function() {
+            var parent = cm.AbstractClass;
+            var owned;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+                passShared: function(p) {
+                    owned = p.clone();
+                }
+            });
+            var impl = new C;
+            cm.passShared(impl);
+            impl.delete();
+
+            assert.equal("Derived", owned.getClassName());
+            owned.delete();
+        });
+
+        test("emscripten::val method arguments don't leak", function() {
+            var parent = cm.AbstractClass;
+            var got;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+                passVal: function(g) {
+                    got = g;
+                }
+            });
+            var impl = new C;
+            var v = {};
+            cm.passVal(impl, v);
+            impl.delete();
+
+            assert.equal(v, got);
+        });
     });
 
     BaseFixture.extend("registration order", function() {
