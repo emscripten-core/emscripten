@@ -749,54 +749,61 @@ function simplifyExpressions(ast) {
     });
   }
 
+  function emitsBoolean(node) {
+    if (node[0] === 'binary') return node[1] in COMPARE_OPS;
+    if (node[0] === 'unary-prefix') return node[1] === '!';
+    if (node[0] === 'conditional') return true;
+    return false;
+  }
+
   //   expensive | expensive can be turned into expensive ? 1 : expensive, and
   //   expensive | cheap     can be turned into cheap     ? 1 : expensive,
   // so that we can avoid the expensive computation, if it has no side effects.
   function conditionalize(ast) {
     var MIN_COST = 7;
     traverse(ast, function(node, type) {
-      if (type === 'if' || type === 'while') {
-        var cond = node[1];
-        if (cond[0] === 'binary' && (cond[1] === '|' || cond[1] === '&') && cond[3][0] !== 'num' && cond[2][0] !== 'num') {
-          // logical operator on two non-numerical values, all inside a condition
-          var left = cond[2];
-          var right = cond[3];
-          var leftEffects = hasSideEffects(left);
-          var rightEffects = hasSideEffects(right);
-          if (leftEffects && rightEffects) return; // both must execute
-          // canonicalize with side effects, if any, happening on the left
-          if (rightEffects) {
-            if (measureCost(left) < MIN_COST) return; // avoidable code is too cheap
+      if (node[0] === 'binary' && (node[1] === '|' || node[1] === '&') && node[3][0] !== 'num' && node[2][0] !== 'num') {
+        // logical operator on two non-numerical values
+        var left = node[2];
+        var right = node[3];
+        if (!emitsBoolean(left) || !emitsBoolean(right)) return;
+        var leftEffects = hasSideEffects(left);
+        var rightEffects = hasSideEffects(right);
+        if (leftEffects && rightEffects) return; // both must execute
+        // canonicalize with side effects, if any, happening on the left
+        if (rightEffects) {
+          if (measureCost(left) < MIN_COST) return; // avoidable code is too cheap
+          var temp = left;
+          left = right;
+          right = temp;
+        } else if (leftEffects) {
+          if (measureCost(right) < MIN_COST) return; // avoidable code is too cheap
+        } else {
+          // no side effects, reorder based on cost estimation
+          var leftCost = measureCost(left);
+          var rightCost = measureCost(right);
+          if (Math.max(leftCost, rightCost) < MIN_COST) return; // avoidable code is too cheap
+          // canonicalize with expensive code on the right
+          if (leftCost > rightCost) {
             var temp = left;
             left = right;
             right = temp;
-          } else if (leftEffects) {
-            if (measureCost(right) < MIN_COST) return; // avoidable code is too cheap
-          } else {
-            // no side effects, reorder based on cost estimation
-            var leftCost = measureCost(left);
-            var rightCost = measureCost(right);
-            if (Math.max(leftCost, rightCost) < MIN_COST) return; // avoidable code is too cheap
-            // canonicalize with expensive code on the right
-            if (leftCost > rightCost) {
-              var temp = left;
-              left = right;
-              right = temp;
-            }
-          }
-          // worth it, perform conditionalization
-          if (cond[1] === '|') {
-            node[1] = ['conditional', left, ['num', 1], right];
-          } else { // &
-            node[1] = ['conditional', left, right, ['num', 0]];
-          }
-          if (left[0] === 'unary-prefix' && left[1] === '!') {
-            node[1][1] = flipCondition(left);
-            var temp = node[1][2];
-            node[1][2] = node[1][3];
-            node[1][3] = temp;
           }
         }
+        // worth it, perform conditionalization
+        var ret;
+        if (node[1] === '|') {
+          ret = ['conditional', left, ['num', 1], right];
+        } else { // &
+          ret = ['conditional', left, right, ['num', 0]];
+        }
+        if (left[0] === 'unary-prefix' && left[1] === '!') {
+          ret[1] = flipCondition(left);
+          var temp = ret[2];
+          ret[2] = ret[3];
+          ret[3] = temp;
+        }
+        return ret;
       }
     });
   }
@@ -3978,7 +3985,10 @@ function measureCost(ast) {
   var size = 0;
   traverse(ast, function(node, type) {
     if (type === 'num' || type === 'unary-prefix') size--;
-    else if (type === 'binary' && node[3][0] === 'num' && node[3][1] === 0) size--;
+    else if (type === 'binary') {
+      if (node[3][0] === 'num' && node[3][1] === 0) size--;
+      else if (node[1] === '/' || node[1] === '%') size += 2;
+    }
     else if (type === 'call' && !callHasSideEffects(node)) size -= 2;
     else if (type === 'sub') size++;
     size++;

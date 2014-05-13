@@ -608,5 +608,6 @@ function conditionalizeMe() {
  if (x > 10 | (HEAP[20] + 2) > 5) {
   b();
  }
+ return ((((Math_imul(i6+1, i7) | 0) + 17 | 0) % 5 | 0 | 0) == 0 | ((((Math_imul(i7+1, i7) | 0) + 11 | 0) >>> 0) % 3 | 0 | 0) == 0 | 0) == 0;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp", "conditionalizeMe"]
