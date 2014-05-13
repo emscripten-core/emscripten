@@ -605,7 +605,7 @@ function conditionalizeMe() {
  if (!($sub$i480 >= Math_fround(+0)) | !($sub4$i483 >= Math_fround(HEAPF32[x+y|0]))) {
   b();
  }
- if (x > 10 | HEAP[20] > 5) {
+ if (x > 10 | (HEAP[20] + 2) > 5) {
   b();
  }
 }

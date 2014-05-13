@@ -753,7 +753,7 @@ function simplifyExpressions(ast) {
   //   expensive | cheap     can be turned into cheap     ? 1 : expensive,
   // so that we can avoid the expensive computation, if it has no side effects.
   function conditionalize(ast) {
-    var MIN_COST = 4;
+    var MIN_COST = 7;
     traverse(ast, function(node, type) {
       if (type === 'if' || type === 'while') {
         var cond = node[1];
