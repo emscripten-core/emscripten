@@ -749,11 +749,64 @@ function simplifyExpressions(ast) {
     });
   }
 
+  //   expensive | expensive can be turned into expensive ? 1 : expensive, and
+  //   expensive | cheap     can be turned into cheap     ? 1 : expensive,
+  // so that we can avoid the expensive computation, if it has no side effects.
+  function conditionalize(ast) {
+    var MIN_COST = 4;
+    traverse(ast, function(node, type) {
+      if (type === 'if' || type === 'while') {
+        var cond = node[1];
+        if (cond[0] === 'binary' && (cond[1] === '|' || cond[1] === '&') && cond[3][0] !== 'num' && cond[2][0] !== 'num') {
+          // logical operator on two non-numerical values, all inside a condition
+          var left = cond[2];
+          var right = cond[3];
+          var leftEffects = hasSideEffects(left);
+          var rightEffects = hasSideEffects(right);
+          if (leftEffects && rightEffects) return; // both must execute
+          // canonicalize with side effects, if any, happening on the left
+          if (rightEffects) {
+            if (measureCost(left) < MIN_COST) return; // avoidable code is too cheap
+            var temp = left;
+            left = right;
+            right = temp;
+          } else if (leftEffects) {
+            if (measureCost(right) < MIN_COST) return; // avoidable code is too cheap
+          } else {
+            // no side effects, reorder based on cost estimation
+            var leftCost = measureCost(left);
+            var rightCost = measureCost(right);
+            if (Math.max(leftCost, rightCost) < MIN_COST) return; // avoidable code is too cheap
+            // canonicalize with expensive code on the right
+            if (leftCost > rightCost) {
+              var temp = left;
+              left = right;
+              right = temp;
+            }
+          }
+          // worth it, perform conditionalization
+          if (cond[1] === '|') {
+            node[1] = ['conditional', left, ['num', 1], right];
+          } else { // &
+            node[1] = ['conditional', left, right, ['num', 0]];
+          }
+          if (left[0] === 'unary-prefix' && left[1] === '!') {
+            node[1][1] = flipCondition(left);
+            var temp = node[1][2];
+            node[1][2] = node[1][3];
+            node[1][3] = temp;
+          }
+        }
+      }
+    });
+  }
+
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
     simplifyBitops(func);
     joinAdditions(func);
     simplifyNotComps(func);
+    conditionalize(func);
     // simplifyZeroComp(func); TODO: investigate performance
   });
 }
@@ -3916,6 +3969,18 @@ var FAST_ELIMINATION_BINARIES = setUnion(setUnion(USEFUL_BINARY_OPS, COMPARE_OPS
 function measureSize(ast) {
   var size = 0;
   traverse(ast, function() {
+    size++;
+  });
+  return size;
+}
+
+function measureCost(ast) {
+  var size = 0;
+  traverse(ast, function(node, type) {
+    if (type === 'num' || type === 'unary-prefix') size--;
+    else if (type === 'binary' && node[3][0] === 'num' && node[3][1] === 0) size--;
+    else if (type === 'call' && !callHasSideEffects(node)) size -= 2;
+    else if (type === 'sub') size++;
     size++;
   });
   return size;

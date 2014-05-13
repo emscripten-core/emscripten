@@ -538,4 +538,63 @@ function fcomp() {
  if (5 >= ($b | 0)) return 5;
  if (5 >= 5) return 5;
 }
+function conditionalizeMe() {
+ if (x > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ if (a() > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ if (x > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ if (a() > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ if (x > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (a() > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (x > 1 | x + y + z + k() > 12) {
+  b();
+ }
+ if (a() > 1 | x + y + z + k() > 12) {
+  b();
+ }
+ if (x > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (a() > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (x + y + z + k() > 12 | x > 1) {
+  b();
+ }
+ if (x + y + z + k() > 12 | a() > 1) {
+  b();
+ }
+ while (x > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ while (a() > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ while (x > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ while (a() > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ if (!($sub$i480 >= Math_fround(+0)) | !($sub4$i483 >= Math_fround(+0))) {
+  b();
+ }
+ if ($sub$i480 >= Math_fround(+0) ? !($sub4$i483 >= Math_fround(HEAPF32[x + y | 0])) : 1) {
+  b();
+ }
+ if (x > 10 ? 1 : HEAP[20] > 5) {
+  b();
+ }
+}
 
