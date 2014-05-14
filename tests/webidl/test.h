@@ -10,6 +10,7 @@ public:
   Parent(Parent *p, Parent *q); // overload constructor
   int getVal() { return value; }; // inline should work just fine here, unlike Way 1 before
   void mulVal(int mul);
+  void parentFunc() {}
 };
 
 class Child1 : public Parent {
@@ -19,6 +20,7 @@ public:
   int getValSqr() { return value*value; }
   int getValSqr(int more) { return value*value*more; }
   int getValTimes(int times=1) { return value*times; }
+  void parentFunc(int x) { printf("Child1::parentFunc(%d)\n", x); }
 };
 
 // Child2 has vtable, parent does not. Checks we cast child->parent properly - (Parent*)child is not a no-op, must offset

@@ -10,6 +10,7 @@ Child1:7
 588
 14
 28
+Child1::parentFunc(90)
 c1 v2
 Parent:16
 Child1:15

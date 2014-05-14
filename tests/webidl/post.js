@@ -5,6 +5,7 @@ var sme = new Module.Parent(42);
 sme.mulVal(2);
 Module.print('*')
 Module.print(sme.getVal());
+sme.parentFunc(90);
 
 Module.print('c1');
 
@@ -16,6 +17,7 @@ Module.print(c1.getValSqr());
 Module.print(c1.getValSqr(3));
 Module.print(c1.getValTimes()); // default argument should be 1
 Module.print(c1.getValTimes(2));
+c1.parentFunc(90);
 
 Module.print('c1 v2');
 
