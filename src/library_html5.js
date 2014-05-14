@@ -1307,6 +1307,12 @@ var LibraryJSEvents = {
     JSEvents.registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED') }}}, "webglcontextrestored");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
+
+  emscripten_is_webgl_context_lost: function(target) {
+    // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
+    if (!Module['ctx']) return true; // No context ~> lost context.
+    return Module['ctx'].isContextLost();
+  }
 };
 
 autoAddDeps(LibraryJSEvents, '$JSEvents');
