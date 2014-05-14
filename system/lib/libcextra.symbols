@@ -131,6 +131,7 @@
          T rindex
          T scalbnf
          D signgam
+         T sscanf
          T stpcpy
          T strcasecmp_l
          T strcasestr
@@ -178,6 +179,8 @@
          T towupper_l
          T verr
          T verrx
+         T MUSL_vfscanf
+         T vsscanf
          T vfwprintf
          T vswprintf
          T vwarn

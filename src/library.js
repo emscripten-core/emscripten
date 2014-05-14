@@ -2802,15 +2802,6 @@ LibraryManager.library = {
     var stdin = {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}};
     return _fscanf(stdin, format, varargs);
   },
-  sscanf__deps: ['_scanString'],
-  sscanf: function(s, format, varargs) {
-    // int sscanf(const char *restrict s, const char *restrict format, ... );
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
-    var index = 0;
-    function get() { return {{{ makeGetValue('s', 'index++', 'i8') }}}; };
-    function unget() { index--; };
-    return __scanString(format, get, unget, varargs);
-  },
   snprintf__deps: ['_formatString', 'malloc'],
   snprintf: function(s, n, format, varargs) {
     // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);

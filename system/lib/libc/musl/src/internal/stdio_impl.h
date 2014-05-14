@@ -95,4 +95,7 @@ int __fmodeflags(const char *);
 FILE *__fopen_rb_ca(const char *, FILE *, unsigned char *, size_t);
 int __fclose_ca(FILE *);
 
+// XXX Emscripten
+int MUSL_vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap);
+
 #endif
