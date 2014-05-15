@@ -6,6 +6,7 @@ sme.mulVal(2);
 Module.print('*')
 Module.print(sme.getVal());
 sme.parentFunc(90);
+Module.print(typeof sme.getAsConst());
 
 Module.print('c1');
 

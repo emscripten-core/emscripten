@@ -11,6 +11,7 @@ public:
   int getVal() { return value; }; // inline should work just fine here, unlike Way 1 before
   void mulVal(int mul);
   void parentFunc() {}
+  const Parent *getAsConst() { return NULL; }
 };
 
 class Child1 : public Parent {

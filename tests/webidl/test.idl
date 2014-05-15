@@ -6,6 +6,7 @@ interface Parent {
   long getVal();
   void mulVal(long mul);
   void parentFunc();
+  [Const] Parent getAsConst();
 };
 
 interface Child1 {
