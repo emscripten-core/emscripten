@@ -971,7 +971,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_strings(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
+      if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
       test_path = path_from_root('tests', 'core', 'test_strings')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -3856,18 +3856,21 @@ Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
   def test_sscanf_n(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_n')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_whitespace(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_whitespace')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_other_whitespace(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_other_whitespace')
@@ -3876,6 +3879,7 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_3(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     # i64
     if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
 
@@ -3885,23 +3889,27 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_4(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_4')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_5(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_5')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_6(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_6')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
   def test_sscanf_skip(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_skip')
@@ -3910,12 +3918,14 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_caps(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_caps')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_hex(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
@@ -3924,6 +3934,7 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_float(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_float')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -3935,6 +3946,7 @@ Pass: 0.000012 0.000012''')
     self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
   def test_files(self):
+    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
     if self.emcc_args is not None and '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
