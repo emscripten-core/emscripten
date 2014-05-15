@@ -21,6 +21,7 @@
          T __wcscoll_l
          T __wcsxfrm_l
          W __wctype_l
+         T asprintf
          T atoll
          T bcmp
          T bcopy
@@ -33,6 +34,9 @@
          T fcvt
          T fputwc
          W fputwc_unlocked
+         T frexp
+         T frexpf
+         T frexpl
          T fwprintf
          T gcvt
          T getopt
@@ -163,6 +167,7 @@
          T strverscmp
          T strxfrm
          W strxfrm_l
+         T sprintf
          T swprintf
          T tgamma
          T tgammaf
@@ -177,11 +182,15 @@
          T towlower_l
          T towupper
          T towupper_l
+         T vasprintf
          T verr
          T verrx
          T MUSL_vfscanf
          T vsscanf
+         T MUSL_vfprintf
          T vfwprintf
+         T vsnprintf
+         T vsprintf
          T vswprintf
          T vwarn
          T vwarnx

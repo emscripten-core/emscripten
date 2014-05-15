@@ -95,7 +95,8 @@ int __fmodeflags(const char *);
 FILE *__fopen_rb_ca(const char *, FILE *, unsigned char *, size_t);
 int __fclose_ca(FILE *);
 
-// XXX Emscripten
+// XXX Emscripten: musl-specific vfscanf and vfprintf live parallel to JS handwritten vfscanf and vfprintf, so musl ones are prefixed.
 int MUSL_vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap);
+int MUSL_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
 
 #endif
