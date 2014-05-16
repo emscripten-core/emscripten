@@ -41,13 +41,13 @@ var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
   //if (dest === A_NUMBER) Module.print ([dest, type, store, ignore, storeValue] + ' ' + stackTrace()); // Something like this may be useful, in debugging
 
-  assert(dest > 0, 'segmentation fault');
+  if (dest <= 0) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest);
 
 #if USE_TYPED_ARRAYS
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
   // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
   // JS array so it will work (potentially slowly, depending on the engine).
-  assert(ignore || dest < Math.max(DYNAMICTOP, STATICTOP));
+  if (!ignore && dest >= Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest + '. Heap ends at address ' + Math.max(DYNAMICTOP, STATICTOP));
   assert(ignore || DYNAMICTOP <= TOTAL_MEMORY);
 #endif
 
