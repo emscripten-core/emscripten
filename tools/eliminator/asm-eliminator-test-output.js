@@ -816,7 +816,7 @@ function selfAssign() {
 function elimOneLoopVar($argc, $argv) {
  $argc = $argc | 0;
  $argv = $argv | 0;
- var $arg$0 = 0, $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $ok$0 = 0, $primes$011 = 0, $retval$0 = 0, $vararg_buffer1 = 0, $j$010$looptemp = 0;
+ var $arg$0 = 0, $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $ok$0 = 0, $primes$011 = 0, $retval$0 = 0, $vararg_buffer1 = 0;
  $curri$012 = 2;
  $primes$011 = 0;
  while (1) {
@@ -825,12 +825,11 @@ function elimOneLoopVar($argc, $argv) {
    if ($call10 > Math_fround(+2)) {
     $j$010 = 2;
     while (1) {
-     $j$010$looptemp = $j$010;
-     $j$010 = $j$010 + 1 | 0;
-     if ((($curri$012 | 0) % ($j$010$looptemp | 0) & -1 | 0) == 0) {
+     if ((($curri$012 | 0) % ($j$010 | 0) & -1 | 0) == 0) {
       $ok$0 = 0;
       break L15;
      }
+     $j$010 = $j$010 + 1 | 0;
      if (!(Math_fround($j$010 | 0) < $call10)) {
       $ok$0 = 1;
       break;
@@ -895,10 +894,23 @@ function elimOneLoopVar4() {
  }
 }
 function elimOneLoopVarStillUsed() {
+ var $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $retval$0 = 0;
+ while (1) {
+  if ((($curri$012 | 0) % ($j$010 | 0) & -1 | 0) == 0) {
+   break;
+  }
+  $j$010 = $j$010 + 1 | 0;
+  if (!(Math_fround($j$010 | 0) < $call10)) {
+   break;
+  }
+ }
+ return $retval$0 | 0;
+}
+function elimOneLoopVarStillUsedSE() {
  var $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $retval$0 = 0, $j$010$looptemp = 0;
  while (1) {
   $j$010$looptemp = $j$010;
-  $j$010 = $j$010 + 1 | 0;
+  $j$010 = $j$010 + sideeffect() | 0;
   if ((($curri$012 | 0) % ($j$010$looptemp | 0) & -1 | 0) == 0) {
    break;
   }

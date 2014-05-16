@@ -1034,6 +1034,27 @@ function hasSideEffects(node) { // this is 99% incomplete!
   }
 }
 
+// checks if a node has just basic operations, nothing with side effects nor that can notice side effects, which
+// implies we can move it around in the code
+function triviallySafeToMove(node, asmData) {
+  var ok = true;
+  traverse(node, function(node, type) {
+    switch (type) {
+      case 'stat': case 'binary': case 'unary-prefix': case 'assign': case 'num':
+        break;
+      case 'name':
+        if (!(node[1] in asmData.vars) && !(node[1] in asmData.params)) ok = false;
+        break;
+      case 'call':
+        if (callHasSideEffects(node)) ok = false;
+        break;
+      default:
+        ok = false;
+    }  
+  });
+  return ok;
+}
+
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
 // Operates on generated functions only
 function vacuum(ast) {
@@ -3662,21 +3683,51 @@ function eliminate(ast, memSafe) {
               // if a loop variable is used after we assigned to the helper, we must save its value and use that.
               // (note that this can happen due to elimination, if we eliminate an expression containing the
               // loop var far down, past the assignment!)
-              var temp = looper + '$looptemp';
-              var looperUsed = false;
-              assert(!(temp in asmData.vars)); 
+              // first, see if the looper and helper overlap
+              var firstLooperUsage = -1;
+              var lastLooperUsage = -1;
+              var firstHelperUsage = -1;
+              var lastHelperUsage = -1;
               for (var i = found+1; i < stats.length; i++) {
                 var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                 traverse(curr, function(node, type) {
-                  if (type === 'name' && node[1] === looper) {
-                    node[1] = temp;
-                    looperUsed = true;
+                  if (type === 'name') {
+                    if (node[1] === looper) {
+                      if (firstLooperUsage < 0) firstLooperUsage = i;
+                      lastLooperUsage = i;
+                    } else if (node[1] === helper) {
+                      if (firstHelperUsage < 0) firstHelperUsage = i;
+                      lastHelperUsage = i;
+                    }
                   }
                 });
               }
-              if (looperUsed) {
-                asmData.vars[temp] = asmData.vars[looper];
-                stats.splice(found, 0, ['stat', ['assign', true, ['name', temp], ['name', looper]]]);
+              if (firstLooperUsage >= 0) {
+                // the looper is used, we cannot simply merge the two variables
+                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < stats.length && triviallySafeToMove(stats[found], asmData)) {
+                  // the helper is not used, or it is used after the last use of the looper, so they do not overlap,
+                  // and the last looper usage is not on the last line (where we could not append after it), and the
+                  // just move the looper definition to after the looper's last use
+                  stats.splice(lastLooperUsage+1, 0, stats[found]);
+                  stats.splice(found, 1);
+                } else {
+                  // they overlap, we can still proceed with the loop optimization, but we must introduce a
+                  // loop temp helper variable
+                  var temp = looper + '$looptemp';
+                  assert(!(temp in asmData.vars)); 
+                  for (var i = firstLooperUsage; i <= lastLooperUsage; i++) {
+                    var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+                    traverse(curr, function(node, type) {
+                      if (type === 'name') {
+                        if (node[1] === looper) {
+                          node[1] = temp;
+                        }
+                      }
+                    });
+                  }
+                  asmData.vars[temp] = asmData.vars[looper];
+                  stats.splice(found, 0, ['stat', ['assign', true, ['name', temp], ['name', looper]]]);
+                }
               }
             }
             for (var l = 0; l < helpers.length; l++) {
