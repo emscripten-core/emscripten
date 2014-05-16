@@ -3585,13 +3585,13 @@ function eliminate(ast, memSafe) {
           clearEmptyNodes(ifTrue[1]);
           clearEmptyNodes(ifFalse[1]);
           var flip = false;
-          if (ifFalse[1][0] && ifFalse[1][0][0] === 'break') { // canonicalize break in the if
+          if (ifFalse[1][0] && ifFalse[1][ifFalse[1].length-1][0] === 'break') { // canonicalize break in the if-true
             var temp = ifFalse;
             ifFalse = ifTrue;
             ifTrue = temp;
             flip = true;
           }
-          if (ifTrue[1][0] && ifTrue[1][0][0] === 'break') {
+          if (ifTrue[1][0] && ifTrue[1][ifTrue[1].length-1][0] === 'break') {
             var assigns = ifFalse[1];
             clearEmptyNodes(assigns);
             var loopers = [], helpers = [];
@@ -3628,6 +3628,17 @@ function eliminate(ast, memSafe) {
                 }
               }
             }
+            // remove loop vars that are used in the if
+            traverse(ifTrue, function(node, type) {
+              if (type === 'name') {
+                var index = loopers.indexOf(node[1]);
+                if (index < 0) index = helpers.indexOf(node[1]);
+                if (index >= 0) {
+                  loopers.splice(index, 1);
+                  helpers.splice(index, 1);
+                }
+              }
+            });
             if (loopers.length === 0) return;
             for (var l = 0; l < loopers.length; l++) {
               var looper = loopers[l];
