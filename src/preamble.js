@@ -385,7 +385,7 @@ var cwrap, ccall;
     }
     var ret = func.apply(null, cArgs);
     if (returnType === 'string') ret = Pointer_stringify(ret);
-    if (stack !== 0) Runtime.stackRestore(stack);
+    if (stack !== 0) JSfuncs['stackRestore']();
     return ret;
   }
 
