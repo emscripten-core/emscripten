@@ -2368,3 +2368,11 @@ EMSCRIPTEN_BINDINGS(val_new_) {
     function("construct_with_memory_view", &construct_with_memory_view);
     function("construct_with_ints_and_float", &construct_with_ints_and_float);
 }
+
+std::string getTypeOfVal(const val& v) {
+    return v.typeof().as<std::string>();
+}
+
+EMSCRIPTEN_BINDINGS(typeof) {
+    function("getTypeOfVal", &getTypeOfVal);
+}
