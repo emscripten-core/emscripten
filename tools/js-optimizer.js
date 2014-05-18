@@ -3717,11 +3717,15 @@ function eliminate(ast, memSafe) {
                   assert(!(temp in asmData.vars)); 
                   for (var i = firstLooperUsage; i <= lastLooperUsage; i++) {
                     var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
-                    traverse(curr, function(node, type) {
+                    traverse(curr, function looperToLooptemp(node, type) {
                       if (type === 'name') {
                         if (node[1] === looper) {
                           node[1] = temp;
                         }
+                      } else if (type === 'assign' && node[2][0] === 'name') {
+                        // do not traverse the assignment target, phi assignments to the loop variable must remain
+                        traverse(node[3], looperToLooptemp);
+                        return null;
                       }
                     });
                   }

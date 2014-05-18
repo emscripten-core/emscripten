@@ -936,4 +936,22 @@ function elimOneLoopVar5() {
   }
  }
 }
+function loopVarWithContinue() {
+ var i = 0, i$looptemp = 0;
+ i = 0;
+ while (1) {
+  i$looptemp = i;
+  i = i + 1;
+  if (check()) {
+   i = i$looptemp + 1;
+   continue;
+  }
+  work(i);
+  work(i$looptemp);
+  work(i);
+  if (check()) {
+   break;
+  }
+ }
+}
 
