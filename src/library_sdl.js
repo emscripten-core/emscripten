@@ -943,10 +943,66 @@ var LibrarySDL = {
       var ret = info.volume * 128; // MIX_MAX_VOLUME
       if (volume != -1) {
         info.volume = volume / 128;
-        if (info.audio) info.audio.volume = info.volume;
+        if (info.audio) {
+          info.audio.volume = info.volume; // For <audio> element
+          if (info.audio.webAudioGainNode) info.audio.webAudioGainNode['gain']['value'] = info.volume; // For WebAudio playback
+        }
       }
       return ret;
     },
+
+    // Plays out an SDL audio resource that was loaded with the Mix_Load APIs, when using Web Audio..
+    playWebAudio: function(audio) {
+      if (!audio) return;
+      if (audio.webAudioNode) return; // This instance is already playing, don't start again.
+      if (!SDL.webAudioAvailable()) return;
+      var webAudio = audio.resource.webAudio;
+      audio.paused = false;
+      if (!webAudio.decodedBuffer) {
+        if (webAudio.onDecodeComplete === undefined) abort("Cannot play back audio object that was not loaded");
+        webAudio.onDecodeComplete.push(function() { if (!audio.paused) SDL.playWebAudio(audio); });
+        return;
+      }
+      audio.webAudioNode = SDL.audioContext['createBufferSource']();
+      audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
+      audio.webAudioNode['loop'] = audio.loop;
+      audio.webAudioNode['onended'] = function() { audio.onended(); } // For <media> element compatibility, route the onended signal to the instance.
+
+      // Add an intermediate gain node to control volume.
+      audio.webAudioGainNode = SDL.audioContext['createGain']();
+      audio.webAudioGainNode['gain']['value'] = audio.volume;
+      audio.webAudioNode['connect'](audio.webAudioGainNode);
+      audio.webAudioGainNode['connect'](SDL.audioContext['destination']);
+      audio.webAudioNode['start'](0, audio.currentPosition);
+      audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
+    },
+
+    // Pausea an SDL audio resource that was played with Web Audio..
+    pauseWebAudio: function(audio) {
+      if (!audio) return;
+      if (audio.webAudioNode) {
+        // Remember where we left off, so that if/when we resume, we can restart the playback at a proper place.
+        audio.currentPosition = (SDL.audioContext['currentTime'] - audio.startTime) % audio.resource.webAudio.decodedBuffer.duration;
+        // Important: When we reach here, the audio playback is stopped by the user. But when calling .stop() below, the Web Audio
+        // graph will send the onended signal, but we don't want to process that, since pausing should not clear/destroy the audio
+        // channel.
+        audio.webAudioNode['onended'] = undefined;
+        audio.webAudioNode.stop();
+        audio.webAudioNode = undefined;
+      }
+      audio.paused = true;
+    },
+
+    openAudioContext: function() {
+      // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
+      // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
+      if (!SDL.audioContext) {
+        if (typeof(AudioContext) !== 'undefined') SDL.audioContext = new AudioContext();
+        else if (typeof(webkitAudioContext) !== 'undefined') SDL.audioContext = new webkitAudioContext();
+      }
+    },
+
+    webAudioAvailable: function() { return !!SDL.audioContext; },
 
     fillWebAudioBufferFromHeap: function(heapPtr, sizeSamplesPerChannel, dstAudioBuffer) {
       // The input audio data is interleaved across the channels, i.e. [L, R, L, R, L, R, ...] and is either 8-bit or 16-bit as
@@ -1250,11 +1306,11 @@ var LibrarySDL = {
     for (var i = 0; i < SDL.numChannels; ++i) {
       if (SDL.channels[i].audio) {
         SDL.channels[i].audio.pause();
+        SDL.channels[i].audio = undefined;
       }
     }
-    if (SDL.music.audio) {
-      SDL.music.audio.pause();
-    }
+    if (SDL.music.audio) SDL.music.audio.pause();
+    SDL.music.audio = undefined;
     Module.print('SDL_Quit called (and ignored)');
   },
 
@@ -2004,15 +2060,8 @@ var LibrarySDL = {
       } else {
         // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
         // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
-        if (!SDL.audioContext) {
-          if (typeof(AudioContext) !== 'undefined') {
-            SDL.audioContext = new AudioContext();
-          } else if (typeof(webkitAudioContext) !== 'undefined') {
-            SDL.audioContext = new webkitAudioContext();
-          } else {
-            throw 'Web Audio API is not available!';
-          }
-        }
+        SDL.openAudioContext();
+        if (!SDL.audioContext) throw 'Web Audio API is not available!';
         SDL.audio.soundSource = new Array(); // Use an array of sound sources as a ring buffer to queue blocks of synthesized audio to Web Audio API.
         SDL.audio.nextSoundSource = 0; // Index of the next sound buffer in the ring buffer queue to play.
         SDL.audio.nextPlayTime = 0; // Time in seconds when the next audio block is due to start.
@@ -2195,6 +2244,7 @@ var LibrarySDL = {
   Mix_Quit: function(){},
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
+    SDL.openAudioContext();
     SDL.allocateChannels(32);
     // Just record the values for a later call to Mix_QuickLoad_RAW
     SDL.mixerFrequency = frequency;
@@ -2237,6 +2287,7 @@ var LibrarySDL = {
 
     var filename = '';
     var audio;
+    var webAudio;
     var bytes;
 
     if (rwops.filename !== undefined) {
@@ -2244,7 +2295,7 @@ var LibrarySDL = {
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
         if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
-        Runtime.warnOnce('Cannot find preloaded audio ' + filename);
+        if (!Module.noAudioDecoding) Runtime.warnOnce('Cannot find preloaded audio ' + filename);
 
         // see if we can read the file-contents from the in-memory FS
         try {
@@ -2260,15 +2311,33 @@ var LibrarySDL = {
       audio = raw;
     }
     else if (rwops.bytes !== undefined) {
-      bytes = HEAPU8.subarray(rwops.bytes, rwops.bytes + rwops.count);
+      // For Web Audio context buffer decoding, we must make a clone of the audio data, but for <media> element,
+      // a view to existing data is sufficient.
+      if (SDL.webAudioAvailable()) bytes = HEAPU8.buffer.slice(rwops.bytes, rwops.bytes + rwops.count);
+      else bytes = HEAPU8.subarray(rwops.bytes, rwops.bytes + rwops.count);
     }
     else {
       return 0;
     }
 
-    // Here, we didn't find a preloaded audio but we either were passed a filepath for
-    // which we loaded bytes, or we were passed some bytes
-    if (audio === undefined && bytes) {
+    if (bytes !== undefined && SDL.webAudioAvailable()) {
+      audio = undefined;
+      webAudio = {};
+      // The audio decoding process is asynchronous, which gives trouble if user code plays the audio data back immediately
+      // after loading. Therefore prepare an array of callback handlers to run when this audio decoding is complete, which
+      // will then start the playback (with some delay).
+      webAudio.onDecodeComplete = []; // While this member array exists, decoding hasn't finished yet.
+      function onDecodeComplete(data) {
+        webAudio.decodedBuffer = data;
+        // Call all handlers that were waiting for this decode to finish, and clear the handler list.
+        webAudio.onDecodeComplete.forEach(function(e) { e(); });
+        webAudio.onDecodeComplete = undefined; // Don't allow more callback handlers since audio has finished decoding.
+      }
+
+      SDL.audioContext['decodeAudioData'](bytes.buffer || bytes, onDecodeComplete);
+    } else if (audio === undefined && bytes) {
+      // Here, we didn't find a preloaded audio but we either were passed a filepath for
+      // which we loaded bytes, or we were passed some bytes
       var blob = new Blob([bytes], {type: rwops.mimetype});
       var url = URL.createObjectURL(blob);
       audio = new Audio();
@@ -2280,27 +2349,39 @@ var LibrarySDL = {
     // Keep the loaded audio in the audio arrays, ready for playback
     SDL.audios.push({
       source: filename,
-      audio: audio
+      audio: audio, // Points to the <audio> element, if loaded
+      webAudio: webAudio // Points to a Web Audio -specific resource object, if loaded
     });
     return id;
   },
 
   Mix_QuickLoad_RAW: function(mem, len) {
-    var audio = new Audio();
-    audio.mozAudioChannelType = 'content'; // bugzilla 910340
-    // Record the number of channels and frequency for later usage
-    audio.numChannels = SDL.mixerNumChannels;
-    audio.frequency = SDL.mixerFrequency;
+    var audio;
+    var webAudio;
+
     var numSamples = len >> 1; // len is the length in bytes, and the array contains 16-bit PCM values
     var buffer = new Float32Array(numSamples);
     for (var i = 0; i < numSamples; ++i) {
       buffer[i] = ({{{ makeGetValue('mem', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
     }
-    // FIXME: doesn't make sense to keep the audio element in the buffer
+
+    if (SDL.webAudioAvailable()) {
+      webAudio = {};
+      webAudio.decodedBuffer = buffer;
+    } else {
+      var audio = new Audio();
+      audio.mozAudioChannelType = 'content'; // bugzilla 910340
+      // Record the number of channels and frequency for later usage
+      audio.numChannels = SDL.mixerNumChannels;
+      audio.frequency = SDL.mixerFrequency;
+      // FIXME: doesn't make sense to keep the audio element in the buffer
+    }
+
     var id = SDL.audios.length;
     SDL.audios.push({
       source: '',
       audio: audio,
+      webAudio: webAudio,
       buffer: buffer
     });
     return id;
@@ -2313,13 +2394,12 @@ var LibrarySDL = {
     SDL.channelMinimumNumber = num;
   },
   Mix_PlayChannel: function(channel, id, loops) {
-    // TODO: handle loops
+    // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
     if (!info) return -1;
-    var audio = info.audio;
-    if (!audio) return -1;
+    if (!info.audio && !info.webAudio) return -1;
 
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
@@ -2335,73 +2415,33 @@ var LibrarySDL = {
         return -1;
       }
     }
-    // We clone the audio node to utilize the preloaded audio buffer, since
-    // the browser has already preloaded the audio file.
     var channelInfo = SDL.channels[channel];
-    channelInfo.audio = audio = audio.cloneNode(true);
-    audio.numChannels = info.audio.numChannels;
-    audio.frequency = info.audio.frequency;
-    // TODO: handle N loops. Behavior matches Mix_PlayMusic
-    audio.loop = loops != 0; 
-    audio['onended'] = function SDL_audio_onended() { // TODO: cache these
-      channelInfo.audio = null;
-      if (SDL.channelFinished) {
-        Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
-      }
-    }
-    // Either play the element, or load the dynamic data into it
-    if (info.buffer) {
-      var contextCtor = null;
-      if (audio && ('mozSetup' in audio)) { // Audio Data API
-        try {
-          audio['mozSetup'](audio.numChannels, audio.frequency);
-          audio["mozWriteAudio"](info.buffer);
-        } catch (e) {
-          // Workaround for Firefox bug 783052
-          // ignore this exception!
-        }
-      /*
-      } else if (contextCtor = (window.AudioContext || // WebAudio API
-                                window.webkitAudioContext)) {
-        var currentIndex = 0;
-        var numChannels = parseInt(audio.numChannels);
-        var context = new contextCtor();
-        var source = context.createBufferSource();
-        source.loop = false;
-        source.buffer = context.createBuffer(numChannels, 1, audio.frequency);
-        var jsNode = context.createJavaScriptNode(2048, numChannels, numChannels);
-        jsNode.onaudioprocess = function jsNode_onaudioprocess(event) {
-          var buffers = new Array(numChannels);
-          for (var i = 0; i < numChannels; ++i) {
-            buffers[i] = event.outputBuffer.getChannelData(i);
-          }
-          var remaining = info.buffer.length - currentIndex;
-          if (remaining > 2048) {
-            remaining = 2048;
-          }
-          for (var i = 0; i < remaining;) {
-            for (var j = 0; j < numChannels; ++j) {
-              buffers[j][i] = info.buffer[currentIndex + i + j] * audio.volume;
-            }
-            i += j;
-          }
-          currentIndex += remaining * numChannels;
-          for (var i = remaining; i < 2048;) {
-            for (var j = 0; j < numChannels; ++j) {
-              buffers[j][i] = 0; // silence
-            }
-            i += j;
-          }
-        };
-        source.connect(jsNode);
-        jsNode.connect(context.destination);
-        source.noteOn(0);
-      */
-      }
+    var audio;
+    if (info.webAudio) {
+      // Create an instance of the WebAudio object.
+      audio = {};
+      audio.resource = info; // This new object is an instance that refers to this existing resource.
+      audio.paused = false;
+      audio.currentPosition = 0;
+      // Make our instance look similar to the instance of a <media> to make api simple.
+      audio.play = function() { SDL.playWebAudio(this); }
+      audio.pause = function() { SDL.pauseWebAudio(this); }
     } else {
-      audio.play();
+      // We clone the audio node to utilize the preloaded audio buffer, since
+      // the browser has already preloaded the audio file.
+      audio = info.audio.cloneNode(true);
+      audio.numChannels = info.audio.numChannels;
+      audio.frequency = info.audio.frequency;
     }
+    audio['onended'] = function SDL_audio_onended() { // TODO: cache these
+      if (channelInfo.audio == this) { channelInfo.audio.paused = true; channelInfo.audio = null; }
+      if (SDL.channelFinished) Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+    }
+    channelInfo.audio = audio;
+    // TODO: handle N loops. Behavior matches Mix_PlayMusic
+    audio.loop = loops != 0;
     audio.volume = channelInfo.volume;
+    audio.play();
     return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
@@ -2454,46 +2494,51 @@ var LibrarySDL = {
 
   Mix_PlayMusic__deps: ['Mix_HaltMusic'],
   Mix_PlayMusic: function(id, loops) {
-    loops = Math.max(loops, 1);
-    var audio = SDL.audios[id].audio;
-    if (!audio) return 0;
-    audio.loop = loops != 0; // TODO: handle N loops for finite N
-    if (SDL.audios[id].buffer) {
-      audio["mozWriteAudio"](SDL.audios[id].buffer);
-    } else {
-      audio.play();
-    }
-    audio.volume = SDL.music.volume;
-    audio['onended'] = _Mix_HaltMusic; // will send callback
+    // Pause old music if it exists.
     if (SDL.music.audio) {
-      if (!SDL.music.audio.paused) {
-        Module.printErr('Music is already playing. ' + SDL.music.source);
-      }
+      if (!SDL.music.audio.paused) Module.printErr('Music is already playing. ' + SDL.music.source);
       SDL.music.audio.pause();
     }
+    var info = SDL.audios[id];
+    var audio;
+    if (info.webAudio) { // Play via Web Audio API
+      // Create an instance of the WebAudio object.
+      audio = {};
+      audio.resource = info; // This new webAudio object is an instance that refers to this existing resource.
+      audio.paused = false;
+      audio.currentPosition = 0;
+      audio.play = function() { SDL.playWebAudio(this); }
+      audio.pause = function() { SDL.pauseWebAudio(this); }
+    } else if (info.audio) { // Play via the <audio> element
+      audio = info.audio;
+    }
+    audio['onended'] = function() { if (SDL.music.audio == this) _Mix_HaltMusic(); } // will send callback
+    audio.loop = loops != 0; // TODO: handle N loops for finite N
+    audio.volume = SDL.music.volume;
     SDL.music.audio = audio;
+    audio.play();
     return 0;
   },
 
   Mix_PauseMusic: function() {
     var audio = SDL.music.audio;
-    if (!audio) return 0;
-    audio.pause();
+    if (audio) audio.pause();
     return 0;
   },
 
   Mix_ResumeMusic: function() {
     var audio = SDL.music.audio;
-    if (!audio) return 0;
-    audio.play();
+    if (audio) audio.play();
     return 0;
   },
 
   Mix_HaltMusic: function() {
     var audio = SDL.music.audio;
-    if (!audio) return 0;
-    audio.src = audio.src; // rewind
-    audio.pause();
+    if (audio) {
+      audio.src = audio.src; // rewind <media> element
+      audio.currentPosition = 0; // rewind Web Audio graph playback.
+      audio.pause();
+    }
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
       Runtime.dynCall('v', SDL.hookMusicFinished);
@@ -2570,9 +2615,7 @@ var LibrarySDL = {
       return;
     }
     var info = SDL.channels[channel];
-    if (info && info.audio) {
-      info.audio.play();
-    }
+    if (info && info.audio) info.audio.play();
   },
 
   // SDL TTF

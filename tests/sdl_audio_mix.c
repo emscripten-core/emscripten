@@ -58,7 +58,9 @@ void one_iter() {
       Mix_HaltChannel(soundChannel);
       Mix_HaltMusic();
       int result = 1;
+#ifdef REPORT_RESULT
       REPORT_RESULT();
+#endif
       break;
   };
 }
