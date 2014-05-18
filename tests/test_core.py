@@ -4531,6 +4531,12 @@ def process(filename):
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
+  def test_utf8(self):
+    if not self.is_emscripten_abi(): return self.skip('this test uses inline js, which requires asmjs-unknown-emscripten')
+
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
+
   def test_wprintf(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
     test_path = path_from_root('tests', 'core', 'test_wprintf')
