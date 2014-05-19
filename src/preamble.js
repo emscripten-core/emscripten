@@ -650,7 +650,7 @@ function Pointer_stringify(ptr, /* optional */ length) {
   if (length === 0 || !ptr) return '';
   // TODO: use TextDecoder
   // Find the length, and check for UTF while doing so
-  var hasUtf = false;
+  var hasUtf = 0;
   var t;
   var i = 0;
   while (1) {
@@ -658,8 +658,8 @@ function Pointer_stringify(ptr, /* optional */ length) {
     assert(ptr + i < TOTAL_MEMORY);
 #endif
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    if (t >= 128) hasUtf = true;
-    else if (t == 0 && !length) break;
+    hasUtf |= t;
+    if (t == 0 && !length) break;
     i++;
     if (length && i == length) break;
   }
@@ -667,8 +667,8 @@ function Pointer_stringify(ptr, /* optional */ length) {
 
   var ret = '';
 
+  if (hasUtf < 128) {
 #if USE_TYPED_ARRAYS == 2
-  if (!hasUtf) {
     var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
     var curr;
     while (length > 0) {
@@ -678,18 +678,11 @@ function Pointer_stringify(ptr, /* optional */ length) {
       length -= MAX_CHUNK;
     }
     return ret;
-  }
+#else
+    return Module['AsciiToString'](ptr);
 #endif
-
-  var utf8 = new Runtime.UTF8Processor();
-  for (i = 0; i < length; i++) {
-#if ASSERTIONS
-    assert(ptr + i < TOTAL_MEMORY);
-#endif
-    t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    ret += utf8.processCChar(t);
   }
-  return ret;
+  return Module['UTF8ToString'](ptr);
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
