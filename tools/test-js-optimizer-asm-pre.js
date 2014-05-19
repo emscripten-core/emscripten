@@ -608,6 +608,10 @@ function conditionalizeMe() {
  if (x > 10 | (HEAP[20] + 2) > 5) {
   b();
  }
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : $el) | ($cheap > 0) ); // conditional does not always emit boolean
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : -1) | ($cheap > 0) );
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : 0) | ($cheap > 0) ); // this one is safe!
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? -1 : 1) | ($cheap > 0) );
  return ((((Math_imul(i6+1, i7) | 0) + 17 | 0) % 5 | 0 | 0) == 0 | ((((Math_imul(i7+1, i7) | 0) + 11 | 0) >>> 0) % 3 | 0 | 0) == 0 | 0) == 0;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp", "conditionalizeMe"]

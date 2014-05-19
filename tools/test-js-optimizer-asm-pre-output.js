@@ -596,6 +596,10 @@ function conditionalizeMe() {
  if (x > 10 | HEAP[20] + 2 > 5) {
   b();
  }
+ print(((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? 1 : $el) | $cheap > 0);
+ print(((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? 1 : -1) | $cheap > 0);
+ print($cheap > 0 ? 1 : (HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? 1 : 0);
+ print(((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? -1 : 1) | $cheap > 0);
  return (((((Math_imul(i6 + 1, i7) | 0) + 17 | 0) % 5 | 0) == 0 ? 1 : ((((Math_imul(i7 + 1, i7) | 0) + 11 | 0) >>> 0) % 3 | 0) == 0) | 0) == 0;
 }
 
