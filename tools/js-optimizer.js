@@ -3704,9 +3704,11 @@ function eliminate(ast, memSafe) {
               }
               if (firstLooperUsage >= 0) {
                 // the looper is used, we cannot simply merge the two variables
-                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < stats.length && triviallySafeToMove(stats[found], asmData)) {
+                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < stats.length && triviallySafeToMove(stats[found], asmData) &&
+                    seenUses[helper] === namings[helper]) {
                   // the helper is not used, or it is used after the last use of the looper, so they do not overlap,
                   // and the last looper usage is not on the last line (where we could not append after it), and the
+                  // helper is not used outside of the loop.
                   // just move the looper definition to after the looper's last use
                   stats.splice(lastLooperUsage+1, 0, stats[found]);
                   stats.splice(found, 1);
