@@ -5249,8 +5249,10 @@ def process(filename):
 
     emcc_args = self.emcc_args
 
+    # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
+    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2']
+
     try:
-      os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
       Settings.CHECK_OVERFLOWS = 0
 
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
@@ -5264,6 +5266,15 @@ def process(filename):
           'atomicrmw_unaligned', # TODO XXX
           'emptyasm_aue' # we don't support inline asm
         ]: continue
+
+        if os.path.basename(shortname) in need_no_leave_inputs_raw:
+          if self.run_name.startswith('s_'):
+            print self.skip('case "%s" cannot be run in mode %s, since it would require EMCC_LEAVE_INPUTS_RAW=1' % (shortname, self.run_name))
+            continue
+          if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
+        else:
+          os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
+
         if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
           print self.skip('case "%s" only relevant for ta2' % shortname)
           continue
@@ -5299,7 +5310,7 @@ def process(filename):
           exec(open(src_checker).read())
 
     finally:
-      del os.environ['EMCC_LEAVE_INPUTS_RAW']
+      if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
       self.emcc_args = emcc_args
 
   def test_fuzz(self):
