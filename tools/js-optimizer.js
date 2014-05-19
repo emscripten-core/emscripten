@@ -1033,6 +1033,7 @@ function hasSideEffects(node) { // this is 99% incomplete!
       }
       return false;
     }
+    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]); 
     default: return true;
   }
 }
