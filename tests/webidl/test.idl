@@ -5,12 +5,15 @@ interface Parent {
   void Parent(long val);
   long getVal();
   void mulVal(long mul);
+  void parentFunc();
+  [Const] Parent getAsConst();
 };
 
 interface Child1 {
   void Child1(optional long val);
   long getValSqr(optional long more);
   long getValTimes(optional long times=1);
+  void parentFunc(long x); // redefinition, name collides with parent
 };
 
 Child1 implements Parent;

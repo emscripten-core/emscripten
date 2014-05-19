@@ -62,6 +62,7 @@ namespace emscripten {
             bool _emval_has_function(
                 EM_VAL value,
                 const char* methodName);
+            EM_VAL _emval_typeof(EM_VAL value);
         }
 
         template<const char* address> 
@@ -254,7 +255,6 @@ namespace emscripten {
         // * delete
         // * in
         // * instanceof
-        // * typeof
         // * ! ~ - + ++ --
         // * * / %
         // * + -
@@ -409,6 +409,10 @@ namespace emscripten {
                 &destructors);
             DestructorsRunner dr(destructors);
             return fromGenericWireType<T>(result);
+        }
+
+        val typeof() const {
+            return val(_emval_typeof(handle));
         }
 
     private:

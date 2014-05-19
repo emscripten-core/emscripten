@@ -550,4 +550,68 @@ function fcomp() {
  if (!(5 < ($b|0))) return 5;
  if (!(5 < 5)) return 5;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp"]
+function conditionalizeMe() {
+ if ((x > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ if ((a() > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ if ((x > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((a() > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((x > 1) | (x+y+z+w > 12)) {
+  b();
+ }
+ if ((a() > 1) | (x+y+z+w > 12)) {
+  b();
+ }
+ if ((x > 1) | (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((a() > 1) | (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((x+y+z+w > 12) | (x > 1)) {
+  b();
+ }
+ if ((x+y+z+w > 12) | (a() > 1)) {
+  b();
+ }
+ if ((x+y+z+k() > 12) | (x > 1)) {
+  b();
+ }
+ if ((x+y+z+k() > 12) | (a() > 1)) {
+  b();
+ }
+ while ((x > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ while ((a() > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ while ((x > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ while ((a() > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ if (!($sub$i480 >= Math_fround(+0)) | !($sub4$i483 >= Math_fround(+0))) {
+  b();
+ }
+ if (!($sub$i480 >= Math_fround(+0)) | !($sub4$i483 >= Math_fround(HEAPF32[x+y|0]))) {
+  b();
+ }
+ if (x > 10 | (HEAP[20] + 2) > 5) {
+  b();
+ }
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : $el) | ($cheap > 0) ); // conditional does not always emit boolean
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : -1) | ($cheap > 0) );
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : 0) | ($cheap > 0) ); // this one is safe!
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? -1 : 1) | ($cheap > 0) );
+ return ((((Math_imul(i6+1, i7) | 0) + 17 | 0) % 5 | 0 | 0) == 0 | ((((Math_imul(i7+1, i7) | 0) + 11 | 0) >>> 0) % 3 | 0 | 0) == 0 | 0) == 0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp", "conditionalizeMe"]

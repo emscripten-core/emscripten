@@ -749,11 +749,74 @@ function simplifyExpressions(ast) {
     });
   }
 
+  function emitsBoolean(node) {
+    if (node[0] === 'num') {
+      return node[1] === 0 || node[1] === 1;
+    }
+    if (node[0] === 'binary') return node[1] in COMPARE_OPS;
+    if (node[0] === 'unary-prefix') return node[1] === '!';
+    if (node[0] === 'conditional') return emitsBoolean(node[2]) && emitsBoolean(node[3]);
+    return false;
+  }
+
+  //   expensive | expensive can be turned into expensive ? 1 : expensive, and
+  //   expensive | cheap     can be turned into cheap     ? 1 : expensive,
+  // so that we can avoid the expensive computation, if it has no side effects.
+  function conditionalize(ast) {
+    var MIN_COST = 7;
+    traverse(ast, function(node, type) {
+      if (node[0] === 'binary' && (node[1] === '|' || node[1] === '&') && node[3][0] !== 'num' && node[2][0] !== 'num') {
+        // logical operator on two non-numerical values
+        var left = node[2];
+        var right = node[3];
+        if (!emitsBoolean(left) || !emitsBoolean(right)) return;
+        var leftEffects = hasSideEffects(left);
+        var rightEffects = hasSideEffects(right);
+        if (leftEffects && rightEffects) return; // both must execute
+        // canonicalize with side effects, if any, happening on the left
+        if (rightEffects) {
+          if (measureCost(left) < MIN_COST) return; // avoidable code is too cheap
+          var temp = left;
+          left = right;
+          right = temp;
+        } else if (leftEffects) {
+          if (measureCost(right) < MIN_COST) return; // avoidable code is too cheap
+        } else {
+          // no side effects, reorder based on cost estimation
+          var leftCost = measureCost(left);
+          var rightCost = measureCost(right);
+          if (Math.max(leftCost, rightCost) < MIN_COST) return; // avoidable code is too cheap
+          // canonicalize with expensive code on the right
+          if (leftCost > rightCost) {
+            var temp = left;
+            left = right;
+            right = temp;
+          }
+        }
+        // worth it, perform conditionalization
+        var ret;
+        if (node[1] === '|') {
+          ret = ['conditional', left, ['num', 1], right];
+        } else { // &
+          ret = ['conditional', left, right, ['num', 0]];
+        }
+        if (left[0] === 'unary-prefix' && left[1] === '!') {
+          ret[1] = flipCondition(left);
+          var temp = ret[2];
+          ret[2] = ret[3];
+          ret[3] = temp;
+        }
+        return ret;
+      }
+    });
+  }
+
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
     simplifyBitops(func);
     joinAdditions(func);
     simplifyNotComps(func);
+    conditionalize(func);
     // simplifyZeroComp(func); TODO: investigate performance
   });
 }
@@ -970,8 +1033,30 @@ function hasSideEffects(node) { // this is 99% incomplete!
       }
       return false;
     }
+    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]); 
     default: return true;
   }
+}
+
+// checks if a node has just basic operations, nothing with side effects nor that can notice side effects, which
+// implies we can move it around in the code
+function triviallySafeToMove(node, asmData) {
+  var ok = true;
+  traverse(node, function(node, type) {
+    switch (type) {
+      case 'stat': case 'binary': case 'unary-prefix': case 'assign': case 'num':
+        break;
+      case 'name':
+        if (!(node[1] in asmData.vars) && !(node[1] in asmData.params)) ok = false;
+        break;
+      case 'call':
+        if (callHasSideEffects(node)) ok = false;
+        break;
+      default:
+        ok = false;
+    }  
+  });
+  return ok;
 }
 
 // Clear out empty ifs and blocks, and redundant blocks/stats and so forth
@@ -3525,13 +3610,13 @@ function eliminate(ast, memSafe) {
           clearEmptyNodes(ifTrue[1]);
           clearEmptyNodes(ifFalse[1]);
           var flip = false;
-          if (ifFalse[1][0] && ifFalse[1][0][0] === 'break') { // canonicalize break in the if
+          if (ifFalse[1][0] && ifFalse[1][ifFalse[1].length-1][0] === 'break') { // canonicalize break in the if-true
             var temp = ifFalse;
             ifFalse = ifTrue;
             ifTrue = temp;
             flip = true;
           }
-          if (ifTrue[1][0] && ifTrue[1][0][0] === 'break') {
+          if (ifTrue[1][0] && ifTrue[1][ifTrue[1].length-1][0] === 'break') {
             var assigns = ifFalse[1];
             clearEmptyNodes(assigns);
             var loopers = [], helpers = [];
@@ -3568,6 +3653,17 @@ function eliminate(ast, memSafe) {
                 }
               }
             }
+            // remove loop vars that are used in the if
+            traverse(ifTrue, function(node, type) {
+              if (type === 'name') {
+                var index = loopers.indexOf(node[1]);
+                if (index < 0) index = helpers.indexOf(node[1]);
+                if (index >= 0) {
+                  loopers.splice(index, 1);
+                  helpers.splice(index, 1);
+                }
+              }
+            });
             if (loopers.length === 0) return;
             for (var l = 0; l < loopers.length; l++) {
               var looper = loopers[l];
@@ -3591,21 +3687,57 @@ function eliminate(ast, memSafe) {
               // if a loop variable is used after we assigned to the helper, we must save its value and use that.
               // (note that this can happen due to elimination, if we eliminate an expression containing the
               // loop var far down, past the assignment!)
-              var temp = looper + '$looptemp';
-              var looperUsed = false;
-              assert(!(temp in asmData.vars)); 
+              // first, see if the looper and helper overlap
+              var firstLooperUsage = -1;
+              var lastLooperUsage = -1;
+              var firstHelperUsage = -1;
+              var lastHelperUsage = -1;
               for (var i = found+1; i < stats.length; i++) {
                 var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                 traverse(curr, function(node, type) {
-                  if (type === 'name' && node[1] === looper) {
-                    node[1] = temp;
-                    looperUsed = true;
+                  if (type === 'name') {
+                    if (node[1] === looper) {
+                      if (firstLooperUsage < 0) firstLooperUsage = i;
+                      lastLooperUsage = i;
+                    } else if (node[1] === helper) {
+                      if (firstHelperUsage < 0) firstHelperUsage = i;
+                      lastHelperUsage = i;
+                    }
                   }
                 });
               }
-              if (looperUsed) {
-                asmData.vars[temp] = asmData.vars[looper];
-                stats.splice(found, 0, ['stat', ['assign', true, ['name', temp], ['name', looper]]]);
+              if (firstLooperUsage >= 0) {
+                // the looper is used, we cannot simply merge the two variables
+                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < stats.length && triviallySafeToMove(stats[found], asmData) &&
+                    seenUses[helper] === namings[helper]) {
+                  // the helper is not used, or it is used after the last use of the looper, so they do not overlap,
+                  // and the last looper usage is not on the last line (where we could not append after it), and the
+                  // helper is not used outside of the loop.
+                  // just move the looper definition to after the looper's last use
+                  stats.splice(lastLooperUsage+1, 0, stats[found]);
+                  stats.splice(found, 1);
+                } else {
+                  // they overlap, we can still proceed with the loop optimization, but we must introduce a
+                  // loop temp helper variable
+                  var temp = looper + '$looptemp';
+                  assert(!(temp in asmData.vars)); 
+                  for (var i = firstLooperUsage; i <= lastLooperUsage; i++) {
+                    var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+                    traverse(curr, function looperToLooptemp(node, type) {
+                      if (type === 'name') {
+                        if (node[1] === looper) {
+                          node[1] = temp;
+                        }
+                      } else if (type === 'assign' && node[2][0] === 'name') {
+                        // do not traverse the assignment target, phi assignments to the loop variable must remain
+                        traverse(node[3], looperToLooptemp);
+                        return null;
+                      }
+                    });
+                  }
+                  asmData.vars[temp] = asmData.vars[looper];
+                  stats.splice(found, 0, ['stat', ['assign', true, ['name', temp], ['name', looper]]]);
+                }
               }
             }
             for (var l = 0; l < helpers.length; l++) {
@@ -3916,6 +4048,21 @@ var FAST_ELIMINATION_BINARIES = setUnion(setUnion(USEFUL_BINARY_OPS, COMPARE_OPS
 function measureSize(ast) {
   var size = 0;
   traverse(ast, function() {
+    size++;
+  });
+  return size;
+}
+
+function measureCost(ast) {
+  var size = 0;
+  traverse(ast, function(node, type) {
+    if (type === 'num' || type === 'unary-prefix') size--;
+    else if (type === 'binary') {
+      if (node[3][0] === 'num' && node[3][1] === 0) size--;
+      else if (node[1] === '/' || node[1] === '%') size += 2;
+    }
+    else if (type === 'call' && !callHasSideEffects(node)) size -= 2;
+    else if (type === 'sub') size++;
     size++;
   });
   return size;

@@ -895,10 +895,15 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   exported_implemented_functions = set(metadata['exports'])
   export_bindings = settings['EXPORT_BINDINGS']
   export_all = settings['EXPORT_ALL']
-  for key in metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys(): # XXX perf
+  all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
+  for key in all_implemented:
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
   implemented_functions = set(metadata['implementedFunctions'])
+  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+    for requested in settings['ORIGINAL_EXPORTED_FUNCTIONS']:
+      if requested not in all_implemented:
+        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
   # Add named globals
   named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])

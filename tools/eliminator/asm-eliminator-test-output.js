@@ -24,7 +24,7 @@ function __Z11printResultPiS_j($needle, $haystack, $len) {
 }
 function _segment_holding($addr) {
  $addr = $addr | 0;
- var $sp_0 = 0, $3 = 0, $12 = 0, $_0 = 0, label = 0;
+ var $sp_0 = 0, $3 = 0, $_0 = 0, label = 0;
  $sp_0 = __gm_ + 444 | 0;
  while (1) {
   $3 = HEAP32[(($sp_0 | 0) & 16777215) >> 2] | 0;
@@ -35,13 +35,11 @@ function _segment_holding($addr) {
     break;
    }
   }
-  $12 = HEAP32[(($sp_0 + 8 | 0) & 16777215) >> 2] | 0;
-  if (($12 | 0) == 0) {
+  $sp_0 = HEAP32[(($sp_0 + 8 | 0) & 16777215) >> 2] | 0;
+  if (($sp_0 | 0) == 0) {
    $_0 = 0;
    label = 1659;
    break;
-  } else {
-   $sp_0 = $12;
   }
  }
  if (label == 1659) {
@@ -818,7 +816,7 @@ function selfAssign() {
 function elimOneLoopVar($argc, $argv) {
  $argc = $argc | 0;
  $argv = $argv | 0;
- var $arg$0 = 0, $call10 = Math_fround(0), $curri$012 = 0, $inc = 0, $j$010 = 0, $ok$0 = 0, $primes$011 = 0, $retval$0 = 0, $vararg_buffer1 = 0;
+ var $arg$0 = 0, $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $ok$0 = 0, $primes$011 = 0, $retval$0 = 0, $vararg_buffer1 = 0;
  $curri$012 = 2;
  $primes$011 = 0;
  while (1) {
@@ -827,14 +825,12 @@ function elimOneLoopVar($argc, $argv) {
    if ($call10 > Math_fround(+2)) {
     $j$010 = 2;
     while (1) {
-     $inc = $j$010 + 1 | 0;
      if ((($curri$012 | 0) % ($j$010 | 0) & -1 | 0) == 0) {
       $ok$0 = 0;
       break L15;
      }
-     if (Math_fround($inc | 0) < $call10) {
-      $j$010 = $inc;
-     } else {
+     $j$010 = $j$010 + 1 | 0;
+     if (!(Math_fround($j$010 | 0) < $call10)) {
       $ok$0 = 1;
       break;
      }
@@ -898,10 +894,23 @@ function elimOneLoopVar4() {
  }
 }
 function elimOneLoopVarStillUsed() {
+ var $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $retval$0 = 0;
+ while (1) {
+  if ((($curri$012 | 0) % ($j$010 | 0) & -1 | 0) == 0) {
+   break;
+  }
+  $j$010 = $j$010 + 1 | 0;
+  if (!(Math_fround($j$010 | 0) < $call10)) {
+   break;
+  }
+ }
+ return $retval$0 | 0;
+}
+function elimOneLoopVarStillUsedSE() {
  var $call10 = Math_fround(0), $curri$012 = 0, $j$010 = 0, $retval$0 = 0, $j$010$looptemp = 0;
  while (1) {
   $j$010$looptemp = $j$010;
-  $j$010 = $j$010 + 1 | 0;
+  $j$010 = $j$010 + sideeffect() | 0;
   if ((($curri$012 | 0) % ($j$010$looptemp | 0) & -1 | 0) == 0) {
    break;
   }
@@ -910,5 +919,53 @@ function elimOneLoopVarStillUsed() {
   }
  }
  return $retval$0 | 0;
+}
+function elimOneLoopVar5() {
+ var $storemerge3$neg9 = 0, $18 = 0, $25 = 0, $26 = 0, $30 = 0, $jp = 0;
+ $storemerge3$neg9 = -1;
+ while (1) {
+  $25 = $jp + ($26 << 2) | 0;
+  HEAP32[$25 >> 2] = ($18 + $storemerge3$neg9 | 0) + (HEAP32[$25 >> 2] | 0) | 0;
+  $30 = $26 + 1 | 0;
+  if (($30 | 0) == 63) {
+   f($30);
+   break;
+  } else {
+   $storemerge3$neg9 = $18 ^ -1;
+   $26 = $30;
+  }
+ }
+}
+function loopVarWithContinue() {
+ var i = 0, i$looptemp = 0;
+ i = 0;
+ while (1) {
+  i$looptemp = i;
+  i = i + 1;
+  if (check()) {
+   i = i$looptemp + 1;
+   continue;
+  }
+  work(i);
+  work(i$looptemp);
+  work(i);
+  if (check()) {
+   break;
+  }
+ }
+}
+function helperExtraUse() {
+ var i = 0, i$looptemp = 0;
+ i = 0;
+ while (1) {
+  i$looptemp = i;
+  i = i + 1;
+  work(i$looptemp);
+  work(i);
+  if (check()) {
+   break;
+  }
+ }
+ return i;
 }
 

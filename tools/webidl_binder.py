@@ -359,7 +359,8 @@ for name in names:
                     m.getExtendedAttribute('Value'),
                     (m.getExtendedAttribute('Operator') or [None])[0],
                     constructor,
-                    func_scope=m.parentScope.identifier.name)
+                    func_scope=m.parentScope.identifier.name,
+                    const=m.getExtendedAttribute('Const'))
     mid_js += [';\n']
     if constructor:
       emit_constructor(name)

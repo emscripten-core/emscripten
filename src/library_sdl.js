@@ -430,6 +430,15 @@ var LibrarySDL = {
     savedKeydown: null,
 
     receiveEvent: function(event) {
+      function unpressAllPressedKeys() {
+        // Un-press all pressed keys: TODO
+        for (var code in SDL.keyboardMap) {
+          SDL.events.push({
+            type: 'keyup',
+            keyCode: SDL.keyboardMap[code]
+          });
+        }
+      };
       switch(event.type) {
         case 'touchstart': case 'touchmove': {
           event.preventDefault();
@@ -532,7 +541,7 @@ var LibrarySDL = {
             }
           }
           // fall through
-        case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
+        case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel': case 'wheel':
           // If we preventDefault on keydown events, the subsequent keypress events
           // won't fire. However, it's fine (and in some cases necessary) to
           // preventDefault for keys that don't generate a character. Otherwise,
@@ -541,21 +550,40 @@ var LibrarySDL = {
             event.preventDefault();
           }
 
-          if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
+          if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel' || event.type == 'wheel') {
+            // Simulate old-style SDL events representing mouse wheel input as buttons
             var button = Browser.getMouseWheelDelta(event) > 0 ? 4 : 3;
-            var event2 = {
+            var event1 = {
               type: 'mousedown',
               button: button,
               pageX: event.pageX,
               pageY: event.pageY
             };
-            SDL.events.push(event2);
-            event = {
+            SDL.events.push(event1);
+            var event2 = {
               type: 'mouseup',
               button: button,
               pageX: event.pageX,
               pageY: event.pageY
             };
+            SDL.events.push(event2);
+
+            // Convert DOMMouseScroll events to wheel events for new style SDL events.
+            if (event.type == 'DOMMouseScroll') {
+              SDL.events.push({
+                type: 'wheel',
+                deltaX: 0,
+                deltaY: -event.detail,
+              });
+              break;
+            } else if (event.type == 'mousewheel') {
+              SDL.events.push({
+                type: 'wheel',
+                deltaX: 0,
+                deltaY: event.wheelDelta,
+              });
+              break;
+            }
           } else if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
             SDL.events.push({
@@ -635,18 +663,23 @@ var LibrarySDL = {
           }
           event.preventDefault();
           break;
-        case 'blur':
-        case 'visibilitychange': {
-          // Un-press all pressed keys: TODO
-          for (var code in SDL.keyboardMap) {
-            SDL.events.push({
-              type: 'keyup',
-              keyCode: SDL.keyboardMap[code]
-            });
-          }
+        case 'focus':
+          SDL.events.push(event);
           event.preventDefault();
           break;
-        }
+        case 'blur':
+          SDL.events.push(event);
+          unpressAllPressedKeys();
+          event.preventDefault();
+          break;
+        case 'visibilitychange':
+          SDL.events.push({
+            type: 'visibilitychange',
+            visible: !document.hidden
+          });
+          unpressAllPressedKeys();
+          event.preventDefault();
+          break;
         case 'unload':
           if (Browser.mainLoop.runner) {
             SDL.events.push(event);
@@ -787,6 +820,12 @@ var LibrarySDL = {
           }
           break;
         }
+        case 'wheel': {
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseWheelEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseWheelEvent.x, 'event.deltaX', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseWheelEvent.y, 'event.deltaY', 'i32') }}}; 
+          break;       
+        }
         case 'touchstart': case 'touchend': case 'touchmove': {
           var touch = event.touch;
           if (!Browser.touches[touch.identifier]) break;
@@ -838,6 +877,29 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'SDL.joystickAxisValueConversion(event.value)', 'i32') }}};
+          break;
+        }
+        case 'focus': {
+          var SDL_WINDOWEVENT_FOCUS_GAINED = 12 /* SDL_WINDOWEVENT_FOCUS_GAINED */;
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, '0', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'SDL_WINDOWEVENT_FOCUS_GAINED', 'i8') }}};
+          break;
+        }
+        case 'blur': {
+          var SDL_WINDOWEVENT_FOCUS_LOST = 13 /* SDL_WINDOWEVENT_FOCUS_LOST */;
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, '0', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'SDL_WINDOWEVENT_FOCUS_LOST', 'i8') }}};
+          break;
+        }
+        case 'visibilitychange': {
+          var SDL_WINDOWEVENT_SHOWN  = 1 /* SDL_WINDOWEVENT_SHOWN */;
+          var SDL_WINDOWEVENT_HIDDEN = 2 /* SDL_WINDOWEVENT_HIDDEN */;
+          var visibilityEventID = event.visible ? SDL_WINDOWEVENT_SHOWN : SDL_WINDOWEVENT_HIDDEN;
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, 0, 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'visibilityEventID' , 'i8') }}};
           break;
         }
         default: throw 'Unhandled SDL event: ' + event.type;
@@ -1043,6 +1105,7 @@ var LibrarySDL = {
       document.addEventListener("keydown", SDL.receiveEvent);
       document.addEventListener("keyup", SDL.receiveEvent);
       document.addEventListener("keypress", SDL.receiveEvent);
+      window.addEventListener("focus", SDL.receiveEvent);
       window.addEventListener("blur", SDL.receiveEvent);
       document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
@@ -1065,11 +1128,16 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['mousedown']  = 0x401  /* SDL_MOUSEBUTTONDOWN */;
     SDL.DOMEventToSDLEvent['mouseup']    = 0x402  /* SDL_MOUSEBUTTONUP */;
     SDL.DOMEventToSDLEvent['mousemove']  = 0x400  /* SDL_MOUSEMOTION */;
+    SDL.DOMEventToSDLEvent['wheel']      = 0x403  /* SDL_MOUSEWHEEL */; 
     SDL.DOMEventToSDLEvent['touchstart'] = 0x700  /* SDL_FINGERDOWN */;
     SDL.DOMEventToSDLEvent['touchend']   = 0x701  /* SDL_FINGERUP */;
     SDL.DOMEventToSDLEvent['touchmove']  = 0x702  /* SDL_FINGERMOTION */;
     SDL.DOMEventToSDLEvent['unload']     = 0x100  /* SDL_QUIT */;
     SDL.DOMEventToSDLEvent['resize']     = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
+    SDL.DOMEventToSDLEvent['visibilitychange'] = 0x200 /* SDL_WINDOWEVENT */;
+    SDL.DOMEventToSDLEvent['focus']      = 0x200 /* SDL_WINDOWEVENT */;
+    SDL.DOMEventToSDLEvent['blur']       = 0x200 /* SDL_WINDOWEVENT */;
+
     // These are not technically DOM events; the HTML gamepad API is poll-based.
     // However, we define them here, as the rest of the SDL code assumes that
     // all SDL events originate as DOM events.
@@ -1139,7 +1207,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
+    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
 
@@ -2205,6 +2273,7 @@ var LibrarySDL = {
       var url = URL.createObjectURL(blob);
       audio = new Audio();
       audio.src = url;
+      audio.mozAudioChannelType = 'content'; // bugzilla 910340
     }
 
     var id = SDL.audios.length;
@@ -2218,6 +2287,7 @@ var LibrarySDL = {
 
   Mix_QuickLoad_RAW: function(mem, len) {
     var audio = new Audio();
+    audio.mozAudioChannelType = 'content'; // bugzilla 910340
     // Record the number of channels and frequency for later usage
     audio.numChannels = SDL.mixerNumChannels;
     audio.frequency = SDL.mixerFrequency;

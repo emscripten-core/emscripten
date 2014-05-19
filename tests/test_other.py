@@ -2791,3 +2791,14 @@ int main(int argc, char **argv) {
       assert sizes[0] == 7 # no aliasing, all unique, fat tables
       assert sizes[1] == 3 # aliased once more
 
+  def test_bad_export(self):
+    for m in ['', ' ']:
+      self.clear()
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORTED_FUNCTIONS=["' + m + '_main"]']
+      print cmd
+      stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
+      if m:
+        assert 'function requested to be exported, but not implemented: " _main"' in stderr, stderr
+      else:
+        self.assertContained('hello, world!', run_js('a.out.js'))
+

@@ -286,3 +286,8 @@ function __emval_has_function(handle, name) {
     name = getStringOrSymbol(name);
     return handle[name] instanceof Function;
 }
+
+function __emval_typeof(handle) {
+    handle = requireHandle(handle);
+    return __emval_register(typeof handle);
+}

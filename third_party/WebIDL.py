@@ -649,13 +649,15 @@ class IDLInterface(IDLObjectWithScope):
             # Flag the interface as being someone's consequential interface
             iface.setIsConsequentialInterfaceOf(self)
             additionalMembers = iface.originalMembers;
-            for additionalMember in additionalMembers:
+            for additionalMember in additionalMembers[:]:
                 for member in self.members:
                     if additionalMember.identifier.name == member.identifier.name:
-                        raise WebIDLError(
-                            "Multiple definitions of %s on %s coming from 'implements' statements" %
-                            (member.identifier.name, self),
-                            [additionalMember.location, member.location])
+                        # XXX emscripten: allow such name collisions, ignore parent
+                        additionalMembers.remove(additionalMember)
+                        #raise WebIDLError(
+                        #    "Multiple definitions of %s on %s coming from 'implements' statements" %
+                        #    (member.identifier.name, self),
+                        #    [additionalMember.location, member.location])
             self.members.extend(additionalMembers)
             iface.interfacesImplementingSelf.add(self)
 
@@ -3441,6 +3443,7 @@ class IDLMethod(IDLInterfaceMember, IDLScope):
               identifier == "Ref" or
               identifier == "Value" or
               identifier == "Operator" or
+              identifier == "Const" or
               identifier == "WebGLHandlesContextLoss"):
             # Known attributes that we don't need to do anything with here
             pass

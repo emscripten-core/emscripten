@@ -112,6 +112,7 @@ process(sys.argv[1])
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     #'-profiling',
+                    #'--closure', '1',
                     '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0]
     self.filename = final
@@ -406,6 +407,42 @@ class benchmark(RunnerCore):
       }
     '''
     self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS*5)
+
+  def test_conditionals(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      int main(int argc, char *argv[]) {
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        switch(arg) {
+          case 0: return 0; break;
+          case 1: arg = 3*75; break;
+          case 2: arg = 3*625; break;
+          case 3: arg = 3*1250; break;
+          case 4: arg = 3*5*1250; break;
+          case 5: arg = 3*10*1250; break;
+          default: printf("error: %d\\n", arg); return -1;
+        }
+
+        int x = 0;
+
+        for (int j = 0; j < 27000; j++) {
+          for (int i = 0; i < arg; i++) {
+            if (((x*x+11) % 3 == 0) | ((x*(x+2)+17) % 5 == 0)) {
+              x += 2;
+            } else {
+              x++;
+            }
+          }
+        }
+
+        printf("ok %d\n", x);
+
+        return x;
+      }
+    '''
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS*5)
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
