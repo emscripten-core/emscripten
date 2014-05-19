@@ -750,9 +750,12 @@ function simplifyExpressions(ast) {
   }
 
   function emitsBoolean(node) {
+    if (node[0] === 'num') {
+      return node[1] === 0 || node[1] === 1;
+    }
     if (node[0] === 'binary') return node[1] in COMPARE_OPS;
     if (node[0] === 'unary-prefix') return node[1] === '!';
-    if (node[0] === 'conditional') return true;
+    if (node[0] === 'conditional') return emitsBoolean(node[2]) && emitsBoolean(node[3]);
     return false;
   }
 
