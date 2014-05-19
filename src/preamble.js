@@ -703,11 +703,7 @@ Module['AsciiToString'] = AsciiToString;
 // null-terminated and encoded in ASCII form. The copy will require at most str.length+1 bytes of space in the HEAP.
 
 function stringToAscii(str, outPtr) {
-  for(var i = 0; i < str.length; ++i) {
-    {{{ makeSetValue('outPtr++', 0, 'str.charCodeAt(i)', 'i8') }}};
-  }
-  // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 0, 0, 'i8') }}};
+  return writeAsciiToMemory(str, outPtr, false);
 }
 Module['stringToAscii'] = stringToAscii;
 
@@ -755,7 +751,7 @@ Module['UTF8ToString'] = UTF8ToString;
 // null-terminated and encoded in UTF8 form. The copy will require at most str.length*6+1 bytes of space in the HEAP.
 
 function stringToUTF8(str, outPtr) {
-  for(var i = 0; i < str.length; ++i) {
+  for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     var u = str.charCodeAt(i); // possibly a lead surrogate
     if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
@@ -813,7 +809,7 @@ Module['UTF16ToString'] = UTF16ToString;
 
 
 function stringToUTF16(str, outPtr) {
-  for(var i = 0; i < str.length; ++i) {
+  for (var i = 0; i < str.length; ++i) {
     // charCodeAt returns a UTF-16 encoded code unit, so it can be directly written to the HEAP.
     var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
     {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}};
@@ -847,7 +843,7 @@ Module['UTF32ToString'] = UTF32ToString;
 
 function stringToUTF32(str, outPtr) {
   var iChar = 0;
-  for(var iCodeUnit = 0; iCodeUnit < str.length; ++iCodeUnit) {
+  for (var iCodeUnit = 0; iCodeUnit < str.length; ++iCodeUnit) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
     var codeUnit = str.charCodeAt(iCodeUnit); // possibly a lead surrogate
     if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
@@ -1381,19 +1377,20 @@ Module['writeStringToMemory'] = writeStringToMemory;
 
 function writeArrayToMemory(array, buffer) {
   for (var i = 0; i < array.length; i++) {
-    {{{ makeSetValue('buffer', 'i', 'array[i]', 'i8') }}};
+    {{{ makeSetValue('buffer++', 0, 'array[i]', 'i8') }}};
   }
 }
 Module['writeArrayToMemory'] = writeArrayToMemory;
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
-  for (var i = 0; i < str.length; i++) {
+  for (var i = 0; i < str.length; ++i) {
 #if ASSERTIONS
     assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
 #endif
-    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}};
+    {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
   }
-  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}};
+  // Null-terminate the pointer to the HEAP.
+  if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
 }
 Module['writeAsciiToMemory'] = writeAsciiToMemory;
 
