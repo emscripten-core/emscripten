@@ -1430,12 +1430,10 @@ class Building:
     cmdline = [PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
-    compiler_output = jsrun.timeout_run(Popen(cmdline, stdout=PIPE), None, 'Compiling')
-    #print compiler_output
+    jsrun.timeout_run(Popen(cmdline, stdout=PIPE), None, 'Compiling')
 
     # Detect compilation crashes and errors
-    if compiler_output is not None and 'Traceback' in compiler_output and 'in test_' in compiler_output: print compiler_output; assert 0
-    assert os.path.exists(filename + '.o.js') and len(open(filename + '.o.js', 'r').read()) > 0, 'Emscripten failed to generate .js: ' + str(compiler_output)
+    assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
 
     return filename + '.o.js'
 
