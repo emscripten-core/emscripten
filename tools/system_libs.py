@@ -55,7 +55,14 @@ def calculate(temp_files, in_temp, stdout, stderr):
       os.path.join('libcxx', 'new.cpp'),
     ]
     musl_files = [
+      ['ctype', [
+       'isdigit.c',
+       'isspace.c',
+       'isupper.c',
+       'tolower.c',
+      ]],
       ['internal', [
+       'intscan.c',
        'floatscan.c',
        'shgetc.c',
       ]],
@@ -74,6 +81,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
        'atoi.c',
        'atol.c',
        'strtod.c',
+       'strtol.c',
       ]],
       ['string', [
        'memcmp.c',
@@ -103,7 +111,22 @@ def calculate(temp_files, in_temp, stdout, stderr):
   def create_libcextra():
     logging.debug('building libcextra for cache')
     musl_files = [
+       ['compat', [
+        'strlwr.c',
+        'strtol_l.c',
+        'strupr.c'
+       ]],
        ['ctype', [
+        'isalnum.c',
+        'isalpha.c',
+        'isascii.c',
+        'isblank.c',
+        'iscntrl.c',
+        'isgraph.c',
+        'islower.c',
+        'isprint.c',
+        'ispunct.c',
+        'isxdigit.c',
         'iswalnum.c',
         'iswalpha.c',
         'iswblank.c',
@@ -117,19 +140,30 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'iswspace.c',
         'iswupper.c',
         'iswxdigit.c',
+        'toascii.c',
+        'toupper.c',
         'towctrans.c',
         'wcswidth.c',
         'wctrans.c',
         'wcwidth.c',
-       ]],
-       ['internal', [
-        'intscan.c',
        ]],
        ['legacy', [
         'err.c',
        ]],
        ['locale', [
         'iconv.c',
+        'isalnum_l.c',
+        'isalpha_l.c',
+        'isblank_l.c',
+        'iscntrl_l.c',
+        'isdigit_l.c',
+        'isgraph_l.c',
+        'islower_l.c',
+        'isprint_l.c',
+        'ispunct_l.c',
+        'isspace_l.c',
+        'isupper_l.c',
+        'isxdigit_l.c',
         'iswalnum_l.c',
         'iswalpha_l.c',
         'iswblank_l.c',
@@ -148,6 +182,8 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'strfmon.c',
         'strncasecmp_l.c',
         'strxfrm.c',
+        'tolower_l.c',
+        'toupper_l.c',
         'towctrans_l.c',
         'towlower_l.c',
         'towupper_l.c',

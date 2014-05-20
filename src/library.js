@@ -3222,39 +3222,6 @@ LibraryManager.library = {
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
 #endif
-  strtoll__deps: ['_parseInt64'],
-  strtoll: function(str, endptr, base) {
-    return __parseInt64(str, endptr, base, '-9223372036854775808', '9223372036854775807');  // LLONG_MIN, LLONG_MAX.
-  },
-  strtoll_l__deps: ['strtoll'],
-  strtoll_l: function(str, endptr, base) {
-    return _strtoll(str, endptr, base); // no locale support yet
-  },
-  strtol__deps: ['_parseInt'],
-  strtol: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -2147483648, 2147483647, 32);  // LONG_MIN, LONG_MAX.
-  },
-  strtol_l__deps: ['strtol'],
-  strtol_l: function(str, endptr, base) {
-    return _strtol(str, endptr, base); // no locale support yet
-  },
-  strtoul__deps: ['_parseInt'],
-  strtoul: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, 0, 4294967295, 32, true);  // ULONG_MAX.
-  },
-  strtoul_l__deps: ['strtoul'],
-  strtoul_l: function(str, endptr, base) {
-    return _strtoul(str, endptr, base); // no locale support yet
-  },
-  strtoull__deps: ['_parseInt64'],
-  strtoull: function(str, endptr, base) {
-    return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
-  },
-  strtoull_l__deps: ['strtoull'],
-  strtoull_l: function(str, endptr, base) {
-    return _strtoull(str, endptr, base); // no locale support yet
-  },
-
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: '_environ',
@@ -3619,28 +3586,6 @@ LibraryManager.library = {
     return pdest|0;
   },
 
-  strlwr__deps:['tolower'],
-  strlwr: function(pstr){
-    var i = 0;
-    while(1) {
-      var x = {{{ makeGetValue('pstr', 'i', 'i8') }}};
-      if (x == 0) break;
-      {{{ makeSetValue('pstr', 'i', '_tolower(x)', 'i8') }}};
-      i++;
-    }
-  },
-
-  strupr__deps:['toupper'],
-  strupr: function(pstr){
-    var i = 0;
-    while(1) {
-      var x = {{{ makeGetValue('pstr', 'i', 'i8') }}};
-      if (x == 0) break;
-      {{{ makeSetValue('pstr', 'i', '_toupper(x)', 'i8') }}};
-      i++;
-    }
-  },
-
   strcat__asm: true,
   strcat__sig: 'iii',
   strcat__deps: ['strlen'],
@@ -3681,132 +3626,6 @@ LibraryManager.library = {
   // ctype.h
   // ==========================================================================
 
-  isascii: function(chr) {
-    return chr >= 0 && (chr & 0x80) == 0;
-  },
-  toascii: function(chr) {
-    return chr & 0x7F;
-  },
-  toupper: function(chr) {
-    if (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) {
-      return chr - {{{ charCode('a') }}} + {{{ charCode('A') }}};
-    } else {
-      return chr;
-    }
-  },
-  _toupper: 'toupper',
-  toupper_l__deps: ['toupper'],
-  toupper_l: function(str, endptr, base) {
-    return _toupper(str, endptr, base); // no locale support yet
-  },
-
-  tolower__asm: true,
-  tolower__sig: 'ii',
-  tolower: function(chr) {
-    chr = chr|0;
-    if ((chr|0) < {{{ charCode('A') }}}) return chr|0;
-    if ((chr|0) > {{{ charCode('Z') }}}) return chr|0;
-    return (chr - {{{ charCode('A') }}} + {{{ charCode('a') }}})|0;
-  },
-  _tolower: 'tolower',
-  tolower_l__deps: ['tolower'],
-  tolower_l: function(chr) {
-    return _tolower(chr); // no locale support yet
-  },
-
-  // The following functions are defined as macros in glibc.
-  islower: function(chr) {
-    return chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}};
-  },
-  islower_l__deps: ['islower'],
-  islower_l: function(chr) {
-    return _islower(chr); // no locale support yet
-  },
-  isupper: function(chr) {
-    return chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}};
-  },
-  isupper_l__deps: ['isupper'],
-  isupper_l: function(chr) {
-    return _isupper(chr); // no locale support yet
-  },
-  isalpha: function(chr) {
-    return (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
-           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
-  },
-  isalpha_l__deps: ['isalpha'],
-  isalpha_l: function(chr) {
-    return _isalpha(chr); // no locale support yet
-  },
-  isdigit: function(chr) {
-    return chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}};
-  },
-  isdigit_l__deps: ['isdigit'],
-  isdigit_l: function(chr) {
-    return _isdigit(chr); // no locale support yet
-  },
-  isxdigit: function(chr) {
-    return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
-           (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('f') }}}) ||
-           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('F') }}});
-  },
-  isxdigit_l__deps: ['isxdigit'],
-  isxdigit_l: function(chr) {
-    return _isxdigit(chr); // no locale support yet
-  },
-  isalnum: function(chr) {
-    return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
-           (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
-           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
-  },
-  isalnum_l__deps: ['isalnum'],
-  isalnum_l: function(chr) {
-    return _isalnum(chr); // no locale support yet
-  },
-  ispunct: function(chr) {
-    return (chr >= {{{ charCode('!') }}} && chr <= {{{ charCode('/') }}}) ||
-           (chr >= {{{ charCode(':') }}} && chr <= {{{ charCode('@') }}}) ||
-           (chr >= {{{ charCode('[') }}} && chr <= {{{ charCode('`') }}}) ||
-           (chr >= {{{ charCode('{') }}} && chr <= {{{ charCode('~') }}});
-  },
-  ispunct_l__deps: ['ispunct'],
-  ispunct_l: function(chr) {
-    return _ispunct(chr); // no locale support yet
-  },
-  isspace: function(chr) {
-    return (chr == 32) || (chr >= 9 && chr <= 13);
-  },
-  isspace_l__deps: ['isspace'],
-  isspace_l: function(chr) {
-    return _isspace(chr); // no locale support yet
-  },
-  isblank: function(chr) {
-    return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
-  },
-  isblank_l__deps: ['isblank'],
-  isblank_l: function(chr) {
-    return _isblank(chr); // no locale support yet
-  },
-  iscntrl: function(chr) {
-    return (0 <= chr && chr <= 0x1F) || chr === 0x7F;
-  },
-  iscntrl_l__deps: ['iscntrl'],
-  iscntrl_l: function(chr) {
-    return _iscntrl(chr); // no locale support yet
-  },
-  isprint: function(chr) {
-    return 0x1F < chr && chr < 0x7F;
-  },
-  isprint_l__deps: ['isprint'],
-  isprint_l: function(chr) {
-    return _isprint(chr); // no locale support yet
-  },
-  isgraph: function(chr) {
-    return 0x20 < chr && chr < 0x7F;
-  },
-  isgraph_l__deps: ['isgraph'],
-  isgraph_l: function(chr) {
-    return _isgraph(chr); // no locale support yet
-  },
   // Lookup tables for glibc ctype implementation.
   __ctype_b_loc__deps: ['malloc'],
   __ctype_b_loc: function() {
