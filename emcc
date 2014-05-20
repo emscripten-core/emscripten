@@ -1098,12 +1098,24 @@ try:
 
   # Find input files
 
+  # These three arrays are used to store arguments of different types for
+  # type-specific processing. In order to shuffle the arguments back together
+  # after processing, all of these arrays hold tuples (original_index, value).
+  # Note that the index part of the tuple can have a fractional part for input
+  # arguments that expand into multiple processed arguments, as in -Wl,-f1,-f2.
   input_files = []
+  libs = []
+  link_flags = []
+
+  # All of the above arg lists entries contain indexes into the full argument
+  # list. In order to add extra implicit args (embind.cc, etc) below, we keep a
+  # counter for the next index that should be used.
+  next_arg_index = len(newargs)
+
   has_source_inputs = False
   has_header_inputs = False
   lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
               shared.path_from_root('system', 'lib')]
-  libs = []
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                 # right now we just assume that what is left contains no more |-x OPT| things
     arg = newargs[i]
@@ -1124,13 +1136,13 @@ try:
       if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
         newargs[i] = ''
         if arg_ending.endswith(SOURCE_ENDINGS):
-          input_files.append(arg)
+          input_files.append((i, arg))
           has_source_inputs = True
         elif arg_ending.endswith(HEADER_ENDINGS):
-          input_files.append(arg)
+          input_files.append((i, arg))
           has_header_inputs = True
         elif arg_ending.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
-          input_files.append(arg)
+          input_files.append((i, arg))
         elif arg_ending.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
           # if it's not, and it's a library, just add it to libs to find later
           l = unsuffixed_basename(arg)
@@ -1139,7 +1151,7 @@ try:
             if l.startswith(prefix):
               l = l[len(prefix):]
               break
-          libs.append(l)
+          libs.append((i, l))
           newargs[i] = ''
         else:
           logging.warning(arg + ' is not valid LLVM bitcode')
@@ -1157,7 +1169,15 @@ try:
       lib_dirs.append(arg[2:])
       newargs[i] = ''
     elif arg.startswith('-l'):
-      libs.append(arg[2:])
+      libs.append((i, arg[2:]))
+      newargs[i] = ''
+    elif arg.startswith('-Wl,'):
+      # Multiple comma separated link flags can be specified. Create fake
+      # fractional indices for these: -Wl,a,b,c,d at index 4 becomes:
+      # (4, a), (4.25, b), (4.5, c), (4.75, d)
+      link_flags_to_add = arg.split(',')[1:]
+      for flag_index, flag in enumerate(link_flags_to_add):
+        link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
       newargs[i] = ''
 
   original_input_files = input_files[:]
@@ -1173,7 +1193,7 @@ try:
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
   # Find library files
-  for lib in libs:
+  for i, lib in libs:
     logging.debug('looking for library "%s"', lib)
     found = False
     for prefix in LIB_PREFIXES:
@@ -1183,7 +1203,7 @@ try:
           path = os.path.join(lib_dir, name)
           if os.path.exists(path):
             logging.debug('found library "%s" at %s', lib, path)
-            input_files.append(path)
+            input_files.append((i, path))
             found = True
             break
         if found: break
@@ -1199,7 +1219,7 @@ try:
         return False
       else:
         return True
-    input_files = [input_file for input_file in input_files if check(input_file)]
+    input_files = [(i, input_file) for (i, input_file) in input_files if check(input_file)]
 
   if len(input_files) == 0:
     logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
@@ -1211,7 +1231,8 @@ try:
 
   # If we are using embind and generating JS, now is the time to link in bind.cpp
   if bind and final_suffix in JS_CONTAINING_SUFFIXES:
-    input_files.append(shared.path_from_root('system', 'lib', 'embind', 'bind.cpp'))
+    input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
+    next_arg_index += 1
 
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
@@ -1331,7 +1352,8 @@ try:
     logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
-    input_files.append(shared.path_from_root('third_party', 'stb_image.c'))
+    input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
+    next_arg_index += 1
     shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
   if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
@@ -1365,9 +1387,10 @@ try:
 
   # Precompiled headers support
   if has_header_inputs:
-    for header in input_files:
-      assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(input_files) + ' : ' + header
-    args = newargs + shared.EMSDK_CXX_OPTS + input_files
+    headers = [header for _, header in input_files]
+    for header in headers:
+      assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(headers) + ' : ' + header
+    args = newargs + shared.EMSDK_CXX_OPTS + headers
     if specified_target:
       args += ['-o', specified_target]
     logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
@@ -1388,12 +1411,12 @@ try:
     return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
-  for input_file in input_files:
+  for i, input_file in input_files:
     file_ending = filename_type_ending(input_file)
     if file_ending.endswith(SOURCE_ENDINGS):
       logging.debug('compiling source file: ' + input_file)
       output_file = get_bitcode_file(input_file)
-      temp_files.append(output_file)
+      temp_files.append((i, output_file))
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if file_ending.endswith(CXX_ENDINGS):
         args += shared.EMSDK_CXX_OPTS
@@ -1407,18 +1430,18 @@ try:
         logging.debug('copying bitcode file: ' + input_file)
         temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
         shutil.copyfile(input_file, temp_file)
-        temp_files.append(temp_file)
+        temp_files.append((i, temp_file))
       elif file_ending.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
         logging.debug('copying library file: ' + input_file)
         temp_file = in_temp(uniquename(input_file))
         shutil.copyfile(input_file, temp_file)
-        temp_files.append(temp_file)
+        temp_files.append((i, temp_file))
       elif file_ending.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
           logging.debug('assembling assembly file: ' + input_file)
           temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
           shared.Building.llvm_as(input_file, temp_file)
-          temp_files.append(temp_file)
+          temp_files.append((i, temp_file))
       else:
         logging.error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
         sys.exit(1)
@@ -1430,10 +1453,10 @@ try:
 
     # Optimize source files
     if llvm_opts > 0:
-      for i, input_file in enumerate(input_files):
+      for pos, (_, input_file) in enumerate(input_files):
         file_ending = filename_type_ending(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
-          temp_file = temp_files[i]
+          (_, temp_file) = temp_files[pos]
           logging.debug('optimizing %s', input_file)
           #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
           shared.Building.llvm_opt(temp_file, llvm_opts)
@@ -1441,26 +1464,30 @@ try:
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if not specified_target:
-      for input_file in input_files:
+      for _, input_file in input_files:
         safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + final_ending)
     else:
       if len(input_files) == 1:
-        safe_move(temp_files[0], specified_target if specified_target else unsuffixed_basename(input_file) + final_ending)
-        temp_output_base = unsuffixed(temp_files[0])
+        _, input_file = input_files[0]
+        _, temp_file = temp_files[0]
+        safe_move(temp_file, specified_target if specified_target else unsuffixed_basename(input_file) + final_ending)
+        temp_output_base = unsuffixed(temp_file)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
           # adjusting the target name away from the temporary file name to the specified target.
           # It will be deleted with the rest of the temporary directory.
           deps = open(temp_output_base + '.d').read()
           deps = deps.replace(temp_output_base + default_object_extension, specified_target)
-          with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_files[0]) + '.d')), "w") as out_dep:
+          with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_file) + '.d')), "w") as out_dep:
             out_dep.write(deps)
       else:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
         logging.debug('link: ' + str(temp_files) + specified_target)
-        shared.Building.link(temp_files, specified_target)
+        # Sort arg tuples and pass the extracted values to link.
+        link_args = [f for (i, f) in sorted(temp_files)]
+        shared.Building.link(link_args, specified_target)
     logging.debug('stopping at bitcode')
     exit(0)
 
@@ -1473,7 +1500,7 @@ try:
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-    extra_files_to_link = system_libs.calculate(temp_files, in_temp, stdout, stderr)
+    extra_files_to_link = system_libs.calculate([f for _, f in sorted(temp_files)], in_temp, stdout, stderr)
   else:
     extra_files_to_link = []
 
@@ -1481,18 +1508,20 @@ try:
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
-     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_ENDINGS or suffix(temp_files[0]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0])):
-    linker_inputs = temp_files + extra_files_to_link
+     (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0][1]) in BITCODE_ENDINGS or suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0][1])):
+    linker_inputs = [val for _, val in sorted(temp_files + link_flags)] + extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=len([temp for temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0)
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
-      shutil.move(temp_files[0], in_temp(target_basename + '.bc'))
+      _, temp_file = temp_files[0]
+      shutil.move(temp_file, in_temp(target_basename + '.bc'))
       final = in_temp(target_basename + '.bc')
     else:
-      final = in_temp(input_files[0])
-      shutil.copyfile(input_files[0], final)
+      _, input_file = input_files[0]
+      final = in_temp(input_file)
+      shutil.copyfile(input_file, final)
 
   log_time('link')
 

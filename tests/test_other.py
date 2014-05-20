@@ -1027,9 +1027,84 @@ This pointer might make sense in another type signature: i: 0
     Building.emar('cr', lib_name, [a_name + '.o', b_name + '.o']) # libLIB.a with a and b
 
     # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
-    Building.emcc(main_name, ['-L.', '-lLIB', a_name+'.o', c_name + '.o'], output_filename='a.out.js')
+    Building.emcc(main_name, [a_name+'.o', c_name + '.o', '-L.', '-lLIB'], output_filename='a.out.js')
 
     self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+  def test_link_group_asserts(self):
+    lib_src_name = os.path.join(self.get_dir(), 'lib.c')
+    open(lib_src_name, 'w').write('int x() { return 42; }')
+
+    main_name = os.path.join(self.get_dir(), 'main.c')
+    open(main_name, 'w').write(r'''
+      #include <stdio.h>
+      int x();
+      int main() {
+        printf("result: %d\n", x());
+        return 0;
+      }
+    ''')
+
+    Building.emcc(lib_src_name) # lib.c.o
+    lib_name = os.path.join(self.get_dir(), 'libLIB.a')
+    Building.emar('cr', lib_name, [lib_src_name + '.o']) # libLIB.a with lib.c.o
+
+    def test(lib_args, err_expected):
+      output = Popen([PYTHON, EMCC, main_name, '-o', 'a.out.js'] + lib_args, stdout=PIPE, stderr=PIPE).communicate()
+      if err_expected:
+        self.assertContained(err_expected, output[1])
+      else:
+        out_js = os.path.join(self.get_dir(), 'a.out.js')
+        assert os.path.exists(out_js), '\n'.join(output)
+        self.assertContained('result: 42', run_js(out_js))
+
+    test(['-Wl,--start-group', lib_name], '--start-group without matching --end-group')
+    test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
+    test(['-Wl,--end-group', lib_name, '-Wl,--start-group'], '--end-group without --start-group')
+    test(['-Wl,--start-group', lib_name, '-Wl,--end-group'], None)
+
+  def test_circular_libs(self):
+    def tmp_source(name, code):
+      file_name = os.path.join(self.get_dir(), name)
+      open(file_name, 'w').write(code)
+      return file_name
+
+    a = tmp_source('a.c', 'int z(); int x() { return z(); }')
+    b = tmp_source('b.c', 'int x(); int y() { return x(); } int z() { return 42; }')
+    c = tmp_source('c.c', 'int q() { return 0; }')
+    main = tmp_source('main.c', r'''
+      #include <stdio.h>
+      int y();
+      int main() {
+        printf("result: %d\n", y());
+        return 0;
+      }
+    ''')
+
+    Building.emcc(a) # a.c.o
+    Building.emcc(b) # b.c.o
+    Building.emcc(c) # c.c.o
+    lib_a = os.path.join(self.get_dir(), 'libA.a')
+    Building.emar('cr', lib_a, [a + '.o', c + '.o']) # libA.a with a.c.o,c.c.o
+    lib_b = os.path.join(self.get_dir(), 'libB.a')
+    Building.emar('cr', lib_b, [b + '.o', c + '.o']) # libB.a with b.c.o,c.c.o
+
+    args = ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', main, '-o', 'a.out.js']
+    libs = [lib_a, lib_b]
+
+    # lib_a does not satisfy any symbols from main, so it will not be included,
+    # and there will be an unresolved symbol.
+    output = Popen([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE).communicate()
+    self.assertContained('error: unresolved symbol: x', output[1])
+
+    # -Wl,--start-group and -Wl,--end-group around the libs will cause a rescan
+    # of lib_a after lib_b adds undefined symbol "x", so a.c.o will now be
+    # included (and the link will succeed).
+    libs = ['-Wl,--start-group'] + libs + ['-Wl,--end-group']
+    output = Popen([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE).communicate()
+    out_js = os.path.join(self.get_dir(), 'a.out.js')
+    assert os.path.exists(out_js), '\n'.join(output)
+    self.assertContained('result: 42', run_js(out_js))
 
   def test_redundant_link(self):
     lib = "int mult() { return 1; }"
