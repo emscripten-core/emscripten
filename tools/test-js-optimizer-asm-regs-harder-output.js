@@ -129,4 +129,9 @@ function linkedVars() {
  }
  return i2 + i1;
 }
+function deadCondExpr(i2) {
+ i2 = i2 | 0;
+ var i1 = 0;
+ return i1 | 0;
+}
 
