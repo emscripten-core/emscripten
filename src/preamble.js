@@ -310,28 +310,6 @@ function assert(condition, text) {
 
 var globalScope = this;
 
-// C calling interface. A convenient way to call C functions (in C files, or
-// defined with extern "C").
-//
-// Note: LLVM optimizations can inline and remove functions, after which you will not be
-//       able to call them. Closure can also do so. To avoid that, add your function to
-//       the exports using something like
-//
-//         -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
-//
-// @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
-// @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
-//                   'array' for JavaScript arrays and typed arrays; note that arrays are 8-bit).
-// @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType,
-//                   except that 'array' is not possible (there is no way for us to know the length of the array)
-// @param args       An array of the arguments to the function, as native JS values (as in returnType)
-//                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
-// @return           The return value, as a native JS value (as in returnType)
-function ccall(ident, returnType, argTypes, args) {
-  return ccallFunc(getCFunc(ident), returnType, argTypes, args);
-}
-Module["ccall"] = ccall;
-
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   try {
@@ -343,53 +321,141 @@ function getCFunc(ident) {
   return func;
 }
 
-// Internal function that does a C call using a function, not an identifier
-function ccallFunc(func, returnType, argTypes, args) {
+var cwrap, ccall;
+(function(){
   var stack = 0;
-  function toC(value, type) {
-    if (type == 'string') {
-      if (value === null || value === undefined || value === 0) return 0; // null string
-      value = intArrayFromString(value);
-      type = 'array';
-    }
-    if (type == 'array') {
-      if (!stack) stack = Runtime.stackSave();
-      var ret = Runtime.stackAlloc(value.length);
-      writeArrayToMemory(value, ret);
+  var JSfuncs = {
+    'stackSave' : function() {
+      stack = Runtime.stackSave();
+    },
+    'stackRestore' : function() {
+      Runtime.stackRestore(stack);
+    },
+    // type conversion from js to c
+    'arrayToC' : function(arr) {
+      var ret = Runtime.stackAlloc(arr.length);
+      writeArrayToMemory(arr, ret);
+      return ret;
+    },
+    'stringToC' : function(str) {
+      var ret = 0;
+      if (str !== null && str !== undefined && str !== 0) { // null string
+        ret = Runtime.stackAlloc(str.length + 1); // +1 for the trailing '\0'
+        writeStringToMemory(str, ret);
+      }
       return ret;
     }
-    return value;
-  }
-  function fromC(value, type) {
-    if (type == 'string') {
-      return Pointer_stringify(value);
-    }
-    assert(type != 'array');
-    return value;
-  }
-  var i = 0;
-  var cArgs = args ? args.map(function(arg) {
-    return toC(arg, argTypes[i++]);
-  }) : [];
-  var ret = fromC(func.apply(null, cArgs), returnType);
-  if (stack) Runtime.stackRestore(stack);
-  return ret;
-}
+  };
+  // For fast lookup of conversion functions
+  var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
-// Returns a native JS wrapper for a C function. This is similar to ccall, but
-// returns a function you can call repeatedly in a normal way. For example:
-//
-//   var my_function = cwrap('my_c_function', 'number', ['number', 'number']);
-//   alert(my_function(5, 22));
-//   alert(my_function(99, 12));
-//
-function cwrap(ident, returnType, argTypes) {
-  var func = getCFunc(ident);
-  return function() {
-    return ccallFunc(func, returnType, argTypes, Array.prototype.slice.call(arguments));
+  // C calling interface. A convenient way to call C functions (in C files, or
+  // defined with extern "C").
+  //
+  // Note: LLVM optimizations can inline and remove functions, after which you will not be
+  //       able to call them. Closure can also do so. To avoid that, add your function to
+  //       the exports using something like
+  //
+  //         -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+  //
+  // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
+  // @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
+  //                   'array' for JavaScript arrays and typed arrays; note that arrays are 8-bit).
+  // @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType,
+  //                   except that 'array' is not possible (there is no way for us to know the length of the array)
+  // @param args       An array of the arguments to the function, as native JS values (as in returnType)
+  //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
+  // @return           The return value, as a native JS value (as in returnType)
+  ccall = function ccallFunc(ident, returnType, argTypes, args) {
+    var func = getCFunc(ident);
+    var cArgs = [];
+#if ASSERTIONS
+    assert(returnType !== 'array', 'Return type should not be "array".');
+#endif
+    if (args) {
+      for (var i = 0; i < args.length; i++) {
+        var converter = toC[argTypes[i]];
+        if (converter) {
+          if (stack === 0) stack = Runtime.stackSave();
+          cArgs[i] = converter(args[i]);
+        } else {
+          cArgs[i] = args[i];
+        }
+      }
+    }
+    var ret = func.apply(null, cArgs);
+    if (returnType === 'string') ret = Pointer_stringify(ret);
+    if (stack !== 0) JSfuncs['stackRestore']();
+    return ret;
   }
-}
+
+  var sourceRegex = /^function \((.*)\)\s*{\s*([^]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
+  function parseJSFunc(jsfunc) {
+    // Match the body and the return value of a javascript function source
+    var parsed = jsfunc.toString().match(sourceRegex).slice(1);
+    return {arguments : parsed[0], body : parsed[1], returnValue: parsed[2]}
+  }
+  var JSsource = {};
+  for (var fun in JSfuncs) {
+    if (JSfuncs.hasOwnProperty(fun)) {
+      // Elements of toCsource are arrays of three items:
+      // the code, and the return value
+      JSsource[fun] = parseJSFunc(JSfuncs[fun]);
+    }
+  }
+  // Returns a native JS wrapper for a C function. This is similar to ccall, but
+  // returns a function you can call repeatedly in a normal way. For example:
+  //
+  //   var my_function = cwrap('my_c_function', 'number', ['number', 'number']);
+  //   alert(my_function(5, 22));
+  //   alert(my_function(99, 12));
+  //
+  cwrap = function cwrap(ident, returnType, argTypes) {
+    var cfunc = getCFunc(ident);
+    // When the function takes numbers and returns a number, we can just return
+    // the original function
+    var numericArgs = argTypes.every(function(type){ return type === 'number'});
+    var numericRet = (returnType !== 'string');
+    if ( numericRet && numericArgs) {
+      return cfunc;
+    }
+    // Creation of the arguments list (["$1","$2",...,"$nargs"])
+    var argNames = argTypes.map(function(x,i){return '$'+i});
+    var funcstr = "(function(" + argNames.join(',') + ") {";
+    var nargs = argTypes.length;
+    if (!numericArgs) {
+      // Generate the code needed to convert the arguments from javascript
+      // values to pointers
+      funcstr += JSsource['stackSave'].body + ';';
+      for (var i = 0; i < nargs; i++) {
+        var arg = argNames[i], type = argTypes[i];
+        if (type === 'number') continue;
+        var convertCode = JSsource[type + 'ToC']; // [code, return]
+        funcstr += 'var ' + convertCode.arguments + ' = ' + arg + ';';
+        funcstr += convertCode.body + ';';
+        funcstr += arg + '=' + convertCode.returnValue + ';';
+      }
+    }
+
+    // When the code is compressed, the name of cfunc is not literally 'cfunc' anymore
+    var cfuncname = parseJSFunc(function(){return cfunc}).returnValue;
+    // Call the function
+    funcstr += 'var ret = ' + cfuncname + '(' + argNames.join(',') + ');';
+    if (!numericRet) { // Return type can only by 'string' or 'number'
+      // Convert the result to a string
+      var strgfy = parseJSFunc(function(){return Pointer_stringify}).returnValue;
+      funcstr += 'ret = ' + strgfy + '(ret);';
+    }
+    if (!numericArgs) {
+      // If we had a stack, restore it
+      funcstr += JSsource['stackRestore'].body + ';';
+    }
+    funcstr += 'return ret})';
+    return eval(funcstr);
+  };
+})();
 Module["cwrap"] = cwrap;
+Module["ccall"] = ccall;
 
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
