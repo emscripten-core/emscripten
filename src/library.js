@@ -2802,25 +2802,6 @@ LibraryManager.library = {
     var stdin = {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}};
     return _fscanf(stdin, format, varargs);
   },
-  snprintf__deps: ['_formatString', 'malloc'],
-  snprintf: function(s, n, format, varargs) {
-    // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var result = __formatString(format, varargs);
-    var limit = (n === undefined) ? result.length
-                                  : Math.min(result.length, Math.max(n - 1, 0));
-    if (s < 0) {
-      s = -s;
-      var buf = _malloc(limit+1);
-      {{{ makeSetValue('s', '0', 'buf', 'i8*') }}};
-      s = buf;
-    }
-    for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
-    }
-    if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
-    return result.length;
-  },
   fprintf__deps: ['fwrite', '_formatString'],
   fprintf: function(stream, format, varargs) {
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);

@@ -56,6 +56,9 @@
          W bulk_free
          W calloc
          W free
+         T frexp
+         T frexpf
+         T frexpl
          W independent_calloc
          W independent_comalloc
          T isdigit
@@ -72,14 +75,18 @@
          W malloc_usable_size
          W mallopt
          W memalign
+         T MUSL_vfprintf
          W posix_memalign
          W pvalloc
          W realloc
          W realloc_in_place
          T scalbn
          T scalbnl
+         T memchr
          T memcmp
          T memcpy
+         T snprintf
+         T sprintf
          T strtod
          T strtoull
          T strtoll
@@ -101,3 +108,7 @@
          T strtold_l
          T tolower
          W valloc
+         T vsnprintf
+         T vsprintf
+         T wcrtomb
+         T wctomb

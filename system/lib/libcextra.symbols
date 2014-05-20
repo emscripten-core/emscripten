@@ -34,9 +34,6 @@
          T fcvt
          T fputwc
          W fputwc_unlocked
-         T frexp
-         T frexpf
-         T frexpl
          T fwprintf
          T gcvt
          T getopt
@@ -117,7 +114,6 @@
          T mbstowcs
          T mbtowc
          T memccpy
-         T memchr
          T memmem
          T mempcpy
          W memrchr
@@ -167,7 +163,6 @@
          T strverscmp
          T strxfrm
          W strxfrm_l
-         T sprintf
          T swprintf
          T tgamma
          T tgammaf
@@ -187,10 +182,7 @@
          T verrx
          T MUSL_vfscanf
          T vsscanf
-         T MUSL_vfprintf
          T vfwprintf
-         T vsnprintf
-         T vsprintf
          T vswprintf
          T vwarn
          T vwarnx
@@ -199,7 +191,6 @@
          T warnx
          T wcpcpy
          T wcpncpy
-         T wcrtomb
          T wcscasecmp
          T wcscasecmp_l
          T wcscat
@@ -239,7 +230,6 @@
          T wcsxfrm
          T wcsxfrm_l
          T wctob
-         T wctomb
          T wctrans
          T wctrans_l
          T wctype
