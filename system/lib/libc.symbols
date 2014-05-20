@@ -40,6 +40,7 @@
          W _Znwj
          W _ZnwjRKSt9nothrow_t
          T __floatscan
+         T __intscan
          T __overflow
          T __shgetc
          T __shlim
@@ -57,6 +58,9 @@
          W free
          W independent_calloc
          W independent_comalloc
+         T isdigit
+         T isspace
+         T isupper
          W mallinfo
          W malloc
          W malloc_footprint
@@ -77,6 +81,12 @@
          T memcmp
          T memcpy
          T strtod
+         T strtoull
+         T strtoll
+         T strtoul
+         T strtol
+         T strtoimax
+         T strtoumax
          T strcoll
          T __strcoll_l
          W strcoll_l
@@ -89,4 +99,5 @@
          T strtof_l
          T strtold
          T strtold_l
+         T tolower
          W valloc

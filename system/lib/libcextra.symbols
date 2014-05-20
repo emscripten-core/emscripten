@@ -1,7 +1,6 @@
          T __cos
          T __cosdf
          T __fputwc_unlocked
-         T __intscan
          W __iswctype_l
          T __lgamma_r
          T __lgammaf_r
@@ -46,6 +45,27 @@
          T ilogbf
          T ilogbl
          T index
+         T isascii
+         T islower
+         T islower_l
+         T isupper_l
+         T isalpha
+         T isalpha_l
+         T isblank_l
+         T isdigit_l
+         T isxdigit
+         T isxdigit_l
+         T isalnum
+         T isalnum_l
+         T ispunct
+         T ispunct_l
+         T isspace_l
+         T iscntrl
+         T iscntrl_l
+         T isprint
+         T isprint_l
+         T isgraph
+         T isgraph_l
          T iswalnum
          T iswalnum_l
          T iswalpha
@@ -122,6 +142,7 @@
          T strfmon_l
          T strlcat
          T strlcpy
+         T strlwr
          T strncasecmp_l
          T strncat
          T strndup
@@ -133,6 +154,11 @@
          T strstr
          T strtok
          T strtok_r
+         T strtoull_l
+         T strtoll_l
+         T strtoul_l
+         T strtol_l
+         T strupr
          T strverscmp
          T strxfrm
          W strxfrm_l
@@ -140,6 +166,10 @@
          T tgamma
          T tgammaf
          T tgammal
+         T toascii
+         T toupper
+         T toupper_l
+         T tolower_l
          T towctrans
          T towctrans_l
          T towlower
