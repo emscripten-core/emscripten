@@ -2237,18 +2237,30 @@ function registerizeHarder(ast) {
           break;
         case 'conditional':
           isInExpr++;
-          buildFlowGraph(node[1]);
-          var jEnter = markJunction();
-          var jExit = addJunction();
-          if (node[2]) {
-            buildFlowGraph(node[2]);
+          // If the conditional has no side-effects, we can treat it as a single
+          // block, which might open up opportunities to remove it entirely.
+          if (!hasSideEffects(node)) {
+            buildFlowGraph(node[1]);
+            if (node[2]) {
+              buildFlowGraph(node[2]);
+            }
+            if (node[3]) {
+              buildFlowGraph(node[3]);
+            }
+          } else {
+            buildFlowGraph(node[1]);
+            var jEnter = markJunction();
+            var jExit = addJunction();
+            if (node[2]) {
+              buildFlowGraph(node[2]);
+            }
+            joinJunction(jExit);
+            setJunction(jEnter);
+            if (node[3]) {
+              buildFlowGraph(node[3]);
+            }
+            joinJunction(jExit);
           }
-          joinJunction(jExit);
-          setJunction(jEnter);
-          if (node[3]) {
-            buildFlowGraph(node[3]);
-          }
-          joinJunction(jExit);
           isInExpr--;
           break;
         case 'while':
