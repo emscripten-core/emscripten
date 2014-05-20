@@ -1172,14 +1172,13 @@ class Building:
       new_symbols = Building.llvm_nm(f)
       do_add = force_add or not unresolved_symbols.isdisjoint(new_symbols.defs)
       if do_add:
-        #print >> sys.stderr, '  adding object', content, '\n'
+        logging.debug('adding object %s to link' % (f))
         # Update resolved_symbols table with newly resolved symbols
         resolved_symbols.update(new_symbols.defs)
         # Update unresolved_symbols table by adding newly unresolved symbols and
         # removing newly resolved symbols.
         unresolved_symbols.update(new_symbols.undefs.difference(resolved_symbols))
         unresolved_symbols.difference_update(new_symbols.defs)
-        #print >> sys.stderr, '  undef are now ', unresolved_symbols, '\n'
         actual_files.append(f)
       return do_add
 
@@ -1194,7 +1193,6 @@ class Building:
         safe_ensure_dirs(temp_dir)
         os.chdir(temp_dir)
         contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
-        #print >> sys.stderr, '  considering archive', f, ':', contents
         if len(contents) == 0:
           logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
         else:
@@ -1218,21 +1216,18 @@ class Building:
     def consider_archive(f):
       added_any_objects = False
       loop_again = True
-      #print >> sys.stderr, '  initial undef are now ', unresolved_symbols, '\n'
+      logging.debug('considering archive %s' % (f))
       contents = get_archive_contents(f)
       while loop_again: # repeatedly traverse until we have everything we need
-        #print >> sys.stderr, '  running loop of archive including for', f
         loop_again = False
         for content in contents:
           if content in added_contents: continue
           # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
-          #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
-          #print >> sys.stderr, content, 'DEF', new_symbols.defs, '\n'
           if consider_object(content, force_add=force_add_all):
             added_contents.add(content)
             loop_again = True
             added_any_objects = True
-      #print >> sys.stderr, '  done running loop of archive including for', f
+      logging.debug('done running loop of archive %s' % (f))
       return added_any_objects
 
     current_archive_group = None
@@ -1246,11 +1241,13 @@ class Building:
           # rescan the archives in the group until we don't find any more
           # objects to link.
           loop_again = True
+          logging.debug('starting archive group loop');
           while loop_again:
             loop_again = False
             for archive in current_archive_group:
               if consider_archive(archive):
                 loop_again = True
+          logging.debug('done with archive group loop');
           current_archive_group = None
         else:
           logging.debug('Ignoring unsupported link flag: %s' % f)
@@ -1266,6 +1263,8 @@ class Building:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         consider_archive(f)
+        # If we're inside a --start-group/--end-group section, add to the list
+        # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(f)
     assert current_archive_group is None, '--start-group without matching --end-group'

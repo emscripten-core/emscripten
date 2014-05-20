@@ -1391,7 +1391,7 @@ try:
     args = newargs + shared.EMSDK_CXX_OPTS + headers
     if specified_target:
       args += ['-o', specified_target]
-    logging.debug("running (for precompiled headers: " + call + ' ' + ' '.join(args))
+    logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
     execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
     sys.exit(0)
 
