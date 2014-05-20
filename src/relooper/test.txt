@@ -417,3 +417,156 @@
  }
  // block D
 
+
+
+-- lots of exits to an unwind block, possible nesting --
+
+ // block
+ do {
+  if (check()) {
+   // block
+   if (check()) {
+    // block
+    if (check()) {
+     // block
+     if (check()) {
+      // block
+      if (check()) {
+       // block
+       if (check()) {
+        // block
+        if (check()) {
+         // block
+         if (check()) {
+          // block
+          if (check()) {
+           // block
+           if (check()) {
+            // block
+            if (check()) {
+             // block
+             if (check()) {
+              // block
+              if (check()) {
+               // block
+               if (check()) {
+                // block
+                if (check()) {
+                 // block
+                 if (check()) {
+                  // block
+                  if (check()) {
+                   // block
+                   if (check()) {
+                    // block
+                    if (check()) {
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // block
+                     if (!(check())) {
+                      break;
+                     }
+                     // last
+                     return;
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ } while(0);
+ // UW
+ resumeException();
+ 
+

@@ -1,4 +1,6 @@
 
+#include <vector>
+
 #include "Relooper.h"
 
 int main() {
@@ -431,6 +433,35 @@ int main() {
     r.AddBlock(b_d);
 
     r.Calculate(b_a);
+    r.Render();
+
+    puts(r.GetOutputBuffer());
+  }
+
+  if (1) {
+    Relooper::MakeOutputBuffer(10);
+
+    printf("\n\n-- lots of exits to an unwind block, possible nesting --\n\n");
+
+    const int DEPTH = 40;
+
+    std::vector<Block*> blocks;
+    for (int i = 0; i < DEPTH; i++) blocks.push_back(new Block("// block\n", NULL));
+    Block *last = new Block("// last\nreturn;\n", NULL);
+    Block *UW = new Block("// UW\nresumeException();\n\n", NULL);
+
+    for (int i = 0; i < DEPTH; i++) {
+      Block *b = blocks[i];
+      b->AddBranchTo(i+1 < DEPTH ? blocks[i+1] : last, "check()", NULL);
+      b->AddBranchTo(UW, NULL, NULL);
+    }
+
+    Relooper r;
+    for (int i = 0; i < DEPTH; i++) r.AddBlock(blocks[i]);
+    r.AddBlock(last);
+    r.AddBlock(UW);
+
+    r.Calculate(blocks[0]);
     r.Render();
 
     puts(r.GetOutputBuffer());
