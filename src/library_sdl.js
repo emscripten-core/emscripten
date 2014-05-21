@@ -2332,7 +2332,14 @@ var LibrarySDL = {
       return 0;
     }
 
-    if (bytes !== undefined && SDL.webAudioAvailable()) {
+    var arrayBuffer = bytes.buffer || bytes;
+
+    // To allow user code to work around browser bugs with audio playback on <audio> elements an Web Audio, enable
+    // the user code to hook in a callback to decide on a file basis whether each file should use Web Audio or <audio> for decoding and playback.
+    // In particular, see https://bugzilla.mozilla.org/show_bug.cgi?id=654787 and ?id=1012801 for tradeoffs.
+    var canPlayWithWebAudio = Module['SDL_canPlayWithWebAudio'] === undefined || Module['SDL_canPlayWithWebAudio'](filename, arrayBuffer);
+
+    if (bytes !== undefined && SDL.webAudioAvailable() && canPlayWithWebAudio) {
       audio = undefined;
       webAudio = {};
       // The audio decoding process is asynchronous, which gives trouble if user code plays the audio data back immediately
@@ -2346,7 +2353,7 @@ var LibrarySDL = {
         webAudio.onDecodeComplete = undefined; // Don't allow more callback handlers since audio has finished decoding.
       }
 
-      SDL.audioContext['decodeAudioData'](bytes.buffer || bytes, onDecodeComplete);
+      SDL.audioContext['decodeAudioData'](arrayBuffer, onDecodeComplete);
     } else if (audio === undefined && bytes) {
       // Here, we didn't find a preloaded audio but we either were passed a filepath for
       // which we loaded bytes, or we were passed some bytes
