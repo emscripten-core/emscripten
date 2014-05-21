@@ -642,6 +642,11 @@ extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char
  */
 extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
 
+/*
+ * Sets contentEditable on target element, which will show the on-screen keyboard on mobile devices
+ */
+extern EMSCRIPTEN_RESULT emscripten_set_content_editable(const char *target, int editable);
+
 #ifdef __cplusplus
 } // ~extern "C"
 #endif

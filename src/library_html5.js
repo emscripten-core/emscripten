@@ -1312,6 +1312,14 @@ var LibraryJSEvents = {
     // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
     if (!Module['ctx']) return true; // No context ~> lost context.
     return Module['ctx'].isContextLost();
+  },
+
+  emscripten_set_content_editable: function(target, editable) {
+    if (!target) target = '#canvas';
+    target = JSEvents.findEventTarget(target);
+    if (!target.contentEditable) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    target.contentEditable = (editable == 1);
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   }
 };
 
