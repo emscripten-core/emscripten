@@ -1,10 +1,12 @@
 #include <ctype.h>
 
-void strupr(char *str)
+char *strupr(char *str)
 {
+	char *ret = str;
 	while(*str)
 	{
 		*str = toupper(*str);
 		++str;
 	}
+	return ret;
 }

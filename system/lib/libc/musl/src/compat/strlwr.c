@@ -1,10 +1,12 @@
 #include <ctype.h>
 
-void strlwr(char *str)
+char *strlwr(char *str)
 {
+	char *ret = str;
 	while(*str)
 	{
 		*str = tolower(*str);
 		++str;
 	}
+	return ret;
 }

@@ -971,6 +971,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_strings(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
       test_path = path_from_root('tests', 'core', 'test_strings')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2466,6 +2467,7 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_hex(self):
+    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for hex strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_hex')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2473,6 +2475,7 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_dec(self):
+    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for decimal strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_dec')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2480,6 +2483,7 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_bin(self):
+    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for binary strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_bin')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2487,6 +2491,7 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_oct(self):
+    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for decimal strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_oct')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -3718,6 +3723,7 @@ int main()
     self.do_run(src, expected)
 
   def test_transtrcase(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
     test_path = path_from_root('tests', 'core', 'test_transtrcase')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -4613,6 +4619,7 @@ int main(void) {
   ### 'Medium' tests
 
   def test_fannkuch(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
     try:
       if self.run_name == 'slow2' or self.run_name == 'slow2asm':
         old_target = os.environ.get('EMCC_LLVM_TARGET') or ''
