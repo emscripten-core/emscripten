@@ -942,10 +942,14 @@ var LibrarySDL = {
       if (!info) return 0;
       var ret = info.volume * 128; // MIX_MAX_VOLUME
       if (volume != -1) {
-        info.volume = volume / 128;
+        info.volume = Math.min(Math.max(volume, 0), 128) / 128;
         if (info.audio) {
-          info.audio.volume = info.volume; // For <audio> element
-          if (info.audio.webAudioGainNode) info.audio.webAudioGainNode['gain']['value'] = info.volume; // For WebAudio playback
+          try {
+            info.audio.volume = info.volume; // For <audio> element
+            if (info.audio.webAudioGainNode) info.audio.webAudioGainNode['gain']['value'] = info.volume; // For WebAudio playback
+          } catch(e) {
+            Module.printErr('setGetVolume failed to set audio volume: ' + e);
+          }
         }
       }
       return ret;
@@ -956,39 +960,47 @@ var LibrarySDL = {
       if (!audio) return;
       if (audio.webAudioNode) return; // This instance is already playing, don't start again.
       if (!SDL.webAudioAvailable()) return;
-      var webAudio = audio.resource.webAudio;
-      audio.paused = false;
-      if (!webAudio.decodedBuffer) {
-        if (webAudio.onDecodeComplete === undefined) abort("Cannot play back audio object that was not loaded");
-        webAudio.onDecodeComplete.push(function() { if (!audio.paused) SDL.playWebAudio(audio); });
-        return;
-      }
-      audio.webAudioNode = SDL.audioContext['createBufferSource']();
-      audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
-      audio.webAudioNode['loop'] = audio.loop;
-      audio.webAudioNode['onended'] = function() { audio.onended(); } // For <media> element compatibility, route the onended signal to the instance.
+      try {
+        var webAudio = audio.resource.webAudio;
+        audio.paused = false;
+        if (!webAudio.decodedBuffer) {
+          if (webAudio.onDecodeComplete === undefined) abort("Cannot play back audio object that was not loaded");
+          webAudio.onDecodeComplete.push(function() { if (!audio.paused) SDL.playWebAudio(audio); });
+          return;
+        }
+        audio.webAudioNode = SDL.audioContext['createBufferSource']();
+        audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
+        audio.webAudioNode['loop'] = audio.loop;
+        audio.webAudioNode['onended'] = function() { audio.onended(); } // For <media> element compatibility, route the onended signal to the instance.
 
-      // Add an intermediate gain node to control volume.
-      audio.webAudioGainNode = SDL.audioContext['createGain']();
-      audio.webAudioGainNode['gain']['value'] = audio.volume;
-      audio.webAudioNode['connect'](audio.webAudioGainNode);
-      audio.webAudioGainNode['connect'](SDL.audioContext['destination']);
-      audio.webAudioNode['start'](0, audio.currentPosition);
-      audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
+        // Add an intermediate gain node to control volume.
+        audio.webAudioGainNode = SDL.audioContext['createGain']();
+        audio.webAudioGainNode['gain']['value'] = audio.volume;
+        audio.webAudioNode['connect'](audio.webAudioGainNode);
+        audio.webAudioGainNode['connect'](SDL.audioContext['destination']);
+        audio.webAudioNode['start'](0, audio.currentPosition);
+        audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
+      } catch(e) {
+        Module.printErr('playWebAudio failed: ' + e);
+      }
     },
 
     // Pausea an SDL audio resource that was played with Web Audio..
     pauseWebAudio: function(audio) {
       if (!audio) return;
       if (audio.webAudioNode) {
-        // Remember where we left off, so that if/when we resume, we can restart the playback at a proper place.
-        audio.currentPosition = (SDL.audioContext['currentTime'] - audio.startTime) % audio.resource.webAudio.decodedBuffer.duration;
-        // Important: When we reach here, the audio playback is stopped by the user. But when calling .stop() below, the Web Audio
-        // graph will send the onended signal, but we don't want to process that, since pausing should not clear/destroy the audio
-        // channel.
-        audio.webAudioNode['onended'] = undefined;
-        audio.webAudioNode.stop();
-        audio.webAudioNode = undefined;
+        try {
+          // Remember where we left off, so that if/when we resume, we can restart the playback at a proper place.
+          audio.currentPosition = (SDL.audioContext['currentTime'] - audio.startTime) % audio.resource.webAudio.decodedBuffer.duration;
+          // Important: When we reach here, the audio playback is stopped by the user. But when calling .stop() below, the Web Audio
+          // graph will send the onended signal, but we don't want to process that, since pausing should not clear/destroy the audio
+          // channel.
+          audio.webAudioNode['onended'] = undefined;
+          audio.webAudioNode.stop();
+          audio.webAudioNode = undefined;
+        } catch(e) {
+          Module.printErr('pauseWebAudio failed: ' + e);
+        }
       }
       audio.paused = true;
     },
