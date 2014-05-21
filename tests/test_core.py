@@ -524,47 +524,25 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_cube2hash(self):
     # extra testing for various codegen modes
-    for x86 in [0, 1] if self.run_name == 'asm2' else [0]:
-      print 'x86', x86
-      try:
-        old_x86 = os.environ.get('EMCC_LLVM_TARGET') or ''
-        if x86:
-          os.environ['EMCC_LLVM_TARGET'] = "i386-pc-linux-gnu"
-        try:
-          old_fastcomp = os.environ.get('EMCC_FAST_COMPILER') or ''
-          if x86:
-            os.environ['EMCC_FAST_COMPILER'] = "0"
-          try:
-            old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
+    try:
+      old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
 
-            for chunk_size in ['1', old_chunk_size]: # test splitting out each function to a chunk in emscripten.py (21 functions here)
-              print '  chunks', chunk_size
-              os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = chunk_size
+      for chunk_size in ['1', old_chunk_size]: # test splitting out each function to a chunk in emscripten.py (21 functions here)
+        print '  chunks', chunk_size
+        os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = chunk_size
 
-              # A good test of i64 math
-              if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
-              self.do_run('', 'Usage: hashstring <seed>',
-                          libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None, cache_name_extra=str(x86)),
-                          includes=[path_from_root('tests', 'cube2hash')])
+        # A good test of i64 math
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
+        self.do_run('', 'Usage: hashstring <seed>',
+                    libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
+                    includes=[path_from_root('tests', 'cube2hash')])
 
-              for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
-                                   ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
-                                   ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-                self.do_run('', 'hash value: ' + output, [text], no_build=True)
-          finally:
-            os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
-        finally:
-          if x86:
-            if old_fastcomp:
-              os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
-            else:
-              del os.environ['EMCC_FAST_COMPILER']
-      finally:
-        if x86:
-          if old_x86:
-            os.environ['EMCC_LLVM_TARGET'] = old_x86
-          else:
-            del os.environ['EMCC_LLVM_TARGET']
+        for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
+                             ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
+                             ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
+          self.do_run('', 'hash value: ' + output, [text], no_build=True)
+    finally:
+      os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
 
   def test_unaligned(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
