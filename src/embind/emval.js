@@ -265,7 +265,14 @@ function __emval_get_method_caller(argCount, argTypes) {
         "    args += argType" + i + ".argPackAdvance;\n";
     }
     functionBody +=
-        "    var rv = handle[name](" + argsList + ");\n" +
+        "    var rv = handle[name](" + argsList + ");\n";
+    for (var i = 0; i < argCount - 1; ++i) {
+        if (types[i + 1]['deleteObject']) {
+            functionBody +=
+            "    argType" + i + ".deleteObject(arg" + i + ");\n";
+        }
+    }
+    functionBody += 
         "    return retType.toWireType(destructors, rv);\n" +
         "};\n";
 
@@ -281,10 +288,13 @@ function __emval_call_method(caller, handle, methodName, destructorsRef, args) {
     return caller(handle, methodName, allocateDestructors(destructorsRef), args);
 }
 
-function __emval_has_function(handle, name) {
+function __emval_has_function(handle, name, classType) {
     handle = requireHandle(handle);
     name = getStringOrSymbol(name);
-    return handle[name] instanceof Function;
+    classType = requireRegisteredType(classType, 'class wrapper filter');
+
+    var filter = classType.registeredClass.instancePrototype[name];
+    return (handle[name] instanceof Function) && (filter === undefined || handle[name] !== filter);
 }
 
 function __emval_typeof(handle) {

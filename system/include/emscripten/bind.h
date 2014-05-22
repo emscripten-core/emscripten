@@ -149,7 +149,8 @@ namespace emscripten {
                 TYPEID argTypes[],
                 const char* invokerSignature,
                 GenericFunction invoker,
-                void* context);
+                void* context,
+                unsigned isPureVirtual);
 
             void _embind_register_class_property(
                 TYPEID classType,
@@ -171,6 +172,11 @@ namespace emscripten {
                 const char* invokerSignature,
                 GenericFunction invoker,
                 GenericFunction method);
+
+            EM_VAL _embind_create_inheriting_constructor(
+                const char* constructorName,
+                TYPEID wrapperType,
+                EM_VAL properties);
 
             void _embind_register_enum(
                 TYPEID enumType,
@@ -274,6 +280,33 @@ namespace emscripten {
     template<typename ClassType, typename ReturnType, typename... Args>
     auto select_const(ReturnType (ClassType::*method)(Args...) const) -> decltype(method) {
         return method;
+    }
+
+    namespace internal {        
+        // this should be in <type_traits>, but alas, it's not
+        template<typename T> struct remove_class;
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...)> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) const> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) volatile> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) const volatile> { using type = R(A...); };
+
+        template<typename LambdaType>
+        struct CalculateLambdaSignature {
+            using type = typename std::add_pointer<
+                typename remove_class<
+                    decltype(&LambdaType::operator())
+                >::type
+            >::type;
+        };
+    }
+
+    template<typename LambdaType>
+    typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp) {
+        return fp;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -873,40 +906,55 @@ namespace emscripten {
         };
     };
 
+
     ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
     ////////////////////////////////////////////////////////////////////////////////
 
+    namespace internal {
+        class WrapperBase {
+        public:
+            void setNotifyJSOnDestruction(bool notify) {
+                notifyJSOnDestruction = notify;
+            }
+
+        protected:
+            bool notifyJSOnDestruction = false;
+        };
+    }
+
     // abstract classes
     template<typename T>
-    class wrapper : public T {
+    class wrapper : public T, public internal::WrapperBase {
     public:
         typedef T class_type;
 
-        explicit wrapper(val&& wrapped)
-            : wrapped(std::forward<val>(wrapped))
+        template<typename... Args>
+        explicit wrapper(val&& wrapped, Args&&... args)
+            : T(std::forward<Args>(args)...)
+            , wrapped(std::forward<val>(wrapped))
         {}
+
+        ~wrapper() {
+            if (notifyJSOnDestruction) {
+                call<void>("__destruct");
+            }
+        }
 
         template<typename ReturnType, typename... Args>
         ReturnType call(const char* name, Args&&... args) const {
             return wrapped.call<ReturnType>(name, std::forward<Args>(args)...);
         }
 
-        template<typename ReturnType, typename... Args, typename Default>
-        ReturnType optional_call(const char* name, Default def, Args&&... args) const {
-            if (wrapped.has_function(name)) {
-                return call<ReturnType>(name, std::forward<Args>(args)...);
-            } else {
-                return def();
-            }
-        }
-
     private:
         val wrapped;
     };
 
-#define EMSCRIPTEN_WRAPPER(T) \
-    T(::emscripten::val&& v): wrapper(std::forward<::emscripten::val>(v)) {}
+#define EMSCRIPTEN_WRAPPER(T)                                           \
+    template<typename... Args>                                          \
+    T(::emscripten::val&& v, Args&&... args)                            \
+        : wrapper(std::forward<::emscripten::val>(v), std::forward<Args>(args)...) \
+    {}
 
     namespace internal {
         struct NoBaseClass {
@@ -987,6 +1035,45 @@ namespace emscripten {
             SmartPtrIfNeeded(U&, const char*) {
             }
         };
+
+        template<typename WrapperType>
+        val wrapped_extend(const std::string& name, const val& properties) {
+            return val::take_ownership(_embind_create_inheriting_constructor(
+                name.c_str(),
+                TypeID<WrapperType>::get(),
+                properties.__get_handle()));
+        }
+    };
+
+    struct pure_virtual {
+        template<typename InputType, int Index>
+        struct Transform {
+            typedef InputType type;
+        };
+    };
+
+    namespace internal {
+        template<typename... Policies>
+        struct isPureVirtual;
+
+        template<typename... Rest>
+        struct isPureVirtual<pure_virtual, Rest...> {
+            static constexpr bool value = true;
+        };
+
+        template<typename T, typename... Rest>
+        struct isPureVirtual<T, Rest...> {
+            static constexpr bool value = isPureVirtual<Rest...>::value;
+        };
+
+        template<>
+        struct isPureVirtual<> {
+            static constexpr bool value = false;
+        };
+    }
+
+    template<typename... ConstructorArgs>
+    struct constructor {
     };
 
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
@@ -1095,18 +1182,38 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename WrapperType, typename PointerType = WrapperType*>
-        const class_& allow_subclass(const char* wrapperClassName, const char* pointerName = "<UnknownPointerName>") const {
+        template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
+        const class_& allow_subclass(
+            const char* wrapperClassName,
+            const char* pointerName = "<UnknownPointerName>",
+            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
+        ) const {
             using namespace internal;
 
             auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
+                .function("notifyOnDestruction", select_overload<void(WrapperType&)>([](WrapperType& wrapper) {
+                    wrapper.setNotifyJSOnDestruction(true);
+                }))
                 ;
             SmartPtrIfNeeded<PointerType> _(cls, pointerName);
 
-            return class_function(
-                "implement",
-                &wrapped_new<PointerType, WrapperType, val>,
-                allow_raw_pointer<ret_val>());
+            return
+                class_function(
+                    "implement",
+                    &wrapped_new<PointerType, WrapperType, val, ConstructorArgs...>,
+                    allow_raw_pointer<ret_val>())
+                .class_function(
+                    "extend",
+                    &wrapped_extend<WrapperType>)
+                ;
+        }
+
+        template<typename WrapperType, typename... ConstructorArgs>
+        const class_& allow_subclass(
+            const char* wrapperClassName,
+            ::emscripten::constructor<ConstructorArgs...> constructor
+        ) const {
+            return allow_subclass<WrapperType, WrapperType*>(wrapperClassName, "<UnknownPointerName>", constructor);
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
@@ -1123,7 +1230,8 @@ namespace emscripten {
                 args.types,
                 getSignature(invoker),
                 reinterpret_cast<GenericFunction>(invoker),
-                getContext(memberFunction));
+                getContext(memberFunction),
+                isPureVirtual<Policies...>::value);
             return *this;
         }
 
@@ -1141,7 +1249,8 @@ namespace emscripten {
                 args.types,
                 getSignature(invoker),
                 reinterpret_cast<GenericFunction>(invoker),
-                getContext(memberFunction));
+                getContext(memberFunction),
+                isPureVirtual<Policies...>::value);
             return *this;
         }
 
@@ -1158,7 +1267,8 @@ namespace emscripten {
                 args.types,
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
-                getContext(function));
+                getContext(function),
+                false);
             return *this;
         }
 

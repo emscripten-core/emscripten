@@ -1548,7 +1548,7 @@ module({
         });
     });
 
-    BaseFixture.extend("abstract methods", function() {
+    BaseFixture.extend("implementing abstract methods with JS objects", function() {
         test("can call abstract methods", function() {
             var obj = cm.getAbstractClass();
             assert.equal("from concrete", obj.abstractMethod());
@@ -1580,7 +1580,8 @@ module({
             };
 
             var impl = cm.AbstractClass.implement(new MyImplementation);
-            assert.equal(expected, impl.optionalMethod(expected));
+            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
+            //assert.equal(expected, impl.optionalMethod(expected));
             assert.equal(expected, cm.callOptionalMethod(impl, expected));
             impl.delete();
         });
@@ -1588,7 +1589,8 @@ module({
         test("if not implemented then optional method runs default", function() {
             var impl = cm.AbstractClass.implement({});
             assert.equal("optionalfoo", impl.optionalMethod("foo"));
-            assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
+            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
+            //assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
 
@@ -1637,6 +1639,366 @@ module({
             });
 
             impl.delete();
+        });
+
+        test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var derived = cm.embind_test_return_smart_derived_ptr();
+            var impl = cm.AbstractClass.implement({
+                returnsSharedPtr: function() {
+                    return derived;
+                }
+            });
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            derived.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+    });
+
+    BaseFixture.extend("constructor prototype class inheritance", function() {
+        var Empty = cm.AbstractClass.extend("Empty", {
+            abstractMethod: function() {
+            }
+        });
+
+        test("can extend, construct, and delete", function() {
+            var instance = new Empty;
+            instance.delete();
+        });
+
+        test("properties set in constructor are externally visible", function() {
+            var HasProperty = cm.AbstractClass.extend("HasProperty", {
+                __construct: function(x) {
+                    this.__parent.__construct.call(this);
+                    this.property = x;
+                },
+                abstractMethod: function() {
+                }
+            });
+            var instance = new HasProperty(10);
+            assert.equal(10, instance.property);
+            instance.delete();
+        });
+        
+        test("pass derived object to c++", function() {
+            var Implementation = cm.AbstractClass.extend("Implementation", {
+                abstractMethod: function() {
+                    return "abc";
+                },
+            });
+            var instance = new Implementation;
+            var result = cm.callAbstractMethod(instance);
+            instance.delete();
+            assert.equal("abc", result);
+        });
+
+        test("properties set in constructor are visible in overridden methods", function() {
+            var HasProperty = cm.AbstractClass.extend("HasProperty", {
+                __construct: function(x) {
+                    this.__parent.__construct.call(this);
+                    this.x = x;
+                },
+                abstractMethod: function() {
+                    return this.x;
+                },
+            });
+            var instance = new HasProperty("xyz");
+            var result = cm.callAbstractMethod(instance);
+            instance.delete();
+            assert.equal("xyz", result);
+        });
+
+        test("interface methods are externally visible", function() {
+            var instance = new Empty;
+            var result = instance.concreteMethod();
+            instance.delete();
+            assert.equal("concrete", result);
+        });
+
+        test("optional methods are externally visible", function() {
+            var instance = new Empty;
+            var result = instance.optionalMethod("_123");
+            instance.delete();
+            assert.equal("optional_123", result);
+        });
+
+        test("optional methods: not defined", function() {
+            var instance = new Empty;
+            var result = cm.callOptionalMethod(instance, "_123");
+            instance.delete();
+            assert.equal("optional_123", result);
+        });
+
+        // Calling C++ implementations of optional functions can be
+        // made to work, but requires an interface change on the C++
+        // side, using a technique similar to the one described at
+        // https://wiki.python.org/moin/boost.python/OverridableVirtualFunctions
+        //
+        // The issue is that, in a standard binding, calling
+        // parent.prototype.optionalMethod invokes the wrapper
+        // function, which checks that the JS object implements
+        // 'optionalMethod', which it does.  Thus, C++ calls back into
+        // JS, resulting in an infinite loop.
+        //
+        // The solution, for optional methods, is to bind a special
+        // concrete implementation that specifically calls the base
+        // class's implementation.  See the binding of
+        // AbstractClass::optionalMethod in embind_test.cpp.
+
+        test("can call parent implementation from within derived implementation", function() {
+            var parent = cm.AbstractClass;
+            var ExtendsOptionalMethod = parent.extend("ExtendsOptionalMethod", {
+                abstractMethod: function() {
+                },
+                optionalMethod: function(s) {
+                    return "optionaljs_" + parent.prototype.optionalMethod.call(this, s);
+                },
+            });
+            var instance = new ExtendsOptionalMethod;
+            var result = cm.callOptionalMethod(instance, "_123");
+            instance.delete();
+            assert.equal("optionaljs_optional_123", result);
+        });
+
+        // TODO: deriving from classes with constructors?
+
+        test("instanceof", function() {
+            var instance = new Empty;
+            assert.instanceof(instance, Empty);
+            assert.instanceof(instance, cm.AbstractClass);
+            instance.delete();
+        });
+
+        test("returning null shared pointer from interfaces implemented in JS code does not leak", function() {
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                returnsSharedPtr: function() {
+                    return null;
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                returnsSharedPtr: function() {
+                    return cm.embind_test_return_smart_derived_ptr().deleteLater();
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("void methods work", function() {
+            var saved = {};
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                differentArguments: function(i, d, f, q, s) {
+                    saved.i = i;
+                    saved.d = d;
+                    saved.f = f;
+                    saved.q = q;
+                    saved.s = s;
+                }
+            });
+            var impl = new C;
+
+            cm.callDifferentArguments(impl, 1, 2, 3, 4, "foo");
+
+            assert.deepEqual(saved, {
+                i: 1,
+                d: 2,
+                f: 3,
+                q: 4,
+                s: "foo",
+            });
+
+            impl.delete();
+        });
+
+        test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var derived = cm.embind_test_return_smart_derived_ptr();
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                returnsSharedPtr: function() {
+                    return derived;
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            derived.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("calling pure virtual function gives good error message", function() {
+            var C = cm.AbstractClass.extend("C", {});
+            var error = assert.throws(cm.PureVirtualError, function() {
+                new C;
+            });
+            assert.equal('Pure virtual function abstractMethod must be implemented in JavaScript', error.message);
+        });
+
+        test("can extend from C++ class with constructor arguments", function() {
+            var parent = cm.AbstractClassWithConstructor;
+            var C = parent.extend("C", {
+                __construct: function(x) {
+                    this.__parent.__construct.call(this, x);
+                },
+                abstractMethod: function() {
+                    return this.concreteMethod();
+                }
+            });
+
+            var impl = new C("hi");
+            var rv = cm.callAbstractMethod2(impl);
+            impl.delete();
+
+            assert.equal("hi", rv);
+        });
+
+        test("__destruct is called when object is destroyed", function() {
+            var parent = cm.HeldAbstractClass;
+            var calls = [];
+            var C = parent.extend("C", {
+                method: function() {
+                },
+                __destruct: function() {
+                    calls.push("__destruct");
+                    this.__parent.__destruct.call(this);
+                }
+            });
+            var impl = new C;
+            var copy = impl.clone();
+            impl.delete();
+            assert.deepEqual([], calls);
+            copy.delete();
+            assert.deepEqual(["__destruct"], calls);
+        });
+
+        test("if JavaScript implementation of interface is returned, don't wrap in new handle", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.delete();
+            assert.equal(impl, rv);
+            rv.delete();
+        });
+
+        test("can instantiate two wrappers with constructors", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                __construct: function() {
+                    this.__parent.__construct.call(this);
+                },
+                method: function() {
+                }
+            });
+            var a = new C;
+            var b = new C;
+            a.delete();
+            b.delete();
+        });
+
+        test("incorrectly calling parent is an error", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                __construct: function() {
+                    this.__parent.__construct();
+                },
+                method: function() {
+                }
+            });
+            assert.throws(cm.BindingError, function() {
+                new C;
+            });
+        });
+
+        test("deleteLater() works for JavaScript implementations", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.deleteLater();
+            rv.deleteLater();
+            cm.flushPendingDeletes();
+        });
+
+        test("deleteLater() combined with delete() works for JavaScript implementations", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.deleteLater();
+            rv.delete();
+            cm.flushPendingDeletes();
+        });
+
+        test("method arguments with pointer ownership semantics are cleaned up after call", function() {
+            var parent = cm.AbstractClass;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+            });
+            var impl = new C;
+            cm.passShared(impl);
+            impl.delete();
+        });
+
+        test("method arguments with pointer ownership semantics can be cloned", function() {
+            var parent = cm.AbstractClass;
+            var owned;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+                passShared: function(p) {
+                    owned = p.clone();
+                }
+            });
+            var impl = new C;
+            cm.passShared(impl);
+            impl.delete();
+
+            assert.equal("Derived", owned.getClassName());
+            owned.delete();
+        });
+
+        test("emscripten::val method arguments don't leak", function() {
+            var parent = cm.AbstractClass;
+            var got;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+                passVal: function(g) {
+                    got = g;
+                }
+            });
+            var impl = new C;
+            var v = {};
+            cm.passVal(impl, v);
+            impl.delete();
+
+            assert.equal(v, got);
         });
     });
 
@@ -1945,19 +2307,6 @@ module({
         });
     });
 
-    test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
-        var derived = cm.embind_test_return_smart_derived_ptr();
-        var impl = cm.AbstractClass.implement({
-            returnsSharedPtr: function() {
-                return derived;
-            }
-        });
-        cm.callReturnsSharedPtrMethod(impl);
-        impl.delete();
-        derived.delete();
-        // Let the memory leak test superfixture check that no leaks occurred.
-    });
-
     BaseFixture.extend("val::as", function() {
         test("built-ins", function() {
             assert.equal(true,  cm.val_as_bool(true));
@@ -2028,6 +2377,39 @@ module({
             assert.equal(65537, instance.a);
             assert.equal(4.0, instance.b);
             assert.equal(65538, instance.c);
+        });
+    });
+
+    BaseFixture.extend("intrusive pointers", function() {
+        test("can pass intrusive pointers", function() {
+            var ic = new cm.IntrusiveClass;
+            var d = cm.passThroughIntrusiveClass(ic);
+            assert.true(ic.isAliasOf(d));
+            ic.delete();
+            d.delete();
+        });
+
+        test("can hold intrusive pointers", function() {
+            var ic = new cm.IntrusiveClass;
+            var holder = new cm.IntrusiveClassHolder;
+            holder.set(ic);
+            ic.delete();
+            var d = holder.get();
+            d.delete();
+            holder.delete();
+        });
+
+        test("can extend from intrusive pointer class and still preserve reference in JavaScript", function() {
+            var C = cm.IntrusiveClass.extend("C", {
+            });
+            var instance = new C;
+            var holder = new cm.IntrusiveClassHolder;
+            holder.set(instance);
+            instance.delete();
+
+            var back = holder.get();
+            assert.equal(back, instance);
+            holder.delete();
         });
     });
 

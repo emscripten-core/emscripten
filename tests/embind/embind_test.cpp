@@ -1090,6 +1090,16 @@ public:
 
     virtual std::shared_ptr<Derived> returnsSharedPtr() = 0;
     virtual void differentArguments(int i, double d, unsigned char f, double q, std::string) = 0;
+
+    std::string concreteMethod() const {
+        return "concrete";
+    }
+
+    virtual void passShared(const std::shared_ptr<Derived>&) {
+    }
+
+    virtual void passVal(const val& v) {
+    }
 };
 
 EMSCRIPTEN_SYMBOL(optionalMethod);
@@ -1103,9 +1113,10 @@ public:
     }
 
     std::string optionalMethod(std::string s) const {
-        return optional_call<std::string>(optionalMethod_symbol, [&] {
-            return AbstractClass::optionalMethod(s);
-        }, s);
+        return call<std::string>("optionalMethod", s);
+        //return optional_call<std::string>(optionalMethod_symbol, [&] {
+        //    return AbstractClass::optionalMethod(s);
+        //}, s);
     }
 
     std::shared_ptr<Derived> returnsSharedPtr() {
@@ -1115,13 +1126,20 @@ public:
     void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
         return call<void>("differentArguments", i, d, f, q, s);
     }
+
+    virtual void passShared(const std::shared_ptr<Derived>& p) override {
+        return call<void>("passShared", p);
+    }
+
+    virtual void passVal(const val& v) override {
+        return call<void>("passVal", v);
+    }
 };
 
 class ConcreteClass : public AbstractClass {
     std::string abstractMethod() const {
         return "from concrete";
     }
-
 
     void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
     }
@@ -1152,12 +1170,74 @@ void callDifferentArguments(AbstractClass& ac, int i, double d, unsigned char f,
     return ac.differentArguments(i, d, f, q, s);
 }
 
+struct AbstractClassWithConstructor {
+    explicit AbstractClassWithConstructor(std::string s)
+        : s(s)
+    {}
+
+    virtual std::string abstractMethod() = 0;
+    std::string concreteMethod() {
+        return s;
+    }
+
+    std::string s;
+};
+
+struct AbstractClassWithConstructorWrapper : public wrapper<AbstractClassWithConstructor> {
+    EMSCRIPTEN_WRAPPER(AbstractClassWithConstructorWrapper);
+
+    virtual std::string abstractMethod() override {
+        return call<std::string>("abstractMethod");
+    }
+};
+
+std::string callAbstractMethod2(AbstractClassWithConstructor& ac) {
+    return ac.abstractMethod();
+}
+
+struct HeldAbstractClass : public PolyBase, public PolySecondBase {
+    virtual void method() = 0;
+};
+struct HeldAbstractClassWrapper : wrapper<HeldAbstractClass> {
+    EMSCRIPTEN_WRAPPER(HeldAbstractClassWrapper);
+
+    virtual void method() override {
+        return call<void>("method");
+    }
+};
+
+std::shared_ptr<PolySecondBase> passHeldAbstractClass(std::shared_ptr<HeldAbstractClass> p) {
+    return p;
+}
+
+void passShared(AbstractClass& ac) {
+    auto p = std::make_shared<Derived>();
+    ac.passShared(p);
+}
+
+void passVal(AbstractClass& ac, val v) {
+    return ac.passVal(v);
+}
+
 EMSCRIPTEN_BINDINGS(interface_tests) {
     class_<AbstractClass>("AbstractClass")
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
         .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
-        .function("abstractMethod", &AbstractClass::abstractMethod)
-        .function("optionalMethod", &AbstractClass::optionalMethod)
+        .function("abstractMethod", &AbstractClass::abstractMethod, pure_virtual())
+        // The select_overload is necessary because, otherwise, the C++ compiler
+        // cannot deduce the signature of the lambda function.
+        .function("optionalMethod", optional_override(
+            [](AbstractClass& this_, std::string s) {
+                return this_.AbstractClass::optionalMethod(s);
+            }
+        ))
+        .function("concreteMethod", &AbstractClass::concreteMethod)
+        .function("passShared", select_overload<void(AbstractClass&, const std::shared_ptr<Derived>&)>([](AbstractClass& self, const std::shared_ptr<Derived>& derived) {
+            self.AbstractClass::passShared(derived);
+        }))
+        .function("passVal", select_overload<void(AbstractClass&, const val&)>([](AbstractClass& self, const val& v) {
+            self.AbstractClass::passVal(v);
+        }))
         ;
     
     function("getAbstractClass", &getAbstractClass);
@@ -1165,6 +1245,22 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
     function("callOptionalMethod", &callOptionalMethod);
     function("callReturnsSharedPtrMethod", &callReturnsSharedPtrMethod);
     function("callDifferentArguments", &callDifferentArguments);
+    function("passShared", &passShared);
+    function("passVal", &passVal);
+
+    class_<AbstractClassWithConstructor>("AbstractClassWithConstructor")
+        .allow_subclass<AbstractClassWithConstructorWrapper>("AbstractClassWithConstructorWrapper", constructor<std::string>())
+        .function("abstractMethod", &AbstractClassWithConstructor::abstractMethod, pure_virtual())
+        .function("concreteMethod", &AbstractClassWithConstructor::concreteMethod)
+        ;
+    function("callAbstractMethod2", &callAbstractMethod2);
+
+    class_<HeldAbstractClass, base<PolySecondBase>>("HeldAbstractClass")
+        .smart_ptr<std::shared_ptr<HeldAbstractClass>>("shared_ptr<HeldAbstractClass>")
+        .allow_subclass<HeldAbstractClassWrapper, std::shared_ptr<HeldAbstractClassWrapper>>("HeldAbstractClassWrapper")
+        .function("method", &HeldAbstractClass::method, pure_virtual())
+        ;
+    function("passHeldAbstractClass", &passHeldAbstractClass);
 }
 
 template<typename T, size_t sizeOfArray>
@@ -2367,6 +2463,175 @@ EMSCRIPTEN_BINDINGS(val_new_) {
     function("construct_with_6_arguments", &construct_with_6);
     function("construct_with_memory_view", &construct_with_memory_view);
     function("construct_with_ints_and_float", &construct_with_ints_and_float);
+}
+
+template <typename T>
+class intrusive_ptr {
+public:
+    typedef T element_type;
+
+    intrusive_ptr(std::nullptr_t = nullptr)
+        : px(nullptr)
+    {}
+
+    template <typename U>
+    explicit intrusive_ptr(U* px)
+        : px(px)
+    {
+        addRef(px);
+    }
+
+    intrusive_ptr(const intrusive_ptr& that)
+        : px(that.px)
+    {
+        addRef(px);
+    }
+
+    template<typename U>
+    intrusive_ptr(const intrusive_ptr<U>& that)
+        : px(that.get())
+    {
+        addRef(px);
+    }
+
+    intrusive_ptr& operator=(const intrusive_ptr& that) {
+        reset(that.get());
+        return *this;
+    }
+
+    intrusive_ptr& operator=(intrusive_ptr&& that) {
+        release(px);
+        px = that.px;
+        that.px = 0;
+        return *this;
+    }
+
+    template<typename U>
+    intrusive_ptr& operator=(const intrusive_ptr<U>& that) {
+        reset(that.get());
+        return *this;
+    }
+
+    template<typename U>
+    intrusive_ptr& operator=(intrusive_ptr<U>&& that) {
+        release(px);
+        px = that.px;
+        that.px = 0;
+        return *this;
+    }
+
+    ~intrusive_ptr() {
+        release(px);
+    }
+
+    void reset(T* nx = nullptr) {
+        addRef(nx);
+        release(px);
+        px = nx;
+    }
+
+    T* get() const {
+        return px;
+    }
+
+    T& operator*() const {
+        return *px;
+    }
+
+    T* operator->() const {
+        return px;
+    }
+
+    explicit operator bool() const {
+        return px != nullptr;
+    }
+
+    void swap(intrusive_ptr& rhs) {
+        std::swap(px, rhs.px);
+    }
+
+private:
+    void addRef(T* px) {
+        if (px) {
+            ++px->referenceCount;
+        }
+    }
+
+    void release(T* px) {
+        if (--px->referenceCount == 0) {
+            delete px;
+        }
+    }
+
+    T* px;
+
+    template<typename U>
+    friend class intrusive_ptr;
+};
+
+namespace emscripten {
+    template<typename T>
+    struct smart_ptr_trait<intrusive_ptr<T>> {
+        typedef intrusive_ptr<T> pointer_type;
+        typedef T element_type;
+
+        static sharing_policy get_sharing_policy() {
+            return sharing_policy::INTRUSIVE;
+        }
+
+        static T* get(const intrusive_ptr<T>& p) {
+            return p.get();
+        }
+
+        static intrusive_ptr<T> share(const intrusive_ptr<T>& r, T* ptr) {
+            return intrusive_ptr<T>(ptr);
+        }
+
+        static pointer_type* construct_null() {
+            return new pointer_type;
+        }
+    };
+}
+
+template<typename T>
+intrusive_ptr<T> make_intrusive_ptr() {
+    return intrusive_ptr<T>(new T);
+}
+
+struct IntrusiveClass {
+    virtual ~IntrusiveClass() {}
+    long referenceCount = 0;
+};
+
+struct IntrusiveClassWrapper : public wrapper<IntrusiveClass> {
+    EMSCRIPTEN_WRAPPER(IntrusiveClassWrapper);
+};
+
+template<typename T>
+struct Holder {
+    void set(const T& v) {
+        value = v;
+    }
+    const T& get() const {
+        return value;
+    }
+    T value;
+};
+
+EMSCRIPTEN_BINDINGS(intrusive_pointers) {
+    class_<IntrusiveClass>("IntrusiveClass")
+        .smart_ptr_constructor("intrusive_ptr<IntrusiveClass>", &make_intrusive_ptr<IntrusiveClass>)
+        .allow_subclass<IntrusiveClassWrapper, intrusive_ptr<IntrusiveClassWrapper>>("IntrusiveClassWrapper")
+        ;
+
+    typedef Holder<intrusive_ptr<IntrusiveClass>> IntrusiveClassHolder;
+    class_<IntrusiveClassHolder>("IntrusiveClassHolder")
+        .constructor<>()
+        .function("set", &IntrusiveClassHolder::set)
+        .function("get", &IntrusiveClassHolder::get)
+        ;
+
+    function("passThroughIntrusiveClass", &passThrough<intrusive_ptr<IntrusiveClass>>);
 }
 
 std::string getTypeOfVal(const val& v) {
