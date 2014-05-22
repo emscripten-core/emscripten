@@ -3248,6 +3248,7 @@ def process(filename):
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_stacks(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('snprintf needs ta2 to be able to bitcast int<->float')
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
