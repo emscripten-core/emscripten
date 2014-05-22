@@ -2830,14 +2830,10 @@ LibraryManager.library = {
 #if TARGET_X86
   // va_arg is just like our varargs
   vfprintf: 'fprintf',
-  vsnprintf: 'snprintf',
   vprintf: 'printf',
-  vsprintf: 'sprintf',
-  vasprintf: 'asprintf',
   vdprintf: 'dprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
-  vsscanf: 'sscanf',
 #endif
 
 #if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
@@ -2861,10 +2857,6 @@ LibraryManager.library = {
   vfscanf__deps: ['fscanf'],
   vfscanf: function(s, format, va_arg) {
     return _fscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vsscanf__deps: ['sscanf'],
-  vsscanf: function(s, format, va_arg) {
-    return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
 #endif
 
