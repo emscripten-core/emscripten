@@ -67,9 +67,8 @@ int main() {
   memset(buf4, 0, 100);
 
 
-  int numItems = sscanf("level=4:ref=3", "%255[^:=]=%255[^:]:%255[^=]=%255c",
+  int numItems = sscanf("level=4:ref=3", "%255[^:=]=%255[^:]:%255[^=]=%c",
                         buf1, buf2, buf3, buf4);
-  numItems = 4; // XXX musl libc bug: it returns 3 - but still properly fills all the four buf1-buf4 fields!
   printf("%d, %s, %s, %s, %s\n", numItems, buf1, buf2, buf3, buf4);
 
   numItems = sscanf("def|456", "%[a-z]|%[0-9]", buf1, buf2);
