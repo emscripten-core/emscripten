@@ -326,7 +326,7 @@ def check_fastcomp():
         break
       d = os.path.dirname(d)
     if not seen:
-      logging.warning('did not see a source tree above LLVM_DIR, could not verify version numbers match')
+      logging.warning('did not see a source tree above the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
     return True
   except Exception, e:
     logging.warning('could not check fastcomp: %s' % str(e))

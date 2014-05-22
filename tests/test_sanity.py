@@ -240,7 +240,7 @@ class sanity(RunnerCore):
     os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     os.chmod(path_from_root('tests', 'fake', 'bin', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, 'did not see a source tree above LLVM_DIR, could not verify version numbers match')
+    output = self.check_working(EMCC, 'did not see a source tree above the LLVM root directory')
 
     VERSION_WARNING = 'Emscripten, llvm and clang versions do not match, this is dangerous'
 
