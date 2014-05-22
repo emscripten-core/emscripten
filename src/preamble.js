@@ -352,6 +352,13 @@ var cwrap, ccall;
   // C calling interface. A convenient way to call C functions (in C files, or
   // defined with extern "C").
   //
+  // Note: ccall/cwrap use the C stack for temporary values. If you pass a string
+  //       then it is only alive until the call is complete. If the code being
+  //       called saves the pointer to be used later, it may point to invalid
+  //       data. If you need a string to live forever, you can create it (and
+  //       must later delete it manually!) using malloc and writeStringToMemory,
+  //       for example.
+  //
   // Note: LLVM optimizations can inline and remove functions, after which you will not be
   //       able to call them. Closure can also do so. To avoid that, add your function to
   //       the exports using something like
