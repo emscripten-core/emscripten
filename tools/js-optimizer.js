@@ -136,6 +136,7 @@ var CONTROL_FLOW = set('do', 'while', 'for', 'if', 'switch');
 var NAME_OR_NUM = set('name', 'num');
 var ASSOCIATIVE_BINARIES = set('+', '*', '|', '&', '^');
 var ALTER_FLOW = set('break', 'continue', 'return');
+var BITWISE = set('|', '&', '^');
 
 var BREAK_CAPTURERS = set('do', 'while', 'for', 'switch');
 var CONTINUE_CAPTURERS = LOOP;
@@ -387,14 +388,18 @@ function simplifyExpressions(ast) {
             return innerNode;
           }
         }
-      } else if (type === 'binary' && node[1] === '&' && node[3][0] === 'num') {
-        // Rewrite (X < Y) & 1 to (X < Y)|0. (Subsequent passes will eliminate
-        // the |0 if possible.)
-        var input = node[2];
-        var amount = node[3][1];
-        if (input[0] === 'binary' && (input[1] in COMPARE_OPS) && amount == 1) {
-          node[1] = '|';
-          node[3][1] = 0;
+      } else if (type === 'binary' && (node[1] in BITWISE)) {
+        for (var i = 2; i <= 3; i++) {
+          var subNode = node[i];
+          if (subNode[0] === 'binary' && subNode[1] === '&' && subNode[3][0] === 'num' && subNode[3][1] == 1) {
+            // Rewrite (X < Y) & 1 to X < Y , when it is going into a bitwise operator. We could
+            // remove even more (just replace &1 with |0, then subsequent passes could remove the |0)
+            // but v8 issue #2513 means the code would then run very slowly in chrome.
+            var input = subNode[2];
+            if (input[0] === 'binary' && (input[1] in COMPARE_OPS)) {
+              node[i] = input;
+            }
+          }
         }
       }
     });

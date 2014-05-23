@@ -113,16 +113,11 @@ function sign_extension_simplification() {
  }
 }
 function compare_result_simplification() {
- // Eliminate these '&1's.
+ f(((a > b)&1) + 1 | 0);
+ f(((a > b)&1) | z);
+ f(((a > b)&1) | (c > d & 1));
+ // Don't eliminate these '&1's.
  HEAP32[$4] = (HEAP32[$5] < HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] > HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] <= HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] <= HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] == HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] === HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] != HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] !== HEAP32[$6]) & 1;
- // Convert the &1 to |0 here, since we don't get an implicit coersion.
  var x = (HEAP32[$5] != HEAP32[$6]) & 1;
 }
 function tempDoublePtr($45, $14, $28, $42) {
