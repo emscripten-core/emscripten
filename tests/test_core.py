@@ -1190,8 +1190,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_setjmp_many(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp: make MAX_SETJMPS take effect')
-
     src = r'''
       #include <stdio.h>
       #include <setjmp.h>
@@ -1206,6 +1204,37 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     for num in [Settings.MAX_SETJMPS, Settings.MAX_SETJMPS+1]:
       print num
       self.do_run(src.replace('NUM', str(num)), '0\n' * num if num <= Settings.MAX_SETJMPS or not Settings.ASM_JS else 'build with a higher value for MAX_SETJMPS')
+
+  def test_setjmp_many_2(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('non-fastcomp do not hit the limit.')
+
+    src = r'''
+#include <setjmp.h>
+#include <stdio.h>
+
+jmp_buf env;
+
+void luaWork(int d){
+    int x;
+    printf("d is at %d\n", d);
+
+    longjmp(env, 1);
+}
+
+int main()
+{
+    const int ITERATIONS=25;
+    for(int i = 0; i < ITERATIONS; i++){
+        if(!setjmp(env)){
+            luaWork(i);
+        }
+    }
+    return 0;
+}
+'''
+
+    self.do_run(src, r'''d is at 19
+too many setjmps in a function call, build with a higher value for MAX_SETJMPS''')
 
   def test_exceptions(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")

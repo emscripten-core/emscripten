@@ -5923,15 +5923,15 @@ LibraryManager.library = {
     var i = 0;
     setjmpId = (setjmpId+1)|0;
     {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < {{{ 2*MAX_SETJMPS }}}) {
-      if ({{{ makeGetValueAsm('table', '(i<<2)', 'i32') }}} == 0) {
-        {{{ makeSetValueAsm('table', '(i<<2)', 'setjmpId', 'i32') }}};
-        {{{ makeSetValueAsm('table', '(i<<2)+4', 'label', 'i32') }}};
+    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+      if ({{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}} == 0) {
+        {{{ makeSetValueAsm('table', '(i<<3)', 'setjmpId', 'i32') }}};
+        {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
         // prepare next slot
-        {{{ makeSetValueAsm('table', '(i<<2)+8', '0', 'i32') }}};
+        {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
         return 0;
       }
-      i = (i+2)|0;
+      i = i+1|0;
     }
     {{{ makePrintChars('too many setjmps in a function call, build with a higher value for MAX_SETJMPS') }}};
     abort(0);
@@ -5945,12 +5945,12 @@ LibraryManager.library = {
     table = table|0;
     var i = 0, curr = 0;
     while ((i|0) < {{{ MAX_SETJMPS }}}) {
-      curr = {{{ makeGetValueAsm('table', '(i<<2)', 'i32') }}};
+      curr = {{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}};
       if ((curr|0) == 0) break;
       if ((curr|0) == (id|0)) {
-        return {{{ makeGetValueAsm('table', '(i<<2)+4', 'i32') }}};
+        return {{{ makeGetValueAsm('table', '(i<<3)+4', 'i32') }}};
       }
-      i = (i+2)|0;
+      i = i+1|0;
     }
     return 0;
   },
