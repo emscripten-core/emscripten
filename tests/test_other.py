@@ -1090,19 +1090,27 @@ This pointer might make sense in another type signature: i: 0
     Building.emar('cr', lib_b, [b + '.o', c + '.o']) # libB.a with b.c.o,c.c.o
 
     args = ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', main, '-o', 'a.out.js']
-    libs = [lib_a, lib_b]
+    libs_list = [lib_a, lib_b]
 
     # lib_a does not satisfy any symbols from main, so it will not be included,
     # and there will be an unresolved symbol.
-    output = Popen([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE).communicate()
+    output = Popen([PYTHON, EMCC] + args + libs_list, stdout=PIPE, stderr=PIPE).communicate()
     self.assertContained('error: unresolved symbol: x', output[1])
 
     # -Wl,--start-group and -Wl,--end-group around the libs will cause a rescan
     # of lib_a after lib_b adds undefined symbol "x", so a.c.o will now be
     # included (and the link will succeed).
-    libs = ['-Wl,--start-group'] + libs + ['-Wl,--end-group']
+    libs = ['-Wl,--start-group'] + libs_list + ['-Wl,--end-group']
     output = Popen([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE).communicate()
     out_js = os.path.join(self.get_dir(), 'a.out.js')
+    assert os.path.exists(out_js), '\n'.join(output)
+    self.assertContained('result: 42', run_js(out_js))
+
+    # -( and -) should also work.
+    args = ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', main, '-o', 'a2.out.js']
+    libs = ['-Wl,-('] + libs_list + ['-Wl,-)']
+    output = Popen([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE).communicate()
+    out_js = os.path.join(self.get_dir(), 'a2.out.js')
     assert os.path.exists(out_js), '\n'.join(output)
     self.assertContained('result: 42', run_js(out_js))
 
