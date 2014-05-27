@@ -2332,7 +2332,7 @@ var LibrarySDL = {
       return 0;
     }
 
-    var arrayBuffer = bytes.buffer || bytes;
+    var arrayBuffer = bytes ? bytes.buffer || bytes : bytes;
 
     // To allow user code to work around browser bugs with audio playback on <audio> elements an Web Audio, enable
     // the user code to hook in a callback to decide on a file basis whether each file should use Web Audio or <audio> for decoding and playback.
