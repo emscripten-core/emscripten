@@ -1425,6 +1425,9 @@ keydown(100);keyup(100); // trigger the end
   def test_sdlglshader(self):
     self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
 
+  def test_gl_glteximage(self):
+    self.btest('gl_teximage.c', '1')
+
   def test_gl_ps(self):
     # pointers and a shader
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))

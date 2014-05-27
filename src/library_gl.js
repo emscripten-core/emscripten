@@ -431,21 +431,42 @@ var LibraryGL = {
               sizePerPixel = 2;
               break;
             default:
-              throw 'Invalid format (' + format + ')';
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+              return {
+                pixels: null,
+                internalFormat: 0x0
+              };
           }
           break;
         case 0x1403 /* GL_UNSIGNED_SHORT */:
           if (format == 0x1902 /* GL_DEPTH_COMPONENT */) {
             sizePerPixel = 2;
           } else {
-            throw 'Invalid format (' + format + ')';
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+            Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+            return {
+              pixels: null,
+              internalFormat: 0x0
+            };
           }
           break;
         case 0x1405 /* GL_UNSIGNED_INT */:
           if (format == 0x1902 /* GL_DEPTH_COMPONENT */) {
             sizePerPixel = 4;
           } else {
-            throw 'Invalid format (' + format + ')';
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+            Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+            return {
+              pixels: null,
+              internalFormat: 0x0
+            };
           }
           break;
         case 0x84FA /* UNSIGNED_INT_24_8_WEBGL */:
@@ -468,12 +489,26 @@ var LibraryGL = {
               sizePerPixel = 4*4;
               break;
             default:
-              throw 'Invalid format (' + format + ')';
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+              return {
+                pixels: null,
+                internalFormat: 0x0
+              };
           }
           internalFormat = GLctx.RGBA;
           break;
         default:
-          throw 'Invalid type (' + type + ')';
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+          return {
+            pixels: null,
+            internalFormat: 0x0
+          };
       }
       var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
       if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
@@ -488,7 +523,7 @@ var LibraryGL = {
       return {
         pixels: pixels,
         internalFormat: internalFormat
-      }
+      };
     },
 
 #if GL_FFP_ONLY
