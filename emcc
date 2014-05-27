@@ -1794,8 +1794,11 @@ try:
         if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
       if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
-    if closure and shared.Settings.ASM_JS:
-      js_optimizer_queue += ['closure']
+    if shared.Settings.ASM_JS:
+      if closure:
+        js_optimizer_queue += ['closure']
+      elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE:
+        js_optimizer_queue += ['cleanup']
 
     if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
 

@@ -137,6 +137,10 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
   if closure:
     passes = filter(lambda p: p != 'closure', passes) # we will do it manually
 
+  cleanup = 'cleanup' in passes
+  if cleanup:
+    passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
+
   if not know_generated and jcache:
     # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
     # This means jcache does not work after closure compiler runs, for example. But you won't get much benefit from jcache with closure
@@ -291,23 +295,29 @@ EMSCRIPTEN_FUNCS();
 
   for filename in filenames: temp_files.note(filename)
 
-  if closure:
-    # run closure on the shell code, everything but what we js-optimize
+  if closure or cleanup:
+    # run on the shell code, everything but what we js-optimize
     start_asm = '// EMSCRIPTEN_START_ASM\n'
     end_asm = '// EMSCRIPTEN_END_ASM\n'
-    closure_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
+    cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
 
-    closuree = temp_files.get('.closure.js').name
-    c = open(closuree, 'w')
+    cle = temp_files.get('.cl.js').name
+    c = open(cle, 'w')
     pre_1, pre_2 = pre.split(start_asm)
     post_1, post_2 = post.split(end_asm)
     c.write(pre_1)
-    c.write(closure_sep)
+    c.write(cl_sep)
     c.write(post_2)
     c.close()
-    closured = shared.Building.closure_compiler(closuree, pretty='minifyWhitespace' not in passes)
-    temp_files.note(closured)
-    coutput = open(closured).read()
+    if closure:
+      if DEBUG: print >> sys.stderr, 'running closure on shell code'
+      cld = shared.Building.closure_compiler(cle, pretty='minifyWhitespace' not in passes)
+    else:
+      if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+      cld = cle + '.js'
+      subprocess.Popen(js_engine + [JS_OPTIMIZER, cle, 'noPrintMetadata'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(cld, 'w')).communicate()
+    temp_files.note(cld)
+    coutput = open(cld).read()
     coutput = coutput.replace('wakaUnknownBefore();', '')
     after = 'wakaUnknownAfter'
     start = coutput.find(after)

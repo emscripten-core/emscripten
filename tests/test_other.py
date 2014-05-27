@@ -203,6 +203,10 @@ Options that are modified or new in %s include:
         (['--typed-arrays', '1'], lambda generated: 'IHEAPU = ' in generated, 'typed arrays 1 selected'),
         (['--typed-arrays', '2'], lambda generated: 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 selected'),
         (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
+        ([], lambda generated: '// The Module object' in generated, 'without opts, comments in shell code'),
+        (['-O2'], lambda generated: '// The Module object' not in generated, 'with opts, no comments in shell code'),
+        (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
+        (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
       ]:
         print params, text
         self.clear()
@@ -2218,7 +2222,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned in
     test_js_closure_0 = open(path_from_root('tests', 'Module-exports', 'test.js')).read()
 
     # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
-    assert "module['exports'] = Module;" in test_js_closure_0
+    assert ("module['exports'] = Module;" in test_js_closure_0) or ('module["exports"]=Module' in test_js_closure_0)
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
