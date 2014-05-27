@@ -1200,9 +1200,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         return 0;
       }
     '''
-    for num in [Settings.MAX_SETJMPS, Settings.MAX_SETJMPS+1]:
-      print num
-      self.do_run(src.replace('NUM', str(num)), '0\n' * num if num <= Settings.MAX_SETJMPS or not Settings.ASM_JS else 'build with a higher value for MAX_SETJMPS')
+    for maxx in [Settings.MAX_SETJMPS/2, Settings.MAX_SETJMPS, 2*Settings.MAX_SETJMPS]:
+      Settings.MAX_SETJMPS = maxx
+      for num in [maxx, maxx+1]:
+        print maxx, num
+        self.do_run(src.replace('NUM', str(num)), '0\n' * num if num <= Settings.MAX_SETJMPS or not Settings.ASM_JS else 'build with a higher value for MAX_SETJMPS')
 
   def test_setjmp_many_2(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('non-fastcomp do not hit the limit.')

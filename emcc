@@ -1269,7 +1269,6 @@ try:
       assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
       assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
       assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
-      assert shared.Settings.MAX_SETJMPS == 20, 'changing MAX_SETJMPS is not supported in fastcomp yet'
       assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
       assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
       assert not shared.Settings.CORRUPTION_CHECK, 'CORRUPTION_CHECK is not supported in asm.js mode, which is what fastcomp can emit (you can use non-asm.js mode in non-fastcomp)'

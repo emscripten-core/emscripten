@@ -761,6 +761,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['ALIASING_FUNCTION_POINTERS'] == 0:
       backend_args += ['-emscripten-no-aliasing-function-pointers']
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
+    backend_args += ['-emscripten-max-setjmps=%d' % settings['MAX_SETJMPS']]
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
       t = time.time()
