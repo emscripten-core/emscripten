@@ -478,7 +478,21 @@ mergeInto(LibraryManager.library, {
     },
 
     getMouseWheelDelta: function(event) {
-      return Math.max(-1, Math.min(1, event.type === 'DOMMouseScroll' ? event.detail : -event.wheelDelta));
+      var delta = 0;
+      switch (event.type) {
+        case 'DOMMouseScroll': 
+          delta = event.detail;
+          break;
+        case 'mousewheel': 
+          delta = -event.wheelDelta;
+          break;
+        case 'wheel': 
+          delta = event.deltaY;
+          break;
+        default:
+          throw 'unrecognized mouse wheel event: ' + event.type;
+      }
+      return Math.max(-1, Math.min(1, delta));
     },
 
     mouseX: 0,
@@ -688,15 +702,22 @@ mergeInto(LibraryManager.library, {
   emscripten_async_wget: function(url, file, onload, onerror) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
+    function doCallback(callback) {
+      if (callback) {
+        var stack = Runtime.stackSave();
+        Runtime.dynCall('vi', callback, [allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
+        Runtime.stackRestore(stack);
+      }
+    }
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
       _url, true, true,
       function() {
-        if (onload) Runtime.dynCall('vi', onload, [file]);
+        doCallback(onload);
       },
       function() {
-        if (onerror) Runtime.dynCall('vi', onerror, [file]);
+        doCallback(onerror);
       }
     );
   },
@@ -727,7 +748,11 @@ mergeInto(LibraryManager.library, {
     http.onload = function http_onload(e) {
       if (http.status == 200) {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
-        if (onload) Runtime.dynCall('vii', onload, [arg, file]);
+        if (onload) {
+          var stack = Runtime.stackSave();
+          Runtime.dynCall('vii', onload, [arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
+          Runtime.stackRestore(stack);
+        }
       } else {
         if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
       }
