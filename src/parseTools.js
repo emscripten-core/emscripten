@@ -2035,7 +2035,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else if (param.intertype == 'mathop') {
     return processMathop(param);
   } else if (param.intertype === 'vector') {
-    return getVectorBaseType(param.type) + '32x4(' + param.idents.join(',') + ')';
+    return 'SIMD.' + getVectorBaseType(param.type) + '32x4(' + param.idents.join(',') + ')';
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
@@ -2700,7 +2700,7 @@ var simdLane = ['x', 'y', 'z', 'w'];
 
 function ensureVector(ident, base) {
   Types.usesSIMD = true;
-  return ident == 0 ? base + '32x4.splat(0)' : ident;
+  return ident == 0 ? 'SIMD.' + base + '32x4.splat(0)' : ident;
 }
 
 function ensureValidFFIType(type) {

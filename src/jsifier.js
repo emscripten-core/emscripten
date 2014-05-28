@@ -1321,10 +1321,10 @@ function JSify(data, functionsOnly) {
       // vector load
       var native = getVectorNativeType(item.valueType);
       var base = getSIMDName(native);
-      return base + '32x4(' + makeGetValue(value,  0, native, 0, item.unsigned, 0, item.align) + ',' +
-                              makeGetValue(value,  4, native, 0, item.unsigned, 0, item.align) + ',' +
-                              makeGetValue(value,  8, native, 0, item.unsigned, 0, item.align) + ',' +
-                              makeGetValue(value, 12, native, 0, item.unsigned, 0, item.align) + ');';
+      return 'SIMD.' + base + '32x4(' + makeGetValue(value,  0, native, 0, item.unsigned, 0, item.align) + ',' +
+                                        makeGetValue(value,  4, native, 0, item.unsigned, 0, item.align) + ',' +
+                                        makeGetValue(value,  8, native, 0, item.unsigned, 0, item.align) + ',' +
+                                        makeGetValue(value, 12, native, 0, item.unsigned, 0, item.align) + ');';
     }
     var impl = item.ident ? getVarImpl(item.funcData, item.ident) : VAR_EMULATED;
     switch (impl) {
@@ -1395,7 +1395,7 @@ function JSify(data, functionsOnly) {
     }
     for (var i = 0; i < 4; i++) assert(mask[0] == 0 || mask == 1);
     i = 0;
-    return base + '32x4(' + mask.map(function(m) {
+    return 'SIMD.' + base + '32x4(' + mask.map(function(m) {
       return (m == 1 ? second : first) + '.' + simdLane[i++];
     }).join(',') + ')';
   }
