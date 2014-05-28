@@ -18,6 +18,32 @@ extern "C" {
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
 
+
+/* Typedefs */
+
+/*
+ * Unaligned types, helpful to force LLVM to emit unaligned
+ * loads/stores in places in your code where SAFE_HEAP found
+ * an unaligned operation. (It's better to avoid unaligned
+ * operations, but if you are reading from a packed stream of
+ * bytes or such, these types may be useful.)
+ */
+
+typedef short __attribute__((aligned(1))) emscripten_align1_short;
+
+typedef int __attribute__((aligned(2))) emscripten_align2_int;
+typedef int __attribute__((aligned(1))) emscripten_align1_int;
+
+typedef float __attribute__((aligned(2))) emscripten_align2_float;
+typedef float __attribute__((aligned(1))) emscripten_align1_float;
+
+typedef double __attribute__((aligned(4))) emscripten_align4_double;
+typedef double __attribute__((aligned(2))) emscripten_align2_double;
+typedef double __attribute__((aligned(1))) emscripten_align1_double;
+
+
+/* Functions */
+
 /*
  * Convenient syntax for inline assembly/js. Allows stuff like
  *

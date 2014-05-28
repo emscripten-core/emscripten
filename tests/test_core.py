@@ -1980,6 +1980,15 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
 
     self.do_run_from_file(src, output)
 
+  def test_set_align(self):
+    if self.run_name == 'slow2asm': return self.skip('FIXME in slow2asm')
+
+    Settings.SAFE_HEAP = 1
+
+    test_path = path_from_root('tests', 'core', 'test_set_align')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
   def test_emscripten_api(self):
       #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
