@@ -2410,6 +2410,7 @@ module({
             var back = holder.get();
             assert.equal(back, instance);
             holder.delete();
+            back.delete();
         });
     });
 
