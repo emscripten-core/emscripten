@@ -396,7 +396,7 @@ var cwrap, ccall;
     return ret;
   }
 
-  var sourceRegex = /^function\s\((.*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
+  var sourceRegex = /^function\s\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
   function parseJSFunc(jsfunc) {
     // Match the body and the return value of a javascript function source
     var parsed = jsfunc.toString().match(sourceRegex).slice(1);

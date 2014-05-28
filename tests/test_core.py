@@ -5453,9 +5453,6 @@ def process(filename):
   ### Integration tests
 
   def test_ccall(self):
-    if self.emcc_args is not None and '-O2' in self.emcc_args:
-      self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
-
     post = '''
 def process(filename):
   src = \'\'\'
@@ -5498,6 +5495,11 @@ def process(filename):
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output, post_build=post)
+
+    if self.emcc_args is not None and '-O2' in self.emcc_args:
+      print 'with closure'
+      self.emcc_args += ['--closure', '1']
+      self.do_run_from_file(src, output, post_build=post)
 
   def test_pgo(self):
     if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
