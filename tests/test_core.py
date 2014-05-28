@@ -2068,10 +2068,10 @@ def process(filename):
 
     if self.emcc_args and '-O2' in self.emcc_args:
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      code_start = 'var TOTAL_MEMORY = '
+      code_start = 'var TOTAL_MEMORY'
       fail = fail[fail.find(code_start):]
       win = win[win.find(code_start):]
-      assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller'
+      assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
   def test_ssr(self): # struct self-ref
       src = '''
