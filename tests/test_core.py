@@ -3244,7 +3244,7 @@ def process(filename):
             break
         else:
           raise Exception('Could not find symbol table!')
-      table = table[table.find('{'):table.rfind('}')+1]
+      table = table[table.find('{'):table.find('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
       assert table.count(',') <= 4
 
