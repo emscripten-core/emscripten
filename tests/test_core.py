@@ -1347,6 +1347,33 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
     test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
+    size = len(open('src.cpp.o.js').read())
+    shutil.copyfile('src.cpp.o.js', 'orig.js')
+
+    if os.environ.get('EMCC_FAST_COMPILER') != '0':
+      # check that an empty whitelist works properly (as in, same as exceptions disabled)
+      empty_output = path_from_root('tests', 'core', 'test_exceptions_white_list_empty.out')
+
+      Settings.EXCEPTION_CATCHING_WHITELIST = []
+      self.do_run_from_file(src, empty_output)
+      empty_size = len(open('src.cpp.o.js').read())
+      shutil.copyfile('src.cpp.o.js', 'empty.js')
+
+      Settings.EXCEPTION_CATCHING_WHITELIST = ['fake']
+      self.do_run_from_file(src, empty_output)
+      fake_size = len(open('src.cpp.o.js').read())
+      shutil.copyfile('src.cpp.o.js', 'fake.js')
+
+      Settings.DISABLE_EXCEPTION_CATCHING = 1
+      self.do_run_from_file(src, empty_output)
+      disabled_size = len(open('src.cpp.o.js').read())
+      shutil.copyfile('src.cpp.o.js', 'disabled.js')
+
+      assert size - empty_size > 2000, [empty_size, size] # big change when we disable entirely
+      assert size - fake_size > 2000, [fake_size, size]
+      assert empty_size == fake_size, [empty_size, fake_size]
+      assert empty_size - disabled_size < 100, [empty_size, disabled_size] # full disable removes a tiny bit more
+      assert fake_size - disabled_size < 100, [disabled_size, fake_size]
 
   def test_exceptions_white_list_2(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
