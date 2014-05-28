@@ -353,9 +353,10 @@ f.close()
       except KeyError:
         postbuild = None
 
-      cmake_cases = ['target_js', 'target_html']
-      cmake_outputs = ['test_cmake.js', 'hello_world_gles.html']
-      for i in range(0, 2):
+      cmake_cases = ['target_js', 'target_html', 'target_library', 'target_library']
+      cmake_outputs = ['test_cmake.js', 'hello_world_gles.html', 'libtest_cmake.a', 'libtest_cmake.so']
+      cmake_arguments = ['', '', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_SHARED_LIBS=ON']
+      for i in range(0, len(cmake_cases)):
         for configuration in ['Debug', 'Release']:
           # CMake can be invoked in two ways, using 'emconfigure cmake', or by directly running 'cmake'.
           # Test both methods.
@@ -373,11 +374,11 @@ f.close()
               if invoke_method == 'cmake':
                 # Test invoking cmake directly.
                 cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
-                                '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
+                                '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
               else:
                 # Test invoking via 'emconfigure cmake'
-                cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, '-G', generator, cmakelistsdir]
-
+                cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
+							  
               ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE, stderr=None if verbose_level >= 1 else PIPE).communicate()
               if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
                 logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
