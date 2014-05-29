@@ -1216,9 +1216,18 @@ RegisteredPointer.prototype['fromWireType'] = function fromWireType(ptr) {
 
     var registeredInstance = getInheritedInstance(this.registeredClass, rawPointer);
     if (undefined !== registeredInstance) {
-        var rv = registeredInstance['clone']();
-        this.destructor(ptr);
-        return rv;
+        // JS object has been neutered, time to repopulate it
+        if (0 === registeredInstance.$$.count.value) {
+            registeredInstance.$$.ptr = rawPointer;
+            registeredInstance.$$.smartPtr = ptr;
+            return registeredInstance['clone']();
+        } else {
+            // else, just increment reference count on existing object
+            // it already has a reference to the smart pointer
+            var rv = registeredInstance['clone']();
+            this.destructor(ptr);
+            return rv;
+        }
     }
 
     function makeDefaultHandle() {
