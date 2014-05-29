@@ -937,6 +937,8 @@ try:
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
+      js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
+      js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
       if default_cxx_std:
         default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
     elif newargs[i].startswith('-std='):
@@ -1644,17 +1646,6 @@ try:
     final += '.pp.js'
     open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
-
-  # Add bindings glue if used
-  if bind:
-    logging.debug('adding embind glue')
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' +
-            open(shared.path_from_root('src', 'embind', 'embind.js')).read() +
-            open(shared.path_from_root('src', 'embind', 'emval.js')).read()
-          )
-    final += '.bd.js'
-    open(final, 'w').write(src)
-    if DEBUG: save_intermediate('bind')
 
   # Apply a source code transformation, if requested
   if js_transform:
