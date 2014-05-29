@@ -96,7 +96,9 @@ else if (ENVIRONMENT_IS_SHELL) {
 
   this['{{{ EXPORT_NAME }}}'] = Module;
 
+#if CLOSURE_COMPILER
   eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
+#endif
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function read(url) {
@@ -139,7 +141,11 @@ else {
 }
 
 function globalEval(x) {
+#if NO_DYNAMIC_EXECUTION == 0
   eval.call(null, x);
+#else
+  throw 'NO_DYNAMIC_EXECUTION was set, cannot eval';
+#endif
 }
 if (!Module['load'] == 'undefined' && Module['read']) {
   Module['load'] = function load(f) {

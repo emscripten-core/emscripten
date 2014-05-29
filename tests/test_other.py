@@ -2889,3 +2889,13 @@ int main(int argc, char **argv) {
       else:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_no_dynamic_execution(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1']
+    stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    src = open('a.out.js').read()
+    assert 'eval(' not in src
+    assert 'eval.' not in src
+    assert 'new Function' not in src
+
+

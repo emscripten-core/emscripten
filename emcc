@@ -1320,6 +1320,8 @@ try:
     logging.warning('disabling closure because debug info was requested')
     closure = False
 
+  assert not (shared.Settings.NO_DYNAMIC_EXECUTION and closure), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
+
   if closure:
     shared.Settings.CLOSURE_COMPILER = 1
     assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
