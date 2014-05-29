@@ -83,14 +83,9 @@ def emscripten(env, target_js, source_bc):
         buildName('raw.js'),
         [opt_ll])
 
-    prejs = [
-        env['EMSCRIPTEN_PREJS'],
-        '${EMSCRIPTEN_HOME}/src/embind/emval.js',
-        '${EMSCRIPTEN_HOME}/src/embind/embind.js' ]
-
     [concatenated_js] = env.Concatenate(
         buildName('concat.js'),
-        [ prejs,
+        [ env['EMSCRIPTEN_PREJS'],
           raw_emscripten_js,
           env['EMSCRIPTEN_POSTJS'] ])
 
@@ -111,7 +106,7 @@ def emscripten(env, target_js, source_bc):
 
     [iter_global_emscripten_js] = env.Concatenate(
         buildName('iter.js'),
-        [ prejs,
+        [ env['EMSCRIPTEN_PREJS'],
           raw_emscripten_js,
           env['EMSCRIPTEN_POSTJS'] ])
 
