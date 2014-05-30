@@ -8307,6 +8307,29 @@ LibraryManager.library = {
     return 0;
   },
 
+  getsockopt__deps: ['$SOCKFS', '__setErrNo', '$ERRNO_CODES'],
+  getsockopt: function(fd, level, optname, optval, optlen) {
+    // int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getsockopt.html
+    // Minimal getsockopt aimed at resolving https://github.com/kripken/emscripten/issues/2211
+    // so only supports SOL_SOCKET with SO_ERROR.
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    if (level === {{{ cDefine('SOL_SOCKET') }}} && optname === {{{ cDefine('SO_ERROR') }}}) {
+      {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
+      {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
+      sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
+      return 0;
+    } else {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
+  },
+
   mkport: function() { throw 'TODO' },
 
   // ==========================================================================

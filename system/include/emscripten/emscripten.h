@@ -155,6 +155,34 @@ extern void emscripten_cancel_main_loop(void);
 #endif
 
 /*
+ * Registers callback functions for receiving socket events.
+ * These events are analogous to WebSocket events but are emitted
+ * *after* the internal emscripten socket processing has occurred
+ * so, for example, the message callback will be triggered after
+ * the data has been added to the recv_queue this means that an
+ * application receiving this callback can simply read/recv the data
+ * using the file descriptor passed as a parameter to the callback.
+ * All of the callbacks except the error callback are passed a file
+ * descriptor representing the fd that the notified activity took
+ * place on. The error callback takes an int representing errno and
+ * a char* representing the error message. Passing a NULL callback
+ * function to a emscripten_set_socket_*_callback call will deregister
+ * the callback registered for that Event.
+ */
+// Triggered by a WebSocket error.
+extern void emscripten_set_socket_error_callback(void (*func)(int fd, int err, const char* msg));
+// Triggered when the WebSocket has actually opened.
+extern void emscripten_set_socket_open_callback(void (*func)(int fd));
+// Triggered when listen has been called (synthetic event).
+extern void emscripten_set_socket_listen_callback(void (*func)(int fd));
+// Triggered when the connection has actually been established.
+extern void emscripten_set_socket_connection_callback(void (*func)(int fd));
+// Triggered when data is available to be read from the socket.
+extern void emscripten_set_socket_message_callback(void (*func)(int fd));
+// Triggered when the WebSocket has actually closed.
+extern void emscripten_set_socket_close_callback(void (*func)(int fd));
+
+/*
  * Add a function to a queue of events that will execute
  * before the main loop will continue. The event is pushed
  * into the back of the queue. (Note that in the native version

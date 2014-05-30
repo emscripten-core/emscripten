@@ -441,7 +441,9 @@
             "SOCK_STREAM", 
             "AF_INET", 
             "AF_UNSPEC", 
-            "AF_INET6"
+            "AF_INET6",
+            "SOL_SOCKET", 
+            "SO_ERROR"
         ],
         "structs": {}
     }, 
