@@ -53,8 +53,8 @@ typedef double __attribute__((aligned(1))) emscripten_align1_double;
  * does a function call to reach it). It supports newlines,
  *
  *    EM_ASM(
- *      window.alert('hai'));
- *      window.alert('bai'));
+ *      window.alert('hai');
+ *      window.alert('bai');
  *    )
  *
  * Notes: Double-quotes (") are not supported, but you can use
