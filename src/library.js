@@ -2802,34 +2802,6 @@ LibraryManager.library = {
     var stdin = {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}};
     return _fscanf(stdin, format, varargs);
   },
-  sscanf__deps: ['_scanString'],
-  sscanf: function(s, format, varargs) {
-    // int sscanf(const char *restrict s, const char *restrict format, ... );
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
-    var index = 0;
-    function get() { return {{{ makeGetValue('s', 'index++', 'i8') }}}; };
-    function unget() { index--; };
-    return __scanString(format, get, unget, varargs);
-  },
-  snprintf__deps: ['_formatString', 'malloc'],
-  snprintf: function(s, n, format, varargs) {
-    // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var result = __formatString(format, varargs);
-    var limit = (n === undefined) ? result.length
-                                  : Math.min(result.length, Math.max(n - 1, 0));
-    if (s < 0) {
-      s = -s;
-      var buf = _malloc(limit+1);
-      {{{ makeSetValue('s', '0', 'buf', 'i8*') }}};
-      s = buf;
-    }
-    for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
-    }
-    if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
-    return result.length;
-  },
   fprintf__deps: ['fwrite', '_formatString'],
   fprintf: function(stream, format, varargs) {
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
@@ -2847,16 +2819,6 @@ LibraryManager.library = {
     var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     return _fprintf(stdout, format, varargs);
   },
-  sprintf__deps: ['snprintf'],
-  sprintf: function(s, format, varargs) {
-    // int sprintf(char *restrict s, const char *restrict format, ...);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    return _snprintf(s, undefined, format, varargs);
-  },
-  asprintf__deps: ['sprintf'],
-  asprintf: function(s, format, varargs) {
-    return _sprintf(-s, format, varargs);
-  },
   dprintf__deps: ['_formatString', 'write'],
   dprintf: function(fd, format, varargs) {
     var result = __formatString(format, varargs);
@@ -2868,14 +2830,10 @@ LibraryManager.library = {
 #if TARGET_X86
   // va_arg is just like our varargs
   vfprintf: 'fprintf',
-  vsnprintf: 'snprintf',
   vprintf: 'printf',
-  vsprintf: 'sprintf',
-  vasprintf: 'asprintf',
   vdprintf: 'dprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
-  vsscanf: 'sscanf',
 #endif
 
 #if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
@@ -2884,21 +2842,9 @@ LibraryManager.library = {
   vfprintf: function(s, f, va_arg) {
     return _fprintf(s, f, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
-  vsnprintf__deps: ['snprintf'],
-  vsnprintf: function(s, n, format, va_arg) {
-    return _snprintf(s, n, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
   vprintf__deps: ['printf'],
   vprintf: function(format, va_arg) {
     return _printf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vsprintf__deps: ['sprintf'],
-  vsprintf: function(s, format, va_arg) {
-    return _sprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vasprintf__deps: ['asprintf'],
-  vasprintf: function(s, format, va_arg) {
-    return _asprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vdprintf__deps: ['dprintf'],
   vdprintf: function (fd, format, va_arg) {
@@ -2911,10 +2857,6 @@ LibraryManager.library = {
   vfscanf__deps: ['fscanf'],
   vfscanf: function(s, format, va_arg) {
     return _fscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vsscanf__deps: ['sscanf'],
-  vsscanf: function(s, format, va_arg) {
-    return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
 #endif
 
@@ -4509,23 +4451,6 @@ LibraryManager.library = {
     {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'float') }}};
     return x - {{{ makeGetValue('intpart', 0, 'float') }}};
   },
-  frexp: function(x, exp_addr) {
-    var sig = 0, exp_ = 0;
-    if (x !== 0) {
-      var sign = 1;
-      if (x < 0) {
-        x = -x;
-        sign = -1;
-      }
-      var raw_exp = Math.log(x)/Math.log(2);
-      exp_ = Math.ceil(raw_exp);
-      if (exp_ === raw_exp) exp_ += 1;
-      sig = sign*x/Math.pow(2, exp_);
-    }
-    {{{ makeSetValue('exp_addr', 0, 'exp_', 'i32') }}};
-    return sig;
-  },
-  frexpf: 'frexp',
   finite: function(x) {
     return isFinite(x);
   },

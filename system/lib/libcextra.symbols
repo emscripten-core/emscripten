@@ -21,6 +21,7 @@
          T __wcscoll_l
          T __wcsxfrm_l
          W __wctype_l
+         T asprintf
          T atoll
          T bcmp
          T bcopy
@@ -113,7 +114,6 @@
          T mbstowcs
          T mbtowc
          T memccpy
-         T memchr
          T memmem
          T mempcpy
          W memrchr
@@ -131,6 +131,7 @@
          T rindex
          T scalbnf
          D signgam
+         T sscanf
          T stpcpy
          T strcasecmp_l
          T strcasestr
@@ -176,8 +177,11 @@
          T towlower_l
          T towupper
          T towupper_l
+         T vasprintf
          T verr
          T verrx
+         T MUSL_vfscanf
+         T vsscanf
          T vfwprintf
          T vswprintf
          T vwarn
@@ -187,7 +191,6 @@
          T warnx
          T wcpcpy
          T wcpncpy
-         T wcrtomb
          T wcscasecmp
          T wcscasecmp_l
          T wcscat
@@ -227,7 +230,6 @@
          T wcsxfrm
          T wcsxfrm_l
          T wctob
-         T wctomb
          T wctrans
          T wctrans_l
          T wctype
