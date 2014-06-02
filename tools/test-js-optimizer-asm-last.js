@@ -30,6 +30,7 @@ function finall(x) {
  a = +-0xde0b6b000000000;
  a = -+0xde0b6b000000000;
  a = -0xde0b6b000000000;
+ a = +0x3ce7184d470dd60000;
  f(g() & -1);
  return +12e10;
 }

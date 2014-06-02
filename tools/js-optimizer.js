@@ -5165,7 +5165,9 @@ function prepDotZero(ast) {
 function fixDotZero(js) {
   return js.replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
     if (num.substr(0, 2) === '0x' || num.substr(0, 3) === '-0x') {
-      return eval(num) + '.0';
+      var ret = eval(num).toString();
+      if (ret.indexOf('.') < 0) return ret + '.0';
+      return ret;
     }
     if (num.indexOf('.') >= 0) return num;
     var e = num.indexOf('e');
