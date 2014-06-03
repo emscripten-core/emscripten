@@ -465,8 +465,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     basic_float_vars = ['NaN', 'Infinity']
 
     if forwarded_json['Types']['preciseI64MathUsed'] or \
-       forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
-       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
+       forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32') or \
+       forwarded_json['Functions']['libraryFunctions'].get('_llvm_ctlz_i32'):
       basic_vars += ['cttz_i8', 'ctlz_i8']
 
     if settings.get('DLOPEN_SUPPORT'):
@@ -529,7 +529,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       pass
     # If no named globals, only need externals
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
-    global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
+    global_funcs = [key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
@@ -1062,8 +1062,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       basic_float_vars = ['NaN', 'Infinity']
 
       if metadata.get('preciseI64MathUsed') or \
-         forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
-         forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
+         forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32') or \
+         forwarded_json['Functions']['libraryFunctions'].get('_llvm_ctlz_i32'):
         basic_vars += ['cttz_i8', 'ctlz_i8']
 
       if settings.get('DLOPEN_SUPPORT'):
@@ -1126,7 +1126,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         pass
       # If no named globals, only need externals
       global_vars = metadata['externs'] #+ forwarded_json['Variables']['globals']
-      global_funcs = list(set(['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+      global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
       def math_fix(g):
         return g if not g.startswith('Math_') else g.split('_')[1]
       asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
