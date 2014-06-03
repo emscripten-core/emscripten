@@ -3353,6 +3353,7 @@ LibraryManager.library = {
       return 0;
     } else {
       var size = Math.min(4095, absolute.path.length);  // PATH_MAX - 1.
+      if (resolved_name === 0) resolved_name = _malloc(size+1);
       for (var i = 0; i < size; i++) {
         {{{ makeSetValue('resolved_name', 'i', 'absolute.path.charCodeAt(i)', 'i8') }}};
       }
