@@ -207,7 +207,8 @@ Options that are modified or new in %s include:
         (['-O2'], lambda generated: '// The Module object' not in generated, 'with opts, no comments in shell code'),
         (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
         (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
-        (['-O2', '-profiling'], lambda generated: '// The Module object' in generated, 'with -profiling, yes comments in shell code'),
+        (['-O2', '-profiling'], lambda generated: '// The Module object' in generated or os.environ.get('EMCC_FAST_COMPILER') == '0', 'with -profiling, yes comments in shell code (in fastcomp)'),
+
       ]:
         print params, text
         self.clear()
