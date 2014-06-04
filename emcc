@@ -1347,6 +1347,7 @@ try:
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
     shared.Settings.INCLUDE_FULL_LIBRARY = 1
+    shared.Settings.EXPORT_ALL = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
 
