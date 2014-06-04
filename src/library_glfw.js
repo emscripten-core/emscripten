@@ -417,6 +417,9 @@ var LibraryGLFW = {
 
   glfwSetWindowSizeCallback: function(cbfun) {
     GLFW.resizeFunc = cbfun;
+    if (GLFW.resizeFunc) {
+      Runtime.dynCall('vii', GLFW.resizeFunc, [Module['canvas'].width, Module['canvas'].height]);
+    }
   },
 
   glfwSetWindowCloseCallback: function(cbfun) {
