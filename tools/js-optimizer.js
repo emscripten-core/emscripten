@@ -2087,11 +2087,17 @@ function registerizeHarder(ast) {
     function pushActiveLabels(onContinue, onBreak) {
       // Push the target junctions for continuing/breaking a loop.
       // This should be called before traversing into a loop.
-      var newLabels = copy(activeLabels[activeLabels.length-1]);
+      var prevLabels = activeLabels[activeLabels.length-1];
+      var newLabels = copy(prevLabels);
       newLabels[null] = [onContinue, onBreak];
       if (nextLoopLabel) {
         newLabels[nextLoopLabel] = [onContinue, onBreak];
         nextLoopLabel = null;
+      }
+      // An unlabelled 'continue' should jump to innermost loop,
+      // ignoring any nested 'switch' statements.
+      if (onContinue === null && prevLabels[null]) {
+        newLabels[null][0] = prevLabels[null][0];
       }
       activeLabels.push(newLabels);
     }
