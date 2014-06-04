@@ -5183,8 +5183,11 @@ function fixDotZero(js) {
 }
 
 function asmLastOpts(ast) {
+  var statsStack = [];
   traverseGeneratedFunctions(ast, function(fun) {
     traverse(fun, function(node, type) {
+      var stats = getStatements(node);
+      if (stats) statsStack.push(stats);
       if (type === 'while' && node[1][0] === 'num' && node[1][1] === 1 && node[2][0] === 'block' && node[2].length == 2) {
         // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
         // into shapes that might confuse other passes
@@ -5192,14 +5195,27 @@ function asmLastOpts(ast) {
         // while (1) { .. if (..) { break } } ==> do { .. } while(..)
         var stats = node[2][1];
         var last = stats[stats.length-1];
-        if (last && last[0] === 'if' && !last[3] && last[2][0] === 'block' && last[2][1][0] && last[2][1][0][0] === 'break' && !last[2][1][0][1]) {
+        if (last && last[0] === 'if' && !last[3] && last[2][0] === 'block' && last[2][1][0]) {
+          var lastStats = last[2][1];
+          var lastNum = lastStats.length;
+          var lastLast = lastStats[lastNum-1];
+          if (!(lastLast[0] === 'break' && !lastLast[1])) return;// if not a simple break, dangerous
+          for (var i = 0; i < lastNum; i++) {
+            if (lastStats[i][0] !== 'stat' && lastStats[i][0] !== 'break') return; // something dangerous
+          }
+          // ok, a bunch of statements ending in a break
           var abort = false;
           var stack = 0;
+          var breaks = 0;
           traverse(stats, function(node, type) {
-            if (type == 'continue') {
-              if (stack == 0 || node[1]) { // abort if labeled (we do not analyze labels here yet), or a continue directly on us
+            if (type === 'continue') {
+              if (stack === 0 || node[1]) { // abort if labeled (we do not analyze labels here yet), or a continue directly on us
                 abort = true;
                 return true;
+              }
+            } else if (type === 'break') {
+              if (stack === 0 || node[1]) { // relevant if labeled (we do not analyze labels here yet), or a break directly on us
+                breaks++;
               }
             } else if (type in LOOP) {
               stack++;
@@ -5210,6 +5226,15 @@ function asmLastOpts(ast) {
             }
           });
           if (abort) return;
+          assert(breaks > 0);
+          if (lastStats.length > 1 && breaks !== 1) return; // if we have code aside from the break, we can only move it out if there is just one break
+          // start to optimize
+          if (lastStats.length > 1) {
+            var parent = statsStack[statsStack.length-1];
+            var me = parent.indexOf(node);
+            if (me < 0) return; // not always directly on a stats, could be in a label for example
+            parent.splice.apply(parent, [me+1, 0].concat(lastStats.slice(0, lastStats.length-1)));
+          }
           var conditionToBreak = last[1];
           stats.pop();
           node[0] = 'do';
@@ -5238,6 +5263,9 @@ function asmLastOpts(ast) {
           }
         }
       }
+    }, function(node, type) {
+      var stats = getStatements(node);
+      if (stats) statsStack.pop();
     });
   });
 }

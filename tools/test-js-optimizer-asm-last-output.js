@@ -72,5 +72,31 @@ function looop() {
    break;
   }
  }
+ do {
+  blah();
+ } while (!shah());
+ a = b;
+ LABELED : while (1) {
+  blah();
+  if (shah()) {
+   c = d;
+   break;
+  }
+ }
+ while (1) {
+  blah();
+  if (check) break;
+  if (shah()) {
+   e = f;
+   break;
+  }
+ }
+ do {
+  blah();
+  while (1) {
+   if (check) break;
+  }
+ } while (!shah());
+ g = h;
 }
 

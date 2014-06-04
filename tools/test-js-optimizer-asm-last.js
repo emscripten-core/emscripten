@@ -87,6 +87,38 @@ function looop() {
    break;
   }
  }
+ while (1) {
+  blah();
+  if (shah()) {
+   a = b;
+   break;
+  }
+ }
+ LABELED: while (1) {
+  blah();
+  if (shah()) {
+   c = d;
+   break;
+  }
+ }
+ while (1) {
+  blah();
+  if (check) break; // prevents optimization
+  if (shah()) {
+   e = f;
+   break;
+  }
+ }
+ while (1) {
+  blah();
+  while (1) {
+   if (check) break; // safe to optimize
+  }
+  if (shah()) {
+   g = h;
+   break;
+  }
+ }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop"]
 
