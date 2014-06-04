@@ -507,9 +507,9 @@ var LibraryGLFW = {
     return Module.ctx.getSupportedExtensions().indexOf(Pointer_stringify(extension)) > -1;
   },
 
-  glfwGetProcAddress__deps: ['glfwGetProcAddress'],
+  glfwGetProcAddress__deps: ['emscripten_GetProcAddress'],
   glfwGetProcAddress: function(procname) {
-    return _getProcAddress(procname);
+    return _emscripten_GetProcAddress(procname);
   },
 
   glfwGetGLVersion: function(major, minor, rev) {
