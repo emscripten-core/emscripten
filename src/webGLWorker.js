@@ -1,6 +1,12 @@
 // WebGLWorker worker code
 
 function WebGLWorker() {
+  //=======
+  // State
+  //=======
+
+  this.prefetchedParameters = {};
+
   //===========
   // Constants
   //===========
@@ -428,9 +434,16 @@ function WebGLWorker() {
   // Functions
   //==========
 
+  var that = this;
+  function revname(name) {
+    for (var x in that) if (that[x] === name) return x;
+    return null;
+  }
+
   this.getParameter = function(name) {
     assert(name);
-    throw 'TODO';
+    if (name in this.prefetchedParameters) return this.prefetchedParameters[name];
+    throw 'TODO: get parameter ' + name + ' : ' + revname(name);
   };
 }
 
