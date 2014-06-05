@@ -4080,7 +4080,7 @@ def process(filename):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
     src, output = (test_path + s for s in ('.in', '.out'))
 
-    orig_args = self.emcc_args
+    orig_args = self.emcc_args if self.emcc_args else []
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
       self.emcc_args = orig_args + mode
       self.do_run_from_file(src, output)
