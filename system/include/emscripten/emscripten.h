@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
+
 #if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
