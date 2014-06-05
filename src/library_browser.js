@@ -1194,6 +1194,8 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
       return buf;
     }
+    
+    return 0;
   },
 
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data'],
