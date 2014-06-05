@@ -91,7 +91,7 @@ mergeInto(LibraryManager.library, {
 #if USE_TYPED_ARRAYS == 2
       if (node.contents && node.contents.subarray) {
         var arr = [];
-        for(var i = 0; i < node.usedBytes; ++i) arr.push(node.contents[i]);
+        for (var i = 0; i < node.usedBytes; ++i) arr.push(node.contents[i]);
         return arr; // Returns a copy of the original data.
       }
 #endif
@@ -102,9 +102,7 @@ mergeInto(LibraryManager.library, {
     // Given a file node, returns its file data converted to a typed array.
     getFileDataAsTypedArray: function(node) {
       if (node.contents && node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
-      var ta = new Uint8Array(new ArrayBuffer(node.usedBytes));
-      for(var i = 0; i < node.usedBytes; ++i) ta[i] = node.contents[i];
-      return ta;
+      return new Uint8Array(node.contents);
     },
 #endif
 
@@ -134,7 +132,7 @@ mergeInto(LibraryManager.library, {
         newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
         if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
         var oldContents = node.contents;
-        node.contents = new Uint8Array(new ArrayBuffer(newCapacity)); // Allocate new storage.
+        node.contents = new Uint8Array(newCapacity); // Allocate new storage.
         if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
         return;
       }
