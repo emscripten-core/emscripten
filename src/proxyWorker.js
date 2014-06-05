@@ -7,6 +7,14 @@ function EventListener() {
     this.listeners[event].push(func);
   };
 
+  this.removeEventListener = function(event, func) {
+    var list = this.listeners[event];
+    if (!list) return;
+    var me = list.indexOf(func);
+    if (me < 0) return;
+    list.splice(me, 1);
+  };
+
   this.fireEvent = function fireEvent(event) {
     event.preventDefault = function(){};
 
@@ -82,6 +90,8 @@ document.createElement = function document_createElement(what) {
     default: throw 'document.createElement ' + what;
   }
 };
+
+document.documentElement = {};
 
 if (typeof console === 'undefined') {
   var console = {
