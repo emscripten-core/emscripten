@@ -1830,7 +1830,7 @@ try:
     js_target = unsuffixed(target) + '.js'
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename) + '</script>'))
+      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename) + '</script>'))
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path

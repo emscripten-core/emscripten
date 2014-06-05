@@ -1899,6 +1899,7 @@ function JSify(data, functionsOnly) {
       print('}');
     }
     if (PROXY_TO_WORKER) {
+      print(read('webGLWorker.js'));
       print(read('proxyWorker.js'));
     }
     if (RUNTIME_TYPE_INFO) {

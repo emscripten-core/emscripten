@@ -1,8 +1,6 @@
 
 // proxy to/from worker
 
-Module.ctx = Module.canvas.getContext('2d');
-
 // render
 
 var renderFrameData = null;
@@ -31,6 +29,7 @@ var worker = new Worker('{{{ filename }}}.js');
 var workerResponded = false;
 
 worker.onmessage = function worker_onmessage(event) {
+  //console.log(JSON.stringify(event.data));
   if (!workerResponded) {
     workerResponded = true;
     if (Module.setStatus) Module.setStatus('');
@@ -52,6 +51,10 @@ worker.onmessage = function worker_onmessage(event) {
     }
     case 'canvas': {
       switch (data.op) {
+        case 'getContext': {
+          Module.ctx = Module.canvas.getContext(data.type);
+          break;
+        }
         case 'resize': {
           Module.canvas.width = data.width;
           Module.canvas.height = data.height;
