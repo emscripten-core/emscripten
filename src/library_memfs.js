@@ -101,7 +101,7 @@ mergeInto(LibraryManager.library, {
 #if USE_TYPED_ARRAYS == 2
     // Given a file node, returns its file data converted to a typed array.
     getFileDataAsTypedArray: function(node) {
-      if (node.contents && node.contents.subarray) return node.contents; // No-op get if data already is in a typed array.
+      if (node.contents && node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
       var ta = new Uint8Array(new ArrayBuffer(node.usedBytes));
       for(var i = 0; i < node.usedBytes; ++i) ta[i] = node.contents[i];
       return ta;
@@ -118,9 +118,9 @@ mergeInto(LibraryManager.library, {
       // If we are asked to expand the size of a file that already exists, revert to using a standard JS array to store the file
       // instead of a typed array. This makes resizing the array more flexible because we can just .push() elements at the back to
       // increase the size.
-      if (node.contents && node.contents.subarray && newCapacity > node.contents.buffer.byteLength) {
+      if (node.contents && node.contents.subarray && newCapacity > node.contents.length) {
         node.contents = MEMFS.getFileDataAsRegularArray(node);
-        node.usedBytes = node.contents.length;
+        node.usedBytes = node.contents.length; // We might be writing to a lazy-loaded file which had overridden this property, so force-reset it.
       }
 #endif
 
