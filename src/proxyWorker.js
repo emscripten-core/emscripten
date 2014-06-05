@@ -1,3 +1,7 @@
+function PropertyBag() {
+  this.addProperty = function(){};
+  this.removeProperty = function(){};
+};
 
 function EventListener() {
   this.listeners = {};
@@ -85,6 +89,7 @@ document.createElement = function document_createElement(what) {
           right: canvas.boundingClientRect.right
         };
       };
+      canvas.style = new PropertyBag();
       return canvas;
     }
     default: throw 'document.createElement ' + what;
