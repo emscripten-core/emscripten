@@ -1328,6 +1328,9 @@ keydown(100);keyup(100); // trigger the end
     with open('something.html') as f:
       assert 'gl-matrix' not in f.read(), 'Should not include glMatrix when not needed'
 
+  #def test_glgears_proxy(self):
+  #  self.btest('hello_world_gles.c', expected='waka', args=['--proxy-to-worker'])
+
   def test_glbook(self):
     programs = self.get_library('glbook', [
       os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
