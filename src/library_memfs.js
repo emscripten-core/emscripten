@@ -98,6 +98,16 @@ mergeInto(LibraryManager.library, {
       return node.contents; // No-op, the file contents are already in a JS array. Return as-is.
     },
 
+#if USE_TYPED_ARRAYS == 2
+    // Given a file node, returns its file data converted to a typed array.
+    getFileDataAsTypedArray: function(node) {
+      if (node.contents && node.contents.subarray) return node.contents; // No-op get if data already is in a typed array.
+      var ta = new Uint8Array(new ArrayBuffer(node.usedBytes));
+      for(var i = 0; i < node.usedBytes; ++i) ta[i] = node.contents[i];
+      return ta;
+    },
+#endif
+
     // Allocates a new backing store for the given node so that it can fit at least newSize amount of bytes.
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.

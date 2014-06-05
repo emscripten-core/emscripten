@@ -4031,8 +4031,8 @@ def process(filename):
 
     mem_file = 'src.cpp.o.js.mem'
     orig_args = self.emcc_args
-    for modes in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      self.emcc_args = orig_args + modes
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      self.emcc_args = orig_args + mode
       try_delete(mem_file)
       self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\n'),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
@@ -4080,7 +4080,10 @@ def process(filename):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
     src, output = (test_path + s for s in ('.in', '.out'))
 
-    self.do_run_from_file(src, output)
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      self.emcc_args = orig_args + mode
+      self.do_run_from_file(src, output)
 
   def test_fgetc_ungetc(self):
     src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
@@ -4279,8 +4282,8 @@ def process(filename):
     test_path = path_from_root('tests', 'core', 'test_wprintf')
     src, output = (test_path + s for s in ('.c', '.out'))
     orig_args = self.emcc_args
-    for modes in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      self.emcc_args = orig_args + modes
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      self.emcc_args = orig_args + mode
       self.do_run_from_file(src, output)
 
   def test_direct_string_constant_usage(self):
