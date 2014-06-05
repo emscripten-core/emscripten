@@ -1178,7 +1178,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_get_preloaded_image_data: function(path, w, h) {
-    if (typeof path == "number") {
+    if (typeof path === "number") {
       path = Pointer_stringify(path);
     }
 
@@ -1194,14 +1194,14 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
       return buf;
     }
-    
+
     return 0;
   },
 
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data'],
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
     var stream = FS.getStreamFromPtr(file);
-    if(stream) {
+    if (stream) {
       return _emscripten_get_preloaded_image_data(stream.path, w, h);
     }
 
