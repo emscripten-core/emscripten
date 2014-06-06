@@ -18,7 +18,13 @@ def sizeof_fmt(num):
     return "%3.1f%s" % (num, 'TB')
 
 def zipdir(path, zipfilename):
-  zipf = zipfile.ZipFile(zipfilename, 'w')
+  try:
+    import zlib
+    zip_mode = zipfile.ZIP_DEFLATED
+  except:
+    zip_mode = zipfile.ZIP_STORED
+
+  zipf = zipfile.ZipFile(zipfilename, 'w', zip_mode)
   files_to_compress = []
   for root, dirs, files in os.walk(path):
     for file in files:
