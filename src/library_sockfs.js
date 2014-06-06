@@ -318,8 +318,8 @@ mergeInto(LibraryManager.library, {
             // ECONNREFUSED they are not necessarily the expected error code e.g. 
             // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
             // is still probably the most useful thing to do.
-            sock.error = 111; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-            Module['websocket'].emit('error', [sock.stream.fd, 111, 'ECONNREFUSED: Connection refused']);
+            sock.error = ERRNO_CODES.ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+            Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
             // don't throw
           });
         } else {
@@ -333,8 +333,8 @@ mergeInto(LibraryManager.library, {
           peer.socket.onerror = function(error) {
             // The WebSocket spec only allows a 'simple event' to be thrown on error,
             // so we only really know as much as ECONNREFUSED.
-            sock.error = 111; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-            Module['websocket'].emit('error', [sock.stream.fd, 111, 'ECONNREFUSED: Connection refused']);
+            sock.error = ERRNO_CODES.ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+            Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
           };
         }
       },
