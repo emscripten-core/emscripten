@@ -455,12 +455,12 @@ function WebGLWorker() {
     }
   };
 
-  // GL
-
   function revname(name) {
     for (var x in that) if (that[x] === name) return x;
     return null;
   }
+
+  // GL
 
   this.getParameter = function(name) {
     assert(name);
@@ -492,10 +492,13 @@ function WebGLWorker() {
     var id = nextId++;
     commandBuffer.push('createShader', -2, type, id);
     return { id: id, what: 'shader', type: type };
-  }
+  };
   this.shaderSource = function(shader, source) {
     commandBuffer.push('shaderSource', 2, shader.id, source);
-  }
+  };
+  this.compileShader = function(shader) {
+    commandBuffer.push('compileShader', 1, shader.id);
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];

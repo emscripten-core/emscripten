@@ -5,6 +5,7 @@ function WebGLClient() {
 
   function fixArgs(command, args) {
     switch (command) {
+      case 'compileShader':
       case 'shaderSource': args[0] = objects[args[0]]; break;
     }
   }
