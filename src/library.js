@@ -8319,13 +8319,24 @@ LibraryManager.library = {
       return -1;
     }
 
-    if (level === {{{ cDefine('SOL_SOCKET') }}} && optname === {{{ cDefine('SO_ERROR') }}}) {
-      {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
-      {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
-      sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
-      return 0;
+    if (level === {{{ cDefine('SOL_SOCKET') }}}) {
+      if (optname === {{{ cDefine('SO_ERROR') }}}) {
+        {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
+        {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
+        sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
+        return 0;
+      } else {
+        ___setErrNo(ERRNO_CODES.ENOPROTOOPT); // The option is unknown at the level indicated.
+#if ASSERTIONS
+        Runtime.warnOnce('getsockopt() returning an error as we currently only support optname SO_ERROR');
+#endif
+        return -1;
+      }
     } else {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo(ERRNO_CODES.ENOPROTOOPT); //The option is unknown at the level indicated.
+#if ASSERTIONS
+      Runtime.warnOnce('getsockopt() returning an error as we only support level SOL_SOCKET');
+#endif
       return -1;
     }
   },
