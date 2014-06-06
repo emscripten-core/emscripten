@@ -8,6 +8,8 @@ function WebGLWorker() {
   this.prefetchedParameters = {};
   this.prefetchedExtensions = {};
 
+  var commandBuffer = [];
+
   //===========
   // Constants
   //===========
@@ -469,11 +471,21 @@ function WebGLWorker() {
     dump('worker getExtension ' + JSON.stringify(this.prefetchedExtensions) + '\n');
     var i = this.prefetchedExtensions.indexOf(name);
     if (i < 0) return null;
+    // XXX send a msg, to enable it in the client
     return true; // TODO: return an object here
   };
 
   this.getSupportedExtensions = function() {
     return this.prefetchedExtensions;
+  };
+
+  // Setup
+  var postMainLoop = Module['postMainLoop'];
+  Module['postMainLoop'] = function() {
+    if (postMainLoop) postMainLoop();
+    // frame complete, send the command buffer
+    postMessage({ target: 'gl', method: 'render', commandBuffer: commandBuffer });
+    commandBuffer = [];
   };
 }
 

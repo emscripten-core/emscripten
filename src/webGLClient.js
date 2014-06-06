@@ -1,6 +1,19 @@
 // WebGLWorker client code
 
 function WebGLClient() {
+  function renderCommands(buffer) {
+  }
+
+  this.onmessage = function(msg) {
+    dump('client GL got ' + JSON.stringify(msg) + '\n');
+    switch(msg.op) {
+      case 'render': {
+        renderCommands(msg.commandBuffer);
+        break;
+      }
+      default: throw 'weird gl onmessage ' + JSON.stringify(msg);
+    }
+  };
 }
 
 WebGLClient.prefetch = function() {

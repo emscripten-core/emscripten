@@ -80,6 +80,10 @@ worker.onmessage = function worker_onmessage(event) {
       }
       break;
     }
+    case 'gl': {
+      Module.glClient.onmessage(data);
+      break;
+    }
     default: throw 'what?';
   }
 };
