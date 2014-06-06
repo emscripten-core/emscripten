@@ -489,8 +489,12 @@ function WebGLWorker() {
     commandBuffer.push('clearColor', 4, r, g, b, a);
   };
   this.createShader = function(type) {
-    commandBuffer.push('createShader', 1, type);
-    return { id: nextId++, what: 'shader', type: type };
+    var id = nextId++;
+    commandBuffer.push('createShader', -2, type, id);
+    return { id: id, what: 'shader', type: type };
+  }
+  this.shaderSource = function(shader, source) {
+    commandBuffer.push('shaderSource', 2, shader.id, source);
   }
 
   // Setup

@@ -1,6 +1,14 @@
 // WebGLWorker client code
 
 function WebGLClient() {
+  var objects = {};
+
+  function fixArgs(command, args) {
+    switch (command) {
+      case 'shaderSource': args[0] = objects[args[0]]; break;
+    }
+  }
+
   function renderCommands(buffer) {
     var ctx = Module.ctx;
     var i = 0;
@@ -8,9 +16,20 @@ function WebGLClient() {
     while (i < len) {
       var command = buffer[i++];
       var numArgs = buffer[i++];
-      var args = buffer.slice(i, i+numArgs);
-      i += numArgs;
-      ctx[command].apply(ctx, args);
+      if (numArgs === 0) {
+        ctx[command]();
+      } else if (numArgs > 0) {
+        var args = fixArgs(command, buffer.slice(i, i+numArgs));
+        i += numArgs;
+        ctx[command].apply(ctx, args);
+      } else {
+        // negative means a constructor, last argument is the id to save as
+        numArgs = -numArgs - 1;
+        var args = fixArgs(command, buffer.slice(i, i+numArgs));
+        i += numArgs;
+        var id = buffer[i++];
+        objects[id] = ctx[command].apply(ctx, args);
+      }
     }
   }
 
