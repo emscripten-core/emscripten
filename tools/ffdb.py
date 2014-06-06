@@ -35,9 +35,10 @@ def zipdir(path, zipfilename):
     (root, file) = tuple
     filename = os.path.join(root, file)
     filesize = os.path.getsize(filename)
-    print 'Compressing ' + str(n) + '/' + str(len(files_to_compress)) + ': "' + os.path.relpath(filename, path) + '" (' + sizeof_fmt(filesize) + ')...'
+    path_in_archive = os.path.relpath(filename, path)
+    print 'Compressing ' + str(n) + '/' + str(len(files_to_compress)) + ': "' + path_in_archive + '" (' + sizeof_fmt(filesize) + ')...'
     n += 1
-    zipf.write(os.path.join(root, file))
+    zipf.write(os.path.join(root, file), path_in_archive)
   zipf.close()
   print 'Done. '
 
