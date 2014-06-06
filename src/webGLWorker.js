@@ -499,6 +499,9 @@ function WebGLWorker() {
   this.compileShader = function(shader) {
     commandBuffer.push('compileShader', 1, shader.id);
   };
+  this.getShaderInfoLog = function(shader) {
+    return ''; // optimistic assumption of success; no proxying
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
