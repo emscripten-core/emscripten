@@ -465,16 +465,23 @@ function WebGLWorker() {
     if (name in this.prefetchedParameters) return this.prefetchedParameters[name];
     throw 'TODO: get parameter ' + name + ' : ' + revname(name);
   };
-
   this.getExtension = function(name) {
     var i = this.prefetchedExtensions.indexOf(name);
     if (i < 0) return null;
     commandBuffer.push('getExtension', 1, name);
     return true; // TODO: return an object here
   };
-
   this.getSupportedExtensions = function() {
     return this.prefetchedExtensions;
+  };
+  this.enable = function(cap) {
+    commandBuffer.push('enable', 1, cap);
+  };
+  this.disable = function(cap) {
+    commandBuffer.push('disable', 1, cap);
+  };
+  this.clearColor = function(r, g, b, a) {
+    commandBuffer.push('clearColor', 4, r, g, b, a);
   };
 
   // Setup
