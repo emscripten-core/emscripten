@@ -10,6 +10,8 @@ function WebGLWorker() {
 
   var commandBuffer = [];
 
+  var nextId = 1;
+
   //===========
   // Constants
   //===========
@@ -480,9 +482,16 @@ function WebGLWorker() {
   this.disable = function(cap) {
     commandBuffer.push('disable', 1, cap);
   };
+  this.clear = function(mask) {
+    commandBuffer.push('clear', 1, mask);
+  };
   this.clearColor = function(r, g, b, a) {
     commandBuffer.push('clearColor', 4, r, g, b, a);
   };
+  this.createShader = function(type) {
+    commandBuffer.push('createShader', 1, type);
+    return { id: nextId++, what: 'shader', type: type };
+  }
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
