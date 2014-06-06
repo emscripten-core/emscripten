@@ -52,7 +52,7 @@ def format_html(msg):
 # Prints a verbose log message to stdout channel. Only shown if run with --verbose.
 def logv(msg):
   if LOG_VERBOSE:
-    sys.stdout.write(format_html(msg))
+    sys.stdout.write(format_html(msg) + '\n')
     sys.stdout.flush()
 
 # Reads data from the socket, and tries to parse what we have got so far as a JSON message.
@@ -72,6 +72,9 @@ def read_b2g_response():
     read_queue = read_queue[semicolon+1+payload_len:]
     logv('Read a message of size ' + str(payload_len) + 'b from socket.')
     payload = json.loads(payload)
+    # Log received errors immediately to console
+    if 'error' in payload:
+      print >> sys.stderr, 'Received error "' + payload['error'] + '"! Reason: ' + payload['message']
   return payload
 
 # Sends a command to the B2G device and waits for the response and returns it as a JSON dict.
@@ -108,7 +111,9 @@ def send_b2g_data_chunk(to, data_blob):
     i += 1
   message = '{"to":"'+to+'","type":"chunk","chunk":"' + ''.join(byte_str) + '"}'
   message = str(len(message)) + ':' + message
+  logv('{"to":"'+to+'","type":"chunk","chunk":"<data>"}')
   b2g_socket.sendall(message)
+  return read_b2g_response()
 
 # Queries the device for a list of all installed apps.
 def b2g_get_appslist():
