@@ -524,7 +524,7 @@ void emscripten_debugger();
  * width/height of image are written to w/h if data is valid.
  * Pointer should be free()'d
  */
-char *emscripten_get_preloaded_image_data(char *path, int *w, int *h);
+char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
 
 /*
  * Get preloaded image data from a c FILE *.
