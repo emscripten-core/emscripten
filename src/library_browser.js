@@ -1182,6 +1182,8 @@ mergeInto(LibraryManager.library, {
       path = Pointer_stringify(path);
     }
 
+    path = PATH.resolve(path);
+
     var canvas = Module["preloadedImages"][path];
     if (canvas) {
       var ctx = canvas.getContext("2d");
