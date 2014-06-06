@@ -1175,6 +1175,39 @@ mergeInto(LibraryManager.library, {
     var info = Browser.workers[id];
     if (!info) return -1;
     return info.awaited;
+  },
+
+  emscripten_get_preloaded_image_data: function(path, w, h) {
+    if (typeof path === "number") {
+      path = Pointer_stringify(path);
+    }
+
+    path = PATH.resolve(path);
+
+    var canvas = Module["preloadedImages"][path];
+    if (canvas) {
+      var ctx = canvas.getContext("2d");
+      var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var buf = _malloc(canvas.width * canvas.height * 4);
+
+      HEAPU8.set(image.data, buf);
+
+      {{{ makeSetValue('w', '0', 'canvas.width', 'i32') }}};
+      {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
+      return buf;
+    }
+
+    return 0;
+  },
+
+  emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data'],
+  emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
+    var stream = FS.getStreamFromPtr(file);
+    if (stream) {
+      return _emscripten_get_preloaded_image_data(stream.path, w, h);
+    }
+
+    return 0;
   }
 });
 
