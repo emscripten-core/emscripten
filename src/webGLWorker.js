@@ -435,6 +435,22 @@ function WebGLWorker() {
   //==========
 
   var that = this;
+
+  // Helpers
+
+  this.onmessage = function(msg) {
+    dump('worker GL got ' + JSON.stringify(msg) + '\n');
+    switch(msg.op) {
+      case 'setPrefetchedParameters': {
+        that.prefetchedParameters = msg.data;
+        break;
+      }
+      default: throw 'weird gl onmessage ' + JSON.stringify(msg);
+    }
+  };
+
+  // GL
+
   function revname(name) {
     for (var x in that) if (that[x] === name) return x;
     return null;

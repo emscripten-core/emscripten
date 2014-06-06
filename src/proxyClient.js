@@ -29,7 +29,7 @@ var worker = new Worker('{{{ filename }}}.js');
 var workerResponded = false;
 
 worker.onmessage = function worker_onmessage(event) {
-  //console.log(JSON.stringify(event.data));
+  dump('client got ' + JSON.stringify(event.data) + '\n');
   if (!workerResponded) {
     workerResponded = true;
     if (Module.setStatus) Module.setStatus('');
@@ -53,6 +53,7 @@ worker.onmessage = function worker_onmessage(event) {
       switch (data.op) {
         case 'getContext': {
           Module.ctx = Module.canvas.getContext(data.type);
+          if (data.type !== '2d') Module.glClient = new WebGLClient();
           break;
         }
         case 'resize': {

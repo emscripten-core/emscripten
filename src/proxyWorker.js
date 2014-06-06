@@ -141,6 +141,7 @@ onmessage = function onmessage(message) {
     }
     messageBuffer.push(message);
   }
+  dump('worker got ' + JSON.stringify(message.data) + '\n');
   switch (message.data.target) {
     case 'document': {
       document.fireEvent(message.data.event);
@@ -156,6 +157,10 @@ onmessage = function onmessage(message) {
       } else if (message.data.boundingClientRect) {
         Module.canvas.boundingClientRect = message.data.boundingClientRect;
       } else throw 'ey?';
+      break;
+    }
+    case 'gl': {
+      Module.ctx.onmessage(message.data);
       break;
     }
     default: throw 'wha? ' + message.data.target;
