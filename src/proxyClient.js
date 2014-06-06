@@ -26,6 +26,8 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
 
 var worker = new Worker('{{{ filename }}}.js');
 
+WebGLClient.prefetch(); // XXX not guaranteed to be before worker main()
+
 var workerResponded = false;
 
 worker.onmessage = function worker_onmessage(event) {

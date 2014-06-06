@@ -457,6 +457,7 @@ function WebGLWorker() {
   }
 
   this.getParameter = function(name) {
+    dump('worker getParameter ' + JSON.stringify(this.prefetchedParameters) + '\n');
     assert(name);
     if (name in this.prefetchedParameters) return this.prefetchedParameters[name];
     throw 'TODO: get parameter ' + name + ' : ' + revname(name);

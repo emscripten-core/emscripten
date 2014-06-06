@@ -38,6 +38,8 @@ window.close = function window_close() {
   postMessage({ target: 'window', method: 'close' });
 };
 
+var webGLWorker = new WebGLWorker();
+
 var document = new EventListener();
 
 document.createElement = function document_createElement(what) {
@@ -75,7 +77,7 @@ document.createElement = function document_createElement(what) {
             }
           };
         } else {
-          return new WebGLWorker();
+          return webGLWorker;
         }
       };
       canvas.boundingClientRect = {};
@@ -160,7 +162,7 @@ onmessage = function onmessage(message) {
       break;
     }
     case 'gl': {
-      Module.ctx.onmessage(message.data);
+      webGLWorker.onmessage(message.data);
       break;
     }
     default: throw 'wha? ' + message.data.target;
