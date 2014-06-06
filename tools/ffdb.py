@@ -60,9 +60,10 @@ def logv(msg):
 # The messages are of form "bytelength:{jsondict}", where bytelength tells how many bytes
 # there are in the data that comes after the colon.
 # Returns a JSON dictionary of the received message.
-def read_b2g_response():
+def read_b2g_response(print_errors_to_console = True):
   global read_queue, b2g_socket
   read_queue += b2g_socket.recv(65536*2)
+  payload = ''
   while ':' in read_queue:
     semicolon = read_queue.index(':')
     payload_len = int(read_queue[:semicolon])
@@ -74,12 +75,12 @@ def read_b2g_response():
     logv('Read a message of size ' + str(payload_len) + 'b from socket.')
     payload = json.loads(payload)
     # Log received errors immediately to console
-    if 'error' in payload:
+    if print_errors_to_console and 'error' in payload:
       print >> sys.stderr, 'Received error "' + payload['error'] + '"! Reason: ' + payload['message']
   return payload
 
 # Sends a command to the B2G device and waits for the response and returns it as a JSON dict.
-def send_b2g_cmd(to, cmd, data = {}):
+def send_b2g_cmd(to, cmd, data = {}, print_errors_to_console = True):
   global b2g_socket
   msg = { 'to': to, 'type': cmd}
   msg = dict(msg.items() + data.items())
@@ -88,7 +89,7 @@ def send_b2g_cmd(to, cmd, data = {}):
   msg = str(len(msg))+':'+msg
   logv('Sending cmd:' + cmd + ' to:' + to)
   b2g_socket.sendall(msg)
-  return read_b2g_response()
+  return read_b2g_response(print_errors_to_console)
 
 def escape_bytes(b):
   return str(b)
@@ -115,6 +116,13 @@ def send_b2g_data_chunk(to, data_blob):
   logv('{"to":"'+to+'","type":"chunk","chunk":"<data>"}')
   b2g_socket.sendall(message)
   return read_b2g_response()
+
+def send_b2g_bulk_data(to, data_blob):
+  message = 'bulk ' + to + ' stream ' + str(len(data_blob)) + ':'
+  logv(message)
+  b2g_socket.sendall(message)
+  b2g_socket.sendall(data_blob)
+  # It seems that B2G doesn't send any response JSON back after a bulk transfer is finished, so no read_b2g_response() here.
 
 # Queries the device for a list of all installed apps.
 def b2g_get_appslist():
@@ -253,28 +261,35 @@ def main():
 
     print 'Uploading application package "' + target_app_path + '"...'
     print 'Size of compressed package: ' + sizeof_fmt(os.path.getsize(target_app_path)) + '.'
-    uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage')
-    packageUploadActor = uploadResponse['actor']
     app_file = open(target_app_path, 'rb')
     data = app_file.read()
     file_size = len(data)
-    chunk_size = 4*1024*1024
-    i = 0
+
+    uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage', { 'bulk': 'true'}, print_errors_to_console = False) # This may fail if on old device.
     start_time = time.time()
-    while i < file_size:
-      chunk = data[i:i+chunk_size]
+    if 'actor' in uploadResponse and 'BulkActor' in uploadResponse['actor']: # New B2G 2.0 hotness: binary data transfer
+      packageUploadActor = uploadResponse['actor']
+      send_b2g_bulk_data(packageUploadActor, data)
+    else: # Old B2G 1.4 and older, serialize binary data in JSON text strings (SLOW!)
+      print 'Bulk upload is not supported, uploading binary data with old slow format. Consider flashing your device to FFOS 2.0 or newer to enjoy faster upload speeds.'
+      uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage')
+      packageUploadActor = uploadResponse['actor']
+      chunk_size = 4*1024*1024
+      i = 0
+      while i < file_size:
+        chunk = data[i:i+chunk_size]
 
-      send_b2g_data_chunk(packageUploadActor, chunk)
-      i += chunk_size
-      bytes_uploaded = min(i, file_size)
-      cur_time = time.time()
-      secs_elapsed = cur_time - start_time
-      percentage_done = bytes_uploaded * 1.0 / file_size
-      total_time = secs_elapsed / percentage_done
-      time_left = total_time - secs_elapsed
-      print sizeof_fmt(bytes_uploaded) + " uploaded, {:5.1f} % done.".format(percentage_done*100.0) + ' Elapsed: ' + str(int(secs_elapsed)) + ' seconds. Time left: ' + str(datetime.timedelta(seconds=int(time_left))) + '. Data rate: {:5.2f} KB/second.'.format(bytes_uploaded / 1024.0 / secs_elapsed)
+        send_b2g_data_chunk(packageUploadActor, chunk)
+        i += chunk_size
+        bytes_uploaded = min(i, file_size)
+        cur_time = time.time()
+        secs_elapsed = cur_time - start_time
+        percentage_done = bytes_uploaded * 1.0 / file_size
+        total_time = secs_elapsed / percentage_done
+        time_left = total_time - secs_elapsed
+        print sizeof_fmt(bytes_uploaded) + " uploaded, {:5.1f} % done.".format(percentage_done*100.0) + ' Elapsed: ' + str(int(secs_elapsed)) + ' seconds. Time left: ' + str(datetime.timedelta(seconds=int(time_left))) + '. Data rate: {:5.2f} KB/second.'.format(bytes_uploaded / 1024.0 / secs_elapsed)
+
     send_b2g_cmd(webappsActorName, 'install', { 'appId': str(uuid.uuid4()), 'upload': packageUploadActor })
-
     cur_time = time.time()
     secs_elapsed = cur_time - start_time
     print 'Upload of ' + sizeof_fmt(file_size) + ' finished. Total time elapsed: ' + str(int(secs_elapsed)) + ' seconds. Data rate: {:5.2f} KB/second.'.format(file_size / 1024.0 / secs_elapsed)
