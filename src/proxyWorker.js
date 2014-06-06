@@ -143,7 +143,7 @@ onmessage = function onmessage(message) {
     }
     messageBuffer.push(message);
   }
-  dump('worker got ' + JSON.stringify(message.data) + '\n');
+  //dump('worker got ' + JSON.stringify(message.data) + '\n');
   switch (message.data.target) {
     case 'document': {
       document.fireEvent(message.data.event);

@@ -442,7 +442,7 @@ function WebGLWorker() {
   // Helpers
 
   this.onmessage = function(msg) {
-    dump('worker GL got ' + JSON.stringify(msg) + '\n');
+    //dump('worker GL got ' + JSON.stringify(msg) + '\n');
     switch(msg.op) {
       case 'setPrefetched': {
         that.prefetchedParameters = msg.parameters;
@@ -461,17 +461,15 @@ function WebGLWorker() {
   }
 
   this.getParameter = function(name) {
-    dump('worker getParameter ' + JSON.stringify(this.prefetchedParameters) + '\n');
     assert(name);
     if (name in this.prefetchedParameters) return this.prefetchedParameters[name];
     throw 'TODO: get parameter ' + name + ' : ' + revname(name);
   };
 
   this.getExtension = function(name) {
-    dump('worker getExtension ' + JSON.stringify(this.prefetchedExtensions) + '\n');
     var i = this.prefetchedExtensions.indexOf(name);
     if (i < 0) return null;
-    // XXX send a msg, to enable it in the client
+    commandBuffer.push('getExtension', 1, name);
     return true; // TODO: return an object here
   };
 

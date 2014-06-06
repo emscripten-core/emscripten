@@ -2,6 +2,16 @@
 
 function WebGLClient() {
   function renderCommands(buffer) {
+    var ctx = Module.ctx;
+    var i = 0;
+    var len = buffer.length;
+    while (i < len) {
+      var command = buffer[i++];
+      var numArgs = buffer[i++];
+      var args = buffer.slice(i, i+numArgs);
+      i += numArgs;
+      ctx[command].apply(ctx, args);
+    }
   }
 
   this.onmessage = function(msg) {

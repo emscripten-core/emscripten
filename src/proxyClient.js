@@ -31,7 +31,7 @@ WebGLClient.prefetch(); // XXX not guaranteed to be before worker main()
 var workerResponded = false;
 
 worker.onmessage = function worker_onmessage(event) {
-  dump('client got ' + JSON.stringify(event.data) + '\n');
+  //dump('client got ' + JSON.stringify(event.data) + '\n');
   if (!workerResponded) {
     workerResponded = true;
     if (Module.setStatus) Module.setStatus('');
