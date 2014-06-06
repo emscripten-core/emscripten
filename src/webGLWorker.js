@@ -502,6 +502,15 @@ function WebGLWorker() {
   this.getShaderInfoLog = function(shader) {
     return ''; // optimistic assumption of success; no proxying
   };
+  this.createProgram = function() {
+    var id = nextId++;
+    commandBuffer.push('createProgram', -1, id);
+    return { id: id, what: 'program' };
+  };
+  this.attachShader = function(program, shader) {
+    commandBuffer.push('attachShader', 2, program.id, shader.id);
+    // TODO: save shader list for getAttachedShaders
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
