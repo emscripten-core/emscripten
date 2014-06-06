@@ -10,6 +10,7 @@ mergeInto(LibraryManager.library, {
 
       // Add the Event registration mechanism to the exported websocket configuration
       // object so we can register network callbacks from native JavaScript too.
+      // For more documentation see system/include/emscripten/emscripten.h
       Module['websocket']._callbacks = {};
       Module['websocket']['on'] = function(event, callback) {
 	    if ('function' === typeof callback) {
@@ -686,16 +687,16 @@ mergeInto(LibraryManager.library, {
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
-  __set_network_callback: function(event, callback) {
+  __set_network_callback: function(event, userData, callback) {
     function _callback(data) {
       try {
         if (event === 'error') {
           var sp = Runtime.stackSave();
           var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
-          Runtime.dynCall('viii', callback, [data[0], data[1], msg]);
+          Runtime.dynCall('viiii', callback, [data[0], data[1], msg, userData]);
           Runtime.stackRestore(sp);
         } else {
-          Runtime.dynCall('vi', callback, [data]);
+          Runtime.dynCall('vii', callback, [data, userData]);
         }
       } catch (e) {
         if (e instanceof ExitStatus) {
@@ -711,28 +712,27 @@ mergeInto(LibraryManager.library, {
     Module['websocket']['on'](event, callback ? _callback : null);
   },
   emscripten_set_socket_error_callback__deps: ['__set_network_callback'],
-  emscripten_set_socket_error_callback: function(callback) {
-    ___set_network_callback('error', callback);
+  emscripten_set_socket_error_callback: function(userData, callback) {
+    ___set_network_callback('error', userData, callback);
   },
   emscripten_set_socket_open_callback__deps: ['__set_network_callback'],
-  emscripten_set_socket_open_callback: function(callback) {
-    ___set_network_callback('open', callback);
+  emscripten_set_socket_open_callback: function(userData, callback) {
+    ___set_network_callback('open', userData, callback);
   },
   emscripten_set_socket_listen_callback__deps: ['__set_network_callback'],
-  emscripten_set_socket_listen_callback: function(callback) {
-    ___set_network_callback('listen', callback);
-
+  emscripten_set_socket_listen_callback: function(userData, callback) {
+    ___set_network_callback('listen', userData, callback);
   },
   emscripten_set_socket_connection_callback__deps: ['__set_network_callback'],
-  emscripten_set_socket_connection_callback: function(callback) {
-    ___set_network_callback('connection', callback);
+  emscripten_set_socket_connection_callback: function(userData, callback) {
+    ___set_network_callback('connection', userData, callback);
   },
   emscripten_set_socket_message_callback__deps: ['__set_network_callback'],
-  emscripten_set_socket_message_callback: function(callback) {
-    ___set_network_callback('message', callback);
+  emscripten_set_socket_message_callback: function(userData, callback) {
+    ___set_network_callback('message', userData, callback);
   },
   emscripten_set_socket_close_callback__deps: ['__set_network_callback'],
-  emscripten_set_socket_close_callback: function(callback) {
-    ___set_network_callback('close', callback);
+  emscripten_set_socket_close_callback: function(userData, callback) {
+    ___set_network_callback('close', userData, callback);
   }
 });
