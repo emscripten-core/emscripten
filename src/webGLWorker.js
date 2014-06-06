@@ -6,6 +6,7 @@ function WebGLWorker() {
   //=======
 
   this.prefetchedParameters = {};
+  this.prefetchedExtensions = {};
 
   //===========
   // Constants
@@ -441,8 +442,9 @@ function WebGLWorker() {
   this.onmessage = function(msg) {
     dump('worker GL got ' + JSON.stringify(msg) + '\n');
     switch(msg.op) {
-      case 'setPrefetchedParameters': {
-        that.prefetchedParameters = msg.data;
+      case 'setPrefetched': {
+        that.prefetchedParameters = msg.parameters;
+        that.prefetchedExtensions = msg.extensions;
         break;
       }
       default: throw 'weird gl onmessage ' + JSON.stringify(msg);
@@ -461,6 +463,17 @@ function WebGLWorker() {
     assert(name);
     if (name in this.prefetchedParameters) return this.prefetchedParameters[name];
     throw 'TODO: get parameter ' + name + ' : ' + revname(name);
+  };
+
+  this.getExtension = function(name) {
+    dump('worker getExtension ' + JSON.stringify(this.prefetchedExtensions) + '\n');
+    var i = this.prefetchedExtensions.indexOf(name);
+    if (i < 0) return null;
+    return true; // TODO: return an object here
+  };
+
+  this.getSupportedExtensions = function() {
+    return this.prefetchedExtensions;
   };
 }
 

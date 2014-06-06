@@ -7,10 +7,10 @@ WebGLClient.prefetch = function() {
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
   if (!ctx) return;
-  var data = {};
+  var parameters = {};
   ['MAX_VERTEX_ATTRIBS'].forEach(function(name) {
-    data[ctx[name]] = ctx.getParameter(ctx[name]);
+    parameters[ctx[name]] = ctx.getParameter(ctx[name]);
   });
-  worker.postMessage({ target: 'gl', op: 'setPrefetchedParameters', data: data });
+  worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters: parameters, extensions: ctx.getSupportedExtensions() });
 };
 
