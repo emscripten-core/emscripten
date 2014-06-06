@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import socket, json, sys, uuid, datetime, time, logging, cgi, zipfile, os, tempfile, atexit, subprocess, re, base64
+import socket, json, sys, uuid, datetime, time, logging, cgi, zipfile, os, tempfile, atexit, subprocess, re, base64, struct, imghdr
 
 LOG_VERBOSE = False  # Verbose printing enabled with --verbose
 HOST = 'localhost'   # The remote host to connect to the B2G device
@@ -390,9 +390,25 @@ def main():
         sys.exit(1)
       data += data_reply['substring']
       pos += bytes_to_read
+    send_b2g_cmd(data_get_actor, 'release') # We need to explicitly free the screenshot image string from the device, or the Devtools connection leaks resources!
     binary_data = base64.b64decode(data)
     open(filename, 'wb').write(binary_data)
-    print "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "'."
+
+    def get_png_image_size(filename):
+      fhandle = open(filename, 'rb')
+      head = fhandle.read(24)
+      if len(head) != 24:
+        return (-1, -1)
+      check = struct.unpack('>i', head[4:8])[0]
+      if check != 0x0d0a1a0a:
+        return (-1, -1)
+      return struct.unpack('>ii', head[16:24])
+
+    width, height = get_png_image_size(filename)
+    if width <= 0 or height <= 0:
+      print >> sys.stderr, "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "', but the contents may be corrupted!"
+    else:
+      print "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "' (" + str(width) + 'x' + str(height) + ' pixels).'
   else:
     print "Unknown command '" + sys.argv[1] + "'! Pass --help for instructions."
 
