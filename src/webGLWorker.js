@@ -518,6 +518,21 @@ function WebGLWorker() {
   this.linkProgram = function(program) {
     commandBuffer.push('linkProgram', 1, program.id);
   };
+  this.getProgramParameter = function(program, name) {
+    if (name === this.ACTIVE_UNIFORMS) {
+      // parse shader sources, make a guess...
+      var uniforms = [];
+      program.shaders.forEach(function(shader) {
+        var newUniforms = shader.source.match(/uniform\s+\w+\s+(\w+);/g);
+        if (!newUniforms) return;
+        uniforms = uniforms.concat(newUniforms.filter(function(uniform) {
+          return uniforms.indexOf(uniform) < 0;
+        }));
+      });
+      return uniforms.length;
+    }
+    throw 'bad getProgramParameter ' + revname(name);
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
