@@ -511,6 +511,9 @@ function WebGLWorker() {
     commandBuffer.push('attachShader', 2, program.id, shader.id);
     // TODO: save shader list for getAttachedShaders
   };
+  this.bindAttribLocation = function(program, index, name) {
+    commandBuffer.push('bindAttribLocation', 3, program.id, index, name);
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
