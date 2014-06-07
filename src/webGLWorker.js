@@ -494,6 +494,7 @@ function WebGLWorker() {
     return { id: id, what: 'shader', type: type };
   };
   this.shaderSource = function(shader, source) {
+    shader.source = source;
     commandBuffer.push('shaderSource', 2, shader.id, source);
   };
   this.compileShader = function(shader) {
@@ -505,11 +506,11 @@ function WebGLWorker() {
   this.createProgram = function() {
     var id = nextId++;
     commandBuffer.push('createProgram', -1, id);
-    return { id: id, what: 'program' };
+    return { id: id, what: 'program', shaders: [] };
   };
   this.attachShader = function(program, shader) {
+    program.shaders.push(shader);
     commandBuffer.push('attachShader', 2, program.id, shader.id);
-    // TODO: save shader list for getAttachedShaders
   };
   this.bindAttribLocation = function(program, index, name) {
     commandBuffer.push('bindAttribLocation', 3, program.id, index, name);
