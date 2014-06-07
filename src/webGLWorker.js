@@ -514,6 +514,9 @@ function WebGLWorker() {
   this.bindAttribLocation = function(program, index, name) {
     commandBuffer.push('bindAttribLocation', 3, program.id, index, name);
   };
+  this.linkProgram = function(program) {
+    commandBuffer.push('linkProgram', 1, program.id);
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
