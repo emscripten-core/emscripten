@@ -7,6 +7,7 @@ function WebGLClient() {
     switch (command) {
       case 'compileShader':
       case 'shaderSource': args[0] = objects[args[0]]; break;
+      case 'attachShader': args[0] = objects[args[0]]; args[1] = objects[args[1]]; break;
     }
   }
 
