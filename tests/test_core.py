@@ -4643,6 +4643,39 @@ PORT: 3979
       '''
       self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\nJansson: Node with ID `0` not found. Context has `10` nodes.\n0\nJansson: No JSON context.\njansson!')
 
+  def test_js_libraries(self):
+    if self.emcc_args == None: return self.skip('needs emcc')
+
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+      #include <stdio.h>
+      extern "C" {
+        extern void printey();
+        extern int calcey(int x, int y);
+      }
+      int main() {
+        printey();
+        printf("*%d*\\n", calcey(10, 22));
+        return 0;
+      }
+    ''')
+    open(os.path.join(self.get_dir(), 'mylib1.js'), 'w').write('''
+      mergeInto(LibraryManager.library, {
+        printey: function() {
+          Module.print('hello from lib!');
+        }
+      });
+    ''')
+    open(os.path.join(self.get_dir(), 'mylib2.js'), 'w').write('''
+      mergeInto(LibraryManager.library, {
+        calcey: function(x, y) {
+          return x + y;
+        }
+      });
+    ''')
+
+    self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'mylib1.js'), '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]
+    self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'hello from lib!\n*32*\n')
+
   def test_constglobalunion(self):
     if self.emcc_args is None: return self.skip('needs emcc')
     self.emcc_args += ['-s', 'EXPORT_ALL=1']
