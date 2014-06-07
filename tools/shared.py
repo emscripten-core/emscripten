@@ -1426,11 +1426,16 @@ class Building:
     settings = Settings.serialize()
     args = settings + extra_args
     if WINDOWS:
-      args = ['@' + response_file.create_response_file(args, TEMP_DIR)]
+      rsp_file = response_file.create_response_file(args, TEMP_DIR)
+      args = ['@' + rsp_file]
     cmdline = [PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     jsrun.timeout_run(Popen(cmdline, stdout=PIPE), None, 'Compiling')
+
+    # Clean up .rsp file the compiler used after we are finished.
+    if WINDOWS:
+      try_delete(rsp_file)
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
