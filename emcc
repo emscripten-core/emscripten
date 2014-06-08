@@ -1376,6 +1376,8 @@ try:
   if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
     assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
 
+  assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
+
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
 
