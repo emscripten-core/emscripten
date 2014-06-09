@@ -323,7 +323,7 @@ def main():
 
   data = send_b2g_cmd('root', 'listTabs')
   if not 'deviceActor' in data:
-    print 'Error! Debugging connection was not available, deviceActor was not found!'
+    print 'Error! Debugging connection was not available. Make sure that the "Remote debugging" developer option on the device is set to "ADB and Devtools".'
     sys.exit(1)
   deviceActorName = data['deviceActor']
   logv('deviceActor: ' + deviceActorName)
