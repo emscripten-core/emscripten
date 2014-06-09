@@ -531,6 +531,8 @@ function WebGLWorker() {
           var close = name.indexOf(']');
           size = parseInt(name.substring(open+1, close));
           name = name.substr(0, open);
+        } else {
+          name = name.substr(0, name.length-1); // remove ';'
         }
         if (!program.uniforms[name]) {
           program.uniforms[name] = { what: 'uniform', name: name, size: size };
