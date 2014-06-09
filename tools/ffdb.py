@@ -64,7 +64,8 @@ def logv(msg):
 def read_b2g_response(print_errors_to_console = True):
   global read_queue, b2g_socket
   try:
-    read_queue += b2g_socket.recv(65536*2)
+    if len(read_queue) == 0:
+      read_queue += b2g_socket.recv(65536*2)
   except KeyboardInterrupt:
     print ' Aborted by user'
     sys.exit(1)
@@ -88,6 +89,8 @@ def read_b2g_response(print_errors_to_console = True):
     # Log received errors immediately to console
     if print_errors_to_console and 'error' in payload:
       print >> sys.stderr, 'Received error "' + payload['error'] + '"! Reason: ' + payload['message']
+    else:
+      break
   return payload
 
 # Sends a command to the B2G device and waits for the response and returns it as a JSON dict.
@@ -280,6 +283,9 @@ def b2g_install(target_app_path):
   cur_time = time.time()
   secs_elapsed = cur_time - start_time
   print 'Upload of ' + sizeof_fmt(file_size) + ' finished. Total time elapsed: ' + str(int(secs_elapsed)) + ' seconds. Data rate: {:5.2f} KB/second.'.format(file_size / 1024.0 / secs_elapsed)
+  if not 'appId' in reply:
+    print 'Error: Application install failed! ' + str(reply)
+    sys.exit()
   return reply['appId']
 
 def b2g_app_command(app_command, app_name):
@@ -304,7 +310,7 @@ def b2g_log(app_name, clear=False):
     if clear:
       send_b2g_cmd(consoleActor, 'clearMessagesCache')
       print 'Cleared message log.'
-      sys.exit(0)
+      return 0
 
     msgs = send_b2g_cmd(consoleActor, 'startListeners', { 'listeners': ['PageError','ConsoleAPI','NetworkActivity','FileActivity'] })
 
