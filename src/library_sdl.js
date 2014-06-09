@@ -2601,7 +2601,7 @@ var LibrarySDL = {
     if (info && info.audio) {
       info.audio.pause();
     } else {
-      Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
+      //Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
     }
   },
   

@@ -65,6 +65,9 @@ def read_b2g_response(print_errors_to_console = True):
   global read_queue, b2g_socket
   try:
     read_queue += b2g_socket.recv(65536*2)
+  except KeyboardInterrupt:
+    print ' Aborted by user'
+    sys.exit(1)
   except Exception, e:
     if e[0] == 57: # Socket is not connected
       print 'Error! Failed to receive data from the device: socket is not connected!'
