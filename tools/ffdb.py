@@ -213,6 +213,122 @@ def b2g_set_pref(pref, value):
     os.remove(tempfilename)
   atexit.register(delete_temp_file)
 
+def get_packaged_app_manifest(target_app_path):
+  if os.path.isdir(target_app_path):
+    return json.loads(open(os.path.join(target_app_path, 'manifest.webapp'), 'r').read())
+  else:
+    print 'Error! Could not read packaged app manifest from zip file! TODO'
+    return {}
+
+def b2g_install(target_app_path):
+  if os.path.isdir(target_app_path):
+    print 'Zipping up the contents of directory "' + target_app_path + '"...'
+    (oshandle, tempzip) = tempfile.mkstemp(suffix='.zip', prefix='ffdb_temp_')
+    zipdir(target_app_path, tempzip)
+    target_app_path = tempzip
+    # Remember to delete the temporary package after we quit.
+    def delete_temp_file():
+      os.remove(tempzip)
+    atexit.register(delete_temp_file)
+
+  print 'Uploading application package "' + target_app_path + '"...'
+  print 'Size of compressed package: ' + sizeof_fmt(os.path.getsize(target_app_path)) + '.'
+  app_file = open(target_app_path, 'rb')
+  data = app_file.read()
+  file_size = len(data)
+
+  uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage', { 'bulk': 'true'}, print_errors_to_console = False) # This may fail if on old device.
+  start_time = time.time()
+  if 'actor' in uploadResponse and 'BulkActor' in uploadResponse['actor']: # New B2G 2.0 hotness: binary data transfer
+    packageUploadActor = uploadResponse['actor']
+    send_b2g_bulk_data(packageUploadActor, data)
+  else: # Old B2G 1.4 and older, serialize binary data in JSON text strings (SLOW!)
+    print 'Bulk upload is not supported, uploading binary data with old slow format. Consider flashing your device to FFOS 2.0 or newer to enjoy faster upload speeds.'
+    uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage')
+    packageUploadActor = uploadResponse['actor']
+    chunk_size = 4*1024*1024
+    i = 0
+    while i < file_size:
+      chunk = data[i:i+chunk_size]
+
+      send_b2g_data_chunk(packageUploadActor, chunk)
+      i += chunk_size
+      bytes_uploaded = min(i, file_size)
+      cur_time = time.time()
+      secs_elapsed = cur_time - start_time
+      percentage_done = bytes_uploaded * 1.0 / file_size
+      total_time = secs_elapsed / percentage_done
+      time_left = total_time - secs_elapsed
+      print sizeof_fmt(bytes_uploaded) + " uploaded, {:5.1f} % done.".format(percentage_done*100.0) + ' Elapsed: ' + str(int(secs_elapsed)) + ' seconds. Time left: ' + str(datetime.timedelta(seconds=int(time_left))) + '. Data rate: {:5.2f} KB/second.'.format(bytes_uploaded / 1024.0 / secs_elapsed)
+
+  app_local_id = str(uuid.uuid4())
+  reply = send_b2g_cmd(webappsActorName, 'install', { 'appId': app_local_id, 'upload': packageUploadActor })
+  cur_time = time.time()
+  secs_elapsed = cur_time - start_time
+  print 'Upload of ' + sizeof_fmt(file_size) + ' finished. Total time elapsed: ' + str(int(secs_elapsed)) + ' seconds. Data rate: {:5.2f} KB/second.'.format(file_size / 1024.0 / secs_elapsed)
+  return reply['appId']
+
+def b2g_app_command(app_command, app_name):
+  apps = b2g_get_appslist()
+  for app in apps:
+    if str(app['localId']) == app_name or app['name'] == app_name or app['manifestURL'] == app_name or app['id'] == app_name:
+      send_b2g_cmd(webappsActorName, app_command, { 'manifestURL': app['manifestURL'] })
+      return 0
+  print 'Error! Application "' + app_name + '" was not found! Use the \'list\' command to find installed applications.'
+  return 1
+
+def b2g_log(app_name, clear=False):
+  apps = b2g_get_appslist()
+  appActor = ''
+  for app in apps:
+    if str(app['localId']) == app_name or app['name'] == app_name or app['manifestURL'] == app_name or app['id'] == app_name:
+      appActor = send_b2g_cmd(webappsActorName, 'getAppActor', { 'manifestURL': app['manifestURL'] })
+      break
+  if 'actor' in appActor:
+    consoleActor = appActor['actor']['consoleActor']
+
+    if clear:
+      send_b2g_cmd(consoleActor, 'clearMessagesCache')
+      print 'Cleared message log.'
+      sys.exit(0)
+
+    msgs = send_b2g_cmd(consoleActor, 'startListeners', { 'listeners': ['PageError','ConsoleAPI','NetworkActivity','FileActivity'] })
+
+    def log_b2g_message(msg):
+      WARNING = '\033[93m'
+      FAIL = '\033[91m'
+      ENDC = '\033[0m'
+      BOLD = "\033[1m"
+      msgs = []
+      if 'type' in msg and msg['type'] == 'consoleAPICall':
+        msgs = [msg['message']]
+      elif 'messages' in msg:
+        msgs = msg['messages']
+
+      for m in msgs:
+        args = m['arguments']
+
+        for arg in args:
+          if m['level'] == 'log':
+            color = 'I/'
+          elif m['level'] == 'warn':
+            color = WARNING + 'W/'
+          elif m['level'] == 'error':
+            color = FAIL + 'E/'
+          else:
+            color = m['level'] + '/'
+
+          print color + str(m['functionName']) + '@' + str(m['filename']) + ':' + str(m['lineNumber']) + ': ' + str(arg) + ENDC
+
+    msgs = send_b2g_cmd(consoleActor, 'getCachedMessages', { 'messageTypes': ['PageError', 'ConsoleAPI'] })
+    log_b2g_message(msgs)
+
+    while True:
+      msg = read_b2g_response()
+      log_b2g_message(msg)
+  else:
+    print 'Application "' + sys.argv[2] + '" is not running!'
+
 def main():
   global b2g_socket, webappsActorName, HOST, PORT, VERBOSE, ADB
   if len(sys.argv) < 2 or '--help' in sys.argv or 'help' in sys.argv or '-v' in sys.argv:
@@ -223,11 +339,14 @@ def main():
     list [--running] [--all]: Prints out the user applications installed on the device.
                               If --running is passed, only the currently opened apps are shown.
                               If --all is specified, then also uninstallable system applications are listed.
-    launch <app>: Starts the given application. If already running, brings to front.
+    launch <app> [--log]: Starts the given application. If already running, brings to front. If the --log option is passed, ffdb will
+                          start persistently logging the execution of the given application.
     close <app>: Terminates the execution of the given application.
     uninstall <app>: Removes the given application from the device.
-    install <path>: Uploads and installs a packaged app that resides in the given local directory.
+    install <path> [--run] [--log]: Uploads and installs a packaged app that resides in the given local directory.
                     <path> may either refer to a directory containing a packaged app, or to a prepackaged zip file.
+                    If the --run option is passed, the given application is immediately launched after the installation finishes.
+                    If the --log option is passed, ffdb will start persistently logging the execution of the installed application.
     log <app> [--clear]: Starts a persistent log listener that reads web console messages from the given application.
                          If --clear is passed, the message log for that application is cleared instead.
     navigate <url>: Opens the given web page in the B2G browser.
@@ -333,9 +452,8 @@ def main():
   send_b2g_cmd(deviceActorName, 'getDescription')
   send_b2g_cmd(deviceActorName, 'getRawPermissionsTable')
 
-  apps = b2g_get_appslist()
-
   if sys.argv[1] == 'list':
+    apps = b2g_get_appslist()
     running_app_manifests = b2g_get_runningapps()
     printed_apps = apps
     print_only_running = '--running' in sys.argv and not '--all' in sys.argv
@@ -356,61 +474,27 @@ def main():
     if len(sys.argv) < 3:
       print 'Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>'
       return 1
-    for app in apps:
-      if str(app['localId']) == sys.argv[2] or app['name'] == sys.argv[2] or app['manifestURL'] == sys.argv[2]:
-        send_b2g_cmd(webappsActorName, sys.argv[1], { 'manifestURL': app['manifestURL'] })
-        return 0
-    print 'Error! Application "' + sys.argv[2] + '" was not found! Use the \'list\' command to find installed applications.'
-    return 1
+    ret = b2g_app_command(sys.argv[1], sys.argv[2])
+    if ret == 0 and '--log' in sys.argv:
+      b2g_log(sys.argv[2])
   elif sys.argv[1] == 'install':
     if len(sys.argv) < 3:
       print 'Error! No application path given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <path>'
       return 1
     target_app_path = sys.argv[2]
-    if os.path.isdir(target_app_path):
-      print 'Zipping up the contents of directory "' + target_app_path + '"...'
-      (oshandle, tempzip) = tempfile.mkstemp(suffix='.zip', prefix='ffdb_temp_')
-      zipdir(target_app_path, tempzip)
-      target_app_path = tempzip
-      # Remember to delete the temporary package after we quit.
-      def delete_temp_file():
-        os.remove(tempzip)
-      atexit.register(delete_temp_file)
-
-    print 'Uploading application package "' + target_app_path + '"...'
-    print 'Size of compressed package: ' + sizeof_fmt(os.path.getsize(target_app_path)) + '.'
-    app_file = open(target_app_path, 'rb')
-    data = app_file.read()
-    file_size = len(data)
-
-    uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage', { 'bulk': 'true'}, print_errors_to_console = False) # This may fail if on old device.
-    start_time = time.time()
-    if 'actor' in uploadResponse and 'BulkActor' in uploadResponse['actor']: # New B2G 2.0 hotness: binary data transfer
-      packageUploadActor = uploadResponse['actor']
-      send_b2g_bulk_data(packageUploadActor, data)
-    else: # Old B2G 1.4 and older, serialize binary data in JSON text strings (SLOW!)
-      print 'Bulk upload is not supported, uploading binary data with old slow format. Consider flashing your device to FFOS 2.0 or newer to enjoy faster upload speeds.'
-      uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage')
-      packageUploadActor = uploadResponse['actor']
-      chunk_size = 4*1024*1024
-      i = 0
-      while i < file_size:
-        chunk = data[i:i+chunk_size]
-
-        send_b2g_data_chunk(packageUploadActor, chunk)
-        i += chunk_size
-        bytes_uploaded = min(i, file_size)
-        cur_time = time.time()
-        secs_elapsed = cur_time - start_time
-        percentage_done = bytes_uploaded * 1.0 / file_size
-        total_time = secs_elapsed / percentage_done
-        time_left = total_time - secs_elapsed
-        print sizeof_fmt(bytes_uploaded) + " uploaded, {:5.1f} % done.".format(percentage_done*100.0) + ' Elapsed: ' + str(int(secs_elapsed)) + ' seconds. Time left: ' + str(datetime.timedelta(seconds=int(time_left))) + '. Data rate: {:5.2f} KB/second.'.format(bytes_uploaded / 1024.0 / secs_elapsed)
-
-    send_b2g_cmd(webappsActorName, 'install', { 'appId': str(uuid.uuid4()), 'upload': packageUploadActor })
-    cur_time = time.time()
-    secs_elapsed = cur_time - start_time
-    print 'Upload of ' + sizeof_fmt(file_size) + ' finished. Total time elapsed: ' + str(int(secs_elapsed)) + ' seconds. Data rate: {:5.2f} KB/second.'.format(file_size / 1024.0 / secs_elapsed)
+    # Kill and uninstall old running app execution before starting.
+    if '--run' in sys.argv:
+      app_manifest = get_packaged_app_manifest(target_app_path)
+      b2g_app_command('close', app_manifest['name'])
+      b2g_app_command('uninstall', app_manifest['name'])
+    # Upload package
+    app_id = b2g_install(target_app_path)
+    # Launch it immediately if requested.
+    if '--run' in sys.argv:
+      b2g_app_command('launch', app_id)
+    # Don't quit, but keep logging the app if requested.
+    if '--log' in sys.argv:
+      b2g_log(app_id)
   elif sys.argv[1] == 'navigate':
     if len(sys.argv) < 3:
       print 'Error! No URL given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <url>'
@@ -426,55 +510,8 @@ def main():
     else:
       print 'Web browser is not running!'
   elif sys.argv[1] == 'log':
-    appActor = ''
-    for app in apps:
-      if str(app['localId']) == sys.argv[2] or app['name'] == sys.argv[2] or app['manifestURL'] == sys.argv[2]:
-        appActor = send_b2g_cmd(webappsActorName, 'getAppActor', { 'manifestURL': app['manifestURL'] })
-        break
-    if 'actor' in appActor:
-      consoleActor = appActor['actor']['consoleActor']
-
-      if '-c' in sys.argv or '-clear' in sys.argv or '--clear' in sys.argv:
-        send_b2g_cmd(consoleActor, 'clearMessagesCache')
-        print 'Cleared message log.'
-        sys.exit(0)
-
-      msgs = send_b2g_cmd(consoleActor, 'startListeners', { 'listeners': ['PageError','ConsoleAPI','NetworkActivity','FileActivity'] })
-
-      def log_b2g_message(msg):
-        WARNING = '\033[93m'
-        FAIL = '\033[91m'
-        ENDC = '\033[0m'
-        BOLD = "\033[1m"
-        msgs = []
-        if 'type' in msg and msg['type'] == 'consoleAPICall':
-          msgs = [msg['message']]
-        elif 'messages' in msg:
-          msgs = msg['messages']
-
-        for m in msgs:
-          args = m['arguments']
-
-          for arg in args:
-            if m['level'] == 'log':
-              color = 'I/'
-            elif m['level'] == 'warn':
-              color = WARNING + 'W/'
-            elif m['level'] == 'error':
-              color = FAIL + 'E/'
-            else:
-              color = m['level'] + '/'
-
-            print color + str(m['functionName']) + '@' + str(m['filename']) + ':' + str(m['lineNumber']) + ': ' + str(arg) + ENDC
-
-      msgs = send_b2g_cmd(consoleActor, 'getCachedMessages', { 'messageTypes': ['PageError', 'ConsoleAPI'] })
-      log_b2g_message(msgs)
-
-      while True:
-        msg = read_b2g_response()
-        log_b2g_message(msg)
-    else:
-      print 'Application "' + sys.argv[2] + '" is not running!'
+    clear = '-c' in sys.argv or '-clear' in sys.argv or '--clear' in sys.argv
+    b2g_log(sys.argv[2], clear)
   elif sys.argv[1] == 'screenshot':
     if len(sys.argv) >= 3:
       filename = sys.argv[2]
