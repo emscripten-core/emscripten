@@ -706,10 +706,8 @@ if USE_EMSDK:
                      path_from_root('system', 'include', 'compat'),
                      path_from_root('system', 'include'),
                      path_from_root('system', 'include', 'emscripten'),
-                     path_from_root('system', 'include', 'bsd'), # posix stuff
                      path_from_root('system', 'include', 'libc'),
                      path_from_root('system', 'include', 'gfx'),
-                     path_from_root('system', 'include', 'net'),
                      path_from_root('system', 'include', 'SDL'),
   ]
   
