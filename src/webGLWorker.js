@@ -517,21 +517,51 @@ function WebGLWorker() {
   };
   this.linkProgram = function(program) {
     commandBuffer.push('linkProgram', 1, program.id);
+    // parse shader sources
+    program.uniforms = {};
+    program.uniformVec = [];
+    program.shaders.forEach(function(shader) {
+      var newUniforms = shader.source.match(/uniform\s+\w+\s+(\w+)(\[\d+\])?;/g);
+      if (!newUniforms) return;
+      newUniforms.forEach(function(uniform) {
+        var name = uniform.substr(uniform.lastIndexOf(' ')+1);
+        var size = 1;
+        var open = name.indexOf('[');
+        if (open >= 0) {
+          var close = name.indexOf(']');
+          size = parseInt(name.substring(open+1, close));
+          name = name.substr(0, open);
+        }
+        if (!program.uniforms[name]) {
+          program.uniforms[name] = { what: 'uniform', name: name, size: size };
+          program.uniformVec.push(name);
+        }
+      });
+    });
   };
   this.getProgramParameter = function(program, name) {
     if (name === this.ACTIVE_UNIFORMS) {
-      // parse shader sources, make a guess...
-      var uniforms = [];
-      program.shaders.forEach(function(shader) {
-        var newUniforms = shader.source.match(/uniform\s+\w+\s+(\w+);/g);
-        if (!newUniforms) return;
-        uniforms = uniforms.concat(newUniforms.filter(function(uniform) {
-          return uniforms.indexOf(uniform) < 0;
-        }));
-      });
-      return uniforms.length;
+      return program.uniformVec.length;
     }
     throw 'bad getProgramParameter ' + revname(name);
+  };
+  this.getActiveUniform = function(program, index) {
+    var name = program.uniformVec[index];
+    if (!name) return null;
+    return program.uniforms[name];
+  };
+  this.getUniformLocation = function(program, name) {
+    var index = -1;
+    var open = name.indexOf('[');
+    if (open >= 0) {
+      var close = name.indexOf(']');
+      index = parseInt(name.substring(open+1, close));
+      name = name.substr(0, open);
+    }
+    return { what: 'location', uniform: program.uniforms[name], index: index };    
+  };
+  this.getProgramInfoLog = function(shader) {
+    return ''; // optimistic assumption of success; no proxying
   };
 
   // Setup
