@@ -6386,10 +6386,15 @@ def process(filename):
           if (i < 10) throw i; // line 5
       }
 
+      #include <iostream>
+      #include <string>
+
       int main() {
+        std::string x = "ok"; // add libc++ stuff to make this big, test for #2410
         int i;
         scanf("%d", &i);
         foo(i);
+        std::cout << x << std::endl;
         return 0;
       }
     '''
