@@ -5,6 +5,7 @@ function WebGLClient() {
 
   function fixArgs(command, args) {
     switch (command) {
+      case 'useProgram':
       case 'linkProgram':
       case 'bindAttribLocation':
       case 'compileShader':

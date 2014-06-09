@@ -563,6 +563,9 @@ function WebGLWorker() {
   this.getProgramInfoLog = function(shader) {
     return ''; // optimistic assumption of success; no proxying
   };
+  this.useProgram = function(program) {
+    commandBuffer.push('useProgram', 1, program.id);
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
