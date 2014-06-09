@@ -573,14 +573,30 @@ function WebGLWorker() {
   this.uniform4fv = function(location, data) {
     commandBuffer.push('uniform4fv', 2, location.id, data);
   };
+  this.uniformMatrix4fv = function(location, transpose, data) {
+    commandBuffer.push('uniformMatrix4fv', 3, location.id, transpose, data);
+  };
   this.createBuffer = function() {
     var id = nextId++;
     commandBuffer.push('createBuffer', -1, id);
     return { what: 'buffer', id: id };
   };
   this.bindBuffer = function(target, buffer) {
-    commandBuffer.push('bindBuffer', target, buffer.id);
+    commandBuffer.push('bindBuffer', 2, target, buffer.id);
   };
+  this.bufferData = function(target, something, usage) {
+    commandBuffer.push('bufferData', 3, target, something, usage);
+  };
+  this.viewport = function(x, y, w, h) {
+    commandBuffer.push('viewport', 4, x, y, w, h);
+  };
+  this.vertexAttribPointer = function(index, size, type, normalized, stride, offset) {
+    commandBuffer.push('vertexAttribPointer', 6, index, size, type, normalized, stride, offset);
+  };
+  this.enableVertexAttribArray = function(index) {
+    commandBuffer.push('enableVertexAttribArray', 1, index);
+  };
+
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
