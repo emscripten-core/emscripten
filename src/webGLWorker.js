@@ -573,6 +573,14 @@ function WebGLWorker() {
   this.uniform4fv = function(location, data) {
     commandBuffer.push('uniform4fv', 2, location.id, data);
   };
+  this.createBuffer = function() {
+    var id = nextId++;
+    commandBuffer.push('createBuffer', -1, id);
+    return { what: 'buffer', id: id };
+  };
+  this.bindBuffer = function(target, buffer) {
+    commandBuffer.push('bindBuffer', target, buffer.id);
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
