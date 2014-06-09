@@ -596,7 +596,12 @@ function WebGLWorker() {
   this.enableVertexAttribArray = function(index) {
     commandBuffer.push('enableVertexAttribArray', 1, index);
   };
-
+  this.disableVertexAttribArray = function(index) {
+    commandBuffer.push('disableVertexAttribArray', 1, index);
+  };
+  this.drawArrays = function(mode, first, count) {
+    commandBuffer.push('drawArrays', 3, mode, first, count);
+  };
 
   // Setup
   var postMainLoop = Module['postMainLoop'];
