@@ -215,10 +215,24 @@ def b2g_set_pref(pref, value):
 
 def get_packaged_app_manifest(target_app_path):
   if os.path.isdir(target_app_path):
-    return json.loads(open(os.path.join(target_app_path, 'manifest.webapp'), 'r').read())
+    manifest_file = os.path.join(target_app_path, 'manifest.webapp')
+    if not os.path.isfile(manifest_file):
+      print "Error: Failed to find FFOS packaged app manifest file '" + manifest_file + "'! That directory does not contain a packaged app?"
+      sys.exit(1)
+    return json.loads(open(manifest_file, 'r').read())
+  elif target_app_path.endswith('.zip') and os.path.isfile(target_app_path):
+    try:
+      z = zipfile.ZipFile(target_app_path, "r")
+      bytes = z.read('manifest.webapp')
+    except Exception, e:
+      print "Error: Failed to read FFOS packaged app manifest file 'manifest.webapp' in zip file '" + target_app_path + "'! Error: " + str(e)
+      sys.exit(1)
+      return None
+    return json.loads(str(bytes))
   else:
-    print 'Error! Could not read packaged app manifest from zip file! TODO'
-    return {}
+      print "Error: Path '" + target_app_path + "' is neither a directory or a .zip file to represent the location of a FFOS packaged app!"
+      sys.exit(1)
+  return None
 
 def b2g_install(target_app_path):
   if os.path.isdir(target_app_path):
