@@ -5,6 +5,8 @@ function WebGLClient() {
 
   function fixArgs(command, args) {
     switch (command) {
+      case 'uniform4fv':
+      case 'getUniformLocation':
       case 'useProgram':
       case 'linkProgram':
       case 'bindAttribLocation':

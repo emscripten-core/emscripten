@@ -558,13 +558,18 @@ function WebGLWorker() {
       index = parseInt(name.substring(open+1, close));
       name = name.substr(0, open);
     }
-    return { what: 'location', uniform: program.uniforms[name], index: index };    
+    var id = nextId++;
+    commandBuffer.push('getUniformLocation', -3, program.id, name, id);
+    return { what: 'location', uniform: program.uniforms[name], id: id, index: index };
   };
   this.getProgramInfoLog = function(shader) {
     return ''; // optimistic assumption of success; no proxying
   };
   this.useProgram = function(program) {
     commandBuffer.push('useProgram', 1, program.id);
+  };
+  this.uniform4fv = function(location, data) {
+    commandBuffer.push('uniform4fv', 2, location.id, data);
   };
 
   // Setup
