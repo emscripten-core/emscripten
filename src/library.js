@@ -3166,7 +3166,7 @@ LibraryManager.library = {
 #endif
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
-  __environ: '_environ',
+  __environ: 'environ',
   __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
     // WARNING: Arbitrary limit!
