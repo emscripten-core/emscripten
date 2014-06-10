@@ -755,10 +755,9 @@ var LibrarySDL = {
         }
       }
     },
+
     flushEventsToHandler: function() {
-      if (!SDL.eventHandler) {
-        return;
-      }
+      if (!SDL.eventHandler) return;
 
       // All SDLEvents take the same amount of memory
       var sdlEventPtr = allocate({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}}, "i8", ALLOC_STACK);
@@ -767,6 +766,7 @@ var LibrarySDL = {
         Runtime.dynCall('iii', SDL.eventHandler, [SDL.eventHandlerContext, sdlEventPtr]);
       }
     },
+
     pollEvent: function(ptr) {
       if (SDL.initFlags & 0x200 && SDL.joystickEventState) {
         // If SDL_INIT_JOYSTICK was supplied AND the joystick system is configured
@@ -1780,9 +1780,11 @@ var LibrarySDL = {
     });
   },
   
-  SDL_SetEventHandler: function(_handler, _userdata){
-    SDL.eventHandler = _handler;
-    SDL.eventHandlerContext = _userdata;
+  // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
+  // Allow recording a callback that will be called for each received event.
+  emscripten_SDL_SetEventHandler: function(handler, userdata) {
+    SDL.eventHandler = handler;
+    SDL.eventHandlerContext = userdata;
   },
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
