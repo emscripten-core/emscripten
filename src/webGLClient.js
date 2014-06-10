@@ -1,5 +1,9 @@
 // WebGLWorker client code
 
+function assert(x) {
+  if (!x) throw 'failed assert';
+}
+
 function WebGLClient() {
   var objects = {};
 
@@ -15,20 +19,26 @@ function WebGLClient() {
       case 'attachShader': args[0] = objects[args[0]]; args[1] = objects[args[1]]; break;
       case 'bindBuffer': args[1] = objects[args[1]]; break;
     }
+    return args;
   }
 
   function renderCommands(buffer) {
     var ctx = Module.ctx;
     var i = 0;
     var len = buffer.length;
+    //dump('issuing commands, buffer len: ' + len + '\n');
     while (i < len) {
       var command = buffer[i++];
+      assert(typeof command === 'string')
       var numArgs = buffer[i++];
+      //dump('issue ' + [command, numArgs, 'peek:' + buffer.slice(i, i+5)] + '\n');
       if (numArgs === 0) {
+        //dump('issue: ' + command + '\n');
         ctx[command]();
       } else if (numArgs > 0) {
         var args = fixArgs(command, buffer.slice(i, i+numArgs));
         i += numArgs;
+        //dump('issue+: ' + command + '(' + args + '), ' + numArgs + '\n');
         ctx[command].apply(ctx, args);
       } else {
         // negative means a constructor, last argument is the id to save as
@@ -36,8 +46,10 @@ function WebGLClient() {
         var args = fixArgs(command, buffer.slice(i, i+numArgs));
         i += numArgs;
         var id = buffer[i++];
+        //dump('issue-: ' + command + '(' + args + '), ' + numArgs + '\n');
         objects[id] = ctx[command].apply(ctx, args);
       }
+      assert(i <= len);
     }
   }
 

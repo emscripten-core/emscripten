@@ -608,7 +608,7 @@ function WebGLWorker() {
   Module['postMainLoop'] = function() {
     if (postMainLoop) postMainLoop();
     // frame complete, send the command buffer
-    postMessage({ target: 'gl', method: 'render', commandBuffer: commandBuffer });
+    postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
     commandBuffer = [];
   };
 }
