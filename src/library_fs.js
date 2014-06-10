@@ -1480,6 +1480,7 @@ mergeInto(LibraryManager.library, {
           // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
           //          read() will try to parse UTF8.
           obj.contents = intArrayFromString(Module['read'](obj.url), true);
+          obj.usedBytes = obj.contents.length;
         } catch (e) {
           success = false;
         }
@@ -1601,6 +1602,10 @@ mergeInto(LibraryManager.library, {
         node.contents = null;
         node.url = properties.url;
       }
+      // Add a function that defers querying the file size until it is asked the first time.
+      Object.defineProperty(node, "usedBytes", {
+          get: function() { return this.contents.length; }
+      });
       // override each stream op with one that tries to force load the lazy file first
       var stream_ops = {};
       var keys = Object.keys(node.stream_ops);

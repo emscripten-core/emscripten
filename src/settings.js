@@ -323,6 +323,10 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // so that you can create a virtual file system with all of the required files.
 var CASE_INSENSITIVE_FS = 0; // If set to nonzero, the provided virtual filesystem if treated case-insensitive, like
                              // Windows and OSX do. If set to 0, the VFS is case-sensitive, like on Linux.
+var MEMFS_APPEND_TO_TYPED_ARRAYS = 0; // If set to nonzero, MEMFS will always utilize typed arrays as the backing store 
+                                      // for appending data to files. The default behavior is to use typed arrays for files
+                                      // when the file size doesn't change after initial creation, and for files that do
+                                      // change size, use normal JS arrays instead.
 
 var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
                  // When enabled, 0-initialized globals are sorted to the end of the globals list,

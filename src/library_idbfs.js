@@ -135,6 +135,9 @@ mergeInto(LibraryManager.library, {
       if (FS.isDir(stat.mode)) {
         return callback(null, { timestamp: stat.mtime, mode: stat.mode });
       } else if (FS.isFile(stat.mode)) {
+        // Performance consideration: storing a normal JavaScript array to a IndexedDB is much slower than storing a typed array.
+        // Therefore always convert the file contents to a typed array first before writing the data to IndexedDB.
+        node.contents = MEMFS.getFileDataAsTypedArray(node);
         return callback(null, { timestamp: stat.mtime, mode: stat.mode, contents: node.contents });
       } else {
         return callback(new Error('node type not supported'));
