@@ -297,6 +297,23 @@ def b2g_app_command(app_command, app_name):
   print 'Error! Application "' + app_name + '" was not found! Use the \'list\' command to find installed applications.'
   return 1
 
+def b2g_memory(app_name):
+  apps = b2g_get_appslist()
+  appActor = ''
+  for app in apps:
+    if str(app['localId']) == app_name or app['name'] == app_name or app['manifestURL'] == app_name or app['id'] == app_name:
+      appActor = send_b2g_cmd(webappsActorName, 'getAppActor', { 'manifestURL': app['manifestURL'] })
+      break
+  if 'actor' in appActor:
+    memoryActor = appActor['actor']['memoryActor']
+    measure = send_b2g_cmd(memoryActor, 'measure')
+    for k,v in measure.items():
+      if k != 'from':
+        if k in ['otherSize', 'jsStringsSize', 'jsObjectsSize', 'styleSize', 'jsOtherSize', 'domSize', 'total']: # These are formatted in bytes
+          print k + ': ' + sizeof_fmt(v)
+        else:
+          print k + ': ' + str(v)
+
 def b2g_log(app_name, clear=False):
   apps = b2g_get_appslist()
   appActor = ''
@@ -428,6 +445,7 @@ def main():
                     If the --log option is passed, ffdb will start persistently logging the execution of the installed application.
     log <app> [--clear]: Starts a persistent log listener that reads web console messages from the given application.
                          If --clear is passed, the message log for that application is cleared instead.
+    memory <app>: Dumps a memory usage summary for the given application.
     navigate <url>: Opens the given web page in the B2G browser.
     screenshot [filename.png]: Takes a screenshot of the current contents displayed on the device. If an optional
                                filename is specified, the screenshot is saved to that file. Otherwise the filename
@@ -598,6 +616,8 @@ def main():
   elif sys.argv[1] == 'log':
     clear = '-c' in sys.argv or '-clear' in sys.argv or '--clear' in sys.argv
     b2g_log(sys.argv[2], clear)
+  elif sys.argv[1] == 'memory':
+    b2g_memory(sys.argv[2])
   elif sys.argv[1] == 'screenshot':
     if len(sys.argv) >= 3:
       filename = sys.argv[2]
