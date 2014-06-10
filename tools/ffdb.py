@@ -349,8 +349,56 @@ def b2g_log(app_name, clear=False):
   else:
     print 'Application "' + sys.argv[2] + '" is not running!'
 
+def b2g_screenshot(filename):
+  global deviceActorName
+  data_reply = send_b2g_cmd(deviceActorName, 'screenshotToDataURL')
+  data = data_reply['value']
+  if not isinstance(data, basestring): # The device is sending the screenshot in multiple fragments since it's too long to fit in one message?
+    data_get_actor = data['actor']
+    data_len = int(data['length'])
+    data = data['initial']
+    chunk_size = 65000
+    pos = len(data)
+    # Pull and assemble individual screenshot fragments.
+    while pos < data_len:
+      bytes_to_read = min(data_len - pos, chunk_size)
+      data_reply = send_b2g_cmd(data_get_actor, 'substring', { 'start': str(pos), 'end': str(pos + bytes_to_read) })
+      if len(data_reply['substring']) != bytes_to_read:
+        print >> sys.stderr, 'Error! Expected to receive ' + str(bytes_to_read) + ' bytes of image data, but got ' + str(len(data_reply['substring'])) + ' bytes instead!'
+        sys.exit(1)
+      data += data_reply['substring']
+      pos += bytes_to_read
+    send_b2g_cmd(data_get_actor, 'release') # We need to explicitly free the screenshot image string from the device, or the Devtools connection leaks resources!
+
+  # Expected format is "data:image/png;base64,<base64data>"
+  delim = re.search(",", data).start()
+  data_format = data[:delim]
+  if data_format != "data:image/png;base64":
+    print >> sys.stderr, "Error: Received screenshot from device in an unexpected format '" + data_format + "'!"
+    sys.exit(1)
+  data = data[delim+1:]
+
+  binary_data = base64.b64decode(data)
+  open(filename, 'wb').write(binary_data)
+
+  def get_png_image_size(filename):
+    fhandle = open(filename, 'rb')
+    head = fhandle.read(24)
+    if len(head) != 24:
+      return (-1, -1)
+    check = struct.unpack('>i', head[4:8])[0]
+    if check != 0x0d0a1a0a:
+      return (-1, -1)
+    return struct.unpack('>ii', head[16:24])
+
+  width, height = get_png_image_size(filename)
+  if width <= 0 or height <= 0:
+    print >> sys.stderr, "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "', but the contents may be corrupted!"
+  else:
+    print "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "' (" + str(width) + 'x' + str(height) + ' pixels).'
+
 def main():
-  global b2g_socket, webappsActorName, HOST, PORT, VERBOSE, ADB
+  global b2g_socket, webappsActorName, deviceActorName, HOST, PORT, VERBOSE, ADB
   if len(sys.argv) < 2 or '--help' in sys.argv or 'help' in sys.argv or '-v' in sys.argv:
     print '''Firefox OS Debug Bridge, a tool for automating FFOS device tasks from the command line.
 
@@ -541,46 +589,7 @@ def main():
     else:
       filename = time.strftime("screen_%Y%m%d_%H%M%S.png", time.gmtime())
 
-    data_reply = send_b2g_cmd(deviceActorName, 'screenshotToDataURL')
-    data = data_reply['value']
-    data_get_actor = data['actor']
-    data_len = int(data['length'])
-    data_str = data['initial']
-    delim = re.search(",", data_str).start()
-    data_format = data_str[:delim]
-    if data_format != "data:image/png;base64":
-      print >> sys.stderr, "Error: Received screenshot from device in an unexpected format '" + data_format + "'!"
-      sys.exit(1)
-    data = data_str[delim+1:]
-    chunk_size = 65000
-    pos = len(data_str)
-    while pos < data_len:
-      bytes_to_read = min(data_len - pos, chunk_size)
-      data_reply = send_b2g_cmd(data_get_actor, 'substring', { 'start': str(pos), 'end': str(pos + bytes_to_read) })
-      if len(data_reply['substring']) != bytes_to_read:
-        print >> sys.stderr, 'Error! Expected to receive ' + str(bytes_to_read) + ' bytes of image data, but got ' + str(len(data_reply['substring'])) + ' bytes instead!'
-        sys.exit(1)
-      data += data_reply['substring']
-      pos += bytes_to_read
-    send_b2g_cmd(data_get_actor, 'release') # We need to explicitly free the screenshot image string from the device, or the Devtools connection leaks resources!
-    binary_data = base64.b64decode(data)
-    open(filename, 'wb').write(binary_data)
-
-    def get_png_image_size(filename):
-      fhandle = open(filename, 'rb')
-      head = fhandle.read(24)
-      if len(head) != 24:
-        return (-1, -1)
-      check = struct.unpack('>i', head[4:8])[0]
-      if check != 0x0d0a1a0a:
-        return (-1, -1)
-      return struct.unpack('>ii', head[16:24])
-
-    width, height = get_png_image_size(filename)
-    if width <= 0 or height <= 0:
-      print >> sys.stderr, "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "', but the contents may be corrupted!"
-    else:
-      print "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "' (" + str(width) + 'x' + str(height) + ' pixels).'
+    b2g_screenshot(filename)
   elif sys.argv[1] == 'get':
     b2g_get_pref(sys.argv[2] if len(sys.argv) >= 3 else None)
   elif sys.argv[1] == 'set':
