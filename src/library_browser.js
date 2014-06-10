@@ -954,9 +954,7 @@ mergeInto(LibraryManager.library, {
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
 
-      if (Module['preMainLoop']) {
-        Module['preMainLoop']();
-      }
+      if (Module['preMainLoop']) Module['preMainLoop']();
 
       try {
         if (typeof arg !== 'undefined') {
@@ -973,9 +971,7 @@ mergeInto(LibraryManager.library, {
         }
       }
 
-      if (Module['postMainLoop']) {
-        Module['postMainLoop']();
-      }
+      if (Module['postMainLoop']) Module['postMainLoop']();
 
       if (Browser.mainLoop.shouldPause) {
         // catch pauses from the main loop itself
