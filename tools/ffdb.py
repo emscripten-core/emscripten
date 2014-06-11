@@ -66,9 +66,6 @@ def read_b2g_response(print_errors_to_console = True):
   try:
     if len(read_queue) == 0:
       read_queue += b2g_socket.recv(65536*2)
-  except KeyboardInterrupt:
-    print ' Aborted by user'
-    sys.exit(1)
   except Exception, e:
     if e[0] == 57: # Socket is not connected
       print 'Error! Failed to receive data from the device: socket is not connected!'
@@ -659,6 +656,10 @@ def main():
   return 0
 
 if __name__ == '__main__':
-  returncode = main()
-  logv('ffdb.py quitting with process exit code ' + str(returncode))
-  sys.exit(returncode)
+  try:
+    returncode = main()
+    logv('ffdb.py quitting with process exit code ' + str(returncode))
+    sys.exit(returncode)
+  except KeyboardInterrupt:
+    print ' Aborted by user'
+    sys.exit(1)
