@@ -2869,4 +2869,26 @@ int main(int argc, char **argv) {
     assert 'eval.' not in src
     assert 'new Function' not in src
 
+  def test_init_file_at_offset(self):
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        int data = 0x12345678;
+        FILE *f = fopen("test.dat", "wb");
+        fseek(f, 100, SEEK_CUR);
+        fwrite(&data, 4, 1, f);
+        fclose(f);
+
+        int data2;
+        f = fopen("test.dat", "rb");
+        fread(&data2, 4, 1, f); // should read 0s, not that int we wrote at an offset
+        printf("read: %d\n", data2);
+        fseek(f, 0, SEEK_END);
+        int size = ftell(f); // should be 104, not 4
+        fclose(f);
+        printf("file size is %d\n", size);
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 
