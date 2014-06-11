@@ -291,10 +291,13 @@ mergeInto(LibraryManager.library, {
 #if USE_TYPED_ARRAYS == 2
         if (buffer.subarray && (!node.contents || node.contents.subarray)) { // This write is from a typed array to a typed array?
           if (canOwn) { // Can we just reuse the buffer we are given?
+#if ASSERTIONS
+            assert(position === 0, 'canOwn must imply no weird position inside the file');
+#endif
             node.contents = buffer.subarray(offset, offset + length);
             node.usedBytes = length;
             return length;
-          } else if (node.usedBytes === 0) { // If this first write to an empty file, do a fast set since we don't need to care about old data.
+          } else if (node.usedBytes === 0 && position === 0) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
             node.contents = new Uint8Array(buffer.subarray(offset, offset + length));
             node.usedBytes = length;
             return length;
