@@ -1318,7 +1318,8 @@ var LibraryJSEvents = {
     if (!target) target = '#canvas';
     target = JSEvents.findEventTarget(target);
     if (!target.contentEditable) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    target.contentEditable = (editable == 1);
+    target.contentEditable = (editable != 0);
+    target.focus();
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   }
 };

@@ -643,7 +643,14 @@ extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char
 extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
 
 /*
- * Sets contentEditable on target element, which will show the on-screen keyboard on mobile devices
+ * Sets contentEditable on target element, which will show the on-screen keyboard
+ * on mobile devices. This works in Gecko based browsers only.
+ * Behaviour: if called with editable=1, then the on-screen keyboard will show up.
+ * If you want to force open it again, you have to first call it with editable=0
+ * and then again with editable=1.
+ * Unfortunately, there is no way to tell if the keyboard has been closed by the
+ * user.
+ * TODO: find a cross-browser solution
  */
 extern EMSCRIPTEN_RESULT emscripten_set_content_editable(const char *target, int editable);
 
