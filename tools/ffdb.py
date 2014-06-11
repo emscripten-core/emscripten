@@ -285,13 +285,14 @@ def b2g_install(target_app_path):
     sys.exit()
   return reply['appId']
 
-def b2g_app_command(app_command, app_name):
+def b2g_app_command(app_command, app_name, print_errors_to_console = True):
   apps = b2g_get_appslist()
   for app in apps:
     if str(app['localId']) == app_name or app['name'] == app_name or app['manifestURL'] == app_name or app['id'] == app_name:
       send_b2g_cmd(webappsActorName, app_command, { 'manifestURL': app['manifestURL'] })
       return 0
-  print 'Error! Application "' + app_name + '" was not found! Use the \'list\' command to find installed applications.'
+  if print_errors_to_console:
+    print 'Error! Application "' + app_name + '" was not found! Use the \'list\' command to find installed applications.'
   return 1
 
 def b2g_memory(app_name):
@@ -586,8 +587,8 @@ def main():
     # Kill and uninstall old running app execution before starting.
     if '--run' in sys.argv:
       app_manifest = get_packaged_app_manifest(target_app_path)
-      b2g_app_command('close', app_manifest['name'])
-      b2g_app_command('uninstall', app_manifest['name'])
+      b2g_app_command('close', app_manifest['name'], print_errors_to_console=False)
+      b2g_app_command('uninstall', app_manifest['name'], print_errors_to_console=False)
     # Upload package
     app_id = b2g_install(target_app_path)
     # Launch it immediately if requested.
