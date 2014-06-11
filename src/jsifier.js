@@ -1901,6 +1901,9 @@ function JSify(data, functionsOnly) {
     if (PROXY_TO_WORKER) {
       print(read('proxyWorker.js'));
     }
+    if (DETERMINISTIC) {
+      print(read('deterministic.js'));
+    }
     if (RUNTIME_TYPE_INFO) {
       Types.cleanForRuntime();
       print('Runtime.typeInfo = ' + JSON.stringify(Types.types));

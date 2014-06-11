@@ -478,6 +478,9 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // very partial - it is hard to fake a whole browser! - so
                   // keep your expectations low for this to work.
 
+var DETERMINISTIC = 0; // If 1, we force Date.now(), Math.random, etc. to return deterministic
+                       // results. Good for comparing builds for debugging purposes (and nothing else)
+
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
