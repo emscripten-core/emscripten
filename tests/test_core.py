@@ -4348,6 +4348,11 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out)
 
+  def test_fs_append(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True)
+
   def test_unistd_access(self):
     self.clear()
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
