@@ -119,6 +119,12 @@ Module.printErr = function Module_printErr(x) {
   postMessage({ target: 'stderr', content: x });
 };
 
+// Browser hooks
+
+Browser.resizeListeners.push(function(width, height) {
+  postMessage({ target: 'canvas', op: 'resize', width: width, height: height });
+});
+
 // buffer messages until the program starts to run
 
 var messageBuffer = null;
