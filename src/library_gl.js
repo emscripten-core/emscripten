@@ -1316,7 +1316,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count == 1) {
+    if (count === 1) {
       // avoid allocation for the common case of uploading one uniform
       view = GL.miniTempBufferViews[0];
       view[0] = {{{ makeGetValue('value', '0', 'float') }}};
@@ -1333,7 +1333,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count == 1) {
+    if (count === 1) {
       // avoid allocation for the common case of uploading one uniform
       view = GL.miniTempBufferViews[1];
       view[0] = {{{ makeGetValue('value', '0', 'float') }}};
@@ -1351,7 +1351,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count == 1) {
+    if (count === 1) {
       // avoid allocation for the common case of uploading one uniform
       view = GL.miniTempBufferViews[2];
       view[0] = {{{ makeGetValue('value', '0', 'float') }}};
@@ -1370,7 +1370,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count == 1) {
+    if (count === 1) {
       // avoid allocation for the common case of uploading one uniform
       view = GL.miniTempBufferViews[3];
       view[0] = {{{ makeGetValue('value', '0', 'float') }}};
@@ -1390,7 +1390,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count == 1) {
+    if (count === 1) {
       // avoid allocation for the common case of uploading one uniform matrix
       view = GL.miniTempBufferViews[3];
       for (var i = 0; i < 4; i++) {
@@ -1409,7 +1409,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count == 1) {
+    if (count === 1) {
       // avoid allocation for the common case of uploading one uniform matrix
       view = GL.miniTempBufferViews[8];
       for (var i = 0; i < 9; i++) {
@@ -1428,7 +1428,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count == 1) {
+    if (count === 1) {
       // avoid allocation for the common case of uploading one uniform matrix
       view = GL.miniTempBufferViews[15];
       for (var i = 0; i < 16; i++) {
