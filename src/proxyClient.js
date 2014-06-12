@@ -31,7 +31,7 @@ WebGLClient.prefetch(); // XXX not guaranteed to be before worker main()
 var workerResponded = false;
 
 worker.onmessage = function worker_onmessage(event) {
-  //dump('client got ' + JSON.stringify(event.data) + '\n');
+  dump('\nclient got ' + JSON.stringify(event.data).substr(0, 150) + '\n');
   if (!workerResponded) {
     workerResponded = true;
     if (Module.setStatus) Module.setStatus('');
@@ -61,7 +61,7 @@ worker.onmessage = function worker_onmessage(event) {
         case 'resize': {
           Module.canvas.width = data.width;
           Module.canvas.height = data.height;
-          Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
+          if (Module.ctx && Module.ctx.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
           worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()) });
           break;
         }

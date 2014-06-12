@@ -55,7 +55,7 @@ function WebGLClient() {
   }
 
   this.onmessage = function(msg) {
-    dump('client GL got ' + JSON.stringify(msg) + '\n');
+    //dump('client GL got ' + JSON.stringify(msg) + '\n');
     switch(msg.op) {
       case 'render': {
         renderCommands(msg.commandBuffer);
