@@ -56,8 +56,8 @@ document.createElement = function document_createElement(what) {
           postMessage({ target: 'canvas', op: 'resize', width: canvas.width, height: canvas.height });
         }
       };
-      canvas.getContext = function canvas_getContext(type) {
-        postMessage({ target: 'canvas', op: 'getContext', type: type });
+      canvas.getContext = function canvas_getContext(type, attributes) {
+        postMessage({ target: 'canvas', op: 'getContext', type: type, attributes: attributes });
         if (type === '2d') {
           return {
             getImageData: function(x, y, w, h) {

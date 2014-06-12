@@ -54,7 +54,7 @@ worker.onmessage = function worker_onmessage(event) {
     case 'canvas': {
       switch (data.op) {
         case 'getContext': {
-          Module.ctx = Module.canvas.getContext(data.type);
+          Module.ctx = Module.canvas.getContext(data.type, data.attributes);
           if (data.type !== '2d') Module.glClient = new WebGLClient();
           break;
         }
