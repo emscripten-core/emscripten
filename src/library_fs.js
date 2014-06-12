@@ -1077,16 +1077,16 @@ mergeInto(LibraryManager.library, {
       if (!stream.stream_ops.write) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
+      if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
+        // seek to the end before writing in append mode
+        FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
+      }
       var seeking = true;
       if (typeof position === 'undefined') {
         position = stream.position;
         seeking = false;
       } else if (!stream.seekable) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
-      }
-      if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
-        // seek to the end before writing in append mode
-        FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
