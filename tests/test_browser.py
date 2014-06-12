@@ -719,10 +719,9 @@ If manually bisecting:
     self.clear()
     self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-O2', '-s', 'SAFE_HEAP=1'])
 
-  def test_sdl_canvas_proxy(self):
-    def post():
-      html = open('test.html').read()
-      html = html.replace('</body>', '''
+  def post_manual_reftest(self):
+    html = open('test.html').read()
+    html = html.replace('</body>', '''
 <script>
 function assert(x, y) { if (!x) throw 'assertion failed ' + y }
 
@@ -738,11 +737,14 @@ window.close = function() {
 };
 </script>
 </body>''' % open('reftest.js').read())
-      open('test.html', 'w').write(html)
+    open('test.html', 'w').write(html)
 
+  def test_sdl_canvas_proxy(self):
     open('data.txt', 'w').write('datum')
+    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=self.post_manual_reftest)
 
-    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=post)
+  def test_glgears_proxy(self):
+    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker'], manual_reference=True, post_build=self.post_manual_reftest, reference_slack=8)
 
   def test_sdl_canvas_alpha(self):
     self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=9)
@@ -1327,9 +1329,6 @@ keydown(100);keyup(100); // trigger the end
         message='You should see animating gears.')
     with open('something.html') as f:
       assert 'gl-matrix' not in f.read(), 'Should not include glMatrix when not needed'
-
-  #def test_glgears_proxy(self):
-  #  self.btest('hello_world_gles.c', expected='waka', args=['--proxy-to-worker'])
 
   def test_glbook(self):
     programs = self.get_library('glbook', [
