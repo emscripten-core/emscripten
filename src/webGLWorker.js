@@ -571,10 +571,10 @@ function WebGLWorker() {
     commandBuffer.push('useProgram', 1, program.id);
   };
   this.uniform4fv = function(location, data) {
-    commandBuffer.push('uniform4fv', 2, location.id, data);
+    commandBuffer.push('uniform4fv', 2, location.id, new Float32Array(data));
   };
   this.uniformMatrix4fv = function(location, transpose, data) {
-    commandBuffer.push('uniformMatrix4fv', 3, location.id, transpose, data);
+    commandBuffer.push('uniformMatrix4fv', 3, location.id, transpose, new Float32Array(data));
   };
   this.createBuffer = function() {
     var id = nextId++;
@@ -585,6 +585,7 @@ function WebGLWorker() {
     commandBuffer.push('bindBuffer', 2, target, buffer.id);
   };
   this.bufferData = function(target, something, usage) {
+    if (typeof something !== 'number') something = new Uint8Array(something);
     commandBuffer.push('bufferData', 3, target, something, usage);
   };
   this.viewport = function(x, y, w, h) {
