@@ -27,7 +27,7 @@ mergeInto(LibraryManager.library, {
 
       // If debug is enabled register simple default logging callbacks for each Event.
 #if SOCKET_DEBUG
-      Module['websocket']['on']('error', function(error) {Module.print('Socket error ' + error);});
+      Module['websocket']['on']('error', function(error) {Module.printErr('Socket error ' + error);});
       Module['websocket']['on']('open', function(fd) {Module.print('Socket open fd = ' + fd);});
       Module['websocket']['on']('listen', function(fd) {Module.print('Socket listen fd = ' + fd);});
       Module['websocket']['on']('connection', function(fd) {Module.print('Socket connection fd = ' + fd);});
