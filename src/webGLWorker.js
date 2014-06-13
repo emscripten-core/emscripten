@@ -605,6 +605,7 @@ function WebGLWorker() {
   };
 
   // Setup
+  var dropped = 0;
   var postMainLoop = Module['postMainLoop'];
   Module['postMainLoop'] = function() {
     if (postMainLoop) postMainLoop();
@@ -612,6 +613,9 @@ function WebGLWorker() {
     if (Math.abs(frameId - clientFrameId) <= 3) {
       // only send if not throttling
       postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
+    } else {
+      //dropped++;
+      //if (dropped % 1000 === 0) dump('dropped: ' + [dropped, frameId, Math.round(100*dropped/frameId) + '%\n']);
     }
     commandBuffer = [];
   };

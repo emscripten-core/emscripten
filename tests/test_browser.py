@@ -1307,7 +1307,9 @@ keydown(100);keyup(100); // trigger the end
         message='You should see animating gears.')
 
   def test_glgears_long(self):
-    self.btest('hello_world_gles.c', expected=map(str, range(30, 1000)), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST'])
+    for proxy in [0, 1]:
+      print 'proxy', proxy
+      self.btest('hello_world_gles.c', expected=map(str, range(30, 10000)), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST'] + (['--proxy-to-worker'] if proxy else []))
 
   def test_glgears_animation(self):
     es2_suffix = ['', '_full', '_full_944']
