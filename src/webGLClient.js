@@ -11,6 +11,7 @@ function WebGLClient() {
     switch (command) {
       case 'getProgramParameter':
       case 'getShaderParameter':
+      case 'uniform1i':
       case 'uniform4fv':
       case 'uniformMatrix4fv':
       case 'getUniformLocation':
