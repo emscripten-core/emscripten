@@ -405,7 +405,7 @@ mergeInto(LibraryManager.library, {
                                          window['webkitRequestAnimationFrame'] ||
                                          window['msRequestAnimationFrame'] ||
                                          window['oRequestAnimationFrame'] ||
-                                         window['setTimeout'];
+                                         function(func) { setTimeout(func, 1000/60) };
         }
         window.requestAnimationFrame(func);
       }
