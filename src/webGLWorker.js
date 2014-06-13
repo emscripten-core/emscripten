@@ -656,6 +656,13 @@ function WebGLWorker() {
   this.texParameteri = function(target, pname, param) {
     commandBuffer.push('texParameteri', 3, target, pname, param);
   };
+  this.texImage2D = function(target, level, internalformat, width, height, border, format, type, pixels) {
+    assert(pixels); // we do not support the overloads that have fewer params
+    commandBuffer.push('texImage2D', 9, target, level, internalformat, width, height, border, format, type, new pixels.constructor(pixels));
+  };
+  this.activeTexture = function(texture) {
+    commandBuffer.push('activeTexture', 1, texture);
+  };
 
   // Setup
   var dropped = 0;
