@@ -18,7 +18,7 @@ function WebGLClient() {
       case 'compileShader':
       case 'shaderSource': args[0] = objects[args[0]]; break;
       case 'attachShader': args[0] = objects[args[0]]; args[1] = objects[args[1]]; break;
-      case 'bindBuffer': args[1] = objects[args[1]]; break;
+      case 'bindBuffer': args[1] = args[1] ? objects[args[1]] : null; break;
     }
     return args;
   }
@@ -35,7 +35,11 @@ function WebGLClient() {
       //dump('issue ' + [command, numArgs, 'peek:' + buffer.slice(i, i+5)] + '\n');
       if (numArgs === 0) {
         //dump('issue: ' + command + '\n');
-        ctx[command]();
+        if (command === 'getError') {
+          assert(ctx.getError() === ctx.NO_ERROR, 'we cannot handle errors, we are async proxied WebGL');
+        } else {
+          ctx[command]();
+        }
       } else if (numArgs > 0) {
         var args = fixArgs(command, buffer.slice(i, i+numArgs));
         i += numArgs;

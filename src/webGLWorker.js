@@ -582,7 +582,7 @@ function WebGLWorker() {
     return { what: 'buffer', id: id };
   };
   this.bindBuffer = function(target, buffer) {
-    commandBuffer.push('bindBuffer', 2, target, buffer.id);
+    commandBuffer.push('bindBuffer', 2, target, buffer ? buffer.id : 0);
   };
   this.bufferData = function(target, something, usage) {
     if (typeof something !== 'number') something = new Uint8Array(something);
@@ -602,6 +602,11 @@ function WebGLWorker() {
   };
   this.drawArrays = function(mode, first, count) {
     commandBuffer.push('drawArrays', 3, mode, first, count);
+  };
+  this.getError = function() {
+    // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
+    commandBuffer.push('getError', 0);
+    return this.NO_ERROR;
   };
 
   // Setup
