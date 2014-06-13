@@ -176,17 +176,24 @@ extern void emscripten_cancel_main_loop(void);
  *
  * The userData pointer allows arbitrary data specified during Event
  * registration to be passed to the callback, this is particularly
- * useful for passing "this" pointers around in Object Orienter code.
+ * useful for passing "this" pointers around in Object Oriented code.
  *
  * In addition to being able to register network callbacks from C
  * it is also possible for native JavaScript code to directly use the
- * underlying mechanism used to implement the callback registration:
+ * underlying mechanism used to implement the callback registration.
+ * For example, the following are the simple logging callbacks that
+ * are registered by default when SOCKET_DEBUG is enabled
  * Module['websocket']['on']('error', function(error) {console.log('Socket error ' + error);});
  * Module['websocket']['on']('open', function(fd) {console.log('Socket open fd = ' + fd);});
  * Module['websocket']['on']('listen', function(fd) {console.log('Socket listen fd = ' + fd);});
  * Module['websocket']['on']('connection', function(fd) {console.log('Socket connection fd = ' + fd);});
  * Module['websocket']['on']('message', function(fd) {console.log('Socket message fd = ' + fd);});
  * Module['websocket']['on']('close', function(fd) {console.log('Socket close fd = ' + fd);});
+ *
+ * Most of the JavaScript callback functions above get passed the
+ * file descriptor of the socket that triggered the callback, the
+ * on error callback however gets passed an *array* that contains
+ * the file descriptor, the error code and an error message.
  *
  * Note that the underlying JavaScript implementation doesn't pass
  * userData, this is actually mostly of use to C/C++ code and the
