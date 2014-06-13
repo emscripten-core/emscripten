@@ -573,10 +573,15 @@ function WebGLWorker() {
     });
   };
   this.getProgramParameter = function(program, name) {
-    if (name === this.ACTIVE_UNIFORMS) {
-      return program.uniformVec.length;
+    switch (name) {
+      case this.ACTIVE_UNIFORMS: return program.uniformVec.length;
+      case this.LINK_STATUS: {
+        // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
+        commandBuffer.push('getProgramParameter', program.id, name);
+        return true;
+      }
+      default: throw 'bad getProgramParameter ' + revname(name);
     }
-    throw 'bad getProgramParameter ' + revname(name);
   };
   this.getActiveUniform = function(program, index) {
     var name = program.uniformVec[index];

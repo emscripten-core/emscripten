@@ -9,6 +9,7 @@ function WebGLClient() {
 
   function fixArgs(command, args) {
     switch (command) {
+      case 'getProgramParameter':
       case 'getShaderParameter':
       case 'uniform4fv':
       case 'uniformMatrix4fv':
@@ -46,8 +47,8 @@ function WebGLClient() {
         var args = fixArgs(command, buffer.slice(i, i+numArgs));
         i += numArgs;
         //dump('issue+: ' + command + '(' + args + '), ' + numArgs + '\n');
-        if (command === 'getShaderParameter') {
-          assert(ctx.getShaderParameter(args[0], args[1]), 'we cannot handle errors, we are async proxied WebGL');
+        if (command === 'getShaderParameter' || command === 'getProgramParameter') {
+          assert(ctx[command](args[0], args[1]), 'we cannot handle errors, we are async proxied WebGL');
         } else {
           ctx[command].apply(ctx, args);
         }
