@@ -22,6 +22,7 @@ var LibraryGLUT = {
     windowY: 0,
     windowWidth: 0,
     windowHeight: 0,
+    requestedAnimationFrame: false,
 
     saveModifiers: function(event) {
       GLUT.modifiers = 0;
@@ -229,7 +230,7 @@ var LibraryGLUT = {
 
       // cross-browser wheel delta
       var e = window.event || event; // old IE support
-      var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+      var delta = -Browser.getMouseWheelDelta(event);
 
       var button = 3; // wheel up
       if (delta < 0) {
@@ -484,8 +485,10 @@ var LibraryGLUT = {
   glutSwapBuffers: function() {},
 
   glutPostRedisplay: function() {
-    if (GLUT.displayFunc) {
+    if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
+      GLUT.requestedAnimationFrame = true;
       Browser.requestAnimationFrame(function() {
+        GLUT.requestedAnimationFrame = false;
         if (ABORT) return;
         Runtime.dynCall('v', GLUT.displayFunc);
       });

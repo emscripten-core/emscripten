@@ -21,6 +21,7 @@ var LLVM = {
   CONVERSIONS: set('inttoptr', 'ptrtoint', 'uitofp', 'sitofp', 'fptosi', 'fptoui', 'fpext', 'fptrunc'),
   INTRINSICS_32: set('_llvm_memcpy_p0i8_p0i8_i64', '_llvm_memmove_p0i8_p0i8_i64', '_llvm_memset_p0i8_i64'), // intrinsics that need args converted to i32 in USE_TYPED_ARRAYS == 2
   MATHOP_IGNORABLES: set('exact', 'nnan', 'ninf', 'nsz', 'arcp', 'fast'),
+  PARAM_IGNORABLES: set('nocapture', 'readonly', 'readnone'),
 };
 LLVM.GLOBAL_MODIFIERS = set(keys(LLVM.LINKAGES).concat(['constant', 'global', 'hidden']));
 
@@ -424,9 +425,47 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js', 'library_uuid.js', 'library_glew.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js', 'library_uuid.js', 'library_glew.js', 'library_html5.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
-      eval(processMacros(preprocess(read(libraries[i]))));
+      var filename = libraries[i];
+      var src = read(filename);
+      try {
+        var processed = processMacros(preprocess(src));
+        eval(processed);
+      } catch(e) {
+        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];
+        if (processed) {
+          error('failure to execute js library "' + filename + '": ' + details + '\npreprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============\n');
+        } else {
+          error('failure to process js library "' + filename + '": ' + details + '\noriginal source:\n=============\n' + src + '\n=============\n');
+        }
+        throw e;
+      }
+    }
+
+    // apply synonyms. these are typically not speed-sensitive, and doing it this way makes it possible to not include hacks in the compiler
+    // (and makes it simpler to switch between SDL verisons, fastcomp and non-fastcomp, etc.).
+    var lib = LibraryManager.library;
+    libloop: for (var x in lib) {
+      if (x.lastIndexOf('__') > 0) continue; // ignore __deps, __*
+      if (lib[x + '__asm']) continue; // ignore asm library functions, those need to be fully optimized
+      if (typeof lib[x] === 'string') {
+        var target = x;
+        while (typeof lib[target] === 'string') {
+          if (lib[target].indexOf('(') >= 0) continue libloop;
+          target = lib[target];
+        }
+        if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
+          if (target.indexOf('Math_') < 0) {
+            lib[x] = new Function('return _' + target + '.apply(null, arguments)');
+            if (!lib[x + '__deps']) lib[x + '__deps'] = [];
+            lib[x + '__deps'].push(target);
+          } else {
+            lib[x] = new Function('return ' + target + '.apply(null, arguments)');
+          }
+          continue;
+        }
+      }
     }
 
     /*

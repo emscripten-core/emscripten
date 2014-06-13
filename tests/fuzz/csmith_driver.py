@@ -14,7 +14,7 @@ sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 import shared
 
 engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
-engine2 = eval('shared.' + sys.argv[2]) if len(sys.argv) > 2 else None
+engine2 = shared.SPIDERMONKEY_ENGINE if os.path.exists(shared.SPIDERMONKEY_ENGINE[0]) else None
 
 print 'testing js engines', engine1, engine2
 
@@ -35,26 +35,47 @@ notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
 fails = 0
 
 while 1:
-  opts = '-O' + str(random.randint(0, 2))
+  if random.random() < 0.666:
+    opts = '-O' + str(random.randint(0, 3))
+  else:
+    if random.random() < 0.5:
+      opts = '-Os'
+    else:
+      opts = '-Oz'
   print 'opt level:', opts
 
   print 'Tried %d, notes: %s' % (tried, notes)
-  print '1) Generate C'
-  check_call([CSMITH, '--no-volatiles', '--no-packed-struct'],# '--no-math64'
+  print '1) Generate source'
+  extra_args = []
+  if random.random() < 0.5: extra_args += ['--no-math64']
+  suffix = '.c'
+  COMP = shared.CLANG_CC
+  if random.random() < 0.5:
+    extra_args += ['--lang-cpp']
+    suffix += 'pp'
+    COMP = shared.CLANG
+  print COMP, extra_args
+  fullname = filename + suffix
+  check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
-                 stdout=open(filename + '.c', 'w'))
-  #shutil.copyfile(filename + '.c', 'testcase%d.c' % tried)
-  print '1) Generate C... %.2f K of C source' % (len(open(filename + '.c').read())/1024.)
+                 stdout=open(fullname, 'w'))
+  print '1) Generate source... %.2f K' % (len(open(fullname).read())/1024.)
 
   tried += 1
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  shared.check_execute([shared.CLANG_CC, opts, filename + '.c', '-o', filename + '1'] + CSMITH_CFLAGS) #  + shared.EMSDK_OPTS
-  shared.check_execute([shared.CLANG_CC, opts, '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
+  try:
+    shared.check_execute([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) #  + shared.EMSDK_OPTS
+  except Exception, e:
+    print 'Failed to compile natively using clang'
+    notes['invalid'] += 1
+    continue
+
+  shared.check_execute([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
   shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'])
   shutil.move(filename + '.bc.run', filename + '2')
-  shared.check_execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS)
+  shared.check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS)
   print '3) Run natively'
   try:
     correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
@@ -74,7 +95,7 @@ while 1:
   def try_js(args):
     shared.try_delete(filename + '.js')
     print '(compile)'
-    shared.check_execute([shared.EMCC, opts, filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args)
+    shared.check_execute([shared.PYTHON, shared.EMCC, opts, fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args)
     assert os.path.exists(filename + '.js')
     print '(run)'
     js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1, check_timeout=True)
@@ -100,7 +121,7 @@ while 1:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
-    shutil.copyfile(filename + '.c', 'newfail%d.c' % fails)
+    shutil.copyfile(fullname, 'newfail%d%s%s' % (fails, opts.replace('-', '_'), suffix))
     continue
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
@@ -115,9 +136,9 @@ while 1:
   #    break
 
   # This is ok. Try in secondary JS engine too
-  if engine2 and normal:
+  if opts != '-O0' and engine2 and normal:
     try:
-      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2, full_output=True, check_timeout=True)
+      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True)
     except:
       print 'failed to run in secondary', js2
       break
@@ -127,11 +148,7 @@ while 1:
       print "ODIN VALIDATION BUG"
       notes['embug'] += 1
       fails += 1
-      shutil.copyfile(filename + '.c', 'newfail%d.c' % fails)
+      shutil.copyfile(fullname, 'newfail%d.c' % fails)
       continue
-
-    js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
-
-    assert js2 == correct1 or js2 == correct2, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
-    print 'odin ok'
+    print '[asm.js validation ok]'
 

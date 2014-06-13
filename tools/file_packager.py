@@ -13,6 +13,9 @@ Usage:
 
   file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
 
+  --preload  ,
+  --embed    See emcc --help for more details on those options.
+
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
              be added to convert the crn to dds in the browser.
@@ -107,7 +110,11 @@ for arg in sys.argv[2:]:
     jsoutput = arg.split('=')[1] if '=' in arg else None
     leading = ''
   elif arg.startswith('--crunch'):
-    from shared import CRUNCH
+    try:
+      from shared import CRUNCH
+    except Exception, e:
+      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ~/.emscripten)'
+      raise e
     crunch = arg.split('=')[1] if '=' in arg else '128'
     leading = ''
   elif arg.startswith('--plugin'):
@@ -116,12 +123,13 @@ for arg in sys.argv[2:]:
     leading = ''
   elif leading == 'preload' or leading == 'embed':
     mode = leading
-    if '@' in arg:
+    uses_at_notation = '@' in arg
+    if uses_at_notation:
       srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
     else:
       srcpath = dstpath = arg # Use source path as destination path.
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
-      data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode })
+      data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': uses_at_notation })
     else:
       print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
   elif leading == 'exclude':
@@ -199,7 +207,7 @@ def add(arg, dirname, names):
       new_names.append(name)
       if not os.path.isdir(fullname):
         dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
-        new_data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode })
+        new_data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': True })
   del names[:]
   names.extend(new_names)
 
@@ -216,13 +224,14 @@ if len(data_files) == 0:
   sys.exit(1)
 
 # Absolutize paths, and check that they make sense
-curr_abspath = os.path.abspath(os.getcwd())
+curr_abspath = os.path.abspath(os.getcwd()) # os.getcwd() always returns the hard path with any symbolic links resolved, even if we cd'd into a symbolic link.
+
 for file_ in data_files:
-  if file_['srcpath'] == file_['dstpath']:
+  if not file_['explicit_dst_path']:
     # This file was not defined with src@dst, so we inferred the destination from the source. In that case,
     # we require that the destination not be under the current location
     path = file_['dstpath']
-    abspath = os.path.abspath(path)
+    abspath = os.path.realpath(os.path.abspath(path)) # Use os.path.realpath to resolve any symbolic links to hard paths, to match the structure in curr_abspath.
     if DEBUG: print >> sys.stderr, path, abspath, curr_abspath
     if not abspath.startswith(curr_abspath):
       print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory "%s". This is invalid since the current directory becomes the root that the generated code will see' % (path, curr_abspath)
@@ -461,8 +470,11 @@ if has_preloaded:
     ''' % use_data
 
   package_uuid = uuid.uuid4();
-  remote_package_name = os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
-  code += r'''
+  package_name = Compression.compressed_name(data_target) if Compression.on else data_target
+  statinfo = os.stat(package_name)
+  remote_package_size = statinfo.st_size
+  remote_package_name = os.path.basename(package_name)
+  ret += r'''
     var PACKAGE_PATH;
     if (typeof window === 'object') {
       PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
@@ -471,9 +483,10 @@ if has_preloaded:
       PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
     }
     var PACKAGE_NAME = '%s';
-    var REMOTE_PACKAGE_NAME = '%s';
+    var REMOTE_PACKAGE_NAME = (Module['filePackagePrefixURL'] || '') + '%s';
+    var REMOTE_PACKAGE_SIZE = %d;
     var PACKAGE_UUID = '%s';
-  ''' % (data_target, remote_package_name, package_uuid)
+  ''' % (data_target, remote_package_name, remote_package_size, package_uuid)
 
   if use_preload_cache:
     code += r'''
@@ -567,19 +580,21 @@ if has_preloaded:
     '''
 
   ret += r'''
-    function fetchRemotePackage(packageName, callback, errback) {
+    function fetchRemotePackage(packageName, packageSize, callback, errback) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', packageName, true);
       xhr.responseType = 'arraybuffer';
       xhr.onprogress = function(event) {
         var url = packageName;
-        if (event.loaded && event.total) {
+        var size = packageSize;
+        if (event.total) size = event.total;
+        if (event.loaded) {
           if (!xhr.addedTotal) {
             xhr.addedTotal = true;
             if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
             Module.dataFileDownloads[url] = {
               loaded: event.loaded,
-              total: event.total
+              total: size
             };
           } else {
             Module.dataFileDownloads[url].loaded = event.loaded;
@@ -631,7 +646,7 @@ if has_preloaded:
       function preloadFallback(error) {
         console.error(error);
         console.error('falling back to default preload behavior');
-        fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
       };
 
       openDatabase(
@@ -644,7 +659,7 @@ if has_preloaded:
                 fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, processPackageData, preloadFallback);
               } else {
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
-                fetchRemotePackage(REMOTE_PACKAGE_NAME,
+                fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, 
                   function(packageData) {
                     cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
                       function(error) {
@@ -666,7 +681,7 @@ if has_preloaded:
     # Only tricky bit is the fetch is async, but also when runWithFS is called is async, so we handle both orderings.
     ret += r'''
       var fetched = null, fetchedCallback = null;
-      fetchRemotePackage('%s', function(data) {
+      fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
         if (fetchedCallback) {
           fetchedCallback(data);
           fetchedCallback = null;
@@ -674,7 +689,7 @@ if has_preloaded:
           fetched = data;
         }
       }, handleError);
-    ''' % os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target)
+    '''
 
     code += r'''
       Module.preloadResults[PACKAGE_NAME] = {fromCache: false};

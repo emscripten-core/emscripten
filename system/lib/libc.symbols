@@ -40,6 +40,7 @@
          W _Znwj
          W _ZnwjRKSt9nothrow_t
          T __floatscan
+         T __intscan
          T __overflow
          T __shgetc
          T __shlim
@@ -50,11 +51,19 @@
          T __towrite
          T __uflow
          T atof
+         T atoi
+         T atol
          W bulk_free
          W calloc
          W free
+         T frexp
+         T frexpf
+         T frexpl
          W independent_calloc
          W independent_comalloc
+         T isdigit
+         T isspace
+         T isupper
          W mallinfo
          W malloc
          W malloc_footprint
@@ -66,16 +75,40 @@
          W malloc_usable_size
          W mallopt
          W memalign
+         T MUSL_vfprintf
          W posix_memalign
          W pvalloc
          W realloc
          W realloc_in_place
          T scalbn
          T scalbnl
+         T memchr
+         T memcmp
+         T memcpy
+         T snprintf
+         T sprintf
          T strtod
+         T strtoull
+         T strtoll
+         T strtoul
+         T strtol
+         T strtoimax
+         T strtoumax
+         T strcoll
+         T __strcoll_l
+         W strcoll_l
+         T strcmp
+         T strncmp
+         T strcasecmp
+         T strncasecmp
          T strtod_l
          T strtof
          T strtof_l
          T strtold
          T strtold_l
+         T tolower
          W valloc
+         T vsnprintf
+         T vsprintf
+         T wcrtomb
+         T wctomb

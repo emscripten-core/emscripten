@@ -27,6 +27,19 @@ sys.path += [path_from_root(''), path_from_root('third_party/websockify')]
 import tools.shared
 from tools.shared import *
 
+# Utils
+
+def nonfastcomp(test):
+  try:
+    old_fastcomp = os.environ.get('EMCC_FAST_COMPILER')
+    os.environ['EMCC_FAST_COMPILER'] = '0'
+    test()
+  finally:
+    if old_fastcomp is None:
+      del os.environ['EMCC_FAST_COMPILER']
+    else:
+      os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
+
 # Sanity check for config
 
 try:
@@ -36,7 +49,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2f', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'slow2', 'slow2asm', 's_0_0', 's_0_1']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):
@@ -138,7 +151,11 @@ class RunnerCore(unittest.TestCase):
       post1 = post_build
       post2 = None
 
-    if self.emcc_args is None:
+    emcc_args = self.emcc_args
+    if emcc_args is None:
+      emcc_args = []
+
+    if emcc_args is None: # legacy testing mode, no longer used
       Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
       if post1:
         exec post1 in locals()
@@ -160,7 +177,7 @@ process(sys.argv[1])
 ''')
         transform.close()
         transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
-      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+      Building.emcc(filename + '.o.ll', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
       if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
@@ -237,7 +254,7 @@ process(sys.argv[1])
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
-      raise Exception("did NOT asm.js'ify")
+      raise Exception("did NOT asm.js'ify: " + err)
     err = '\n'.join(filter(lambda line: 'uccessfully compiled asm.js code' not in line, err.split('\n')))
     return err
 
@@ -335,7 +352,7 @@ process(sys.argv[1])
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + str(Building.COMPILER_TEST_OPTS) + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '')
+    cache_name = name + str(Building.COMPILER_TEST_OPTS) + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '_') + (self.env.get('EMCC_FAST_COMPILER') or '_')
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -566,7 +583,7 @@ class BrowserCore(RunnerCore):
 
   def with_report_result(self, code):
     return r'''
-      #if EMSCRIPTEN
+      #ifdef __EMSCRIPTEN__
       #include <emscripten.h>
       #define REPORT_RESULT_INTERNAL(sync) \
         char output[1000]; \
@@ -649,7 +666,6 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
       args=[], outfile='test.html', message='.'): # TODO: use in all other tests
-    if os.environ.get('EMCC_FAST_COMPILER') == '1' and 'LEGACY_GL_EMULATION=1' in args: return self.skip('no legacy gl emulation in fastcomp')
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -763,13 +779,10 @@ A recommended order is:
   (the main test suite)
   other - tests separate from the main suite
   browser - runs pages in a web browser
+  interactive - runs interactive browser tests that need human verification, and could not be automated
   sockets - runs websocket networking tests
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions
-
-There are also commands to run specific subsets of the test suite:
-
-  browser.audio - runs audio tests in a web browser (requires human verification)
 
 To run one of those parts, do something like
 
@@ -777,9 +790,9 @@ To run one of those parts, do something like
 
 To run a specific set of tests, you can do things like
 
-  python tests/runner.py o1
+  python tests/runner.py asm2
 
-(that runs the o1 (-O1) tests). You can run individual tests with
+(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
 
   python tests/runner.py test_hello_world
 
@@ -792,6 +805,16 @@ an individual test with
 
   python tests/runner.py ALL.test_hello_world
 
+Debugging: You can run
+
+  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
+
+in order to save the test runner directory, in /tmp/emscripten_temp. All files
+created by the test will be present there. You can also use EMCC_DEBUG to
+further debug the compiler itself, which works outside of the test suite as
+well: EMCC_DEBUG=1 will emit emcc-* files in that temp dir for each stage
+of the compiler, while EMCC_DEBUG=2 will emit even more files, one for each
+js optimizer phase.
 ==============================================================================
 
 '''

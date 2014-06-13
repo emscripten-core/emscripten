@@ -49,7 +49,7 @@ var RuntimeGenerator = {
   stackExit: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     var ret = '';
-    if (SAFE_HEAP) {
+    if (SAFE_HEAP && !ASM_JS) {
       ret += 'var i = sp; while ((i|0) < (STACKTOP|0)) { SAFE_HEAP_CLEAR(i|0); i = (i+1)|0 }';
     }
     return ret += 'STACKTOP=sp';
@@ -96,6 +96,15 @@ function unInline(name_, params) {
 }
 
 var Runtime = {
+  // When a 64 bit long is returned from a compiled function the least significant
+  // 32 bit word is passed in the return value, but the most significant 32 bit
+  // word is placed in tempRet0. This provides an accessor for that value.
+  setTempRet0: function(value) {
+    tempRet0 = value;
+  },
+  getTempRet0: function() {
+    return tempRet0;
+  },
   stackSave: function() {
     return STACKTOP;
   },
@@ -185,10 +194,10 @@ var Runtime = {
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size, vararg) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
-#if TARGET_LE32 == 1
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1
     if (vararg) return 8;
 #endif
-#if TARGET_LE32
+#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     if (!vararg && (type == 'i64' || type == 'double')) return 8;
     if (!type) return Math.min(size, 8); // align structures internally to 64 bits
 #endif
@@ -336,6 +345,9 @@ var Runtime = {
 #if ASM_JS
       if (!args.splice) args = Array.prototype.slice.call(args);
       args.splice(0, 0, ptr);
+#if ASSERTIONS
+      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
       return Module['dynCall_' + sig].apply(null, args);
 #else
       return FUNCTION_TABLE[ptr].apply(null, args);
@@ -345,6 +357,9 @@ var Runtime = {
       assert(sig.length == 1);
 #endif
 #if ASM_JS
+#if ASSERTIONS
+      assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
       return Module['dynCall_' + sig].call(null, ptr);
 #else
       return FUNCTION_TABLE[ptr]();
@@ -393,7 +408,27 @@ var Runtime = {
     for (var i = 0; i < numArgs; i++) {
       args.push(String.fromCharCode(36) + i); // $0, $1 etc
     }
-    return Runtime.asmConstCache[code] = eval('(function(' + args.join(',') + '){ ' + Pointer_stringify(code) + ' })'); // new Function does not allow upvars in node
+    var source = Pointer_stringify(code);
+    if (source[0] === '"') {
+      // tolerate EM_ASM("..code..") even though EM_ASM(..code..) is correct
+      if (source.indexOf('"', 1) === source.length-1) {
+        source = source.substr(1, source.length-2);
+      } else {
+        // something invalid happened, e.g. EM_ASM("..code($0)..", input)
+        abort('invalid EM_ASM input |' + source + '|. Please use EM_ASM(..code..) (no quotes) or EM_ASM({ ..code($0).. }, input) (to input values)');
+      }
+    }
+#if NO_DYNAMIC_EXECUTION == 0
+    try {
+      var evalled = eval('(function(' + args.join(',') + '){ ' + source + ' })'); // new Function does not allow upvars in node
+    } catch(e) {
+      Module.printErr('error in executing inline EM_ASM code: ' + e + ' on: \n\n' + source + '\n\nwith args |' + args + '| (make sure to use the right one out of EM_ASM, EM_ASM_ARGS, etc.)');
+      throw e;
+    }
+#else
+    abort('NO_DYNAMIC_EXECUTION was set, cannot eval, so EM_ASM is not functional');
+#endif
+    return Runtime.asmConstCache[code] = evalled;
   },
 
   warnOnce: function(text) {
@@ -468,6 +503,11 @@ var Runtime = {
       return ret;
     }
     this.processJSString = function processJSString(string) {
+      /* TODO: use TextEncoder when present,
+        var encoder = new TextEncoder();
+        encoder['encoding'] = "utf-8";
+        var utf8Array = encoder['encode'](aMsg.data);
+      */
       string = unescape(encodeURIComponent(string));
       var ret = [];
       for (var i = 0; i < string.length; i++) {
@@ -475,6 +515,19 @@ var Runtime = {
       }
       return ret;
     }
+  },
+
+#if RETAIN_COMPILER_SETTINGS
+  compilerSettings: {},
+#endif
+
+  getCompilerSetting: function(name) {
+#if RETAIN_COMPILER_SETTINGS == 0
+    throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for Runtime.getCompilerSetting or emscripten_get_compiler_setting to work';
+#else
+    if (!(name in Runtime.compilerSettings)) return 'invalid compiler setting: ' + name;
+    return Runtime.compilerSettings[name];
+#endif
   },
 
 #if RUNTIME_DEBUG
@@ -555,7 +608,7 @@ function getRuntime() {
 
 // Converts a value we have as signed, into an unsigned value. For
 // example, -1 in int32 would be a very large number as unsigned.
-function unSign(value, bits, ignore, sig) {
+function unSign(value, bits, ignore) {
   if (value >= 0) {
     return value;
   }
@@ -568,7 +621,7 @@ function unSign(value, bits, ignore, sig) {
 
 // Converts a value we have as unsigned, into a signed value. For
 // example, 200 in a uint8 would be a negative number.
-function reSign(value, bits, ignore, sig) {
+function reSign(value, bits, ignore) {
   if (value <= 0) {
     return value;
   }
@@ -601,4 +654,13 @@ function reSign(value, bits, ignore, sig) {
 // Then the stack.
 // Then 'dynamic' memory for sbrk.
 Runtime.GLOBAL_BASE = Runtime.alignMemory(1);
+
+if (RETAIN_COMPILER_SETTINGS) {
+  var blacklist = set('RELOOPER', 'STRUCT_INFO');
+  for (var x in this) {
+    try {
+      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) Runtime.compilerSettings[x] = this[x];
+    } catch(e){}
+  }
+}
 

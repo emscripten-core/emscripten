@@ -14,9 +14,37 @@
 extern "C" {
 #endif
 
-#if !EMSCRIPTEN
+#include <stdio.h>
+
+#if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
+
+
+/* Typedefs */
+
+/*
+ * Unaligned types, helpful to force LLVM to emit unaligned
+ * loads/stores in places in your code where SAFE_HEAP found
+ * an unaligned operation. (It's better to avoid unaligned
+ * operations, but if you are reading from a packed stream of
+ * bytes or such, these types may be useful.)
+ */
+
+typedef short __attribute__((aligned(1))) emscripten_align1_short;
+
+typedef int __attribute__((aligned(2))) emscripten_align2_int;
+typedef int __attribute__((aligned(1))) emscripten_align1_int;
+
+typedef float __attribute__((aligned(2))) emscripten_align2_float;
+typedef float __attribute__((aligned(1))) emscripten_align1_float;
+
+typedef double __attribute__((aligned(4))) emscripten_align4_double;
+typedef double __attribute__((aligned(2))) emscripten_align2_double;
+typedef double __attribute__((aligned(1))) emscripten_align1_double;
+
+
+/* Functions */
 
 /*
  * Convenient syntax for inline assembly/js. Allows stuff like
@@ -27,8 +55,8 @@ extern "C" {
  * does a function call to reach it). It supports newlines,
  *
  *    EM_ASM(
- *      window.alert('hai'));
- *      window.alert('bai'));
+ *      window.alert('hai');
+ *      window.alert('bai');
  *    )
  *
  * Notes: Double-quotes (") are not supported, but you can use
@@ -40,28 +68,35 @@ extern "C" {
 #define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
 
 /*
- * Input-output versions of EM_ASM. EM_ASM_INT receives arguments of
- * either int or double type and returns an int; EM_ASM_DOUBLE
- * receives similar arguments (int or double) but returns a double.
- * Arguments arrive as $0, $1 etc; output value should be returned:
+ * Input-output versions of EM_ASM.
+ *
+ * EM_ASM_ (an extra _ is added) or EM_ASM_ARGS allow sending values
+ * (ints or doubles) into the code. If you also want a return value,
+ * EM_ASM_INT receives arguments (of int or double type)
+ * and returns an int; EM_ASM_DOUBLE does the same and returns
+ * a double.
+ *
+ * Arguments arrive as $0, $1 etc. The output value should be returned:
  *
  *    int x = EM_ASM_INT({
  *      console.log('I received: ' + [$0, $1]);
  *      return $0 + $1;
  *    }, calc(), otherCalc());
  *
- * Note the {,}
+ * Note the { and }. If you just want to receive an output value
+ * (int or double) but *not* to pass any values, you can use
+ * EM_ASM_INT_V and EM_ASM_DOUBLE_V respectively.
  */
+#define EM_ASM_(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
+#define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, __VA_ARGS__)
+#define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)
+#define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double(#code)
 
 /*
- * Forces LLVM to not dead-code-eliminate a function. Note that
- * you still need to use EXPORTED_FUNCTIONS so it stays alive
- * in JS, e.g.
- *     emcc -s EXPORTED_FUNCTIONS=["_main", "_myfunc"]
- * and in the source file
- *     void EMSCRIPTEN_KEEPALIVE myfunc() {..}
+ * Forces LLVM to not dead-code-eliminate a function. This also
+ * exports the function, as if you added it to EXPORTED_FUNCTIONS.
  */
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
@@ -90,13 +125,19 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * for this is to load an asset module, that is, the output of the
  * file packager.
  */
-extern void emscripten_async_load_script(const char *script, void (*onload)(), void (*onerror)());
+extern void emscripten_async_load_script(const char *script, void (*onload)(void), void (*onerror)(void));
 
 /*
  * Set a C function as the main event loop. The JS environment
  * will call that function at a specified number of frames per
  * second. Setting 0 or a negative value as the fps will use
- * the browser's requestAnimationFrame mechanism.
+ * the browser's requestAnimationFrame mechanism. This is
+ * *HIGHLY* recommended if you are doing rendering, as
+ * the browser's requestAnimationFrame will make sure you
+ * render at a proper smooth rate that lines up with the
+ * the browser and monitor in a proper way. (If you do not
+ * render at all in your application, then you should pick a
+ * specific frame rate that makes sense for your code.)
  *
  * Pausing and resuming the main loop is useful if your app
  * needs to perform some synchronous operation, for example
@@ -105,6 +146,13 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  * code assumes that), so you can break the code up into
  * asynchronous callbacks, but you must pause the main
  * loop until they complete.
+ *
+ * If you want your main loop function to receive a void*
+ * argument, use emscripten_set_main_loop_arg.
+ *
+ * There can be only *one* main loop function at a time. You
+ * can cancel the current one and set another, if you want to
+ * change it.
  *
  * @simulate_infinite_loop If true, this function will throw an
  *    exception in order to stop execution of the caller. This
@@ -122,11 +170,12 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(), v
  *    you created an object on the stack, it will be cleaned up
  *    before the main loop will be called the first time.
  */
-#if EMSCRIPTEN
-extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
-extern void emscripten_pause_main_loop();
-extern void emscripten_resume_main_loop();
-extern void emscripten_cancel_main_loop();
+#if __EMSCRIPTEN__
+extern void emscripten_set_main_loop(void (*func)(void), int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop_arg(void (*func)(void*), void *arg, int fps, int simulate_infinite_loop);
+extern void emscripten_pause_main_loop(void);
+extern void emscripten_resume_main_loop(void);
+extern void emscripten_cancel_main_loop(void);
 #else
 #define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
   while (1) { func(); usleep(1000000/fps); }
@@ -146,7 +195,7 @@ extern void emscripten_cancel_main_loop();
  * are not counted, do not block the main loop, and can fire
  * at specific time in the future.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
 extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
 #else
@@ -168,7 +217,7 @@ inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), v
  * to 10, then push 10 blockers, as they complete the user will
  * see x/10 and so forth.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_set_main_loop_expected_blockers(int num);
 #else
 inline void emscripten_set_main_loop_expected_blockers(int num) {}
@@ -183,7 +232,7 @@ inline void emscripten_set_main_loop_expected_blockers(int num) {}
  * If millis is negative, the browser's requestAnimationFrame
  * mechanism is used.
  */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 extern void emscripten_async_call(void (*func)(void *), void *arg, int millis);
 #else
 inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
@@ -198,7 +247,7 @@ inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
  * etc. are not run). This is implicitly performed when you do
  * an asynchronous operation like emscripten_async_call.
  */
-extern void emscripten_exit_with_live_runtime();
+extern void emscripten_exit_with_live_runtime(void);
 
 /*
  * Hide the OS mouse cursor over the canvas. Note that SDL's
@@ -206,7 +255,7 @@ extern void emscripten_exit_with_live_runtime();
  * the OS one. This command is useful to hide the OS cursor
  * if your app draws its own cursor.
  */
-void emscripten_hide_mouse();
+void emscripten_hide_mouse(void);
 
 /*
  * Resizes the pixel width and height of the <canvas> element
@@ -227,12 +276,19 @@ void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
  * absolute time, and is only meaningful in comparison to
  * other calls to this function. The unit is ms.
  */
-double emscripten_get_now();
+#if __EMSCRIPTEN__
+double emscripten_get_now(void);
+#else
+#include <time.h>
+static inline double emscripten_get_now(void) {
+  return (1000*clock())/(double)CLOCKS_PER_SEC;
+}
+#endif
 
 /*
  * Simple random number generation in [0, 1), maps to Math.random().
  */
-float emscripten_random();
+float emscripten_random(void);
 
 /*
  * This macro-looking function will cause Emscripten to
@@ -298,6 +354,28 @@ void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*
  * and http status code if is an error.
  */
 void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*, int), void (*onprogress)(void*, int));
+
+/*
+ * More feature-complete version of emscripten_async_wget_data. Note:
+ * this version is experimental.
+ *
+ * The requesttype is 'GET' or 'POST',
+ * If is post request, param is the post parameter 
+ * like key=value&key2=value2.
+ * The param 'arg' is a pointer will be pass to the callback
+ * The free param tells the runtime whether to free the returned buffer
+   after onload is complete. If false freeing the buffer is the receiver's
+   responsibility.
+ * The callbacks are called with an object pointer give in parameter.
+ * When file is ready then 'onload' callback will called with a pointer to
+   the buffer in memory and the size in bytes.
+ * During the download 'onprogress' callback will called. The first argument is
+   the number of bytes loaded. The second argument is the total size in bytes,
+   or zero if the size is unavailable.
+ * If any error occurred 'onerror' will called with the HTTP status code
+   and a string with the status description.
+ */
+void emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, void (*onload)(void*, void*, unsigned), void (*onerror)(void*, int, const char*), void (*onprogress)(void*, int, int));
 
 /*
  * Prepare a file in asynchronous way. This does just the
@@ -377,10 +455,17 @@ void emscripten_destroy_worker(worker_handle worker);
 void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
 
 /*
- * Sends a response when in a worker call. Should only be
- * called once in each call.
+ * Sends a response when in a worker call. Both functions post a message
+ * back to the thread which called the worker.  The _respond_provisionally
+ * variant can be invoked multiple times, which will queue up messages to
+ * be posted to the worker's creator.  Eventually, the _respond variant must
+ * be invoked, which will disallow further messages and free framework
+ * resources previously allocated for this worker call. (Calling the
+ * provisional version is optional, but you must call the non-provisional
+ * one to avoid leaks.) 
  */
 void emscripten_worker_respond(char *data, int size);
+void emscripten_worker_respond_provisionally(char *data, int size);
 
 /*
  * Checks how many responses are being waited for from a worker. This
@@ -403,7 +488,57 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 #define EMSCRIPTEN_NETWORK_WEBRTC     1
 void emscripten_set_network_backend(int backend);
 
+/*
+ * Returns the value of a compiler setting. For example
+ *
+ *   emscripten_get_compiler_setting("PRECISE_F32")
+ *
+ * will return an integer representing the value of
+ * PRECISE_F32 during compilation. For values containing
+ * anything other than an integer, a string is returned
+ * (you will need to cast the int return value to a char*).
+ *
+ * Some useful things this can do is provide the
+ * version of emscripten ("EMSCRIPTEN_VERSION"), the optimization
+ * level ("OPT_LEVEL"), debug level ("DEBUG_LEVEL"), etc.
+ *
+ * For this command to work, you must build with
+ *   -s RETAIN_COMPILER_SETTINGS=1
+ * as otherwise we do not want to increase the build size
+ * with this metadata.
+ */
+int emscripten_get_compiler_setting(const char *name);
+
+/*
+ * Emits
+ *   debugger;
+ * inline in the code, which tells the JS engine to invoke
+ * the debugger if it gets there.
+ */
+void emscripten_debugger();
+
+/*
+ * Get preloaded image data and the size of the image.
+ *
+ * Returns pointer to loaded image or NULL.
+ * width/height of image are written to w/h if data is valid.
+ * Pointer should be free()'d
+ */
+char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
+
+/*
+ * Get preloaded image data from a c FILE *.
+ *
+ * Returns pointer to loaded image or NULL.
+ * width/height of image are written to w/h if data is valid.
+ * Pointer should be free()'d
+ */
+char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
+
+
+/* ===================================== */
 /* Internal APIs. Be careful with these. */
+/* ===================================== */
 
 /*
  * Profiling tools.

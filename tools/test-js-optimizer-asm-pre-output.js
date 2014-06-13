@@ -106,15 +106,11 @@ function sign_extension_simplification() {
  }
 }
 function compare_result_simplification() {
- HEAP32[$4] = HEAP32[$5] < HEAP32[$6];
- HEAP32[$4] = HEAP32[$5] > HEAP32[$6];
- HEAP32[$4] = HEAP32[$5] <= HEAP32[$6];
- HEAP32[$4] = HEAP32[$5] <= HEAP32[$6];
- HEAP32[$4] = HEAP32[$5] == HEAP32[$6];
- HEAP32[$4] = HEAP32[$5] === HEAP32[$6];
- HEAP32[$4] = HEAP32[$5] != HEAP32[$6];
- HEAP32[$4] = HEAP32[$5] !== HEAP32[$6];
- var x = HEAP32[$5] != HEAP32[$6] | 0;
+ f((a > b & 1) + 1 | 0);
+ f(a > b | z);
+ f(a > b | c > d);
+ HEAP32[$4] = HEAP32[$5] < HEAP32[$6] & 1;
+ var x = HEAP32[$5] != HEAP32[$6] & 1;
 }
 function tempDoublePtr($45, $14, $28, $42) {
  $45 = $45 | 0;
@@ -518,5 +514,88 @@ function _main($argc, $argv) {
  $_0 = 0;
  STACKTOP = __stackBase__;
  return $_0 | 0;
+}
+function badf() {
+ var $9 = 0;
+ $9 = $8 | 0;
+ HEAP32[$gep23_asptr >> 2] = $9;
+}
+function badf2() {
+ var $9 = +0;
+ $9 = +$8;
+ HEAPF32[$gep23_asptr >> 2] = $9;
+}
+function fcomp() {
+ if (!($y < $x)) return 5;
+ if (!(5 < $x)) return 5;
+ if (!($y < 5)) return 5;
+ if (($a | 0) >= ($b | 0)) return 5;
+ if (($a | 0) >= 5) return 5;
+ if (5 >= ($b | 0)) return 5;
+ if (5 >= 5) return 5;
+}
+function conditionalizeMe() {
+ if (x > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ if (a() > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ if (x > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ if (a() > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ if (x > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (a() > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (x > 1 | x + y + z + k() > 12) {
+  b();
+ }
+ if (a() > 1 | x + y + z + k() > 12) {
+  b();
+ }
+ if (x > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (a() > 1 ? 1 : x + y + z + w > 12) {
+  b();
+ }
+ if (x + y + z + k() > 12 | x > 1) {
+  b();
+ }
+ if (x + y + z + k() > 12 | a() > 1) {
+  b();
+ }
+ while (x > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ while (a() > 1 ? x + y + z + w > 12 : 0) {
+  b();
+ }
+ while (x > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ while (a() > 1 & x + y + z + k() > 12) {
+  b();
+ }
+ if (!($sub$i480 >= Math_fround(+0)) | !($sub4$i483 >= Math_fround(+0))) {
+  b();
+ }
+ if ($sub$i480 >= Math_fround(+0) ? !($sub4$i483 >= Math_fround(HEAPF32[x + y | 0])) : 1) {
+  b();
+ }
+ if (x > 10 | HEAP[20] + 2 > 5) {
+  b();
+ }
+ print(((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? 1 : $el) | $cheap > 0);
+ print(((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? 1 : -1) | $cheap > 0);
+ print($cheap > 0 ? 1 : (HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? 1 : 0);
+ print(((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > a % b % c % d ? -1 : 1) | $cheap > 0);
+ return (((((Math_imul(i6 + 1, i7) | 0) + 17 | 0) % 5 | 0) == 0 ? 1 : ((((Math_imul(i7 + 1, i7) | 0) + 11 | 0) >>> 0) % 3 | 0) == 0) | 0) == 0;
 }
 

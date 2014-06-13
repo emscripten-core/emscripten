@@ -24,9 +24,11 @@ struct Shape;
 // Info about a branching from one block to another
 struct Branch {
   enum FlowType {
-    Direct = 0, // We will directly reach the right location through other means, no need for continue or break
+    Direct = 0,   // We will directly reach the right location through other means, no need for continue or break
     Break = 1,
-    Continue = 2
+    Continue = 2,
+    Nested = 3    // This code is directly reached, but we must be careful to ensure it is nested in an if - it is not reached
+                  // unconditionally, other code paths exist alongside it that we need to make sure do not intertwine
   };
   Shape *Ancestor; // If not NULL, this shape is the relevant one for purposes of getting to the target block. We break or continue on it
   Branch::FlowType Type; // If Ancestor is not NULL, this says whether to break or continue
@@ -57,9 +59,9 @@ struct Block {
   BlockBranchMap ProcessedBranchesOut;
   BlockSet ProcessedBranchesIn;
   Shape *Parent; // The shape we are directly inside
-  int Id; // A unique identifier, defined when added to relooper
+  int Id; // A unique identifier, defined when added to relooper. Note that this uniquely identifies a *logical* block - if we split it, the two instances have the same content *and* the same Id
   const char *Code; // The string representation of the code in this block. Owning pointer (we copy the input)
-  const char *BranchVar; // If we have more than one branch out, the variable whose value determines where we go
+  const char *BranchVar; // A variable whose value determines where we go; if this is not NULL, emit a switch on that variable
   bool IsCheckedMultipleEntry; // If true, we are a multiple entry, so reaching us requires setting the label variable
 
   Block(const char *CodeInit, const char *BranchVarInit);
@@ -130,8 +132,6 @@ struct SimpleShape : public Shape {
   }
 };
 
-typedef std::map<Block*, Shape*> BlockShapeMap;
-
 // A shape that may be implemented with a labeled loop.
 struct LabeledShape : public Shape {
   bool Labeled; // If we have a loop, whether it needs to be labeled
@@ -139,12 +139,16 @@ struct LabeledShape : public Shape {
   LabeledShape(ShapeType TypeInit) : Shape(TypeInit), Labeled(false) {}
 };
 
-struct MultipleShape : public LabeledShape {
-  BlockShapeMap InnerMap; // entry block -> shape
-  int NeedLoop; // If we have branches, we need a loop. This is a counter of loop requirements,
-                // if we optimize it to 0, the loop is unneeded
+// Blocks with the same id were split and are identical, so we just care about ids in Multiple entries
+typedef std::map<int, Shape*> IdShapeMap;
 
-  MultipleShape() : LabeledShape(Multiple), NeedLoop(0) {}
+struct MultipleShape : public LabeledShape {
+  IdShapeMap InnerMap; // entry block ID -> shape
+  int Breaks; // If we have branches on us, we need a loop (or a switch). This is a counter of requirements,
+                     // if we optimize it to 0, the loop is unneeded
+  bool UseSwitch; // Whether to switch on label as opposed to an if-else chain
+
+  MultipleShape() : LabeledShape(Multiple), Breaks(0), UseSwitch(false) {}
 
   void RenderLoopPrefix();
   void RenderLoopPostfix();
@@ -191,7 +195,7 @@ struct Relooper {
   Relooper();
   ~Relooper();
 
-  void AddBlock(Block *New);
+  void AddBlock(Block *New, int Id=-1);
 
   // Calculates the shapes
   void Calculate(Block *Entry);

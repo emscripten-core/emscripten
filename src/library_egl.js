@@ -492,7 +492,11 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
-  
+
+
+  // EGLAPI EGLBoolean EGLAPIENTRY eglWaitGL(void);
+  eglWaitGL: 'eglWaitClient',
+
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval);
   eglSwapInterval: function(display, interval) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
@@ -550,12 +554,26 @@ var LibraryEGL = {
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
   eglSwapBuffers: function() {
-    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    if (!EGL.defaultDisplayInitialized) {
+      EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
+    } else if (!Module.ctx) {
+      EGL.setErrorCode(0x3002 /* EGL_BAD_ACCESS */);
+    } else if (Module.ctx.isContextLost()) {
+      EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
+    } else {
+      // According to documentation this does an implicit flush.
+      // Due to discussion at https://github.com/kripken/emscripten/pull/1871
+      // the flush was removed since this _may_ result in slowing code down.
+      //_glFlush();
+      EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+      return 1; // EGL_TRUE
+    }
+    return 0; // EGL_FALSE
   },
 
   eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
   eglGetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(Pointer_stringify(name_));
+    return _emscripten_GetProcAddress(name_);
   },
 };
 

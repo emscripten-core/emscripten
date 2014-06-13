@@ -1,0 +1,9 @@
+Opened "/file.txt" with flags 2
+Wrote to file "/file.txt"
+About to move "/file.txt" to "/renamed.txt"
+Moved "/file.txt" to "/renamed.txt"
+Opened "/renamed.txt" with flags 1
+File read returned 'hello!'
+Wrote to file "/dev/tty"
+About to delete "/renamed.txt"
+Deleted "/renamed.txt"

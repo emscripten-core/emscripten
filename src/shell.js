@@ -14,7 +14,11 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 var Module;
+#if CLOSURE_COMPILER
 if (!Module) Module = eval('(function() { try { return {{{ EXPORT_NAME }}} || {} } catch(e) { return {} } })()');
+#else
+if (!Module) Module = (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : null) || {};
+#endif
 
 // Sometimes an existing Module object exists with properties
 // meant to overwrite the default module functionality. Here
@@ -38,10 +42,10 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
-  Module['print'] = function print(x) {
+  if (!Module['print']) Module['print'] = function print(x) {
     process['stdout'].write(x + '\n');
   };
-  Module['printErr'] = function printErr(x) {
+  if (!Module['printErr']) Module['printErr'] = function printErr(x) {
     process['stderr'].write(x + '\n');
   };
 
@@ -71,7 +75,7 @@ if (ENVIRONMENT_IS_NODE) {
   module['exports'] = Module;
 }
 else if (ENVIRONMENT_IS_SHELL) {
-  Module['print'] = print;
+  if (!Module['print']) Module['print'] = print;
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
   if (typeof read != 'undefined') {
@@ -92,7 +96,9 @@ else if (ENVIRONMENT_IS_SHELL) {
 
   this['{{{ EXPORT_NAME }}}'] = Module;
 
+#if CLOSURE_COMPILER
   eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
+#endif
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function read(url) {
@@ -107,16 +113,16 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   if (typeof console !== 'undefined') {
-    Module['print'] = function print(x) {
+    if (!Module['print']) Module['print'] = function print(x) {
       console.log(x);
     };
-    Module['printErr'] = function printErr(x) {
+    if (!Module['printErr']) Module['printErr'] = function printErr(x) {
       console.log(x);
     };
   } else {
     // Probably a worker, and without console.log. We can do very little here...
     var TRY_USE_DUMP = false;
-    Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
+    if (!Module['print']) Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
       dump(x);
     }) : (function(x) {
       // self.postMessage(x); // enable this if you want stdout to be sent as messages
@@ -124,7 +130,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   if (ENVIRONMENT_IS_WEB) {
-    this['{{{ EXPORT_NAME }}}'] = Module;
+    window['{{{ EXPORT_NAME }}}'] = Module;
   } else {
     Module['load'] = importScripts;
   }
@@ -135,7 +141,11 @@ else {
 }
 
 function globalEval(x) {
+#if NO_DYNAMIC_EXECUTION == 0
   eval.call(null, x);
+#else
+  throw 'NO_DYNAMIC_EXECUTION was set, cannot eval';
+#endif
 }
 if (!Module['load'] == 'undefined' && Module['read']) {
   Module['load'] = function load(f) {

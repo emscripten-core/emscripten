@@ -6,6 +6,8 @@
 
 {{RUNTIME}}
 
+Module['Runtime'] = Runtime;
+
 #if ASM_JS
 #if RESERVED_FUNCTION_POINTERS
 function jsCall() {
@@ -21,6 +23,7 @@ Module.print = Module.printErr = function(){};
 #endif
 
 #if SAFE_HEAP
+#if ASM_JS == 0
 //========================================
 // Debugging tools - Heap
 //========================================
@@ -38,13 +41,13 @@ var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
   //if (dest === A_NUMBER) Module.print ([dest, type, store, ignore, storeValue] + ' ' + stackTrace()); // Something like this may be useful, in debugging
 
-  assert(dest > 0, 'segmentation fault');
+  if (dest <= 0) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest);
 
 #if USE_TYPED_ARRAYS
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
   // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
   // JS array so it will work (potentially slowly, depending on the engine).
-  assert(ignore || dest < Math.max(DYNAMICTOP, STATICTOP));
+  if (!ignore && dest >= Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest + '. Heap ends at address ' + Math.max(DYNAMICTOP, STATICTOP));
   assert(ignore || DYNAMICTOP <= TOTAL_MEMORY);
 #endif
 
@@ -166,6 +169,53 @@ function SAFE_HEAP_FILL_HISTORY(from, to, type) {
 }
 
 //==========================================
+#else
+// ASM_JS safe heap
+
+function getSafeHeapType(bytes, isFloat) {
+  switch (bytes) {
+    case 1: return 'i8';
+    case 2: return 'i16';
+    case 4: return isFloat ? 'float' : 'i32';
+    case 8: return 'double';
+    default: assert(0);
+  }
+}
+
+function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat]);
+#endif
+  if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
+  if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
+  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
+}
+
+function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
+  if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
+  if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
+  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  var type = getSafeHeapType(bytes, isFloat);
+  var ret = getValue(dest, type, 1);
+  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned]);
+#endif
+  return ret;
+}
+
+function SAFE_FT_MASK(value, mask) {
+  var ret = value & mask;
+  if (ret !== value) {
+    abort('Function table mask error: function pointer is ' + value + ' which is masked by ' + mask + ', the likely cause of this is that the function pointer is being called by the wrong type.');
+  }
+  return ret;
+}
+
+#endif
 #endif
 
 #if CHECK_HEAP_ALIGN
@@ -260,86 +310,168 @@ function assert(condition, text) {
 
 var globalScope = this;
 
-// C calling interface. A convenient way to call C functions (in C files, or
-// defined with extern "C").
-//
-// Note: LLVM optimizations can inline and remove functions, after which you will not be
-//       able to call them. Closure can also do so. To avoid that, add your function to
-//       the exports using something like
-//
-//         -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
-//
-// @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
-// @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
-//                   'array' for JavaScript arrays and typed arrays; note that arrays are 8-bit).
-// @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType,
-//                   except that 'array' is not possible (there is no way for us to know the length of the array)
-// @param args       An array of the arguments to the function, as native JS values (as in returnType)
-//                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
-// @return           The return value, as a native JS value (as in returnType)
-function ccall(ident, returnType, argTypes, args) {
-  return ccallFunc(getCFunc(ident), returnType, argTypes, args);
-}
-Module["ccall"] = ccall;
-
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
-  try {
-    var func = Module['_' + ident]; // closure exported function
-    if (!func) func = eval('_' + ident); // explicit lookup
-  } catch(e) {
+  var func = Module['_' + ident]; // closure exported function
+  if (!func) {
+#if NO_DYNAMIC_EXECUTION == 0
+    try {
+      func = eval('_' + ident); // explicit lookup
+    } catch(e) {}
+#else
+    abort('NO_DYNAMIC_EXECUTION was set, cannot eval - ccall/cwrap are not functional');
+#endif
   }
   assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
   return func;
 }
 
-// Internal function that does a C call using a function, not an identifier
-function ccallFunc(func, returnType, argTypes, args) {
+var cwrap, ccall;
+(function(){
   var stack = 0;
-  function toC(value, type) {
-    if (type == 'string') {
-      if (value === null || value === undefined || value === 0) return 0; // null string
-      value = intArrayFromString(value);
-      type = 'array';
-    }
-    if (type == 'array') {
-      if (!stack) stack = Runtime.stackSave();
-      var ret = Runtime.stackAlloc(value.length);
-      writeArrayToMemory(value, ret);
+  var JSfuncs = {
+    'stackSave' : function() {
+      stack = Runtime.stackSave();
+    },
+    'stackRestore' : function() {
+      Runtime.stackRestore(stack);
+    },
+    // type conversion from js to c
+    'arrayToC' : function(arr) {
+      var ret = Runtime.stackAlloc(arr.length);
+      writeArrayToMemory(arr, ret);
+      return ret;
+    },
+    'stringToC' : function(str) {
+      var ret = 0;
+      if (str !== null && str !== undefined && str !== 0) { // null string
+        ret = Runtime.stackAlloc(str.length + 1); // +1 for the trailing '\0'
+        writeStringToMemory(str, ret);
+      }
       return ret;
     }
-    return value;
-  }
-  function fromC(value, type) {
-    if (type == 'string') {
-      return Pointer_stringify(value);
-    }
-    assert(type != 'array');
-    return value;
-  }
-  var i = 0;
-  var cArgs = args ? args.map(function(arg) {
-    return toC(arg, argTypes[i++]);
-  }) : [];
-  var ret = fromC(func.apply(null, cArgs), returnType);
-  if (stack) Runtime.stackRestore(stack);
-  return ret;
-}
+  };
+  // For fast lookup of conversion functions
+  var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
-// Returns a native JS wrapper for a C function. This is similar to ccall, but
-// returns a function you can call repeatedly in a normal way. For example:
-//
-//   var my_function = cwrap('my_c_function', 'number', ['number', 'number']);
-//   alert(my_function(5, 22));
-//   alert(my_function(99, 12));
-//
-function cwrap(ident, returnType, argTypes) {
-  var func = getCFunc(ident);
-  return function() {
-    return ccallFunc(func, returnType, argTypes, Array.prototype.slice.call(arguments));
+  // C calling interface. A convenient way to call C functions (in C files, or
+  // defined with extern "C").
+  //
+  // Note: ccall/cwrap use the C stack for temporary values. If you pass a string
+  //       then it is only alive until the call is complete. If the code being
+  //       called saves the pointer to be used later, it may point to invalid
+  //       data. If you need a string to live forever, you can create it (and
+  //       must later delete it manually!) using malloc and writeStringToMemory,
+  //       for example.
+  //
+  // Note: LLVM optimizations can inline and remove functions, after which you will not be
+  //       able to call them. Closure can also do so. To avoid that, add your function to
+  //       the exports using something like
+  //
+  //         -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+  //
+  // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
+  // @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
+  //                   'array' for JavaScript arrays and typed arrays; note that arrays are 8-bit).
+  // @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType,
+  //                   except that 'array' is not possible (there is no way for us to know the length of the array)
+  // @param args       An array of the arguments to the function, as native JS values (as in returnType)
+  //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
+  // @return           The return value, as a native JS value (as in returnType)
+  ccall = function ccallFunc(ident, returnType, argTypes, args) {
+    var func = getCFunc(ident);
+    var cArgs = [];
+#if ASSERTIONS
+    assert(returnType !== 'array', 'Return type should not be "array".');
+#endif
+    if (args) {
+      for (var i = 0; i < args.length; i++) {
+        var converter = toC[argTypes[i]];
+        if (converter) {
+          if (stack === 0) stack = Runtime.stackSave();
+          cArgs[i] = converter(args[i]);
+        } else {
+          cArgs[i] = args[i];
+        }
+      }
+    }
+    var ret = func.apply(null, cArgs);
+    if (returnType === 'string') ret = Pointer_stringify(ret);
+    if (stack !== 0) JSfuncs['stackRestore']();
+    return ret;
   }
-}
+
+  var sourceRegex = /^function\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
+  function parseJSFunc(jsfunc) {
+    // Match the body and the return value of a javascript function source
+    var parsed = jsfunc.toString().match(sourceRegex).slice(1);
+    return {arguments : parsed[0], body : parsed[1], returnValue: parsed[2]}
+  }
+  var JSsource = {};
+  for (var fun in JSfuncs) {
+    if (JSfuncs.hasOwnProperty(fun)) {
+      // Elements of toCsource are arrays of three items:
+      // the code, and the return value
+      JSsource[fun] = parseJSFunc(JSfuncs[fun]);
+    }
+  }
+  // Returns a native JS wrapper for a C function. This is similar to ccall, but
+  // returns a function you can call repeatedly in a normal way. For example:
+  //
+  //   var my_function = cwrap('my_c_function', 'number', ['number', 'number']);
+  //   alert(my_function(5, 22));
+  //   alert(my_function(99, 12));
+  //
+  cwrap = function cwrap(ident, returnType, argTypes) {
+    var cfunc = getCFunc(ident);
+    // When the function takes numbers and returns a number, we can just return
+    // the original function
+    var numericArgs = argTypes.every(function(type){ return type === 'number'});
+    var numericRet = (returnType !== 'string');
+    if ( numericRet && numericArgs) {
+      return cfunc;
+    }
+    // Creation of the arguments list (["$1","$2",...,"$nargs"])
+    var argNames = argTypes.map(function(x,i){return '$'+i});
+    var funcstr = "(function(" + argNames.join(',') + ") {";
+    var nargs = argTypes.length;
+    if (!numericArgs) {
+      // Generate the code needed to convert the arguments from javascript
+      // values to pointers
+      funcstr += JSsource['stackSave'].body + ';';
+      for (var i = 0; i < nargs; i++) {
+        var arg = argNames[i], type = argTypes[i];
+        if (type === 'number') continue;
+        var convertCode = JSsource[type + 'ToC']; // [code, return]
+        funcstr += 'var ' + convertCode.arguments + ' = ' + arg + ';';
+        funcstr += convertCode.body + ';';
+        funcstr += arg + '=' + convertCode.returnValue + ';';
+      }
+    }
+
+    // When the code is compressed, the name of cfunc is not literally 'cfunc' anymore
+    var cfuncname = parseJSFunc(function(){return cfunc}).returnValue;
+    // Call the function
+    funcstr += 'var ret = ' + cfuncname + '(' + argNames.join(',') + ');';
+    if (!numericRet) { // Return type can only by 'string' or 'number'
+      // Convert the result to a string
+      var strgfy = parseJSFunc(function(){return Pointer_stringify}).returnValue;
+      funcstr += 'ret = ' + strgfy + '(ret);';
+    }
+    if (!numericArgs) {
+      // If we had a stack, restore it
+      funcstr += JSsource['stackRestore'].body + ';';
+    }
+    funcstr += 'return ret})';
+#if NO_DYNAMIC_EXECUTION == 0
+    return eval(funcstr);
+#else
+    abort('NO_DYNAMIC_EXECUTION was set, cannot eval - ccall is not functional');
+#endif
+  };
+})();
 Module["cwrap"] = cwrap;
+Module["ccall"] = ccall;
 
 // Sets a value in memory in a dynamic way at run-time. Uses the
 // type data. This is the same as makeSetValue, except that
@@ -641,6 +773,137 @@ function stringToUTF32(str, outPtr) {
 Module['stringToUTF32'] = stringToUTF32;
 
 function demangle(func) {
+  var i = 3;
+  // params, etc.
+  var basicTypes = {
+    'v': 'void',
+    'b': 'bool',
+    'c': 'char',
+    's': 'short',
+    'i': 'int',
+    'l': 'long',
+    'f': 'float',
+    'd': 'double',
+    'w': 'wchar_t',
+    'a': 'signed char',
+    'h': 'unsigned char',
+    't': 'unsigned short',
+    'j': 'unsigned int',
+    'm': 'unsigned long',
+    'x': 'long long',
+    'y': 'unsigned long long',
+    'z': '...'
+  };
+  var subs = [];
+  var first = true;
+  function dump(x) {
+    //return;
+    if (x) Module.print(x);
+    Module.print(func);
+    var pre = '';
+    for (var a = 0; a < i; a++) pre += ' ';
+    Module.print (pre + '^');
+  }
+  function parseNested() {
+    i++;
+    if (func[i] === 'K') i++; // ignore const
+    var parts = [];
+    while (func[i] !== 'E') {
+      if (func[i] === 'S') { // substitution
+        i++;
+        var next = func.indexOf('_', i);
+        var num = func.substring(i, next) || 0;
+        parts.push(subs[num] || '?');
+        i = next+1;
+        continue;
+      }
+      if (func[i] === 'C') { // constructor
+        parts.push(parts[parts.length-1]);
+        i += 2;
+        continue;
+      }
+      var size = parseInt(func.substr(i));
+      var pre = size.toString().length;
+      if (!size || !pre) { i--; break; } // counter i++ below us
+      var curr = func.substr(i + pre, size);
+      parts.push(curr);
+      subs.push(curr);
+      i += pre + size;
+    }
+    i++; // skip E
+    return parts;
+  }
+  function parse(rawList, limit, allowVoid) { // main parser
+    limit = limit || Infinity;
+    var ret = '', list = [];
+    function flushList() {
+      return '(' + list.join(', ') + ')';
+    }
+    var name;
+    if (func[i] === 'N') {
+      // namespaced N-E
+      name = parseNested().join('::');
+      limit--;
+      if (limit === 0) return rawList ? [name] : name;
+    } else {
+      // not namespaced
+      if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
+      var size = parseInt(func.substr(i));
+      if (size) {
+        var pre = size.toString().length;
+        name = func.substr(i + pre, size);
+        i += pre + size;
+      }
+    }
+    first = false;
+    if (func[i] === 'I') {
+      i++;
+      var iList = parse(true);
+      var iRet = parse(true, 1, true);
+      ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
+    } else {
+      ret = name;
+    }
+    paramLoop: while (i < func.length && limit-- > 0) {
+      //dump('paramLoop');
+      var c = func[i++];
+      if (c in basicTypes) {
+        list.push(basicTypes[c]);
+      } else {
+        switch (c) {
+          case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
+          case 'R': list.push(parse(true, 1, true)[0] + '&'); break; // reference
+          case 'L': { // literal
+            i++; // skip basic type
+            var end = func.indexOf('E', i);
+            var size = end - i;
+            list.push(func.substr(i, size));
+            i += size + 2; // size + 'EE'
+            break;
+          }
+          case 'A': { // array
+            var size = parseInt(func.substr(i));
+            i += size.toString().length;
+            if (func[i] !== '_') throw '?';
+            i++; // skip _
+            list.push(parse(true, 1, true)[0] + ' [' + size + ']');
+            break;
+          }
+          case 'E': break paramLoop;
+          default: ret += '?' + c; break paramLoop;
+        }
+      }
+    }
+    if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
+    if (rawList) {
+      if (ret) {
+        list.push(ret + '?');
+      }
+      return list;
+    } else {
+      return ret + flushList();
+    }
+  }
   try {
     // Special-case the entry point, since its name differs from other name mangling.
     if (func == 'Object._main' || func == '_main') {
@@ -653,130 +916,6 @@ function demangle(func) {
     switch (func[3]) {
       case 'n': return 'operator new()';
       case 'd': return 'operator delete()';
-    }
-    var i = 3;
-    // params, etc.
-    var basicTypes = {
-      'v': 'void',
-      'b': 'bool',
-      'c': 'char',
-      's': 'short',
-      'i': 'int',
-      'l': 'long',
-      'f': 'float',
-      'd': 'double',
-      'w': 'wchar_t',
-      'a': 'signed char',
-      'h': 'unsigned char',
-      't': 'unsigned short',
-      'j': 'unsigned int',
-      'm': 'unsigned long',
-      'x': 'long long',
-      'y': 'unsigned long long',
-      'z': '...'
-    };
-    function dump(x) {
-      //return;
-      if (x) Module.print(x);
-      Module.print(func);
-      var pre = '';
-      for (var a = 0; a < i; a++) pre += ' ';
-      Module.print (pre + '^');
-    }
-    var subs = [];
-    function parseNested() {
-      i++;
-      if (func[i] === 'K') i++; // ignore const
-      var parts = [];
-      while (func[i] !== 'E') {
-        if (func[i] === 'S') { // substitution
-          i++;
-          var next = func.indexOf('_', i);
-          var num = func.substring(i, next) || 0;
-          parts.push(subs[num] || '?');
-          i = next+1;
-          continue;
-        }
-        if (func[i] === 'C') { // constructor
-          parts.push(parts[parts.length-1]);
-          i += 2;
-          continue;
-        }
-        var size = parseInt(func.substr(i));
-        var pre = size.toString().length;
-        if (!size || !pre) { i--; break; } // counter i++ below us
-        var curr = func.substr(i + pre, size);
-        parts.push(curr);
-        subs.push(curr);
-        i += pre + size;
-      }
-      i++; // skip E
-      return parts;
-    }
-    var first = true;
-    function parse(rawList, limit, allowVoid) { // main parser
-      limit = limit || Infinity;
-      var ret = '', list = [];
-      function flushList() {
-        return '(' + list.join(', ') + ')';
-      }
-      var name;
-      if (func[i] === 'N') {
-        // namespaced N-E
-        name = parseNested().join('::');
-        limit--;
-        if (limit === 0) return rawList ? [name] : name;
-      } else {
-        // not namespaced
-        if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
-        var size = parseInt(func.substr(i));
-        if (size) {
-          var pre = size.toString().length;
-          name = func.substr(i + pre, size);
-          i += pre + size;
-        }
-      }
-      first = false;
-      if (func[i] === 'I') {
-        i++;
-        var iList = parse(true);
-        var iRet = parse(true, 1, true);
-        ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
-      } else {
-        ret = name;
-      }
-      paramLoop: while (i < func.length && limit-- > 0) {
-        //dump('paramLoop');
-        var c = func[i++];
-        if (c in basicTypes) {
-          list.push(basicTypes[c]);
-        } else {
-          switch (c) {
-            case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
-            case 'R': list.push(parse(true, 1, true)[0] + '&'); break; // reference
-            case 'L': { // literal
-              i++; // skip basic type
-              var end = func.indexOf('E', i);
-              var size = end - i;
-              list.push(func.substr(i, size));
-              i += size + 2; // size + 'EE'
-              break;
-            }
-            case 'A': { // array
-              var size = parseInt(func.substr(i));
-              i += size.toString().length;
-              if (func[i] !== '_') throw '?';
-              i++; // skip _
-              list.push(parse(true, 1, true)[0] + ' [' + size + ']');
-              break;
-            }
-            case 'E': break paramLoop;
-            default: ret += '?' + c; break paramLoop;
-          }
-        }
-      }
-      if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-      return rawList ? list : ret + flushList();
     }
     return parse();
   } catch(e) {
@@ -818,33 +957,19 @@ var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 #if USE_TYPED_ARRAYS
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
-#if ASM_JS == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
-#else
-  abort('Cannot enlarge memory arrays in asm.js. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', or (2) set Module.TOTAL_MEMORY before the program runs.');
-#endif
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast, and ALLOW_MEMORY_GROWTH is not fully tested with all optimizations on! ' + [DYNAMICTOP, TOTAL_MEMORY]); // We perform safe elimination instead of elimination in this mode, but if you see this error, try to disable it and other optimizations entirely
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [DYNAMICTOP, TOTAL_MEMORY]);
   assert(DYNAMICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
-  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
+
+  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
     TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
   }
   assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
-#if USE_TYPED_ARRAYS == 1
-  var oldIHEAP = IHEAP;
-  Module['HEAP'] = Module['IHEAP'] = HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-  IHEAP.set(oldIHEAP);
-  IHEAPU = new Uint32Array(IHEAP.buffer);
-#if USE_FHEAP
-  var oldFHEAP = FHEAP;
-  Module['FHEAP'] = FHEAP = new Float64Array(TOTAL_MEMORY);
-  FHEAP.set(oldFHEAP);
-#endif
-#endif
 #if USE_TYPED_ARRAYS == 2
   var oldHEAP8 = HEAP8;
   var buffer = new ArrayBuffer(TOTAL_MEMORY);
@@ -857,6 +982,11 @@ function enlargeMemory() {
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
   HEAP8.set(oldHEAP8);
+#else
+  abort('cannot enlarge memory arrays in non-ta2 modes');
+#endif
+#if ASM_JS
+  _emscripten_replace_memory(HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64);
 #endif
 #endif
 }
@@ -885,7 +1015,7 @@ if (totalMemory !== TOTAL_MEMORY) {
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
-       'Cannot fallback to non-typed array case: Code is too specialized');
+       'JS engine does not provide full typed array support');
 
 #if USE_TYPED_ARRAYS == 1
 HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
@@ -985,6 +1115,11 @@ function preMain() {
 }
 
 function exitRuntime() {
+#if ASSERTIONS
+  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+    Module.printErr('Exiting runtime. Any attempt to access the compiled C code may fail from now. If you want to keep the runtime alive, set Module["noExitRuntime"] = true or build with -s NO_EXIT_RUNTIME=1');
+  }
+#endif
   callRuntimeCallbacks(__ATEXIT__);
 }
 

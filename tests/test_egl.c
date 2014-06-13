@@ -75,7 +75,10 @@ int main(int argc, char *argv[])
     ret = eglTerminate(display);
     assert(eglGetError() == EGL_SUCCESS);
     assert(ret == EGL_TRUE);
-    
+
+    assert(eglGetProcAddress("glClear") != 0);
+    assert(eglGetProcAddress("glWakaWaka") == 0);
+
 #ifdef REPORT_RESULT
     REPORT_RESULT();
 #endif

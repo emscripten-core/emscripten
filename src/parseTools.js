@@ -46,7 +46,11 @@ function preprocess(text) {
               error('unsupported preprecessor op ' + op);
             }
           } else {
-            showStack.push(ident in this && this[ident] > 0);
+            if (ident[0] === '!') {
+              showStack.push(!(this[ident.substr(1)] > 0));
+            } else {
+              showStack.push(ident in this && this[ident] > 0);
+            }
           }
         } else if (line[2] == 'n') { // include
           var included = read(line.substr(line.indexOf(' ')+1));
@@ -158,7 +162,7 @@ function isArrayType(type) {
 function isStructType(type) {
   if (isPointerType(type)) return false;
   if (isArrayType(type)) return true;
-  if (/<?{ ?[^}]* ?}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
+  if (/<?\{ ?[^}]* ?\}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return type[0] == '%';
 }
@@ -168,7 +172,7 @@ function isVectorType(type) {
 }
 
 function isStructuralType(type) {
-  return /^{ ?[^}]* ?}$/.test(type); // { i32, i8 } etc. - anonymous struct types
+  return /^\{ ?[^}]* ?\}$/.test(type); // { i32, i8 } etc. - anonymous struct types
 }
 
 function getStructuralTypeParts(type) { // split { i32, i8 } etc. into parts
@@ -463,7 +467,7 @@ function parseParamTokens(params) {
       // handle 'byval' and 'byval align X'. We store the alignment in 'byVal'
       byVal = QUANTUM_SIZE;
       segment.splice(1, 1);
-      if (segment[1] && (segment[1].text === 'nocapture' || segment[1].text === 'readonly')) {
+      if (segment[1] && (segment[1].text in LLVM.PARAM_IGNORABLES)) {
         segment.splice(1, 1);
       }
       if (segment[1] && segment[1].text === 'align') {
@@ -472,7 +476,7 @@ function parseParamTokens(params) {
         segment.splice(1, 2);
       }
     }
-    if (segment[1] && (segment[1].text === 'nocapture' || segment[1].text === 'readonly')) {
+    if (segment[1] && (segment[1].text in LLVM.PARAM_IGNORABLES)) {
       segment.splice(1, 1);
     }
     if (segment.length == 1) {
@@ -1157,22 +1161,17 @@ function getHeapOffset(offset, type, forceAsm) {
 
   if (Runtime.getNativeFieldSize(type) > 4) {
     if (type == 'i64' || TARGET_X86) {
-      type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in le32 but only i64, not double
+      type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in asmjs-unknown-emscripten but only i64, not double
     }
   }
 
   var sz = Runtime.getNativeTypeSize(type);
   var shifts = Math.log(sz)/Math.LN2;
   offset = '(' + offset + ')';
-  if (shifts != 0) {
-    if (CHECK_HEAP_ALIGN) {
-      return '((CHECK_ALIGN_' + sz + '(' + offset + '|0)|0)>>' + shifts + ')';
-    } else {
-      return '(' + offset + '>>' + shifts + ')';
-    }
+  if (CHECK_HEAP_ALIGN && shifts > 0) {
+    return '((CHECK_ALIGN_' + sz + '(' + offset + '|0)|0)>>' + shifts + ')';
   } else {
-    // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
-    return isJSVar(offset) ? offset : '(' + offset + '|0)';
+    return '(' + offset + '>>' + shifts + ')';
   }
 }
 
@@ -1283,7 +1282,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in le32
+  // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in asmjs-unknown-emscripten
   // we need this code path if we are not fully aligned.
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && (TARGET_X86 || align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
@@ -1327,18 +1326,22 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     var printType = type;
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
-    return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + (ASM_JS ? 0 : printType) + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')', type);
-  } else {
-    var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
-    if (ASM_JS && (phase == 'funcs' || forceAsm)) {
-      ret = asmCoercion(ret, type);
+    if (ASM_JS) {
+      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Runtime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
+      // else fall through
+    } else {
+      return asmCoercion('SAFE_HEAP_LOAD(' + offset + ', ' + (ASM_JS ? 0 : printType) + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')', type);
     }
-    if (ASM_HEAP_LOG) {
-      ret = makeInlineCalculation('(asmPrint' + (type in Runtime.FLOAT_TYPES ? 'Float' : 'Int') + '(' + (asmPrintCounter++) + ',' + asmCoercion('VALUE', type) + '), VALUE)', ret,
-                                  'temp' + (type in Runtime.FLOAT_TYPES ? 'Double' : 'Int'));
-    }
-    return ret;
   }
+  var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
+  if (ASM_JS && (phase == 'funcs' || forceAsm)) {
+    ret = asmCoercion(ret, type);
+  }
+  if (ASM_HEAP_LOG) {
+    ret = makeInlineCalculation('(asmPrint' + (type in Runtime.FLOAT_TYPES ? 'Float' : 'Int') + '(' + (asmPrintCounter++) + ',' + asmCoercion('VALUE', type) + '), VALUE)', ret,
+                                'temp' + (type in Runtime.FLOAT_TYPES ? 'Double' : 'Int'));
+  }
+  return ret;
 }
 
 function makeGetValueAsm(ptr, pos, type, unsigned) {
@@ -1435,10 +1438,14 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     var printType = type;
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
-    return 'SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + (ASM_JS ? 0 : printType) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
-  } else {
-    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type, forceAsm) + ']=' + value }).join(sep);
+    if (ASM_JS) {
+      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Runtime.FLOAT_TYPES)|0) + ')', type);
+      // else fall through
+    } else {
+      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + (ASM_JS ? 0 : printType) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
+    }
   }
+  return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type, forceAsm) + ']=' + value }).join(sep);
 }
 
 function makeSetValueAsm(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
@@ -1781,31 +1788,12 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
     types = 'i8';
   }
 
-  // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
-  var chunkSize = JS_CHUNK_SIZE;
-  function chunkify(array) {
-    // break very large slabs into parts
-    var ret = '';
-    var index = 0;
-    while (index < array.length) {
-      ret = (ret ? ret + '.concat(' : '') + '[' + array.slice(index, index + chunkSize).map(JSON.stringify) + ']' + (ret ? ')\n' : '');
-      index += chunkSize;
-    }
-    return ret;
-  }
-  if (typeof slab == 'object' && slab.length > chunkSize) {
-    slab = chunkify(slab);
-  }
   if (typeof types == 'object') {
     while (types.length < slab.length) types.push(0);
   }
-  if (typeof types != 'string' && types.length > chunkSize) {
-    types = chunkify(types);
-  } else {
-    types = JSON.stringify(types);
-  }
+  types = JSON.stringify(types);
   if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
-  return 'allocate(' + slab + ', ' + types + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ')';
+  return 'allocate(' + slab + ', ' + types + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ');';
 }
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
@@ -1833,7 +1821,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
       case '<4 x i32>':
       case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
       case 'double': {
-        if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
+        if (TARGET_ASMJS_UNKNOWN_EMSCRIPTEN) return ['HEAPF64']; // in asmjs-unknown-emscripten, we do have the ability to assume 64-bit alignment
         // otherwise, fall through to float
       }
       case '<4 x float>':
@@ -2047,7 +2035,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   } else if (param.intertype == 'mathop') {
     return processMathop(param);
   } else if (param.intertype === 'vector') {
-    return getVectorBaseType(param.type) + '32x4(' + param.idents.join(',') + ')';
+    return 'SIMD.' + getVectorBaseType(param.type) + '32x4(' + param.idents.join(',') + ')';
   } else {
     throw 'invalid llvm parameter: ' + param.intertype;
   }
@@ -2712,7 +2700,7 @@ var simdLane = ['x', 'y', 'z', 'w'];
 
 function ensureVector(ident, base) {
   Types.usesSIMD = true;
-  return ident == 0 ? base + '32x4.splat(0)' : ident;
+  return ident == 0 ? 'SIMD.' + base + '32x4.splat(0)' : ident;
 }
 
 function ensureValidFFIType(type) {

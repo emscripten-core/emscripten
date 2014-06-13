@@ -22,7 +22,7 @@
 #ifndef __XMLVM_H__
 #define __XMLVM_H__
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 // Workaround definitions for Emscripten
 // TODO: Determine if different solution is needed
 

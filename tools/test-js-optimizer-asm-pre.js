@@ -113,16 +113,11 @@ function sign_extension_simplification() {
  }
 }
 function compare_result_simplification() {
- // Eliminate these '&1's.
+ f(((a > b)&1) + 1 | 0);
+ f(((a > b)&1) | z);
+ f(((a > b)&1) | (c > d & 1));
+ // Don't eliminate these '&1's.
  HEAP32[$4] = (HEAP32[$5] < HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] > HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] <= HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] <= HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] == HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] === HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] != HEAP32[$6]) & 1;
- HEAP32[$4] = (HEAP32[$5] !== HEAP32[$6]) & 1;
- // Convert the &1 to |0 here, since we don't get an implicit coersion.
  var x = (HEAP32[$5] != HEAP32[$6]) & 1;
 }
 function tempDoublePtr($45, $14, $28, $42) {
@@ -530,4 +525,88 @@ function _main($argc, $argv) {
  STACKTOP = __stackBase__;
  return $_0 | 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main"]
+function badf() {
+ var $9 = Math_fround(0);
+ $9 = (HEAP32[tempDoublePtr>>2]=$8,Math_fround(HEAPF32[tempDoublePtr>>2]));
+ HEAPF32[$gep23_asptr>>2] = $9;
+}
+function badf2() {
+ var $9 = 0;
+ $9 = (HEAPF32[tempDoublePtr>>2]=$8,HEAP32[tempDoublePtr>>2]|0);
+ HEAP32[$gep23_asptr>>2] = $9;
+}
+function fcomp() {
+  // de-morgan's laws are not valid on floats, due to NaNs >:(
+ if (!($y < $x)) return 5;
+ if (!(5 < $x)) return 5;
+ if (!($y < 5)) return 5;
+ if (!(($a|0) < ($b|0))) return 5;
+ if (!(($a|0) < 5)) return 5;
+ if (!(5 < ($b|0))) return 5;
+ if (!(5 < 5)) return 5;
+}
+function conditionalizeMe() {
+ if ((x > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ if ((a() > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ if ((x > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((a() > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((x > 1) | (x+y+z+w > 12)) {
+  b();
+ }
+ if ((a() > 1) | (x+y+z+w > 12)) {
+  b();
+ }
+ if ((x > 1) | (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((a() > 1) | (x+y+z+k() > 12)) {
+  b();
+ }
+ if ((x+y+z+w > 12) | (x > 1)) {
+  b();
+ }
+ if ((x+y+z+w > 12) | (a() > 1)) {
+  b();
+ }
+ if ((x+y+z+k() > 12) | (x > 1)) {
+  b();
+ }
+ if ((x+y+z+k() > 12) | (a() > 1)) {
+  b();
+ }
+ while ((x > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ while ((a() > 1) & (x+y+z+w > 12)) {
+  b();
+ }
+ while ((x > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ while ((a() > 1) & (x+y+z+k() > 12)) {
+  b();
+ }
+ if (!($sub$i480 >= Math_fround(+0)) | !($sub4$i483 >= Math_fround(+0))) {
+  b();
+ }
+ if (!($sub$i480 >= Math_fround(+0)) | !($sub4$i483 >= Math_fround(HEAPF32[x+y|0]))) {
+  b();
+ }
+ if (x > 10 | (HEAP[20] + 2) > 5) {
+  b();
+ }
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : $el) | ($cheap > 0) ); // conditional does not always emit boolean
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : -1) | ($cheap > 0) );
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? 1 : 0) | ($cheap > 0) ); // this one is safe!
+ print( (((HEAP8[a] + HEAP8[b] + HEAP8[c] + HEAP8[d] + HEAP8[e] + HEAP8[f] | 0) > (a % b % c % d)) ? -1 : 1) | ($cheap > 0) );
+ return ((((Math_imul(i6+1, i7) | 0) + 17 | 0) % 5 | 0 | 0) == 0 | ((((Math_imul(i7+1, i7) | 0) + 11 | 0) >>> 0) % 3 | 0 | 0) == 0 | 0) == 0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp", "conditionalizeMe"]

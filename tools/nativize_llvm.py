@@ -25,9 +25,11 @@ Popen([LLVM_OPT, filename, '-strip-debug', '-o', filename + '.clean.bc']).commun
 print 'bc => s'
 for params in [['-march=x86'], ['-march=x86-64']]: # try x86, then x86-64 FIXME
   print 'params', params
-  Popen([LLVM_COMPILER] + params + [filename + '.clean.bc', '-o', filename + '.s']).communicate()[0]
-  print 's => o'
-  Popen(['as', filename + '.s', '-o', filename + '.o']).communicate()[0]
+  for triple in [['-mtriple=i386-pc-linux-gnu'], []]:
+    Popen([LLVM_COMPILER] + params + triple + [filename + '.clean.bc', '-o', filename + '.s']).communicate()[0]
+    print 's => o'
+    Popen(['as', filename + '.s', '-o', filename + '.o']).communicate()[0]
+    if os.path.exists(filename + '.o'): break
   if os.path.exists(filename + '.o'): break
 print 'o => runnable'
 Popen(['g++', path_from_root('system', 'lib', 'debugging.cpp'), filename + '.o', '-o', filename + '.run'] + ['-l' + lib for lib in libs]).communicate()[0]

@@ -59,6 +59,11 @@ def validate_asmjs(filename, muteOutput):
         if not valid_asmjs:
           return False
     if numAsmJsBlocks == 0:
+      # Test a .js file with the same basename - emcc convention
+      # is to generate files with same basename but different suffix.
+      js_file = filename.replace('.html', '.js')
+      if os.path.isfile(js_file):
+        return validate_asmjs(js_file, muteOutput)
       if not muteOutput:
         print >> sys.stderr, 'Error: the file does not contain any "use asm" modules.'
       return False

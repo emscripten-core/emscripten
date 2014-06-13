@@ -23,8 +23,8 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // Changing this from the default of 4 is deprecated.
 
 var TARGET_X86 = 0;  // For i386-pc-linux-gnu
-var TARGET_LE32 = 1; // For le32-unknown-nacl. 1 is normal, 2 is for the fastcomp llvm
-                     // backend using pnacl abi simplification
+var TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1; // For asmjs-unknown-emscripten. 1 is normal, 2 is for the fastcomp llvm
+                     // backend using emscripten-customized abi simplification
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
@@ -39,7 +39,7 @@ var CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
 
 var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // check that each allocation to the stack does not
-                    // exceed it's size, whether all allocations (stack and static) are
+                    // exceed its size, whether all allocations (stack and static) are
                     // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
                     // if code flow runs into a fault
                     // ASSERTIONS == 2 gives even more runtime checks
@@ -48,6 +48,8 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
                     // code in your own, and will call main() yourself at the right time (which you
                     // can do with Module.callMain(), with an optional parameter of commandline args).
+var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
+                         // run afterwards, for example from the browser main event loop).
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
@@ -104,6 +106,9 @@ var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fu
                               // for ways to help find places in your code where unaligned reads/writes are done -
                               // you might be able to refactor your codebase to prevent them, which leads to
                               // smaller and faster code, or even the option to turn this flag on.
+var WARN_UNALIGNED = 0; // Warn at compile time about instructions that LLVM tells us are not fully aligned.
+                        // This is useful to find places in your code where you might refactor to ensure proper
+                        // alignment. (this option is fastcomp-only)
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // Note that we do not catch 32-bit multiplication by default (which must be done in
@@ -119,12 +124,23 @@ var PRECISE_I32_MUL = 1; // If enabled, i32 multiplication is done with full pre
 var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 64-bit and do not model C++
                      //    floats exactly, which are 32-bit.
                      // 1: Model C++ floats precisely, using Math.fround, polyfilling when necessary. This
-                     //    can be slow if the polyfill is used on heavy float32 computation.
+                     //    can be slow if the polyfill is used on heavy float32 computation. See note on
+                     //    browser support below.
                      // 2: Model C++ floats precisely using Math.fround if available in the JS engine, otherwise
-                     //    use an empty polyfill. This will have less of a speed penalty than using the full
-                     //    polyfill in cases where engine support is not present.
+                     //    use an empty polyfill. This will have much less of a speed penalty than using the full
+                     //    polyfill in cases where engine support is not present. In addition, we can
+                     //    remove the empty polyfill calls themselves on the client when generating html,
+                     //    which should mean that this gives you the best of both worlds of 0 and 1, and is
+                     //    therefore recommended.
+                     // XXX Note: To optimize float32-using code, we use the 'const' keyword in the emitted
+                     //           code. This allows us to avoid unnecessary calls to Math.fround, which would
+                     //           slow down engines not yet supporting that function. 'const' is present in
+                     //           all modern browsers, including Firefox, Chrome and Safari, but in IE is only
+                     //           present in IE11 and above. Therefore if you need to support legacy versions of
+                     //           IE, you should not enable PRECISE_F32 1 or 2.
 var SIMD = 0; // Whether to emit SIMD code ( https://github.com/johnmccutchan/ecmascript_simd )
 
+var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
 
@@ -156,8 +172,14 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // throughput. It is hard to say what values to start testing
                          // with, but something around 20,000 to 100,000 might make sense.
                          // (The unit size is number of AST nodes.)
+                         // Outlining decreases maximum function size, but does so at the
+                         // cost of increasing overall code size as well as performance
+                         // (outlining itself makes code less optimized, and requires
+                         // emscripten to disable some passes that are incompatible with
+                         // it).
 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
+var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
@@ -216,6 +238,19 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets.
 
+// As well as being configurable at compile time via the "-s" option the WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
+// settings may configured at run time via the Module object e.g.
+// Module['websocket'] = {subprotocol: 'base64, binary, text'};
+// Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
+// Run time configuration may be useful as it lets an application select multiple different services.
+var WEBSOCKET_URL = 'ws://'; // A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete
+                             // RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
+                             // In the (default) case of only a prefix being specified the URL will be constructed from
+                             // prefix + addr + ':' + port
+                             // where addr and port are derived from the socket connect/bind/accept calls.
+var WEBSOCKET_SUBPROTOCOL = 'binary'; // A string containing a comma separated list of WebSocket subprotocols
+                                      // as would be present in the Sec-WebSocket-Protocol header.
+
 var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
 
 var GL_ASSERTIONS = 0; // Adds extra checks for error situations in the GL library. Can impact performance.
@@ -251,8 +286,8 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
                                     //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
 
-var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in listed functions if
-                                        // DISABLE_EXCEPTION_CATCHING = 2 set
+var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
+                                        // DISABLE_EXCEPTION_CATCHING = 2 is set
 
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
@@ -288,6 +323,10 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // so that you can create a virtual file system with all of the required files.
 var CASE_INSENSITIVE_FS = 0; // If set to nonzero, the provided virtual filesystem if treated case-insensitive, like
                              // Windows and OSX do. If set to 0, the VFS is case-sensitive, like on Linux.
+var MEMFS_APPEND_TO_TYPED_ARRAYS = 0; // If set to nonzero, MEMFS will always utilize typed arrays as the backing store 
+                                      // for appending data to files. The default behavior is to use typed arrays for files
+                                      // when the file size doesn't change after initial creation, and for files that do
+                                      // change size, use normal JS arrays instead.
 
 var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
                  // When enabled, 0-initialized globals are sorted to the end of the globals list,
@@ -303,10 +342,25 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
+                                    // Note also that this is the full list of exported functions - if you
+                                    // have a main() function and want it to run, you must include it in this
+                                    // list (as _main is by default in this value, and if you override it
+                                    // without keeping it there, you are in effect removing it).
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
-                         // is necessary to use the bindings generator with asm.js
+                         // is necessary to use the WebIDL binder or bindings generator with asm.js
+var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
+                                  // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
+                                  // To see what is retained, look for compilerSettings in the generated code.
+
+
+var EMSCRIPTEN_VERSION = ''; // this will contain the emscripten version. you should not modify it. This
+                             // and the following few settings are useful in combination with
+                             // RETAIN_COMPILER_SETTINGS
+var OPT_LEVEL = 0;           // this will contain the optimization level (-Ox). you should not modify it.
+var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you should not modify it.
+
 
 // JS library functions (C functions implemented in JS)
 // that we include by default. If you want to make sure
@@ -424,10 +478,13 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // very partial - it is hard to fake a whole browser! - so
                   // keep your expectations low for this to work.
 
+var DETERMINISTIC = 0; // If 1, we force Date.now(), Math.random, etc. to return deterministic
+                       // results. Good for comparing builds for debugging purposes (and nothing else)
+
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
-var ASM_JS = 0; // If 1, generate code in asm.js format. If 2, emits the same code except
+var ASM_JS = 1; // If 1, generate code in asm.js format. If 2, emits the same code except
                 // for omitting 'use asm'
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
@@ -451,6 +508,11 @@ var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressi
 
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
+
+var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Function(), which disables some functionality
+                              // (causing runtime errors if attempted to be used), but allows the emitted code to be
+                              // acceptable in places that disallow dynamic code execution (chrome packaged app, non-
+                              // privileged firefox app, etc.)
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 

@@ -34,7 +34,7 @@ except Exception, e:
 print '4) Compile JS-ly and compare'
 
 def try_js(args):
-  shared.check_execute([shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
+  shared.check_execute([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
     [filename, '-o', js_filename])
   js = shared.run_js(js_filename, stderr=PIPE, engine=ENGINE)
   assert correct == js

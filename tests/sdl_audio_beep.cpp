@@ -9,7 +9,7 @@
 #define M_PI 3.14159265358979323846f
 #endif
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include "emscripten/emscripten.h"
 #endif
 
@@ -170,7 +170,7 @@ void nextTest(void *unused = 0) {
       ++s;
       if (s >= NUM_ELEMS(sdlAudioFormats)) {
         printf("All tests done. Quit.\n");
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
         emscripten_cancel_main_loop();
 #ifdef REPORT_RESULT
         int result = 1;
@@ -204,7 +204,7 @@ void update() {
   if (size == 0 && beep) {
     delete beep;
     beep = 0;
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     emscripten_async_call(nextTest, 0, 1500);
 #else
     SDL_Delay(1500);
@@ -233,7 +233,7 @@ int main(int argc, char** argv) {
 
   nextTest();
    
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(update, 60, 0);
 #else
   while(beep) {

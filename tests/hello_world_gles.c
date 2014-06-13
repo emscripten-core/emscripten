@@ -547,6 +547,10 @@ gears_draw(void)
    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
 
    glutSwapBuffers();
+
+#ifdef LONGTEST
+   glutPostRedisplay(); // check for issues with not throttling calls
+#endif
 }
 
 /**
@@ -621,6 +625,14 @@ gears_idle(void)
             fps);
       tRate0 = t;
       frames = 0;
+#ifdef LONGTEST
+      static runs = 0;
+      runs++;
+      if (runs == 4) {
+        int result = fps;
+        REPORT_RESULT();
+      }
+#endif
    }
 }
 

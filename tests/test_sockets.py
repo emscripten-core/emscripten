@@ -220,6 +220,7 @@ class sockets(BrowserCore):
     )
 
   def test_getaddrinfo(self):
+    self.emcc_args=[]
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
 
   def test_getnameinfo(self):
@@ -344,12 +345,12 @@ class sockets(BrowserCore):
     host_outfile = 'host.html'
     peer_outfile = 'peer.html'
 
-    host_filepath = path_from_root('tests', 'sockets', host_src)      
+    host_filepath = path_from_root('tests', 'sockets', host_src)
     temp_host_filepath = os.path.join(self.get_dir(), os.path.basename(host_src))
     with open(host_filepath) as f: host_src = f.read()
     with open(temp_host_filepath, 'w') as f: f.write(self.with_report_result(host_src))
 
-    peer_filepath = path_from_root('tests', 'sockets', peer_src)      
+    peer_filepath = path_from_root('tests', 'sockets', peer_src)
     temp_peer_filepath = os.path.join(self.get_dir(), os.path.basename(peer_src))
     with open(peer_filepath) as f: peer_src = f.read()
     with open(temp_peer_filepath, 'w') as f: f.write(self.with_report_result(peer_src))
@@ -357,7 +358,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'host_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'https://mdsw.ch:8080',
+          broker: 'http://localhost:8080',
           session: undefined,
           onpeer: function(peer, route) {
             window.open('http://localhost:8888/peer.html?' + route);
@@ -381,7 +382,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'peer_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'https://mdsw.ch:8080',
+          broker: 'http://localhost:8080',
           session: window.location.toString().split('?')[1],
           onpeer: function(peer, route) {
             peer.connect(Module['webrtc']['session']);
@@ -402,8 +403,14 @@ class sockets(BrowserCore):
     Popen([PYTHON, EMCC, temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
     Popen([PYTHON, EMCC, temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
 
+    # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
+    Popen(['npm', 'install', path_from_root('tests', 'sockets', 'p2p')]).communicate()
+    broker = Popen(listify(NODE_JS) + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
+
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
+
+    broker.kill();
 
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
@@ -413,21 +420,54 @@ class sockets(BrowserCore):
 
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
-    # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      # Websockify doesn't seem to like ws.WebSocket clients TODO check if this is a ws issue or Websockify issue
-      #(WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49162), 1)
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59160), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 59162), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 59164), 1)
     ]
 
+    # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
       with harness:
-        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', path_from_root('tests', 'sockets', 'client.js'), '-DSOCKK=%d' % harness.listen_port, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
 
-        self.assertContained('do_msg_read: read 14 bytes', run_js(path_from_root('tests', 'sockets', 'client.js'), engine=NODE_JS))
+        out = run_js('client.js', engine=NODE_JS, full_output=True)
+        self.assertContained('do_msg_read: read 14 bytes', out)
 
-        # Tidy up files that might have been created by this test.
-        try_delete(path_from_root('tests', 'sockets', 'client.js'))
-        try_delete(path_from_root('tests', 'sockets', 'client.js.map'))
+    # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
+    # server because as long as the subprotocol list contains binary it will configure itself to accept binary
+    # This test also checks that the connect url contains the correct subprotocols.
+    print "\nTesting compile time WebSocket configuration.\n"
+    for harness in [
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
+    ]:
+      with harness:
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+
+        out = run_js('client.js', engine=NODE_JS, full_output=True)
+        self.assertContained('do_msg_read: read 14 bytes', out)
+        self.assertContained('connect: ws://127.0.0.1:59166, base64,binary', out)
+
+    # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
+    # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
+    # the connection would fail without us specifying a valid WebSocket URL in the configuration.
+    print "\nTesting runtime WebSocket configuration.\n"
+    for harness in [
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59168)
+    ]:
+      with harness:
+        open(os.path.join(self.get_dir(), 'websocket_pre.js'), 'w').write('''
+        var Module = {
+          websocket: {
+            url: 'ws://localhost:59168/testA/testB',
+            subprotocol: 'text, base64, binary',
+          }
+        };
+        ''')
+
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+
+        out = run_js('client.js', engine=NODE_JS, full_output=True)
+        self.assertContained('do_msg_read: read 14 bytes', out)
+        self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
 

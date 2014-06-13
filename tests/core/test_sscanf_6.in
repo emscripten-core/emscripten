@@ -11,4 +11,18 @@ int main() {
   i = sscanf(date, "%d.%d.%3c", &d, &m, c);
   printf("date: %s; day %2d, month %2d, year %4d, extra: %s, %d\n", date, d, m,
          y, c, i);
+
+  {
+    char *date = "18.07.2013", c;
+    int y, m, d, i;
+    if ((i = sscanf(date, "%d.%d.%4d%c", &d, &m, &y, &c)) == 3)
+    {
+        printf("date: %s; day %2d, month %2d, year %4d \n", date, d, m, y);
+    }
+    else
+    {
+        printf("Error in sscanf: actually parsed %d", i);
+    }
+  }
 }
+

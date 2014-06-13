@@ -11,9 +11,9 @@ def path_from_root(*pathelems):
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-NUM_CHUNKS_PER_CORE = 1.5
-MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 1024*1024) # configuring this is just for debugging purposes
-MAX_CHUNK_SIZE = 20*1024*1024
+NUM_CHUNKS_PER_CORE = 3
+MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512*1024) # configuring this is just for debugging purposes
+MAX_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MAX_CHUNK_SIZE') or 5*1024*1024)
 
 WINDOWS = sys.platform.startswith('win')
 
@@ -26,12 +26,13 @@ class Minifier:
   '''
     asm.js minification support. We calculate minification of
     globals here, then pass that into the parallel js-optimizer.js runners which
-    during registerize perform minification of locals.
+    perform minification of locals.
   '''
 
   def __init__(self, js, js_engine):
     self.js = js
     self.js_engine = js_engine
+    self.symbols_file = None
 
   def minify_shell(self, shell, minify_whitespace, source_map=False):
     # Run through js-optimizer.js to find and minify the global symbols
@@ -61,6 +62,14 @@ class Minifier:
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
     code, metadata = output.split('// EXTRA_INFO:')
     self.globs = json.loads(metadata)
+
+    if self.symbols_file:
+      mapfile = open(self.symbols_file, 'w')
+      for key, value in self.globs.iteritems():
+        mapfile.write(value + ':' + key + '\n')
+      mapfile.close()
+      print >> sys.stderr, 'wrote symbol map file to', self.symbols_file
+
     return code.replace('13371337', '0.0')
 
 
@@ -117,9 +126,9 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
 
   know_generated = suffix or start_funcs >= 0
 
-  minify_globals = 'registerizeAndMinify' in passes and 'asm' in passes
+  minify_globals = 'minifyNames' in passes and 'asm' in passes
   if minify_globals:
-    passes = map(lambda p: p if p != 'registerizeAndMinify' else 'registerize', passes)
+    passes = map(lambda p: p if p != 'minifyNames' else 'minifyLocals', passes)
     start_asm = js.find(start_asm_marker)
     end_asm = js.rfind(end_asm_marker)
     assert (start_asm >= 0) == (end_asm >= 0)
@@ -127,6 +136,10 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
   closure = 'closure' in passes
   if closure:
     passes = filter(lambda p: p != 'closure', passes) # we will do it manually
+
+  cleanup = 'cleanup' in passes
+  if cleanup:
+    passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
 
   if not know_generated and jcache:
     # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
@@ -162,6 +175,12 @@ EMSCRIPTEN_FUNCS();
 
       # we assume there is a maximum of one new name per line
       minifier = Minifier(js, js_engine)
+      def check_symbol_mapping(p):
+        if p.startswith('symbolMap='):
+          minifier.symbols_file = p.split('=')[1]
+          return False
+        return True
+      passes = filter(check_symbol_mapping, passes)
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
@@ -212,6 +231,7 @@ EMSCRIPTEN_FUNCS();
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
   chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: intended size:', chunk_size, 'num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
   funcs = None
 
   if jcache:
@@ -275,23 +295,29 @@ EMSCRIPTEN_FUNCS();
 
   for filename in filenames: temp_files.note(filename)
 
-  if closure:
-    # run closure on the shell code, everything but what we js-optimize
+  if closure or cleanup:
+    # run on the shell code, everything but what we js-optimize
     start_asm = '// EMSCRIPTEN_START_ASM\n'
     end_asm = '// EMSCRIPTEN_END_ASM\n'
-    closure_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
+    cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
 
-    closuree = temp_files.get('.closure.js').name
-    c = open(closuree, 'w')
+    cle = temp_files.get('.cl.js').name
+    c = open(cle, 'w')
     pre_1, pre_2 = pre.split(start_asm)
     post_1, post_2 = post.split(end_asm)
     c.write(pre_1)
-    c.write(closure_sep)
+    c.write(cl_sep)
     c.write(post_2)
     c.close()
-    closured = shared.Building.closure_compiler(closuree, pretty='minifyWhitespace' not in passes)
-    temp_files.note(closured)
-    coutput = open(closured).read()
+    if closure:
+      if DEBUG: print >> sys.stderr, 'running closure on shell code'
+      cld = shared.Building.closure_compiler(cle, pretty='minifyWhitespace' not in passes)
+    else:
+      if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+      cld = cle + '.js'
+      subprocess.Popen(js_engine + [JS_OPTIMIZER, cle, 'noPrintMetadata'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(cld, 'w')).communicate()
+    temp_files.note(cld)
+    coutput = open(cld).read()
     coutput = coutput.replace('wakaUnknownBefore();', '')
     after = 'wakaUnknownAfter'
     start = coutput.find(after)

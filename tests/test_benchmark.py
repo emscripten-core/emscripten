@@ -20,9 +20,10 @@ class Benchmarker:
   def __init__(self, name):
     self.name = name
 
-  def bench(self, args, output_parser=None):
+  def bench(self, args, output_parser=None, reps=TEST_REPS):
     self.times = []
-    for i in range(TEST_REPS):
+    self.reps = reps
+    for i in range(reps):
       start = time.time()
       output = self.run(args)
       if not output_parser:
@@ -41,7 +42,7 @@ class Benchmarker:
     sorted_times.sort()
     median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
 
-    print '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, TEST_REPS),
+    print '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps),
 
     if baseline:
       mean_baseline = sum(baseline.times)/len(baseline.times)
@@ -51,20 +52,21 @@ class Benchmarker:
       print
 
 class NativeBenchmarker(Benchmarker):
-  def __init__(self, name, cc, cxx):
+  def __init__(self, name, cc, cxx, args=['-O2']):
     self.name = name
     self.cc = cc
     self.cxx = cxx
+    self.args = args
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     self.parent = parent
     if lib_builder: native_args = native_args + lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
-      process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
+      process = Popen([compiler, '-fno-math-errno', filename, '-o', filename+'.native'] + self.args + shared_args + native_args, stdout=PIPE, stderr=parent.stderr_redirect)
       output = process.communicate()
       if process.returncode is not 0:
-        print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([compiler, '-O2', filename, '-o', filename+'.native']), process.returncode)
+        print >> sys.stderr, "Building native executable with command failed"
         print "Output: " + output[0]
     else:
       shutil.copyfile(native_exec, filename + '.native')
@@ -106,11 +108,11 @@ process(sys.argv[1])
     final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.js'
     try_delete(final)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
-                    '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
+                    '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
+                    #'-profiling',
                     #'--closure', '1',
-                    #'-g2',
                     '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0]
     self.filename = final
@@ -124,15 +126,16 @@ try:
   benchmarkers = [
     #NativeBenchmarker('clang', CLANG_CC, CLANG),
     NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
+    #NativeBenchmarker('clang-3.2-O3', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++'), ['-O3']),
     #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
     JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+    #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['-profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
     #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
     #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
     #JSBenchmarker('sm-f32-3.4', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
-    #JSBenchmarker('sm-fc',         SPIDERMONKEY_ENGINE, env={ 'EMCC_FAST_COMPILER': '1' }),
     #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
     #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
     #JSBenchmarker('v8',           V8_ENGINE)
@@ -174,7 +177,7 @@ class benchmark(RunnerCore):
       pass
 
     Building.COMPILER = CLANG
-    Building.COMPILER_TEST_OPTS = []
+    Building.COMPILER_TEST_OPTS = ['-O2']
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     if len(benchmarkers) == 0: raise Exception('error, no benchmarkers: ' + benchmarkers_error)
@@ -191,7 +194,7 @@ class benchmark(RunnerCore):
     print
     for b in benchmarkers:
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
-      b.bench(args, output_parser)
+      b.bench(args, output_parser, reps)
       b.display(benchmarkers[0])
 
   def test_primes(self):
@@ -360,6 +363,87 @@ class benchmark(RunnerCore):
     '''
     self.do_benchmark('copy', src, 'sum:')
 
+  def test_ifs(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      volatile int x = 0;
+
+      __attribute__ ((noinline)) int calc() {
+        return (x++) & 16384;
+      }
+
+      int main(int argc, char *argv[]) {
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        switch(arg) {
+          case 0: return 0; break;
+          case 1: arg = 75; break;
+          case 2: arg = 625; break;
+          case 3: arg = 1250; break;
+          case 4: arg = 5*1250; break;
+          case 5: arg = 10*1250; break;
+          default: printf("error: %d\\n", arg); return -1;
+        }
+
+        int sum = 0;
+
+        for (int j = 0; j < 27000; j++) {
+          for (int i = 0; i < arg; i++) {
+            if (calc() && calc()) {
+              sum += 17;
+            } else {
+              sum += 19;
+            }
+            if (calc() || calc()) {
+              sum += 23;
+            }
+          }
+        }
+
+        printf("ok\n");
+
+        return sum;
+      }
+    '''
+    self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS*5)
+
+  def test_conditionals(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      int main(int argc, char *argv[]) {
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        switch(arg) {
+          case 0: return 0; break;
+          case 1: arg = 3*75; break;
+          case 2: arg = 3*625; break;
+          case 3: arg = 3*1250; break;
+          case 4: arg = 3*5*1250; break;
+          case 5: arg = 3*10*1250; break;
+          default: printf("error: %d\\n", arg); return -1;
+        }
+
+        int x = 0;
+
+        for (int j = 0; j < 27000; j++) {
+          for (int i = 0; i < arg; i++) {
+            if (((x*x+11) % 3 == 0) | ((x*(x+2)+17) % 5 == 0)) {
+              x += 2;
+            } else {
+              x++;
+            }
+          }
+        }
+
+        printf("ok %d\n", x);
+
+        return x;
+      }
+    '''
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS*5)
+
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
       'int n = argc > 1 ? atoi(argv[1]) : 0;',
@@ -472,7 +556,7 @@ class benchmark(RunnerCore):
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
     def lib_builder(name, native, env_init):
-      ret = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      ret = self.get_library('lua_native' if native else 'lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
       if native: return ret
       shutil.copyfile(ret[0], ret[0] + '.bc')
       ret[0] += '.bc'

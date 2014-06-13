@@ -4,25 +4,25 @@ function expr() {
 function loopy() {
  $while_body$2 : while (1) {
   $ok = 1;
-  while (1) {
-   if ($ok) break;
+  $for_cond$4 : while (1) {
+   if ($ok) break $for_cond$4;
    var $inc = $ok + 1;
    if ($inc == 9999) break $while_body$2;
   }
-  continue;
+  continue $while_body$2;
  }
  next();
- while (1) {
+ b$while_body$2 : while (1) {
   $ok = 1;
-  while (1) {
-   if ($ok) break;
+  b$for_cond$4 : while (1) {
+   if ($ok) break b$for_cond$4;
    var $inc = $ok + 1;
   }
-  continue;
+  continue b$while_body$2;
  }
  next();
- do {
-  if (!$ok) break;
+ $once : do {
+  if (!$ok) break $once;
   something();
  } while (0);
  next();
@@ -33,7 +33,9 @@ function loopy() {
   something();
  } while (0);
  next();
- something();
+ c$once : do {
+  something();
+ } while (0);
 }
 function bits() {
  print(($s & 65535) + ((($f & 65535) << 16 >> 16) * (($f & 65535) << 16 >> 16) | 0) % 256 & 65535);
@@ -68,9 +70,9 @@ function hoisting() {
   }
  } while (0);
  pause(2);
- do {
+ cheez : do {
   if ($i < $N) {
-   if (callOther()) break;
+   if (callOther()) break cheez;
   }
  } while (0);
  pause(3);
@@ -97,7 +99,7 @@ function hoisting() {
   somethingElse();
  }
  pause(7);
- while (1) {
+ free : while (1) {
   if ($i >= $N) {
    label = 3;
    break;
@@ -110,24 +112,26 @@ function hoisting() {
  }
  pause(8);
  var $cmp95 = $69 == -1;
- do {
+ $if_then96$$if_end110thread_pre_split$48 : do {
   if ($cmp95) {
    if (!$cmp103) {
     label = 38;
-    break;
+    break $if_then96$$if_end110thread_pre_split$48;
    }
    if (!$cmp106) {
     label = 38;
-    break;
+    break $if_then96$$if_end110thread_pre_split$48;
    }
    label = 39;
-   break;
+   break $if_then96$$if_end110thread_pre_split$48;
   }
   label = 38;
  } while (0);
- if (label == 38) {
-  var $79 = $_pr6;
- }
+ $if_end110$$if_end110thread_pre_split$52 : do {
+  if (label == 38) {
+   var $79 = $_pr6;
+  }
+ } while (0);
  pause(9);
  var $cmp70 = ($call69 | 0) != 0;
  pause(10);
@@ -191,24 +195,26 @@ function sleep() {
  return 0;
 }
 function demangle($cmp) {
- do {
+ $if_then$$lor_lhs_false$2 : do {
   if (!$cmp) {
    if (something()) {
     label = 3;
-    break;
+    break $if_then$$lor_lhs_false$2;
    }
    more();
-   break;
+   break $if_then$$lor_lhs_false$2;
   }
   label = 3;
  } while (0);
- if (label == 3) {
-  final();
- }
+ $if_then$$return$6 : do {
+  if (label == 3) {
+   final();
+  }
+ } while (0);
 }
 function lua() {
- while (1) {
-  do {
+ $5$98 : while (1) {
+  $15$$16$101 : do {
    if (!$14) {
     var $17 = $i;
     var $18 = $3;
@@ -217,7 +223,7 @@ function lua() {
     var $21 = $20 + 1 | 0;
     var $22 = HEAP8[$21];
     var $23 = $22 << 24 >> 24;
-    break;
+    break $15$$16$101;
    }
   } while (0);
  }
@@ -236,14 +242,16 @@ function lua() {
  }
 }
 function moreLabels() {
- while (1) {
+ $for_cond$2 : while (1) {
   if (!$cmp) {
-   break;
+   break $for_cond$2;
   }
-  if ($cmp1) {
-   break;
-  }
-  inc();
+  $if_then$$for_inc$5 : do {
+   if ($cmp1) {
+    break $for_cond$2;
+   }
+   inc();
+  } while (0);
  }
  pause(999);
  $while_body$$while_end$31 : do {

@@ -7,27 +7,74 @@
 //
 // We'll call the on-the-wire type WireType.
 
+#include <stdio.h>
 #include <cstdlib>
 #include <memory>
 #include <string>
 
+#define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
+
 namespace emscripten {
+    #ifndef EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES
+    #define EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES 1
+    #endif
+
+
+    #if EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES
+    constexpr bool has_unbound_type_names = true;
+    #else
+    constexpr bool has_unbound_type_names = false;
+    #endif
+
     namespace internal {
         typedef void (*GenericFunction)();
 
-        typedef const struct _TYPEID* TYPEID;
+        typedef const struct _TYPEID {}* TYPEID;
 
-        // This implementation is technically not legal, as it's not
-        // required that two calls to typeid produce the same exact
-        // std::type_info instance.  That said, it's likely to work
-        // given Emscripten compiles everything into one binary.
-        // Should it not work in the future: replace TypeID with an
-        // int, and store all TypeInfo we see in a map, allocating new
-        // TypeIDs as we add new items to the map.
+
+        // We don't need the full std::type_info implementation.  We
+        // just need a unique identifier per type and polymorphic type
+        // identification.
+        
+        template<typename T>
+        struct CanonicalizedID {
+            static TYPEID get() {
+                static _TYPEID c;
+                return &c;
+            }
+        };
+
+        template<typename T>
+        struct Canonicalized {
+            typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
+        };
+
+        template<typename T>
+        struct LightTypeID {
+            static TYPEID get() {
+                typedef typename Canonicalized<T>::type C;
+                if (has_unbound_type_names || std::is_polymorphic<C>::value) {
+                    return reinterpret_cast<TYPEID>(&typeid(C));
+                } else {
+                    return CanonicalizedID<C>::get();
+                }
+            }
+        };
+
+        template<typename T>
+        const TYPEID getLightTypeID(const T& value) {
+            typedef typename Canonicalized<T>::type C;
+            if (has_unbound_type_names || std::is_polymorphic<C>::value) {
+                return reinterpret_cast<TYPEID>(&typeid(value));
+            } else {
+                return LightTypeID<T>::get();
+            }
+        }
+
         template<typename T>
         struct TypeID {
             static TYPEID get() {
-                return reinterpret_cast<TYPEID>(&typeid(T));
+                return LightTypeID<T>::get();
             }
         };
 
@@ -50,7 +97,7 @@ namespace emscripten {
         template<typename T>
         struct TypeID<AllowedRawPointer<T>> {
             static TYPEID get() {
-                return reinterpret_cast<TYPEID>(&typeid(T*));
+                return LightTypeID<T*>::get();
             }
         };
         
@@ -130,8 +177,6 @@ namespace emscripten {
             constexpr static type fromWireType(WireType v) {        \
                 return v;                                           \
             }                                                       \
-            static void destroy(WireType) {                         \
-            }                                                       \
         }
 
         EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(char);
@@ -160,8 +205,6 @@ namespace emscripten {
             static bool fromWireType(WireType wt) {
                 return wt;
             }
-            static void destroy(WireType) {
-            }
         };
 
         template<>
@@ -179,9 +222,6 @@ namespace emscripten {
             static std::string fromWireType(WireType v) {
                 return std::string(v->data, v->length);
             }
-            static void destroy(WireType v) {
-                free(v);
-            }
         };
 
         template<>
@@ -198,9 +238,6 @@ namespace emscripten {
             }
             static std::wstring fromWireType(WireType v) {
                 return std::wstring(v->data, v->length);
-            }
-            static void destroy(WireType v) {
-                free(v);
             }
         };
 
@@ -254,10 +291,6 @@ namespace emscripten {
             static ActualT& fromWireType(WireType p) {
                 return *p;
             }
-
-            static void destroy(WireType p) {
-                delete p;
-            }
         };
 
         // Is this necessary?
@@ -280,8 +313,6 @@ namespace emscripten {
             static Enum fromWireType(WireType v) {
                 return v;
             }
-            static void destroy(WireType) {
-            }
         };
 
         // catch-all generic binding
@@ -296,21 +327,6 @@ namespace emscripten {
         auto toWireType(T&& v) -> typename BindingType<T>::WireType {
             return BindingType<T>::toWireType(std::forward<T>(v));
         }
-
-        template<typename T>
-        struct WireDeleter {
-            typedef typename BindingType<T>::WireType WireType;
-            
-            WireDeleter(WireType wt)
-                : wt(wt)
-            {}
-            
-            ~WireDeleter() {
-                BindingType<T>::destroy(wt);
-            }
-            
-            WireType wt;
-        };
     }
 
     struct memory_view {

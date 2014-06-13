@@ -30,6 +30,7 @@ function finall(x) {
  a = -999999984306749400.0;
  a = -999999984306749400.0;
  a = -0xde0b6b000000000;
+ a = 1.1234567890123457e+21;
  f(g() | 0);
  return 12.0e10;
 }
@@ -39,7 +40,7 @@ function looop() {
  } while (!condition());
  do {
   do_it();
- } while (a <= b);
+ } while (!(a > b));
  do {
   do_it();
  } while (x());
@@ -71,5 +72,31 @@ function looop() {
    break;
   }
  }
+ do {
+  blah();
+ } while (!shah());
+ a = b;
+ LABELED : while (1) {
+  blah();
+  if (shah()) {
+   c = d;
+   break;
+  }
+ }
+ while (1) {
+  blah();
+  if (check) break;
+  if (shah()) {
+   e = f;
+   break;
+  }
+ }
+ do {
+  blah();
+  while (1) {
+   if (check) break;
+  }
+ } while (!shah());
+ g = h;
 }
 

@@ -20,6 +20,8 @@ namespace emscripten {
     namespace internal {
         typedef long GenericEnumValue;
 
+        typedef void (*GenericFunction)();
+
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
             void _embind_fatal_error(
@@ -33,18 +35,21 @@ namespace emscripten {
             void _embind_register_bool(
                 TYPEID boolType,
                 const char* name,
+                size_t size,
                 bool trueValue,
                 bool falseValue);
 
             void _embind_register_integer(
                 TYPEID integerType,
                 const char* name,
+                size_t size,
                 long minRange,
                 unsigned long maxRange);
 
             void _embind_register_float(
                 TYPEID floatType,
-                const char* name);
+                const char* name,
+                size_t size);
             
             void _embind_register_std_string(
                 TYPEID stringType,
@@ -67,21 +72,26 @@ namespace emscripten {
                 const char* name,
                 unsigned argCount,
                 TYPEID argTypes[],
+                const char* signature,
                 GenericFunction invoker,
                 GenericFunction function);
 
             void _embind_register_value_array(
                 TYPEID tupleType,
                 const char* name,
+                const char* constructorSignature,
                 GenericFunction constructor,
+                const char* destructorSignature,
                 GenericFunction destructor);
             
             void _embind_register_value_array_element(
                 TYPEID tupleType,
                 TYPEID getterReturnType,
+                const char* getterSignature,
                 GenericFunction getter,
                 void* getterContext,
                 TYPEID setterArgumentType,
+                const char* setterSignature,
                 GenericFunction setter,
                 void* setterContext);
 
@@ -90,46 +100,45 @@ namespace emscripten {
             void _embind_register_value_object(
                 TYPEID structType,
                 const char* fieldName,
+                const char* constructorSignature,
                 GenericFunction constructor,
+                const char* destructorSignature,
                 GenericFunction destructor);
             
             void _embind_register_value_object_field(
                 TYPEID structType,
                 const char* fieldName,
                 TYPEID getterReturnType,
+                const char* getterSignature,
                 GenericFunction getter,
                 void* getterContext,
                 TYPEID setterArgumentType,
+                const char* setterSignature,
                 GenericFunction setter,
                 void* setterContext);
 
             void _embind_finalize_value_object(TYPEID structType);
-
-            void _embind_register_smart_ptr(
-                TYPEID pointerType,
-                TYPEID pointeeType,
-                const char* pointerName,
-                sharing_policy sharingPolicy,
-                GenericFunction getPointee,
-                GenericFunction constructor,
-                GenericFunction share,
-                GenericFunction destructor);
 
             void _embind_register_class(
                 TYPEID classType,
                 TYPEID pointerType,
                 TYPEID constPointerType,
                 TYPEID baseClassType,
+                const char* getActualTypeSignature,
                 GenericFunction getActualType,
+                const char* upcastSignature,
                 GenericFunction upcast,
+                const char* downcastSignature,
                 GenericFunction downcast,
                 const char* className,
+                const char* destructorSignature,
                 GenericFunction destructor);
 
             void _embind_register_class_constructor(
                 TYPEID classType,
                 unsigned argCount,
                 TYPEID argTypes[],
+                const char* invokerSignature,
                 GenericFunction invoker,
                 GenericFunction constructor);
 
@@ -138,16 +147,20 @@ namespace emscripten {
                 const char* methodName,
                 unsigned argCount,
                 TYPEID argTypes[],
+                const char* invokerSignature,
                 GenericFunction invoker,
-                void* context);
+                void* context,
+                unsigned isPureVirtual);
 
             void _embind_register_class_property(
                 TYPEID classType,
                 const char* fieldName,
                 TYPEID getterReturnType,
+                const char* getterSignature,
                 GenericFunction getter,
                 void* getterContext,
                 TYPEID setterArgumentType,
+                const char* setterSignature,
                 GenericFunction setter,
                 void* setterContext);
 
@@ -156,23 +169,39 @@ namespace emscripten {
                 const char* methodName,
                 unsigned argCount,
                 TYPEID argTypes[],
+                const char* invokerSignature,
                 GenericFunction invoker,
                 GenericFunction method);
 
+            EM_VAL _embind_create_inheriting_constructor(
+                const char* constructorName,
+                TYPEID wrapperType,
+                EM_VAL properties);
+
             void _embind_register_enum(
                 TYPEID enumType,
-                const char* name);
+                const char* name,
+                size_t size,
+                bool isSigned);
+
+            void _embind_register_smart_ptr(
+                TYPEID pointerType,
+                TYPEID pointeeType,
+                const char* pointerName,
+                sharing_policy sharingPolicy,
+                const char* getPointeeSignature,
+                GenericFunction getPointee,
+                const char* constructorSignature,
+                GenericFunction constructor,
+                const char* shareSignature,
+                GenericFunction share,
+                const char* destructorSignature,
+                GenericFunction destructor);
 
             void _embind_register_enum_value(
                 TYPEID enumType,
                 const char* valueName,
                 GenericEnumValue value);
-
-            void _embind_register_interface(
-                TYPEID interfaceType,
-                const char* name,
-                GenericFunction constructor,
-                GenericFunction destructor);
 
             void _embind_register_constant(
                 const char* name,
@@ -253,6 +282,33 @@ namespace emscripten {
         return method;
     }
 
+    namespace internal {        
+        // this should be in <type_traits>, but alas, it's not
+        template<typename T> struct remove_class;
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...)> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) const> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) volatile> { using type = R(A...); };
+        template<typename C, typename R, typename... A>
+        struct remove_class<R(C::*)(A...) const volatile> { using type = R(A...); };
+
+        template<typename LambdaType>
+        struct CalculateLambdaSignature {
+            using type = typename std::add_pointer<
+                typename remove_class<
+                    decltype(&LambdaType::operator())
+                >::type
+            >::type;
+        };
+    }
+
+    template<typename LambdaType>
+    typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp) {
+        return fp;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Invoker
     ////////////////////////////////////////////////////////////////////////////////
@@ -286,6 +342,63 @@ namespace emscripten {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
+    // SignatureCode, SignatureString
+    ////////////////////////////////////////////////////////////////////////////////
+
+    namespace internal {
+        template<typename T>
+        struct SignatureCode {
+            static constexpr char get() {
+                return 'i';
+            }
+        };
+
+        template<>
+        struct SignatureCode<void> {
+            static constexpr char get() {
+                return 'v';
+            }
+        };
+
+        template<>
+        struct SignatureCode<float> {
+            static constexpr char get() {
+                return 'f';
+            }
+        };
+
+        template<>
+        struct SignatureCode<double> {
+            static constexpr char get() {
+                return 'd';
+            }
+        };
+
+        template<typename... T>
+        struct SignatureString;
+
+        template<>
+        struct SignatureString<> {
+            char c = 0;
+        };
+
+        template<typename First, typename... Rest>
+        struct SignatureString<First, Rest...> {
+            constexpr SignatureString()
+                : c(SignatureCode<First>::get())
+            {}
+            char c;
+            SignatureString<Rest...> rest;
+        };
+
+        template<typename Return, typename... Args>
+        const char* getSignature(Return (*)(Args...)) {
+            static constexpr SignatureString<Return, Args...> sig;
+            return &sig.c;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
     // FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -297,11 +410,13 @@ namespace emscripten {
     void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         using namespace internal;
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+        auto invoker = &Invoker<ReturnType, Args...>::invoke;
         _embind_register_function(
             name,
             args.count,
             args.types,
-            reinterpret_cast<GenericFunction>(&Invoker<ReturnType, Args...>::invoke),
+            getSignature(invoker),
+            reinterpret_cast<GenericFunction>(invoker),
             reinterpret_cast<GenericFunction>(fn));
     }
 
@@ -533,13 +648,20 @@ namespace emscripten {
     template<typename ClassType>
     class value_array : public internal::noncopyable {
     public:
+        typedef ClassType class_type;
+
         value_array(const char* name) {
             using namespace internal;
+
+            auto constructor = &raw_constructor<ClassType>;
+            auto destructor = &raw_destructor<ClassType>;
             _embind_register_value_array(
                 TypeID<ClassType>::get(),
                 name,
-                reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
-                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
+                getSignature(constructor),
+                reinterpret_cast<GenericFunction>(constructor),
+                getSignature(destructor),
+                reinterpret_cast<GenericFunction>(destructor));
         }
 
         ~value_array() {
@@ -550,17 +672,21 @@ namespace emscripten {
         template<typename InstanceType, typename ElementType>
         value_array& element(ElementType InstanceType::*field) {
             using namespace internal;
+
+            auto getter = &MemberAccess<InstanceType, ElementType>
+                ::template getWire<ClassType>;
+            auto setter = &MemberAccess<InstanceType, ElementType>
+                ::template setWire<ClassType>;
+
             _embind_register_value_array_element(
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &MemberAccess<InstanceType, ElementType>
-                    ::template getWire<ClassType>),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
                 getContext(field),
                 TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &MemberAccess<InstanceType, ElementType>
-                    ::template setWire<ClassType>),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
                 getContext(field));
             return *this;
         }
@@ -570,13 +696,19 @@ namespace emscripten {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
             typedef SetterPolicy<Setter> SP;
+
+            auto g = &GP::template get<ClassType>;
+            auto s = &SP::template set<ClassType>;
+
             _embind_register_value_array_element(
                 TypeID<ClassType>::get(),
                 TypeID<typename GP::ReturnType>::get(),
-                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                getSignature(g),
+                reinterpret_cast<GenericFunction>(g),
                 GP::getContext(getter),
                 TypeID<typename SP::ArgumentType>::get(),
-                reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
+                getSignature(s),
+                reinterpret_cast<GenericFunction>(s),
                 SP::getContext(setter));
             return *this;
         }
@@ -586,13 +718,18 @@ namespace emscripten {
             using namespace internal;
             ClassType* null = 0;
             typedef typename std::remove_reference<decltype((*null)[Index])>::type ElementType;
+            auto getter = &internal::get_by_index<ClassType, ElementType>;
+            auto setter = &internal::set_by_index<ClassType, ElementType>;
+
             _embind_register_value_array_element(
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&internal::get_by_index<ClassType, ElementType>),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
                 reinterpret_cast<void*>(Index),
                 TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&internal::set_by_index<ClassType, ElementType>),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
                 reinterpret_cast<void*>(Index));
             return *this;
         }
@@ -605,13 +742,21 @@ namespace emscripten {
     template<typename ClassType>
     class value_object : public internal::noncopyable {
     public:
+        typedef ClassType class_type;
+
         value_object(const char* name) {
             using namespace internal;
+
+            auto ctor = &raw_constructor<ClassType>;
+            auto dtor = &raw_destructor<ClassType>;
+
             _embind_register_value_object(
                 TypeID<ClassType>::get(),
                 name,
-                reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
-                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
+                getSignature(ctor),
+                reinterpret_cast<GenericFunction>(ctor),
+                getSignature(dtor),
+                reinterpret_cast<GenericFunction>(dtor));
         }
 
         ~value_object() {
@@ -621,18 +766,22 @@ namespace emscripten {
         template<typename InstanceType, typename FieldType>
         value_object& field(const char* fieldName, FieldType InstanceType::*field) {
             using namespace internal;
+
+            auto getter = &MemberAccess<InstanceType, FieldType>
+                ::template getWire<ClassType>;
+            auto setter = &MemberAccess<InstanceType, FieldType>
+                ::template setWire<ClassType>;
+
             _embind_register_value_object_field(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &MemberAccess<InstanceType, FieldType>
-                    ::template getWire<ClassType>),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
                 getContext(field),
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &MemberAccess<InstanceType, FieldType>
-                    ::template setWire<ClassType>),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
                 getContext(field));
             return *this;
         }
@@ -646,14 +795,20 @@ namespace emscripten {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
             typedef SetterPolicy<Setter> SP;
+
+            auto g = &GP::template get<ClassType>;
+            auto s = &SP::template set<ClassType>;
+
             _embind_register_value_object_field(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<typename GP::ReturnType>::get(),
-                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                getSignature(g),
+                reinterpret_cast<GenericFunction>(g),
                 GP::getContext(getter),
                 TypeID<typename SP::ArgumentType>::get(),
-                reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
+                getSignature(s),
+                reinterpret_cast<GenericFunction>(s),
                 SP::getContext(setter));
             return *this;
         }
@@ -663,14 +818,20 @@ namespace emscripten {
             using namespace internal;
             ClassType* null = 0;
             typedef typename std::remove_reference<decltype((*null)[Index])>::type ElementType;
+
+            auto getter = &internal::get_by_index<ClassType, ElementType>;
+            auto setter = &internal::set_by_index<ClassType, ElementType>;
+
             _embind_register_value_object_field(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&internal::get_by_index<ClassType, ElementType>),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
                 reinterpret_cast<void*>(Index),
                 TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&internal::set_by_index<ClassType, ElementType>),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
                 reinterpret_cast<void*>(Index));
             return *this;
         }
@@ -688,6 +849,10 @@ namespace emscripten {
 
         static void* share(void* v) {
             return 0; // no sharing
+        }
+
+        static PointerType* construct_null() {
+            return new PointerType;
         }
     };
 
@@ -720,6 +885,10 @@ namespace emscripten {
                 val_deleter(val::take_ownership(v)));
         }
 
+        static PointerType* construct_null() {
+            return new PointerType;
+        }
+
     private:
         class val_deleter {
         public:
@@ -737,38 +906,55 @@ namespace emscripten {
         };
     };
 
+
     ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
     ////////////////////////////////////////////////////////////////////////////////
 
+    namespace internal {
+        class WrapperBase {
+        public:
+            void setNotifyJSOnDestruction(bool notify) {
+                notifyJSOnDestruction = notify;
+            }
+
+        protected:
+            bool notifyJSOnDestruction = false;
+        };
+    }
+
     // abstract classes
     template<typename T>
-    class wrapper : public T {
+    class wrapper : public T, public internal::WrapperBase {
     public:
-        explicit wrapper(val&& wrapped)
-            : wrapped(std::forward<val>(wrapped))
+        typedef T class_type;
+
+        template<typename... Args>
+        explicit wrapper(val&& wrapped, Args&&... args)
+            : T(std::forward<Args>(args)...)
+            , wrapped(std::forward<val>(wrapped))
         {}
+
+        ~wrapper() {
+            if (notifyJSOnDestruction) {
+                call<void>("__destruct");
+            }
+        }
 
         template<typename ReturnType, typename... Args>
         ReturnType call(const char* name, Args&&... args) const {
             return wrapped.call<ReturnType>(name, std::forward<Args>(args)...);
         }
 
-        template<typename ReturnType, typename... Args, typename Default>
-        ReturnType optional_call(const char* name, Default def, Args&&... args) const {
-            if (wrapped.has_function(name)) {
-                return call<ReturnType>(name, std::forward<Args>(args)...);
-            } else {
-                return def();
-            }
-        }
-
     private:
         val wrapped;
     };
 
-#define EMSCRIPTEN_WRAPPER(T) \
-    T(::emscripten::val&& v): wrapper(std::forward<::emscripten::val>(v)) {}
+#define EMSCRIPTEN_WRAPPER(T)                                           \
+    template<typename... Args>                                          \
+    T(::emscripten::val&& v, Args&&... args)                            \
+        : wrapper(std::forward<::emscripten::val>(v), std::forward<Args>(args)...) \
+    {}
 
     namespace internal {
         struct NoBaseClass {
@@ -794,13 +980,14 @@ namespace emscripten {
         // NOTE: this returns the class type, not the pointer type
         template<typename T>
         inline TYPEID getActualType(T* ptr) {
-            assert(ptr);
-            return reinterpret_cast<TYPEID>(&typeid(*ptr));
+            return getLightTypeID(*ptr);
         };
     }
 
     template<typename BaseClass>
     struct base {
+        typedef BaseClass class_type;
+
         template<typename ClassType>
         static void verify() {
             static_assert(!std::is_same<ClassType, BaseClass>::value, "Base must not have same type as class");
@@ -812,13 +999,19 @@ namespace emscripten {
         }
         
         template<typename ClassType>
-        static internal::GenericFunction getUpcaster() {
-            return reinterpret_cast<internal::GenericFunction>(&convertPointer<ClassType, BaseClass>);
+        using Upcaster = BaseClass* (*)(ClassType*);
+
+        template<typename ClassType>
+        using Downcaster = ClassType* (*)(BaseClass*);
+        
+        template<typename ClassType>
+        static Upcaster<ClassType> getUpcaster() {
+            return &convertPointer<ClassType, BaseClass>;
         }
         
         template<typename ClassType>
-        static internal::GenericFunction getDowncaster() {
-            return reinterpret_cast<internal::GenericFunction>(&convertPointer<BaseClass, ClassType>);
+        static Downcaster<ClassType> getDowncaster() {
+            return &convertPointer<BaseClass, ClassType>;
         }
 
         template<typename From, typename To>
@@ -831,22 +1024,64 @@ namespace emscripten {
         template<typename T>
         struct SmartPtrIfNeeded {
             template<typename U>
-            SmartPtrIfNeeded(U& cls) {
-                cls.template smart_ptr<T>();
+            SmartPtrIfNeeded(U& cls, const char* smartPtrName) {
+                cls.template smart_ptr<T>(smartPtrName);
             }
         };
 
         template<typename T>
         struct SmartPtrIfNeeded<T*> {
             template<typename U>
-            SmartPtrIfNeeded(U&) {
+            SmartPtrIfNeeded(U&, const char*) {
             }
         };
+
+        template<typename WrapperType>
+        val wrapped_extend(const std::string& name, const val& properties) {
+            return val::take_ownership(_embind_create_inheriting_constructor(
+                name.c_str(),
+                TypeID<WrapperType>::get(),
+                properties.__get_handle()));
+        }
+    };
+
+    struct pure_virtual {
+        template<typename InputType, int Index>
+        struct Transform {
+            typedef InputType type;
+        };
+    };
+
+    namespace internal {
+        template<typename... Policies>
+        struct isPureVirtual;
+
+        template<typename... Rest>
+        struct isPureVirtual<pure_virtual, Rest...> {
+            static constexpr bool value = true;
+        };
+
+        template<typename T, typename... Rest>
+        struct isPureVirtual<T, Rest...> {
+            static constexpr bool value = isPureVirtual<Rest...>::value;
+        };
+
+        template<>
+        struct isPureVirtual<> {
+            static constexpr bool value = false;
+        };
+    }
+
+    template<typename... ConstructorArgs>
+    struct constructor {
     };
 
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
     class class_ {
     public:
+        typedef ClassType class_type;
+        typedef BaseSpecifier base_specifier;
+
         class_() = delete;
 
         explicit class_(const char* name) {
@@ -854,20 +1089,29 @@ namespace emscripten {
 
             BaseSpecifier::template verify<ClassType>();
 
+            auto _getActualType = &getActualType<ClassType>;
+            auto upcast = BaseSpecifier::template getUpcaster<ClassType>();
+            auto downcast = BaseSpecifier::template getDowncaster<ClassType>();
+            auto destructor = &raw_destructor<ClassType>;
+
             _embind_register_class(
                 TypeID<ClassType>::get(),
                 TypeID<AllowedRawPointer<ClassType>>::get(),
                 TypeID<AllowedRawPointer<const ClassType>>::get(),
                 BaseSpecifier::get(),
-                reinterpret_cast<GenericFunction>(&getActualType<ClassType>),
-                BaseSpecifier::template getUpcaster<ClassType>(),
-                BaseSpecifier::template getDowncaster<ClassType>(),
+                getSignature(_getActualType),
+                reinterpret_cast<GenericFunction>(_getActualType),
+                getSignature(upcast),
+                reinterpret_cast<GenericFunction>(upcast),
+                getSignature(downcast),
+                reinterpret_cast<GenericFunction>(downcast),
                 name,
-                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
+                getSignature(destructor),
+                reinterpret_cast<GenericFunction>(destructor));
         }
 
         template<typename PointerType>
-        class_& smart_ptr() {
+        const class_& smart_ptr(const char* name) const {
             using namespace internal;
 
             typedef smart_ptr_trait<PointerType> PointerTrait;
@@ -875,73 +1119,108 @@ namespace emscripten {
             
             static_assert(std::is_same<ClassType, typename std::remove_cv<PointeeType>::type>::value, "smart pointer must point to this class");
 
+            auto get = &PointerTrait::get;
+            auto construct_null = &PointerTrait::construct_null;
+            auto share = &PointerTrait::share;
+            auto destructor = &raw_destructor<PointerType>;
+
             _embind_register_smart_ptr(
                 TypeID<PointerType>::get(),
                 TypeID<PointeeType>::get(),
-                typeid(PointerType).name(),
+                name,
                 PointerTrait::get_sharing_policy(),
-                reinterpret_cast<GenericFunction>(&PointerTrait::get),
-                reinterpret_cast<GenericFunction>(&operator_new<PointerType>),
-                reinterpret_cast<GenericFunction>(&PointerTrait::share),
-                reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>));
+                getSignature(get),
+                reinterpret_cast<GenericFunction>(get),
+                getSignature(construct_null),
+                reinterpret_cast<GenericFunction>(construct_null),
+                getSignature(share),
+                reinterpret_cast<GenericFunction>(share),
+                getSignature(destructor),
+                reinterpret_cast<GenericFunction>(destructor));
             return *this;
         };
 
         template<typename... ConstructorArgs, typename... Policies>
-        class_& constructor(Policies... policies) {
+        const class_& constructor(Policies... policies) const {
             return constructor(
                 &internal::operator_new<ClassType, ConstructorArgs...>,
                 policies...);
         }
 
         template<typename... Args, typename ReturnType, typename... Policies>
-        class_& constructor(ReturnType (*factory)(Args...), Policies...) {
+        const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
             using namespace internal;
 
             // TODO: allows all raw pointers... policies need a rethink
             typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
+            auto invoke = &Invoker<ReturnType, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&Invoker<ReturnType, Args...>::invoke),
+                getSignature(invoke),
+                reinterpret_cast<GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(factory));
             return *this;
         }
 
         template<typename SmartPtr, typename... Args, typename... Policies>
-        class_& smart_ptr_constructor(SmartPtr (*factory)(Args...), Policies...) {
+        const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
             using namespace internal;
 
-            smart_ptr<SmartPtr>();
+            smart_ptr<SmartPtr>(smartPtrName);
 
             typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
+            auto invoke = &Invoker<SmartPtr, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&Invoker<SmartPtr, Args...>::invoke),
+                getSignature(invoke),
+                reinterpret_cast<GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(factory));
             return *this;
         }
 
-        template<typename WrapperType, typename PointerType = WrapperType*>
-        class_& allow_subclass() {
+        template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
+        const class_& allow_subclass(
+            const char* wrapperClassName,
+            const char* pointerName = "<UnknownPointerName>",
+            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
+        ) const {
             using namespace internal;
 
-            auto cls = class_<WrapperType, base<ClassType>>(typeid(WrapperType).name())
+            auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
+                .function("notifyOnDestruction", select_overload<void(WrapperType&)>([](WrapperType& wrapper) {
+                    wrapper.setNotifyJSOnDestruction(true);
+                }))
                 ;
-            SmartPtrIfNeeded<PointerType> _(cls);
+            SmartPtrIfNeeded<PointerType> _(cls, pointerName);
 
-            return class_function(
-                "implement",
-                &wrapped_new<PointerType, WrapperType, val>,
-                allow_raw_pointer<ret_val>());
+            return
+                class_function(
+                    "implement",
+                    &wrapped_new<PointerType, WrapperType, val, ConstructorArgs...>,
+                    allow_raw_pointer<ret_val>())
+                .class_function(
+                    "extend",
+                    &wrapped_extend<WrapperType>)
+                ;
+        }
+
+        template<typename WrapperType, typename... ConstructorArgs>
+        const class_& allow_subclass(
+            const char* wrapperClassName,
+            ::emscripten::constructor<ConstructorArgs...> constructor
+        ) const {
+            return allow_subclass<WrapperType, WrapperType*>(wrapperClassName, "<UnknownPointerName>", constructor);
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const {
             using namespace internal;
+
+            auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
             _embind_register_class_function(
@@ -949,14 +1228,18 @@ namespace emscripten {
                 methodName,
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke),
-                getContext(memberFunction));
+                getSignature(invoker),
+                reinterpret_cast<GenericFunction>(invoker),
+                getContext(memberFunction),
+                isPureVirtual<Policies...>::value);
             return *this;
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const {
             using namespace internal;
+
+            auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
             _embind_register_class_function(
@@ -964,36 +1247,44 @@ namespace emscripten {
                 methodName,
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke),
-                getContext(memberFunction));
+                getSignature(invoker),
+                reinterpret_cast<GenericFunction>(invoker),
+                getContext(memberFunction),
+                isPureVirtual<Policies...>::value);
             return *this;
         }
 
         template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
-        class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
+            auto invoke = &FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke),
-                getContext(function));
+                getSignature(invoke),
+                reinterpret_cast<GenericFunction>(invoke),
+                getContext(function),
+                false);
             return *this;
         }
 
         template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-        class_& property(const char* fieldName, const FieldType ClassType::*field) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const {
             using namespace internal;
-
+            
+            auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
             _embind_register_class_property(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template getWire<ClassType>),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
                 getContext(field),
+                0,
                 0,
                 0,
                 0);
@@ -1001,31 +1292,38 @@ namespace emscripten {
         }
 
         template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-        class_& property(const char* fieldName, FieldType ClassType::*field) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const {
             using namespace internal;
 
+            auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
+            auto setter = &MemberAccess<ClassType, FieldType>::template setWire<ClassType>;
             _embind_register_class_property(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template getWire<ClassType>),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
                 getContext(field),
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template setWire<ClassType>),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
                 getContext(field));
             return *this;
         }
 
         template<typename Getter>
-        class_& property(const char* fieldName, Getter getter) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
+            auto gter = &GP::template get<ClassType>;
             _embind_register_class_property(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<typename GP::ReturnType>::get(),
-                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                getSignature(gter),
+                reinterpret_cast<GenericFunction>(gter),
                 GP::getContext(getter),
+                0,
                 0,
                 0,
                 0);
@@ -1033,33 +1331,41 @@ namespace emscripten {
         }
 
         template<typename Getter, typename Setter>
-        class_& property(const char* fieldName, Getter getter, Setter setter) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter) const {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
             typedef SetterPolicy<Setter> SP;
+
+            auto gter = &GP::template get<ClassType>;
+            auto ster = &SP::template set<ClassType>;
+
             _embind_register_class_property(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<typename GP::ReturnType>::get(),
-                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                getSignature(gter),
+                reinterpret_cast<GenericFunction>(gter),
                 GP::getContext(getter),
                 TypeID<typename SP::ArgumentType>::get(),
-                reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
+                getSignature(ster),
+                reinterpret_cast<GenericFunction>(ster),
                 SP::getContext(setter));
             return *this;
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) const {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+            auto invoke = &internal::Invoker<ReturnType, Args...>::invoke;
             _embind_register_class_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
                 args.types,
-                reinterpret_cast<internal::GenericFunction>(&internal::Invoker<ReturnType, Args...>::invoke),
+                getSignature(invoke),
+                reinterpret_cast<internal::GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(classMethod));
             return *this;
         }
@@ -1157,10 +1463,14 @@ namespace emscripten {
     template<typename EnumType>
     class enum_ {
     public:
+        typedef EnumType enum_type;
+
         enum_(const char* name) {
             _embind_register_enum(
                 internal::TypeID<EnumType>::get(),
-                name);
+                name,
+                sizeof(EnumType),
+                std::is_signed<typename std::underlying_type<EnumType>::type>::value);
         }
 
         enum_& value(const char* name, EnumType value) {
@@ -1199,7 +1509,7 @@ namespace emscripten {
         _embind_register_constant(
             name,
             TypeID<const ConstantType&>::get(),
-            asGenericValue(BindingType<const ConstantType&>::toWireType(v)));
+            asGenericValue(BT::toWireType(v)));
     }
 }
 

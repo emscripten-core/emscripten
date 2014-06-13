@@ -30,6 +30,7 @@ function finall(x) {
  a = +-0xde0b6b000000000;
  a = -+0xde0b6b000000000;
  a = -0xde0b6b000000000;
+ a = +0x3ce7184d470dd60000;
  f(g() & -1);
  return +12e10;
 }
@@ -83,6 +84,38 @@ function looop() {
     if (a()) continue X; // not ok to optimize
   }
   if (!x()) {
+   break;
+  }
+ }
+ while (1) {
+  blah();
+  if (shah()) {
+   a = b;
+   break;
+  }
+ }
+ LABELED: while (1) {
+  blah();
+  if (shah()) {
+   c = d;
+   break;
+  }
+ }
+ while (1) {
+  blah();
+  if (check) break; // prevents optimization
+  if (shah()) {
+   e = f;
+   break;
+  }
+ }
+ while (1) {
+  blah();
+  while (1) {
+   if (check) break; // safe to optimize
+  }
+  if (shah()) {
+   g = h;
    break;
   }
  }

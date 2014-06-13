@@ -3,7 +3,7 @@ import random, subprocess, difflib
 
 while True:
   # Random decisions
-  num = random.randint(2, 250)
+  num = random.randint(2, 500)
   density = random.random() * random.random()
   decisions = [random.randint(1, num*20) for x in range(num*3)]
   branches = [0]*num
@@ -123,14 +123,14 @@ int main() {
   open('fuzz.slow.js', 'w').write(slow)
   open('fuzz.cpp', 'w').write(fast)
   print '_'
-  slow_out = subprocess.Popen(['mozjs', '-m', '-n', 'fuzz.slow.js'], stdout=subprocess.PIPE).communicate()[0]
+  slow_out = subprocess.Popen(['mozjs', 'fuzz.slow.js'], stdout=subprocess.PIPE).communicate()[0]
 
   print '.'
   subprocess.call(['g++', 'fuzz.cpp', 'Relooper.o', '-o', 'fuzz', '-g'])
   print '*'
   subprocess.call(['./fuzz'], stdout=open('fuzz.fast.js', 'w'))
   print '-'
-  fast_out = subprocess.Popen(['mozjs', '-m', '-n', 'fuzz.fast.js'], stdout=subprocess.PIPE).communicate()[0]
+  fast_out = subprocess.Popen(['mozjs', 'fuzz.fast.js'], stdout=subprocess.PIPE).communicate()[0]
   print
 
   if slow_out != fast_out:

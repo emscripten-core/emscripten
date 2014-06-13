@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <assert.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -42,13 +42,13 @@ void finish(int result) {
     close(server.fd);
     server.fd = 0;
   }
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   REPORT_RESULT();
 #endif
   exit(result);
 }
 
-void main_loop(void *arg) {
+void main_loop() {
   static char out[1024*2];
   static int pos = 0;
   fd_set fdr;
@@ -71,20 +71,24 @@ void main_loop(void *arg) {
       return;
     }
 
+#if !TEST_DGRAM
     // as a test, confirm with ioctl that we have data available
     // after selecting
     int available;
     res = ioctl(server.fd, FIONREAD, &available);
     assert(res != -1);
     assert(available);
+#endif
 
     res = do_msg_read(server.fd, &server.msg, echo_read, 0, NULL, NULL);
-    if (res == 0) {
+    if (res == -1) {
+      return;
+    } else if (res == 0) {
       perror("server closed");
       finish(EXIT_FAILURE);
-    } else if (res != -1) {
-      echo_read += res;
     }
+
+    echo_read += res;
 
     // once we've read the entire message, validate it
     if (echo_read >= server.msg.length) {
@@ -97,12 +101,14 @@ void main_loop(void *arg) {
     }
 
     res = do_msg_write(server.fd, &echo_msg, echo_wrote, 0, NULL, 0);
-    if (res == 0) {
+    if (res == -1) {
+      return;
+    } else if (res == 0) {
       perror("server closed");
       finish(EXIT_FAILURE);
-    } else if (res != -1) {
-      echo_wrote += res;
     }
+
+    echo_wrote += res;
 
     // once we're done writing the message, read it back
     if (echo_wrote >= echo_msg.length) {
@@ -124,8 +130,11 @@ int main() {
   echo_msg.buffer = malloc(echo_msg.length);
   strncpy(echo_msg.buffer, MESSAGE, echo_msg.length);
 
+  echo_read = 0;
+  echo_wrote = 0;
+
   // create the socket and set to non-blocking
-#if !USE_UDP
+#if !TEST_DGRAM
   server.fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 #else
   server.fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -151,10 +160,10 @@ int main() {
     finish(EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 0, 0);
 #else
-  while (1) main_loop(NULL);
+  while (1) main_loop();
 #endif
 
   return EXIT_SUCCESS;
