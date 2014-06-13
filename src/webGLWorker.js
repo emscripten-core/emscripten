@@ -663,6 +663,17 @@ function WebGLWorker() {
   this.activeTexture = function(texture) {
     commandBuffer.push('activeTexture', 1, texture);
   };
+  this.getShaderParameter = function(shader, pname) {
+    switch (pname) {
+      case this.SHADER_TYPE: return shader.type;
+      case this.COMPILE_STATUS: {
+        // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
+        commandBuffer.push('getShaderParameter', shader.id, pname);
+        return true;
+      }
+      default: throw 'unsupported getShaderParameter ' + pname;
+    }
+  };
 
   // Setup
   var dropped = 0;
