@@ -54,11 +54,26 @@ function WebGLClient() {
     }
   }
 
+  var commandBuffers = [];
+
+  function renderAllCommands() {
+    // TODO: we can avoid running commands from buffers that are not the last, if they
+    //       have no side effects, as each buffer is from a different frame
+    for (var i = 0; i < commandBuffers.length; i++) {
+      renderCommands(commandBuffers[i]);
+    }
+    commandBuffers.length = 0;
+  }
+
   this.onmessage = function(msg) {
     //dump('client GL got ' + JSON.stringify(msg) + '\n');
     switch(msg.op) {
       case 'render': {
-        renderCommands(msg.commandBuffer);
+        if (commandBuffers.length === 0) {
+          // requestion a new frame, we will clear the buffers after rendering them
+          window.requestAnimationFrame(renderAllCommands);
+        }
+        commandBuffers.push(msg.commandBuffer);
         break;
       }
       default: throw 'weird gl onmessage ' + JSON.stringify(msg);
