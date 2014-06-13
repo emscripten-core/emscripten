@@ -552,23 +552,24 @@ function WebGLWorker() {
     program.uniforms = {};
     program.uniformVec = [];
     program.shaders.forEach(function(shader) {
-      var newUniforms = shader.source.match(/uniform\s+\w+\s+(\w+)(\[\d+\])?;/g);
+      var newUniforms = shader.source.match(/uniform\s+\w+\s+[\w,\s\[\]]+;/g);
       if (!newUniforms) return;
       newUniforms.forEach(function(uniform) {
-        var name = uniform.substr(uniform.lastIndexOf(' ')+1);
-        var size = 1;
-        var open = name.indexOf('[');
-        if (open >= 0) {
-          var close = name.indexOf(']');
-          size = parseInt(name.substring(open+1, close));
-          name = name.substr(0, open);
-        } else {
-          name = name.substr(0, name.length-1); // remove ';'
-        }
-        if (!program.uniforms[name]) {
-          program.uniforms[name] = { what: 'uniform', name: name, size: size };
-          program.uniformVec.push(name);
-        }
+        var m = /uniform\s+\w+\s+([\w,\s\[\]]+);/.exec(uniform);
+        assert(m);
+        m[1].split(',').map(function(name) { return name.replace(/\s/g, '') }).filter(function(name) { return !!name }).forEach(function(name) {
+          var size = 1;
+          var open = name.indexOf('[');
+          if (open >= 0) {
+            var close = name.indexOf(']');
+            size = parseInt(name.substring(open+1, close));
+            name = name.substr(0, open);
+          }
+          if (!program.uniforms[name]) {
+            program.uniforms[name] = { what: 'uniform', name: name, size: size };
+            program.uniformVec.push(name);
+          }
+        });
       });
     });
   };
