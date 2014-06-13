@@ -622,6 +622,9 @@ function WebGLWorker() {
   this.uniform1i = function(location, data) {
     commandBuffer.push('uniform1i', 2, location.id, data);
   };
+  this.uniform1f = function(location, data) {
+    commandBuffer.push('uniform1f', 2, location.id, data);
+  };
   this.uniform4fv = function(location, data) {
     commandBuffer.push('uniform4fv', 2, location.id, new Float32Array(data));
   };
