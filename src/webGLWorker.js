@@ -658,6 +658,9 @@ function WebGLWorker() {
   this.drawArrays = function(mode, first, count) {
     commandBuffer.push('drawArrays', 3, mode, first, count);
   };
+  this.drawElements = function(mode, count, type, offset) {
+    commandBuffer.push('drawElements', 4, mode, count, type, offset);
+  };
   this.getError = function() {
     // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
     commandBuffer.push('getError', 0);

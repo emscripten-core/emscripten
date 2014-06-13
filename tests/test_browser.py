@@ -1480,6 +1480,9 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1'])
 
+  #def test_cubegeom_proxy(self):
+  #  self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '--proxy-to-worker'], manual_reference=True, post_build=self.post_manual_reftest)
+
   def test_cubegeom_proc(self):
     open('side.c', 'w').write(r'''
 
