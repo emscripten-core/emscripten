@@ -653,6 +653,9 @@ function WebGLWorker() {
     }
     commandBuffer.push('bindTexture', 2, target, texture ? texture.id : 0);
   };
+  this.texParameteri = function(target, pname, param) {
+    commandBuffer.push('texParameteri', 3, target, pname, param);
+  };
 
   // Setup
   var dropped = 0;
