@@ -24,6 +24,12 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
 
 // end render
 
+// Frame throttling
+
+var frameId = 0;
+
+// Worker
+
 var worker = new Worker('{{{ filename }}}.js');
 
 WebGLClient.prefetch(); // XXX not guaranteed to be before worker main()
@@ -82,6 +88,11 @@ worker.onmessage = function worker_onmessage(event) {
     }
     case 'gl': {
       Module.glClient.onmessage(data);
+      break;
+    }
+    case 'tick': {
+      frameId = data.id;
+      worker.postMessage({ target: 'tock', id: frameId });
       break;
     }
     default: throw 'what?';

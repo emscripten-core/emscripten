@@ -125,6 +125,19 @@ Browser.resizeListeners.push(function(width, height) {
   postMessage({ target: 'canvas', op: 'resize', width: width, height: height });
 });
 
+// Frame throttling
+
+var frameId = 0;
+var clientFrameId = 0;
+
+var postMainLoop = Module['postMainLoop'];
+Module['postMainLoop'] = function() {
+  if (postMainLoop) postMainLoop();
+  // frame complete, send a frame id
+  postMessage({ target: 'tick', id: frameId++ });
+  commandBuffer = [];
+};
+
 // buffer messages until the program starts to run
 
 var messageBuffer = null;
@@ -169,6 +182,10 @@ onmessage = function onmessage(message) {
     }
     case 'gl': {
       webGLWorker.onmessage(message.data);
+      break;
+    }
+    case 'tock': {
+      clientFrameId = message.data.id;
       break;
     }
     default: throw 'wha? ' + message.data.target;

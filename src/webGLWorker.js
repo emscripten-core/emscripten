@@ -609,7 +609,10 @@ function WebGLWorker() {
   Module['postMainLoop'] = function() {
     if (postMainLoop) postMainLoop();
     // frame complete, send the command buffer
-    postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
+    if (Math.abs(frameId - clientFrameId) <= 3) {
+      // only send if not throttling
+      postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
+    }
     commandBuffer = [];
   };
 }
