@@ -12,6 +12,10 @@ function WebGLWorker() {
 
   var nextId = 1;
 
+  var bindings = {
+    texture2D: null
+  };
+
   //===========
   // Constants
   //===========
@@ -465,7 +469,12 @@ function WebGLWorker() {
   this.getParameter = function(name) {
     assert(name);
     if (name in this.prefetchedParameters) return this.prefetchedParameters[name];
-    throw 'TODO: get parameter ' + name + ' : ' + revname(name);
+    switch (name) {
+      case this.TEXTURE_BINDING_2D: {
+        return bindings.texture2D;
+      }
+      default: throw 'TODO: get parameter ' + name + ' : ' + revname(name);
+    }
   };
   this.getExtension = function(name) {
     var i = this.prefetchedExtensions.indexOf(name);
@@ -607,6 +616,20 @@ function WebGLWorker() {
     // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
     commandBuffer.push('getError', 0);
     return this.NO_ERROR;
+  };
+  this.createTexture = function() {
+    var id = nextId++;
+    commandBuffer.push('createTexture', -1, id);
+    return { id: id, what: 'texture' };
+  };
+  this.bindTexture = function(target, texture) {
+    switch (target) {
+      case that.TEXTURE_2D: {
+        bindings.texture2D = texture;
+        break;
+      }
+    }
+    commandBuffer.push('bindTexture', 2, target, texture ? texture.id : 0);
   };
 
   // Setup
