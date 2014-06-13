@@ -8,6 +8,8 @@ function WebGLProgram(id) {
   this.what = 'program';
   this.id = id;
   this.shaders = [];
+  this.attributes = {};
+  this.attributeVec = [];
 }
 function WebGLFramebuffer(id) {
   this.what = 'frameBuffer';
@@ -544,7 +546,17 @@ function WebGLWorker() {
     commandBuffer.push('attachShader', 2, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
+    program.attributes[name] = index;
+    program.attributeVec[index] = name;
     commandBuffer.push('bindAttribLocation', 3, program.id, index, name);
+  };
+  this.getAttribLocation = function(program, name) {
+    // manually bound attribs are cached locally
+    if (name in program.attributes) return program.attributes[name];
+    // if not manually bound, bind it to the next index so we update the client
+    var index = program.attributeVec.length;
+    this.bindAttribLocation(program, index, name);
+    return index;
   };
   this.linkProgram = function(program) {
     commandBuffer.push('linkProgram', 1, program.id);
