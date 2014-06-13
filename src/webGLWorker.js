@@ -1,5 +1,27 @@
 // WebGLWorker worker code
 
+function WebGLBuffer(id) {
+  this.what = 'buffer';
+  this.id = id;
+}
+function WebGLProgram(id) {
+  this.what = 'program';
+  this.id = id;
+  this.shaders = [];
+}
+function WebGLFramebuffer(id) {
+  this.what = 'frameBuffer';
+  this.id = id;
+}
+function WebGLRenderbuffer(id) {
+  this.what = 'renderBuffer';
+  this.id = id;
+}
+function WebGLTexture(id) {
+  this.what = 'texture';
+  this.id = id;
+}
+
 function WebGLWorker() {
   //=======
   // State
@@ -515,7 +537,7 @@ function WebGLWorker() {
   this.createProgram = function() {
     var id = nextId++;
     commandBuffer.push('createProgram', -1, id);
-    return { id: id, what: 'program', shaders: [] };
+    return new WebGLProgram(id);
   };
   this.attachShader = function(program, shader) {
     program.shaders.push(shader);
@@ -588,7 +610,7 @@ function WebGLWorker() {
   this.createBuffer = function() {
     var id = nextId++;
     commandBuffer.push('createBuffer', -1, id);
-    return { what: 'buffer', id: id };
+    return new WebGLBuffer(id);
   };
   this.bindBuffer = function(target, buffer) {
     commandBuffer.push('bindBuffer', 2, target, buffer ? buffer.id : 0);
@@ -620,7 +642,7 @@ function WebGLWorker() {
   this.createTexture = function() {
     var id = nextId++;
     commandBuffer.push('createTexture', -1, id);
-    return { id: id, what: 'texture' };
+    return new WebGLTexture(id);
   };
   this.bindTexture = function(target, texture) {
     switch (target) {
