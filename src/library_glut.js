@@ -383,7 +383,7 @@ var LibraryGLUT = {
     function callback() {
       if (GLUT.idleFunc) {
         Runtime.dynCall('v', GLUT.idleFunc);
-        Browser.safeSetTimeout(callback, 0);
+        Browser.safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
       }
     }
     if (!GLUT.idleFunc) {
