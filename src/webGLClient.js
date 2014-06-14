@@ -12,6 +12,7 @@ function WebGLClient() {
       case 'getProgramParameter':
       case 'getShaderParameter':
       case 'uniform1i':
+      case 'uniform1f':
       case 'uniform4fv':
       case 'uniformMatrix4fv':
       case 'getUniformLocation':
@@ -36,6 +37,7 @@ function WebGLClient() {
       var command = buffer[i++];
       assert(typeof command === 'string')
       var numArgs = buffer[i++];
+      assert(typeof numArgs === 'number', command);
       //dump('issue ' + [command, numArgs, 'peek:' + buffer.slice(i, i+5)] + '\n');
       if (numArgs === 0) {
         //dump('issue: ' + command + '\n');

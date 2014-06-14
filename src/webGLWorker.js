@@ -590,7 +590,7 @@ function WebGLWorker() {
       case this.ACTIVE_UNIFORMS: return program.uniformVec.length;
       case this.LINK_STATUS: {
         // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
-        commandBuffer.push('getProgramParameter', program.id, name);
+        commandBuffer.push('getProgramParameter', 2, program.id, name);
         return true;
       }
       default: throw 'bad getProgramParameter ' + revname(name);
@@ -695,7 +695,7 @@ function WebGLWorker() {
       case this.SHADER_TYPE: return shader.type;
       case this.COMPILE_STATUS: {
         // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
-        commandBuffer.push('getShaderParameter', shader.id, pname);
+        commandBuffer.push('getShaderParameter', 2, shader.id, pname);
         return true;
       }
       default: throw 'unsupported getShaderParameter ' + pname;
