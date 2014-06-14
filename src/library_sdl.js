@@ -1286,7 +1286,13 @@ var LibrarySDL = {
       height = canvas.height;
     }
 
-    Browser.setCanvasSize(width, height, true);
+    Browser.setCanvasSize(width, height,
+#if PROXY_TO_WORKER == 0
+                          true // XXX why?
+#else
+                          false
+#endif
+    );
     // Free the old surface first.
     if (SDL.screen) {
       SDL.freeSurface(SDL.screen);
