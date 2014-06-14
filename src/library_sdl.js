@@ -2850,7 +2850,12 @@ var LibrarySDL = {
     return _emscripten_GetProcAddress(name_);
   },
 
-  SDL_GL_SwapBuffers: function() {},
+  SDL_GL_SwapBuffers: function() {
+#if PROXY_TO_WORKER
+    // postMainLoop is where the proxy code listens, to know when to proxy buffered render commands
+    if (Module['postMainLoop']) Module['postMainLoop']();
+#endif
+  },
 
   // SDL 2
 
