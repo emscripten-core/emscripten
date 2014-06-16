@@ -41,6 +41,21 @@ mergeInto(LibraryManager.library, {
             Module['setStatus']('');
           }
         }
+      },
+      runIter: function(func) {
+        if (ABORT) return;
+        if (Module['preMainLoop']) Module['preMainLoop']();
+        try {
+          func();
+        } catch (e) {
+          if (e instanceof ExitStatus) {
+            return;
+          } else {
+            if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+            throw e;
+          }
+        }
+        if (Module['postMainLoop']) Module['postMainLoop']();
       }
     },
     isFullScreen: false,
@@ -954,24 +969,13 @@ mergeInto(LibraryManager.library, {
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
 
-      if (Module['preMainLoop']) Module['preMainLoop']();
-
-      try {
+      Browser.mainLoop.runIter(function() {
         if (typeof arg !== 'undefined') {
           Runtime.dynCall('vi', func, [arg]);
         } else {
           Runtime.dynCall('v', func);
         }
-      } catch (e) {
-        if (e instanceof ExitStatus) {
-          return;
-        } else {
-          if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
-          throw e;
-        }
-      }
-
-      if (Module['postMainLoop']) Module['postMainLoop']();
+      });
 
       if (Browser.mainLoop.shouldPause) {
         // catch pauses from the main loop itself

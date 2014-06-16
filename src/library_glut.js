@@ -489,10 +489,9 @@ var LibraryGLUT = {
       GLUT.requestedAnimationFrame = true;
       Browser.requestAnimationFrame(function() {
         GLUT.requestedAnimationFrame = false;
-        if (ABORT) return;
-        if (Module['preMainLoop']) Module['preMainLoop']();
-        Runtime.dynCall('v', GLUT.displayFunc);
-        if (Module['postMainLoop']) Module['postMainLoop']();
+        Browser.mainLoop.runIter(function() {
+          Runtime.dynCall('v', GLUT.displayFunc);
+        });
       });
     }
   },
