@@ -370,7 +370,7 @@ function JSify(data, functionsOnly) {
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
-    if (LIBRARY_DEBUG) {
+    if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
       snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
       snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; \n}';
     }
@@ -1901,6 +1901,9 @@ function JSify(data, functionsOnly) {
     if (PROXY_TO_WORKER) {
       print(read('webGLWorker.js'));
       print(read('proxyWorker.js'));
+    }
+    if (DETERMINISTIC) {
+      print(read('deterministic.js'));
     }
     if (RUNTIME_TYPE_INFO) {
       Types.cleanForRuntime();

@@ -10,9 +10,144 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.16.0...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.16.0...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.16.0...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.20.0...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.20.0...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.20.0...incoming
+
+v1.20.0: 6/13/2014
+------------------
+ - Optimize in-memory virtual filesystem performance when serialized to an IndexedDB.
+ - Fixed memcpy regression with ta0 and ta1 modes.
+ - Fixed an issue with line numbers being messed up when generating source maps (#2410)
+ - Fixed an ffdb logging bug that could cause it to drop messages if they were being received too fast. Added support getting memory and system descriptions with ffdb.
+ - Added a new extension to SDL "emscripten_SDL_SetEventHandler()" which enabled application to perform SDL event handling inside a JS event handler to overcome browser security restrictions. (#2417)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.19.2...1.20.0
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.19.2: 6/9/2014
+------------------
+ - Updated CMake support for response file handling.
+ - Fixed issues with glfwGetProcAddress and glfwSetWindowSizeCallback.
+ - Fixed an issue with regexes that caused issues on IE11 runtime (#2400)
+ - Added a new functions emscripten_get_preloaded_image_data() and emscripten_get_preloaded_image_data_from_FILE() to obtain pixel data of preloaded images.
+ - Greatly improved ffdb capabilities to operate a FFOS device.
+ - Fixed a Windows-specific bug where the user temp directory was littered with temporary .rsp files that did not get cleaned up.
+ - Improved SIMD support.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.19.1...1.19.2
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.19.1...1.19.2
+    - Emscripten-Clang: no changes.
+
+v1.19.1: 6/3/2014
+------------------
+ - Migrate to using musl sscanf and sprintf and the family that writes to memory, and not directly to the filesystem.
+ - Improve the error messages from -s SAFE_HEAP_ACCESS=1 runtime checks.
+ - Added new linker flag -s NO_DYNAMIC_EXECUTION=1 which removes the use of eval() and new Function() in the generated output. For more information, see "Eval and related functions are disabled" in https://developer.chrome.com/extensions/contentSecurityPolicy .
+ - Fixed a compiler issue when very large double constants are present. (#2392)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.19.0...1.19.1
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.19.0: 5/29/2014
+------------------
+ - Added an error message to signal that linkable modules are not supported in fastcomp.
+ - Fixed a miscompilation issue that resulted in an error "SyntaxError: invalid increment operand" and a statement +(+0) being generated (#2314)
+ - Make optimized compiler output smaller by running the shell code through uglify when not using closure.
+ - Fixed a crash in SDL audio loading code introduced in v1.18.3
+ - Fixed an issue where glTex(Sub)Image2D might throw an exception on error, instead of setting glGetError().
+ - Added new typedefs emscripten_align1_short, emscripten_align{1/2}_int, emscripten_align{1/2}_float and emscripten_align{1/2/4}_double to ease signaling the compiler that unaligned data is present. (#2378)
+ - Fixed an embind issue with refcount tracking on smart pointers.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.4...1.19.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.4...1.19.0
+    - Emscripten-Clang: no changes.
+
+v1.18.4: 5/27/2014
+------------------
+ - Fixed error message on unsupported linking options (#2365)
+ - Updated embind to latest version from IMVU upstream.
+ - Fixed an issue where source maps did not load properly in Firefox.
+ - Added a more descriptive error message to fastcomp when MAX_SETJMPS limit is violated. (#2379)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.3...1.18.4
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.3...1.18.4
+    - Emscripten-Clang: no changes.
+
+v1.18.3: 5/21/2014
+------------------
+ - Added support to emcc command line for "archive groups": -Wl,--start-group and -Wl,--end-group
+ - Greatly optimized ccall and cwrap implementations.
+ - Added new support for SDL_Mix backend to use WebAudio to play back audio clips.
+ - Fixed a registerizeHarder issue with elimination of conditional expressions.
+ - Migrated single-character standard C functions (islower, tolower, and the family) to use musl implementations.
+ - Updated relooper to not optimize out breaks if it causes excessive nesting.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.2...1.18.3
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.2...1.18.3
+    - Emscripten-Clang: no changes.
+
+v1.18.2: 5/19/2014
+------------------
+ - Fixed a problem which blocked user applications from handling WebGL context loss events themselves.
+ - Added a new HTML5 api function emscripten_is_webgl_context_lost() which allows polling for context loss in addition to receiving events.
+ - Improved async wget progress events to work better across browsers.
+ - Improved WebIDL binder support.
+ - Added new typeof() function to emscripten::val.
+ - Added support for SDL window events SDL_WINDOWEVENT_FOCUS_GAINED, SDL_WINDOWEVENT_FOCUS_LOST, SDL_WINDOWEVENT_SHOWN, SDL_WINDOWEVENT_HIDDEN.
+ - Fixed a compiler miscompilation on unsigned i1 bitcasts (#2350)
+ - Fixed a compiler bug where doubles in varargs might not get 8-byte aligned (#2358)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.1...1.18.2
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.1...1.18.2
+    - Emscripten-Clang: no changes.
+
+v1.18.1: 5/12/2014
+------------------
+ - Fixed an issue where the mouse wheel scroll did not work with SDL.
+ - Fixed an issue with emscripten_async_wget, which undesirably expected that the string pointer passed to it stayed alive for the duration of the operation (#2349)
+ - Emscripten now issues a warning message when the EXPORTED_FUNCTIONS list contains invalid symbol names (#2338)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.0...1.18.1
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.18.0: 5/10/2014
+------------------
+ - Enable support for low-level C<->JS interop to marshall 64 bit integers from C to JS.
+ - Fixed an issue that caused some programs to immediately run out of memory "(cannot enlarge memory arrays)" at startup. (#2334)
+ - Fixed a crash issue with generated touch events that didn't correspond to a real touch.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.17.0...1.18.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.17.0...1.18.0
+    - Emscripten-Clang: no changes.
+
+v1.17.0: 5/6/2014
+------------------
+ - Enabled asm.js compilation and -s PRECISE_F32 support when using embind.
+ - Improved relooper to emit switches in many-entried blocks.
+ - Fixed a GLFW bug where mouse wheel direction was reversed.
+ - Fixed glfwGetKey to work even when no callback is registered with glfwGetKeyCallback (#1320)
+ - Added a new tool 'webidl_binder' that generates C <-> JS interop code from WebIDL descriptions.
+ - Fix emscripten compilation to work on pages that don't contain a HTML canvas.
+ - Added a new error message to default shell when an uncaught exception is thrown.
+ - Improved error diagnostics reported by -s SAFE_HEAP=1.
+ - Added support for registering callbacks hook to VFS file open, write, move, close and delete.
+ - Added embind support to std::basic_string<unsigned char>
+ - By default, the C runtime will no longer exit after returning from main() when safeSetTimeout() or safeSetInterval() is used.
+ - Fixed an issue with sscanf formatting (#2322)
+ - Fixed an issue where precompiled headers were given a wrong output filename (#2320)
+ - Enabled registerizeHarder optimization pass to work when outlining is enabled.
+ - Fixed an issue with strptime month handling (#2324)
+ - Added an initial implementation of a new tool 'ffdb' which can be used to operate a Firefox OS phone from the command line.
+ - Fixed a compiler crash on assertion failure '!contains(BranchesOut, Target)' (emscripten-fastcomp #32)
+ - Added a new ABI to Clang that targets Emscripten specifically. Stop aligning member functions to save some space in the function table array.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.16.0...1.17.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.16.0...1.17.0
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.16.0...1.17.0
 
 v1.16.0: 4/16/2014
 ------------------

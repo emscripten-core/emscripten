@@ -128,10 +128,8 @@ load('utility.js');
 
 // Utilities
 
-var FUNCTION = set('defun', 'function');
 var LOOP = set('do', 'while', 'for');
 var LOOP_FLOW = set('break', 'continue');
-var ASSIGN_OR_ALTER = set('assign', 'unary-postfix', 'unary-prefix');
 var CONTROL_FLOW = set('do', 'while', 'for', 'if', 'switch');
 var NAME_OR_NUM = set('name', 'num');
 var ASSOCIATIVE_BINARIES = set('+', '*', '|', '&', '^');
@@ -145,10 +143,7 @@ var COMMABLE = set('assign', 'binary', 'unary-prefix', 'unary-postfix', 'name', 
 
 var FUNCTIONS_THAT_ALWAYS_THROW = set('abort', '___resumeException', '___cxa_throw', '___cxa_rethrow');
 
-var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
-var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
-var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 
 var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS';
 var generatedFunctions = false; // whether we have received only generated functions

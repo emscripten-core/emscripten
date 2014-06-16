@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
+
 #if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
@@ -514,6 +516,24 @@ int emscripten_get_compiler_setting(const char *name);
  * the debugger if it gets there.
  */
 void emscripten_debugger();
+
+/*
+ * Get preloaded image data and the size of the image.
+ *
+ * Returns pointer to loaded image or NULL.
+ * width/height of image are written to w/h if data is valid.
+ * Pointer should be free()'d
+ */
+char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
+
+/*
+ * Get preloaded image data from a c FILE *.
+ *
+ * Returns pointer to loaded image or NULL.
+ * width/height of image are written to w/h if data is valid.
+ * Pointer should be free()'d
+ */
+char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 
 
 /* ===================================== */

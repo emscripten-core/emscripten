@@ -3166,7 +3166,7 @@ LibraryManager.library = {
 #endif
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
-  __environ: '_environ',
+  __environ: 'environ',
   __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
     // WARNING: Arbitrary limit!
@@ -3388,9 +3388,20 @@ LibraryManager.library = {
   memcpy__sig: 'iiii',
   memcpy__deps: ['emscripten_memcpy_big'],
   memcpy: function(dest, src, num) {
+#if USE_TYPED_ARRAYS == 0
+    {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};
+    return num;
+#endif
+#if USE_TYPED_ARRAYS == 1
+    {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};
+    return num;
+#endif
+
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
+#if USE_TYPED_ARRAYS
     if ((num|0) >= 4096) return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+#endif
     ret = dest|0;
     if ((dest&3) == (src&3)) {
       while (dest & 3) {

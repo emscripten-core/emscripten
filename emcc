@@ -1376,6 +1376,8 @@ try:
   if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
     assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
 
+  assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
+
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
 
@@ -1692,7 +1694,7 @@ try:
           logging.debug('wrote memory initialization to %s', memfile)
         else:
           logging.debug('did not see memory initialization')
-  elif shared.Settings.USE_TYPED_ARRAYS == 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE:
+  elif shared.Settings.USE_TYPED_ARRAYS == 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and debug_level < 4:
     # not writing a binary init, but we can at least optimize them by splitting them up
     src = open(final).read()
     src = shared.JS.optimize_initializer(src)

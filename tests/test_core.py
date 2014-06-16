@@ -4030,11 +4030,14 @@ def process(filename):
     src = open(path_from_root('tests', 'files.cpp'), 'r').read()
 
     mem_file = 'src.cpp.o.js.mem'
-    try_delete(mem_file)
-    self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\n'),
-                 post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
-    if self.emcc_args and '--memory-init-file' in self.emcc_args:
-      assert os.path.exists(mem_file)
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      self.emcc_args = orig_args + mode
+      try_delete(mem_file)
+      self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\n'),
+                  post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      if self.emcc_args and '--memory-init-file' in self.emcc_args:
+        assert os.path.exists(mem_file)
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -4077,7 +4080,10 @@ def process(filename):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
     src, output = (test_path + s for s in ('.in', '.out'))
 
-    self.do_run_from_file(src, output)
+    orig_args = self.emcc_args if self.emcc_args else []
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      self.emcc_args = orig_args + mode
+      self.do_run_from_file(src, output)
 
   def test_fgetc_ungetc(self):
     src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
@@ -4275,7 +4281,10 @@ def process(filename):
     if self.emcc_args is None: return self.skip('requires libcxx')
     test_path = path_from_root('tests', 'core', 'test_wprintf')
     src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      self.emcc_args = orig_args + mode
+      self.do_run_from_file(src, output)
 
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
@@ -4338,6 +4347,11 @@ def process(filename):
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out)
+
+  def test_fs_append(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True)
 
   def test_unistd_access(self):
     self.clear()
@@ -4642,6 +4656,39 @@ PORT: 3979
         }
       '''
       self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\nJansson: Node with ID `0` not found. Context has `10` nodes.\n0\nJansson: No JSON context.\njansson!')
+
+  def test_js_libraries(self):
+    if self.emcc_args == None: return self.skip('needs emcc')
+
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+      #include <stdio.h>
+      extern "C" {
+        extern void printey();
+        extern int calcey(int x, int y);
+      }
+      int main() {
+        printey();
+        printf("*%d*\\n", calcey(10, 22));
+        return 0;
+      }
+    ''')
+    open(os.path.join(self.get_dir(), 'mylib1.js'), 'w').write('''
+      mergeInto(LibraryManager.library, {
+        printey: function() {
+          Module.print('hello from lib!');
+        }
+      });
+    ''')
+    open(os.path.join(self.get_dir(), 'mylib2.js'), 'w').write('''
+      mergeInto(LibraryManager.library, {
+        calcey: function(x, y) {
+          return x + y;
+        }
+      });
+    ''')
+
+    self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'mylib1.js'), '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]
+    self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'hello from lib!\n*32*\n')
 
   def test_constglobalunion(self):
     if self.emcc_args is None: return self.skip('needs emcc')
@@ -5117,7 +5164,7 @@ def process(filename):
     \'\'\'
       FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false);
       Module.callMain(Module.arguments);
-      Module.print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
+      Module.print("Data: " + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']).map(function(x) { return unSign(x, 8) })));
     \'\'\'
   )
   src.close()
@@ -5167,7 +5214,7 @@ def process(filename):
     ))
   ).replace(
     '// {{POST_RUN_ADDITIONS}}',
-    "Module.print('Data: ' + JSON.stringify(FS.analyzePath('image.raw').object.contents));"
+    "Module.print('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));"
   )
   open(filename, 'w').write(src)
 '''
@@ -6386,10 +6433,15 @@ def process(filename):
           if (i < 10) throw i; // line 5
       }
 
+      #include <iostream>
+      #include <string>
+
       int main() {
+        std::string x = "ok"; // add libc++ stuff to make this big, test for #2410
         int i;
         scanf("%d", &i);
         foo(i);
+        std::cout << x << std::endl;
         return 0;
       }
     '''

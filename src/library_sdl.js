@@ -84,6 +84,9 @@ var LibrarySDL = {
 
     TOUCH_DEFAULT_ID: 0, // Our default deviceID for touch events (we get nothing from the browser)
     
+    eventHandler: null,
+    eventHandlerContext: null,
+    
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       // For keys that don't have unicode value, we map DOM codes with the corresponding scan codes + 1024 (using "| 1 << 10")
       16: 225 | 1<<10, // shift
@@ -304,7 +307,12 @@ var LibrarySDL = {
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pitch, 'width * bpp', 'i32') }}};  // assuming RGBA or indexed for now,
                                                                                         // since that is what ImageData gives us in browsers
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.pixels, 'buffer', 'void*') }}};
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect, '0', 'i32*') }}};
+
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.x, '0', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.y, '0', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.w, 'Module["canvas"].width', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.h, 'Module["canvas"].height', 'i32') }}};
+
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}};
@@ -699,6 +707,9 @@ var LibrarySDL = {
         Module.printErr('SDL event queue full, dropping events');
         SDL.events = SDL.events.slice(0, 10000);
       }
+      // If we have a handler installed, this will push the events to the app
+      // instead of the app polling for them.
+      SDL.flushEventsToHandler();
       return;
     },
 
@@ -748,6 +759,30 @@ var LibrarySDL = {
           break;
         }
       }
+    },
+
+    flushEventsToHandler: function() {
+      if (!SDL.eventHandler) return;
+
+      // All SDLEvents take the same amount of memory
+      var sdlEventPtr = allocate({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}}, "i8", ALLOC_STACK);
+
+      while (SDL.pollEvent(sdlEventPtr)) {
+        Runtime.dynCall('iii', SDL.eventHandler, [SDL.eventHandlerContext, sdlEventPtr]);
+      }
+    },
+
+    pollEvent: function(ptr) {
+      if (SDL.initFlags & 0x200 && SDL.joystickEventState) {
+        // If SDL_INIT_JOYSTICK was supplied AND the joystick system is configured
+        // to automatically query for events, query for joystick events.
+        SDL.queryJoysticks();
+      }
+      if (SDL.events.length === 0) return 0;
+      if (ptr) {
+        SDL.makeCEvent(SDL.events.shift(), ptr);
+      }
+      return 1;
     },
 
     makeCEvent: function(event, ptr) {
@@ -1715,16 +1750,7 @@ var LibrarySDL = {
   },
 
   SDL_PollEvent: function(ptr) {
-    if (SDL.initFlags & 0x200 && SDL.joystickEventState) {
-      // If SDL_INIT_JOYSTICK was supplied AND the joystick system is configured
-      // to automatically query for events, query for joystick events.
-      SDL.queryJoysticks();
-    }
-    if (SDL.events.length === 0) return 0;
-    if (ptr) {
-      SDL.makeCEvent(SDL.events.shift(), ptr);
-    }
-    return 1;
+    return SDL.pollEvent(ptr);
   },
 
   SDL_PushEvent: function(ptr) {
@@ -1763,6 +1789,13 @@ var LibrarySDL = {
     SDL.events.forEach(function(event) {
       SDL.handleEvent(event);
     });
+  },
+  
+  // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
+  // Allow recording a callback that will be called for each received event.
+  emscripten_SDL_SetEventHandler: function(handler, userdata) {
+    SDL.eventHandler = handler;
+    SDL.eventHandlerContext = userdata;
   },
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
@@ -2607,7 +2640,7 @@ var LibrarySDL = {
     if (info && info.audio) {
       info.audio.pause();
     } else {
-      Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
+      //Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
     }
   },
   

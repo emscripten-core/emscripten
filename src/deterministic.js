@@ -8,13 +8,14 @@ var TIME = 10000;
 Date.now = function() {
   return TIME++;
 };
-performance.now = Date.now;
+if (typeof performance === 'object') performance.now = Date.now;
 
 function hashMemory(id) {
   var ret = 0;
-  for (var i = 0; i < HEAPU8.length; i++) {
+  var len = Math.max(DYNAMICTOP, STATICTOP);
+  for (var i = 0; i < len; i++) {
     ret = (ret*17 + HEAPU8[i])|0;
   }
-  print(id + ':' + ret);
+  printErr(id + ':' + ret);
 }
 

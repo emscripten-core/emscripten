@@ -427,12 +427,18 @@ def calculate(temp_files, in_temp, stdout, stderr):
   # TODO: Move all __deps from src/library*.js to deps_info.json, and use that single source of info
   #       both here and in the JS compiler.
   deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
+  added = set()
   def add_back_deps(need):
+    more = False
     for ident, deps in deps_info.iteritems():
-      if ident in need.undefs:
+      if ident in need.undefs and not ident in added:
+        added.add(ident)
+        more = True
         for dep in deps:
           need.undefs.add(dep)
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+    if more:
+      add_back_deps(need) # recurse to get deps of deps
   for symbols in symbolses:
     add_back_deps(symbols)
 

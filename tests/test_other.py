@@ -1306,38 +1306,6 @@ This pointer might make sense in another type signature: i: 0
 
     self.assertContained('TestA\nTestB\nTestA\n', run_js('main.js', engine=SPIDERMONKEY_ENGINE))
 
-  def test_js_libraries(self):
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
-      #include <stdio.h>
-      extern "C" {
-        extern void printey();
-        extern int calcey(int x, int y);
-      }
-      int main() {
-        printey();
-        printf("*%d*\\n", calcey(10, 22));
-        return 0;
-      }
-    ''')
-    open(os.path.join(self.get_dir(), 'mylib1.js'), 'w').write('''
-      mergeInto(LibraryManager.library, {
-        printey: function() {
-          Module.print('hello from lib!');
-        }
-      });
-    ''')
-    open(os.path.join(self.get_dir(), 'mylib2.js'), 'w').write('''
-      mergeInto(LibraryManager.library, {
-        calcey: function(x, y) {
-          return x + y;
-        }
-      });
-    ''')
-
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'mylib1.js'),
-                                                                   '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]).communicate()
-    self.assertContained('hello from lib!\n*32*\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
   def test_identical_basenames(self):
     # Issue 287: files in different dirs but with the same basename get confused as the same,
     # causing multiply defined symbol errors
@@ -2901,4 +2869,26 @@ int main(int argc, char **argv) {
     assert 'eval.' not in src
     assert 'new Function' not in src
 
+  def test_init_file_at_offset(self):
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        int data = 0x12345678;
+        FILE *f = fopen("test.dat", "wb");
+        fseek(f, 100, SEEK_CUR);
+        fwrite(&data, 4, 1, f);
+        fclose(f);
+
+        int data2;
+        f = fopen("test.dat", "rb");
+        fread(&data2, 4, 1, f); // should read 0s, not that int we wrote at an offset
+        printf("read: %d\n", data2);
+        fseek(f, 0, SEEK_END);
+        int size = ftell(f); // should be 104, not 4
+        fclose(f);
+        printf("file size is %d\n", size);
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 

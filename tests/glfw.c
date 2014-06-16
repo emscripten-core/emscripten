@@ -376,6 +376,10 @@ void PullInfo(){
   extension = "GL_EXT_framebuffer_object";
   printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");
   
+  extension = "glBindBuffer";
+  void* proc_addr = glfwGetProcAddress(extension);
+  printf("'%s' extension proc address is %p.\n", extension, proc_addr);
+  
   printf("Sleeping 1 sec...\n");
   glfwSleep(1);
   printf("...Done.\n");

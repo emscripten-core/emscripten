@@ -615,6 +615,14 @@ extern DECLSPEC void SDLCALL SDL_DelEventWatch(SDL_EventFilter filter,
 extern DECLSPEC void SDLCALL SDL_FilterEvents(SDL_EventFilter filter,
                                               void *userdata);
 
+/**
+ *  An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
+ *  Allow recording a callback that will be called for each received event. This is used in place of SDL_PollEvent.
+ *  Your application will be called whenever there are events available.
+ */
+extern DECLSPEC void SDLCALL emscripten_SDL_SetEventHandler(SDL_EventFilter handler,
+                                                            void *userdata);
+
 /*@{*/
 #define SDL_QUERY	-1
 #define SDL_IGNORE	 0
