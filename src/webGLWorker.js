@@ -526,6 +526,9 @@ function WebGLWorker() {
     commandBuffer.push('createShader', -2, type, id);
     return { id: id, what: 'shader', type: type };
   };
+  this.deleteShader = function(shader) {
+    commandBuffer.push('deleteShader', 1, shader.id);
+  };
   this.shaderSource = function(shader, source) {
     shader.source = source;
     commandBuffer.push('shaderSource', 2, shader.id, source);
@@ -540,6 +543,9 @@ function WebGLWorker() {
     var id = nextId++;
     commandBuffer.push('createProgram', -1, id);
     return new WebGLProgram(id);
+  };
+  this.deleteProgram = function(program) {
+    commandBuffer.push('deleteProgram', 1, program.id);
   };
   this.attachShader = function(program, shader) {
     program.shaders.push(shader);

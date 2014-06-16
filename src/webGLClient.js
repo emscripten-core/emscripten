@@ -9,6 +9,8 @@ function WebGLClient() {
 
   function fixArgs(command, args) {
     switch (command) {
+      case 'deleteShader':
+      case 'deleteProgram':
       case 'getProgramParameter':
       case 'getShaderParameter':
       case 'uniform1i':
