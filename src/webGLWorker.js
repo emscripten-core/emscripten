@@ -704,17 +704,23 @@ function WebGLWorker() {
 
   // Setup
   var dropped = 0;
+  var preMainLoop = Module['preMainLoop'];
+  Module['preMainLoop'] = function() {
+    if (preMainLoop) {
+      var ret = preMainLoop();
+      if (ret === false) return ret;
+    }
+    // if too many frames in queue, skip a main loop iter
+    if (Math.abs(frameId - clientFrameId) >= 3) {
+      //dropped++;
+      //if (dropped % 1000 === 0) dump('dropped: ' + [dropped, frameId, Math.round(100*dropped/frameId) + '%\n']);
+      return false;
+    }
+  };
   var postMainLoop = Module['postMainLoop'];
   Module['postMainLoop'] = function() {
     if (postMainLoop) postMainLoop();
-    // frame complete, send the command buffer
-    if (Math.abs(frameId - clientFrameId) <= 3) {
-      // only send if not throttling
-      postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
-    } else {
-      //dropped++;
-      //if (dropped % 1000 === 0) dump('dropped: ' + [dropped, frameId, Math.round(100*dropped/frameId) + '%\n']);
-    }
+    postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
     commandBuffer = [];
   };
 }
