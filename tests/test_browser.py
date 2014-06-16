@@ -744,7 +744,7 @@ window.close = function() {
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=self.post_manual_reftest)
 
   def test_glgears_proxy(self):
-    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker'], manual_reference=True, post_build=self.post_manual_reftest, reference_slack=8)
+    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=self.post_manual_reftest)
 
   def test_sdl_canvas_alpha(self):
     self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=9)
