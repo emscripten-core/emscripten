@@ -100,6 +100,13 @@ document.createElement = function document_createElement(what) {
 
 document.documentElement = {};
 
+document.styleSheets = [{
+  cssRules: [], // TODO: forward to client
+  insertRule: function(rule, i) {
+    this.cssRules.splice(i, 0, rule);
+  }
+}];
+
 if (typeof console === 'undefined') {
   var console = {
     log: function(x) {
