@@ -44,7 +44,12 @@ mergeInto(LibraryManager.library, {
       },
       runIter: function(func) {
         if (ABORT) return;
-        if (Module['preMainLoop']) Module['preMainLoop']();
+        if (Module['preMainLoop']) {
+          var preRet = Module['preMainLoop']();
+          if (preRet === false) {
+            return; // |return false| skips a frame
+          }
+        }
         try {
           func();
         } catch (e) {
