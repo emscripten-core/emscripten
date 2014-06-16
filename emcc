@@ -503,8 +503,13 @@ Options that are modified or new in %s include:
                            to hide these warnings and acknowledge that the
                            explicit use of absolute paths is intentional.
 
-  --proxy-to-worker        Generates both html and js files. The main
-                           program is in js, and the html proxies to/from it.
+  --proxy-to-worker        Runs the main application code in a worker, proxying
+                           events to it and output from it.
+                           If emitting htmlL, this emits an html and a js file,
+                           with the js to be run in a worker. If emitting
+                           js, the target filename contains the part to be run
+                           on the main thread, while a second js file with
+                           suffix ".worker.js" will contain the worker portion.
 
   --emrun                  Enables the generated output to be aware of the
                            emrun command line tool. This allows stdout, stderr
@@ -1977,8 +1982,13 @@ try {
       split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
       if debug_level >= 4: generate_source_map(target)
-      # copy final JS to output
-      shutil.move(final, target)
+      if proxy_to_worker:
+        worker_target_basename = target_basename + '.worker'
+        open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', worker_target_basename))
+        shutil.move(final, target[:-3] + '.worker.js')
+      else:
+        # copy final JS to output normally
+        shutil.move(final, target)
 
   log_time('final emitting')
 

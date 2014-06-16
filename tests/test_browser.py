@@ -746,6 +746,13 @@ window.close = function() {
   def test_glgears_proxy(self):
     self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=self.post_manual_reftest)
 
+  def test_glgears_proxy_jstarget(self):
+    # test .js target with --proxy-worker; emits 2 js files, client and worker
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1']).communicate()
+    open('test.html', 'w').write(open(path_from_root('src', 'shell_minimal.html')).read().replace('{{{ SCRIPT }}}', '<script src="test.js"></script>'))
+    self.post_manual_reftest()
+    self.run_browser('test.html', None, '/report_result?0')
+
   def test_sdl_canvas_alpha(self):
     self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=9)
 
