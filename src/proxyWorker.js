@@ -92,6 +92,7 @@ document.createElement = function document_createElement(what) {
         };
       };
       canvas.style = new PropertyBag();
+      canvas.exitPointerLock = function(){};
       return canvas;
     }
     default: throw 'document.createElement ' + what;
