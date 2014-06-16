@@ -662,6 +662,16 @@ class BrowserCore(RunnerCore):
       Module['preRun'].push(function() {
         setTimeout(doReftest, 1000); // if run() throws an exception and postRun is not called, this will kick in
       });
+
+      if (typeof WebGLClient !== 'undefined') {
+        // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
+        var realRAF = window.requestAnimationFrame;
+        window.requestAnimationFrame = function(func) {
+          realRAF(func);
+          setTimeout(doReftest, 1000);
+        };
+      }
+
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
