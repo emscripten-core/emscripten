@@ -707,6 +707,18 @@ function WebGLWorker() {
       default: throw 'unsupported getShaderParameter ' + pname;
     }
   };
+  this.clearDepth = function(depth) {
+    commandBuffer.push('clearDepth', 1, depth);
+  };
+  this.depthFunc = function(depth) {
+    commandBuffer.push('depthFunc', 1, depth);
+  };
+  this.frontFace = function(depth) {
+    commandBuffer.push('frontFace', 1, depth);
+  };
+  this.cullFace = function(depth) {
+    commandBuffer.push('cullFace', 1, depth);
+  };
 
   // Setup
   var dropped = 0;
