@@ -660,6 +660,9 @@ function WebGLWorker() {
   this.uniformMatrix4fv = function(location, transpose, data) {
     commandBuffer.push('uniformMatrix4fv', 3, location.id, transpose, new Float32Array(data));
   };
+  this.vertexAttrib4fv = function(index, values) {
+    commandBuffer.push('vertexAttrib4fv', 2, index, new Float32Array(values));
+  };
   this.createBuffer = function() {
     var id = nextId++;
     commandBuffer.push('createBuffer', -1, id);
