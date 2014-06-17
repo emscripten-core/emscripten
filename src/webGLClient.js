@@ -11,6 +11,7 @@ function WebGLClient() {
     switch (command) {
       case 'deleteShader':
       case 'deleteProgram':
+      case 'deleteTexture':
       case 'getProgramParameter':
       case 'getShaderParameter':
       case 'uniform1i':

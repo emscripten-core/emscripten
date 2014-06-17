@@ -22,6 +22,7 @@ function WebGLRenderbuffer(id) {
 function WebGLTexture(id) {
   this.what = 'texture';
   this.id = id;
+  this.binding = 0;
 }
 
 function WebGLWorker() {
@@ -34,7 +35,7 @@ function WebGLWorker() {
 
   var commandBuffer = [];
 
-  var nextId = 1;
+  var nextId = 1; // valid ids are > 0
 
   var bindings = {
     texture2D: null,
@@ -717,6 +718,13 @@ function WebGLWorker() {
     commandBuffer.push('createTexture', -1, id);
     return new WebGLTexture(id);
   };
+  this.deleteTexture = function(texture) {
+    commandBuffer.push('deleteTexture', 1, texture.id);
+    texture.id = 0;
+  };
+  this.isTexture = function(texture) {
+    return texture && texture.what === 'texture' && texture.id > 0 && texture.binding;
+  };
   this.bindTexture = function(target, texture) {
     switch (target) {
       case that.TEXTURE_2D: {
@@ -724,6 +732,7 @@ function WebGLWorker() {
         break;
       }
     }
+    texture.binding = target;
     commandBuffer.push('bindTexture', 2, target, texture ? texture.id : 0);
   };
   this.texParameteri = function(target, pname, param) {
