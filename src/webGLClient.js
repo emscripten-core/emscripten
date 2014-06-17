@@ -66,6 +66,10 @@ function WebGLClient() {
         //dump('issue-: ' + command + '(' + args + '), ' + numArgs + '\n');
         objects[id] = ctx[command].apply(ctx, args);
       }
+      //var err;
+      //while ((err = ctx.getError()) !== ctx.NO_ERROR) {
+      //  dump('warning: GL error ' + err + ', after ' + [command, numArgs] + '\n');
+      //}
       assert(i <= len);
     }
   }
