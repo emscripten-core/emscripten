@@ -567,13 +567,11 @@ function WebGLWorker() {
   this.linkProgram = function(program) {
     commandBuffer.push('linkProgram', 1, program.id);
     // parse shader sources
-    program.uniforms = {};
-    program.uniformVec = [];
-    program.shaders.forEach(function(shader) {
-      var newUniforms = shader.source.match(/uniform\s+\w+\s+[\w,\s\[\]]+;/g);
-      if (!newUniforms) return;
-      newUniforms.forEach(function(uniform) {
-        var m = /uniform\s+\w+\s+([\w,\s\[\]]+);/.exec(uniform);
+    function parseElementType(shader, type, obj, vec) {
+      var newItems = shader.source.match(new RegExp(type + '\\s+\\w+\\s+[\\w,\\s\[\\]]+;', 'g'));
+      if (!newItems) return;
+      newItems.forEach(function(item) {
+        var m = new RegExp(type + '\\s+\\w+\\s+([\\w,\\s\[\\]]+);').exec(item);
         assert(m);
         m[1].split(',').map(function(name) { return name.replace(/\s/g, '') }).filter(function(name) { return !!name }).forEach(function(name) {
           var size = 1;
@@ -584,11 +582,21 @@ function WebGLWorker() {
             name = name.substr(0, open);
           }
           if (!program.uniforms[name]) {
-            program.uniforms[name] = { what: 'uniform', name: name, size: size };
-            program.uniformVec.push(name);
+            obj[name] = { what: type, name: name, size: size };
+            if (vec) vec.push(name);
           }
         });
       });
+    }
+
+    program.uniforms = {};
+    program.uniformVec = [];
+
+    program.existingAttributes = {};
+
+    program.shaders.forEach(function(shader) {
+      parseElementType(shader, 'uniform', program.uniforms, program.uniformVec);
+      parseElementType(shader, 'attribute', program.existingAttributes, null);
     });
   };
   this.getProgramParameter = function(program, name) {
