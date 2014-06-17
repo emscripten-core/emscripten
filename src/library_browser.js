@@ -311,7 +311,7 @@ mergeInto(LibraryManager.library, {
             if (typeof arg == 'boolean') arg = arg + 0;
             if (!arg) return arg;
             var index = printObjectList.indexOf(arg);
-            if (index >= 0) return '<' + arg + '|' + index + '>';
+            if (index >= 0) return '<' + arg + '|'; // + index + '>';
             if (arg.toString() == '[object HTMLImageElement]') {
               return arg + '\n\n';
             }
@@ -344,7 +344,7 @@ mergeInto(LibraryManager.library, {
             }
             if (typeof arg == 'object') {
               printObjectList.push(arg);
-              return '<' + arg + '|' + (printObjectList.length-1) + '>';
+              return '<' + arg + '|'; // + (printObjectList.length-1) + '>';
             }
             if (typeof arg == 'number') {
               if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
