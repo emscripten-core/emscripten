@@ -703,10 +703,16 @@ class BrowserCore(RunnerCore):
     self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
     if also_proxied:
       print 'proxied...'
+      # save non-proxied
+      if not os.path.exists('normal'):
+        os.mkdir('normal')
+      shutil.copyfile('test.html', os.path.join('normal', 'test.html'))
+      shutil.copyfile('test.js', os.path.join('normal', 'test.js'))
       assert not manual_reference
       manual_reference = True
       assert not post_build
       post_build = self.post_manual_reftest
+      # run proxied
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message)
 
 ###################################################################################################
