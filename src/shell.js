@@ -70,6 +70,7 @@ if (ENVIRONMENT_IS_NODE) {
     globalEval(read(f));
   };
 
+  Module['thisProgram'] = process['argv'][1];
   Module['arguments'] = process['argv'].slice(2);
 
   module['exports'] = Module;
