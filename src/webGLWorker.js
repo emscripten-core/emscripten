@@ -719,6 +719,9 @@ function WebGLWorker() {
   this.cullFace = function(depth) {
     commandBuffer.push('cullFace', 1, depth);
   };
+  this.readPixels = function(depth) {
+    abort('readPixels is impossible, we are async GL');
+  };
 
   // Setup
   var dropped = 0;
