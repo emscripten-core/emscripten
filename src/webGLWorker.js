@@ -646,7 +646,7 @@ function WebGLWorker() {
     commandBuffer.push('bindBuffer', 2, target, buffer ? buffer.id : 0);
   };
   this.bufferData = function(target, something, usage) {
-    if (typeof something !== 'number') something = new Uint8Array(something);
+    if (typeof something !== 'number') something = new something.constructor(something);
     commandBuffer.push('bufferData', 3, target, something, usage);
   };
   this.viewport = function(x, y, w, h) {
