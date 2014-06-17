@@ -559,6 +559,7 @@ function WebGLWorker() {
   this.getAttribLocation = function(program, name) {
     // manually bound attribs are cached locally
     if (name in program.attributes) return program.attributes[name];
+    if (!(name in program.existingAttributes)) return -1;
     // if not manually bound, bind it to the next index so we update the client
     var index = program.attributeVec.length;
     this.bindAttribLocation(program, index, name);
