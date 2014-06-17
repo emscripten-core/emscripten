@@ -719,7 +719,9 @@ If manually bisecting:
     self.clear()
     self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-O2', '-s', 'SAFE_HEAP=1'])
 
-  def post_manual_reftest(self):
+  def post_manual_reftest(self, reference=None):
+    self.reftest(path_from_root('tests', self.reference if reference is None else reference))
+
     html = open('test.html').read()
     html = html.replace('</body>', '''
 <script>
@@ -750,7 +752,7 @@ window.close = function() {
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1']).communicate()
     open('test.html', 'w').write(open(path_from_root('src', 'shell_minimal.html')).read().replace('{{{ SCRIPT }}}', '<script src="test.js"></script>'))
-    self.post_manual_reftest()
+    self.post_manual_reftest('gears.png')
     self.run_browser('test.html', None, '/report_result?0')
 
   def test_sdl_canvas_alpha(self):

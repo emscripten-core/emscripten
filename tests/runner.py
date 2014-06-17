@@ -689,6 +689,7 @@ class BrowserCore(RunnerCore):
         with open(filepath) as f: src = f.read()
       with open(temp_filepath, 'w') as f: f.write(self.with_report_result(src))
     else:
+      self.reference = reference
       expected = [str(i) for i in range(0, reference_slack+1)]
       shutil.copyfile(filepath, temp_filepath)
       self.reftest(path_from_root('tests', reference))
