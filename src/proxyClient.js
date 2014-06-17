@@ -61,7 +61,10 @@ worker.onmessage = function worker_onmessage(event) {
       switch (data.op) {
         case 'getContext': {
           Module.ctx = Module.canvas.getContext(data.type, data.attributes);
-          if (data.type !== '2d') Module.glClient = new WebGLClient();
+          if (data.type !== '2d') {
+            // possible GL_DEBUG entry point: Module.ctx = wrapDebugGL(Module.ctx);
+            Module.glClient = new WebGLClient();
+          }
           break;
         }
         case 'resize': {
