@@ -4348,6 +4348,12 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out)
 
+  def test_fs_emptyPath(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    src = path_from_root('tests', 'fs', 'test_emptyPath.c')
+    out = path_from_root('tests', 'fs', 'test_emptyPath.out')
+    self.do_run_from_file(src, out)
+
   def test_fs_append(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
