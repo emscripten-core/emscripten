@@ -682,6 +682,10 @@ function WebGLWorker() {
     if (typeof something !== 'number') something = new something.constructor(something);
     commandBuffer.push('bufferData', 3, target, something, usage);
   };
+  this.bufferSubData = function(target, offset, something) {
+    if (typeof something !== 'number') something = new something.constructor(something);
+    commandBuffer.push('bufferSubData', 3, target, offset, something);
+  };
   this.viewport = function(x, y, w, h) {
     commandBuffer.push('viewport', 4, x, y, w, h);
   };
