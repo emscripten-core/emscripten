@@ -675,12 +675,13 @@ class BrowserCore(RunnerCore):
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-      args=[], outfile='test.html', message='.'): # TODO: use in all other tests
+      args=[], outfile='test.html', message='.', also_proxied=False): # TODO: use in all other tests
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
+    original_args = args[:]
     if filename_is_src:
       with open(temp_filepath, 'w') as f: f.write(src)
     if not reference:
@@ -693,11 +694,20 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference))
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    Popen([PYTHON, EMCC, temp_filepath, '-o', outfile] + args).communicate()
+    all_args = [PYTHON, EMCC, temp_filepath, '-o', outfile] + args
+    #print 'all args:', all_args
+    Popen(all_args).communicate()
     assert os.path.exists(outfile)
     if post_build: post_build()
     if type(expected) is str: expected = [expected]
     self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
+    if also_proxied:
+      print 'proxied...'
+      assert not manual_reference
+      manual_reference = True
+      assert not post_build
+      post_build = self.post_manual_reftest
+      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message)
 
 ###################################################################################################
 
