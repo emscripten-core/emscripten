@@ -37,7 +37,9 @@ function WebGLWorker() {
   var nextId = 1;
 
   var bindings = {
-    texture2D: null
+    texture2D: null,
+    arrayBuffer: null,
+    elementArrayBuffer: null
   };
 
   //===========
@@ -497,6 +499,12 @@ function WebGLWorker() {
       case this.TEXTURE_BINDING_2D: {
         return bindings.texture2D;
       }
+      case this.ARRAY_BUFFER_BINDING: {
+        return bindings.arrayBuffer;
+      }
+      case this.ELEMENT_ARRAY_BUFFER_BINDING: {
+        return bindings.elementArrayBuffer;
+      }
       default: throw 'TODO: get parameter ' + name + ' : ' + revname(name);
     }
   };
@@ -659,6 +667,16 @@ function WebGLWorker() {
   };
   this.bindBuffer = function(target, buffer) {
     commandBuffer.push('bindBuffer', 2, target, buffer ? buffer.id : 0);
+    switch (target) {
+      case this.ARRAY_BUFFER_BINDING: {
+        bindings.arrayBuffer = buffer;
+        break;
+      }
+      case this.ELEMENT_ARRAY_BUFFER_BINDING: {
+        bindings.elementArrayBuffer = buffer;
+        break;
+      }
+    }
   };
   this.bufferData = function(target, something, usage) {
     if (typeof something !== 'number') something = new something.constructor(something);
