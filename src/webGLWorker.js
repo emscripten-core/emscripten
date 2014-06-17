@@ -617,6 +617,7 @@ function WebGLWorker() {
     return program.uniforms[name];
   };
   this.getUniformLocation = function(program, name) {
+    if (!(name in program.uniforms)) return null;
     var index = -1;
     var open = name.indexOf('[');
     if (open >= 0) {
