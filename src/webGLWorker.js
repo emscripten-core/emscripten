@@ -557,16 +557,11 @@ function WebGLWorker() {
     commandBuffer.push('bindAttribLocation', 3, program.id, index, name);
   };
   this.getAttribLocation = function(program, name) {
-    // manually bound attribs are cached locally
+    // all existing attribs are cached locally
     if (name in program.attributes) return program.attributes[name];
-    if (!(name in program.existingAttributes)) return -1;
-    // if not manually bound, bind it to the next index so we update the client
-    var index = program.attributeVec.length;
-    this.bindAttribLocation(program, index, name);
-    return index;
+    return -1;
   };
   this.linkProgram = function(program) {
-    commandBuffer.push('linkProgram', 1, program.id);
     // parse shader sources
     function parseElementType(shader, type, obj, vec) {
       var newItems = shader.source.match(new RegExp(type + '\\s+\\w+\\s+[\\w,\\s\[\\]]+;', 'g'));
@@ -599,6 +594,16 @@ function WebGLWorker() {
       parseElementType(shader, 'uniform', program.uniforms, program.uniformVec);
       parseElementType(shader, 'attribute', program.existingAttributes, null);
     });
+
+    // bind not-yet bound attributes
+    for (var attr in program.existingAttributes) {
+      if (!(attr in program.attributes)) {
+        var index = program.attributeVec.length;
+        this.bindAttribLocation(program, index, attr);
+      }
+    }
+
+    commandBuffer.push('linkProgram', 1, program.id);
   };
   this.getProgramParameter = function(program, name) {
     switch (name) {
