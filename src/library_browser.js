@@ -71,7 +71,7 @@ mergeInto(LibraryManager.library, {
     init: function() {
       if (!Module["preloadPlugins"]) Module["preloadPlugins"] = []; // needs to exist even in workers
 
-      if (Browser.initted || ENVIRONMENT_IS_WORKER) return;
+      if (Browser.initted || ENVIRONMENT_IS_WORKER) return; // workers do not support Image and Audio elements
       Browser.initted = true;
 
       try {
