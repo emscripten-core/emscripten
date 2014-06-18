@@ -40,7 +40,8 @@ function WebGLWorker() {
   var bindings = {
     texture2D: null,
     arrayBuffer: null,
-    elementArrayBuffer: null
+    elementArrayBuffer: null,
+    program: null
   };
 
   //===========
@@ -506,6 +507,9 @@ function WebGLWorker() {
       case this.ELEMENT_ARRAY_BUFFER_BINDING: {
         return bindings.elementArrayBuffer;
       }
+      case this.CURRENT_PROGRAM: {
+        return bindings.program;
+      }
       default: throw 'TODO: get parameter ' + name + ' : ' + revname(name);
     }
   };
@@ -648,6 +652,7 @@ function WebGLWorker() {
   };
   this.useProgram = function(program) {
     commandBuffer.push('useProgram', 1, program ? program.id : 0);
+    bindings.program = program;
   };
   this.uniform1i = function(location, data) {
     if (!location) return;
