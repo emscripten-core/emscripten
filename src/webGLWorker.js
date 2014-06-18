@@ -745,6 +745,9 @@ function WebGLWorker() {
     assert(pixels); // we do not support the overloads that have fewer params
     commandBuffer.push('texImage2D', 9, target, level, internalformat, width, height, border, format, type, new pixels.constructor(pixels));
   };
+  this.compressedTexImage2D = function(target, level, internalformat, width, height, border, pixels) {
+    commandBuffer.push('compressedTexImage2D', 7, target, level, internalformat, width, height, border, new pixels.constructor(pixels));
+  };
   this.activeTexture = function(texture) {
     commandBuffer.push('activeTexture', 1, texture);
   };
