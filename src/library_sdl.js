@@ -1952,8 +1952,10 @@ var LibrarySDL = {
       } else {
         var imageData = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
         if (raw.bpp == 4) {
+          // rgba
           imageData.data.set({{{ makeHEAPView('U8', 'raw.data', 'raw.data+raw.size') }}});
         } else if (raw.bpp == 3) {
+          // rgb
           var pixels = raw.size/3;
           var data = imageData.data;
           var sourcePtr = raw.data;
@@ -1962,6 +1964,19 @@ var LibrarySDL = {
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = 255;
+          }
+        } else if (raw.bpp == 1) {
+          // grayscale
+          var pixels = raw.size;
+          var data = imageData.data;
+          var sourcePtr = raw.data;
+          var destPtr = 0;
+          for (var i = 0; i < pixels; i++) {
+            var value = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = value;
+            data[destPtr++] = value;
+            data[destPtr++] = value;
             data[destPtr++] = 255;
           }
         } else {
