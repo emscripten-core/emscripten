@@ -824,6 +824,9 @@ function WebGLWorker() {
   this.renderbufferStorage = function(target, internalformat, width, height) {
     commandBuffer.push('renderbufferStorage', 4, target, internalformat, width, height);
   };
+  this.framebufferRenderbuffer = function(target, attachment, renderbuffertarget, renderbuffer) {
+    commandBuffer.push('framebufferRenderbuffer', 4, target, attachment, renderbuffertarget, renderbuffer ? renderbuffer.id : 0);
+  };
 
   // Setup
   var dropped = 0;
