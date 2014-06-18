@@ -810,6 +810,20 @@ function WebGLWorker() {
   this.checkFramebufferStatus = function(target) {
     return this.FRAMEBUFFER_COMPLETE; // XXX totally wrong
   };
+  this.createRenderbuffer = function() {
+    var id = nextId++;
+    commandBuffer.push('createRenderbuffer', -1, id);
+    return new WebGLRenderbuffer(id);
+  };
+  this.deleteRenderbuffer = function(renderbuffer) {
+    commandBuffer.push('deleteRenderbuffer', 1, renderbuffer.id);
+  };
+  this.bindRenderbuffer = function(target, renderbuffer) {
+    commandBuffer.push('bindRenderbuffer', 2, target, renderbuffer ? renderbuffer.id : 0);
+  };
+  this.renderbufferStorage = function(target, internalformat, width, height) {
+    commandBuffer.push('renderbufferStorage', 4, target, internalformat, width, height);
+  };
 
   // Setup
   var dropped = 0;

@@ -26,6 +26,7 @@ function WebGLClient() {
       case 'compileShader':
       case 'shaderSource': args[0] = objects[args[0]]; break;
       case 'attachShader': args[0] = objects[args[0]]; args[1] = objects[args[1]]; break;
+      case 'bindRenderbuffer':
       case 'bindFramebuffer':
       case 'bindTexture':
       case 'bindBuffer': args[1] = args[1] ? objects[args[1]] : null; break;
