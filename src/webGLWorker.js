@@ -669,6 +669,9 @@ function WebGLWorker() {
     commandBuffer.push('createBuffer', -1, id);
     return new WebGLBuffer(id);
   };
+  this.deleteBuffer = function(buffer) {
+    commandBuffer.push('deleteBuffer', 1, buffer.id);
+  };
   this.bindBuffer = function(target, buffer) {
     commandBuffer.push('bindBuffer', 2, target, buffer ? buffer.id : 0);
     switch (target) {
