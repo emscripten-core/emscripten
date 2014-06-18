@@ -650,15 +650,19 @@ function WebGLWorker() {
     commandBuffer.push('useProgram', 1, program ? program.id : 0);
   };
   this.uniform1i = function(location, data) {
+    if (!location) return;
     commandBuffer.push('uniform1i', 2, location.id, data);
   };
   this.uniform1f = function(location, data) {
+    if (!location) return;
     commandBuffer.push('uniform1f', 2, location.id, data);
   };
   this.uniform4fv = function(location, data) {
+    if (!location) return;
     commandBuffer.push('uniform4fv', 2, location.id, new Float32Array(data));
   };
   this.uniformMatrix4fv = function(location, transpose, data) {
+    if (!location) return;
     commandBuffer.push('uniformMatrix4fv', 3, location.id, transpose, new Float32Array(data));
   };
   this.vertexAttrib4fv = function(index, values) {
