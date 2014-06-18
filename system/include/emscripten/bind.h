@@ -422,8 +422,8 @@ namespace emscripten {
 
     namespace internal {
         template<typename ClassType, typename... Args>
-        ClassType* operator_new(Args... args) {
-            return new ClassType(args...);
+        ClassType* operator_new(Args&&... args) {
+            return new ClassType(std::forward<Args>(args)...);
         }
 
         template<typename WrapperType, typename ClassType, typename... Args>
