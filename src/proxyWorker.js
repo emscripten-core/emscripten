@@ -114,6 +114,17 @@ document.styleSheets = [{
   }
 }];
 
+function Audio() {
+  Runtime.warnOnce('faking Audio elements, no actual sound will play');
+}
+
+Audio.prototype.play = function(){};
+Audio.prototype.pause = function(){};
+
+Audio.prototype.cloneNode = function() {
+  return new Audio;
+}
+
 if (typeof console === 'undefined') {
   var console = {
     log: function(x) {
