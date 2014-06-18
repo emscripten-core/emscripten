@@ -793,6 +793,12 @@ function WebGLWorker() {
   this.blendFunc = function(sfactor, dfactor) {
     commandBuffer.push('blendFunc', 2, sfactor, dfactor);
   };
+  this.scissor = function(x, y, width, height) {
+    commandBuffer.push('scissor', 4, x, y, width, height);
+  };
+  this.colorMask = function(red, green, blue, alpha) {
+    commandBuffer.push('colorMask', 4, red, green, blue, alpha);
+  };
   this.createFramebuffer = function() {
     var id = nextId++;
     commandBuffer.push('createFramebuffer', -1, id);
