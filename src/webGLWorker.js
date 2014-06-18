@@ -793,6 +793,17 @@ function WebGLWorker() {
   this.blendFunc = function(sfactor, dfactor) {
     commandBuffer.push('blendFunc', 2, sfactor, dfactor);
   };
+  this.createFramebuffer = function() {
+    var id = nextId++;
+    commandBuffer.push('createFramebuffer', -1, id);
+    return new WebGLFramebuffer(id);
+  };
+  this.deleteFramebuffer = function(framebuffer) {
+    commandBuffer.push('deleteFramebuffer', 1, framebuffer.id);
+  };
+  this.bindFramebuffer = function(target, framebuffer) {
+    commandBuffer.push('bindFramebuffer', 2, target, framebuffer ? framebuffer.id : 0);
+  };
 
   // Setup
   var dropped = 0;
