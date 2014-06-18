@@ -780,6 +780,15 @@ function WebGLWorker() {
   this.pixelStorei = function(pname, param) {
     commandBuffer.push('pixelStorei', 2, pname, param);
   };
+  this.depthMask = function(flag) {
+    commandBuffer.push('depthMask', 1, flag);
+  };
+  this.depthRange = function(near, far) {
+    commandBuffer.push('depthRange', 2, near, far);
+  };
+  this.blendFunc = function(sfactor, dfactor) {
+    commandBuffer.push('blendFunc', 2, sfactor, dfactor);
+  };
 
   // Setup
   var dropped = 0;
