@@ -807,6 +807,9 @@ function WebGLWorker() {
   this.framebufferTexture2D = function(target, attachment, textarget, texture, level) {
     commandBuffer.push('framebufferTexture2D', 5, target, attachment, textarget, texture ? texture.id : 0, level);
   };
+  this.checkFramebufferStatus = function(target) {
+    return this.FRAMEBUFFER_COMPLETE; // XXX totally wrong
+  };
 
   // Setup
   var dropped = 0;
