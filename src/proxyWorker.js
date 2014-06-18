@@ -73,7 +73,9 @@ document.createElement = function document_createElement(what) {
               canvas.ensureData();
               assert(x == 0 && y == 0 && image.width == canvas.width && image.height == canvas.height);
               canvas.data.data.set(image.data); // TODO: can we avoid this copy?
-              postMessage({ target: 'canvas', op: 'render', image: canvas.data });
+              if (this === Module['ctx']) {
+                postMessage({ target: 'canvas', op: 'render', image: canvas.data });
+              }
             }
           };
         } else {
