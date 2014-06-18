@@ -771,6 +771,9 @@ function WebGLWorker() {
   this.readPixels = function(depth) {
     abort('readPixels is impossible, we are async GL');
   };
+  this.pixelStorei = function(pname, param) {
+    commandBuffer.push('pixelStorei', 2, pname, param);
+  };
 
   // Setup
   var dropped = 0;
