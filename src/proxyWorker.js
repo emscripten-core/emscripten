@@ -53,11 +53,15 @@ document.createElement = function document_createElement(what) {
             height: canvas.height,
             data: new Uint8Array(canvas.width*canvas.height*4)
           };
-          postMessage({ target: 'canvas', op: 'resize', width: canvas.width, height: canvas.height });
+          if (canvas === Module['canvas']) {
+            postMessage({ target: 'canvas', op: 'resize', width: canvas.width, height: canvas.height });
+          }
         }
       };
       canvas.getContext = function canvas_getContext(type, attributes) {
-        postMessage({ target: 'canvas', op: 'getContext', type: type, attributes: attributes });
+        if (canvas === Module['canvas']) {
+          postMessage({ target: 'canvas', op: 'getContext', type: type, attributes: attributes });
+        }
         if (type === '2d') {
           return {
             getImageData: function(x, y, w, h) {
@@ -73,7 +77,7 @@ document.createElement = function document_createElement(what) {
               canvas.ensureData();
               assert(x == 0 && y == 0 && image.width == canvas.width && image.height == canvas.height);
               canvas.data.data.set(image.data); // TODO: can we avoid this copy?
-              if (this === Module['ctx']) {
+              if (canvas === Module['canvas']) {
                 postMessage({ target: 'canvas', op: 'render', image: canvas.data });
               }
             }
