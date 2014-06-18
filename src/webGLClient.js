@@ -29,6 +29,7 @@ function WebGLClient() {
       case 'bindFramebuffer':
       case 'bindTexture':
       case 'bindBuffer': args[1] = args[1] ? objects[args[1]] : null; break;
+      case 'framebufferTexture2D': args[3] = args[3] ? objects[args[3]] : null; break;
     }
     return args;
   }

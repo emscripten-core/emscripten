@@ -804,6 +804,9 @@ function WebGLWorker() {
   this.bindFramebuffer = function(target, framebuffer) {
     commandBuffer.push('bindFramebuffer', 2, target, framebuffer ? framebuffer.id : 0);
   };
+  this.framebufferTexture2D = function(target, attachment, textarget, texture, level) {
+    commandBuffer.push('framebufferTexture2D', 5, target, attachment, textarget, texture ? texture.id : 0, level);
+  };
 
   // Setup
   var dropped = 0;
