@@ -647,7 +647,7 @@ function WebGLWorker() {
     return ''; // optimistic assumption of success; no proxying
   };
   this.useProgram = function(program) {
-    commandBuffer.push('useProgram', 1, program.id);
+    commandBuffer.push('useProgram', 1, program ? program.id : 0);
   };
   this.uniform1i = function(location, data) {
     commandBuffer.push('uniform1i', 2, location.id, data);
