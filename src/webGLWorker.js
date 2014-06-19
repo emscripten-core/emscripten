@@ -540,6 +540,7 @@ function WebGLWorker() {
     return { id: id, what: 'shader', type: type };
   };
   this.deleteShader = function(shader) {
+    if (!shader) return;
     commandBuffer.push('deleteShader', 1, shader.id);
   };
   this.shaderSource = function(shader, source) {
@@ -558,6 +559,7 @@ function WebGLWorker() {
     return new WebGLProgram(id);
   };
   this.deleteProgram = function(program) {
+    if (!program) return;
     commandBuffer.push('deleteProgram', 1, program.id);
   };
   this.attachShader = function(program, shader) {
@@ -679,6 +681,7 @@ function WebGLWorker() {
     return new WebGLBuffer(id);
   };
   this.deleteBuffer = function(buffer) {
+    if (!buffer) return;
     commandBuffer.push('deleteBuffer', 1, buffer.id);
   };
   this.bindBuffer = function(target, buffer) {
@@ -731,6 +734,7 @@ function WebGLWorker() {
     return new WebGLTexture(id);
   };
   this.deleteTexture = function(texture) {
+    if (!texture) return;
     commandBuffer.push('deleteTexture', 1, texture.id);
     texture.id = 0;
   };
@@ -813,6 +817,7 @@ function WebGLWorker() {
     return new WebGLFramebuffer(id);
   };
   this.deleteFramebuffer = function(framebuffer) {
+    if (!framebuffer) return;
     commandBuffer.push('deleteFramebuffer', 1, framebuffer.id);
   };
   this.bindFramebuffer = function(target, framebuffer) {
@@ -830,6 +835,7 @@ function WebGLWorker() {
     return new WebGLRenderbuffer(id);
   };
   this.deleteRenderbuffer = function(renderbuffer) {
+    if (!renderbuffer) return;
     commandBuffer.push('deleteRenderbuffer', 1, renderbuffer.id);
   };
   this.bindRenderbuffer = function(target, renderbuffer) {
