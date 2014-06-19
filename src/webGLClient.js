@@ -14,7 +14,12 @@ function WebGLClient() {
       case 'deleteBuffer':
       case 'deleteShader':
       case 'deleteProgram':
-      case 'deleteTexture':
+      case 'deleteTexture': {
+        var id = args[0];
+        args[0] = objects[id];
+        objects[id] = null; // stop holding on to the object globally
+        break;
+      }
       case 'getProgramParameter':
       case 'getShaderParameter':
       case 'uniform1i':
