@@ -38,6 +38,8 @@ window.close = function window_close() {
   postMessage({ target: 'window', method: 'close' });
 };
 
+window.scrollX = window.scrollY = 0; // TODO: proxy these
+
 var webGLWorker = new WebGLWorker();
 
 var document = new EventListener();

@@ -64,11 +64,7 @@ mergeInto(LibraryManager.library, {
       }
     },
     isFullScreen: false,
-#if PROXY_TO_WORKER == 0
     pointerLock: false,
-#else
-    pointerLock: true, // XXX assume pointerlock in workers, for now
-#endif
     moduleContextCreatedCallbacks: [],
     workers: [],
 
