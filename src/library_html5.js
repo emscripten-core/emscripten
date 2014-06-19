@@ -765,10 +765,18 @@ var LibraryJSEvents = {
         {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.axis, 'e.axes[i]', 'double') }}};
       }
       for(var i = 0; i < e.buttons.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
+        if (typeof(e.buttons[i]) === 'object') {
+          {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
+        } else {
+          {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i]', 'double') }}};
+        }
       }
       for(var i = 0; i < e.buttons.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
+        if (typeof(e.buttons[i]) === 'object') {
+          {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
+        } else {
+          {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1.0', 'i32') }}};
+        }
       }
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}};
@@ -1248,26 +1256,43 @@ var LibraryJSEvents = {
   },
   
   emscripten_set_gamepadconnected_callback: function(userData, useCapture, callbackfunc) {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADCONNECTED') }}}, "gamepadconnected");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
   emscripten_set_gamepaddisconnected_callback: function(userData, useCapture, callbackfunc) {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED') }}}, "gamepaddisconnected");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
  },
   
   emscripten_get_num_gamepads: function() {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    return navigator.getGamepads().length;
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (navigator.getGamepads) {
+      return navigator.getGamepads().length;
+    } else if (navigator.webkitGetGamepads) {
+      var gamepads = navigator.webkitGetGamepads();
+
+      for (var i = 0; i < gamepads.length; i++) {
+        if (typeof gamepads[i] === 'undefined') {
+          return i;
+        }
+      }
+
+      return gamepads.length;
+    }
   },
   
   emscripten_get_gamepad_status: function(index, gamepadState) {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    var gamepads = navigator.getGamepads();
-    if (index < 0 || index >= gamepads.length) {
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    var gamepads;
+    if (navigator.getGamepads) {
+      gamepads = navigator.getGamepads();
+    } else if (navigator.webkitGetGamepads) {
+      gamepads = navigator.webkitGetGamepads();
+    }
+    if (index < 0 || index >= gamepads.length || typeof gamepads[index] === 'undefined') {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     }
     JSEvents.fillGamepadEventData(gamepadState, gamepads[index]);
