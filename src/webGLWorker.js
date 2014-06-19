@@ -804,6 +804,9 @@ function WebGLWorker() {
   this.colorMask = function(red, green, blue, alpha) {
     commandBuffer.push('colorMask', 4, red, green, blue, alpha);
   };
+  this.lineWidth = function(width) {
+    commandBuffer.push('lineWidth', 1, width);
+  };
   this.createFramebuffer = function() {
     var id = nextId++;
     commandBuffer.push('createFramebuffer', -1, id);
