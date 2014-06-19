@@ -2902,5 +2902,5 @@ int main(int argc, char **argv) {
 ''')
 
     Popen([PYTHON, EMCC, 'code.cpp']).communicate()
-    self.assertContained('I am ' + self.get_dir() + '/a.out.js', run_js('a.out.js', engine=NODE_JS))
+    self.assertContained('I am ' + self.get_dir().replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS))
 
