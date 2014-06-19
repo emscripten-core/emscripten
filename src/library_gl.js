@@ -833,6 +833,7 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       var texture = GL.textures[id];
+      if (!texture) continue;
       GLctx.deleteTexture(texture);
       texture.name = 0;
       GL.textures[id] = null;
