@@ -850,6 +850,7 @@ function WebGLWorker() {
 
   // Setup
   var dropped = 0;
+  var average = 0;
   var preMainLoop = Module['preMainLoop'];
   Module['preMainLoop'] = function() {
     if (preMainLoop) {
@@ -866,8 +867,12 @@ function WebGLWorker() {
   var postMainLoop = Module['postMainLoop'];
   Module['postMainLoop'] = function() {
     if (postMainLoop) postMainLoop();
-    postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
-    commandBuffer = [];
+    if (commandBuffer.length > 0) {
+      //average = (average + commandBuffer.length)/2;
+      //dump('buffer size: ' + Math.round(average) + '\n');
+      postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
+      commandBuffer = [];
+    }
   };
 }
 
