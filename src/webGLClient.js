@@ -9,6 +9,8 @@ function WebGLClient() {
 
   function fixArgs(command, args) {
     switch (command) {
+      case 'deleteFramebuffer':
+      case 'deleteRenderbuffer':
       case 'deleteBuffer':
       case 'deleteShader':
       case 'deleteProgram':
