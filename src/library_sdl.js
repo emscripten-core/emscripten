@@ -1314,26 +1314,14 @@ var LibrarySDL = {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
 
+    var canvas = Module['canvas'];
+
     // (0,0) means 'use fullscreen' in native; in Emscripten, use the current canvas size.
     if (width == 0 && height == 0) {
-      var canvas = Module['canvas'];
       width = canvas.width;
       height = canvas.height;
     }
 
-    Browser.setCanvasSize(width, height,
-#if PROXY_TO_WORKER == 0
-                          true // XXX why?
-#else
-                          false
-#endif
-    );
-    // Free the old surface first.
-    if (SDL.screen) {
-      SDL.freeSurface(SDL.screen);
-      assert(!SDL.screen);
-    }
-    SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
     if (!SDL.addedResizeListener) {
       SDL.addedResizeListener = true;
       Browser.resizeListeners.push(function(w, h) {
@@ -1344,6 +1332,19 @@ var LibrarySDL = {
         });
       });
     }
+
+    if (width !== canvas.width || height !== canvas.height) {
+      Browser.setCanvasSize(width, height);
+    }
+
+    // Free the old surface first if there is one
+    if (SDL.screen) {
+      SDL.freeSurface(SDL.screen);
+      assert(!SDL.screen);
+    }
+
+    SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
+
     return SDL.screen;
   },
 
