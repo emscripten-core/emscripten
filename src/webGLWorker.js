@@ -30,9 +30,6 @@ function WebGLWorker() {
   // State
   //=======
 
-  this.prefetchedParameters = {};
-  this.prefetchedExtensions = {};
-
   var commandBuffer = [];
 
   var nextId = 1; // valid ids are > 0
@@ -479,8 +476,8 @@ function WebGLWorker() {
     //dump('worker GL got ' + JSON.stringify(msg) + '\n');
     switch(msg.op) {
       case 'setPrefetched': {
-        that.prefetchedParameters = msg.parameters;
-        that.prefetchedExtensions = msg.extensions;
+        WebGLWorker.prototype.prefetchedParameters = msg.parameters;
+        WebGLWorker.prototype.prefetchedExtensions = msg.extensions;
         break;
       }
       default: throw 'weird gl onmessage ' + JSON.stringify(msg);
@@ -875,4 +872,9 @@ function WebGLWorker() {
     }
   };
 }
+
+// share prefetched data among all instances
+
+WebGLWorker.prototype.prefetchedParameters = {};
+WebGLWorker.prototype.prefetchedExtensions = {};
 
