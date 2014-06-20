@@ -22,6 +22,25 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
                                window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
                                renderFrame;
 
+/*
+var trueRAF = window.requestAnimationFrame;
+var lastRAF = 0;
+var meanFPS = 0;
+window.requestAnimationFrame = function(func) {
+  trueRAF(function() {
+    var now = performance.now();
+    if (lastRAF > 0) {
+      var diff = now - lastRAF;
+      var fps = 1000/diff;
+      meanFPS = 0.99*meanFPS + 0.1*fps;
+      dump('client fps ' + meanFPS + '\n');
+    }
+    lastRAF = now;
+    func();
+  });
+}
+*/
+
 // end render
 
 // Frame throttling

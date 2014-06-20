@@ -92,6 +92,7 @@ function WebGLClient() {
   function renderAllCommands() {
     // TODO: we can avoid running commands from buffers that are not the last, if they
     //       have no side effects, as each buffer is from a different frame
+    //if (commandBuffers.length > 1) dump('extra buffs: ' + (commandBuffers.length-1) + '\n');
     for (var i = 0; i < commandBuffers.length; i++) {
       renderCommands(commandBuffers[i]);
     }
