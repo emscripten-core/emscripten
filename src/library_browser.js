@@ -466,9 +466,25 @@ mergeInto(LibraryManager.library, {
       canvasContainer.requestFullScreen();
     },
 
+    nextRAF: 0,
+
+    fakeRequestAnimationFrame: function(func) {
+      // try to keep 60fps between calls to here
+      var now = Date.now();
+      if (Browser.nextRAF === 0) {
+        Browser.nextRAF = now + 1000/60;
+      } else {
+        while (now + 2 >= Browser.nextRAF) { // fudge a little, to avoid timer jitter causing us to do lots of delay:0
+          Browser.nextRAF += 1000/60;
+        }
+      }
+      var delay = Math.max(Browser.nextRAF - now, 0);
+      setTimeout(func, delay);
+    },
+
     requestAnimationFrame: function requestAnimationFrame(func) {
       if (typeof window === 'undefined') { // Provide fallback to setTimeout if window is undefined (e.g. in Node.js)
-        setTimeout(func, 1000/60);
+        Browser.fakeRequestAnimationFrame(func);
       } else {
         if (!window.requestAnimationFrame) {
           window.requestAnimationFrame = window['requestAnimationFrame'] ||
@@ -476,7 +492,7 @@ mergeInto(LibraryManager.library, {
                                          window['webkitRequestAnimationFrame'] ||
                                          window['msRequestAnimationFrame'] ||
                                          window['oRequestAnimationFrame'] ||
-                                         function(func) { setTimeout(func, 1000/60) };
+                                         Browser.fakeRequestAnimationFrame;
         }
         window.requestAnimationFrame(func);
       }
