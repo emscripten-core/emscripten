@@ -644,7 +644,7 @@ function WebGLWorker() {
     return program.uniforms[name];
   };
   this.getUniformLocation = function(program, name) {
-    if (!(name in program.uniforms)) return null;
+    var fullname = name;
     var index = -1;
     var open = name.indexOf('[');
     if (open >= 0) {
@@ -652,8 +652,9 @@ function WebGLWorker() {
       index = parseInt(name.substring(open+1, close));
       name = name.substr(0, open);
     }
+    if (!(name in program.uniforms)) return null;
     var id = nextId++;
-    commandBuffer.push('getUniformLocation', -3, program.id, name, id);
+    commandBuffer.push('getUniformLocation', -3, program.id, fullname, id);
     return { what: 'location', uniform: program.uniforms[name], id: id, index: index };
   };
   this.getProgramInfoLog = function(shader) {
