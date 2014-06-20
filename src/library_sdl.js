@@ -1343,6 +1343,8 @@ var LibrarySDL = {
       assert(!SDL.screen);
     }
 
+    if (SDL.GL) flags = flags | 0x04000000; // SDL_OPENGL - if we are using GL, then later calls to SetVideoMode may not mention GL, but we do need it. Once in GL mode, we never leave it.
+
     SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
 
     return SDL.screen;
