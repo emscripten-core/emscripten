@@ -32,7 +32,7 @@ window.requestAnimationFrame = function(func) {
     if (lastRAF > 0) {
       var diff = now - lastRAF;
       var fps = 1000/diff;
-      meanFPS = 0.99*meanFPS + 0.1*fps;
+      meanFPS = 0.95*meanFPS + 0.05*fps;
       dump('client fps ' + meanFPS + '\n');
     }
     lastRAF = now;
