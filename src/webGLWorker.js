@@ -564,13 +564,14 @@ function WebGLWorker() {
     commandBuffer.push('attachShader', 2, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
-    program.attributes[name] = index;
+    program.attributes[name] = { what: 'attribute', name: name, size: -1, location: index }; // fill in size later
     program.attributeVec[index] = name;
+
     commandBuffer.push('bindAttribLocation', 3, program.id, index, name);
   };
   this.getAttribLocation = function(program, name) {
     // all existing attribs are cached locally
-    if (name in program.attributes) return program.attributes[name];
+    if (name in program.attributes) return program.attributes[name].location;
     return -1;
   };
   this.linkProgram = function(program) {
@@ -584,13 +585,15 @@ function WebGLWorker() {
         m[1].split(',').map(function(name) { return name.replace(/\s/g, '') }).filter(function(name) { return !!name }).forEach(function(name) {
           var size = 1;
           var open = name.indexOf('[');
+          var fullname = name;
           if (open >= 0) {
             var close = name.indexOf(']');
             size = parseInt(name.substring(open+1, close));
             name = name.substr(0, open);
+            fullname = name + '[0]';
           }
-          if (!program.uniforms[name]) {
-            obj[name] = { what: type, name: name, size: size };
+          if (!obj[name]) {
+            obj[name] = { what: type, name: fullname, size: size, location: -1 };
             if (vec) vec.push(name);
           }
         });
@@ -613,6 +616,7 @@ function WebGLWorker() {
         var index = program.attributeVec.length;
         this.bindAttribLocation(program, index, attr);
       }
+      program.attributes[attr].size = existingAttributes[attr].size;
     }
 
     commandBuffer.push('linkProgram', 1, program.id);
