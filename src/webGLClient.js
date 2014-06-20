@@ -24,6 +24,7 @@ function WebGLClient() {
       case 'getShaderParameter':
       case 'uniform1i':
       case 'uniform1f':
+      case 'uniform3fv':
       case 'uniform4fv':
       case 'uniformMatrix4fv':
       case 'getUniformLocation':
