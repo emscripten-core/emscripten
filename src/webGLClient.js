@@ -67,6 +67,8 @@ function WebGLClient() {
         //dump('issue+: ' + command + '(' + args + '), ' + numArgs + '\n');
         if (command === 'getShaderParameter' || command === 'getProgramParameter') {
           assert(ctx[command](args[0], args[1]), 'we cannot handle errors, we are async proxied WebGL');
+        //} else if (command === 'debugPrint') {
+        //  dump(args[0] + '\n');
         } else {
           ctx[command].apply(ctx, args);
         }

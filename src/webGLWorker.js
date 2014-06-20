@@ -844,6 +844,9 @@ function WebGLWorker() {
   this.framebufferRenderbuffer = function(target, attachment, renderbuffertarget, renderbuffer) {
     commandBuffer.push('framebufferRenderbuffer', 4, target, attachment, renderbuffertarget, renderbuffer ? renderbuffer.id : 0);
   };
+  //this.debugPrint = function(text) { // useful to interleave debug output properly with client GL commands
+  //  commandBuffer.push('debugPrint', 1, text);
+  //};
 
   // Setup
   var dropped = 0;
