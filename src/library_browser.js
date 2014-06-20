@@ -262,6 +262,8 @@ mergeInto(LibraryManager.library, {
         return null;
       }
 #endif
+      if (useWebGL && Module.ctx) return Module.ctx; // no need to recreate singleton GL context
+
       var ctx;
       var errorInfo = '?';
       function onContextCreationError(event) {
@@ -391,7 +393,9 @@ mergeInto(LibraryManager.library, {
         canvas.style.backgroundColor = "black";
       }
       if (setInModule) {
-        GLctx = Module.ctx = ctx;
+        if (!useWebGL) assert(typeof GLctx === 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
+        Module.ctx = ctx;
+        if (useWebGL) GLctx = ctx;
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
         Browser.init();
