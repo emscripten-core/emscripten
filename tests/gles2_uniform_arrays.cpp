@@ -126,5 +126,10 @@ int main(int argc, char *argv[])
     for(int i = 0; i < 4; ++i)
         RunTest(i);
 
+#ifdef REPORT_RESULT
+    int result = 1;
+    REPORT_RESULT();
+#endif
+
     return 0;
 }
