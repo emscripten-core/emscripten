@@ -629,6 +629,11 @@ function WebGLWorker() {
       default: throw 'bad getProgramParameter ' + revname(name);
     }
   };
+  this.getActiveAttrib = function(program, index) {
+    var name = program.attributeVec[index];
+    if (!name) return null;
+    return program.attributes[name];
+  };
   this.getActiveUniform = function(program, index) {
     var name = program.uniformVec[index];
     if (!name) return null;
