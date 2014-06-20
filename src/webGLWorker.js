@@ -600,15 +600,15 @@ function WebGLWorker() {
     program.uniforms = {};
     program.uniformVec = [];
 
-    program.existingAttributes = {};
+    var existingAttributes = {};
 
     program.shaders.forEach(function(shader) {
       parseElementType(shader, 'uniform', program.uniforms, program.uniformVec);
-      parseElementType(shader, 'attribute', program.existingAttributes, null);
+      parseElementType(shader, 'attribute', existingAttributes, null);
     });
 
     // bind not-yet bound attributes
-    for (var attr in program.existingAttributes) {
+    for (var attr in existingAttributes) {
       if (!(attr in program.attributes)) {
         var index = program.attributeVec.length;
         this.bindAttribLocation(program, index, attr);
@@ -620,6 +620,7 @@ function WebGLWorker() {
   this.getProgramParameter = function(program, name) {
     switch (name) {
       case this.ACTIVE_UNIFORMS: return program.uniformVec.length;
+      case this.ACTIVE_ATTRIBUTES: return program.attributeVec.length;
       case this.LINK_STATUS: {
         // optimisticaly return success; client will abort on an actual error. we assume an error-free async workflow
         commandBuffer.push('getProgramParameter', 2, program.id, name);
