@@ -58,6 +58,7 @@ void RunTest(int testVariant)
     // so to exhibit extra issues in old code (and to keep new code from regressing), must test both with and without excess glGetUniformLocation calls.
     if ((testVariant&1) != 0)
     {
+        printf("check glGetUniformLocation with indexes\n");
         // Deliberately check in odd order to make sure any kind of lazy operations won't affect the indices we get.
         assert(glGetUniformLocation(program, "colors[2]") == loc+2);
         assert(glGetUniformLocation(program, "colors[0]") == loc);
@@ -66,6 +67,7 @@ void RunTest(int testVariant)
         assert(glGetUniformLocation(program, "colors[]") == loc);
         assert(glGetUniformLocation(program, "colors[-100]") == -1);
         assert(glGetUniformLocation(program, "colors[bleh]") == -1);
+        printf("   ...ok\n");
     }
 
     float colors[4*3] = { 1,0,0, 0,0.5,0, 0,0,0.2, 1,1,1 };
