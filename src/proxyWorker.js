@@ -131,7 +131,10 @@ if (typeof console === 'undefined') {
   var console = {
     log: function(x) {
       Module.printErr(x);
-    }
+    },
+    error: function(x) {
+      Module.printErr(x);
+    },
   };
 }
 
