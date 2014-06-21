@@ -72,7 +72,8 @@ void setShaders() {
   GLuint v, f, p;
   GLint ok;
 
-	const char *vv = "uniform vec4 animdata[246];\n"
+	const char *vv = "#pragma CUBE2_uniform animdata AnimData 0 16\n"
+                   "uniform vec4 animdata[246];\n"
                    "void main()                   \n"
                    "{                             \n"
 	                 "  gl_Position = ftransform() + animdata[0]; \n"

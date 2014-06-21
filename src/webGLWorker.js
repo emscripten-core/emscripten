@@ -577,7 +577,9 @@ function WebGLWorker() {
   this.linkProgram = function(program) {
     // parse shader sources
     function parseElementType(shader, type, obj, vec) {
-      var newItems = shader.source.match(new RegExp(type + '\\s+\\w+\\s+[\\w,\\s\[\\]]+;', 'g'));
+      var source = shader.source;
+      source = source.replace(/\n/g, '|\n'); // barrier between lines, to make regexing easier
+      var newItems = source.match(new RegExp(type + '\\s+\\w+\\s+[\\w,\\s\[\\]]+;', 'g'));
       if (!newItems) return;
       newItems.forEach(function(item) {
         var m = new RegExp(type + '\\s+\\w+\\s+([\\w,\\s\[\\]]+);').exec(item);
