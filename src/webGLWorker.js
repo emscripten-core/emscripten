@@ -582,7 +582,7 @@ function WebGLWorker() {
       newItems.forEach(function(item) {
         var m = new RegExp(type + '\\s+\\w+\\s+([\\w,\\s\[\\]]+);').exec(item);
         assert(m);
-        m[1].split(',').map(function(name) { return name.replace(/\s/g, '') }).filter(function(name) { return !!name }).forEach(function(name) {
+        m[1].split(',').map(function(name) { name = name.trim(); return name.search(/\s/) >= 0 ? '' : name }).filter(function(name) { return !!name }).forEach(function(name) {
           var size = 1;
           var open = name.indexOf('[');
           var fullname = name;

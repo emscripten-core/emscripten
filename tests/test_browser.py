@@ -1440,6 +1440,9 @@ keydown(100);keyup(100); // trigger the end
   def test_sdlglshader(self):
     self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
 
+  def test_sdlglshader2(self):
+    self.btest('sdlglshader2.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True)
+
   def test_gl_glteximage(self):
     self.btest('gl_teximage.c', '1')
 
