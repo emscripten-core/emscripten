@@ -274,7 +274,7 @@ var LibraryEGL = {
         if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
           glesContextVersion = value;
         }
-        contextAttribs += 8;
+        contextAttribs += 32;
     }
     if (glesContextVersion != 2) {
 #if GL_ASSERTIONS
