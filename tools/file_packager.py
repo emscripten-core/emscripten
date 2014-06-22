@@ -426,6 +426,8 @@ for file_ in data_files:
           str_data = str(chunk)
         else:
           str_data += '.concat(' + str(chunk) + ')'
+    # escape 's in file path
+    basename = basename.replace("'", r"\'")
     code += '''Module['FS_createDataFile']('%s', '%s', %s, true, true);\n''' % (dirname, basename, str_data)
   elif file_['mode'] == 'preload':
     # Preload
