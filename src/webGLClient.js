@@ -222,12 +222,23 @@ function WebGLClient() {
 }
 
 WebGLClient.prefetch = function() {
+  // Create a fake temporary GL context
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
   if (!ctx) return;
+  // Fetch the parameters and proxy them
   var parameters = {};
   ['MAX_VERTEX_ATTRIBS', 'MAX_TEXTURE_IMAGE_UNITS', 'MAX_TEXTURE_SIZE', 'MAX_CUBE_MAP_TEXTURE_SIZE', 'MAX_VERTEX_UNIFORM_VECTORS', 'MAX_FRAGMENT_UNIFORM_VECTORS', 'MAX_VARYING_VECTORS', 'MAX_COMBINED_TEXTURE_IMAGE_UNITS', 'VENDOR', 'RENDERER', 'VERSION'].forEach(function(name) {
-    parameters[ctx[name]] = ctx.getParameter(ctx[name]);
+    var id = ctx[name];
+    parameters[id] = ctx.getParameter(id);
+  });
+  // Try to enable some extensions, so we can access their parameters
+  [{ extName: 'EXT_texture_filter_anisotropic', paramName: 'MAX_TEXTURE_MAX_ANISOTROPY_EXT' }].forEach(function(pair) {
+    var ext = ctx.getExtension(pair.extName) || ctx.getExtension('MOZ_' + pair.extName) || 'WEBKIT_' + ctx.getExtension(pair.extName);
+    if (ext) {
+      var id = ext[pair.paramName];
+      parameters[id] = ctx.getParameter(id);
+    }
   });
   worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters: parameters, extensions: ctx.getSupportedExtensions() });
 };

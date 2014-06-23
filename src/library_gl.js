@@ -4348,10 +4348,6 @@ var LibraryGL = {
             }
             break;
           }
-          case 0x84FF: { // GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT
-            {{{ makeSetValue('params', '0', '0', 'i32') }}}; // no valid value to return here
-            return;
-          }
         }
         glGetIntegerv(pname, params);
       };
