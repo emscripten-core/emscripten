@@ -1201,6 +1201,8 @@ struct AbstractClassWithConstructor {
         : s(s)
     {}
 
+    virtual ~AbstractClassWithConstructor() {};
+
     virtual std::string abstractMethod() = 0;
     std::string concreteMethod() {
         return s;
