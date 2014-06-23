@@ -1325,16 +1325,20 @@ var LibrarySDL = {
     if (!SDL.addedResizeListener) {
       SDL.addedResizeListener = true;
       Browser.resizeListeners.push(function(w, h) {
-        SDL.receiveEvent({
-          type: 'resize',
-          w: w,
-          h: h
-        });
+        if (!SDL.settingVideoMode) {
+          SDL.receiveEvent({
+            type: 'resize',
+            w: w,
+            h: h
+          });
+        }
       });
     }
 
     if (width !== canvas.width || height !== canvas.height) {
+      SDL.settingVideoMode = true; // SetVideoMode itself should not trigger resize events
       Browser.setCanvasSize(width, height);
+      SDL.settingVideoMode = false;
     }
 
     // Free the old surface first if there is one
