@@ -153,12 +153,18 @@ namespace emscripten {
             template<typename... Args>
             struct ArgTypeList {
                 ArgTypeList() {
-                    count = sizeof...(Args);
-                    ArgTypes<0, Args...>::template fill<Policies...>(types);
+                    ArgTypes<0, Args...>::template fill<Policies...>(types_);
                 }
 
-                unsigned count;
-                TYPEID types[sizeof...(Args)];
+                unsigned getCount() const {
+                    return sizeof...(Args);
+                }
+
+                const TYPEID* getTypes() const {
+                    return types_;
+                }
+
+                TYPEID types_[sizeof...(Args)];
             };
         };
 

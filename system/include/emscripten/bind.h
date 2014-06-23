@@ -71,7 +71,7 @@ namespace emscripten {
             void _embind_register_function(
                 const char* name,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* signature,
                 GenericFunction invoker,
                 GenericFunction function);
@@ -137,7 +137,7 @@ namespace emscripten {
             void _embind_register_class_constructor(
                 TYPEID classType,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* invokerSignature,
                 GenericFunction invoker,
                 GenericFunction constructor);
@@ -146,7 +146,7 @@ namespace emscripten {
                 TYPEID classType,
                 const char* methodName,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* invokerSignature,
                 GenericFunction invoker,
                 void* context,
@@ -168,7 +168,7 @@ namespace emscripten {
                 TYPEID classType,
                 const char* methodName,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* invokerSignature,
                 GenericFunction invoker,
                 GenericFunction method);
@@ -413,8 +413,8 @@ namespace emscripten {
         auto invoker = &Invoker<ReturnType, Args...>::invoke;
         _embind_register_function(
             name,
-            args.count,
-            args.types,
+            args.getCount(),
+            args.getTypes(),
             getSignature(invoker),
             reinterpret_cast<GenericFunction>(invoker),
             reinterpret_cast<GenericFunction>(fn));
@@ -1156,8 +1156,8 @@ namespace emscripten {
             auto invoke = &Invoker<ReturnType, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(factory));
@@ -1174,8 +1174,8 @@ namespace emscripten {
             auto invoke = &Invoker<SmartPtr, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(factory));
@@ -1226,8 +1226,8 @@ namespace emscripten {
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoker),
                 reinterpret_cast<GenericFunction>(invoker),
                 getContext(memberFunction),
@@ -1245,8 +1245,8 @@ namespace emscripten {
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoker),
                 reinterpret_cast<GenericFunction>(invoker),
                 getContext(memberFunction),
@@ -1263,8 +1263,8 @@ namespace emscripten {
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
                 getContext(function),
@@ -1362,8 +1362,8 @@ namespace emscripten {
             _embind_register_class_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<internal::GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(classMethod));

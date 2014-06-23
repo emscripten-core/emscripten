@@ -33,7 +33,7 @@ namespace emscripten {
             EM_VAL _emval_new(
                 EM_VAL value,
                 unsigned argCount,
-                internal::TYPEID argTypes[],
+                const TYPEID argTypes[],
                 EM_VAR_ARGS argv);
 
             EM_VAL _emval_get_global(const char* name);
@@ -45,14 +45,14 @@ namespace emscripten {
             EM_VAL _emval_call(
                 EM_VAL value,
                 unsigned argCount,
-                internal::TYPEID argTypes[],
+                const TYPEID argTypes[],
                 EM_VAR_ARGS argv);
 
             // DO NOT call this more than once per signature. It will
             // leak generated function objects!
             EM_METHOD_CALLER _emval_get_method_caller(
                 unsigned argCount, // including return value
-                internal::TYPEID argTypes[]);
+                const TYPEID argTypes[]);
             EM_GENERIC_WIRE_TYPE _emval_call_method(
                 EM_METHOD_CALLER caller,
                 EM_VAL handle,
@@ -62,7 +62,7 @@ namespace emscripten {
             bool _emval_has_function(
                 EM_VAL value,
                 const char* methodName,
-                internal::TYPEID filter);
+                const TYPEID filter);
             EM_VAL _emval_typeof(EM_VAL value);
         }
 
@@ -91,7 +91,7 @@ namespace emscripten {
         private:
             static EM_METHOD_CALLER init_method_caller() {
                 WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
-                return _emval_get_method_caller(args.count, args.types);
+                return _emval_get_method_caller(args.getCount(), args.getTypes());
             }
         };
 
@@ -357,8 +357,8 @@ namespace emscripten {
             return val(
                 _emval_new(
                     handle,
-                    argList.count,
-                    argList.types,
+                    argList.getCount(),
+                    argList.getTypes(),
                     argv));
         }
         
@@ -381,8 +381,8 @@ namespace emscripten {
             return val(
                 _emval_call(
                     handle,
-                    argList.count,
-                    argList.types,
+                    argList.getCount(),
+                    argList.getTypes(),
                     argv));
         }
 
