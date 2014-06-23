@@ -216,6 +216,12 @@ mergeInto(LibraryManager.library, {
       // Canvas event setup
 
       var canvas = Module['canvas'];
+      function pointerLockChange() {
+        Browser.pointerLock = document['pointerLockElement'] === canvas ||
+                              document['mozPointerLockElement'] === canvas ||
+                              document['webkitPointerLockElement'] === canvas ||
+                              document['msPointerLockElement'] === canvas;
+      }
       if (canvas) {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
@@ -232,12 +238,6 @@ mergeInto(LibraryManager.library, {
                                  function(){}; // no-op if function does not exist
         canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
 
-        function pointerLockChange() {
-          Browser.pointerLock = document['pointerLockElement'] === canvas ||
-                                document['mozPointerLockElement'] === canvas ||
-                                document['webkitPointerLockElement'] === canvas ||
-                                document['msPointerLockElement'] === canvas;
-        }
 
         document.addEventListener('pointerlockchange', pointerLockChange, false);
         document.addEventListener('mozpointerlockchange', pointerLockChange, false);

@@ -856,6 +856,32 @@ void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVecto
     v(i, f, tv, sv);
 }
 
+class UniquePtrToConstructor {
+public:
+    UniquePtrToConstructor(std::unique_ptr<int> p)
+        : value(*p)
+    {}
+    
+    int getValue() const {
+        return value;
+    }
+    
+private:
+    int value;
+};
+
+std::unique_ptr<int> embind_test_return_unique_ptr(int v) {
+    return std::unique_ptr<int>(new int(v));
+}
+
+UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(int v) {
+    return new UniquePtrToConstructor(embind_test_return_unique_ptr(v));
+}
+
+int embind_test_accept_unique_ptr(std::unique_ptr<int> p) {
+    return *p.get();
+}
+
 std::unique_ptr<ValHolder> emval_test_return_unique_ptr() {
     return std::unique_ptr<ValHolder>(new ValHolder(val::object()));
 }
@@ -1174,6 +1200,8 @@ struct AbstractClassWithConstructor {
     explicit AbstractClassWithConstructor(std::string s)
         : s(s)
     {}
+
+    virtual ~AbstractClassWithConstructor() {};
 
     virtual std::string abstractMethod() = 0;
     std::string concreteMethod() {
@@ -1817,6 +1845,15 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_test_return_big_class_instance", &embind_test_return_big_class_instance);
     function("embind_test_accept_small_class_instance", &embind_test_accept_small_class_instance);
     function("embind_test_accept_big_class_instance", &embind_test_accept_big_class_instance);
+
+    class_<UniquePtrToConstructor>("UniquePtrToConstructor")
+        .constructor<std::unique_ptr<int>>()
+        .function("getValue", &UniquePtrToConstructor::getValue)
+        ;
+
+    function("embind_test_construct_class_with_unique_ptr", embind_test_construct_class_with_unique_ptr, allow_raw_pointer<ret_val>());
+    function("embind_test_return_unique_ptr", embind_test_return_unique_ptr);
+    function("embind_test_accept_unique_ptr", embind_test_accept_unique_ptr);
 
     function("embind_test_return_raw_base_ptr", embind_test_return_raw_base_ptr, allow_raw_pointer<ret_val>());
     function("embind_test_return_raw_derived_ptr_as_base", embind_test_return_raw_derived_ptr_as_base, allow_raw_pointer<ret_val>());

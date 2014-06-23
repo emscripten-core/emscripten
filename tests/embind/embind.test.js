@@ -604,6 +604,18 @@ module({
             c.delete();
         });
 
+        test("can pass unique_ptr", function() {
+            var p = cm.embind_test_return_unique_ptr(42);
+            var m = cm.embind_test_accept_unique_ptr(p);
+            assert.equal(42, m);
+        });
+
+        test("can pass unique_ptr to constructor", function() {
+            var c = new cm.embind_test_construct_class_with_unique_ptr(42);
+            assert.equal(42, c.getValue());
+            c.delete();
+        });
+
         test("can get member classes then call its member functions", function() {
             var p = new cm.ParentClass();
             var c = p.getBigClass();

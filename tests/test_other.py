@@ -2892,3 +2892,15 @@ int main(int argc, char **argv) {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 
+  def test_argv0_node(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdio.h>
+int main(int argc, char **argv) {
+  printf("I am %s.\n", argv[0]);
+  return 0;
+}
+''')
+
+    Popen([PYTHON, EMCC, 'code.cpp']).communicate()
+    self.assertContained('I am ' + self.get_dir().replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
+
