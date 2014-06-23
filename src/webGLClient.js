@@ -184,7 +184,6 @@ function WebGLClient() {
     while (i < len) {
       var info = calls[buffer[i++]];
       var name = info.name;
-      assert(typeof name === 'string');
       info.func(name);
       //var err;
       //while ((err = ctx.getError()) !== ctx.NO_ERROR) {
