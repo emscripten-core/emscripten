@@ -7,6 +7,74 @@ function assert(x) {
 function WebGLClient() {
   var objects = {};
 
+  var calls = {
+    0: { name: 'NULL' },
+    1: { name: 'getExtension' },
+    2: { name: 'enable' },
+    3: { name: 'disable' },
+    4: { name: 'clear' },
+    5: { name: 'clearColor' },
+    6: { name: 'createShader' },
+    7: { name: 'deleteShader' },
+    8: { name: 'shaderSource' },
+    9: { name: 'compileShader' },
+    10: { name: 'createProgram' },
+    11: { name: 'deleteProgram' },
+    12: { name: 'attachShader' },
+    13: { name: 'bindAttribLocation' },
+    14: { name: 'linkProgram' },
+    15: { name: 'getProgramParameter' },
+    16: { name: 'getUniformLocation' },
+    17: { name: 'useProgram' },
+    18: { name: 'uniform1i' },
+    19: { name: 'uniform1f' },
+    20: { name: 'uniform3fv' },
+    21: { name: 'uniform4fv' },
+    22: { name: 'uniformMatrix4fv' },
+    23: { name: 'vertexAttrib4fv' },
+    24: { name: 'createBuffer' },
+    25: { name: 'deleteBuffer' },
+    26: { name: 'bindBuffer' },
+    27: { name: 'bufferData' },
+    28: { name: 'bufferSubData' },
+    29: { name: 'viewport' },
+    30: { name: 'vertexAttribPointer' },
+    31: { name: 'enableVertexAttribArray' },
+    32: { name: 'disableVertexAttribArray' },
+    33: { name: 'drawArrays' },
+    34: { name: 'drawElements' },
+    35: { name: 'getError' },
+    36: { name: 'createTexture' },
+    37: { name: 'deleteTexture' },
+    38: { name: 'bindTexture' },
+    39: { name: 'texParameteri' },
+    40: { name: 'texImage2D' },
+    41: { name: 'compressedTexImage2D' },
+    42: { name: 'activeTexture' },
+    43: { name: 'getShaderParameter' },
+    44: { name: 'clearDepth' },
+    45: { name: 'depthFunc' },
+    46: { name: 'frontFace' },
+    47: { name: 'cullFace' },
+    48: { name: 'pixelStorei' },
+    49: { name: 'depthMask' },
+    50: { name: 'depthRange' },
+    51: { name: 'blendFunc' },
+    52: { name: 'scissor' },
+    53: { name: 'colorMask' },
+    54: { name: 'lineWidth' },
+    55: { name: 'createFramebuffer' },
+    56: { name: 'deleteFramebuffer' },
+    57: { name: 'bindFramebuffer' },
+    58: { name: 'framebufferTexture2D' },
+    59: { name: 'createRenderbuffer' },
+    60: { name: 'deleteRenderbuffer' },
+    61: { name: 'bindRenderbuffer' },
+    62: { name: 'renderbufferStorage' },
+    63: { name: 'framebufferRenderbuffer' },
+    64: { name: 'debugPrint' },
+  };
+
   function fixArgs(command, args) {
     switch (command) {
       case 'deleteFramebuffer':
@@ -50,7 +118,7 @@ function WebGLClient() {
     var len = buffer.length;
     //dump('issuing commands, buffer len: ' + len + '\n');
     while (i < len) {
-      var command = buffer[i++];
+      var command = calls[buffer[i++]].name;
       assert(typeof command === 'string')
       var numArgs = buffer[i++];
       assert(typeof numArgs === 'number', command);
