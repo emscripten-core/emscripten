@@ -64,6 +64,14 @@ function WebGLClient() {
     objects[id] = object;
   }
 
+  // destructors, stop holding on to the object in the cache
+  function funcD0(name) {
+    var id = buffer[i++];
+    var object = objects[id];
+    objects[id] = null;
+    ctx[name](object);
+  }
+
   var calls = {
     0: { name: 'NULL', func: func0 },
     1: { name: 'getExtension', func: func1 },
@@ -72,11 +80,11 @@ function WebGLClient() {
     4: { name: 'clear', func: func1 },
     5: { name: 'clearColor', func: func4 },
     6: { name: 'createShader', func: funcC1 },
-    7: { name: 'deleteShader', func: func1 },
+    7: { name: 'deleteShader', func: funcD0 },
     8: { name: 'shaderSource', func: func2 },
     9: { name: 'compileShader', func: func1 },
     10: { name: 'createProgram', func: funcC0 },
-    11: { name: 'deleteProgram', func: func1 },
+    11: { name: 'deleteProgram', func: funcD0 },
     12: { name: 'attachShader', func: func2 },
     13: { name: 'bindAttribLocation', func: func3 },
     14: { name: 'linkProgram', func: func1 },
@@ -90,7 +98,7 @@ function WebGLClient() {
     22: { name: 'uniformMatrix4fv', func: func3 },
     23: { name: 'vertexAttrib4fv', func: func2 },
     24: { name: 'createBuffer', func: funcC0 },
-    25: { name: 'deleteBuffer', func: func1 },
+    25: { name: 'deleteBuffer', func: funcD0 },
     26: { name: 'bindBuffer', func: func2 },
     27: { name: 'bufferData', func: func3 },
     28: { name: 'bufferSubData', func: func3 },
@@ -102,7 +110,7 @@ function WebGLClient() {
     34: { name: 'drawElements', func: func4 },
     35: { name: 'getError', func: function() { assert(ctx.getError() === ctx.NO_ERROR, 'we cannot handle errors, we are async proxied WebGL') } },
     36: { name: 'createTexture', func: funcC0 },
-    37: { name: 'deleteTexture', func: func1 },
+    37: { name: 'deleteTexture', func: funcD0 },
     38: { name: 'bindTexture', func: func2 },
     39: { name: 'texParameteri', func: func3 },
     40: { name: 'texImage2D', func: func9 },
@@ -121,11 +129,11 @@ function WebGLClient() {
     53: { name: 'colorMask', func: func4 },
     54: { name: 'lineWidth', func: func1 },
     55: { name: 'createFramebuffer', func: funcC0 },
-    56: { name: 'deleteFramebuffer', func: func1 },
+    56: { name: 'deleteFramebuffer', func: funcD0 },
     57: { name: 'bindFramebuffer', func: func2 },
     58: { name: 'framebufferTexture2D', func: func5 },
     59: { name: 'createRenderbuffer', func: funcC0 },
-    60: { name: 'deleteRenderbuffer', func: func1 },
+    60: { name: 'deleteRenderbuffer', func: funcD0 },
     61: { name: 'bindRenderbuffer', func: func2 },
     62: { name: 'renderbufferStorage', func: func4 },
     63: { name: 'framebufferRenderbuffer', func: func4 },
@@ -134,17 +142,6 @@ function WebGLClient() {
 
   function fixArgs(name, args) {
     switch (name) {
-      case 'deleteFramebuffer':
-      case 'deleteRenderbuffer':
-      case 'deleteBuffer':
-      case 'deleteShader':
-      case 'deleteProgram':
-      case 'deleteTexture': {
-        var id = buffer[i];
-        buffer[i] = objects[id];
-        objects[id] = null; // stop holding on to the object globally
-        break;
-      }
       case 'getProgramParameter':
       case 'getShaderParameter':
       case 'uniform1i':
