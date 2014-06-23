@@ -7,84 +7,141 @@ function assert(x) {
 function WebGLClient() {
   var objects = {};
 
+  var ctx = null;
+  var buffer = null;
+  var i = 0;
+
+  function func0(name) {
+    ctx[name]();
+  }
+  function func1(name) {
+    ctx[name](buffer[i]);
+    i++;
+  }
+  function func2(name) {
+    ctx[name](buffer[i], buffer[i+1]);
+    i += 2;
+  }
+  function func3(name) {
+    ctx[name](buffer[i], buffer[i+1], buffer[i+2]);
+    i += 3;
+  }
+  function func4(name) {
+    ctx[name](buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
+    i += 4;
+  }
+  function func5(name) {
+    ctx[name](buffer[i], buffer[i+1], buffer[i+2], buffer[i+3], buffer[i+4]);
+    i += 5;
+  }
+  function func6(name) {
+    ctx[name](buffer[i], buffer[i+1], buffer[i+2], buffer[i+3], buffer[i+4], buffer[i+5]);
+    i += 6;
+  }
+  function func7(name) {
+    ctx[name](buffer[i], buffer[i+1], buffer[i+2], buffer[i+3], buffer[i+4], buffer[i+5], buffer[i+6]);
+    i += 7;
+  }
+  function func9(name) {
+    ctx[name](buffer[i], buffer[i+1], buffer[i+2], buffer[i+3], buffer[i+4], buffer[i+5], buffer[i+6], buffer[i+7], buffer[i+8]);
+    i += 9;
+  }
+
+  // constructors, last argument is the id to save as
+  function funcC0(name) {
+    var object = ctx[name]();
+    var id = buffer[i++];
+    objects[id] = object;
+  }
+  function funcC1(name) {
+    var object = ctx[name](buffer[i++]);
+    var id = buffer[i++];
+    objects[id] = object;
+  }
+  function funcC2(name) {
+    var object = ctx[name](buffer[i++], buffer[i++]);
+    var id = buffer[i++];
+    objects[id] = object;
+  }
+
   var calls = {
-    0: { name: 'NULL', args: 0 },
-    1: { name: 'getExtension', args: 1 },
-    2: { name: 'enable', args: 1 },
-    3: { name: 'disable', args: 1 },
-    4: { name: 'clear', args: 1 },
-    5: { name: 'clearColor', args: 4 },
-    6: { name: 'createShader', args: -2 },
-    7: { name: 'deleteShader', args: 1 },
-    8: { name: 'shaderSource', args: 2 },
-    9: { name: 'compileShader', args: 1 },
-    10: { name: 'createProgram', args: -1 },
-    11: { name: 'deleteProgram', args: 1 },
-    12: { name: 'attachShader', args: 2 },
-    13: { name: 'bindAttribLocation', args: 3 },
-    14: { name: 'linkProgram', args: 1 },
-    15: { name: 'getProgramParameter', args: 2 },
-    16: { name: 'getUniformLocation', args: -3 },
-    17: { name: 'useProgram', args: 1 },
-    18: { name: 'uniform1i', args: 2 },
-    19: { name: 'uniform1f', args: 2 },
-    20: { name: 'uniform3fv', args: 2 },
-    21: { name: 'uniform4fv', args: 2 },
-    22: { name: 'uniformMatrix4fv', args: 3 },
-    23: { name: 'vertexAttrib4fv', args: 2 },
-    24: { name: 'createBuffer', args: -1 },
-    25: { name: 'deleteBuffer', args: 1 },
-    26: { name: 'bindBuffer', args: 2 },
-    27: { name: 'bufferData', args: 3 },
-    28: { name: 'bufferSubData', args: 3 },
-    29: { name: 'viewport', args: 4 },
-    30: { name: 'vertexAttribPointer', args: 6 },
-    31: { name: 'enableVertexAttribArray', args: 1 },
-    32: { name: 'disableVertexAttribArray', args: 1 },
-    33: { name: 'drawArrays', args: 3 },
-    34: { name: 'drawElements', args: 4 },
-    35: { name: 'getError', args: 0 },
-    36: { name: 'createTexture', args: -1 },
-    37: { name: 'deleteTexture', args: 1 },
-    38: { name: 'bindTexture', args: 2 },
-    39: { name: 'texParameteri', args: 3 },
-    40: { name: 'texImage2D', args: 9 },
-    41: { name: 'compressedTexImage2D', args: 7 },
-    42: { name: 'activeTexture', args: 1 },
-    43: { name: 'getShaderParameter', args: 2 },
-    44: { name: 'clearDepth', args: 1 },
-    45: { name: 'depthFunc', args: 1 },
-    46: { name: 'frontFace', args: 1 },
-    47: { name: 'cullFace', args: 1 },
-    48: { name: 'pixelStorei', args: 2 },
-    49: { name: 'depthMask', args: 1 },
-    50: { name: 'depthRange', args: 2 },
-    51: { name: 'blendFunc', args: 2 },
-    52: { name: 'scissor', args: 4 },
-    53: { name: 'colorMask', args: 4 },
-    54: { name: 'lineWidth', args: 1 },
-    55: { name: 'createFramebuffer', args: -1 },
-    56: { name: 'deleteFramebuffer', args: 1 },
-    57: { name: 'bindFramebuffer', args: 2 },
-    58: { name: 'framebufferTexture2D', args: 5 },
-    59: { name: 'createRenderbuffer', args: -1 },
-    60: { name: 'deleteRenderbuffer', args: 1 },
-    61: { name: 'bindRenderbuffer', args: 2 },
-    62: { name: 'renderbufferStorage', args: 4 },
-    63: { name: 'framebufferRenderbuffer', args: 4 },
-    64: { name: 'debugPrint', args: 1 },
+    0: { name: 'NULL', func: func0 },
+    1: { name: 'getExtension', func: func1 },
+    2: { name: 'enable', func: func1 },
+    3: { name: 'disable', func: func1 },
+    4: { name: 'clear', func: func1 },
+    5: { name: 'clearColor', func: func4 },
+    6: { name: 'createShader', func: funcC1 },
+    7: { name: 'deleteShader', func: func1 },
+    8: { name: 'shaderSource', func: func2 },
+    9: { name: 'compileShader', func: func1 },
+    10: { name: 'createProgram', func: funcC0 },
+    11: { name: 'deleteProgram', func: func1 },
+    12: { name: 'attachShader', func: func2 },
+    13: { name: 'bindAttribLocation', func: func3 },
+    14: { name: 'linkProgram', func: func1 },
+    15: { name: 'getProgramParameter', func: function() { assert(ctx.getProgramParameter(buffer[i++], buffer[i++]), 'we cannot handle errors, we are async proxied WebGL'); } },
+    16: { name: 'getUniformLocation', func: funcC2 },
+    17: { name: 'useProgram', func: func1 },
+    18: { name: 'uniform1i', func: func2 },
+    19: { name: 'uniform1f', func: func2 },
+    20: { name: 'uniform3fv', func: func2 },
+    21: { name: 'uniform4fv', func: func2 },
+    22: { name: 'uniformMatrix4fv', func: func3 },
+    23: { name: 'vertexAttrib4fv', func: func2 },
+    24: { name: 'createBuffer', func: funcC0 },
+    25: { name: 'deleteBuffer', func: func1 },
+    26: { name: 'bindBuffer', func: func2 },
+    27: { name: 'bufferData', func: func3 },
+    28: { name: 'bufferSubData', func: func3 },
+    29: { name: 'viewport', func: func4 },
+    30: { name: 'vertexAttribPointer', func: func6 },
+    31: { name: 'enableVertexAttribArray', func: func1 },
+    32: { name: 'disableVertexAttribArray', func: func1 },
+    33: { name: 'drawArrays', func: func3 },
+    34: { name: 'drawElements', func: func4 },
+    35: { name: 'getError', func: function() { assert(ctx.getError() === ctx.NO_ERROR, 'we cannot handle errors, we are async proxied WebGL') } },
+    36: { name: 'createTexture', func: funcC0 },
+    37: { name: 'deleteTexture', func: func1 },
+    38: { name: 'bindTexture', func: func2 },
+    39: { name: 'texParameteri', func: func3 },
+    40: { name: 'texImage2D', func: func9 },
+    41: { name: 'compressedTexImage2D', func: func7 },
+    42: { name: 'activeTexture', func: func1 },
+    43: { name: 'getShaderParameter', func: function() { assert(ctx.getShaderParameter(buffer[i++], buffer[i++]), 'we cannot handle errors, we are async proxied WebGL'); } },
+    44: { name: 'clearDepth', func: func1 },
+    45: { name: 'depthFunc', func: func1 },
+    46: { name: 'frontFace', func: func1 },
+    47: { name: 'cullFace', func: func1 },
+    48: { name: 'pixelStorei', func: func2 },
+    49: { name: 'depthMask', func: func1 },
+    50: { name: 'depthRange', func: func2 },
+    51: { name: 'blendFunc', func: func2 },
+    52: { name: 'scissor', func: func4 },
+    53: { name: 'colorMask', func: func4 },
+    54: { name: 'lineWidth', func: func1 },
+    55: { name: 'createFramebuffer', func: funcC0 },
+    56: { name: 'deleteFramebuffer', func: func1 },
+    57: { name: 'bindFramebuffer', func: func2 },
+    58: { name: 'framebufferTexture2D', func: func5 },
+    59: { name: 'createRenderbuffer', func: funcC0 },
+    60: { name: 'deleteRenderbuffer', func: func1 },
+    61: { name: 'bindRenderbuffer', func: func2 },
+    62: { name: 'renderbufferStorage', func: func4 },
+    63: { name: 'framebufferRenderbuffer', func: func4 },
+    64: { name: 'debugPrint', func: func1 },
   };
 
-  function fixArgs(command, args) {
-    switch (command) {
+  function fixArgs(name, args) {
+    switch (name) {
       case 'deleteFramebuffer':
       case 'deleteRenderbuffer':
       case 'deleteBuffer':
       case 'deleteShader':
       case 'deleteProgram':
       case 'deleteTexture': {
-        var id = args[0];
-        args[0] = objects[id];
+        var id = buffer[i];
+        buffer[i] = objects[id];
         objects[id] = null; // stop holding on to the object globally
         break;
       }
@@ -100,57 +157,29 @@ function WebGLClient() {
       case 'linkProgram':
       case 'bindAttribLocation':
       case 'compileShader':
-      case 'shaderSource': args[0] = objects[args[0]]; break;
-      case 'attachShader': args[0] = objects[args[0]]; args[1] = objects[args[1]]; break;
+      case 'shaderSource': buffer[i] = objects[buffer[i]]; break;
+      case 'attachShader': buffer[i] = objects[buffer[i]]; buffer[i+1] = objects[buffer[i+1]]; break;
       case 'bindRenderbuffer':
       case 'bindFramebuffer':
       case 'bindTexture':
-      case 'bindBuffer': args[1] = args[1] ? objects[args[1]] : null; break;
+      case 'bindBuffer': buffer[i+1] = buffer[i+1] ? objects[buffer[i+1]] : null; break;
       case 'framebufferRenderbuffer':
-      case 'framebufferTexture2D': args[3] = args[3] ? objects[args[3]] : null; break;
+      case 'framebufferTexture2D': buffer[i+3] = buffer[i+3] ? objects[buffer[i+3]] : null; break;
     }
-    return args;
   }
 
-  function renderCommands(buffer) {
-    var ctx = Module.ctx;
-    var i = 0;
+  function renderCommands(buf) {
+    ctx = Module.ctx;
+    i = 0;
+    buffer = buf;
     var len = buffer.length;
     //dump('issuing commands, buffer len: ' + len + '\n');
     while (i < len) {
       var info = calls[buffer[i++]];
-      var command = info.name;
-      assert(typeof command === 'string')
-      var numArgs = info.args;
-      assert(typeof numArgs === 'number', command);
-      //dump('issue ' + [command, numArgs, 'peek:' + buffer.slice(i, i+5)] + '\n');
-      if (numArgs === 0) {
-        //dump('issue: ' + command + '\n');
-        if (command === 'getError') {
-          assert(ctx.getError() === ctx.NO_ERROR, 'we cannot handle errors, we are async proxied WebGL');
-        } else {
-          ctx[command]();
-        }
-      } else if (numArgs > 0) {
-        var args = fixArgs(command, buffer.slice(i, i+numArgs));
-        i += numArgs;
-        //dump('issue+: ' + command + '(' + args + '), ' + numArgs + '\n');
-        if (command === 'getShaderParameter' || command === 'getProgramParameter') {
-          assert(ctx[command](args[0], args[1]), 'we cannot handle errors, we are async proxied WebGL');
-        //} else if (command === 'debugPrint') {
-        //  dump(args[0] + '\n');
-        } else {
-          ctx[command].apply(ctx, args);
-        }
-      } else {
-        // negative means a constructor, last argument is the id to save as
-        numArgs = -numArgs - 1;
-        var args = fixArgs(command, buffer.slice(i, i+numArgs));
-        i += numArgs;
-        var id = buffer[i++];
-        //dump('issue-: ' + command + '(' + args + '), ' + numArgs + '\n');
-        objects[id] = ctx[command].apply(ctx, args);
-      }
+      var name = info.name;
+      assert(typeof name === 'string');
+      fixArgs(name);
+      info.func(name);
       //var err;
       //while ((err = ctx.getError()) !== ctx.NO_ERROR) {
       //  dump('warning: GL error ' + err + ', after ' + [command, numArgs] + '\n');
