@@ -31,6 +31,7 @@ function WebGLWorker() {
   //=======
 
   var commandBuffer = [];
+  var transferables = [];
 
   var nextId = 1; // valid ids are > 0
 
@@ -675,18 +676,26 @@ function WebGLWorker() {
   };
   this.uniform3fv = function(location, data) {
     if (!location) return;
-    commandBuffer.push(20, location.id, new Float32Array(data));
+    var buffer = new Float32Array(data);
+    transferables.push(buffer);
+    commandBuffer.push(20, location.id, buffer);
   };
   this.uniform4fv = function(location, data) {
     if (!location) return;
-    commandBuffer.push(21, location.id, new Float32Array(data));
+    var buffer = new Float32Array(data);
+    transferables.push(buffer);
+    commandBuffer.push(21, location.id, buffer);
   };
   this.uniformMatrix4fv = function(location, transpose, data) {
     if (!location) return;
-    commandBuffer.push(22, location.id, transpose, new Float32Array(data));
+    var buffer = new Float32Array(data);
+    transferables.push(buffer);
+    commandBuffer.push(22, location.id, transpose, buffer);
   };
-  this.vertexAttrib4fv = function(index, values) {
-    commandBuffer.push(23, index, new Float32Array(values));
+  this.vertexAttrib4fv = function(index, data) {
+    var buffer = new Float32Array(data);
+    transferables.push(buffer);
+    commandBuffer.push(23, index, buffer);
   };
   this.createBuffer = function() {
     var id = nextId++;
@@ -711,11 +720,17 @@ function WebGLWorker() {
     }
   };
   this.bufferData = function(target, something, usage) {
-    if (typeof something !== 'number') something = new something.constructor(something);
+    if (typeof something !== 'number') {
+      something = new something.constructor(something);
+      transferables.push(something);
+    }
     commandBuffer.push(27, target, something, usage);
   };
   this.bufferSubData = function(target, offset, something) {
-    if (typeof something !== 'number') something = new something.constructor(something);
+    if (typeof something !== 'number') {
+      something = new something.constructor(something);
+      transferables.push(something);
+    }
     commandBuffer.push(28, target, offset, something);
   };
   this.viewport = function(x, y, w, h) {
@@ -768,11 +783,18 @@ function WebGLWorker() {
     commandBuffer.push(39, target, pname, param);
   };
   this.texImage2D = function(target, level, internalformat, width, height, border, format, type, pixels) {
-    assert(pixels || pixels === null); // we do not support the overloads that have fewer params
-    commandBuffer.push(40, target, level, internalformat, width, height, border, format, type, pixels ? new pixels.constructor(pixels) : pixels);
+    if (pixels) {
+      pixels = new pixels.constructor(pixels);
+      transferables.push(pixels);
+    } else {
+      assert(pixels === null); // we do not support the overloads that have fewer params
+    }
+    commandBuffer.push(40, target, level, internalformat, width, height, border, format, type, pixels);
   };
   this.compressedTexImage2D = function(target, level, internalformat, width, height, border, pixels) {
-    commandBuffer.push(41, target, level, internalformat, width, height, border, new pixels.constructor(pixels));
+    pixels = new pixels.constructor(pixels);
+    transferables.push(pixels);
+    commandBuffer.push(41, target, level, internalformat, width, height, border, pixels);
   };
   this.activeTexture = function(texture) {
     commandBuffer.push(42, texture);
@@ -890,8 +912,11 @@ function WebGLWorker() {
     if (commandBuffer.length > 0) {
       //average = (average + commandBuffer.length)/2;
       //dump('buffer size: ' + Math.round(average) + '\n');
-      postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
+      // TODO: need to transfer the arraybuffers, + a type so we can reconstruct on the other side...
+      postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer }, transferables);
+      transferables.forEach(function(t) { assert(t.length === 0) });
       commandBuffer = [];
+      transferables = [];
     }
   };
 }
