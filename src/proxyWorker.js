@@ -64,6 +64,8 @@ window.close = function window_close() {
 
 window.scrollX = window.scrollY = 0; // TODO: proxy these
 
+window.WebGLRenderingContext = WebGLWorker;
+
 var webGLWorker = new WebGLWorker();
 
 var document = new EventListener();
