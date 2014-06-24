@@ -151,6 +151,14 @@ document.createElement = function document_createElement(what) {
   }
 };
 
+document.getElementById = function(id) {
+  if (id === 'canvas' || id === 'application-canvas') {
+    if (Module.canvas) return Module.canvas;
+    return Module.canvas = document.createElement('canvas');
+  }
+  throw 'document.getElementById failed on ' + id;
+};
+
 document.documentElement = {};
 
 document.styleSheets = [{
