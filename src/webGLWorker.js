@@ -877,7 +877,7 @@ function WebGLWorker() {
     }
     //theoreticalTracker.tick();
     // if too many frames in queue, skip a main loop iter
-    if (Math.abs(frameId - clientFrameId) >= 3) {
+    if (Math.abs(frameId - clientFrameId) >= 4) {
       //dropped++;
       //if (dropped % 10 === 0) dump('dropped: ' + [dropped, frameId, Math.round(100*dropped/(frameId + dropped)) + '%\n']);
       return false;
