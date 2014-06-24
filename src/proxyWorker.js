@@ -180,12 +180,22 @@ Audio.prototype.cloneNode = function() {
 }
 
 if (typeof console === 'undefined') {
+  // we can't call Module.printErr because that might be circular
   var console = {
     log: function(x) {
-      Module.printErr(x);
+      if (typeof dump === 'function') dump('log: ' + x + '\n');
+    },
+    debug: function(x) {
+      if (typeof dump === 'function') dump('debug: ' + x + '\n');
+    },
+    info: function(x) {
+      if (typeof dump === 'function') dump('info: ' + x + '\n');
+    },
+    warn: function(x) {
+      if (typeof dump === 'function') dump('warn: ' + x + '\n');
     },
     error: function(x) {
-      Module.printErr(x);
+      if (typeof dump === 'function') dump('error: ' + x + '\n');
     },
   };
 }
