@@ -478,6 +478,7 @@ function WebGLWorker() {
       case 'setPrefetched': {
         WebGLWorker.prototype.prefetchedParameters = msg.parameters;
         WebGLWorker.prototype.prefetchedExtensions = msg.extensions;
+        WebGLWorker.prototype.prefetchedPrecisions = msg.precisions;
         break;
       }
       default: throw 'weird gl onmessage ' + JSON.stringify(msg);
@@ -518,6 +519,9 @@ function WebGLWorker() {
   };
   this.getSupportedExtensions = function() {
     return this.prefetchedExtensions;
+  };
+  this.getShaderPrecisionFormat = function(shaderType, precisionType) {
+    return this.prefetchedPrecisions[shaderType][precisionType];
   };
   this.enable = function(cap) {
     commandBuffer.push(2, cap);
@@ -900,4 +904,5 @@ function WebGLWorker() {
 
 WebGLWorker.prototype.prefetchedParameters = {};
 WebGLWorker.prototype.prefetchedExtensions = {};
+WebGLWorker.prototype.prefetchedPrecisions = {};
 

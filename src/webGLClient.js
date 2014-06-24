@@ -248,6 +248,7 @@ WebGLClient.prefetch = function() {
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
   if (!ctx) return;
+
   // Fetch the parameters and proxy them
   var parameters = {};
   ['MAX_VERTEX_ATTRIBS', 'MAX_TEXTURE_IMAGE_UNITS', 'MAX_TEXTURE_SIZE', 'MAX_CUBE_MAP_TEXTURE_SIZE', 'MAX_VERTEX_UNIFORM_VECTORS', 'MAX_FRAGMENT_UNIFORM_VECTORS', 'MAX_VARYING_VECTORS', 'MAX_COMBINED_TEXTURE_IMAGE_UNITS', 'MAX_VERTEX_TEXTURE_IMAGE_UNITS', 'VENDOR', 'RENDERER', 'VERSION', 'SHADING_LANGUAGE_VERSION'].forEach(function(name) {
@@ -262,6 +263,18 @@ WebGLClient.prefetch = function() {
       parameters[id] = ctx.getParameter(id);
     }
   });
-  worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters: parameters, extensions: ctx.getSupportedExtensions() });
+  // Fetch shader precisions
+  var precisions = {};
+  ['FRAGMENT_SHADER', 'VERTEX_SHADER'].forEach(function(shaderType) {
+    shaderType = ctx[shaderType];
+    precisions[shaderType] = {};
+    ['LOW_FLOAT', 'MEDIUM_FLOAT', 'HIGH_FLOAT', 'LOW_INT', 'MEDIUM_INT', 'HIGH_INT'].forEach(function(precisionType) {
+      precisionType = ctx[precisionType];
+      var info = ctx.getShaderPrecisionFormat(shaderType, precisionType);
+      precisions[shaderType][precisionType] = info ? { rangeMin: info.rangeMin, rangeMax: info.rangeMax, precision: info.precision } : info;
+    });
+  });
+
+  worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters: parameters, extensions: ctx.getSupportedExtensions(), precisions: precisions });
 };
 
