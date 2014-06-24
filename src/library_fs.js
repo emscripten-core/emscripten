@@ -1210,6 +1210,9 @@ mergeInto(LibraryManager.library, {
       TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
+      // setup /dev/[u]random
+      FS.createDevice('/dev', 'random', function() { return Math.floor(Math.random()*256); });
+      FS.createDevice('/dev', 'urandom', function() { return Math.floor(Math.random()*256); });
       // we're not going to emulate the actual shm device,
       // just create the tmp dirs that reside in it commonly
       FS.mkdir('/dev/shm');

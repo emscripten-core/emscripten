@@ -4575,6 +4575,15 @@ PORT: 3979
 
     self.do_run_from_file(src, output)
 
+  def test_random_device(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+
+    test_path = path_from_root('tests', 'core', 'test_random_device')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+
+    self.do_run_from_file(src, output)
+
   def test_reinterpreted_ptrs(self):
     if self.emcc_args is None: return self.skip('needs emcc and libc')
 
