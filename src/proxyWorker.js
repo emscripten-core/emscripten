@@ -66,6 +66,24 @@ window.scrollX = window.scrollY = 0; // TODO: proxy these
 
 window.WebGLRenderingContext = WebGLWorker;
 
+window.requestAnimationFrame = (function() {
+  // similar to Browser.requestAnimationFrame
+  var nextRAF = 0;
+  return function(func) {
+    // try to keep 60fps between calls to here
+    var now = Date.now();
+    if (nextRAF === 0) {
+      nextRAF = now + 1000/60;
+    } else {
+      while (now + 2 >= nextRAF) { // fudge a little, to avoid timer jitter causing us to do lots of delay:0
+        nextRAF += 1000/60;
+      }
+    }
+    var delay = Math.max(nextRAF - now, 0);
+    setTimeout(func, delay);
+  };
+})();
+
 var webGLWorker = new WebGLWorker();
 
 var document = new EventListener();
