@@ -10,6 +10,8 @@ function WebGLClient() {
   var ctx = null;
   var buffer = null;
   var i = 0;
+  var skippable = false;
+  var currFrameBuffer = null;
 
   function func0(name) {
     ctx[name]();
@@ -107,6 +109,25 @@ function WebGLClient() {
     ctx[name](object);
   }
 
+  // special cases
+  function bindFramebuffer() {
+    currFrameBuffer = buffer[i+1] ? objects[buffer[i+1]] : null;
+    ctx.bindFramebuffer(buffer[i], currFrameBuffer);
+    i += 2;
+  }
+  function drawArrays(name) {
+    if (!skippable || currFrameBuffer !== null) {
+      ctx.drawArrays(buffer[i], buffer[i+1], buffer[i+2]);
+    }
+    i += 3;
+  }
+  function drawElements(name) {
+    if (!skippable || currFrameBuffer !== null) {
+      ctx.drawElements(buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
+    }
+    i += 4;
+  }
+
   var calls = {
     0: { name: 'NULL', func: func0 },
     1: { name: 'getExtension', func: func1 },
@@ -141,8 +162,8 @@ function WebGLClient() {
     30: { name: 'vertexAttribPointer', func: func6 },
     31: { name: 'enableVertexAttribArray', func: func1 },
     32: { name: 'disableVertexAttribArray', func: func1 },
-    33: { name: 'drawArrays', func: func3 },
-    34: { name: 'drawElements', func: func4 },
+    33: { name: 'drawArrays', func: drawArrays },
+    34: { name: 'drawElements', func: drawElements },
     35: { name: 'getError', func: function() { assert(ctx.getError() === ctx.NO_ERROR, 'we cannot handle errors, we are async proxied WebGL') } },
     36: { name: 'createTexture', func: funcC0 },
     37: { name: 'deleteTexture', func: funcD0 },
@@ -165,7 +186,7 @@ function WebGLClient() {
     54: { name: 'lineWidth', func: func1 },
     55: { name: 'createFramebuffer', func: funcC0 },
     56: { name: 'deleteFramebuffer', func: funcD0 },
-    57: { name: 'bindFramebuffer', func: func2L1_ },
+    57: { name: 'bindFramebuffer', func: bindFramebuffer },
     58: { name: 'framebufferTexture2D', func: func5L3_ },
     59: { name: 'createRenderbuffer', func: funcC0 },
     60: { name: 'deleteRenderbuffer', func: funcD0 },
@@ -196,12 +217,13 @@ function WebGLClient() {
   var commandBuffers = [];
 
   function renderAllCommands() {
-    // TODO: we can avoid running commands from buffers that are not the last, if they
-    //       have no side effects, as each buffer is from a different frame
-    //if (commandBuffers.length > 1) dump('extra buffs: ' + (commandBuffers.length-1) + '\n');
-    for (var i = 0; i < commandBuffers.length; i++) {
+    // we can skip parts of the frames before the last, as we just need their side effects
+    skippable = true;
+    for (var i = 0; i < commandBuffers.length-1; i++) {
       renderCommands(commandBuffers[i]);
     }
+    skippable = false;
+    renderCommands(commandBuffers[commandBuffers.length-1]);
     commandBuffers.length = 0;
   }
 
