@@ -865,31 +865,24 @@ function WebGLWorker() {
   //};
 
   // Setup
-  var dropped = 0;
-  var average = 0;
-  var last = 0;
-  var meanDiff = 0;
+
+  var theoreticalTracker = new FPSTracker('server (theoretical)');
+  var throttledTracker = new FPSTracker('server (client-throttled)');
+
   var preMainLoop = Module['preMainLoop'];
   Module['preMainLoop'] = function() {
-    /*
-    var now = Date.now();
-    if (last > 0) {
-      var diff = now - last;
-      meanDiff = 0.95*meanDiff + 0.05*diff;
-      if (clientFrameId % 10 === 0) dump('server fps ' + (1000/meanDiff) + '  (ignoring client throttling)\n');
-    }
-    last = now;
-    */
     if (preMainLoop) {
       var ret = preMainLoop();
       if (ret === false) return ret;
     }
+    //theoreticalTracker.tick();
     // if too many frames in queue, skip a main loop iter
     if (Math.abs(frameId - clientFrameId) >= 3) {
       //dropped++;
       //if (dropped % 10 === 0) dump('dropped: ' + [dropped, frameId, Math.round(100*dropped/(frameId + dropped)) + '%\n']);
       return false;
     }
+    //throttledTracker.tick();
   };
   var postMainLoop = Module['postMainLoop'];
   Module['postMainLoop'] = function() {

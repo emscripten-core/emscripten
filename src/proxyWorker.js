@@ -1,3 +1,21 @@
+function FPSTracker(text) {
+  var last = 0;
+  var mean = 0;
+  var counter = 0;
+  this.tick = function() {
+    var now = Date.now();
+    if (last > 0) {
+      var diff = now - last;
+      mean = 0.99*mean + 0.01*diff;
+      if (counter++ === 60) {
+        counter = 0;
+        dump(text + ' fps: ' + (1000/mean).toFixed(2) + '\n');
+      }
+    }
+    last = now;
+  }
+}
+
 function PropertyBag() {
   this.addProperty = function(){};
   this.removeProperty = function(){};

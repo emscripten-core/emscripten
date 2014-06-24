@@ -1,6 +1,26 @@
 
 // proxy to/from worker
 
+// utils
+
+function FPSTracker(text) {
+  var last = 0;
+  var mean = 0;
+  var counter = 0;
+  this.tick = function() {
+    var now = Date.now();
+    if (last > 0) {
+      var diff = now - last;
+      mean = 0.99*mean + 0.01*diff;
+      if (counter++ === 60) {
+        counter = 0;
+        dump(text + ' fps: ' + (1000/mean).toFixed(2) + '\n');
+      }
+    }
+    last = now;
+  }
+}
+
 // render
 
 var renderFrameData = null;
@@ -23,22 +43,16 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
                                renderFrame;
 
 /*
-var trueRAF = window.requestAnimationFrame;
-var lastRAF = 0;
-var meanFPS = 0;
-window.requestAnimationFrame = function(func) {
-  trueRAF(function() {
-    var now = performance.now();
-    if (lastRAF > 0) {
-      var diff = now - lastRAF;
-      var fps = 1000/diff;
-      meanFPS = 0.95*meanFPS + 0.05*fps;
-      dump('client fps ' + meanFPS + '\n');
-    }
-    lastRAF = now;
-    func();
-  });
-}
+(function() {
+  var trueRAF = window.requestAnimationFrame;
+  var tracker = new FPSTracker('client');
+  window.requestAnimationFrame = function(func) {
+    trueRAF(function() {
+      tracker.tick();
+      func();
+    });
+  }
+})();
 */
 
 // end render
