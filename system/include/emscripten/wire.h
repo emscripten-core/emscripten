@@ -172,40 +172,15 @@ namespace emscripten {
             >::type type;
         };
 
-        // ArgArray
-
-        template<typename... Args>
-        struct ArgArray;
-
-        template<typename First, typename... Rest>
-        struct ArgArray<First, Rest...> {
-            constexpr ArgArray()
-                : element(TypeID<First>::get())
-            {}
-            
-            const TYPEID element;
-            ArgArray<Rest...> rest;
-        };
-
-        template<>
-        struct ArgArray<> {
-        };
 
         template<typename ArgList>
         struct ArgArrayGetter;
 
-        template<>
-        struct ArgArrayGetter<TypeList<>> {
-            static const TYPEID* get() {
-                return nullptr;
-            }
-        };
-
         template<typename... Args>
         struct ArgArrayGetter<TypeList<Args...>> {
             static const TYPEID* get() {
-                static constexpr ArgArray<Args...> aa;
-                return &aa.element;
+                static constexpr TYPEID types[] = { TypeID<Args>::get()... };
+                return types;
             }
         };
 
