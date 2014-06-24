@@ -4784,7 +4784,7 @@ LibraryManager.library = {
         return 0;
       } else {
         FS.forceLoadFile(target);
-        var lib_data = intArrayToString(target.contents);
+        var lib_data = FS.readFile(filename, { encoding: 'utf8' });
       }
 
       try {
