@@ -864,9 +864,22 @@ function WebGLWorker() {
   this.framebufferRenderbuffer = function(target, attachment, renderbuffertarget, renderbuffer) {
     commandBuffer.push(63, target, attachment, renderbuffertarget, renderbuffer ? renderbuffer.id : 0);
   };
-  //this.debugPrint = function(text) { // useful to interleave debug output properly with client GL commands
-  //  commandBuffer.push(64, text);
-  //};
+  this.debugPrint = function(text) { // useful to interleave debug output properly with client GL commands
+    commandBuffer.push(64, text);
+  };
+  this.hint = function(target, mode) {
+    commandBuffer.push(65, target, mode);
+  };
+  this.blendEquation = function(mode) {
+    commandBuffer.push(66, mode);
+  };
+  this.generateMipmap = function(target) {
+    commandBuffer.push(67, target);
+  };
+  this.uniformMatrix3fv = function(location, transpose, data) {
+    if (!location) return;
+    commandBuffer.push(68, location.id, transpose, new Float32Array(data));
+  };
 
   // Setup
 

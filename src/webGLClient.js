@@ -194,6 +194,10 @@ function WebGLClient() {
     62: { name: 'renderbufferStorage', func: func4 },
     63: { name: 'framebufferRenderbuffer', func: func4L3_ },
     64: { name: 'debugPrint', func: func1 },
+    65: { name: 'hint', func: func2 },
+    66: { name: 'blendEquation', func: func1 },
+    67: { name: 'generateMipmap', func: func1 },
+    68: { name: 'uniformMatrix3fv', func: func3L0 },
   };
 
   function renderCommands(buf) {
