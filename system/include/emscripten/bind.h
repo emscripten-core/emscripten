@@ -760,6 +760,7 @@ namespace emscripten {
         }
 
         ~value_object() {
+            using namespace internal;
             _embind_finalize_value_object(internal::TypeID<ClassType>::get());
         }
 
@@ -1466,6 +1467,7 @@ namespace emscripten {
         typedef EnumType enum_type;
 
         enum_(const char* name) {
+            using namespace internal;
             _embind_register_enum(
                 internal::TypeID<EnumType>::get(),
                 name,
@@ -1474,6 +1476,7 @@ namespace emscripten {
         }
 
         enum_& value(const char* name, EnumType value) {
+            using namespace internal;
             // TODO: there's still an issue here.
             // if EnumType is an unsigned long, then JS may receive it as a signed long
             static_assert(sizeof(value) <= sizeof(internal::GenericEnumValue), "enum type must fit in a GenericEnumValue");
