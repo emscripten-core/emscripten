@@ -16,6 +16,12 @@ function FPSTracker(text) {
   }
 }
 
+function Element() { throw 'TODO: Element' }
+function Image() { throw 'TODO: Image' }
+function HTMLCanvasElement() { throw 'TODO: HTMLCanvasElement' }
+function HTMLImageElement() { throw 'TODO: HTMLImageElement' }
+function HTMLVideoElement() { throw 'TODO: HTMLVideoElement' }
+
 function PropertyBag() {
   this.addProperty = function(){};
   this.removeProperty = function(){};
