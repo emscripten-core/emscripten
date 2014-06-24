@@ -1085,7 +1085,7 @@ namespace emscripten {
 
         class_() = delete;
 
-        explicit class_(const char* name) {
+        EMSCRIPTEN_ALWAYS_INLINE explicit class_(const char* name) {
             using namespace internal;
 
             BaseSpecifier::template verify<ClassType>();
@@ -1112,7 +1112,7 @@ namespace emscripten {
         }
 
         template<typename PointerType>
-        const class_& smart_ptr(const char* name) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr(const char* name) const {
             using namespace internal;
 
             typedef smart_ptr_trait<PointerType> PointerTrait;
@@ -1142,14 +1142,14 @@ namespace emscripten {
         };
 
         template<typename... ConstructorArgs, typename... Policies>
-        const class_& constructor(Policies... policies) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(Policies... policies) const {
             return constructor(
                 &internal::operator_new<ClassType, ConstructorArgs...>,
                 policies...);
         }
 
         template<typename... Args, typename ReturnType, typename... Policies>
-        const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
             using namespace internal;
 
             // TODO: allows all raw pointers... policies need a rethink
@@ -1166,7 +1166,7 @@ namespace emscripten {
         }
 
         template<typename SmartPtr, typename... Args, typename... Policies>
-        const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
             using namespace internal;
 
             smart_ptr<SmartPtr>(smartPtrName);
@@ -1184,7 +1184,7 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
-        const class_& allow_subclass(
+        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
             const char* wrapperClassName,
             const char* pointerName = "<UnknownPointerName>",
             ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
@@ -1210,7 +1210,7 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename... ConstructorArgs>
-        const class_& allow_subclass(
+        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
             const char* wrapperClassName,
             ::emscripten::constructor<ConstructorArgs...> constructor
         ) const {
