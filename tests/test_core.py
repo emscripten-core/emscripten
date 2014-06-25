@@ -5768,12 +5768,15 @@ def process(filename):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
+      #include <emscripten.h>
 
       int main(int argc, char **argv) {
         int fp = atoi(argv[1]);
         printf("fp: %d\n", fp);
         void (*f)(int) = reinterpret_cast<void (*)(int)>(fp);
         f(7);
+        EM_ASM_(Module.Runtime.removeFunction($0), f);
+        printf("ok\n");
         return 0;
       }
     '''
@@ -5785,8 +5788,9 @@ def process(filename):
       Module.callMain([newFuncPtr.toString()]);
     ''')
 
+    expected = '''Hello 7 from JS!\nok\n'''
     self.emcc_args += ['--post-js', 'post.js']
-    self.do_run(src, '''Hello 7 from JS!''')
+    self.do_run(src, expected)
 
     if Settings.ASM_JS:
       Settings.RESERVED_FUNCTION_POINTERS = 0
@@ -5796,7 +5800,14 @@ def process(filename):
       Settings.RESERVED_FUNCTION_POINTERS = 1
 
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip the test
-      self.do_run(src, '''Hello 7 from JS!''')
+      self.do_run(src, expected)
+
+    assert 'asm2' in test_modes
+    if self.run_name == 'asm2':
+      print 'closure'
+      self.banned_js_engines = [NODE_JS] # weird global handling in node
+      self.emcc_args += ['--closure', '1']
+      self.do_run(src, expected)
 
   def test_demangle_stacks(self):
     if Settings.ASM_JS: return self.skip('spidermonkey has stack trace issues')

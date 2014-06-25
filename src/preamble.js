@@ -7,6 +7,10 @@
 {{RUNTIME}}
 
 Module['Runtime'] = Runtime;
+#if CLOSURE_COMPILER
+Runtime['addFunction'] = Runtime.addFunction;
+Runtime['removeFunction'] = Runtime.removeFunction;
+#endif
 
 #if ASM_JS
 #if RESERVED_FUNCTION_POINTERS
