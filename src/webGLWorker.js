@@ -515,6 +515,21 @@ function WebGLWorker() {
     var i = this.prefetchedExtensions.indexOf(name);
     if (i < 0) return null;
     commandBuffer.push(1, name);
+    switch (name) {
+      case 'EXT_texture_filter_anisotropic':
+      case 'MOZ_EXT_texture_filter_anisotropic':
+      case 'WEBKIT_EXT_texture_filter_anisotropic': {
+        return {
+          TEXTURE_MAX_ANISOTROPY_EXT:     0x84FE,
+          MAX_TEXTURE_MAX_ANISOTROPY_EXT: 0x84FF
+        };
+      }
+      case 'OES_standard_derivatives':
+      case 'MOZ_OES_standard_derivatives':
+      case 'WEBKIT_OES_standard_derivatives': {
+        return { FRAGMENT_SHADER_DERIVATIVE_HINT_OES: 0x8B8B };
+      }
+    };
     return true; // TODO: return an object here
   };
   this.getSupportedExtensions = function() {
