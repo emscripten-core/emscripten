@@ -583,7 +583,7 @@ function WebGLWorker() {
     commandBuffer.push(12, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
-    program.attributes[name] = { what: 'attribute', name: name, size: -1, location: index }; // fill in size later
+    program.attributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
     program.attributeVec[index] = name;
     commandBuffer.push(13, program.id, index, name);
   };
@@ -594,15 +594,38 @@ function WebGLWorker() {
   };
   this.linkProgram = function(program) {
     // parse shader sources
+    function getTypeId(text) {
+      switch (text) {
+        case 'bool': return that.BOOL;
+        case 'int': return that.INT;
+        case 'uint': return that.UNSIGNED_INT;
+        case 'float': return that.FLOAT;
+        case 'vec2': return that.FLOAT_VEC2;
+        case 'vec3': return that.FLOAT_VEC3;
+        case 'vec4': return that.FLOAT_VEC4;
+        case 'ivec2': return that.INT_VEC2;
+        case 'ivec3': return that.INT_VEC3;
+        case 'ivec4': return that.INT_VEC4;
+        case 'bvec2': return that.BOOL_VEC2;
+        case 'bvec3': return that.BOOL_VEC3;
+        case 'bvec4': return that.BOOL_VEC4;
+        case 'mat2': return that.FLOAT_MAT2;
+        case 'mat3': return that.FLOAT_MAT3;
+        case 'mat4': return that.FLOAT_MAT4;
+        case 'sampler2D': return that.SAMPLER_2D;
+        case 'samplerCube': return that.SAMPLER_CUBE;
+        default: throw 'not yet recognized type text: ' + text;
+      }
+    }
     function parseElementType(shader, type, obj, vec) {
       var source = shader.source;
       source = source.replace(/\n/g, '|\n'); // barrier between lines, to make regexing easier
       var newItems = source.match(new RegExp(type + '\\s+\\w+\\s+[\\w,\\s\[\\]]+;', 'g'));
       if (!newItems) return;
       newItems.forEach(function(item) {
-        var m = new RegExp(type + '\\s+\\w+\\s+([\\w,\\s\[\\]]+);').exec(item);
+        var m = new RegExp(type + '\\s+(\\w+)\\s+([\\w,\\s\[\\]]+);').exec(item);
         assert(m);
-        m[1].split(',').map(function(name) { name = name.trim(); return name.search(/\s/) >= 0 ? '' : name }).filter(function(name) { return !!name }).forEach(function(name) {
+        m[2].split(',').map(function(name) { name = name.trim(); return name.search(/\s/) >= 0 ? '' : name }).filter(function(name) { return !!name }).forEach(function(name) {
           var size = 1;
           var open = name.indexOf('[');
           var fullname = name;
@@ -613,7 +636,7 @@ function WebGLWorker() {
             fullname = name + '[0]';
           }
           if (!obj[name]) {
-            obj[name] = { what: type, name: fullname, size: size, location: -1 };
+            obj[name] = { what: type, name: fullname, size: size, location: -1, type: getTypeId(m[1]) };
             if (vec) vec.push(name);
           }
         });
@@ -637,6 +660,7 @@ function WebGLWorker() {
         this.bindAttribLocation(program, index, attr);
       }
       program.attributes[attr].size = existingAttributes[attr].size;
+      program.attributes[attr].type = existingAttributes[attr].type;
     }
 
     commandBuffer.push(14, program.id);
