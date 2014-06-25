@@ -714,13 +714,17 @@ function WebGLWorker() {
       }
     }
   };
+  function duplicate(something) {
+    // clone data properly: handles numbers, null, typed arrays, js arrays and array buffers
+    if (!something || typeof something === 'number') return something;
+    if (something.slice) return something.slice(0); // ArrayBuffer or js array
+    return new something.constructor(something); // typed array
+  }
   this.bufferData = function(target, something, usage) {
-    if (typeof something !== 'number') something = new something.constructor(something);
-    commandBuffer.push(27, target, something, usage);
+    commandBuffer.push(27, target, duplicate(something), usage);
   };
   this.bufferSubData = function(target, offset, something) {
-    if (typeof something !== 'number') something = new something.constructor(something);
-    commandBuffer.push(28, target, offset, something);
+    commandBuffer.push(28, target, offset, duplicate(something));
   };
   this.viewport = function(x, y, w, h) {
     commandBuffer.push(29, x, y, w, h);
@@ -773,10 +777,10 @@ function WebGLWorker() {
   };
   this.texImage2D = function(target, level, internalformat, width, height, border, format, type, pixels) {
     assert(pixels || pixels === null); // we do not support the overloads that have fewer params
-    commandBuffer.push(40, target, level, internalformat, width, height, border, format, type, pixels ? new pixels.constructor(pixels) : pixels);
+    commandBuffer.push(40, target, level, internalformat, width, height, border, format, type, duplicate(pixels));
   };
   this.compressedTexImage2D = function(target, level, internalformat, width, height, border, pixels) {
-    commandBuffer.push(41, target, level, internalformat, width, height, border, new pixels.constructor(pixels));
+    commandBuffer.push(41, target, level, internalformat, width, height, border, duplicate(pixels));
   };
   this.activeTexture = function(texture) {
     commandBuffer.push(42, texture);
