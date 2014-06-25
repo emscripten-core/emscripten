@@ -2912,10 +2912,7 @@ var LibrarySDL = {
   },
 
   SDL_GL_SwapBuffers: function() {
-#if PROXY_TO_WORKER
-    // postMainLoop is where the proxy code listens, to know when to proxy buffered render commands
-    if (Module['postMainLoop']) Module['postMainLoop']();
-#endif
+    if (Browser.doSwapBuffers) Browser.doSwapBuffers(); // in workers, this is used to send out a buffered frame
   },
 
   // SDL 2

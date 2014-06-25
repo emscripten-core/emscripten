@@ -929,31 +929,37 @@ function WebGLWorker() {
   var theoreticalTracker = new FPSTracker('server (theoretical)');
   var throttledTracker = new FPSTracker('server (client-throttled)');
 
-  var preMainLoop = Module['preMainLoop'];
-  Module['preMainLoop'] = function() {
-    if (preMainLoop) {
-      var ret = preMainLoop();
-      if (ret === false) return ret;
-    }
+  function preRAF() {
     //theoreticalTracker.tick();
     // if too many frames in queue, skip a main loop iter
     if (Math.abs(frameId - clientFrameId) >= 4) {
-      //dropped++;
-      //if (dropped % 10 === 0) dump('dropped: ' + [dropped, frameId, Math.round(100*dropped/(frameId + dropped)) + '%\n']);
       return false;
     }
     //throttledTracker.tick();
-  };
-  var postMainLoop = Module['postMainLoop'];
-  Module['postMainLoop'] = function() {
-    if (postMainLoop) postMainLoop();
+  }
+
+  function postRAF() {
     if (commandBuffer.length > 0) {
-      //average = (average + commandBuffer.length)/2;
-      //dump('buffer size: ' + Math.round(average) + '\n');
       postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
       commandBuffer = [];
     }
-  };
+  }
+
+  assert(!Browser.doSwapBuffers);
+  Browser.doSwapBuffers = postRAF;
+
+  var trueRAF = window.requestAnimationFrame;
+  window.requestAnimationFrame = function(func) {
+    trueRAF(function() {
+      if (preRAF() === false) {
+        window.requestAnimationFrame(func); // skip this frame, do it later
+        return;
+      }
+      func();
+      postRAF();
+    });
+  }
+
 }
 
 // share prefetched data among all instances
