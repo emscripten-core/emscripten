@@ -815,7 +815,19 @@ function WebGLWorker() {
     commandBuffer.push(39, target, pname, param);
   };
   this.texImage2D = function(target, level, internalformat, width, height, border, format, type, pixels) {
-    assert(pixels || pixels === null); // we do not support the overloads that have fewer params
+    if (pixels === undefined) {
+      format = width; // width, height, border do not exist in the shorter overload
+      type = height;
+      pixels = border;
+      assert(pixels instanceof Image);
+      assert(internalformat === format && format === this.RGBA); // HTML Images are RGBA, 8-bit
+      assert(type === this.UNSIGNED_BYTE);
+      var data = pixels.data;
+      width = data.width;
+      height = data.height;
+      border = 0;
+      pixels = new Uint8Array(data.data); // XXX transform from clamped to normal, could have been done in duplicate
+    }
     commandBuffer.push(40, target, level, internalformat, width, height, border, format, type, duplicate(pixels));
   };
   this.compressedTexImage2D = function(target, level, internalformat, width, height, border, pixels) {
