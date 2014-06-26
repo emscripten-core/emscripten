@@ -88,6 +88,11 @@ window.close = function window_close() {
   postMessage({ target: 'window', method: 'close' });
 };
 
+window.alert = function(text) {
+  Module.printErr('alert forever: ' + text);
+  while (1){};
+};
+
 window.scrollX = window.scrollY = 0; // TODO: proxy these
 
 window.WebGLRenderingContext = WebGLWorker;
