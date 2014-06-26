@@ -670,6 +670,15 @@ class BrowserCore(RunnerCore):
           realRAF(func);
           setTimeout(doReftest, 1000);
         };
+
+        // trigger reftest from canvas render too, for workers not doing GL
+        var realWOM = worker.onmessage;
+        worker.onmessage = function(event) {
+          realWOM(event);
+          if (event.data.target === 'canvas' && event.data.op === 'render') {
+            setTimeout(doReftest, 1000);
+          }
+        };
       }
 
 ''' % basename)
