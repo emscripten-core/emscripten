@@ -235,6 +235,13 @@ document.styleSheets = [{
 function Audio() {
   Runtime.warnOnce('faking Audio elements, no actual sound will play');
 }
+Audio.prototype = new EventListener();
+Object.defineProperty(Audio.prototype, 'src', {
+  set: function(value) {
+    if (value[0] === 'd') return; // ignore data urls
+    this.onerror();
+  },
+});
 
 Audio.prototype.play = function(){};
 Audio.prototype.pause = function(){};
