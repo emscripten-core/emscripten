@@ -18,7 +18,6 @@ function FPSTracker(text) {
 
 function Element() { throw 'TODO: Element' }
 function HTMLCanvasElement() { throw 'TODO: HTMLCanvasElement' }
-function HTMLImageElement() { throw 'TODO: HTMLImageElement' }
 function HTMLVideoElement() { throw 'TODO: HTMLVideoElement' }
 
 function PropertyBag() {
@@ -64,6 +63,7 @@ function EventListener() {
 
 function Image() {
   IndexedObjects.add(this);
+  EventListener.call(this);
   var src = '';
   Object.defineProperty(this, 'src', {
     set: function(value) {
@@ -76,9 +76,10 @@ function Image() {
     }
   });
 }
-Image.prototype = new EventListener();
 Image.prototype.onload = function(){};
 Image.prototype.onerror = function(){};
+
+var HTMLImageElement = Image;
 
 var window = this;
 var windowExtra = new EventListener();
