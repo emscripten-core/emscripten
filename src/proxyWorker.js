@@ -17,7 +17,6 @@ function FPSTracker(text) {
 }
 
 function Element() { throw 'TODO: Element' }
-function Image() { throw 'TODO: Image' }
 function HTMLCanvasElement() { throw 'TODO: HTMLCanvasElement' }
 function HTMLImageElement() { throw 'TODO: HTMLImageElement' }
 function HTMLVideoElement() { throw 'TODO: HTMLVideoElement' }
@@ -25,6 +24,15 @@ function HTMLVideoElement() { throw 'TODO: HTMLVideoElement' }
 function PropertyBag() {
   this.addProperty = function(){};
   this.removeProperty = function(){};
+};
+
+var IndexedObjects = {
+  nextId: 1,
+  cache: {},
+  add: function(object) {
+    object.id = this.nextId++;
+    this.cache[object.id] = object;
+  }
 };
 
 function EventListener() {
@@ -52,7 +60,25 @@ function EventListener() {
       });
     }
   };
-};
+}
+
+function Image() {
+  IndexedObjects.add(this);
+  var src = '';
+  Object.defineProperty(this, 'src', {
+    set: function(value) {
+      src = value;
+      assert(this.id);
+      postMessage({ target: 'Image', method: 'src', src: src, id: this.id });
+    },
+    get: function() {
+      return src;
+    }
+  });
+}
+Image.prototype = new EventListener();
+Image.prototype.onload = function(){};
+Image.prototype.onerror = function(){};
 
 var window = this;
 var windowExtra = new EventListener();
@@ -123,6 +149,18 @@ document.createElement = function document_createElement(what) {
               canvas.ensureData();
               assert(x == 0 && y == 0 && image.width == canvas.width && image.height == canvas.height);
               canvas.data.data.set(image.data); // TODO: can we avoid this copy?
+              if (canvas === Module['canvas']) {
+                postMessage({ target: 'canvas', op: 'render', image: canvas.data });
+              }
+            },
+            drawImage: function(image, x, y, w, h, ox, oy, ow, oh) {
+              assert (!x && !y && !ox && !oy);
+              assert(w === ow && h === oh);
+              assert(canvas.width === w || w === undefined);
+              assert(canvas.height === h || h === undefined);
+              assert(image.width === canvas.width && image.height === canvas.height);
+              canvas.ensureData();
+              canvas.data.data.set(image.data.data); // TODO: can we avoid this copy?
               if (canvas === Module['canvas']) {
                 postMessage({ target: 'canvas', op: 'render', image: canvas.data });
               }
@@ -300,6 +338,24 @@ onmessage = function onmessage(message) {
     }
     case 'tock': {
       clientFrameId = message.data.id;
+      break;
+    }
+    case 'Image': {
+      var img = IndexedObjects.cache[message.data.id];
+      switch (message.data.method) {
+        case 'onload': {
+          img.width = message.data.width;
+          img.height = message.data.height;
+          img.data = { width: img.width, height: img.height, data: message.data.data };
+          img.complete = true;
+          img.onload();
+          break;
+        }
+        case 'onerror': {
+          img.onerror({ srcElement: img });
+          break;
+        }
+      }
       break;
     }
     default: throw 'wha? ' + message.data.target;

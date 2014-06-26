@@ -131,6 +131,25 @@ worker.onmessage = function worker_onmessage(event) {
       worker.postMessage({ target: 'tock', id: frameId });
       break;
     }
+    case 'Image': {
+      assert(data.method === 'src');
+      var img = new Image();
+      img.onload = function() {
+        assert(img.complete);
+        var canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        var imageData = ctx.getImageData(0, 0, img.width, img.height);
+        worker.postMessage({ target: 'Image', method: 'onload', id: data.id, width: img.width, height: img.height, data: imageData.data });
+      };
+      img.onerror = function() {
+        worker.postMessage({ target: 'Image', method: 'onerror', id: data.id });
+      };
+      img.src = data.src;
+      break;
+    }
     default: throw 'what?';
   }
 };
