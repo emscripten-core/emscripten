@@ -145,6 +145,32 @@ document.createElement = function document_createElement(what) {
       };
       canvas.style = new PropertyBag();
       canvas.exitPointerLock = function(){};
+
+      canvas.width_ = canvas.width;
+      canvas.height_ = canvas.height;
+      Object.defineProperty(canvas, 'width', {
+        set: function(value) {
+          canvas.width_ = value;
+          if (canvas === Module['canvas']) {
+            postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
+          }
+        },
+        get: function() {
+          return canvas.width_;
+        }
+      });
+      Object.defineProperty(canvas, 'height', {
+        set: function(value) {
+          canvas.height_ = value;
+          if (canvas === Module['canvas']) {
+            postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
+          }
+        },
+        get: function() {
+          return canvas.height_;
+        }
+      });
+
       return canvas;
     }
     default: throw 'document.createElement ' + what;
@@ -212,12 +238,6 @@ Module.printErr = function Module_printErr(x) {
   //dump('ERR: ' + x + '\n');
   postMessage({ target: 'stderr', content: x });
 };
-
-// Browser hooks
-
-Browser.resizeListeners.push(function(width, height) {
-  postMessage({ target: 'canvas', op: 'resize', width: width, height: height });
-});
 
 // Frame throttling
 
