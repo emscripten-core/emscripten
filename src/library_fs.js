@@ -1214,7 +1214,8 @@ mergeInto(LibraryManager.library, {
       var random_device;
       if (typeof crypto !== 'undefined') {
         // for modern web browsers
-        random_device = function() { return crypto.getRandomValues(arguments[0])[0]; }.bind(undefined, new Uint8Array(1));
+        var randomBuffer = new Uint8Array(1);
+        random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
       } else if (ENVIRONMENT_IS_NODE) {
         // for nodejs
         random_device = function() { return require('crypto').randomBytes(1)[0]; };
