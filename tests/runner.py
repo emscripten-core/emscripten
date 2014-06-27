@@ -258,7 +258,7 @@ process(sys.argv[1])
     err = '\n'.join(filter(lambda line: 'uccessfully compiled asm.js code' not in line, err.split('\n')))
     return err
 
-  def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None):
+  def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')
     try:
@@ -266,7 +266,7 @@ process(sys.argv[1])
     except:
       cwd = None
     os.chdir(self.get_dir())
-    run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'))
+    run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'), assert_returncode=assert_returncode)
     if cwd is not None:
       os.chdir(cwd)
     out = open(stdout, 'r').read()
@@ -445,7 +445,7 @@ process(sys.argv[1])
                 includes, force_c, build_ll_hook, extra_emscripten_args)
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
+  def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
@@ -464,7 +464,7 @@ process(sys.argv[1])
     js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:
-      js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer)
+      js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
       self.assertNotContained('ERROR', js_output)
 
@@ -477,7 +477,7 @@ process(sys.argv[1])
       test_index += 1
 
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
+  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
     filename = os.path.join(self.get_dir(), 'src.cpp')
 
     self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
@@ -485,12 +485,13 @@ process(sys.argv[1])
     self.ll_to_js(filename, extra_emscripten_args, post_build)
 
     self.do_run(None,
-                 expected_output,
-                 args,
-                 no_build=True,
-                 js_engines=js_engines,
-                 output_nicerizer=output_nicerizer,
-                 post_build=None) # post_build was already done in ll_to_js, this do_run call is just to test the output
+                expected_output,
+                args,
+                no_build=True,
+                js_engines=js_engines,
+                output_nicerizer=output_nicerizer,
+                post_build=None,
+                assert_returncode=assert_returncode) # post_build was already done in ll_to_js, this do_run call is just to test the output
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,

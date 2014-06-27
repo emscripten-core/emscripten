@@ -245,7 +245,7 @@ Options that are modified or new in %s include:
         output = Popen([PYTHON, compiler, 'twopart_main.o', '-O1', '-g'] + args, stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists(target), '\n'.join(output)
         #print '\n'.join(output)
-        self.assertContained('missing function', run_js(target, stderr=STDOUT))
+        self.assertContained('missing function', run_js(target, stderr=STDOUT, assert_returncode=None))
         try_delete(target)
 
         # Combining those bc files into js should work
@@ -549,7 +549,7 @@ f.close()
       print args, expected, err_expected
       out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
       if err_expected: self.assertContained(err_expected, err)
-      self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True))
+      self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
       return open(self.in_dir('a.out.js')).read()
 
     if os.environ.get('EMCC_FAST_COMPILER') == '0':
@@ -2406,7 +2406,7 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
 ''')
 
     Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js']).communicate()
-    output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None)
     assert r'<{(123456789)}>' in output, output
 
   def test_precompiled_headers(self):
@@ -2793,7 +2793,7 @@ int main() {
         cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
         print cmd
         Popen(cmd).communicate()
-        output = run_js('a.out.js', stderr=PIPE, full_output=True)
+        output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
         if safe:
           assert 'Function table mask error' in output, output
         else:
