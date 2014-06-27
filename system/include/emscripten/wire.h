@@ -27,10 +27,7 @@ namespace emscripten {
     #endif
 
     namespace internal {
-        typedef void (*GenericFunction)();
-
-        typedef const struct _TYPEID {}* TYPEID;
-
+        typedef const void* TYPEID;
 
         // We don't need the full std::type_info implementation.  We
         // just need a unique identifier per type and polymorphic type
@@ -38,11 +35,14 @@ namespace emscripten {
         
         template<typename T>
         struct CanonicalizedID {
-            static TYPEID get() {
-                static _TYPEID c;
+            static char c;
+            static constexpr TYPEID get() {
                 return &c;
             }
         };
+
+        template<typename T>
+        char CanonicalizedID<T>::c;
 
         template<typename T>
         struct Canonicalized {
@@ -51,36 +51,32 @@ namespace emscripten {
 
         template<typename T>
         struct LightTypeID {
-            static TYPEID get() {
+            static constexpr TYPEID get() {
                 typedef typename Canonicalized<T>::type C;
-                if (has_unbound_type_names || std::is_polymorphic<C>::value) {
-                    return reinterpret_cast<TYPEID>(&typeid(C));
-                } else {
-                    return CanonicalizedID<C>::get();
-                }
+                return (has_unbound_type_names || std::is_polymorphic<C>::value)
+                    ? &typeid(C)
+                    : CanonicalizedID<C>::get();
             }
         };
 
         template<typename T>
-        const TYPEID getLightTypeID(const T& value) {
+        constexpr TYPEID getLightTypeID(const T& value) {
             typedef typename Canonicalized<T>::type C;
-            if (has_unbound_type_names || std::is_polymorphic<C>::value) {
-                return reinterpret_cast<TYPEID>(&typeid(value));
-            } else {
-                return LightTypeID<T>::get();
-            }
+            return (has_unbound_type_names || std::is_polymorphic<C>::value)
+                ? &typeid(value)
+                : LightTypeID<T>::get();
         }
 
         template<typename T>
         struct TypeID {
-            static TYPEID get() {
+            static constexpr TYPEID get() {
                 return LightTypeID<T>::get();
             }
         };
 
         template<typename T>
         struct TypeID<std::unique_ptr<T>> {
-            static TYPEID get() {
+            static constexpr TYPEID get() {
                 return TypeID<T>::get();
             }
         };
@@ -96,7 +92,7 @@ namespace emscripten {
 
         template<typename T>
         struct TypeID<AllowedRawPointer<T>> {
-            static TYPEID get() {
+            static constexpr TYPEID get() {
                 return LightTypeID<T*>::get();
             }
         };
@@ -125,40 +121,89 @@ namespace emscripten {
             };
         };
 
-        // ArgTypes<>
+        // TypeList<>
 
-        template<int Index, typename... Args>
-        struct ArgTypes;
+        template<typename...>
+        struct TypeList {};
 
-        template<int Index>
-        struct ArgTypes<Index> {
-            template<typename... Policies>
-            static void fill(TYPEID* argTypes) {
-            }
+        // Cons :: T, TypeList<types...> -> Cons<T, types...>
+
+        template<typename First, typename TypeList>
+        struct Cons;
+
+        template<typename First, typename... Rest>
+        struct Cons<First, TypeList<Rest...>> {
+            typedef TypeList<First, Rest...> type;
         };
 
-        template<int Index, typename T, typename... Remaining>
-        struct ArgTypes<Index, T, Remaining...> {
-            template<typename... Policies>
-            static void fill(TYPEID* argTypes) {
-                typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type TransformT;
-                *argTypes = TypeID<TransformT>::get();
-                return ArgTypes<Index + 1, Remaining...>::template fill<Policies...>(argTypes + 1);
+        // Apply :: T, TypeList<types...> -> T<types...>
+
+        template<template<typename...> class Output, typename TypeList>
+        struct Apply;
+
+        template<template<typename...> class Output, typename... Types>
+        struct Apply<Output, TypeList<Types...>> {
+            typedef Output<Types...> type;
+        };
+
+        // MapWithIndex_
+
+        template<template<size_t, typename> class Mapper, size_t CurrentIndex, typename... Args>
+        struct MapWithIndex_;
+
+        template<template<size_t, typename> class Mapper, size_t CurrentIndex, typename First, typename... Rest>
+        struct MapWithIndex_<Mapper, CurrentIndex, First, Rest...> {
+            typedef typename Cons<
+                typename Mapper<CurrentIndex, First>::type,
+                typename MapWithIndex_<Mapper, CurrentIndex + 1, Rest...>::type
+                >::type type;
+        };
+
+        template<template<size_t, typename> class Mapper, size_t CurrentIndex>
+        struct MapWithIndex_<Mapper, CurrentIndex> {
+            typedef TypeList<> type;
+        };
+
+        template<template<typename...> class Output, template<size_t, typename> class Mapper, typename... Args>
+        struct MapWithIndex {
+            typedef typename internal::Apply<
+                Output,
+                typename MapWithIndex_<Mapper, 0, Args...>::type
+            >::type type;
+        };
+
+
+        template<typename ArgList>
+        struct ArgArrayGetter;
+
+        template<typename... Args>
+        struct ArgArrayGetter<TypeList<Args...>> {
+            static const TYPEID* get() {
+                static constexpr TYPEID types[] = { TypeID<Args>::get()... };
+                return types;
             }
         };
 
         // WithPolicies<...>::ArgTypeList<...>
+
         template<typename... Policies>
         struct WithPolicies {
+            template<size_t Index, typename T>
+            struct MapWithPolicies {
+                typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type type;
+            };
+
             template<typename... Args>
             struct ArgTypeList {
-                ArgTypeList() {
-                    count = sizeof...(Args);
-                    ArgTypes<0, Args...>::template fill<Policies...>(types);
+                unsigned getCount() const {
+                    return sizeof...(Args);
                 }
 
-                unsigned count;
-                TYPEID types[sizeof...(Args)];
+                const TYPEID* getTypes() const {
+                    return ArgArrayGetter<
+                        typename MapWithIndex<TypeList, MapWithPolicies, Args...>::type
+                    >::get();
+                }
             };
         };
 

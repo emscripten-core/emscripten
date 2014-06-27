@@ -71,7 +71,7 @@ namespace emscripten {
             void _embind_register_function(
                 const char* name,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* signature,
                 GenericFunction invoker,
                 GenericFunction function);
@@ -137,7 +137,7 @@ namespace emscripten {
             void _embind_register_class_constructor(
                 TYPEID classType,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* invokerSignature,
                 GenericFunction invoker,
                 GenericFunction constructor);
@@ -146,7 +146,7 @@ namespace emscripten {
                 TYPEID classType,
                 const char* methodName,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* invokerSignature,
                 GenericFunction invoker,
                 void* context,
@@ -168,7 +168,7 @@ namespace emscripten {
                 TYPEID classType,
                 const char* methodName,
                 unsigned argCount,
-                TYPEID argTypes[],
+                const TYPEID argTypes[],
                 const char* invokerSignature,
                 GenericFunction invoker,
                 GenericFunction method);
@@ -413,8 +413,8 @@ namespace emscripten {
         auto invoker = &Invoker<ReturnType, Args...>::invoke;
         _embind_register_function(
             name,
-            args.count,
-            args.types,
+            args.getCount(),
+            args.getTypes(),
             getSignature(invoker),
             reinterpret_cast<GenericFunction>(invoker),
             reinterpret_cast<GenericFunction>(fn));
@@ -760,6 +760,7 @@ namespace emscripten {
         }
 
         ~value_object() {
+            using namespace internal;
             _embind_finalize_value_object(internal::TypeID<ClassType>::get());
         }
 
@@ -1084,7 +1085,7 @@ namespace emscripten {
 
         class_() = delete;
 
-        explicit class_(const char* name) {
+        EMSCRIPTEN_ALWAYS_INLINE explicit class_(const char* name) {
             using namespace internal;
 
             BaseSpecifier::template verify<ClassType>();
@@ -1111,7 +1112,7 @@ namespace emscripten {
         }
 
         template<typename PointerType>
-        const class_& smart_ptr(const char* name) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr(const char* name) const {
             using namespace internal;
 
             typedef smart_ptr_trait<PointerType> PointerTrait;
@@ -1141,14 +1142,14 @@ namespace emscripten {
         };
 
         template<typename... ConstructorArgs, typename... Policies>
-        const class_& constructor(Policies... policies) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(Policies... policies) const {
             return constructor(
                 &internal::operator_new<ClassType, ConstructorArgs...>,
                 policies...);
         }
 
         template<typename... Args, typename ReturnType, typename... Policies>
-        const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
             using namespace internal;
 
             // TODO: allows all raw pointers... policies need a rethink
@@ -1156,8 +1157,8 @@ namespace emscripten {
             auto invoke = &Invoker<ReturnType, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(factory));
@@ -1165,7 +1166,7 @@ namespace emscripten {
         }
 
         template<typename SmartPtr, typename... Args, typename... Policies>
-        const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
+        EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
             using namespace internal;
 
             smart_ptr<SmartPtr>(smartPtrName);
@@ -1174,8 +1175,8 @@ namespace emscripten {
             auto invoke = &Invoker<SmartPtr, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(factory));
@@ -1183,7 +1184,7 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
-        const class_& allow_subclass(
+        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
             const char* wrapperClassName,
             const char* pointerName = "<UnknownPointerName>",
             ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
@@ -1209,7 +1210,7 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename... ConstructorArgs>
-        const class_& allow_subclass(
+        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
             const char* wrapperClassName,
             ::emscripten::constructor<ConstructorArgs...> constructor
         ) const {
@@ -1226,8 +1227,8 @@ namespace emscripten {
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoker),
                 reinterpret_cast<GenericFunction>(invoker),
                 getContext(memberFunction),
@@ -1245,8 +1246,8 @@ namespace emscripten {
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoker),
                 reinterpret_cast<GenericFunction>(invoker),
                 getContext(memberFunction),
@@ -1263,8 +1264,8 @@ namespace emscripten {
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
                 getContext(function),
@@ -1362,8 +1363,8 @@ namespace emscripten {
             _embind_register_class_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
-                args.count,
-                args.types,
+                args.getCount(),
+                args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<internal::GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(classMethod));
@@ -1466,6 +1467,7 @@ namespace emscripten {
         typedef EnumType enum_type;
 
         enum_(const char* name) {
+            using namespace internal;
             _embind_register_enum(
                 internal::TypeID<EnumType>::get(),
                 name,
@@ -1474,6 +1476,7 @@ namespace emscripten {
         }
 
         enum_& value(const char* name, EnumType value) {
+            using namespace internal;
             // TODO: there's still an issue here.
             // if EnumType is an unsigned long, then JS may receive it as a signed long
             static_assert(sizeof(value) <= sizeof(internal::GenericEnumValue), "enum type must fit in a GenericEnumValue");
