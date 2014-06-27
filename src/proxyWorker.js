@@ -224,8 +224,8 @@ document.createElement = function document_createElement(what) {
       canvas.style = new PropertyBag();
       canvas.exitPointerLock = function(){};
 
-      canvas.width_ = canvas.width;
-      canvas.height_ = canvas.height;
+      canvas.width_ = 400; // TODO: get the screen canvas size before we start up, use that
+      canvas.height_ = 400;
       Object.defineProperty(canvas, 'width', {
         set: function(value) {
           canvas.width_ = value;
