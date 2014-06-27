@@ -8,15 +8,12 @@ module({
             cm.setDelayFunction(undefined);
 
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                cm._mallocDebug(2);
                 assert.equal(0, cm.count_emval_handles());
-                cm._mallocAssertAllMemoryFree();
             }
         });
         this.tearDown(function() {
             cm.flushPendingDeletes();
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                cm._mallocAssertAllMemoryFree();
                 assert.equal(0, cm.count_emval_handles());
             }
         });
@@ -28,35 +25,6 @@ module({
         test("temp test", function() {
         });
     });
-
-    if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-
-    BaseFixture.extend("leak testing", function() {
-        test("no memory allocated at start of test", function() {
-            cm._mallocAssertAllMemoryFree();
-        });
-        test("assert when memory is allocated", function() {
-            var ptr = cm._malloc(42);
-            assert.throws(cm._MemoryAllocationError, function() {
-                cm._mallocAssertAllMemoryFree();
-            });
-            cm._free(ptr);
-        });
-        test("allocated memory counts down again for free", function() {
-            var ptr = cm._malloc(42);
-            cm._free(ptr);
-            cm._mallocAssertAllMemoryFree();
-        });
-        test("free without malloc throws MemoryAllocationError", function() {
-            var ptr = cm._malloc(42);
-            cm._free(ptr);
-            assert.throws(cm._MemoryAllocationError, function() {
-                cm._free(ptr);
-            });
-        });
-    });
-
-    }
 
     BaseFixture.extend("access to base class members", function() {
         test("method name in derived class silently overrides inherited name", function() {
