@@ -40,7 +40,7 @@ def build_version_file(env):
 
     env.AddPostAction(
         emscripten_version_file,
-        Delete(env.Dir('$EMSCRIPTEN_TEMP_DIR').abspath))
+        Delete(env.Dir('$EMSCRIPTEN_TEMP_DIR/cache/jcache').abspath))
 
     return emscripten_version_file
 
