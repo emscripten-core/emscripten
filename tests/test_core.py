@@ -6244,7 +6244,7 @@ def process(filename):
     '''
 
     try:
-      self.do_run(src, '*nothingatall*')
+      self.do_run(src, '*nothingatall*', assert_returncode=None)
     except Exception, e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
@@ -6261,7 +6261,7 @@ def process(filename):
     Settings.SAFE_HEAP_LINES = ["src.cpp:99"]
 
     try:
-      self.do_run(src, '*nothingatall*')
+      self.do_run(src, '*nothingatall*', assert_returncode=None)
     except Exception, e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
@@ -6311,7 +6311,7 @@ def process(filename):
     Building.link([module_name + '.o', main_name + '.o'], all_name)
 
     try:
-      self.do_ll_run(all_name, '*nothingatall*')
+      self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)
     except Exception, e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
@@ -6328,7 +6328,7 @@ def process(filename):
     for lines in [["module.cpp:22", "main.cpp:9"], ["module.cpp:7", "main.cpp:29"], ["module.cpp:127", "main.cpp:449"], ["module.cpp:7"], ["main.cpp:9"]]:
       Settings.SAFE_HEAP_LINES = lines
       try:
-        self.do_ll_run(all_name, '*nothingatall*')
+        self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)
       except Exception, e:
         # This test *should* fail, by throwing this exception
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
@@ -6353,7 +6353,7 @@ def process(filename):
       }
     '''
     try:
-      self.do_run(src, '*nothingatall*')
+      self.do_run(src, '*nothingatall*', assert_returncode=None)
     except Exception, e:
       # This test *should* fail
       assert 'Assertion failed: x < 15' in str(e), str(e)
