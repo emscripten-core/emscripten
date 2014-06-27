@@ -1,3 +1,37 @@
+
+if (typeof console === 'undefined') {
+  // we can't call Module.printErr because that might be circular
+  var console = {
+    log: function(x) {
+      if (typeof dump === 'function') dump('log: ' + x + '\n');
+    },
+    debug: function(x) {
+      if (typeof dump === 'function') dump('debug: ' + x + '\n');
+    },
+    info: function(x) {
+      if (typeof dump === 'function') dump('info: ' + x + '\n');
+    },
+    warn: function(x) {
+      if (typeof dump === 'function') dump('warn: ' + x + '\n');
+    },
+    error: function(x) {
+      if (typeof dump === 'function') dump('error: ' + x + '\n');
+    },
+  };
+}
+
+/*
+function proxify(object, nick) {
+  return new Proxy(object, {
+    get: function(target, name) {
+      var ret = target[name];
+      if (ret === undefined) console.log('PROXY ' + [nick, target, name, ret, typeof ret]);
+      return ret;
+    }
+  });
+}
+*/
+
 function FPSTracker(text) {
   var last = 0;
   var mean = 0;
@@ -254,27 +288,6 @@ Audio.prototype.pause = function(){};
 
 Audio.prototype.cloneNode = function() {
   return new Audio;
-}
-
-if (typeof console === 'undefined') {
-  // we can't call Module.printErr because that might be circular
-  var console = {
-    log: function(x) {
-      if (typeof dump === 'function') dump('log: ' + x + '\n');
-    },
-    debug: function(x) {
-      if (typeof dump === 'function') dump('debug: ' + x + '\n');
-    },
-    info: function(x) {
-      if (typeof dump === 'function') dump('info: ' + x + '\n');
-    },
-    warn: function(x) {
-      if (typeof dump === 'function') dump('warn: ' + x + '\n');
-    },
-    error: function(x) {
-      if (typeof dump === 'function') dump('error: ' + x + '\n');
-    },
-  };
 }
 
 Module.canvas = document.createElement('canvas');
