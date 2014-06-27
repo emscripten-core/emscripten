@@ -1211,8 +1211,19 @@ mergeInto(LibraryManager.library, {
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
-      FS.createDevice('/dev', 'random', function() { return Math.floor(Math.random()*256); });
-      FS.createDevice('/dev', 'urandom', function() { return Math.floor(Math.random()*256); });
+      var random_device;
+      if (typeof crypto !== 'undefined') {
+        // for modern web browsers
+        random_device = function() { return crypto.getRandomValues(arguments[0])[0]; }.bind(undefined, new Uint8Array(1));
+      } else if (ENVIRONMENT_IS_NODE) {
+        // for nodejs
+        random_device = function() { return require('crypto').randomBytes(1)[0]; };
+      } else {
+        // default for ES5 platforms
+        random_device = function() { return Math.floor(Math.random()*256); };
+      }
+      FS.createDevice('/dev', 'random', random_device);
+      FS.createDevice('/dev', 'urandom', random_device);
       // we're not going to emulate the actual shm device,
       // just create the tmp dirs that reside in it commonly
       FS.mkdir('/dev/shm');
