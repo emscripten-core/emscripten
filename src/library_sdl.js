@@ -2998,6 +2998,8 @@ var LibrarySDL = {
 
   SDL_getenv: 'getenv',
 
+  SDL_putenv: 'putenv',
+
   // TODO
 
   SDL_SetGamma: function(r, g, b) {
