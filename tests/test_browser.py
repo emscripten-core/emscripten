@@ -1649,7 +1649,7 @@ void *getBindBuffer() {
       # asm.js-ification check
       Popen([PYTHON, EMCC, path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
       Settings.ASM_JS = 1
-      self.run_generated_code(SPIDERMONKEY_ENGINE, 'a.out.js')
+      self.run_generated_code(SPIDERMONKEY_ENGINE, 'a.out.js', assert_returncode=None)
       print 'passed asm test'
 
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
