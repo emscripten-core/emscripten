@@ -1127,9 +1127,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest('sdl_pumpevents.c', expected='7', args=['--pre-js', 'pre.js'])
 
   def test_sdl_canvas_size(self):
-    self.btest('sdl_canvas_size.c', reference='screenshot-gray-purple.png', reference_slack=1,
-      args=['-O2', '--minify', '0', '--shell-file', path_from_root('tests', 'sdl_canvas_size.html'), '--preload-file', path_from_root('tests', 'screenshot.png') + '@/', '-s', 'LEGACY_GL_EMULATION=1'],
-      message='You should see an image with gray at the top.')
+    self.btest('sdl_canvas_size.c', expected='4',
+      args=['-O2', '--minify', '0', '--shell-file', path_from_root('tests', 'sdl_canvas_size.html')])
 
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
