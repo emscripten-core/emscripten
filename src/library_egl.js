@@ -269,12 +269,12 @@ var LibraryEGL = {
     var glesContextVersion = 1;
     for(;;) {
         var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
-        if (!param) break;
+        if (param == 0x3038 /*EGL_NONE*/) break;
         var value = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
         if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
           glesContextVersion = value;
         }
-        contextAttribs += 32;
+        contextAttribs += 8;
     }
     if (glesContextVersion != 2) {
 #if GL_ASSERTIONS
