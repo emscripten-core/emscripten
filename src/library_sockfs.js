@@ -510,17 +510,14 @@ mergeInto(LibraryManager.library, {
           sock.server = null;
         });
         sock.server.on('error', function(error) {
-          // For server error messages we try to use the message passed by the ws library
-          // but ENOTFOUND is node.js specific so we map it to EHOSTUNREACH. That's
-          // not *really* the correct error as ENOTFOUND is a getaddrinfo error but
-          // the gai_errno value would look even weirder here. This error shouldn't
+          // Although the ws library may pass errors that may be more descriptive than
+          // ECONNREFUSED they are not necessarily the expected error code e.g. 
+          // ENOTFOUND on getaddrinfo seems to be node.js specific, so using EHOSTUNREACH
+          // is still probably the most useful thing to do. This error shouldn't
           // occur in a well written app as errors should get trapped in the compiled
           // app's own getaddrinfo call.
-          error.errno = (error.errno === 'ENOTFOUND') ? 'EHOSTUNREACH' : error.errno;
-          var errno = ERRNO_CODES[error.errno];
-          var msg = error.errno + ': ' + ERRNO_MESSAGES[errno];
-          sock.error = errno; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-          Module['websocket'].emit('error', [sock.stream.fd, errno, msg]);
+          sock.error = ERRNO_CODES.EHOSTUNREACH; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+          Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
           // don't throw
         });
       },
