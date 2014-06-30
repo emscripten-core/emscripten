@@ -1562,7 +1562,10 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_STREAM_MAX') }}}: return 16;
       case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
       case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
-      case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: return 1;
+      case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: {
+        if (typeof navigator === 'object') return navigator['hardwareConcurrency'] || 1;
+        return 1;
+      }
     }
     ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
