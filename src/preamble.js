@@ -1306,6 +1306,11 @@ function addRunDependency(id) {
     if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(function() {
+        if (ABORT) {
+          clearInterval(runDependencyWatcher);
+          runDependencyWatcher = null;
+          return;
+        }
         var shown = false;
         for (var dep in runDependencyTracking) {
           if (!shown) {
