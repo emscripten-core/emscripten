@@ -1724,6 +1724,47 @@ void *getBindBuffer() {
     # otherwise, we just overwrite
     self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
+  def test_mem_init_ccall(self):
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
+      function doCcall() {
+        ccall('note', 'string', ['number'], [2]);
+      }
+      var wrapped = cwrap('note', 'string', ['number']); // returns a string to suppress cwrap optimization
+      function doCwrapCall() {
+        var str = wrapped(3);
+        Module.print('got ' + str);
+        assert(str === 'silly-string');
+      }
+
+      var ok = true;
+      try {
+        doCcall();
+        ok = false; // should fail and not reach here, runtime is not ready yet so ccall will abort
+      } catch(e) {
+        Module.print('expected fail 1');
+        ABORT = false; // hackish
+      }
+      assert(ok);
+
+      ok = true;
+      try {
+        doCwrapCall();
+        ok = false; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
+      } catch(e) {
+        Module.print('expected fail 2');
+        ABORT = false; // hackish
+      }
+      assert(ok);
+
+      function myJSCallback() {
+        // called from main, this is an ok time
+        doCcall();
+        doCwrapCall();
+      }
+    ''')
+
+    self.btest('mem_init.cpp', expected='3', args=['--post-js', 'post.js', '--memory-init-file', '1'])
+
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
     self.btest('worker_api_main.cpp', expected='566')

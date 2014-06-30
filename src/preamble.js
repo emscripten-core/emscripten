@@ -383,6 +383,9 @@ var cwrap, ccall;
   //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
   // @return           The return value, as a native JS value (as in returnType)
   ccall = function ccallFunc(ident, returnType, argTypes, args) {
+#if ASSERTIONS
+    assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+#endif
     var func = getCFunc(ident);
     var cArgs = [];
 #if ASSERTIONS
@@ -438,6 +441,9 @@ var cwrap, ccall;
     // Creation of the arguments list (["$1","$2",...,"$nargs"])
     var argNames = argTypes.map(function(x,i){return '$'+i});
     var funcstr = "(function(" + argNames.join(',') + ") {";
+#if ASSERTIONS
+    funcstr += "assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');\n";
+#endif
     var nargs = argTypes.length;
     if (!numericArgs) {
       // Generate the code needed to convert the arguments from javascript
