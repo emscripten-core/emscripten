@@ -778,13 +778,18 @@ var LibrarySDL = {
         // to automatically query for events, query for joystick events.
         SDL.queryJoysticks();
       }
-      if (SDL.events.length === 0) return 0;
       if (ptr) {
-        SDL.makeCEvent(SDL.events.shift(), ptr);
+        while (SDL.events.length > 0) {
+          if (SDL.makeCEvent(SDL.events.shift(), ptr) !== false) return 1;
+        }
+        return 0;
+      } else {
+        // XXX: somewhat risky in that we do not check if the event is real or not (makeCEvent returns false) if no pointer supplied
+        return SDL.events.length > 0;
       }
-      return 1;
     },
 
+    // returns false if the event was determined to be irrelevant
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
@@ -873,7 +878,7 @@ var LibrarySDL = {
           var dx = x - lx;
           var dy = y - ly;
           if (touch['deviceID'] === undefined) touch.deviceID = SDL.TOUCH_DEFAULT_ID;
-          if (dx === 0 && dy === 0 && event.type === 'touchmove') return; // don't send these if nothing happened
+          if (dx === 0 && dy === 0 && event.type === 'touchmove') return false; // don't send these if nothing happened
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.timestamp, '_SDL_GetTicks()', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.touchId, 'touch.deviceID', 'i64') }}};
@@ -1779,9 +1784,12 @@ var LibrarySDL = {
           var event = SDL.events[index];
           var type = SDL.DOMEventToSDLEvent[event.type];
           if (from <= type && type <= to) {
-            SDL.makeCEvent(event, events);
-            SDL.events.splice(index, 1);
-            retrievedEventCount++;
+            if (SDL.makeCEvent(event, events) === false) {
+              index++;
+            } else {
+              SDL.events.splice(index, 1);
+              retrievedEventCount++;
+            }
           } else {
             index++;
           }
