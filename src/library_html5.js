@@ -1272,15 +1272,7 @@ var LibraryJSEvents = {
     if (navigator.getGamepads) {
       return navigator.getGamepads().length;
     } else if (navigator.webkitGetGamepads) {
-      var gamepads = navigator.webkitGetGamepads();
-
-      for (var i = 0; i < gamepads.length; i++) {
-        if (typeof gamepads[i] === 'undefined') {
-          return i;
-        }
-      }
-
-      return gamepads.length;
+      return navigator.webkitGetGamepads().length;
     }
   },
   
@@ -1292,8 +1284,11 @@ var LibraryJSEvents = {
     } else if (navigator.webkitGetGamepads) {
       gamepads = navigator.webkitGetGamepads();
     }
-    if (index < 0 || index >= gamepads.length || typeof gamepads[index] === 'undefined') {
+    if (index < 0 || index >= gamepads.length) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    }
+    if (typeof gamepads[index] === 'undefined') {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
     }
     JSEvents.fillGamepadEventData(gamepadState, gamepads[index]);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
