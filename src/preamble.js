@@ -1131,6 +1131,7 @@ function exitRuntime() {
   }
 #endif
   callRuntimeCallbacks(__ATEXIT__);
+  runtimeInitialized = false;
 }
 
 function postRun() {
