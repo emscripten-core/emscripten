@@ -224,8 +224,8 @@ document.createElement = function document_createElement(what) {
       canvas.style = new PropertyBag();
       canvas.exitPointerLock = function(){};
 
-      canvas.width_ = 400; // TODO: get the screen canvas size before we start up, use that
-      canvas.height_ = 400;
+      canvas.width_ = canvas.width_ || 0;
+      canvas.height_ = canvas.height_ || 0;
       Object.defineProperty(canvas, 'width', {
         set: function(value) {
           canvas.width_ = value;
@@ -257,8 +257,7 @@ document.createElement = function document_createElement(what) {
 
 document.getElementById = function(id) {
   if (id === 'canvas' || id === 'application-canvas') {
-    if (Module.canvas) return Module.canvas;
-    return Module.canvas = document.createElement('canvas');
+    return Module.canvas;
   }
   throw 'document.getElementById failed on ' + id;
 };
@@ -316,6 +315,11 @@ Module['postMainLoop'] = function() {
   commandBuffer = [];
 };
 
+// Wait to start running until we receive some info from the client
+
+addRunDependency('gl-prefetch');
+addRunDependency('worker-init');
+
 // buffer messages until the program starts to run
 
 var messageBuffer = null;
@@ -333,12 +337,13 @@ function messageResender() {
 }
 
 onmessage = function onmessage(message) {
-  if (!calledMain) {
+  if (!calledMain && !message.data.preMain) {
     if (!messageBuffer) {
       messageBuffer = [];
       setTimeout(messageResender, 100);
     }
     messageBuffer.push(message);
+    return;
   }
   //dump('worker got ' + JSON.stringify(message.data) + '\n');
   switch (message.data.target) {
@@ -382,6 +387,13 @@ onmessage = function onmessage(message) {
           break;
         }
       }
+      break;
+    }
+    case 'worker-init': {
+      Module.canvas = document.createElement('canvas');
+      Module.canvas.width_ = message.data.width;
+      Module.canvas.height_ = message.data.height;
+      removeRunDependency('worker-init');
       break;
     }
     default: throw 'wha? ' + message.data.target;

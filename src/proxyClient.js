@@ -18,8 +18,22 @@ function FPSTracker(text) {
       }
     }
     last = now;
-  }
+  };
 }
+
+/*
+function GenericTracker(text) {
+  var mean = 0;
+  var counter = 0;
+  this.tick = function(value) {
+    mean = 0.99*mean + 0.01*value;
+    if (counter++ === 60) {
+      counter = 0;
+      dump(text + ': ' + (mean).toFixed(2) + '\n');
+    }
+  };
+}
+*/
 
 // render
 
@@ -65,7 +79,11 @@ var frameId = 0;
 
 var worker = new Worker('{{{ filename }}}.js');
 
-WebGLClient.prefetch(); // XXX not guaranteed to be before worker main()
+WebGLClient.prefetch();
+
+setTimeout(function() {
+  worker.postMessage({ target: 'worker-init', width: Module.canvas.width, height: Module.canvas.height, preMain: true });
+}, 0); // delay til next frame, to make sure html is ready
 
 var workerResponded = false;
 
@@ -142,10 +160,10 @@ worker.onmessage = function worker_onmessage(event) {
         var ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
         var imageData = ctx.getImageData(0, 0, img.width, img.height);
-        worker.postMessage({ target: 'Image', method: 'onload', id: data.id, width: img.width, height: img.height, data: imageData.data });
+        worker.postMessage({ target: 'Image', method: 'onload', id: data.id, width: img.width, height: img.height, data: imageData.data, preMain: true });
       };
       img.onerror = function() {
-        worker.postMessage({ target: 'Image', method: 'onerror', id: data.id });
+        worker.postMessage({ target: 'Image', method: 'onerror', id: data.id, preMain: true });
       };
       img.src = data.src;
       break;

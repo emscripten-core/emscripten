@@ -479,6 +479,7 @@ function WebGLWorker() {
         WebGLWorker.prototype.prefetchedParameters = msg.parameters;
         WebGLWorker.prototype.prefetchedExtensions = msg.extensions;
         WebGLWorker.prototype.prefetchedPrecisions = msg.precisions;
+        removeRunDependency('gl-prefetch');
         break;
       }
       default: throw 'weird gl onmessage ' + JSON.stringify(msg);
