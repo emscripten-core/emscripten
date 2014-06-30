@@ -317,16 +317,6 @@ var LibraryEmVal = {
     return caller(handle, methodName, __emval_allocateDestructors(destructorsRef), args);
   },
 
-  _emval_has_function__deps: ['$getStringOrSymbol', '$requireHandle', '$requireRegisteredType'],
-  _emval_has_function: function(handle, name, classType) {
-    handle = requireHandle(handle);
-    name = getStringOrSymbol(name);
-    classType = requireRegisteredType(classType, 'class wrapper filter');
-
-    var filter = classType.registeredClass.instancePrototype[name];
-    return (handle[name] instanceof Function) && (filter === undefined || handle[name] !== filter);
-  },
-
   _emval_typeof__deps: ['_emval_register', '$requireHandle'],
   _emval_typeof: function(handle) {
     handle = requireHandle(handle);
