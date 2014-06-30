@@ -1704,10 +1704,25 @@ void *getBindBuffer() {
       };
     ''')
     open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
+      var assert = function(check, text) {
+        if (!check) {
+          Module.printErr('failed assert ' + text);
+          setTimeout(function() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'http://localhost:8888/report_result?9');
+            xhr.send();
+            window.close();
+          }, 1000);
+          abort(text);
+        }
+      }
       Module._note(4); // this happens too early! and is overwritten when the mem init arrives
     ''')
 
-    self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
+    # with assertions, we notice when memory was written to too early
+    self.btest('mem_init.cpp', expected='9', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
+    # otherwise, we just overwrite
+    self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()

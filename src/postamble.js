@@ -13,6 +13,11 @@ if (memoryInitializer) {
     addRunDependency('memory initializer');
     Browser.asyncLoad(memoryInitializer, function(data) {
 #if USE_TYPED_ARRAYS == 2
+#if ASSERTIONS
+      for (var i = 0; i < data.length; i++) {
+        assert(HEAPU8[STATIC_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+      }
+#endif
       HEAPU8.set(data, STATIC_BASE);
 #else
       allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
