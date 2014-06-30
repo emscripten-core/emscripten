@@ -42,6 +42,19 @@ if (NOT CMAKE_C_SIZEOF_DATA_PTR)
 	message(FATAL_ERROR "CMAKE_C_SIZEOF_DATA_PTR was not defined!")
 endif()
 
+# with NO_DEFAULT_PATH + ONLY_CMAKE_FIND_ROOT_PATH, we ensure that
+# only ${CMAKE_FIND_ROOT_PATH}/include will be searched for
+# emscripten/emscripten.h
+find_path(EMSCRIPTEN_INCLUDE_DIR emscripten/emscripten.h
+	PATHS /include
+	NO_DEFAULT_PATH
+	ONLY_CMAKE_FIND_ROOT_PATH
+	)
+
+if(NOT EMSCRIPTEN_INCLUDE_DIR)
+	message(FATAL_ERROR "emscripten.h could not be found! Is CMAKE_FIND_ROOT_PATH='${CMAKE_FIND_ROOT_PATH}' correct?")
+endif()
+
 SET(CMAKE_EXECUTABLE_SUFFIX ".html")
 
 add_executable(hello_world_gles ${sourceFiles})
