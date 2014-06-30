@@ -1127,7 +1127,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('sdl_pumpevents.c', expected='7', args=['--pre-js', 'pre.js'])
 
   def test_sdl_canvas_size(self):
-    self.btest('sdl_canvas_size.c', expected='4',
+    self.btest('sdl_canvas_size.c', expected='1',
       args=['-O2', '--minify', '0', '--shell-file', path_from_root('tests', 'sdl_canvas_size.html')])
 
   def test_sdl_gl_read(self):

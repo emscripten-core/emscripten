@@ -22,7 +22,6 @@ int main(int argc, char *argv[])
 
     // Test 1: Check that initializing video mode with size (0,0) will use the size from the <canvas> element.
     screen = SDL_SetVideoMode( 0, 0, 16, SDL_OPENGL ); // *changed*
-    result += 1;
 
     // Test 2: Check that getting current canvas size works.
     int w, h, fs;
@@ -30,7 +29,6 @@ int main(int argc, char *argv[])
     printf("w:%d,h:%d\n", w,h);
     assert(w == 700);
     assert(h == 200);
-    result += 1;
 
     // Test 3: Check that resizing the canvas works as well.
     emscripten_set_canvas_size(640, 480);
@@ -38,7 +36,6 @@ int main(int argc, char *argv[])
     printf("w:%d,h:%d\n", w,h);
     assert(w == 640);
     assert(h == 480);
-    result += 1;
 
     SDL_Quit();
     REPORT_RESULT();
