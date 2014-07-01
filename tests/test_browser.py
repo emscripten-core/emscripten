@@ -1706,14 +1706,12 @@ void *getBindBuffer() {
     open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
       var assert = function(check, text) {
         if (!check) {
-          Module.printErr('failed assert ' + text);
-          setTimeout(function() {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:8888/report_result?9');
-            xhr.send();
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', 'http://localhost:8888/report_result?9');
+          xhr.onload = function() {
             window.close();
-          }, 1000);
-          abort(text);
+          };
+          xhr.send();
         }
       }
       Module._note(4); // this happens too early! and is overwritten when the mem init arrives
