@@ -1849,6 +1849,35 @@ var LibrarySDL = {
     return r&0xff|(g&0xff)<<8|(b&0xff)<<16|(a&0xff)<<24;
   },
 
+  SDL_GetRGB: function(pixel, fmt, r, g, b) {
+    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    if (r) {
+      {{{ makeSetValue('r', '0', 'pixel&0xff', 'i8') }}};
+    }
+    if (g) {
+      {{{ makeSetValue('g', '0', '(pixel>>8)&0xff', 'i8') }}};
+    }
+    if (b) {
+      {{{ makeSetValue('b', '0', '(pixel>>16)&0xff', 'i8') }}};
+    }
+  },
+
+  SDL_GetRGBA: function(pixel, fmt, r, g, b, a) {
+    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    if (r) {
+      {{{ makeSetValue('r', '0', 'pixel&0xff', 'i8') }}};
+    }
+    if (g) {
+      {{{ makeSetValue('g', '0', '(pixel>>8)&0xff', 'i8') }}};
+    }
+    if (b) {
+      {{{ makeSetValue('b', '0', '(pixel>>16)&0xff', 'i8') }}};
+    }
+    if (a) {
+      {{{ makeSetValue('a', '0', '(pixel>>24)&0xff', 'i8') }}};
+    }
+  },
+
   SDL_GetAppState: function() {
     var state = 0;
 
@@ -2976,6 +3005,8 @@ var LibrarySDL = {
   SDL_ClearError: function() {},
 
   SDL_getenv: 'getenv',
+
+  SDL_putenv: 'putenv',
 
   // TODO
 
