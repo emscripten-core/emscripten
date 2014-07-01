@@ -18,7 +18,7 @@
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
 /*global requireRegisteredType, unregisterInheritedInstance, registerInheritedInstance, PureVirtualError, throwUnboundTypeError*/
 /*global assert, validateThis, downcastPointer, registeredPointers, RegisteredClass, getInheritedInstance, ClassHandle_isAliasOf, ClassHandle_clone, ClassHandle_isDeleted, ClassHandle_deleteLater*/
-/*global throwInstanceAlreadyDeleted, runDestructor, shallowCopy*/
+/*global throwInstanceAlreadyDeleted, runDestructor, shallowCopyInternalPointer*/
 /*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
 
 var LibraryEmbind = {
@@ -1482,7 +1482,7 @@ var LibraryEmbind = {
     throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
   },
 
-  $ClassHandle_clone__deps: ['$shallowCopy', '$throwInstanceAlreadyDeleted'],
+  $ClassHandle_clone__deps: ['$shallowCopyInternalPointer', '$throwInstanceAlreadyDeleted'],
   $ClassHandle_clone: function() {
     if (!this.$$.ptr) {
         throwInstanceAlreadyDeleted(this);
@@ -1494,7 +1494,7 @@ var LibraryEmbind = {
     } else {
         var clone = Object.create(Object.getPrototypeOf(this), {
             $$: {
-                value: shallowCopy(this.$$),
+                value: shallowCopyInternalPointer(this.$$),
             }
         });
 
@@ -1597,14 +1597,16 @@ var LibraryEmbind = {
     this.pureVirtualFunctions = [];
   },
 
-  $shallowCopy: function(o) {
-    var rv = {};
-    for (var k in o) {
-        if (Object.prototype.hasOwnProperty.call(o, k)) {
-            rv[k] = o[k];
-        }
-    }
-    return rv;
+  $shallowCopyInternalPointer: function(o) {
+    return {
+        count: o.count,
+        deleteScheduled: o.deleteScheduled,
+        preservePointerOnDelete: o.preservePointerOnDelete,
+        ptr: o.ptr,
+        ptrType: o.ptrType,
+        smartPtr: o.smartPtr,
+        smartPtrType: o.smartPtrType,
+    };
   },
 
   _embind_register_class__deps: [
