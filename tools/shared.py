@@ -423,6 +423,7 @@ def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
 
 def check_sanity(force=False):
+  return
   try:
     reason = None
     if not CONFIG_FILE:
