@@ -372,14 +372,26 @@ def build_libcxx(env):
     env['CCFLAGS'] = filter(lambda e: e not in ('-Werror', '-Wall'), env['CCFLAGS'])
     env['CCFLAGS'] = env['CCFLAGS'] + ['-isystem${EMSCRIPTEN_HOME}/system/lib/libc/musl/src/internal/']
 
-    objs = [
+    LIBC_OBJS = [
         env.Object(
             '${EMSCRIPTEN_TEMP_DIR}/libcxx_objects/' + os.path.splitext(o)[0] + '.bc',
             '${EMSCRIPTEN_HOME}/' + o)
-        for o in LIBC_SOURCES + LIBCXXABI_SOURCES + LIBCXX_SOURCES]
-    env.Depends(objs, get_emscripten_version_file(env))
+        for o in LIBC_SOURCES]
 
-    libcxx = env.Library('${EMSCRIPTEN_TEMP_DIR}/internal_libs/libcxx', objs)
+    # command line too long on windows
+    LIBC = [
+        env.Library('${EMSCRIPTEN_TEMP_DIR}/internal_libs/libc1', LIBC_OBJS[::2]),
+        env.Library('${EMSCRIPTEN_TEMP_DIR}/internal_libs/libc2', LIBC_OBJS[1::2]) ]
+
+    LIBCXX_OBJS = [
+        env.Object(
+            '${EMSCRIPTEN_TEMP_DIR}/libcxx_objects/' + os.path.splitext(o)[0] + '.bc',
+            '${EMSCRIPTEN_HOME}/' + o)
+        for o in LIBCXXABI_SOURCES + LIBCXX_SOURCES]
+
+    env.Depends(LIBC_OBJS + LIBCXX_OBJS, get_emscripten_version_file(env))
+
+    libcxx = env.Library('${EMSCRIPTEN_TEMP_DIR}/internal_libs/libcxx', LIBCXX_OBJS + LIBC)
     libcxx_cache[emscripten_temp_dir] = libcxx
     return libcxx
 
