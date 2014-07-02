@@ -1887,6 +1887,14 @@ def check_execute(cmd, *args, **kw):
     logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
     raise
 
+def check_call(cmd, *args, **kw):
+  try:
+    subprocess.check_call(cmd, *args, **kw)
+    logging.debug("Successfuly executed %s" % " ".join(cmd))
+  except subprocess.CalledProcessError as e:
+    logging.error("'%s' failed" % " ".join(cmd))
+    raise
+
 def suffix(name):
   parts = name.split('.')
   if len(parts) > 1:
