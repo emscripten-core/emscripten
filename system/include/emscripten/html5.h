@@ -269,7 +269,7 @@ typedef struct EmscriptenUiEvent {
  * Registers a callback function for receiving DOM element resize and scroll events.
  * See https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize
  */
-extern EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_resize_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData));
 extern EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData));
 
 /*

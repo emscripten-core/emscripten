@@ -955,8 +955,8 @@ var LibraryJSEvents = {
     }
   },
 
-  emscripten_set_resize_callback: function(target, userData, useCapture, callbackfunc) {
-    JSEvents.registerUiEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_RESIZE') }}}, "resize");
+  emscripten_set_resize_callback: function(userData, useCapture, callbackfunc) {
+    JSEvents.registerUiEventCallback("#window", userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_RESIZE') }}}, "resize");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
