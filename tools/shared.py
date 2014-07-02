@@ -216,9 +216,6 @@ else:
     config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
     node = find_executable('node') or find_executable('nodejs') or 'node'
     config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
-    python = find_executable('python2') or find_executable('python') or \
-        sys.executable or 'python'
-    config_file = config_file.replace('\'{{{ PYTHON }}}\'', repr(python))
     if WINDOWS:
       tempdir = os.environ.get('TEMP') or os.environ.get('TMP') or 'c:\\temp'
     else:
@@ -238,7 +235,6 @@ A settings file has been copied to %s, at absolute path: %s
 It contains our best guesses for the important paths, which are:
 
   LLVM_ROOT       = %s
-  PYTHON          = %s
   NODE_JS         = %s
   EMSCRIPTEN_ROOT = %s
 
@@ -246,7 +242,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (EM_CONFIG, CONFIG_FILE, llvm_root, python, node, __rootpath__)
+''' % (EM_CONFIG, CONFIG_FILE, llvm_root, node, __rootpath__)
     sys.exit(0)
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
@@ -640,8 +636,8 @@ except:
 try:
   PYTHON
 except:
-  logging.debug('PYTHON not defined in ~/.emscripten, using "python"')
-  PYTHON = 'python'
+  logging.debug('PYTHON not defined in ~/.emscripten, using "%s"' % (sys.executable,))
+  PYTHON = sys.executable
 
 try:
   JAVA
