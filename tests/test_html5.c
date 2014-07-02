@@ -317,7 +317,7 @@ int main()
   ret = emscripten_set_wheel_callback(0, 0, 1, wheel_callback);
   TEST_RESULT(emscripten_set_wheel_callback);
 
-  ret = emscripten_set_resize_callback(0, 0, 1, uievent_callback);
+  ret = emscripten_set_resize_callback(0, 1, uievent_callback);
   TEST_RESULT(emscripten_set_resize_callback);
   ret = emscripten_set_scroll_callback(0, 0, 1, uievent_callback);
   TEST_RESULT(emscripten_set_scroll_callback);
