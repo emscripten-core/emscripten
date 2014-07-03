@@ -1740,6 +1740,7 @@ void *getBindBuffer() {
         ok = false; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
         Module.print('expected fail 1');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok);
@@ -1750,6 +1751,18 @@ void *getBindBuffer() {
         ok = false; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
         Module.print('expected fail 2');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        ABORT = false; // hackish
+      }
+      assert(ok);
+
+      ok = true;
+      try {
+        Module['_note']();
+        ok = false; // should fail and not reach here, runtime is not ready yet so any code execution
+      } catch(e) {
+        Module.print('expected fail 3');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok);
