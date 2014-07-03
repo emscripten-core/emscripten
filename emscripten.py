@@ -1147,7 +1147,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         # some support code like malloc TODO: verify that malloc is actually safe to use that way
         receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return real_''' + s + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset']])
