@@ -208,7 +208,6 @@ Options that are modified or new in %s include:
         (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
         (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
         (['-O2', '-profiling'], lambda generated: '// The Module object' in generated or os.environ.get('EMCC_FAST_COMPILER') == '0', 'with -profiling, yes comments in shell code (in fastcomp)'),
-
       ]:
         print params, text
         self.clear()
@@ -277,6 +276,12 @@ f.close()
       trans_file.close()
       output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', '%s t.py' % (PYTHON)], stdout=PIPE, stderr=PIPE).communicate()
       assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
+
+      for opts in [0, 1, 2, 3]:
+        print 'mem init in', opts
+        self.clear()
+        output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+        assert os.path.exists('a.out.js.mem') == (opts >= 2), 'mem file should exist in -O2+'
 
     # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
     # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
