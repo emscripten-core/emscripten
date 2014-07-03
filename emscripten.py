@@ -930,7 +930,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
       funcs_js += ['\n// EMSCRIPTEN_END_FUNCS\n']
 
-      simple = os.environ.get('EMCC_SIMPLE_ASM')
       class Counter:
         i = 0
         j = 0
@@ -1113,12 +1112,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
       exported_implemented_functions.append('runPostSets')
       exports = []
-      if not simple:
-        for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
-          exports.append("%s: %s" % (export, export))
-        exports = '{ ' + ', '.join(exports) + ' }'
-      else:
-        exports = '_main'
+      for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
+        exports.append("%s: %s" % (export, export))
+      exports = '{ ' + ', '.join(exports) + ' }'
       # calculate globals
       try:
         del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -1145,10 +1141,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
       sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
       # received
-      if not simple:
-        receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
-      else:
-        receiving = 'var _main = Module["_main"] = asm;'
+      receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
 
       # finalize
 
