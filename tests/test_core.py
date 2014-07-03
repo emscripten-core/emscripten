@@ -843,6 +843,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_math_lgamma(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')
+      if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('fastcomp needed for proper handling of _signgam extern')
 
       test_path = path_from_root('tests', 'math', 'lgamma')
       src, output = (test_path + s for s in ('.in', '.out'))
