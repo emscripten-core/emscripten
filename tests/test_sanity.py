@@ -452,14 +452,14 @@ fi
               assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size/2, 'Dead code elimination must remove most of libc++'
             # should only have metadata in -O0, not 1 and 2
             if i > 0:
+              ll = None
               for ll_name in ll_names:
-                ll = None
-                try:
-                  ll = open(ll_name).read()
+                if os.path.exists(ll_name):
+                  check_call([LLVM_DIS, ll_name, '-o', ll_name + '.ll'])
+                  ll = open(ll_name + '.ll').read()
                   break
-                except:
-                  pass
               assert ll
+              print 'metas:', ll.count('\n!')
               assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']
