@@ -28,6 +28,8 @@
          T bzero
          T bsearch
          T btowc
+         T clock
+         T difftime
          T ecvt
          T err
          T errx
@@ -39,6 +41,8 @@
          T getopt
          T getopt_long
          T getopt_long_only
+         T gmtime
+         W gmtime_r
          T iconv
          T iconv_close
          T iconv_open

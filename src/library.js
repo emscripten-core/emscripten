@@ -4962,22 +4962,8 @@ LibraryManager.library = {
   // time.h
   // ==========================================================================
 
-  clock: function() {
-    if (_clock.start === undefined) _clock.start = Date.now();
-    return Math.floor((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}}/1000));
-  },
-
-  time: function(ptr) {
-    var ret = Math.floor(Date.now()/1000);
-    if (ptr) {
-      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
-    }
-    return ret;
-  },
-
-  difftime: function(time1, time0) {
-    return time1 - time0;
-  },
+  __emscripten_date_start: function() { if (___emscripten_date_start.start === undefined) ___emscripten_date_start.start = Date.now(); return ___emscripten_date_start.start; },
+  __emscripten_date_now: function() { return Date.now(); },
 
   // Statically allocated time struct.
   __tm_current: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
@@ -5004,36 +4990,6 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['malloc', '__tm_current', 'gmtime_r'],
-  gmtime: function(time) {
-    return _gmtime_r(time, ___tm_current);
-  },
-
-  gmtime_r__deps: ['__tm_timezone'],
-  gmtime_r: function(time, tmPtr) {
-    var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getUTCDate()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
-    var start = new Date(date); // define date using UTC, start from Jan 01 00:00:00 UTC
-    start.setUTCDate(1);
-    start.setUTCMonth(0);
-    start.setUTCHours(0);
-    start.setUTCMinutes(0);
-    start.setUTCSeconds(0);
-    start.setUTCMilliseconds(0);
-    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
-
-    return tmPtr;
-  },
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
