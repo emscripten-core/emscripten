@@ -3,6 +3,7 @@ mergeInto(LibraryManager.library, {
   $IDBFS: {
     dbs: {},
     indexedDB: function() {
+      if (typeof indexedDB !== 'undefined') return indexedDB;
       return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
     },
     DB_VERSION: 21,
