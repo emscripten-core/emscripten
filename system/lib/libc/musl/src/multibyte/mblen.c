@@ -5,11 +5,6 @@
  */
 
 #include <stdlib.h>
-#include <inttypes.h>
-#include <wchar.h>
-#include <errno.h>
-
-#include "internal.h"
 
 int mblen(const char *s, size_t n)
 {

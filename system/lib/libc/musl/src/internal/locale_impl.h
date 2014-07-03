@@ -1,5 +1,5 @@
 #include <locale.h>
 
-struct __locale {
+struct __locale_struct {
 	int dummy;
 };

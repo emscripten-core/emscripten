@@ -131,9 +131,11 @@ int *__h_errno_location(void);
 #define TRY_AGAIN      2
 #define NO_RECOVERY    3
 #define NO_DATA        4
+#define NO_ADDRESS     NO_DATA
 #endif
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+void herror(const char *);
 const char *hstrerror(int);
 int gethostbyname_r(const char *, struct hostent *, char *, size_t, struct hostent **, int *);
 int gethostbyname2_r(const char *, int, struct hostent *, char *, size_t, struct hostent **, int *);

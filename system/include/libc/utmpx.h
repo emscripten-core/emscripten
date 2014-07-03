@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <features.h>
+
 #define __NEED_pid_t
 #define __NEED_time_t
 #define __NEED_suseconds_t
@@ -12,19 +14,17 @@ extern "C" {
 
 #include <bits/alltypes.h>
 
-#define UT_LINESIZE 32
-
 struct utmpx
 {
 	short ut_type;
 	pid_t ut_pid;
-	char ut_line[UT_LINESIZE];
+	char ut_line[32];
 	char ut_id[4];
 	char ut_user[32];
 	char ut_host[256];
 	struct {
-		short e_termination;
-		short e_exit;
+		short __e_termination;
+		short __e_exit;
 	} ut_exit;
 	long ut_session;
 	struct timeval ut_tv;
@@ -39,7 +39,11 @@ struct utmpx *getutxline(const struct utmpx *);
 struct utmpx *pututxline(const struct utmpx *);
 void          setutxent(void);
 
+#if defined(_BSD_SOURCE) | defined(_GNU_SOURCE)
+#define e_exit __e_exit
+#define e_termination __e_termination
 void updwtmpx(const char *, const struct utmpx *);
+#endif
 
 #define EMPTY           0
 #define RUN_LVL         1

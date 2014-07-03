@@ -29,7 +29,7 @@ static size_t sw_write(FILE *f, const unsigned char *s, size_t l)
 
 int vswprintf(wchar_t *restrict s, size_t n, const wchar_t *restrict fmt, va_list ap)
 {
-#if 0 // XXX EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 	int r;
 	FILE f;
 	unsigned char buf[256];

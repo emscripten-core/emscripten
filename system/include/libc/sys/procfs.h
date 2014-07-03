@@ -40,7 +40,7 @@ struct elf_prpsinfo
 	char pr_zomb;
 	char pr_nice;
 	unsigned long int pr_flag;
-#if __WORDSIZE == 32
+#if UINTPTR_MAX == 0xffffffff
 	unsigned short int pr_uid;
 	unsigned short int pr_gid;
 #else

@@ -4,11 +4,8 @@
  * unnecessary.
  */
 
-#include <stdlib.h>
-#include <inttypes.h>
 #include <wchar.h>
 #include <errno.h>
-
 #include "internal.h"
 
 size_t mbrtowc(wchar_t *restrict wc, const char *restrict src, size_t n, mbstate_t *restrict st)
