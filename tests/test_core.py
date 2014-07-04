@@ -6815,6 +6815,31 @@ def process(filename):
       assert "low = 5678" in out
       assert "high = 1234" in out
 
+  def test_asyncify(self):
+    if not Settings.ASM_JS: 
+      return self.skip('asyncify requires asm.js')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': 
+      return self.skip('asyncify requires fastcomp')
+
+    src = r'''
+#include <stdio.h>
+#include <emscripten.h>
+void f(void *p) {
+  *(int*)p = 99;
+  printf("!");
+}
+int main() {
+  int i = 0;
+  printf("Hello");
+  emscripten_async_call(f, &i, 1);
+  printf("World");
+  emscripten_sleep(100);
+  printf("%d\n", i);
+}
+'''
+    Settings.ASYNCIFY = 1;
+    self.do_run(src, 'HelloWorld!99');
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):

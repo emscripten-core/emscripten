@@ -292,6 +292,21 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
 var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
                                         // DISABLE_EXCEPTION_CATCHING = 2 is set
 
+// For more explanations of this option, please visit
+// https://github.com/kripken/emscripten/wiki/Asyncify
+var ASYNCIFY = 0; // Whether to enable asyncify transformation
+                  // This allows to inject some async functions to the C code that appear to be sync
+                  // e.g. emscripten_sleep
+var ASYNCIFY_FUNCTIONS = ['emscripten_sleep']; // Functions that call any funcion in the list, directly or indirectly
+                                               // will be transfromed
+var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
+                          'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async 
+                          '__toread', // This whitelist is useful when a function is known to be sync
+                          '__uflow',  // currently this link contains some functions in libc
+                          '__fwritex', 
+                          'MUSL_vfprintf']; 
+                                                                                                    
+
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
                          // There is currently not much to do to handle overflows if they occur.

@@ -1076,6 +1076,14 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         basic_vars += ['___rand_seed']
 
       asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
+
+      # See if we need ASYNCIFY functions
+      # We might not need them even if ASYNCIFY is enabled
+      need_asyncify = '_emscripten_alloc_async_context' in exported_implemented_functions
+      if need_asyncify:
+        basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
+        asm_runtime_funcs += ['setAsync']
+
       # function tables
       function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
       function_tables_impls = []
@@ -1203,6 +1211,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     top = top|0;
     STACKTOP = top;
   }
+''' + ('''
+  function setAsync() {
+    ___async = 1;
+  }''' if need_asyncify else '') + '''
   function setThrew(threw, value) {
     threw = threw|0;
     value = value|0;

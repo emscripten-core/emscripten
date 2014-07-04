@@ -727,6 +727,16 @@ void emscripten_asm_const(const char *code);
 int emscripten_asm_const_int(const char *code, ...);
 double emscripten_asm_const_double(const char *code, ...);
 
+/*
+ * Sleep for `ms` milliseconds
+ * This function should only be used when ASYNCIFY is enabled
+ */
+#if __EMSCRIPTEN__
+void emscripten_sleep(unsigned int ms);
+#else
+#define emscripten_sleep SDL_Delay
+#endif
+
 #ifdef __cplusplus
 }
 #endif
