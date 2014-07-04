@@ -461,7 +461,6 @@ var LibraryManager = {
           lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
           lib[x + '__deps'].push(target);
-          continue;
         }
       }
     }
