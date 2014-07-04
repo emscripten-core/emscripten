@@ -288,6 +288,12 @@ var START_TIME = Date.now();
 // Runtime essentials
 //========================================
 
+// for async calls
+var __ASYNC__ = false; // if a true async function has been called
+var __ASYNC_RETVAL_ADDR__ = 0; // points to the location where we save & retrieve the return value of async functions
+var __ASYNC_CUR_FRAME__ = {}; // stores the raw stacktop and the callback functions
+var __ASYNC_FRAMES__ = []; // all pending stack frames for async function calls
+
 var __THREW__ = 0; // Used in checking for thrown exceptions.
 #if ASM_JS == 0
 var setjmpId = 1; // Used in setjmp/longjmp
