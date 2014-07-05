@@ -55,6 +55,7 @@
          T atol
          W bulk_free
          W calloc
+         T ffs
          W free
          T frexp
          T frexpf
