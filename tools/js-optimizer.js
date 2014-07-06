@@ -1033,6 +1033,8 @@ function optimizeShiftsInternal(ast, conservative) {
         } else if (type === 'assign' && node[2][0] === 'name' && vars[node[2][1]]) {
           vars[node[2][1]].defs++;
         }
+      }, function() {
+        stack.pop();
       });
       // First, break up elements inside a shift. This lets us see clearly what to do next.
       traverse(fun, function(node, type) {
@@ -1195,6 +1197,8 @@ function optimizeShiftsInternal(ast, conservative) {
           }
           return node;
         }
+      }, function() {
+        stack.pop();
       });
       cleanNotes();
       var stack = [];
@@ -1211,6 +1215,8 @@ function optimizeShiftsInternal(ast, conservative) {
             return ['name', name + '$s' + data.primaryShift];
           }
         }
+      }, function() {
+        stack.pop();
       });
       cleanNotes();
       var SIMPLE_SHIFTS = set('<<', '>>');
@@ -1349,6 +1355,8 @@ function optimizeShiftsInternal(ast, conservative) {
           }
           return ret;
         }
+      }, function() {
+        stack.pop();
       });
       // Note finished variables
       for (var name in vars) {
