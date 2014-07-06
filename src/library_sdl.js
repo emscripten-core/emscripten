@@ -1373,11 +1373,7 @@ var LibrarySDL = {
     return SDL.screen;
   },
 
-  SDL_QuitSubSystem: function(flags) {
-    Module.print('SDL_QuitSubSystem called (and ignored)');
-  },
-
-  SDL_Quit: function() {
+  SDL_AudioQuit: function() {
     for (var i = 0; i < SDL.numChannels; ++i) {
       if (SDL.channels[i].audio) {
         SDL.channels[i].audio.pause();
@@ -1386,6 +1382,19 @@ var LibrarySDL = {
     }
     if (SDL.music.audio) SDL.music.audio.pause();
     SDL.music.audio = undefined;
+  },
+
+  SDL_VideoQuit: function() {
+    Module.print('SDL_VideoQuit called (and ignored)');
+  },
+
+  SDL_QuitSubSystem: function(flags) {
+    Module.print('SDL_QuitSubSystem called (and ignored)');
+  },
+
+  SDL_Quit__deps: ['SDL_AudioQuit'],
+  SDL_Quit: function() {
+    _SDL_AudioQuit();
     Module.print('SDL_Quit called (and ignored)');
   },
 
