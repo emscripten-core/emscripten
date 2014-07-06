@@ -234,6 +234,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'tgammal.c'
        ]],
        ['misc', [
+        'ffs.c',
         'getopt.c',
         'getopt_long.c',
        ]],
