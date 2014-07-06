@@ -871,7 +871,7 @@
     },
     {
         "file": "SDL/SDL_pixels.h",
-        "defines": [],
+        "defines": ["SDL_PIXELFORMAT_RGBA8888"], 
         "structs": {
             "SDL_Palette": [
                 "ncolors", 
