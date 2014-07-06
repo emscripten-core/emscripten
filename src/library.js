@@ -3232,10 +3232,18 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
     if (name === 0) return 0;
     name = Pointer_stringify(name);
-    if (!ENV.hasOwnProperty(name)) return 0;
+
+    var property = null;
+    if (ENV.hasOwnProperty(name)) {
+      property = ENV[name];
+    } else if (typeof process === 'object' && process.env.hasOwnProperty(name)) {
+      property = process.env[name];
+    }
+
+    if (property == null) return 0;
 
     if (_getenv.ret) _free(_getenv.ret);
-    _getenv.ret = allocate(intArrayFromString(ENV[name]), 'i8', ALLOC_NORMAL);
+    _getenv.ret = allocate(intArrayFromString(property), 'i8', ALLOC_NORMAL);
     return _getenv.ret;
   },
   clearenv__deps: ['$ENV', '__buildEnvironment'],
