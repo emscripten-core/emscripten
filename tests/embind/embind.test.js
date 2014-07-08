@@ -1560,8 +1560,6 @@ module({
             };
 
             var impl = cm.AbstractClass.implement(new MyImplementation);
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal(expected, impl.optionalMethod(expected));
             assert.equal(expected, cm.callOptionalMethod(impl, expected));
             impl.delete();
         });
@@ -1569,8 +1567,6 @@ module({
         test("if not implemented then optional method runs default", function() {
             var impl = cm.AbstractClass.implement({});
             assert.equal("optionalfoo", impl.optionalMethod("foo"));
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
 
@@ -1739,8 +1735,6 @@ module({
             instance.delete();
             assert.equal("optionaljs_optional_123", result);
         });
-
-        // TODO: deriving from classes with constructors?
 
         test("instanceof", function() {
             var instance = new Empty;
