@@ -2915,3 +2915,18 @@ int main(int argc, char **argv) {
     Popen([PYTHON, EMCC, 'code.cpp']).communicate()
     self.assertContained('I am ' + self.get_dir().replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
 
+  def test_returncode(self):
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        return 123;
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    for engine in JS_ENGINES:
+      engine = listify(engine)
+      print engine
+      process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
+      output = process.communicate()
+      assert process.returncode == 123, process.returncode
+

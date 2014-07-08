@@ -166,16 +166,14 @@ function exit(status) {
   // exit the runtime
   exitRuntime();
 
-  // TODO We should handle this differently based on environment.
-  // In the browser, the best we can do is throw an exception
-  // to halt execution, but in node we could process.exit and
-  // I'd imagine SM shell would have something equivalent.
-  // This would let us set a proper exit status (which
-  // would be great for checking test exit statuses).
-  // https://github.com/kripken/emscripten/issues/1371
-
-  // throw an exception to halt the current execution
-  throw new ExitStatus(status);
+  if (ENVIRONMENT_IS_NODE) {
+    process.exit(status);
+  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
+    quit(status);
+  } else {
+    // no proper way to exit with a return code, throw an exception to halt the current execution
+    throw new ExitStatus(status);
+  }
 }
 Module['exit'] = Module.exit = exit;
 
