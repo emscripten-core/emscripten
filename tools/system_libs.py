@@ -1,6 +1,6 @@
 import os, json, logging
 import shared
-from subprocess import Popen
+from subprocess import Popen, CalledProcessError
 from tools.shared import check_call
 
 def calculate(temp_files, in_temp, stdout, stderr):
@@ -25,6 +25,12 @@ def calculate(temp_files, in_temp, stdout, stderr):
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
+  def call_process(cmd):
+    proc = Popen(cmd, stdout=stdout, stderr=stderr)
+    proc.communicate()
+    if proc.returncode != 0:
+      raise CalledProcessError(proc.returncode, cmd)
+
   def build_libc(lib_filename, files):
     o_s = []
     prev_cxx = os.environ.get('EMMAKEN_CXX')
@@ -32,7 +38,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
     musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      Popen([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts, stdout=stdout, stderr=stderr).communicate()
+      call_process([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts)
       o_s.append(o)
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     shared.Building.link(o_s, in_temp(lib_filename))
@@ -43,7 +49,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      Popen([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts, stdout=stdout, stderr=stderr).communicate()
+      call_process([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts)
       o_s.append(o)
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
