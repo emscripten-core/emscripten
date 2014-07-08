@@ -20,7 +20,9 @@ def build_version_file(env):
     EMSCRIPTEN_DEPENDENCIES = [
         env.Glob('${EMSCRIPTEN_HOME}/src/*.js'),
         env.Glob('${EMSCRIPTEN_HOME}/src/embind/*.js'),
+        env.Glob('${EMSCRIPTEN_HOME}/tools/*.js'),
         env.Glob('${EMSCRIPTEN_HOME}/tools/*.py'),
+        '${EMSCRIPTEN_HOME}/emcc',
         '${EMSCRIPTEN_HOME}/emscripten.py',
     ]
     if env.subst('$EMSCRIPTEN_SHELL'):
