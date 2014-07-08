@@ -1334,7 +1334,9 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
   # Compile the assembly to Javascript.
   if settings.get('RELOOP'):
     if not relooper:
-      relooper = cache.get_path('relooper.js')
+      relooper = settings.get('RELOOPER')
+      if not relooper:
+        relooper = cache.get_path('relooper.js')
     settings.setdefault('RELOOPER', relooper)
     if not os.path.exists(relooper):
       shared.Building.ensure_relooper(relooper)

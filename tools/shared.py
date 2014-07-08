@@ -1417,7 +1417,8 @@ class Building:
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
     # Run Emscripten
-    Settings.RELOOPER = Cache.get_path('relooper.js')
+    if not os.path.exists(Settings.RELOOPER):
+      Settings.RELOOPER = Cache.get_path('relooper.js')
     settings = Settings.serialize()
     args = settings + extra_args
     if WINDOWS:
