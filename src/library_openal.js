@@ -12,15 +12,28 @@ var LibraryOpenAL = {
     QUEUE_INTERVAL: 25,
     QUEUE_LOOKAHEAD: 100,
 
+    newSrcId: 0,
+
+    srcIdBySrc: function srcIdBySrc(src) {
+      var idx = 0;
+      for (var srcId in AL.currentContext.src) {
+        if (AL.currentContext.src[srcId] == src) {
+          idx = srcId;
+          break;
+        }
+      }
+      return idx;
+    },
+
     updateSources: function updateSources(context) {
-      for (var i = 0; i < context.src.length; i++) {
-        AL.updateSource(context.src[i]);
+      for (var srcId in context.src) {
+        AL.updateSource(context.src[srcId]);
       }
     },
 
     updateSource: function updateSource(src) {
 #if OPENAL_DEBUG
-      var idx = AL.currentContext.src.indexOf(src);
+      var idx = AL.srcIdBySrc(src);
 #endif
       if (src.state !== 0x1012 /* AL_PLAYING */) {
         return;
@@ -83,7 +96,7 @@ var LibraryOpenAL = {
 
     setSourceState: function setSourceState(src, state) {
 #if OPENAL_DEBUG
-      var idx = AL.currentContext.src.indexOf(src);
+      var idx = AL.srcIdBySrc(src);
 #endif
       if (state === 0x1012 /* AL_PLAYING */) {
         if (src.state !== 0x1013 /* AL_PAUSED */) {
@@ -224,7 +237,7 @@ var LibraryOpenAL = {
       var context = {
         ctx: ctx,
         err: 0,
-        src: [],
+        src: {},
         buf: [],
         interval: setInterval(function() { AL.updateSources(context); }, AL.QUEUE_INTERVAL),
         gain: gain
@@ -297,7 +310,7 @@ var LibraryOpenAL = {
       return;
     }
     for (var i = 0; i < count; ++i) {
-      var sourceIdx = {{{ makeGetValue('sources', 'i*4', 'i32') }}} - 1;
+      var sourceIdx = {{{ makeGetValue('sources', 'i*4', 'i32') }}};
       delete AL.currentContext.src[sourceIdx];
     }
   },
@@ -312,7 +325,7 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var gain = AL.currentContext.ctx.createGain();
       gain.connect(AL.currentContext.gain);
-      AL.currentContext.src.push({
+      AL.currentContext.src[AL.newSrcId] = {
         state: 0x1011 /* AL_INITIAL */,
         queue: [],
         loop: false,
@@ -383,8 +396,9 @@ var LibraryOpenAL = {
         panner: null,
         buffersPlayed: 0,
         bufferPosition: 0
-      });
-      {{{ makeSetValue('sources', 'i*4', 'AL.currentContext.src.length', 'i32') }}};
+      };
+      {{{ makeSetValue('sources', 'i*4', 'AL.newSrcId', 'i32') }}};
+      AL.newSrcId++;
     }
   },
 
@@ -393,7 +407,7 @@ var LibraryOpenAL = {
       return false;
     }
 
-    if (!AL.currentContext.src[sourceId - 1]) {
+    if (!AL.currentContext.src[sourceId]) {
       return false;
     } else {
       return true;
@@ -407,7 +421,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourcei called with an invalid source");
@@ -481,7 +495,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourcef called with an invalid source");
@@ -536,7 +550,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSource3f called with an invalid source");
@@ -578,7 +592,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourceQueueBuffers called with an invalid source");
@@ -613,7 +627,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourceUnqueueBuffers called with an invalid source");
@@ -667,8 +681,8 @@ var LibraryOpenAL = {
 
       // Make sure the buffer is no longer in use.
       var buffer = AL.currentContext.buf[bufferIdx];
-      for (var j = 0; j < AL.currentContext.src.length; ++j) {
-        var src = AL.currentContext.src[j];
+      for (var srcId in AL.currentContext.src) {
+        var src = AL.currentContext.src[srcId];
         if (!src) {
           continue;
         }
@@ -822,7 +836,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourcePlay called with an invalid source");
@@ -841,7 +855,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourceStop called with an invalid source");
@@ -860,7 +874,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourcePause called with an invalid source");
@@ -878,7 +892,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alGetSourcei called with an invalid source");
@@ -947,7 +961,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alGetSourcef called with an invalid source");
@@ -1002,7 +1016,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alGetSourcefv called with an invalid source");
