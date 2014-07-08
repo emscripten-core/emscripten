@@ -534,9 +534,7 @@ namespace emscripten {
         template<typename T>
         inline T* getContext(const T& t) {
             // not a leak because this is called once per binding
-            T* p = reinterpret_cast<T*>(malloc(sizeof(T)));
-            new(p) T(t);
-            return p;
+            return new T(t);
         }
 
         template<typename T>
