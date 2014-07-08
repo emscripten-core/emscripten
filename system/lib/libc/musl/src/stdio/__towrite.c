@@ -16,3 +16,14 @@ int __towrite(FILE *f)
 
 	return 0;
 }
+
+#ifndef __EMSCRIPTEN__
+const int __towrite_used = 1;
+
+void __stdio_exit(void);
+
+void __flush_on_exit()
+{
+	__stdio_exit();
+}
+#endif

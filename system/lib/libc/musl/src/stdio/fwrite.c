@@ -26,7 +26,7 @@ size_t __fwritex(const unsigned char *restrict s, size_t l, FILE *restrict f)
 }
 
 // XXX Emscripten: Not used, since we are not currently using musl file IO.
-#if 0
+#ifndef __EMSCRIPTEN__
 size_t fwrite(const void *restrict src, size_t size, size_t nmemb, FILE *restrict f)
 {
 	size_t k, l = size*nmemb;

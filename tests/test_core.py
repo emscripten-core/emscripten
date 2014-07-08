@@ -843,6 +843,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_math_lgamma(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')
+      if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('fastcomp needed for proper handling of _signgam extern')
 
       test_path = path_from_root('tests', 'math', 'lgamma')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -2833,11 +2834,8 @@ The current type of b is: 9
       self.skip('todo in fastcomp')
       return False
 
-    if self.emcc_args and '--memory-init-file' in self.emcc_args:
-      for i in range(len(self.emcc_args)):
-        if self.emcc_args[i] == '--memory-init-file':
-          self.emcc_args = self.emcc_args[:i] + self.emcc_args[i+2:]
-          break
+    if self.emcc_args:
+      self.emcc_args += ['--memory-init-file', '0']
 
     if Settings.ASM_JS:
       Settings.DLOPEN_SUPPORT = 1
@@ -4036,7 +4034,7 @@ def process(filename):
       try_delete(mem_file)
       self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\n'),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
-      if self.emcc_args and '--memory-init-file' in self.emcc_args:
+      if self.emcc_args and '-O2' in self.emcc_args:
         assert os.path.exists(mem_file)
 
   def test_files_m(self):
@@ -6815,7 +6813,7 @@ asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
 asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-O2", "-s", "PRECISE_F32=1"])
-asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1", "-s", "SAFE_HEAP=1"])
+asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 
 # Legacy test modes - 
 slow2 = make_run("slow2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0"], env={"EMCC_FAST_COMPILER": "0"})

@@ -23,6 +23,12 @@
 #define REG_SS          18
 #endif
 
+typedef struct sigaltstack {
+	void *ss_sp;
+	int ss_flags;
+	size_t ss_size;
+} stack_t;
+
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 typedef int greg_t, gregset_t[19];
 typedef struct _fpstate {

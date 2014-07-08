@@ -208,7 +208,6 @@ Options that are modified or new in %s include:
         (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
         (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
         (['-O2', '-profiling'], lambda generated: '// The Module object' in generated or os.environ.get('EMCC_FAST_COMPILER') == '0', 'with -profiling, yes comments in shell code (in fastcomp)'),
-
       ]:
         print params, text
         self.clear()
@@ -277,6 +276,12 @@ f.close()
       trans_file.close()
       output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', '%s t.py' % (PYTHON)], stdout=PIPE, stderr=PIPE).communicate()
       assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
+
+      for opts in [0, 1, 2, 3]:
+        print 'mem init in', opts
+        self.clear()
+        output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+        assert os.path.exists('a.out.js.mem') == (opts >= 2), 'mem file should exist in -O2+'
 
     # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
     # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
@@ -1837,6 +1842,12 @@ This pointer might make sense in another type signature: i: 0
     for input, expected, passes in [
       (path_from_root('tools', 'test-js-optimizer.js'), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
        ['hoistMultiples', 'removeAssignsToUndefined', 'simplifyExpressions']),
+      (path_from_root('tools', 'test-js-optimizer-t2c.js'), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
+       ['simplifyExpressions', 'optimizeShiftsConservative']),
+      (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
+       ['simplifyExpressions', 'optimizeShiftsAggressive']),
+      (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3-output.js')).read(),
+       ['optimizeShiftsAggressive']),
       (path_from_root('tools', 'test-js-optimizer-si.js'), open(path_from_root('tools', 'test-js-optimizer-si-output.js')).read(),
        ['simplifyIfs']),
       (path_from_root('tools', 'test-js-optimizer-regs.js'), open(path_from_root('tools', 'test-js-optimizer-regs-output.js')).read(),
@@ -2182,23 +2193,23 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned in
     # Run with ./runner.py other.test_module_exports_with_closure
 
     # First make sure test.js isn't present.
-    try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
-    assert not os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
+    self.clear()
 
     # compile with -O2 --closure 0
-    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', path_from_root('tests', 'Module-exports', 'test.js'), '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
 
     # Check that compilation was successful
-    assert os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
-    test_js_closure_0 = open(path_from_root('tests', 'Module-exports', 'test.js')).read()
+    assert os.path.exists('test.js')
+    test_js_closure_0 = open('test.js').read()
 
     # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
     assert ("module['exports'] = Module;" in test_js_closure_0) or ('module["exports"]=Module' in test_js_closure_0)
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
+    shutil.copyfile(path_from_root('tests', 'Module-exports', 'main.js'), 'main.js')
     if NODE_JS in JS_ENGINES:
-      self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js'), engine=NODE_JS))
+      self.assertContained('bufferTest finished', run_js('main.js', engine=NODE_JS))
 
     # Delete test.js again and check it's gone.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
@@ -2218,7 +2229,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned in
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
     if NODE_JS in JS_ENGINES:
-      self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js'), engine=NODE_JS))
+      self.assertContained('bufferTest finished', run_js('main.js', engine=NODE_JS))
 
     # Tidy up files that might have been created by this test.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))

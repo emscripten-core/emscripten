@@ -40,7 +40,9 @@
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 
 #define PIPE_BUF 4096
+#ifdef PAGE_SIZE
 #define PAGESIZE PAGE_SIZE
+#endif
 #define FILESIZEBITS 64
 #define NAME_MAX 255
 #define SYMLINK_MAX 255
@@ -53,7 +55,7 @@
 #define WORD_BIT 32
 #define SSIZE_MAX LONG_MAX
 #define TZNAME_MAX 6
-#define TTY_NAME_MAX 20
+#define TTY_NAME_MAX 32
 #define HOST_NAME_MAX 255
 
 /* Implementation choices... */
@@ -82,9 +84,15 @@
 #define NL_ARGMAX 9
 #define NL_LANGMAX 32
 #define NL_MSGMAX 32767
-#define NL_NMAX (MB_LEN_MAX*4)
 #define NL_SETMAX 255
 #define NL_TEXTMAX 2048
+
+#endif
+
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE) \
+ || (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE+0 < 700)
+
+#define NL_NMAX 16
 
 #endif
 

@@ -156,11 +156,11 @@ Options that are modified or new in %s include:
                            opt levels, see apply_opt_level() in
                            tools/shared.py and also src/settings.js.)
 
-  -O2                      As -O1, plus various js-level optimizations and
-                           LLVM -O3 optimizations. This is the recommended
-                           setting for a release build: slower compilation
-                           time in return for the smallest and fastest
-                           output.
+  -O2                      As -O1, plus various js-level optimizations, LLVM
+                           -O3 optimizations, and memory init file generation
+                           (--memory-init-file 1). This is a good setting
+                           for an optimized build: runs much faster than
+                           -O1, and compiles much faster than -O3.
 
   -Os                      Like -O2 with extra optimizations for size.
 
@@ -482,7 +482,8 @@ Options that are modified or new in %s include:
 
   --memory-init-file <on>  0: Do not emit a separate memory initialization
                               file, keep the static initialization inside
-                              the generated JavaScript as text (default)
+                              the generated JavaScript as text (default
+                              in -O0 and -O1)
                            1: Emit a separate memory initialization file
                               in binary format. This is more efficient than
                               storing it as text inside JavaScript, but does
@@ -495,7 +496,7 @@ Options that are modified or new in %s include:
                               stuff has happened and it is safe to call
                               library functions, as main() will only be
                               called at that time. You can also call
-                              addOnPreMain from a preRun.)
+                              addOnPreMain from a preRun.) (default in -O2+)
 
   -Wno-warn-absolute-paths If not specified, the compiler will warn about any
                            uses of absolute paths in -I and -L command line
@@ -823,7 +824,7 @@ try:
   emrun = False
   jcache = False
   save_bc = False
-  memory_init_file = False
+  memory_init_file = None
   use_preload_cache = False
   no_heap_copy = False
   proxy_to_worker = False
@@ -1075,6 +1076,7 @@ try:
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if opt_level == 0: debug_level = 4
+  if memory_init_file is None: memory_init_file = opt_level >= 2
 
   if llvm_lto is None and bind:
     logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
@@ -1357,7 +1359,7 @@ try:
     assert not shared.Settings.MAIN_MODULE
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
-    assert not memory_init_file, 'memory init file is not supported with module linking'
+    memory_init_file = False # memory init file is not supported with module linking
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
@@ -1769,6 +1771,9 @@ try:
         js_optimizer_queue += ['aggressiveVariableElimination']
 
       js_optimizer_queue += ['simplifyExpressions']
+
+      if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
+        js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
 
       # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
       # with commaified code breaks late aggressive variable elimination)

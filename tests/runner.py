@@ -240,15 +240,17 @@ process(sys.argv[1])
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
-    if self.emcc_args is not None and 'ASM_JS=1' in self.emcc_args:
+    if self.emcc_args is not None:
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
-        memory_init_file = 0
+        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args
+      src = open(filename + '.o.js').read()
       if memory_init_file:
-        assert '/* memory initializer */' not in open(filename + '.o.js').read()
+        # side memory init file, or an empty one in the js
+        assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
       else:
-        assert 'memory initializer */' in open(filename + '.o.js').read()
+        assert 'memory initializer */' in src
 
   def validate_asmjs(self, err):
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
