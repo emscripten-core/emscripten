@@ -16,6 +16,8 @@ var LibraryOpenAL = {
 
     newSrcId: 0,
 
+#if OPENAL_DEBUG
+    //This function is slow and used only for debugging purposes
     srcIdBySrc: function srcIdBySrc(src) {
       var idx = 0;
       for (var srcId in AL.currentContext.src) {
@@ -26,6 +28,7 @@ var LibraryOpenAL = {
       }
       return idx;
     },
+#endif
 
     updateSources: function updateSources(context) {
       for (var srcId in context.src) {
