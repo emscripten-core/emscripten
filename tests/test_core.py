@@ -1436,25 +1436,6 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  def test_async_exit(self):
-    open('main.c', 'w').write(r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-      #include "emscripten.h"
-
-      void main_loop() {
-        exit(EXIT_SUCCESS);
-      }
-
-      int main() {
-        emscripten_set_main_loop(main_loop, 60, 0);
-        return 0;
-      }
-    ''')
-
-    Popen([PYTHON, EMCC, 'main.c']).communicate()
-    self.assertNotContained('Reached an unreachable!', run_js(self.in_dir('a.out.js'), stderr=STDOUT))
-
   def test_exit_stack(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
