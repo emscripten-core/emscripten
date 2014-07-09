@@ -310,6 +310,14 @@ Options that are modified or new in %s include:
                            optimization, so it will be minified
                            properly if closure compiler is run.
 
+                           Note that the post js will typically run after
+                           main() completes (unless there is something
+                           async). In that case, main() will exit and
+                           the post js will not be reached (just as if
+                           you call exit() in C code). If you want to
+                           prevent that, you can build with
+                           -s NO_EXIT_RUNTIME=1
+
   --embed-file <file>      A file to embed inside the generated
                            JavaScript. The compiled code will be able
                            to access the file in the current directory

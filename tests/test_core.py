@@ -1460,6 +1460,7 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
     if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
 
     Settings.INLINING_LIMIT = 50
+    Settings.NO_EXIT_RUNTIME = 1
 
     src = r'''
       #include <stdio.h>
@@ -1501,7 +1502,7 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
     ''')
 
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
+    self.do_run(src, '''reported\n*0*\nExit Status: 0\npostRun\nok.\n''')
 
   def test_class(self):
     test_path = path_from_root('tests', 'core', 'test_class')
@@ -5155,6 +5156,7 @@ def process(filename):
 
     Settings.CORRECT_OVERFLOWS = 1
     Settings.CORRECT_SIGNS = 1
+    Settings.NO_EXIT_RUNTIME = 1
 
     Building.COMPILER_TEST_OPTS += [
       '-I' + path_from_root('tests', 'freetype', 'include'),
@@ -5280,6 +5282,8 @@ def process(filename):
       return output
 
     self.emcc_args += ['--minify', '0'] # to compare the versions
+
+    Settings.NO_EXIT_RUNTIME = 1
 
     def do_test():
       self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
@@ -6174,6 +6178,8 @@ def process(filename):
     if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
 
     Settings.RUNTIME_TYPE_INFO = 1
+    Settings.NO_EXIT_RUNTIME = 1
+    Settings.ASSERTIONS = 0
     if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
 
     src = '''
@@ -6215,8 +6221,8 @@ def process(filename):
 '''
 
     self.do_run(src,
-                 '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
-                 post_build=post)
+                '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
+                post_build=post)
 
     # Make sure that without the setting, we don't spam the .js with the type info
     Settings.RUNTIME_TYPE_INFO = 0

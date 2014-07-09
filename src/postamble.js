@@ -84,9 +84,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 #endif
 
     // if we're not running an evented main loop, it's time to exit
-    if (!Module['noExitRuntime']) {
-      exit(ret);
-    }
+    exit(ret);
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -159,6 +157,13 @@ function run(args) {
 Module['run'] = Module.run = run;
 
 function exit(status) {
+  if (Module['noExitRuntime']) {
+#if ASSERTIONS
+    Module.printErr('exit(' + status + ') called, but noExitRuntime, so not exiting');
+#endif
+    return;
+  }
+
   ABORT = true;
   EXITSTATUS = status;
   STACKTOP = initialStackTop;

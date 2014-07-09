@@ -9,9 +9,9 @@ file(GLOB postJsFiles post*.js)
 file(GLOB libraryJsFiles jslibrary*.js)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-	SET(linkFlags "-g4")
+	SET(linkFlags "-g4 -s NO_EXIT_RUNTIME=1")
 else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
-	SET(linkFlags "-O2")
+	SET(linkFlags "-O2 -s NO_EXIT_RUNTIME=1")
 endif()
 
 SET(CMAKE_EXECUTABLE_SUFFIX ".js")
