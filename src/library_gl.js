@@ -500,6 +500,31 @@ var LibraryGL = {
           }
           internalFormat = GLctx.RGBA;
           break;
+        case 0x8D61 /* GL_HALF_FLOAT_OES */:
+          switch (format) {
+            case 0x1903 /* GL_RED */:
+              sizePerPixel = 2;
+              break;
+            case 0x8277 /* GL_RG */:
+              sizePerPixel = 2*2;
+              break;
+            case 0x1907 /* GL_RGB */:
+              sizePerPixel = 3*2;
+              break;
+            case 0x1908 /* GL_RGBA */:
+              sizePerPixel = 4*2;
+              break;
+            default:
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+              return {
+                pixels: null,
+                internalFormat: 0x0
+              };
+          }
+          break;
         default:
           GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
