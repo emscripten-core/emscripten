@@ -478,8 +478,8 @@ var LibraryGL = {
           sizePerPixel = 2;
           break;
         case 0x1406 /* GL_FLOAT */:
-#if ASSERTIONS
-          assert(GL.floatExt, 'Must have OES_texture_float to use float textures');
+#if GL_ASSERTIONS
+          if (!GL.floatExt) Module.printErr('Must have OES_texture_float to use float textures');
 #endif
           switch (format) {
             case 0x1907 /* GL_RGB */:
