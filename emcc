@@ -864,7 +864,8 @@ try:
   for change in settings_changes:
     key, value = change.split('=')
     if value[0] == '@':
-      value = open(value[1:]).read()
+      value = '"@' + os.path.abspath(value[1:]) + '"'
+      value = value.replace('\\\\', '/').replace('\\', '/') # Convert backslash paths to forward slashes on Windows as well, since the JS compiler otherwise needs the backslashes escaped (alternative is to escape all input paths passing to JS, which feels clumsier to read)
     else:
       value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)
