@@ -1,9 +1,23 @@
 import os, json, logging
 import shared
 from subprocess import Popen, CalledProcessError
+import multiprocessing
 from tools.shared import check_call
 
-def calculate(temp_files, in_temp, stdout, stderr):
+stdout = None
+stderr = None
+
+def call_process(cmd):
+  proc = Popen(cmd, stdout=stdout, stderr=stderr)
+  proc.communicate()
+  if proc.returncode != 0:
+    raise CalledProcessError(proc.returncode, cmd)
+
+def calculate(temp_files, in_temp, stdout_, stderr_):
+  global stdout, stderr
+  stdout = stdout_
+  stderr = stderr_
+
   # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
   # compile a malloc implementation and stdlibc++.)
 
@@ -25,32 +39,40 @@ def calculate(temp_files, in_temp, stdout, stderr):
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
-  def call_process(cmd):
-    proc = Popen(cmd, stdout=stdout, stderr=stderr)
-    proc.communicate()
-    if proc.returncode != 0:
-      raise CalledProcessError(proc.returncode, cmd)
+  def run_commands(commands):
+    cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+    cores = min(len(commands), cores)
+    if cores <= 1:
+      for command in commands:
+        call_process(command)
+    else:
+      pool = multiprocessing.Pool(processes=cores)
+      pool.map(call_process, commands, chunksize=1)
 
   def build_libc(lib_filename, files):
     o_s = []
     prev_cxx = os.environ.get('EMMAKEN_CXX')
     if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
+    commands = []
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      call_process([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts)
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts)
       o_s.append(o)
+    run_commands(commands)
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
   def build_libcxx(src_dirname, lib_filename, files):
     o_s = []
+    commands = []
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      call_process([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts)
       o_s.append(o)
+    run_commands(commands)
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
