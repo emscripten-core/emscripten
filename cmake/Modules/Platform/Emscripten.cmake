@@ -3,7 +3,7 @@
 # from CMakeLists.txt that invoke emcc.
 
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters
-# cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Platform/Emscripten.cmake
+# cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Modules/Platform/Emscripten.cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
 #       -G "Unix Makefiles" (Linux and OSX)
 #       -G "MinGW Makefiles" (Windows)
@@ -12,9 +12,7 @@
 # After that, build the generated Makefile with the command 'make'. On Windows, you may download and use 'mingw32-make' instead.
 
 # The following variable describes the target OS we are building to.
-# Ideally, this could be 'Emscripten', but as Emscripten mimics the Linux platform, setting this to Linux will allow more of existing software to build.
-# Be sure to run Emscripten test_openjpeg if planning to change this.
-set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
@@ -32,6 +30,10 @@ set(APPLE)
 # Do a no-op access on the CMAKE_TOOLCHAIN_FILE variable so that CMake will not issue a warning on it being unused.
 if (CMAKE_TOOLCHAIN_FILE)
 endif()
+
+# In order for check_function_exists() detection to work, we must signal it to pass an additional flag, which causes the compilation
+# to abort if linking results in any undefined symbols. The CMake detection mechanism depends on the undefined symbol error to be raised.
+set(CMAKE_REQUIRED_FLAGS "-s ERROR_ON_UNDEFINED_SYMBOLS=1")
 
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
@@ -102,9 +104,7 @@ set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 #SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
 #SET(CMAKE_SHARED_LIBRARY_PREFIX "")
 #SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
-#IF (NOT CMAKE_EXECUTABLE_SUFFIX)
-#	SET(CMAKE_EXECUTABLE_SUFFIX ".js")
-#endif()
+SET(CMAKE_EXECUTABLE_SUFFIX ".js")
 #SET(CMAKE_FIND_LIBRARY_PREFIXES "")
 #SET(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
 

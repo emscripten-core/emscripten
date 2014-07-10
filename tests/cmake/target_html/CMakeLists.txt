@@ -62,6 +62,9 @@ if (NOT ${HAVE_STDLIB_H})
 	message(FATAL_ERROR "CMake script check_include_file failed! Could not find stdlib.h via it!")
 endif()
 
+if (NOT CMAKE_EXECUTABLE_SUFFIX STREQUAL ".js")
+	message(FATAL_ERROR "The default suffix for building executables should be .js!")
+endif()
 SET(CMAKE_EXECUTABLE_SUFFIX ".html")
 
 # CMake built-in check_include_file() macro interacts with CMAKE_EXECUTABLE_SUFFIX, so make sure it works after user changes that.
