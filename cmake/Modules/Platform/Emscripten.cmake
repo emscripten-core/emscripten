@@ -25,7 +25,7 @@ set(WIN32)
 set(APPLE)
 
 # And for UNIX and CMAKE_HOST_UNIX. However, Emscripten is often able to mimic being a Linux/Unix system, in which case a lot of existing CMakeLists.txt files can be configured for Emscripten while assuming UNIX build, so this is left enabled.
-#set(UNIX)
+set(UNIX 1)
 
 # Do a no-op access on the CMAKE_TOOLCHAIN_FILE variable so that CMake will not issue a warning on it being unused.
 if (CMAKE_TOOLCHAIN_FILE)
