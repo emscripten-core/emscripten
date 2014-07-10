@@ -19,6 +19,16 @@ set(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
 
+# In CMake, CMAKE_HOST_WIN32 is set when we are cross-compiling from Win32 to Emscripten: http://www.cmake.org/cmake/help/v2.8.12/cmake.html#variable:CMAKE_HOST_WIN32
+# The variable WIN32 is set only when the target arch that will run the code will be WIN32, so unset WIN32 when cross-compiling.
+set(WIN32)
+
+# The same logic as above applies for APPLE and CMAKE_HOST_APPLE, so unset APPLE.
+set(APPLE)
+
+# And for UNIX and CMAKE_HOST_UNIX. However, Emscripten is often able to mimic being a Linux/Unix system, in which case a lot of existing CMakeLists.txt files can be configured for Emscripten while assuming UNIX build, so this is left enabled.
+#set(UNIX)
+
 # Do a no-op access on the CMAKE_TOOLCHAIN_FILE variable so that CMake will not issue a warning on it being unused.
 if (CMAKE_TOOLCHAIN_FILE)
 endif()
@@ -114,11 +124,6 @@ set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECT
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
-
-# We are cross-compiling, so unset the common CMake variables that represent the target platform. Leave UNIX define enabled, since Emscripten
-# mimics a Linux environment.
-SET(WIN32)
-SET(APPLE)
 
 set(CMAKE_C_SIZEOF_DATA_PTR 4)
 set(CMAKE_CXX_SIZEOF_DATA_PTR 4)
