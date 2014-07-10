@@ -2932,3 +2932,69 @@ int main(int argc, char **argv) {
       output = process.communicate()
       assert process.returncode == 123, process.returncode
 
+  def test_mkdir_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+int main(int argc, char **argv) {
+  printf("\n");
+  for (int i = 1; i < argc; i++) {
+    printf("%d:\n", i);
+    int ok = mkdir(argv[i], S_IRWXU|S_IRWXG|S_IRWXO);
+    printf("  make %s: %d\n", argv[i], ok);
+    DIR *dir = opendir(argv[i]);
+    printf("  open %s: %d\n", argv[i], dir != NULL);
+    if (dir) {
+      struct dirent *entry;
+      while ((entry = readdir(dir))) {
+        printf("  %s, %d\n", entry->d_name, entry->d_type);
+      }
+    }
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot create /, can open
+    self.assertContained(r'''
+1:
+  make /: -1
+  open /: 1
+  ., 4
+  .., 4
+  tmp, 4
+  dev, 4
+''', run_js('a.out.js', args=['/']))
+    # cannot create empty name, cannot open
+    self.assertContained(r'''
+1:
+  make : -1
+  open : 0
+''', run_js('a.out.js', args=['']))
+    # can create unnormalized path, can open
+    self.assertContained(r'''
+1:
+  make /a//: 0
+  open /a//: 1
+  ., 4
+  .., 4
+''', run_js('a.out.js', args=['/a//']))
+    # can create child unnormalized
+    self.assertContained(r'''
+1:
+  make /a: 0
+  open /a: 1
+  ., 4
+  .., 4
+2:
+  make /a//b//: 0
+  open /a//b//: 1
+  ., 4
+  .., 4
+''', run_js('a.out.js', args=['/a', '/a//b//']))
+

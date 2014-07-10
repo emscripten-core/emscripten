@@ -607,7 +607,7 @@ mergeInto(LibraryManager.library, {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
-      if (name === '.' || name === '..') {
+      if (!name || name === '.' || name === '..') {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
       var err = FS.mayCreate(parent, name);
