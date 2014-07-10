@@ -125,6 +125,7 @@ set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECT
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
 
+set(CMAKE_SIZEOF_INT 4)
 set(CMAKE_C_SIZEOF_DATA_PTR 4)
 set(CMAKE_CXX_SIZEOF_DATA_PTR 4)
 
