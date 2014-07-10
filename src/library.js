@@ -327,6 +327,7 @@ LibraryManager.library = {
     path = Pointer_stringify(path);
     // remove a trailing slash, if one - /a/b/ has basename of '', but
     // we want to create b in the context of this function
+    path = PATH.normalize(path);
     if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
     try {
       FS.mkdir(path, mode, 0);
