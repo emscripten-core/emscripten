@@ -14,7 +14,21 @@ else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimi
 	SET(linkFlags "-O2 -s NO_EXIT_RUNTIME=1")
 endif()
 
+include(CheckIncludeFile)
+
+check_include_file(stdlib.h HAVE_STDLIB_H)
+if (NOT ${HAVE_STDLIB_H})
+	message(FATAL_ERROR "CMake script check_include_file failed! Could not find stdlib.h via it!")
+endif()
+
 SET(CMAKE_EXECUTABLE_SUFFIX ".js")
+
+# CMake built-in check_include_file() macro interacts with CMAKE_EXECUTABLE_SUFFIX, so make sure it works after user changes that.
+
+check_include_file(math.h HAVE_MATH_H)
+if (NOT ${HAVE_MATH_H})
+	message(FATAL_ERROR "CMake script check_include_file failed! Could not find math.h via it!")
+endif()
 
 if (WIN32)
 	message(FATAL_ERROR "WIN32 should not be defined when cross-compiling!")
