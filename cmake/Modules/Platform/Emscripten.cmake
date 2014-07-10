@@ -125,9 +125,26 @@ set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECT
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
 
+# Hardwire support for cmake-2.8/Modules/CMakeBackwardsCompatibilityC.cmake without having CMake to try complex things
+# to autodetect these:
+set(CMAKE_SKIP_COMPATIBILITY_TESTS 1)
+set(CMAKE_SIZEOF_CHAR 1)
+set(CMAKE_SIZEOF_UNSIGNED_SHORT 2)
+set(CMAKE_SIZEOF_SHORT 2)
 set(CMAKE_SIZEOF_INT 4)
+set(CMAKE_SIZEOF_UNSIGNED_LONG 4)
+set(CMAKE_SIZEOF_UNSIGNED_INT 4)
+set(CMAKE_SIZEOF_LONG 4)
+set(CMAKE_SIZEOF_VOID_P 4)
+set(CMAKE_SIZEOF_FLOAT 4)
+set(CMAKE_SIZEOF_DOUBLE 8)
 set(CMAKE_C_SIZEOF_DATA_PTR 4)
 set(CMAKE_CXX_SIZEOF_DATA_PTR 4)
+set(CMAKE_HAVE_LIMITS_H 1)
+set(CMAKE_HAVE_UNISTD_H 1)
+set(CMAKE_HAVE_PTHREAD_H 1)
+set(CMAKE_HAVE_SYS_PRCTL_H 1)
+set(CMAKE_WORDS_BIGENDIAN 0)
 
 set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG -O2" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELEASE")
 set(CMAKE_C_FLAGS_MINSIZEREL "-DNDEBUG -Os" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_MINSIZEREL")
