@@ -1321,6 +1321,47 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
       src, output = (test_path + s for s in ('.in', '.out'))
       self.do_run_from_file(src, output)
 
+  def test_exceptions_3(self):
+    if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
+    if self.run_name == 'asm2x86': return self.skip('TODO')
+
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+
+    src = r'''
+#include <iostream>
+#include <stdexcept>
+
+int main(int argc, char **argv)
+{
+  if (argc != 2) {
+    std::cout << "need an arg" << std::endl;
+    return 1;
+  }
+
+  int arg = argv[1][0] - '0';
+  try {
+    if (arg == 0) throw "a c string";
+    if (arg == 1) throw std::exception();
+    if (arg == 2) throw std::runtime_error("Hello");
+  } catch(const char * ex) {
+    std::cout << "Caught C string: " << ex << std::endl;
+  } catch(const std::exception &ex) {
+    std::cout << "Caught exception: " << ex.what() << std::endl;
+  } catch(...) {
+    std::cout << "Caught something else" << std::endl;
+  }
+
+  std::cout << "Done.\n";
+}
+'''
+
+    print '0'
+    self.do_run(src, 'Caught C string: a c string\nDone.', ['0'])
+    print '1'
+    self.do_run(src, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
+    print '2'
+    self.do_run(src, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
+
   def test_exceptions_white_list(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]

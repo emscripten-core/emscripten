@@ -235,3 +235,4 @@
          D _ZTVSt8bad_cast
          D _ZTVSt9type_info
          T __dynamic_cast
+         T _ZNSt9exceptionD1Ev

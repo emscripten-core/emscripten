@@ -420,8 +420,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
   def create_libcxxabi():
     logging.debug('building libcxxabi for cache')
     libcxxabi_files = [
+      'exception.cpp',
       'typeinfo.cpp',
-      'private_typeinfo.cpp'
+      'private_typeinfo.cpp',
     ]
     return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files)
 
