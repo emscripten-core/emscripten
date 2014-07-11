@@ -711,20 +711,21 @@ var LibraryEmbind = {
         Float64Array,
     ];
 
+    function decodeMemoryView(handle) {
+        handle = handle >> 2;
+        var type = HEAPU32[handle];
+        var size = HEAPU32[handle + 1]; // in elements
+        var data = HEAPU32[handle + 2]; // byte offset into emscripten heap
+        var TA = typeMapping[type];
+        return new TA(HEAP8.buffer, data, size);
+    }
+
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
-        'fromWireType': function(handle) {
-            var type = HEAPU32[handle >> 2];
-            var size = HEAPU32[(handle >> 2) + 1]; // in elements
-            var data = HEAPU32[(handle >> 2) + 2]; // byte offset into emscripten heap
-            var TA = typeMapping[type];
-            return new TA(HEAP8.buffer, data, size);
-        },
+        'fromWireType': decodeMemoryView,
         'argPackAdvance': 16,
-        'readValueFromPointer': function(ptr) {
-            return this['fromWireType'](ptr);
-        },
+        'readValueFromPointer': decodeMemoryView,
     });
   },
 
