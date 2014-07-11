@@ -712,22 +712,22 @@ var LibraryGL = {
                                              "EXT_shader_texture_lod" ];
 
       function shouldEnableAutomatically(extension) {
-        for(var i in automaticallyEnabledExtensions) {
-          var include = automaticallyEnabledExtensions[i];
+        var ret = false;
+        automaticallyEnabledExtensions.forEach(function(include) {
           if (ext.indexOf(include) != -1) {
-            return true;
+            ret = true;
           }
-        }
-        return false;
+        });
+        return ret;
       }
 
-      var extensions = GLctx.getSupportedExtensions();
-      for(var e in extensions) {
-        var ext = extensions[e].replace('MOZ_', '').replace('WEBKIT_', '');
+ 
+      GLctx.getSupportedExtensions().forEach(function(ext) {
+        ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
         if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
           GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
         }
-      }
+      });
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
