@@ -535,52 +535,7 @@ char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
  */
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 
-
-/* ===================================== */
-/* Internal APIs. Be careful with these. */
-/* ===================================== */
-
-/*
- * Profiling tools.
- * INIT must be called first, with the maximum identifier that
- * will be used. BEGIN will add some code that marks
- * the beginning of a section of code whose run time you
- * want to measure. END will finish such a section. Note: If you
- * call begin but not end, you will get invalid data!
- * The profiling data will be written out if you call Profile.dump().
- */
-extern void EMSCRIPTEN_PROFILE_INIT(int max);
-extern void EMSCRIPTEN_PROFILE_BEGIN(int id);
-extern void EMSCRIPTEN_PROFILE_END(int id);
-
-/*
- * jcache-friendly printf. printf in general will receive a string
- * literal, which becomes a global constant, which invalidates all
- * jcache entries. emscripten_jcache_printf is parsed before
- * clang into something without any string literals, so you can
- * add such printouts to your code and only the (chunk containing
- * the) function you modify will be invalided and recompiled.
- *
- * Note in particular that you need to already have a call to this
- * function in your code *before* you add one and do an incremental
- * build, so that adding an external reference does not invalidate
- * everything.
- *
- * This function assumes the first argument is a string literal
- * (otherwise you don't need it), and the other arguments, if any,
- * are neither strings nor complex expressions (but just simple
- * variables). (You can create a variable to store a complex
- * expression on the previous line, if necessary.)
- */
-#ifdef __cplusplus
-void emscripten_jcache_printf(const char *format, ...);
-void emscripten_jcache_printf_(...); /* internal use */
-#endif
-
-/* Helper API for EM_ASM - do not call this yourself */
-void emscripten_asm_const(const char *code);
-int emscripten_asm_const_int(const char *code, ...);
-double emscripten_asm_const_double(const char *code, ...);
+/* Logging utilities */
 
 /* If specified, logs directly to the browser console/inspector 
  * window. If not specified, logs via the application Module. */
@@ -645,6 +600,40 @@ void emscripten_log(int flags, ...);
  * numbers, so it is best to allocate a few bytes extra to be safe.
  */
 int emscripten_get_callstack(int flags, char *out, int maxbytes);
+
+
+/* ===================================== */
+/* Internal APIs. Be careful with these. */
+/* ===================================== */
+
+/*
+ * jcache-friendly printf. printf in general will receive a string
+ * literal, which becomes a global constant, which invalidates all
+ * jcache entries. emscripten_jcache_printf is parsed before
+ * clang into something without any string literals, so you can
+ * add such printouts to your code and only the (chunk containing
+ * the) function you modify will be invalided and recompiled.
+ *
+ * Note in particular that you need to already have a call to this
+ * function in your code *before* you add one and do an incremental
+ * build, so that adding an external reference does not invalidate
+ * everything.
+ *
+ * This function assumes the first argument is a string literal
+ * (otherwise you don't need it), and the other arguments, if any,
+ * are neither strings nor complex expressions (but just simple
+ * variables). (You can create a variable to store a complex
+ * expression on the previous line, if necessary.)
+ */
+#ifdef __cplusplus
+void emscripten_jcache_printf(const char *format, ...);
+void emscripten_jcache_printf_(...); /* internal use */
+#endif
+
+/* Helper API for EM_ASM - do not call this yourself */
+void emscripten_asm_const(const char *code);
+int emscripten_asm_const_int(const char *code, ...);
+double emscripten_asm_const_double(const char *code, ...);
 
 #ifdef __cplusplus
 }
