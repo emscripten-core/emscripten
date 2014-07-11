@@ -999,7 +999,7 @@ class Building:
 
     # Append the Emscripten toolchain file if the user didn't specify one.
     if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
-      args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Platform', 'Emscripten.cmake'))
+      args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
 
     # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
     # pulling in a native Visual Studio, or Unix Makefiles.
@@ -1014,16 +1014,21 @@ class Building:
       return
     if env is None:
       env = Building.get_building_env()
-    env['EMMAKEN_JUST_CONFIGURE'] = '1'
     if 'cmake' in args[0]:
+      # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with CMake. This is because CMake
+      #       does expect to be able to do config-time builds with emcc.
       args = Building.handle_CMake_toolchain(args, env)
+    else:
+      # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
+      # do builds natively with Clang. This is a heuristic emulation that may or may not work. 
+      env['EMMAKEN_JUST_CONFIGURE'] = '1'
     try:
       process = Popen(args, stdout=stdout, stderr=stderr, env=env)
       process.communicate()
     except Exception, e:
       logging.error('Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args))
       raise
-    del env['EMMAKEN_JUST_CONFIGURE']
+    if 'EMMAKEN_JUST_CONFIGURE' in env: del env['EMMAKEN_JUST_CONFIGURE']
     if process.returncode is not 0:
       logging.error('Configure step failed with non-zero return code ' + str(process.returncode) + '! Command line: ' + str(args))
       raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
