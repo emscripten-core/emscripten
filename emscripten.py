@@ -853,8 +853,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # Call js compiler
     if DEBUG: t = time.time()
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine, [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'))
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
