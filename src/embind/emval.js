@@ -287,10 +287,11 @@ var LibraryEmVal = {
     var functionBody =
         "return function (handle, name, destructors, args) {\n";
 
+    var offset = 0;
     for (var i = 0; i < argCount - 1; ++i) {
         functionBody +=
-        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args);\n" +
-        "    args += argType" + i + ".argPackAdvance;\n";
+        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
+        offset += types[i + 1].argPackAdvance;
     }
     functionBody +=
         "    var rv = handle[name](" + argsList + ");\n";
