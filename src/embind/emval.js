@@ -267,7 +267,7 @@ var LibraryEmVal = {
     return id;
   },
 
-  _emval_get_method_caller__deps: ['_emval_addMethodCaller', '_emval_lookupTypes', '$new_'],
+  _emval_get_method_caller__deps: ['_emval_addMethodCaller', '_emval_lookupTypes', '$new_', '$makeLegalFunctionName'],
   _emval_get_method_caller: function(argCount, argTypes) {
     var types = __emval_lookupTypes(argCount, argTypes);
 
@@ -285,7 +285,7 @@ var LibraryEmVal = {
     }
 
     var functionBody =
-        "return function (handle, name, destructors, args) {\n";
+        "return function " + makeLegalFunctionName(signatureName) + "(handle, name, destructors, args) {\n";
 
     var offset = 0;
     for (var i = 0; i < argCount - 1; ++i) {
@@ -307,7 +307,7 @@ var LibraryEmVal = {
 
     params.push(functionBody);
     var invokerFunction = new_(Function, params).apply(null, args);
-    return __emval_addMethodCaller(createNamedFunction(signatureName, invokerFunction));
+    return __emval_addMethodCaller(invokerFunction);
   },
 
   _emval_call_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$requireHandle'],
