@@ -427,6 +427,7 @@ var cwrap, ccall;
   //   alert(my_function(99, 12));
   //
   cwrap = function cwrap(ident, returnType, argTypes) {
+    argTypes = argTypes || [];
     var cfunc = getCFunc(ident);
     // When the function takes numbers and returns a number, we can just return
     // the original function

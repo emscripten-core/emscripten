@@ -5612,6 +5612,8 @@ def process(filename):
       ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
       Module.print('*');
       // part 2: cwrap
+      var noThirdParam = Module['cwrap']('get_int', 'number');
+      Module.print(noThirdParam());
       var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
       Module.print(multi(2, 1.4, 3, 'atr'));
       Module.print(multi(8, 5.4, 4, 'bret'));
