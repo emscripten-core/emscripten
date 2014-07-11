@@ -308,18 +308,14 @@ function compile(raw) {
 
 B = new Benchmarker();
 
-try {
-  if (ll_file) {
-    if (phase === 'glue') {
-      compile(';');
-    } else if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
-      compile(read(ll_file));
-    } else {
-      compile(ll_file); // we are given raw .ll
-    }
+if (ll_file) {
+  if (ephase === 'glue') {
+    compile(';');
+  } else if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
+    compile(read(ll_file));
+  } else {
+    compile(ll_file); // we are given raw .ll
   }
-} catch(err) {
-  printErr('aborting from js compiler due to exception: ' + err + ' | ' + err.stack);
 }
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });
