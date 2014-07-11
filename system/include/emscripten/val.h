@@ -59,6 +59,11 @@ namespace emscripten {
                 const char* methodName,
                 EM_DESTRUCTORS* destructors,
                 EM_VAR_ARGS argv);
+            void _emval_call_void_method(
+                EM_METHOD_CALLER caller,
+                EM_VAL handle,
+                const char* methodName,
+                EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
         }
 
@@ -229,15 +234,11 @@ namespace emscripten {
                 auto caller = Signature<void, Args...>::get_method_caller();
 
                 WireTypePack<Args...> argv(std::forward<Args>(args)...);
-                EM_DESTRUCTORS destructors;
-                _emval_call_method(
+                _emval_call_void_method(
                     caller,
                     handle,
                     methodName,
-                    &destructors,
                     argv);
-                DestructorsRunner rd(destructors);
-                // void requires no translation
             }
         };
     }

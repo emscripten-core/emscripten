@@ -390,6 +390,7 @@ var LibraryEmbind = {
   _embind_register_void: function(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
+        isVoid: true, // void return values can be optimized out sometimes
         name: name,
         'argPackAdvance': 0,
         'fromWireType': function() {
