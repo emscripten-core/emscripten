@@ -319,7 +319,9 @@ try {
     }
   }
 } catch(err) {
-  printErr('aborting from js compiler due to exception: ' + err + ' | ' + err.stack);
+  printErr('Internal compiler error in src/compiler.js! Please raise a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: ' + err + ' | ' + err.stack);
+  if (ENVIRONMENT_IS_NODE) process.exit(1);
+  else throw err;
 }
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });
