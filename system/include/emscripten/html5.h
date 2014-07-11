@@ -198,6 +198,7 @@ typedef struct EmscriptenMouseEvent {
   long movementX;
   long movementY;
   // Emscripten-specific extension: These fields give the mouse coordinates mapped to the Emscripten canvas client area.
+  // If the Emscripten canvas does not exist (Module.canvas element is null), then these fields will contain a value (0, 0).
   long canvasX;
   long canvasY;
   // Pad this struct to multiple of 8 bytes to make WheelEvent unambiguously align to 8 bytes.
