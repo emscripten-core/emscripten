@@ -41,7 +41,7 @@ set(CMAKE_REQUIRED_FLAGS "-s ERROR_ON_UNDEFINED_SYMBOLS=1")
 
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
 	if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
 		set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
 	endif()
