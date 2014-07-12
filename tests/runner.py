@@ -735,7 +735,7 @@ class BrowserCore(RunnerCore):
 def get_bullet_library(runner_core, use_cmake):
   if use_cmake:
     configure_commands = ['cmake', '.']
-    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']
+    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF']
     # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
     generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
                       os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
