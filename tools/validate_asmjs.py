@@ -17,6 +17,7 @@ import shared
 # Looks up SpiderMonkey engine using the variable SPIDERMONKEY_ENGINE in ~/.emscripten, and if not set up there, via PATH.
 def find_spidermonkey_engine():
   sm_engine = shared.SPIDERMONKEY_ENGINE if hasattr(shared, 'SPIDERMONKEY_ENGINE') else ['']
+  if isinstance(sm_engine, basestring): sm_engine = [sm_engine]
   if not sm_engine or len(sm_engine[0]) == 0 or not os.path.exists(sm_engine[0]):
     sm_engine[0] = shared.Building.which('js')
     if sm_engine[0] == None:
