@@ -398,7 +398,9 @@ f.close()
                 prebuild(configuration, tempdirname)
 
               # Build
-              cmd = make + (['VERBOSE=1'] if verbose_level >= 3 else [])
+              cmd = make
+              if verbose_level >= 3 and 'Ninja' not in generator:
+                cmd += ['VERBOSE=1']
               ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE).communicate()
               if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
                 logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
