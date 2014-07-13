@@ -14,8 +14,6 @@ var LibraryEGL = {
     currentContext: 0 /* EGL_NO_CONTEXT */,
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
-    currentMajorVersion: 1,
-    currentMinorVersion: 4,
 
     stringCache: {},
     
@@ -67,11 +65,9 @@ var LibraryEGL = {
     if (display == 62000 /* Magic ID for Emscripten 'default display' */) {
       if (majorVersion) {
         {{{ makeSetValue('majorVersion', '0', '1', 'i32') }}}; // Advertise EGL Major version: '1'
-        EGL.currentMajorVersion = 1;
       }
       if (minorVersion) {
         {{{ makeSetValue('minorVersion', '0', '4', 'i32') }}}; // Advertise EGL Minor version: '4'
-        EGL.currentMinorVersion = 4;
       }
       EGL.defaultDisplayInitialized = true;
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
@@ -273,17 +269,17 @@ var LibraryEGL = {
     var glesContextVersion = 1;
     for(;;) {
         var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
-	if (param == 0x3038 /*EGL_NONE*/) break;
-	if (param != 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
-		if (EGL.currentMajorVersion == 1 && EGL.currentMinorVersion <= 4) {
-			EGL.setErrorCode(0x3004 /* EGL_BAD_ATTRIBUTE */); 
-			return 0;
-		} else {
-			/* EGL future-version handling */
-		}
+	if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/){
+		glesContextVersion = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
 	}
-	var value = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
-	glesContextVersion = value;
+	else if (param == 0x3038 /*EGL_NONE*/){
+		break;
+	}
+	else{
+		/* Error as of EGL 1.4 */
+		EGL.setErrorCode(0x3004 /*EGL_BAD_ATTRIBUTE*/); 
+		return 0;
+	}
 	contextAttribs += 8;
     }
     if (glesContextVersion != 2) {
