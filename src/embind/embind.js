@@ -271,7 +271,9 @@ var LibraryEmbind = {
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwBindingError',
     '$whenDependentTypesAreResolved'],
-  $registerType: function(rawType, registeredInstance) {
+  $registerType: function(rawType, registeredInstance, options) {
+    options = options || {};
+
     if (!('argPackAdvance' in registeredInstance)) {
         throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
@@ -281,7 +283,11 @@ var LibraryEmbind = {
         throwBindingError('type "' + name + '" must have a positive integer typeid pointer');
     }
     if (registeredTypes.hasOwnProperty(rawType)) {
-        throwBindingError("Cannot register type '" + name + "' twice");
+        if (options.ignoreDuplicateRegistrations) {
+            return;
+        } else {
+            throwBindingError("Cannot register type '" + name + "' twice");
+        }
     }
 
     registeredTypes[rawType] = registeredInstance;
@@ -699,7 +705,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
-  _embind_register_memory_view: function(rawType, name) {
+  _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
     var typeMapping = [
         Int8Array,
         Uint8Array,
@@ -711,21 +717,24 @@ var LibraryEmbind = {
         Float64Array,
     ];
 
+    var TA = typeMapping[dataTypeIndex];
+
     function decodeMemoryView(handle) {
         handle = handle >> 2;
-        var type = HEAPU32[handle];
-        var size = HEAPU32[handle + 1]; // in elements
-        var data = HEAPU32[handle + 2]; // byte offset into emscripten heap
-        var TA = typeMapping[type];
-        return new TA(HEAP8.buffer, data, size);
+        var heap = HEAPU32;
+        var size = heap[handle]; // in elements
+        var data = heap[handle + 1]; // byte offset into emscripten heap
+        return new TA(heap['buffer'], data, size);
     }
 
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         'fromWireType': decodeMemoryView,
-        'argPackAdvance': 16,
+        'argPackAdvance': 8,
         'readValueFromPointer': decodeMemoryView,
+    }, {
+        ignoreDuplicateRegistrations: true,
     });
   },
 

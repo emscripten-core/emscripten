@@ -1296,7 +1296,7 @@ constexpr size_t getElementCount(T (&)[sizeOfArray]) {
 static void callWithMemoryView(val v) {
     // static so the JS test can read the memory after callTakeMemoryView runs
     static unsigned char data[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-    v(memory_view(getElementCount(data), data));
+    v(typed_memory_view(getElementCount(data), data));
     static float f[] = { 1.5f, 2.5f, 3.5f, 4.5f };
     v(typed_memory_view(getElementCount(f), f));
     static short s[] = { 1000, 100, 10, 1 };
@@ -2484,7 +2484,7 @@ val construct_with_memory_view(val factory) {
     static const char data[11] = "0123456789";
     return factory.new_(
         std::string("before"),
-        memory_view(10, data),
+        typed_memory_view(10, data),
         std::string("after"));
 }
 

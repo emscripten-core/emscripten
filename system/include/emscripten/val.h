@@ -173,11 +173,11 @@ namespace emscripten {
             ++cursor;
         }
 
-        inline void writeGenericWireType(GenericWireType*& cursor, const memory_view& wt) {
-            cursor[0].w[0].u = static_cast<unsigned>(wt.type);
-            cursor[0].w[1].u = wt.size;
-            cursor[1].w[0].p = wt.data;
-            cursor += 2;
+        template<typename ElementType>
+        inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<ElementType>& wt) {
+            cursor->w[0].u = wt.size;
+            cursor->w[1].p = wt.data;
+            ++cursor;
         }
 
         template<typename T>

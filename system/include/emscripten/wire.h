@@ -377,70 +377,30 @@ namespace emscripten {
         }
     }
 
+    template<typename ElementType>
     struct memory_view {
-        enum class Type {
-            Int8Array,
-            Uint8Array,
-            Int16Array,
-            Uint16Array,
-            Int32Array,
-            Uint32Array,
-            Float32Array,
-            Float64Array,
-        };
-
         memory_view() = delete;
-        explicit memory_view(size_t size, const void* data)
-            : type(Type::Uint8Array)
-            , size(size)
-            , data(data)
-        {}
-        explicit memory_view(Type type, size_t size, const void* data)
-            : type(type)
-            , size(size)
+        explicit memory_view(size_t size, const ElementType* data)
+            : size(size)
             , data(data)
         {}
 
-        const Type type;
         const size_t size; // in elements, not bytes
         const void* const data;
     };
 
-    inline memory_view typed_memory_view(size_t size, const int8_t* data) {
-        return memory_view(memory_view::Type::Int8Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const uint8_t* data) {
-        return memory_view(memory_view::Type::Uint8Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const int16_t* data) {
-        return memory_view(memory_view::Type::Int16Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const uint16_t* data) {
-        return memory_view(memory_view::Type::Uint16Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const int32_t* data) {
-        return memory_view(memory_view::Type::Int32Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const uint32_t* data) {
-        return memory_view(memory_view::Type::Uint32Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const float* data) {
-        return memory_view(memory_view::Type::Float32Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const double* data) {
-        return memory_view(memory_view::Type::Float64Array, size, data);
+    // Note that 'data' is marked const just so it can accept both
+    // const and nonconst pointers.  It is certainly possible for
+    // JavaScript to modify the C heap through the typed array given,
+    // as it merely aliases the C heap.
+    template<typename T>
+    inline memory_view<T> typed_memory_view(size_t size, const T* data) {
+        return memory_view<T>(size, data);
     }
 
     namespace internal {
-        template<>
-        struct BindingType<memory_view> {
+        template<typename ElementType>
+        struct BindingType<memory_view<ElementType>> {
             // This non-word-sized WireType only works because I
             // happen to know that clang will pass aggregates as
             // pointers to stack elements and we never support
@@ -448,8 +408,8 @@ namespace emscripten {
             // memory_view.  (That is, fromWireType is not implemented
             // on the C++ side, nor is toWireType implemented in
             // JavaScript.)
-            typedef memory_view WireType;
-            static WireType toWireType(const memory_view& mv) {
+            typedef memory_view<ElementType> WireType;
+            static WireType toWireType(const memory_view<ElementType>& mv) {
                 return mv;
             }
         };
