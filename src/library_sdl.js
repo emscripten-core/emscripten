@@ -802,8 +802,9 @@ var LibrarySDL = {
     // returns false if the event was determined to be irrelevant
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
-        // This is a pointer to a native C event that was SDL_PushEvent'ed
-        _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}}); // XXX
+        // This is a pointer to a copy of a native C event that was SDL_PushEvent'ed
+        _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+        _free(event); // the copy is no longer needed
         return;
       }
 
@@ -1785,7 +1786,9 @@ var LibrarySDL = {
   },
 
   SDL_PushEvent: function(ptr) {
-    SDL.events.push(ptr); // XXX Should we copy it? Not clear from API
+    var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+    _memcpy(copy, ptr, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+    SDL.events.push(copy);
     return 0;
   },
 
