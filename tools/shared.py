@@ -366,6 +366,17 @@ def find_temp_directory():
 
 try:
   EMSCRIPTEN_VERSION = open(path_from_root('emscripten-version.txt')).read().strip()
+  try:
+    parts = map(int, EMSCRIPTEN_VERSION.split('.'))
+    EMSCRIPTEN_VERSION_MAJOR = parts[0]
+    EMSCRIPTEN_VERSION_MINOR = parts[1]
+    EMSCRIPTEN_VERSION_TINY = parts[2]
+  except Exception, e:
+    logging.warning('emscripten version ' + EMSCRIPTEN_VERSION + ' lacks standard parts')
+    EMSCRIPTEN_VERSION_MAJOR = 0
+    EMSCRIPTEN_VERSION_MINOR = 0
+    EMSCRIPTEN_VERSION_TINY = 0
+    raise e
 except Exception, e:
   logging.error('cannot find emscripten version ' + str(e))
   EMSCRIPTEN_VERSION = 'unknown'
@@ -662,7 +673,10 @@ try:
 except:
   COMPILER_OPTS = []
 COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
-                                 '-target', LLVM_TARGET]
+                                 '-target', LLVM_TARGET,
+                                 '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
+                                 '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
+                                 '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY)]
 
 # COMPILER_STANDARDIZATION_OPTS: Options to correct various predefined macro options.
 COMPILER_STANDARDIZATION_OPTS = []

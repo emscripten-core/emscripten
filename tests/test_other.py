@@ -3000,3 +3000,18 @@ int main(int argc, char **argv) {
   .., 4
 ''', run_js('a.out.js', args=['/a', '/a//b//']))
 
+  def test_emversion(self):
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        printf("major: %d\n", __EMSCRIPTEN_major__);
+        printf("minor: %d\n", __EMSCRIPTEN_minor__);
+        printf("tiny: %d\n", __EMSCRIPTEN_tiny__);
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''major: %d
+minor: %d
+tiny: %d
+''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), run_js('a.out.js'))
+
