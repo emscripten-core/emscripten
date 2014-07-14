@@ -12,7 +12,7 @@ extern "C" {
  *    - Fullscreen Events for browser canvas fullscreen modes transitioning. See https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html
  *    - Pointer Lock Events for relative-mode mouse motion control. See http://www.w3.org/TR/pointerlock/
  *    - Vibration API for mobile device haptic vibration feedback control. See http://dev.w3.org/2009/dap/vibration/
- *    - Page Visibility Events for power management control. See http://www.w3c-test.org/webperf/specs/PageVisibility/
+ *    - Page Visibility Events for power management control. See http://www.w3.org/TR/page-visibility/
  *    - Touch Events. See http://www.w3.org/TR/touch-events/
  *    - Gamepad API. See http://www.w3.org/TR/gamepad/
  *    - Beforeunload event. See http://www.whatwg.org/specs/web-apps/current-work/multipage/history.html#beforeunloadevent
@@ -477,7 +477,7 @@ extern EMSCRIPTEN_RESULT emscripten_exit_pointerlock(void);
 
 /*
  * The event structure passed in the visibilitychange event.
- * http://www.w3c-test.org/webperf/specs/PageVisibility/
+ * http://www.w3.org/TR/page-visibility/
  */
 typedef struct EmscriptenVisibilityChangeEvent {
   // If true, the current browser page is now hidden.
@@ -488,7 +488,7 @@ typedef struct EmscriptenVisibilityChangeEvent {
 
 /*
  * Registers a callback function for receiving the visibilitychange event.
- * http://www.w3c-test.org/webperf/specs/PageVisibility/
+ * http://www.w3.org/TR/page-visibility/
  */
 extern EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData));
 /*
