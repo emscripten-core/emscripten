@@ -43,6 +43,13 @@ typedef double __attribute__((aligned(4))) emscripten_align4_double;
 typedef double __attribute__((aligned(2))) emscripten_align2_double;
 typedef double __attribute__((aligned(1))) emscripten_align1_double;
 
+/*
+ * Function pointer types
+ */
+
+typedef void (*em_callback_func)(void);
+typedef void (*em_arg_callback_func)(void*);
+typedef void (*em_str_callback_func)(const char *);
 
 /* Functions */
 
@@ -125,7 +132,7 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * for this is to load an asset module, that is, the output of the
  * file packager.
  */
-extern void emscripten_async_load_script(const char *script, void (*onload)(void), void (*onerror)(void));
+extern void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
 
 /*
  * Set a C function as the main event loop. The JS environment
@@ -171,8 +178,8 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(void
  *    before the main loop will be called the first time.
  */
 #if __EMSCRIPTEN__
-extern void emscripten_set_main_loop(void (*func)(void), int fps, int simulate_infinite_loop);
-extern void emscripten_set_main_loop_arg(void (*func)(void*), void *arg, int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop(void);
 extern void emscripten_resume_main_loop(void);
 extern void emscripten_cancel_main_loop(void);
@@ -196,13 +203,13 @@ extern void emscripten_cancel_main_loop(void);
  * at specific time in the future.
  */
 #if __EMSCRIPTEN__
-extern void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
-extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
+extern void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
+extern void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #else
-inline void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name) {
+inline void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
   func(arg);
 }
-inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name) {
+inline void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
   func(arg);
 }
 #endif
@@ -233,9 +240,9 @@ inline void emscripten_set_main_loop_expected_blockers(int num) {}
  * mechanism is used.
  */
 #if __EMSCRIPTEN__
-extern void emscripten_async_call(void (*func)(void *), void *arg, int millis);
+extern void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 #else
-inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
+inline void emscripten_async_call(em_arg_callback_func func, void *arg, int millis) {
   if (millis) SDL_Delay(millis);
   func(arg);
 }
@@ -312,7 +319,7 @@ float emscripten_random(void);
  * If any error occurred 'onerror' will called.
  * The callbacks are called with the file as their argument.
  */
-void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 
 /*
  * Data version of emscripten_async_wget. Instead of writing
@@ -336,7 +343,9 @@ void emscripten_async_wget(const char* url, const char* file, void (*onload)(con
  *                @arg that was provided to this function.
  *
  */
-void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*, void*, int), void (*onerror)(void*));
+typedef void (*em_async_wget_onload_func)(void*, void*, int);
+
+void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
 
 /*
  * More feature-complete version of emscripten_async_wget. Note:
@@ -353,7 +362,10 @@ void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*
  * and file if is a success, the progress value during progress
  * and http status code if is an error.
  */
-void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*, int), void (*onprogress)(void*, int));
+typedef void (*em_async_wget2_onload_func)(void*, const char*);
+typedef void (*em_async_wget2_onstatus_func)(void*, int);
+
+void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress);
 
 /*
  * More feature-complete version of emscripten_async_wget_data. Note:
@@ -375,7 +387,11 @@ void emscripten_async_wget2(const char* url, const char* file,  const char* requ
  * If any error occurred 'onerror' will called with the HTTP status code
    and a string with the status description.
  */
-void emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, void (*onload)(void*, void*, unsigned), void (*onerror)(void*, int, const char*), void (*onprogress)(void*, int, int));
+typedef void (*em_async_wget2_data_onload_func)(void*, void *, unsigned*);
+typedef void (*em_async_wget2_data_onerror_func)(void*, int, const char*);
+typedef void (*em_async_wget2_data_onprogress_func)(void*, int, int);
+
+void emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress);
 
 /*
  * Prepare a file in asynchronous way. This does just the
@@ -387,7 +403,7 @@ void emscripten_async_wget2_data(const char* url, const char* requesttype, const
  * The callbacks are called with the file as their argument.
  * @return 0 if successful, -1 if the file does not exist
  */
-int emscripten_async_prepare(const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 
 /*
  * Data version of emscripten_async_prepare, which receives
@@ -403,7 +419,9 @@ int emscripten_async_prepare(const char* file, void (*onload)(const char*), void
  * the fake filename.
  * @suffix The file suffix, e.g. 'png' or 'jpg'.
  */
-void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*));
+typedef void (*em_async_prepare_data_onload_func)(void*, const char*);
+
+void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror);
 
 /*
  * Worker API. Basically a wrapper around web workers, lets
@@ -452,7 +470,9 @@ void emscripten_destroy_worker(worker_handle worker);
  * @callback the callback with the response (can be null)
  * @arg an argument to be passed to the callback
  */
-void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
+typedef void (*em_worker_callback_func)(char*, int, void*);
+
+void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, em_worker_callback_func callback, void *arg);
 
 /*
  * Sends a response when in a worker call. Both functions post a message
