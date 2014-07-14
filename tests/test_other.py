@@ -1948,7 +1948,7 @@ This pointer might make sense in another type signature: i: 0
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join(self.get_dir(), 'test', 'site_scons'))
     os.chdir(os.path.join(self.get_dir(), 'test'))
     Popen(['scons']).communicate()
-    output = run_js('scons_integration.js')
+    output = run_js('scons_integration.js', assert_returncode=5)
     assert 'If you see this - the world is all right!' in output
 
   def test_embind(self):
