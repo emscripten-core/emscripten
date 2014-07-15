@@ -48,6 +48,8 @@ mergeInto(LibraryManager.library, {
       path = PATH.resolve(FS.cwd(), path);
       opts = opts || {};
 
+      if (!path) return { path: '', node: null };
+
       var defaults = {
         follow_mount: true,
         recurse_count: 0
@@ -828,6 +830,9 @@ mergeInto(LibraryManager.library, {
     stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
+      if (!node) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       if (!node.node_ops.getattr) {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
       }

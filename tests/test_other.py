@@ -3000,6 +3000,31 @@ int main(int argc, char **argv) {
   .., 4
 ''', run_js('a.out.js', args=['/a', '/a//b//']))
 
+  def test_stat_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <errno.h>
+#include <sys/stat.h>
+
+int main(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    const char *path = argv[i];
+    struct stat path_stat;
+    if (stat(path, &path_stat) != 0) {
+      printf("Failed to stat path: %s; errno=%d\n", path, errno);
+    } else {
+      printf("ok on %s\n", path);
+    }
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot stat ""
+    self.assertContained(r'''Failed to stat path: /a; errno=2
+Failed to stat path: ; errno=2
+''', run_js('a.out.js', args=['/a', '']))
+
   def test_emversion(self):
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>
