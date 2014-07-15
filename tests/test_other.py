@@ -3048,6 +3048,7 @@ int main(int argc, char **argv) {
     self.assertContained(r'''Failed to symlink paths: , abc; errno=2''', run_js('a.out.js', args=['', 'abc']))
     self.assertContained(r'''Failed to symlink paths: , ; errno=2''', run_js('a.out.js', args=['', '']))
     self.assertContained(r'''ok''', run_js('a.out.js', args=['123', 'abc']))
+    self.assertContained(r'''Failed to symlink paths: abc, ; errno=2''', run_js('a.out.js', args=['abc', '']))
 
   def test_emversion(self):
     open('src.cpp', 'w').write(r'''

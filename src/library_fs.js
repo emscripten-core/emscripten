@@ -648,6 +648,9 @@ mergeInto(LibraryManager.library, {
       }
       var lookup = FS.lookupPath(newpath, { parent: true });
       var parent = lookup.node;
+      if (!parent) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       var newname = PATH.basename(newpath);
       var err = FS.mayCreate(parent, newname);
       if (err) {
