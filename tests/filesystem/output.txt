@@ -1,14 +1,3 @@
-
-  isRoot: false
-  exists: true
-  error: 0
-  path: /abc
-  name: abc
-  object.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
-  parentExists: true
-  parentPath: /
-  parentObject.contents: ["tmp","dev","forbidden","abc","def"]
-
 /
   isRoot: true
   exists: true
