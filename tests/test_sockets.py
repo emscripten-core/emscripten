@@ -248,6 +248,26 @@ class sockets(BrowserCore):
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
 
+  def test_sockets_async_echo(self):
+    # Run with ./runner.py sockets.test_sockets_async_echo
+    sockets_include = '-I'+path_from_root('tests', 'sockets')
+
+    # Websockify-proxied servers can't run dgram tests
+    harnesses = [
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49165), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49166), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49167), 1),
+      # The following forces non-NULL addr and addlen parameters for the accept call
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49168), 0)
+    ]
+
+    for harness, datagram in harnesses:
+      with harness:
+        self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
+
+    # Deliberately attempt a connection on a port that will fail to test the error callback and getsockopt
+    self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
+
   def test_sockets_echo_bigdata(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 

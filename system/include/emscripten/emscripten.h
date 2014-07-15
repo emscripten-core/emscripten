@@ -190,6 +190,66 @@ extern void emscripten_cancel_main_loop(void);
 #endif
 
 /*
+ * Registers callback functions for receiving socket events.
+ * These events are analogous to WebSocket events but are emitted
+ * *after* the internal emscripten socket processing has occurred
+ * so, for example, the message callback will be triggered after
+ * the data has been added to the recv_queue. This means that an
+ * application receiving this callback can simply read/recv the data
+ * using the file descriptor passed as a parameter to the callback.
+ * All of the callbacks are passed a file descriptor representing
+ * the fd that the notified activity took place on. The error
+ * callback also takes an int representing errno and a char* that
+ * represents the error message.
+ *
+ * Only a single callback function may be registered to handle any
+ * given Event, so calling a given registration function more than
+ * once will cause the first callback to be replaced by the second.
+ * Similarly passing a NULL callback function to any
+ * emscripten_set_socket_*_callback call will deregister the callback
+ * registered for that Event.
+ *
+ * The userData pointer allows arbitrary data specified during Event
+ * registration to be passed to the callback, this is particularly
+ * useful for passing "this" pointers around in Object Oriented code.
+ *
+ * In addition to being able to register network callbacks from C
+ * it is also possible for native JavaScript code to directly use the
+ * underlying mechanism used to implement the callback registration.
+ * For example, the following are the simple logging callbacks that
+ * are registered by default when SOCKET_DEBUG is enabled
+ * Module['websocket']['on']('error', function(error) {console.log('Socket error ' + error);});
+ * Module['websocket']['on']('open', function(fd) {console.log('Socket open fd = ' + fd);});
+ * Module['websocket']['on']('listen', function(fd) {console.log('Socket listen fd = ' + fd);});
+ * Module['websocket']['on']('connection', function(fd) {console.log('Socket connection fd = ' + fd);});
+ * Module['websocket']['on']('message', function(fd) {console.log('Socket message fd = ' + fd);});
+ * Module['websocket']['on']('close', function(fd) {console.log('Socket close fd = ' + fd);});
+ *
+ * Most of the JavaScript callback functions above get passed the
+ * file descriptor of the socket that triggered the callback, the
+ * on error callback however gets passed an *array* that contains
+ * the file descriptor, the error code and an error message.
+ *
+ * Note that the underlying JavaScript implementation doesn't pass
+ * userData, this is actually mostly of use to C/C++ code and the
+ * emscripten_set_socket_*_callback calls actually create a closure
+ * containing the userData and pass that as the callback to the
+ * underlying JavaScript Event registration mechanism.
+ */
+// Triggered by a WebSocket error.
+extern void emscripten_set_socket_error_callback(void *userData, void (*func)(int fd, int err, const char* msg, void *userData));
+// Triggered when the WebSocket has actually opened.
+extern void emscripten_set_socket_open_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when listen has been called (synthetic event).
+extern void emscripten_set_socket_listen_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when the connection has actually been established.
+extern void emscripten_set_socket_connection_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when data is available to be read from the socket.
+extern void emscripten_set_socket_message_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when the WebSocket has actually closed.
+extern void emscripten_set_socket_close_callback(void *userData, void (*func)(int fd, void *userData));
+
+/*
  * Add a function to a queue of events that will execute
  * before the main loop will continue. The event is pushed
  * into the back of the queue. (Note that in the native version

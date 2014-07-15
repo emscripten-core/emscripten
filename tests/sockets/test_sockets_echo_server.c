@@ -114,7 +114,9 @@ void main_loop() {
       client.read = 0;
       client.state = MSG_WRITE;
     }
-  } else {
+  }
+
+  if (client.state == MSG_WRITE) {
     if (!FD_ISSET(fd, &fdw)) {
       return;
     }
@@ -140,6 +142,15 @@ void main_loop() {
 #endif
     }
   }
+}
+
+// The callbacks for the async network events have a different signature than from
+// emscripten_set_main_loop (they get passed the fd of the socket triggering the event).
+// In this test application we want to try and keep as much in common as the timed loop
+// version but in a real application the fd can be used instead of needing to select().
+void async_main_loop(int fd, void* userData) {
+  printf("%s callback\n", userData);
+  main_loop();
 }
 
 int main() {
@@ -187,7 +198,15 @@ int main() {
 #endif
 
 #ifdef __EMSCRIPTEN__
+#if TEST_ASYNC
+  // The first parameter being passed is actually an arbitrary userData pointer
+  // for simplicity this test just passes a basic char*
+  emscripten_set_socket_connection_callback("connection", async_main_loop);
+  emscripten_set_socket_message_callback("message", async_main_loop);
+  emscripten_set_socket_close_callback("close", async_main_loop);
+#else
   emscripten_set_main_loop(main_loop, 60, 0);
+#endif
 #else
   while (1) main_loop();
 #endif
