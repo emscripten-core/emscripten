@@ -3025,6 +3025,30 @@ int main(int argc, char **argv) {
 Failed to stat path: ; errno=2
 ''', run_js('a.out.js', args=['/a', '']))
 
+  def test_symlink_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+  if (symlink(argv[1], argv[2]) != 0) {
+    printf("Failed to symlink paths: %s, %s; errno=%d\n", argv[1], argv[2], errno);
+  } else {
+    printf("ok\n");
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot symlink nonexistents
+    self.assertContained(r'''Failed to symlink paths: , abc; errno=2''', run_js('a.out.js', args=['', 'abc']))
+    self.assertContained(r'''Failed to symlink paths: , ; errno=2''', run_js('a.out.js', args=['', '']))
+    self.assertContained(r'''ok''', run_js('a.out.js', args=['123', 'abc']))
+
   def test_emversion(self):
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>

@@ -643,6 +643,9 @@ mergeInto(LibraryManager.library, {
       return FS.mknod(path, mode, dev);
     },
     symlink: function(oldpath, newpath) {
+      if (!PATH.resolve(oldpath)) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       var lookup = FS.lookupPath(newpath, { parent: true });
       var parent = lookup.node;
       var newname = PATH.basename(newpath);
