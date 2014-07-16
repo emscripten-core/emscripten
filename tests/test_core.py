@@ -1323,7 +1323,7 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
 
   def test_exceptions_white_list(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
-    Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
+    Settings.EXCEPTION_CATCHING_WHITELIST = ["_Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
 
     test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
