@@ -131,7 +131,7 @@ LibraryManager.library = {
     stream.position++;
     return 0;
   },
-  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES', 'malloc'],
+  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
   readdir: function(dirp) {
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
@@ -1034,7 +1034,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  ttyname__deps: ['ttyname_r', 'malloc'],
+  ttyname__deps: ['ttyname_r'],
   ttyname: function(fildes) {
     // char *ttyname(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
@@ -1300,7 +1300,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  getlogin__deps: ['getlogin_r', 'malloc'],
+  getlogin__deps: ['getlogin_r'],
   getlogin: function() {
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
@@ -2718,7 +2718,7 @@ LibraryManager.library = {
     if (buf) _setvbuf(stream, buf, 0, 8192);  // _IOFBF, BUFSIZ.
     else _setvbuf(stream, buf, 2, 8192);  // _IONBF, BUFSIZ.
   },
-  tmpnam__deps: ['$FS', 'malloc'],
+  tmpnam__deps: ['$FS'],
   tmpnam: function(s, dir, prefix) {
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
@@ -2868,7 +2868,7 @@ LibraryManager.library = {
   // sys/mman.h
   // ==========================================================================
 
-  mmap__deps: ['$FS', 'malloc', 'memset'],
+  mmap__deps: ['$FS', 'memset'],
   mmap: function(start, num, prot, flags, fd, offset) {
     /* FIXME: Since mmap is normally implemented at the kernel level,
      * this implementation simply uses malloc underneath the call to
@@ -2958,7 +2958,6 @@ LibraryManager.library = {
 #endif
 },
 
-  calloc__deps: ['malloc'],
   calloc: function(n, s) {
     var ret = _malloc(n*s);
     _memset(ret, 0, n*s);
@@ -2998,7 +2997,7 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  realloc__deps: ['malloc', 'memcpy', 'free'],
+  realloc__deps: ['memcpy'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use
     // a real realloc with it
@@ -3573,7 +3572,7 @@ LibraryManager.library = {
       return ___setErrNo(ERRNO_CODES.EINVAL);
     }
   },
-  strerror__deps: ['strerror_r', 'malloc'],
+  strerror__deps: ['strerror_r'],
   strerror: function(errnum) {
     if (!_strerror.buffer) _strerror.buffer = _malloc(256);
     _strerror_r(errnum, _strerror.buffer, 256);
@@ -3585,7 +3584,6 @@ LibraryManager.library = {
   // ==========================================================================
 
   // Lookup tables for glibc ctype implementation.
-  __ctype_b_loc__deps: ['malloc'],
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
@@ -3611,7 +3609,6 @@ LibraryManager.library = {
     }
     return me.ret;
   },
-  __ctype_tolower_loc__deps: ['malloc'],
   __ctype_tolower_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-tolower-loc.html
     var me = ___ctype_tolower_loc;
@@ -3640,7 +3637,6 @@ LibraryManager.library = {
     }
     return me.ret;
   },
-  __ctype_toupper_loc__deps: ['malloc'],
   __ctype_toupper_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-toupper-loc.html
     var me = ___ctype_toupper_loc;
@@ -4999,7 +4995,7 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['malloc', '__tm_current', 'gmtime_r'],
+  gmtime__deps: ['__tm_current', 'gmtime_r'],
   gmtime: function(time) {
     return _gmtime_r(time, ___tm_current);
   },
@@ -5039,7 +5035,7 @@ LibraryManager.library = {
     return ret;
   },
 
-  localtime__deps: ['malloc', '__tm_current', 'localtime_r'],
+  localtime__deps: ['__tm_current', 'localtime_r'],
   localtime: function(time) {
     return _localtime_r(time, ___tm_current);
   },
@@ -5069,7 +5065,7 @@ LibraryManager.library = {
     return tmPtr;
   },
 
-  asctime__deps: ['malloc', '__tm_formatted', 'asctime_r'],
+  asctime__deps: ['__tm_formatted', 'asctime_r'],
   asctime: function(tmPtr) {
     return _asctime_r(tmPtr, ___tm_formatted);
   },
@@ -6000,7 +5996,6 @@ LibraryManager.library = {
   // locale.h
   // ==========================================================================
 
-  newlocale__deps: ['malloc'],
   newlocale: function(mask, locale, base) {
     return _malloc({{{ QUANTUM_SIZE}}});
   },
@@ -6047,7 +6042,6 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
-  nl_langinfo__deps: ['malloc'],
   nl_langinfo: function(item) {
     // char *nl_langinfo(nl_item item);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
@@ -6674,7 +6668,7 @@ LibraryManager.library = {
     }
     return addr;
   },
-  inet_ntoa__deps: ['_inet_ntop4_raw', 'malloc'],
+  inet_ntoa__deps: ['_inet_ntop4_raw'],
   inet_ntoa: function(in_addr) {
     if (!_inet_ntoa.buffer) {
       _inet_ntoa.buffer = _malloc(1024);
@@ -7036,7 +7030,7 @@ LibraryManager.library = {
     return _gethostbyname(hostp);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', 'malloc'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
 
@@ -7069,7 +7063,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl', 'malloc'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -7286,7 +7280,7 @@ LibraryManager.library = {
   // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
   $GAI_ERRNO_MESSAGES: {},
 
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES', 'malloc'],
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
   gai_strerror: function(val) {
     var buflen = 256;
 
@@ -7328,7 +7322,7 @@ LibraryManager.library = {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols', 'malloc'],
+  setprotoent__deps: ['$Protocols'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 

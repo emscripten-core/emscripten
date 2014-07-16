@@ -3065,3 +3065,20 @@ minor: %d
 tiny: %d
 ''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), run_js('a.out.js'))
 
+  def test_malloc_implicit(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+int main() {
+  const char *home = getenv("HOME");
+  for(unsigned int i = 0; i < 5; ++i) {
+    const char *curr = getenv("HOME");
+    assert(curr == home);
+  }
+  printf("ok\n");
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok', run_js('a.out.js'))
+
