@@ -268,19 +268,17 @@ var LibraryEGL = {
     // So user must pass EGL_CONTEXT_CLIENT_VERSION == 2 to initialize EGL.
     var glesContextVersion = 1;
     for(;;) {
-        var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
-	if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/){
-		glesContextVersion = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
-	}
-	else if (param == 0x3038 /*EGL_NONE*/){
-		break;
-	}
-	else{
-		/* EGL1.4 specifies only EGL_CONTEXT_CLIENT_VERSION as supported attribute */
-		EGL.setErrorCode(0x3004 /*EGL_BAD_ATTRIBUTE*/); 
-		return 0;
-	}
-	contextAttribs += 8;
+      var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
+      if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
+        glesContextVersion = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
+      } else if (param == 0x3038 /*EGL_NONE*/) {
+        break;
+      } else {
+        /* EGL1.4 specifies only EGL_CONTEXT_CLIENT_VERSION as supported attribute */
+        EGL.setErrorCode(0x3004 /*EGL_BAD_ATTRIBUTE*/);
+        return 0;
+      }
+      contextAttribs += 8;
     }
     if (glesContextVersion != 2) {
 #if GL_ASSERTIONS

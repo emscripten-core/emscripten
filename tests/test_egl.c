@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     EGLint contextInvalidAttribs[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
-	0xFFFF, -1,
+        0xFFFF, -1,
         EGL_NONE
     };
     context = eglCreateContext(display, config, NULL, contextInvalidAttribs);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     EGLint contextAttribsNullTerm[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
-	0
+        0
     };
     context = eglCreateContext(display, config, NULL, contextAttribsNullTerm);
     assert(eglGetError() != EGL_SUCCESS);
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     //Test for invalid and null terminator
     EGLint contextAttribsNullTermInvalid[] =
     {
-	0,
+        0,
     };
     context = eglCreateContext(display, config, NULL, contextAttribsNullTermInvalid);
     assert(eglGetError() != EGL_SUCCESS);
