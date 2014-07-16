@@ -660,6 +660,9 @@ def main():
     else:
       print 'Web browser is not running!'
   elif sys.argv[1] == 'log':
+    if len(sys.argv) < 3:
+      print 'Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>'
+      return 1
     clear = '-c' in sys.argv or '-clear' in sys.argv or '--clear' in sys.argv
     b2g_log(sys.argv[2], clear)
   elif sys.argv[1] == 'memory':
