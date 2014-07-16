@@ -168,9 +168,9 @@ typedef struct EmscriptenKeyboardEvent {
  * See https://developer.mozilla.org/en/DOM/Event/UIEvent/KeyEvent
  * and http://www.javascriptkit.com/jsref/eventkeyboardmouse.shtml
  */
-extern EMSCRIPTEN_RESULT emscripten_set_keypress_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_keydown_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_keyup_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_keypress_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_keydown_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_keyup_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData));
 
 /*
  * The event structure passed in mouse events click, mousedown, mouseup, dblclick and mousemove.
@@ -209,11 +209,11 @@ typedef struct EmscriptenMouseEvent {
  * Registers a callback function for receiving browser-generated mouse input events.
  * See https://developer.mozilla.org/en/DOM/MouseEvent
  */
-extern EMSCRIPTEN_RESULT emscripten_set_click_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_mousedown_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, int useCapture, int (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_click_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_mousedown_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData));
 /*
  * Returns the most recently received mouse event state. Note that for this function call to succeed, emscripten_set_xx_callback must have first
  * been called with one of the mouse event types and a non-zero callback function pointer to enable the Mouse state capture.
@@ -243,7 +243,7 @@ typedef struct EmscriptenWheelEvent {
  * Registers a callback function for receiving browser-generated mouse wheel events.
  * See http://www.w3.org/TR/DOM-Level-3-Events/#event-type-wheel
  */
-extern EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData));
 
 /*
  * The event structure passed in DOM element resize and scroll events.
@@ -273,8 +273,8 @@ typedef struct EmscriptenUiEvent {
  *       requires that the Window object sends resize events. It is valid to register a resize callback to other DOM elements,
  *       but the browser is not required to fire resize events on them.
  */
-extern EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData));
 
 /*
  * The event structure passed in DOM element blur, focus, focusin and focusout events.
@@ -291,10 +291,10 @@ typedef struct EmscriptenFocusEvent {
  * Registers a callback function for receiving DOM element blur, focus, focusin and focusout events.
  * See https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-blur
  */
-extern EMSCRIPTEN_RESULT emscripten_set_blur_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_focus_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_focusin_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_focusout_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_blur_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_focus_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_focusin_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_focusout_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData));
 
 /*
  * The event structure passed in the deviceorientation event.
@@ -315,7 +315,7 @@ typedef struct EmscriptenDeviceOrientationEvent {
  * Registers a callback function for receiving the deviceorientation event.
  * See http://dev.w3.org/geo/api/spec-source-orientation.html
  */
-extern EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenDeviceOrientationEvent *orientationEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback(void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenDeviceOrientationEvent *orientationEvent, void *userData));
 /*
  * Returns the most recently received deviceorientation event state. Note that for this function call to succeed, emscripten_set_deviceorientation_callback
  * must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the Device Orientation state capture.
@@ -347,7 +347,7 @@ typedef struct EmscriptenDeviceMotionEvent {
  * Registers a callback function for receiving the devicemotion event.
  * See http://dev.w3.org/geo/api/spec-source-orientation.html
  */
-extern EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenDeviceMotionEvent *motionEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback(void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenDeviceMotionEvent *motionEvent, void *userData));
 /*
  * Returns the most recently received deviceomotion event state. Note that for this function call to succeed, emscripten_set_devicemotion_callback
  * must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the Device Motion state capture.
@@ -375,7 +375,7 @@ typedef struct EmscriptenOrientationChangeEvent {
  * Registers a callback function for receiving the orientationchange event.
  * https://dvcs.w3.org/hg/screen-orientation/raw-file/tip/Overview.html
  */
-extern EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback(void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData));
 /*
  * Returns the current device orientation state.
  */
@@ -416,7 +416,7 @@ typedef struct EmscriptenFullscreenChangeEvent {
  * Registers a callback function for receiving the fullscreenchange event.
  * https://dvcs.w3.org/hg/screen-orientation/raw-file/tip/Overview.html
  */
-extern EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData));
 /*
  * Returns the current page fullscreen state.
  */
@@ -428,7 +428,7 @@ extern EMSCRIPTEN_RESULT emscripten_get_fullscreen_status(EmscriptenFullscreenCh
  *                           be queued to be executed the next time a JS event handler runs. If false, this
  *                           function will instead fail if not running inside a JS event handler.
  */
-extern EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, int deferUntilInEventHandler);
+extern EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL deferUntilInEventHandler);
 /*
  * Returns back to windowed browsing mode.
  */
@@ -452,7 +452,7 @@ typedef struct EmscriptenPointerlockChangeEvent {
  * Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the mousemove event.
  * http://www.w3.org/TR/pointerlock/
  */
-extern EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData));
 /*
  * Returns the current page pointerlock state.
  */
@@ -464,7 +464,7 @@ extern EMSCRIPTEN_RESULT emscripten_get_pointerlock_status(EmscriptenPointerlock
  *                           be queued to be executed the next time a JS event handler runs. If false, this
  *                           function will instead fail if not running inside a JS event handler.
  */
-extern EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target, int deferUntilInEventHandler);
+extern EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target, EM_BOOL deferUntilInEventHandler);
 /*
  * Exits pointer lock state and restores the mouse cursor to be visible again.
  */
@@ -490,7 +490,7 @@ typedef struct EmscriptenVisibilityChangeEvent {
  * Registers a callback function for receiving the visibilitychange event.
  * http://www.w3.org/TR/page-visibility/
  */
-extern EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData));
 /*
  * Returns the current page visibility state.
  */
@@ -542,10 +542,10 @@ typedef struct EmscriptenTouchEvent {
  * Registers a callback function for receiving the touchstart, touchend, touchmove and touchcancel events.
  * http://www.w3.org/TR/touch-events/
  */
-extern EMSCRIPTEN_RESULT emscripten_set_touchstart_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_touchend_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_touchmove_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_touchstart_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_touchend_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_touchmove_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData));
 
 /*
  * Represents the current snapshot state of a gamepad.
@@ -578,8 +578,8 @@ typedef struct EmscriptenGamepadEvent {
  * Registers a callback function for receiving the gamepadconnected and gamepaddisconnected events.
  * http://www.w3.org/TR/gamepad/
  */
-extern EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userData, int useCapture, EM_BOOL (*func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback(void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData));
 
 /*
  * Returns the number of gamepads connected to the system or EMSCRIPTEN_RESULT_NOT_SUPPORTED if the current browser does not support gamepads.
@@ -637,8 +637,8 @@ extern EMSCRIPTEN_RESULT emscripten_set_beforeunload_callback(void *userData, co
  * Registers a callback function for the canvas webgl context webglcontextlost and webglcontextrestored events.
  * See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
  */
-extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const void *reserved, void *userData));
-extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *target, void *userData, int useCapture, EM_BOOL (*func)(int eventType, const void *reserved, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const void *reserved, void *userData));
+extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *target, void *userData, EM_BOOL useCapture, EM_BOOL (*func)(int eventType, const void *reserved, void *userData));
 
 /*
  * Queries the given canvas element for whether its WebGL context is in a lost state.
