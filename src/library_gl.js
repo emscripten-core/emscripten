@@ -698,6 +698,8 @@ var LibraryGL = {
       // Extension available from Firefox 25 and WebKit
       GL.vaoExt = Module.ctx.getExtension('OES_vertex_array_object');
 
+      GL.drawBuffersExt = Module.ctx.getExtension('WEBGL_draw_buffers');
+
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
       // As new extensions are ratified at http://www.khronos.org/registry/webgl/extensions/ , feel free to add your new extensions
@@ -5423,7 +5425,19 @@ var LibraryGL = {
   glVertexAttribDivisorARB: 'glVertexAttribDivisor',
   glDrawArraysInstancedARB: 'glDrawArraysInstanced',
   glDrawElementsInstancedARB: 'glDrawElementsInstanced',
-  
+
+
+  glDrawBuffers__sig: 'vii',
+  glDrawBuffers: function(n, bufs) {
+#if GL_ASSERTIONS
+    assert(GL.drawBuffersExt, 'Must have WEBGL_draw_buffers extension to use drawBuffers');
+#endif
+    var bufArray = [];
+    for (var i = 0; i < n; i++)
+      bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
+
+    GL.drawBuffersExt.drawBuffersWEBGL(bufArray);
+  },
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',

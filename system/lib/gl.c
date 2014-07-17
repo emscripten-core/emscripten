@@ -1724,6 +1724,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glVertexAttrib4f")) return emscripten_glVertexAttrib4f;
   else if (!strcmp(name, "glCopyTexImage2D")) return emscripten_glCopyTexImage2D;
   else if (!strcmp(name, "glCopyTexSubImage2D")) return emscripten_glCopyTexSubImage2D;
+  else if (!strcmp(name, "glDrawBuffers")) return emscripten_glDrawBuffers;
 
   fprintf(stderr, "bad name in getProcAddress: %s | %s\n", name_, name);
   return 0;
