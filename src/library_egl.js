@@ -288,7 +288,7 @@ var LibraryEGL = {
       return 0; /* EGL_NO_CONTEXT */
     }
 
-    _glutInitDisplayMode(0x92 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE */);
+    _glutInitDisplayMode(0xB2 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_STENCIL */);
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
