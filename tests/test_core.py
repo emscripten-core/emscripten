@@ -4198,7 +4198,7 @@ def process(filename):
 
   def test_readdir(self):
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run(src, 'SIGILL: Illegal instruction\nsuccess', force_c=True)
 
   def test_readdir_empty(self):
     src = open(path_from_root('tests', 'dirent', 'test_readdir_empty.c'), 'r').read()

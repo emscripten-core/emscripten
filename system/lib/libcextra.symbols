@@ -242,3 +242,4 @@
          T wmemset
          T wprintf
          T fnmatch
+         T strsignal

@@ -340,6 +340,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
          'strpbrk.c',
          'strrchr.c',
          'strsep.c',
+         'strsignal.c',
          'strspn.c',
          'strstr.c',
          'strtok.c',
