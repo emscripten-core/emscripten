@@ -364,9 +364,14 @@ namespace emscripten {
             return val(internal::_emval_get_property(handle, val(key).handle));
         }
 
-        template<typename T>
-        void set(const T& key, val v) {
+        template<typename K>
+        void set(const K& key, const val& v) {
             internal::_emval_set_property(handle, val(key).handle, v.handle);
+        }
+
+        template<typename K, typename V>
+        void set(const K& key, const V& value) {
+            internal::_emval_set_property(handle, val(key).handle, val(value).handle);
         }
 
         template<typename... Args>
