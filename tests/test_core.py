@@ -2008,10 +2008,11 @@ def process(filename):
       Settings.EXPORTED_FUNCTIONS = ['_main', '_save_me_aimee']
       self.do_run_from_file(src, output, post_build=check)
 
-      # test EXPORT_ALL
-      Settings.EXPORTED_FUNCTIONS = []
-      Settings.EXPORT_ALL = 1
-      self.do_run_from_file(src, output, post_build=check)
+      if self.run_name != 's_0_0' and self.run_name != 's_0_1':
+        # test EXPORT_ALL
+        Settings.EXPORTED_FUNCTIONS = []
+        Settings.EXPORT_ALL = 1
+        self.do_run_from_file(src, output, post_build=check)
 
   def test_emscripten_get_now(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
