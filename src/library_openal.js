@@ -6,6 +6,8 @@ var LibraryOpenAL = {
     contexts: [],
     currentContext: null,
 
+    alcErr: 0,
+
     stringCache: {},
     alcStringCache: {},
 
@@ -247,10 +249,10 @@ var LibraryOpenAL = {
     }
   },
 
-  alcGetError__deps: ['alGetError'],
   alcGetError: function(device) {
-    // We have only one audio device, so just return alGetError.
-    return _alGetError();
+    var err = AL.alcErr;
+    AL.alcErr = 0;
+    return err;
   },
 
   alcGetIntegerv: function(device, param, size, data) {
@@ -268,14 +270,14 @@ var LibraryOpenAL = {
       break;
     case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
       if (!device) {
-        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return 0;
       }
       {{{ makeSetValue('data', '0', '1', 'i32') }}};
       break;
     case 0x1003 /* ALC_ALL_ATTRIBUTES */:
       if (!device) {
-        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return 0;
       }
       {{{ makeSetValue('data', '0', '0', 'i32') }}};
@@ -284,7 +286,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.log("alcGetIntegerv with param " + param + " not implemented yet");
 #endif
-      AL.currentContext.err = 0xA003 /* ALC_INVALID_ENUM */;
+      AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
       break;
     }
   },
@@ -1321,13 +1323,13 @@ var LibraryOpenAL = {
       break;
     case 0x1006 /* ALC_EXTENSIONS */:
       if (!device) {
-        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return 0;
       }
       ret = '';
       break;
     default:
-      AL.currentContext.err = 0xA003 /* ALC_INVALID_ENUM */;
+      AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
       return 0;
     }
 
