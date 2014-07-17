@@ -676,6 +676,7 @@ mergeInto(LibraryManager.library, {
       } catch (e) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
+      if (!old_dir || !new_dir) throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
       // need to be part of the same mount
       if (old_dir.mount !== new_dir.mount) {
         throw new FS.ErrnoError(ERRNO_CODES.EXDEV);

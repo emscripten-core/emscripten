@@ -3050,6 +3050,27 @@ int main(int argc, char **argv) {
     self.assertContained(r'''ok''', run_js('a.out.js', args=['123', 'abc']))
     self.assertContained(r'''Failed to symlink paths: abc, ; errno=2''', run_js('a.out.js', args=['abc', '']))
 
+  def test_rename_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <errno.h>
+
+int main(int argc, char **argv) {
+  if (rename(argv[1], argv[2]) != 0) {
+    printf("Failed to rename paths: %s, %s; errno=%d\n", argv[1], argv[2], errno);
+  } else {
+    printf("ok\n");
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot symlink nonexistents
+    self.assertContained(r'''Failed to rename paths: , abc; errno=2''', run_js('a.out.js', args=['', 'abc']))
+    self.assertContained(r'''Failed to rename paths: , ; errno=2''', run_js('a.out.js', args=['', '']))
+    self.assertContained(r'''Failed to rename paths: 123, abc; errno=2''', run_js('a.out.js', args=['123', 'abc']))
+    self.assertContained(r'''Failed to rename paths: abc, ; errno=2''', run_js('a.out.js', args=['abc', '']))
+
   def test_emversion(self):
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>
