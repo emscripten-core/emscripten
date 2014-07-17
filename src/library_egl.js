@@ -579,6 +579,10 @@ var LibraryEGL = {
   eglGetProcAddress: function(name_) {
     return _emscripten_GetProcAddress(name_);
   },
+
+  eglReleaseThread: function() {
+    return 1; // EGL_TRUE
+  }
 };
 
 autoAddDeps(LibraryEGL, '$EGL');
