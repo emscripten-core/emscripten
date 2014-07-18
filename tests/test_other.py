@@ -3110,3 +3110,137 @@ int main() {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('ok', run_js('a.out.js'))
 
+  def test_switch64phi(self):
+    # issue 2539, fastcomp segfault on phi-i64 interaction
+    self.clear()
+    open('src.cpp', 'w').write(r'''
+#include <cstdint>
+#include <limits>
+#include <cstdio>
+
+//============================================================================
+
+namespace
+{
+  class int_adapter {
+  public:
+    typedef ::int64_t int_type;
+
+    int_adapter(int_type v = 0)
+      : value_(v)
+    {}
+    static const int_adapter pos_infinity()
+    {
+      return (::std::numeric_limits<int_type>::max)();
+    }
+    static const int_adapter neg_infinity()
+    {
+      return (::std::numeric_limits<int_type>::min)();
+    }
+    static const int_adapter not_a_number()
+    {
+      return (::std::numeric_limits<int_type>::max)()-1;
+    }
+    static bool is_neg_inf(int_type v)
+    {
+      return (v == neg_infinity().as_number());
+    }
+    static bool is_pos_inf(int_type v)
+    {
+      return (v == pos_infinity().as_number());
+    }
+    static bool is_not_a_number(int_type v)
+    {
+      return (v == not_a_number().as_number());
+    }
+
+    bool is_infinity() const
+    {
+      return (value_ == neg_infinity().as_number() ||
+              value_ == pos_infinity().as_number());
+    }
+    bool is_special() const
+    {
+      return(is_infinity() || value_ == not_a_number().as_number());
+    }
+    bool operator<(const int_adapter& rhs) const
+    {
+      if(value_ == not_a_number().as_number()
+         || rhs.value_ == not_a_number().as_number()) {
+        return false;
+      }
+      if(value_ < rhs.value_) return true;
+      return false;
+    }
+    int_type as_number() const
+    {
+      return value_;
+    }
+
+    int_adapter operator-(const int_adapter& rhs)const
+    {
+      if(is_special() || rhs.is_special())
+      {
+        if (rhs.is_pos_inf(rhs.as_number()))
+        {
+          return int_adapter(1);
+        }
+        if (rhs.is_neg_inf(rhs.as_number()))
+        {
+          return int_adapter();
+        }
+      }
+      return int_adapter();
+    }
+
+
+  private:
+    int_type value_;
+  };
+
+  class time_iterator {
+  public:
+    time_iterator(int_adapter t, int_adapter d)
+      : current_(t),
+        offset_(d)
+    {}
+
+    time_iterator& operator--()
+    {
+      current_ = int_adapter(current_ - offset_);
+      return *this;
+    }
+
+    bool operator>=(const int_adapter& t)
+    {
+      return not (current_ < t);
+    }
+
+  private:
+    int_adapter current_;
+    int_adapter offset_;
+  };
+
+  void iterate_backward(const int_adapter *answers, const int_adapter& td)
+  {
+    int_adapter end = answers[0];
+    time_iterator titr(end, td);
+
+    std::puts("");
+    for (; titr >= answers[0]; --titr) {
+    }
+  }
+}
+
+int
+main()
+{
+  const int_adapter answer1[] = {};
+  iterate_backward(NULL, int_adapter());
+  iterate_backward(answer1, int_adapter());
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1']).communicate()
+    assert os.path.exists('a.out.js') # build should succeed
+    self.assertContained('segmentation fault loading 4 bytes from address 0', run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
+
