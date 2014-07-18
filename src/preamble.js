@@ -932,9 +932,25 @@ function demangleAll(text) {
   return text.replace(/__Z[\w\d_]+/g, function(x) { var y = demangle(x); return x === y ? x : (x + ' [' + y + ']') });
 }
 
+function jsStackTrace() {
+  var err = new Error();
+  if (!err.stack) {
+    // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
+    // so try that as a special-case.
+    try {
+      throw new Error(0);
+    } catch(e) {
+      err = e;
+    }
+    if (!err.stack) {
+      return '(no stack trace available)';
+    }
+  }
+  return err.stack.toString();
+}
+
 function stackTrace() {
-  var stack = new Error().stack;
-  return stack ? demangleAll(stack) : '(no stack trace available)'; // Stack trace is not available at least on IE10 and Safari 6.
+  return demangleAll(jsStackTrace());
 }
 
 // Memory management
