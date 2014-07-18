@@ -3086,6 +3086,13 @@ minor: %d
 tiny: %d
 ''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), run_js('a.out.js'))
 
+  def test_dashE(self):
+    open('src.cpp', 'w').write(r'''#include <emscripten.h>
+EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+''')
+    out = Popen([PYTHON, EMCC, 'src.cpp', '-E'], stdout=PIPE).communicate()[0]
+    self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
 #include <stdlib.h>
