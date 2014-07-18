@@ -467,6 +467,11 @@ Options that are modified or new in %s include:
                            if you see odd errors, as it can help diagnose
                            things.
 
+                           Note that this will retain temporary files in
+                           the canonical location (usually
+                           /tmp/emscripten_temp) because that is what
+                           EMCC_DEBUG=1 does.
+
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
                            libc++abi, libc). This is normally
