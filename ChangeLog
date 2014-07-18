@@ -25,6 +25,7 @@ v1.21.1: 7/3/2014
 
 v1.21.0: 7/2/2014
 ------------------
+ - Enable memory init files (.mem) by default in optimized builds (-O2+), as if  --memory-init-file 1  is specified. This makes the default behavior on optimized builds emit smaller and faster-to-load code, but does require that you ship both a .js and a .mem file (if you prefer not to, can use  --memory-init-file 1  ).
  - Implemented new SDL 1.2 functions SDL_GetRGB, SDL_GetRGBA and SDL_putenv.
  - Added support for /dev/random, /dev/urandom and C++11 std::random_device, which will use cryptographically secure random api if available. (#2447)
  - Added support for CMake find_path() directive.
