@@ -72,3 +72,4 @@
          T vsprintf
          T wcrtomb
          T wctomb
+         T isxdigit

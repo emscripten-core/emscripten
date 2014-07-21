@@ -87,6 +87,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
        'isdigit.c',
        'isspace.c',
        'isupper.c',
+       'isxdigit.c',
        'tolower.c',
       ]],
       ['internal', [
@@ -168,7 +169,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
         'islower.c',
         'isprint.c',
         'ispunct.c',
-        'isxdigit.c',
         'iswalnum.c',
         'iswalpha.c',
         'iswblank.c',
