@@ -81,7 +81,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
     logging.debug(' building libc for cache')
     libc_files = [
       'dlmalloc.c',
-      os.path.join('libcxx', 'new.cpp'),
     ]
     musl_files = [
       ['ctype', [
@@ -432,6 +431,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
       'stdexcept.cpp',
       'typeinfo.cpp',
       'private_typeinfo.cpp',
+      os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
     return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files)
 
@@ -508,6 +508,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
       need = set()
       has = set()
       for symbols in symbolses:
+        if shared.Settings.VERBOSE: logging.debug('undefs: ' + str(symbols.undefs))
         for library_symbol in library_symbols:
           if library_symbol in symbols.undefs:
             need.add(library_symbol)
