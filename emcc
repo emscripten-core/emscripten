@@ -1390,6 +1390,11 @@ try:
     next_arg_index += 1
     shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
+  forced_stdlibs = []
+  if shared.Settings.DEMANGLE_SUPPORT:
+    shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
+    forced_stdlibs += ['libcxxabi']
+
   if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
     # always need malloc and free to be kept alive and exported, for internal use and other modules
     for required_export in ['_malloc', '_free']:
@@ -1536,7 +1541,7 @@ try:
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-    extra_files_to_link = system_libs.calculate([f for _, f in sorted(temp_files)], in_temp, stdout, stderr)
+    extra_files_to_link = system_libs.calculate([f for _, f in sorted(temp_files)], in_temp, stdout, stderr, forced=forced_stdlibs)
   else:
     extra_files_to_link = []
 

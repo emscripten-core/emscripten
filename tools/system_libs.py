@@ -13,7 +13,7 @@ def call_process(cmd):
   if proc.returncode != 0:
     raise CalledProcessError(proc.returncode, cmd)
 
-def calculate(temp_files, in_temp, stdout_, stderr_):
+def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
   stdout = stdout_
   stderr = stderr_
@@ -455,7 +455,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   force_all = force == '1'
-  force = set((force or '').split(','))
+  force = set((force or '').split(',') + forced)
+  if force: logging.debug('forcing stdlibs: ' + str(force))
 
   # Scan symbols
   symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)

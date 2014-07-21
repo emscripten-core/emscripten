@@ -231,6 +231,9 @@ var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
                                  // When the array is empty, the filter is disabled.
 var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
+var DEMANGLE_SUPPORT = 0; // If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
+                          // to emit fully proper demangled c++ names
+
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
                        // Runtime.debug at runtime for logging to cease, and can set it when you
                        // want it back. A simple way to set it in C++ is
