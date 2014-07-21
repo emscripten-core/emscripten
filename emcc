@@ -454,12 +454,9 @@ Options that are modified or new in %s include:
                            those in Emscripten's src/library_*
 
   -v                       Turns on verbose output. This will pass
-                           -v to Clang, and also enable EMCC_DEBUG
-                           to details emcc's operations.
-
-                           It will also run emscripten's internal sanity
-                           checks, checking that things like the LLVM directory
-                           path looks correct, etc. This works with or
+                           -v to Clang. It will also run emscripten's internal
+                           sanity checks, checking that things like the LLVM
+                           directory path looks correct, etc. This works with or
                            without other arguments, so it can be useful to run
 
                               emcc -v
@@ -467,10 +464,10 @@ Options that are modified or new in %s include:
                            if you see odd errors, as it can help diagnose
                            things.
 
-                           Note that this will retain temporary files in
-                           the canonical location (usually
-                           /tmp/emscripten_temp) because that is what
-                           EMCC_DEBUG=1 does.
+                           To enable additional emscripten logging, you can
+                           set EMCC_DEBUG=1 in the environment, which will
+                           also save temporary files in the canonical location
+                           (usually /tmp/emscripten_temp).
 
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
@@ -1011,14 +1008,6 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
-      os.environ['EMCC_DEBUG'] = '1' # send to child processes too
-      if DEBUG != 1:
-        # swap in debug logging
-        DEBUG = 1
-        shared.set_logging()
-        logging.debug('-v invocation: ' + ' '.join(sys.argv))
-        shared.apply_configuration() # reset config to pick up change
-        shared.check_sanity(force=True)
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
