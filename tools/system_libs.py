@@ -27,7 +27,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
       symbols = filter(lambda symbol: symbol not in exclude, symbols)
     return set(symbols)
 
-  lib_opts = ['-O2']
+  lib_opts = ['-O2', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')]
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
@@ -421,7 +421,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
   def create_libcxxabi():
     logging.debug('building libcxxabi for cache')
     libcxxabi_files = [
+      'abort_message.cpp',
+      'cxa_aux_runtime.cpp',
+      'cxa_default_handlers.cpp',
+      'cxa_demangle.cpp',
+      'cxa_exception_storage.cpp',
+      'cxa_new_delete.cpp',
+      'cxa_handlers.cpp',
       'exception.cpp',
+      'stdexcept.cpp',
       'typeinfo.cpp',
       'private_typeinfo.cpp',
     ]

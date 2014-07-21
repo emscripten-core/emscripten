@@ -1477,6 +1477,34 @@ int main(int argc, char **argv)
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
+  def test_bad_typeid(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
+    Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+
+    self.do_run(r'''
+// exception example
+#include <iostream>       // std::cerr
+#include <typeinfo>       // operator typeid
+#include <exception>      // std::exception
+
+class Polymorphic {virtual void member(){}};
+
+int main () {
+  try
+  {
+    Polymorphic * pb = 0;
+    typeid(*pb);  // throws a bad_typeid exception
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "exception caught: " << e.what() << '\n';
+  }
+  return 0;
+}
+    ''', 'exception caught: std::bad_typeid')
+
   def test_exit_stack(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
