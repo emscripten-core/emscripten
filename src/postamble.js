@@ -2,6 +2,9 @@
 // === Auto-generated postamble setup entry stuff ===
 
 if (memoryInitializer) {
+  if (Module['memoryInitializerPrefixURL']) {
+    memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+  }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
 #if USE_TYPED_ARRAYS == 2
