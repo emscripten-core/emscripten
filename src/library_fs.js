@@ -311,7 +311,10 @@ mergeInto(LibraryManager.library, {
       return 0;
     },
     mayLookup: function(dir) {
-      return FS.nodePermissions(dir, 'x');
+      var err = FS.nodePermissions(dir, 'x');
+      if (err) return err;
+      if (!dir.node_ops.lookup) return ERRNO_CODES.EACCES;
+      return 0;
     },
     mayCreate: function(dir, name) {
       try {

@@ -3270,3 +3270,7 @@ main()
     assert os.path.exists('a.out.js') # build should succeed
     self.assertContained('segmentation fault loading 4 bytes from address 0', run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
 
+  def test_bad_lookup(self):
+    Popen([PYTHON, EMXX, path_from_root('tests', 'filesystem', 'bad_lookup.cpp')]).communicate()
+    self.assertContained('ok.', run_js('a.out.js'))
+
