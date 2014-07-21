@@ -947,7 +947,7 @@ function demangle(func) {
     final += '?';
   }
   if (final.indexOf('?') >= 0 && !hasLibcxxabi) {
-    Runtime.warnOnce('A problem occurred in builtin C++ name demangling; build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+    Runtime.warnOnce('warning: a problem occurred in builtin C++ name demangling; build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
   }
   return final;
 }
