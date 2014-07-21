@@ -908,7 +908,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     implemented_functions = set(metadata['implementedFunctions'])
     if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
       for requested in settings['ORIGINAL_EXPORTED_FUNCTIONS']:
-        if requested not in all_implemented:
+        if requested not in all_implemented and \
+           requested != '_malloc': # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     # Add named globals

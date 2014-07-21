@@ -479,6 +479,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_):
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     if more:
       add_back_deps(need) # recurse to get deps of deps
+
+  ## depend on exported functions
+  #assert len(symbolses) > 0
+  #for export in shared.Settings.EXPORTED_FUNCTIONS:
+  #  if shared.Settings.VERBOSE: logging.debug('adding dependency on export %s' % export)
+  #  symbolses[0].undefs.add(export[1:])
+
   for symbols in symbolses:
     add_back_deps(symbols)
 
