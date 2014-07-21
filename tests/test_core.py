@@ -1394,7 +1394,7 @@ int main(int argc, char **argv)
 
       assert size - empty_size > 2000, [empty_size, size] # big change when we disable entirely
       assert size - fake_size > 2000, [fake_size, size]
-      assert empty_size == fake_size, [empty_size, fake_size]
+      assert abs(empty_size - fake_size) < 100, [empty_size, fake_size]
       assert empty_size - disabled_size < 100, [empty_size, disabled_size] # full disable removes a tiny bit more
       assert fake_size - disabled_size < 100, [disabled_size, fake_size]
 
