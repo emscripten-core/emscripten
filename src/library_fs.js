@@ -1211,6 +1211,8 @@ mergeInto(LibraryManager.library, {
     },
     createDefaultDirectories: function() {
       FS.mkdir('/tmp');
+      FS.mkdir('/home');
+      FS.mkdir('/home/web_user');
     },
     createDefaultDevices: function() {
       // create /dev
