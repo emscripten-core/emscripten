@@ -1470,6 +1470,7 @@ int main(int argc, char **argv)
   def test_exceptions_std(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
+    Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
     test_path = path_from_root('tests', 'core', 'test_exceptions_std')
