@@ -317,6 +317,17 @@ inline void emscripten_async_call(em_arg_callback_func func, void *arg, int mill
 extern void emscripten_exit_with_live_runtime(void);
 
 /*
+ * Shuts down the runtime and exits the program, as if you
+ * called exit(). The difference is that emscripten_force_exit
+ * will shut down the runtime even if you previously called
+ * emscripten_exit_with_live_runtime or otherwise kept the
+ * runtime alive. In other words, this method gives you the
+ * option to completely shut down the runtime after it was
+ * kept alive beyond the completion of main().
+ */
+extern void emscripten_force_exit(int status);
+
+/*
  * Hide the OS mouse cursor over the canvas. Note that SDL's
  * SDL_ShowCursor command shows and hides the SDL cursor, not
  * the OS one. This command is useful to hide the OS cursor

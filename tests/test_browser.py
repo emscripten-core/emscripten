@@ -1113,6 +1113,9 @@ keydown(100);keyup(100); // trigger the end
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
 
+  def test_force_exit(self):
+    self.btest('force_exit.c', force_c=True, expected='17')
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
