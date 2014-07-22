@@ -3182,12 +3182,12 @@ LibraryManager.library = {
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = 'root';
+      ENV['USER'] = 'web_user';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
-      ENV['HOME'] = '/home/emscripten';
-      ENV['LANG'] = 'en_US.UTF-8';
-      ENV['_'] = './this.program';
+      ENV['HOME'] = '/home/web_user';
+      ENV['LANG'] = 'C';
+      ENV['_'] = Module['thisProgram'] || './this.program';
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
@@ -4900,7 +4900,7 @@ LibraryManager.library = {
 
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_NORMAL); // XXX leak
+    var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
     {{{ makeSetValue('addr', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('addr', QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('addr', QUANTUM_SIZE*2, '0', 'i32') }}};
