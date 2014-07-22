@@ -3270,7 +3270,43 @@ main()
     assert os.path.exists('a.out.js') # build should succeed
     self.assertContained('segmentation fault loading 4 bytes from address 0', run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
 
-  def test_bad_lookup(self):
-    Popen([PYTHON, EMXX, path_from_root('tests', 'filesystem', 'bad_lookup.cpp')]).communicate()
-    self.assertContained('ok.', run_js('a.out.js'))
+  def test_only_force_stdlibs(self):
+    def test(name):
+      print name
+      Popen([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
+      self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
+
+    test('normal') # normally is ok
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      test('forced libs is ok, they were there anyhow')
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      test('partial list, but ok since we grab them as needed')
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+      ok = False
+      test('fail! not enough stdlibs')
+    except:
+      ok = True
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
+    assert ok
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+      test('force all the needed stdlibs, so this works even though we ignore the input file')
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
 

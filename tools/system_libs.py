@@ -450,13 +450,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     return o
 
-  # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
+  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   force_all = force == '1'
   force = set((force or '').split(',') + forced)
   if force: logging.debug('forcing stdlibs: ' + str(force))
+
+  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
+  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
+  # the proper list of actually needed libraries, errors can occur.
+  if os.environ.get('EMCC_ONLY_FORCED_STDLIBS'):
+    temp_files = []
 
   # Scan symbols
   symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
