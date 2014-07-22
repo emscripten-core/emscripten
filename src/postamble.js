@@ -64,7 +64,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       argv.push(0);
     }
   }
-  var argv = [allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL) ];
+  var argv = [allocate(intArrayFromString(Module['thisProgram']), 'i8', ALLOC_NORMAL) ];
   pad();
   for (var i = 0; i < argc-1; i = i + 1) {
     argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_NORMAL));

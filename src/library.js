@@ -3187,7 +3187,7 @@ LibraryManager.library = {
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
       ENV['LANG'] = 'C';
-      ENV['_'] = Module['thisProgram'] || './this.program';
+      ENV['_'] = Module['thisProgram'];
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
