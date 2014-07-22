@@ -5872,6 +5872,28 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run(src, expected)
 
+  def test_getFuncWrapper_sig_alias(self):
+    src = r'''
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    void func1(int a) {
+      printf("func1\n");
+    }
+    void func2(int a, int b) {
+      printf("func2\n");
+    }
+
+    int main() {
+      EM_ASM_INT({
+        Runtime.getFuncWrapper($0, 'vi')(0);
+        Runtime.getFuncWrapper($1, 'vii')(0, 0);
+      }, func1, func2);
+      return 0;
+    }
+    '''
+    self.do_run(src, 'func1\nfunc2\n')
+
   def test_demangle_stacks(self):
     if Settings.ASM_JS: return self.skip('spidermonkey has stack trace issues')
 
