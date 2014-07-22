@@ -1363,6 +1363,8 @@ int main(int argc, char **argv)
     self.do_run(src, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
   def test_exceptions_white_list(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
@@ -1399,6 +1401,8 @@ int main(int argc, char **argv)
       assert fake_size - disabled_size < 100, [disabled_size, fake_size]
 
   def test_exceptions_white_list_2(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     Settings.EXCEPTION_CATCHING_WHITELIST = ["_main"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
@@ -1447,6 +1451,8 @@ int main(int argc, char **argv)
       self.do_run(src, 'success')
 
   def test_exceptions_typed(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
 
