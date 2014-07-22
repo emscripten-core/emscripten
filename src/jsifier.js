@@ -85,8 +85,13 @@ function JSify(data, functionsOnly) {
         libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
       }
       libFuncsToInclude.forEach(function(ident) {
+        var functionName = '_' + ident;
+        if (ident[0] === '$') {
+          functionName = ident.substr(1);
+        }
         data.functionStubs.push({
           intertype: 'functionStub',
+          functionName: functionName,
           ident: '_' + ident
         });
       });
@@ -363,15 +368,15 @@ function JSify(data, functionsOnly) {
     }
   }
 
-  function processLibraryFunction(snippet, ident) {
+  function processLibraryFunction(snippet, ident, functionName) {
     snippet = snippet.toString();
     assert(snippet.indexOf('XXX missing C define') == -1,
-           'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
+           'Trying to include a library function with missing C defines: ' + functionName + ' | ' + snippet);
 
     // name the function; overwrite if it's already named
-    snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
+    snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + functionName + '(');
     if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+      snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + functionName + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
       snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; \n}';
     }
     return snippet;
@@ -414,6 +419,13 @@ function JSify(data, functionsOnly) {
       });
       var isFunction = false;
 
+      // $ident's are special, we do not prefix them with a '_'.
+      if (ident[0] === '$') {
+        var functionName = ident.substr(1);
+      } else {
+        var functionName = '_' + ident;
+      }
+
       if (typeof snippet === 'string') {
         var target = LibraryManager.library[snippet];
         if (target) {
@@ -426,14 +438,14 @@ function JSify(data, functionsOnly) {
         // In asm, we need to know about library functions. If there is a target, though, then no
         // need to consider this a library function - we will call directly to it anyhow
         if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
-          Functions.libraryFunctions[ident] = 1;
+          Functions.libraryFunctions[functionName] = 1;
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
       } else if (typeof snippet === 'function') {
         isFunction = true;
-        snippet = processLibraryFunction(snippet, ident);
-        if (ASM_JS) Functions.libraryFunctions[ident] = 1;
+        snippet = processLibraryFunction(snippet, ident, functionName);
+        if (ASM_JS) Functions.libraryFunctions[functionName] = 1;
       }
 
       var postsetId = ident + '__postset';
@@ -461,30 +473,24 @@ function JSify(data, functionsOnly) {
           });
         });
       }
-      // $ident's are special, we do not prefix them with a '_'.
-      if (ident[0] === '$') {
-        ident = ident.substr(1);
-      } else {
-        ident = '_' + ident;
-      }
-      if (VERBOSE) printErr('adding ' + ident + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
+      if (VERBOSE) printErr('adding ' + functionName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-      var contentText = isFunction ? snippet : ('var ' + ident + '=' + snippet + ';');
+      var contentText = isFunction ? snippet : ('var ' + functionName + '=' + snippet + ';');
       if (ASM_JS) {
-        var sig = LibraryManager.library[ident.substr(1) + '__sig'];
-        if (isFunction && sig && LibraryManager.library[ident.substr(1) + '__asm']) {
+        var sig = LibraryManager.library[ident + '__sig'];
+        if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
           // asm library function, add it as generated code alongside the generated code
-          Functions.implementedFunctions[ident] = sig;
+          Functions.implementedFunctions[functionName] = sig;
           asmLibraryFunctions.push(contentText);
           contentText = ' ';
-          EXPORTED_FUNCTIONS[ident] = 1;
-          Functions.libraryFunctions[ident.substr(1)] = 2;
+          EXPORTED_FUNCTIONS[functionName] = 1;
+          Functions.libraryFunctions[functionName] = 2;
         }
       }
       if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
       if ((!ASM_JS || phase == 'pre' || phase == 'glue') &&
-          (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
-        contentText += '\nModule["' + ident + '"] = ' + ident + ';';
+          (EXPORT_ALL || (functionName in EXPORTED_FUNCTIONS))) {
+        contentText += '\nModule["' + functionName + '"] = ' + functionName + ';';
       }
       return depsText + contentText;
     }
@@ -841,17 +847,17 @@ function JSify(data, functionsOnly) {
         func.JS += '\n//FUNCTION_END_MARKER_OF_SOURCE_FILE_' + associatedSourceFile + '\n';
     }
 
-    if (!ASM_JS && (EXPORT_ALL || (func.ident in EXPORTED_FUNCTIONS))) {
-      func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
+    if (!ASM_JS && (EXPORT_ALL || (func.functionName in EXPORTED_FUNCTIONS))) {
+      func.JS += 'Module["' + func.functionName + '"] = ' + func.functionName + ';';
     }
 
     if (!ASM_JS && INLINING_LIMIT && func.lines.length >= INLINING_LIMIT) {
-      func.JS += func.ident + '["X"]=1;';
+      func.JS += func.functionName + '["X"]=1;';
     }
 
     if (BUILD_AS_SHARED_LIB == 2) {
       // TODO: make the assert conditional on ASSERTIONS
-      func.JS += 'if (globalScope) { assert(!globalScope["' + func.ident + '"]); globalScope["' + func.ident + '"] = ' + func.ident + ' }';
+      func.JS += 'if (globalScope) { assert(!globalScope["' + func.functionName + '"]); globalScope["' + func.functionName + '"] = ' + func.functionName + ' }';
     }
 
     func.JS = func.JS.replace(/\n *;/g, '\n'); // remove unneeded lines
@@ -1461,7 +1467,7 @@ function JSify(data, functionsOnly) {
       var callIdent = LibraryManager.getRootIdent(simpleIdent);
       if (callIdent) {
         simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
-        if (callIdent.indexOf('Math_') !== 0) {
+        if ((callIdent.indexOf('Math_') !== 0) && (callIdent[0] != '$')) {
           callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
         }
       } else {
@@ -1855,13 +1861,14 @@ function JSify(data, functionsOnly) {
       if (!INCLUDE_FULL_LIBRARY && !SIDE_MODULE && !BUILD_AS_SHARED_LIB) {
         // first row are utilities called from generated code, second are needed from fastLong
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
-         'llvm_ctlz_i32', 'llvm_cttz_i32'].forEach(function(func) {
-          if (!Functions.libraryFunctions[func] || (phase == 'glue' && func[0] === 'l' && !addedLibraryItems[func])) { // TODO: one-by-one in fastcomp glue mode
-            print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
-            Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
-            Functions.libraryFunctions[func] = phase == 'glue' ? 2 : 1; // XXX
+         'llvm_ctlz_i32', 'llvm_cttz_i32'].forEach(function(ident) {
+          var functionName = '_' + ident;
+          if (!Functions.libraryFunctions[functionName] || (phase == 'glue' && ident[0] === 'l' && !addedLibraryItems[ident])) { // TODO: one-by-one in fastcomp glue mode
+            print(processLibraryFunction(LibraryManager.library[ident], ident, functionName)); // must be first to be close to generated code
+            Functions.implementedFunctions[functionName] = LibraryManager.library[ident + '__sig'];
+            Functions.libraryFunctions[functionName] = phase == 'glue' ? 2 : 1; // XXX
             // limited dependency handling
-            var deps = LibraryManager.library[func + '__deps'];
+            var deps = LibraryManager.library[ident + '__deps'];
             if (deps) {
               deps.forEach(function(dep) {
                 assert(typeof dep == 'function');

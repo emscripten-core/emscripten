@@ -4041,7 +4041,7 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
-  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
+  __resumeException__deps: [function() { Functions.libraryFunctions['___resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
     Module.print("Resuming exception");
