@@ -570,9 +570,9 @@ var LibraryEGL = {
       // the flush was removed since this _may_ result in slowing code down.
       //_glFlush();
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-      return 1; // EGL_TRUE
+      return 1 /* EGL_TRUE */;
     }
-    return 0; // EGL_FALSE
+    return 0 /* EGL_FALSE */;
   },
 
   eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
@@ -581,7 +581,15 @@ var LibraryEGL = {
   },
 
   eglReleaseThread: function() {
-    return 1; // EGL_TRUE
+    // Equivalent to eglMakeCurrent with EGL_NO_CONTEXT and EGL_NO_SURFACE.
+    EGL.currentContext = 0;
+    EGL.currentReadSurface = 0;
+    EGL.currentDrawSurface = 0;
+    // EGL spec v1.4 p.55:
+    // "calling eglGetError immediately following a successful call to eglReleaseThread should not be done.
+    //  Such a call will return EGL_SUCCESS - but will also result in reallocating per-thread state."                     
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 1 /* EGL_TRUE */;
   }
 };
 
