@@ -4,7 +4,10 @@ mergeInto(LibraryManager.library, {
     dbs: {},
     indexedDB: function() {
       if (typeof indexedDB !== 'undefined') return indexedDB;
-      return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      var ret = null;
+      if (typeof window === 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      assert(ret, 'IDBFS used, but indexedDB not supported');
+      return ret;
     },
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
