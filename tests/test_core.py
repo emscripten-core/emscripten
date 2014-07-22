@@ -4547,6 +4547,14 @@ def process(filename):
       expected.replace('{{{ THIS_PROGRAM }}}', self.get_dir() + '/src.cpp.o.js') # node, can find itself properly
     ])
 
+  def test_environ(self):
+    src = open(path_from_root('tests', 'env', 'src-mini.c'), 'r').read()
+    expected = open(path_from_root('tests', 'env', 'output-mini.txt'), 'r').read()
+    self.do_run(src, [
+      expected.replace('{{{ THIS_PROGRAM }}}', './this.program'), # spidermonkey, v8
+      expected.replace('{{{ THIS_PROGRAM }}}', self.get_dir() + '/src.cpp.o.js') # node, can find itself properly
+    ])
+
   def test_systypes(self):
     src = open(path_from_root('tests', 'systypes', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'systypes', 'output.txt'), 'r').read()

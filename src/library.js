@@ -3167,6 +3167,7 @@ LibraryManager.library = {
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
 #endif
+  environ__deps: ['$ENV'],
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: 'environ',
