@@ -145,7 +145,7 @@ def send_b2g_bulk_data(to, data_blob):
   logv(message)
   b2g_socket.sendall(message)
   b2g_socket.sendall(data_blob)
-  # It seems that B2G doesn't send any response JSON back after a bulk transfer is finished, so no read_b2g_response() here.
+  return read_b2g_response()
 
 # Queries the device for a list of all installed apps.
 def b2g_get_appslist():
