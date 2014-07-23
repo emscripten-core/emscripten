@@ -311,14 +311,15 @@ inline void emscripten_async_call(em_arg_callback_func func, void *arg, int mill
 /*
  * Exits the program immediately, but leaves the runtime alive
  * so that you can continue to run code later (so global destructors
- * etc. are not run). This is implicitly performed when you do
- * an asynchronous operation like emscripten_async_call.
+ * etc. are not run). Note that the runtime is kept alive automatically
+ * when you do an asynchronous operation like emscripten_async_call,
+ * so you don't need to call this function in that case.
  */
 extern void emscripten_exit_with_live_runtime(void);
 
 /*
- * Shuts down the runtime and exits the program, as if you
- * called exit(). The difference is that emscripten_force_exit
+ * Shuts down the runtime and exits (terminates) the program, as if
+ * you called exit(). The difference is that emscripten_force_exit
  * will shut down the runtime even if you previously called
  * emscripten_exit_with_live_runtime or otherwise kept the
  * runtime alive. In other words, this method gives you the
