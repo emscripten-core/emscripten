@@ -1011,6 +1011,7 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
+      shared.check_sanity(force=True)
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
