@@ -5452,6 +5452,10 @@ LibraryManager.library = {
         // If tm_isdst is greater than zero, the daylight savings time offset is used. 
         // If tm_isdst is negative, no characters are returned. 
         var ret = new Date().getTimezoneOffset();
+        // convert from minutes into hhmm format (which means 60 minutes = 100 units)
+        var minutes = ret % 60;
+        ret = (100*(ret - minutes)/60) + minutes;
+        // add sign and adjust length to ?hhmm
         if (ret >= 0) {
           ret = '' + ret;
           while (ret.length < 4) ret = '0' + ret;
