@@ -2996,6 +2996,7 @@ int main(int argc, char **argv) {
   ., 4
   .., 4
   tmp, 4
+  home, 4
   dev, 4
 ''', run_js('a.out.js', args=['/']))
     # cannot create empty name, cannot open
