@@ -60,6 +60,8 @@ LibraryManager.library = {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
     var fd = _fileno(dirp);
+    var stream = FS.getStream(fd);
+    if (stream.currReading) stream.currReading = null;
     return _close(fd);
   },
   telldir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -85,6 +87,8 @@ LibraryManager.library = {
     // void rewinddir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/rewinddir.html
     _seekdir(dirp, 0);
+    var stream = FS.getStreamFromPtr(dirp);
+    if (stream.currReading) stream.currReading = null;
   },
   readdir_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   readdir_r: function(dirp, entry, result) {
@@ -94,25 +98,32 @@ LibraryManager.library = {
     if (!stream) {
       return ___setErrNo(ERRNO_CODES.EBADF);
     }
-    var entries;
-    try {
-      entries = FS.readdir(stream.path);
-    } catch (e) {
-      return FS.handleFSError(e);
+    if (!stream.currReading) {
+      try {
+        // load the list of entries now, then readdir will traverse that list, to ignore changes to files
+        stream.currReading = FS.readdir(stream.path);
+      } catch (e) {
+        return FS.handleFSError(e);
+      }
     }
-    if (stream.position < 0 || stream.position >= entries.length) {
+    if (stream.position < 0 || stream.position >= stream.currReading.length) {
       {{{ makeSetValue('result', '0', '0', 'i8*') }}};
       return 0;
     }
     var id;
     var type;
-    var name = entries[stream.position];
-    var offset = stream.position + 1;
+    var name = stream.currReading[stream.position++];
     if (!name.indexOf('.')) {
       id = 1;
       type = 4;
     } else {
-      var child = FS.lookupNode(stream.node, name);
+      try {
+        // child may have been removed since we started to read this directory
+        var child = FS.lookupNode(stream.node, name);
+      } catch (e) {
+        // skip to the next entry (not infinite since position is incremented until currReading.length)
+        return _readdir_r(dirp, entry, result);
+      }
       id = child.id;
       type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
              FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
@@ -120,7 +131,7 @@ LibraryManager.library = {
              8;                             // DT_REG, regular file.
     }
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'offset', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, 'name.length + 1', 'i32') }}};
     for (var i = 0; i < name.length; i++) {
       {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', 'name.charCodeAt(i)', 'i8') }}};
@@ -128,7 +139,6 @@ LibraryManager.library = {
     {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', '0', 'i8') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
     {{{ makeSetValue('result', '0', 'entry', 'i8*') }}};
-    stream.position++;
     return 0;
   },
   readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
