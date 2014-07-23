@@ -3444,3 +3444,80 @@ main()
       del os.environ['EMCC_FORCE_STDLIBS']
       del os.environ['EMCC_ONLY_FORCED_STDLIBS']
 
+  def test_strftime_zZ(self):
+    open('src.cpp', 'w').write(r'''
+#include <cerrno>
+#include <cstring>
+#include <ctime>
+#include <iostream>
+
+int main()
+{
+  // Buffer to hold the current hour of the day.  Format is HH + nul
+  // character.
+  char hour[3];
+
+  // Buffer to hold our ISO 8601 formatted UTC offset for the current
+  // timezone.  Format is [+-]hhmm + nul character.
+  char utcOffset[6];
+
+  // Buffer to hold the timezone name or abbreviation.  Just make it
+  // sufficiently large to hold most timezone names.
+  char timezone[128];
+
+  std::tm tm;
+
+  // Get the current timestamp.
+  const std::time_t now = std::time(NULL);
+
+  // What time is that here?
+  if (::localtime_r(&now, &tm) == NULL) {
+    const int error = errno;
+    std::cout
+      << "Failed to get localtime for timestamp=" << now << "; errno=" << error
+      << "; " << std::strerror(error) << std::endl;
+    return 1;
+  }
+
+  size_t result = 0;
+
+  // Get the formatted hour of the day.
+  if ((result = std::strftime(hour, 3, "%H", &tm)) != 2) {
+    const int error = errno;
+    std::cout
+      << "Failed to format hour for timestamp=" << now << "; result="
+      << result << "; errno=" << error << "; " << std::strerror(error)
+      << std::endl;
+    return 1;
+  }
+  std::cout << "The current hour of the day is: " << hour << std::endl;
+
+  // Get the formatted UTC offset in ISO 8601 format.
+  if ((result = std::strftime(utcOffset, 6, "%z", &tm)) != 5) {
+    const int error = errno;
+    std::cout
+      << "Failed to format UTC offset for timestamp=" << now << "; result="
+      << result << "; errno=" << error << "; " << std::strerror(error)
+      << std::endl;
+    return 1;
+  }
+  std::cout << "The current timezone offset is: " << utcOffset << std::endl;
+
+  // Get the formatted timezone name or abbreviation.  We don't know how long
+  // this will be, so just expect some data to be written to the buffer.
+  if ((result = std::strftime(timezone, 128, "%Z", &tm)) == 0) {
+    const int error = errno;
+    std::cout
+      << "Failed to format timezone for timestamp=" << now << "; result="
+      << result << "; errno=" << error << "; " << std::strerror(error)
+      << std::endl;
+    return 1;
+  }
+  std::cout << "The current timezone is: " << timezone << std::endl;
+
+  std::cout << "ok!\n";
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok!', run_js('a.out.js'))
+

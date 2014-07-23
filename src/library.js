@@ -5451,13 +5451,26 @@ LibraryManager.library = {
         // If tm_isdst is zero, the standard time offset is used. 
         // If tm_isdst is greater than zero, the daylight savings time offset is used. 
         // If tm_isdst is negative, no characters are returned. 
-        // FIXME: we cannot determine time zone (or can we?)
-        return '';
+        var ret = new Date().getTimezoneOffset();
+        if (ret >= 0) {
+          ret = '' + ret;
+          while (ret.length < 4) ret = '0' + ret;
+          return '+' + ret;
+        } else {
+          ret = '' + ret;
+          ret = ret.substr(1);
+          while (ret.length < 4) ret = '0' + ret;
+          return '-' + ret;
+        }
       },
       '%Z': function(date) {
         // Replaced by the timezone name or abbreviation, or by no bytes if no timezone information exists. [ tm_isdst]
-        // FIXME: we cannot determine time zone (or can we?)
-        return '';
+        try {
+          // Date strings typically end in (PDT) or such.
+          return new Date().toString().split('(').slice(-1)[0].split(')')[0];
+        } catch(e) {
+          return ''; // may not work in all browsers
+        }
       },
       '%%': function() {
         return '%';
