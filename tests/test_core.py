@@ -6023,6 +6023,15 @@ def process(filename):
 
     self.do_run_from_file(src, output)
 
+  def test_tracing(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    Building.COMPILER_TEST_OPTS += ['--tracing']
+
+    test_path = path_from_root('tests', 'core', 'test_tracing')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_embind(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     Building.COMPILER_TEST_OPTS += ['--bind']
