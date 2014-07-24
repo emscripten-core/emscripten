@@ -5,15 +5,13 @@ Download and install (under-construction)
 
 .. note:: The *Emscripten SDK* provides the whole Emscripten toolchain (*Clang*, *Python*, *Node.js* and *Visual Studio* integration) in a single easy-to-install package, with integrated support for updating to newer Emscripten versions as they are released. 
 
+.. tip:: If you are :doc:`contributing <../contributing/contributing>` to Emscripten you should :doc:`set up Emscripten from source <../contributing/installing_from_source>`.
+
 
 Downloads
 ==============
 
-To get started with Emscripten development, grab one of the packages below:
-
-If you are :doc:`contributing <../contributing/contributing>` to Emscripten you can also set up Emscripten from source: see :doc:`../contributing/installing_from_source`.
-
-
+To get started with Emscripten development, grab one of the SDK packages below:
 
 
 Windows

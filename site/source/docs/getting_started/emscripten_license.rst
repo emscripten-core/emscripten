@@ -1,6 +1,6 @@
-=====================================
-Emscripten License (ready-for-review)
-=====================================
+===================
+Open Source License
+===================
 
 Emscripten is made available under two permissive open source licenses: the *MIT license* and the *University of Illinois/NCSA Open Source License*. 
 
