@@ -8,7 +8,7 @@ Please supply as much relevant information as possible, including:
 
 - original source code.
 - generated **.ll** and **.js** files (in a gist, pastebin, or any other method). 
-- environment information - including *emcc* and *clang* versions.
+- environment information - including *emcc* and *clang* versions (as reported by ``emcc -v``).
 - error symptoms.
 - proposed solutions, ideally with a pull request.
 
