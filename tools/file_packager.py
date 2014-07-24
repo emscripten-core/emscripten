@@ -419,14 +419,17 @@ for file_ in data_files:
     else:
       str_data = ''
       chunk_size = 10240
+      code += '''fileData%d = [];\n''' % counter
       while len(data) > 0:
         chunk = data[:chunk_size]
         data = data[chunk_size:]
+        code += '''fileData%d.push.apply(fileData%d, %s);\n''' % (counter, counter, str(chunk))
         if not str_data:
           str_data = str(chunk)
         else:
           str_data += '.concat(' + str(chunk) + ')'
-    code += '''Module['FS_createDataFile']('%s', '%s', %s, true, true);\n''' % (dirname, basename, str_data)
+    code += '''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true);\n''' % (dirname, basename, counter)
+    counter += 1
   elif file_['mode'] == 'preload':
     # Preload
     varname = 'filePreload%d' % counter
