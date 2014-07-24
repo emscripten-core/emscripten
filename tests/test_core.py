@@ -1479,6 +1479,8 @@ int main(int argc, char **argv)
     self.do_run_from_file(src, output)
 
   def test_exceptions_alias(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_alias')
     src, output = (test_path + s for s in ('.c', '.out'))
