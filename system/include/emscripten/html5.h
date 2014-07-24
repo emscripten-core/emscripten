@@ -692,7 +692,8 @@ typedef struct EmscriptenWebGLContextAttributes {
 
 /*
  * Creates a new WebGL context. See http://www.khronos.org/registry/webgl/specs/latest/1.0/#2.1
- * The parameter 'target' specifies the DOM canvas element in which to initialize the WebGL context.
+ * The parameter 'target' specifies the DOM canvas element in which to initialize the WebGL context. If 0 is passed for the target,
+ * the element specified by Module.canvas will be used.
  * On success, this function returns a strictly positive value that represents a handle to the created context.
  * On failure, this function returns a negative number that can be casted to a EMSCRIPTEN_RESULT field to get an error reason
  * why the context creation failed.
