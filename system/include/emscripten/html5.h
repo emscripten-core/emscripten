@@ -691,6 +691,13 @@ typedef struct EmscriptenWebGLContextAttributes {
 } EmscriptenWebGLContextAttributes;
 
 /*
+ * Populates all fields of the given EmscriptenWebGLContextAttributes structure to their default values for use with WebGL 1.0.
+ * Call this function as a forward-compatible way to ensure that if there are new fields added to the EmscriptenWebGLContextAttributes
+ * structure in the future, that they also will get default-initialized without having to change any code.
+ */
+extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);
+
+/*
  * Creates a new WebGL context. See http://www.khronos.org/registry/webgl/specs/latest/1.0/#2.1
  * The parameter 'target' specifies the DOM canvas element in which to initialize the WebGL context. If 0 is passed for the target,
  * the element specified by Module.canvas will be used.
