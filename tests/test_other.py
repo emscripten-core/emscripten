@@ -3637,3 +3637,13 @@ Truncating file=/tmp/file to length=32
 Size of file is: 32
 ''', run_js('a.out.js'))
 
+  def test_emcc_s_typo(self):
+    # with suggestions
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'RELOO=1'], stderr=PIPE).communicate()
+    self.assertContained(r'''Assigning a non-existent settings attribute "RELOO"''', err)
+    self.assertContained(r'''did you mean one of RELOOP, RELOOPER?''', err)
+    # no suggestions
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'], stderr=PIPE).communicate()
+    self.assertContained(r'''perhaps a typo in emcc's  -s X=Y  notation?''', err)
+    self.assertContained(r'''(see src/settings.js for valid values)''', err)
+

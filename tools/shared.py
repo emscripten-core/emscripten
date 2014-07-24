@@ -920,6 +920,14 @@ class Settings2(type):
         raise AttributeError
 
     def __setattr__(self, attr, value):
+      if not attr in self.attrs:
+        import difflib
+        logging.warning('''Assigning a non-existent settings attribute "%s"''' % attr)
+        suggestions = ', '.join(difflib.get_close_matches(attr, self.attrs.keys()))
+        if suggestions:
+          logging.warning(''' - did you mean one of %s?''' % suggestions)
+        logging.warning(''' - perhaps a typo in emcc's  -s X=Y  notation?''')
+        logging.warning(''' - (see src/settings.js for valid values)''')
       self.attrs[attr] = value
 
   __instance = None
