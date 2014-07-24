@@ -656,37 +656,38 @@ typedef int EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
  */
 typedef struct EmscriptenWebGLContextAttributes {
   // If true, request an alpha channel for the context. If you create an alpha channel, you can blend the canvas rendering with the
-  // underlying web page contents.
+  // underlying web page contents. Default value: true.
   EM_BOOL alpha;
-  // If true, request a depth buffer of at least 16 bits. If false, no depth buffer will be initialized.
+  // If true, request a depth buffer of at least 16 bits. If false, no depth buffer will be initialized. Default value: true.
   EM_BOOL depth;
-  // If true, request a stencil buffer of at least 8 bits. If false, no stencil buffer will be initialized.
+  // If true, request a stencil buffer of at least 8 bits. If false, no stencil buffer will be initialized. Default value: false.
   EM_BOOL stencil;
-  // If true, antialiasing will be initialized with a browser-specified algorithm and quality level. If false, antialiasing is disabled.
+  // If true, antialiasing will be initialized with a browser-specified algorithm and quality level. If false, antialiasing is disabled. Default value: true.
   EM_BOOL antialias;
   // If true, the alpha channel of the rendering context will be treated as representing premultiplied alpha values. If false, the alpha
-  // channel represents non-premultiplied alpha.
+  // channel represents non-premultiplied alpha. Default value: true.
   EM_BOOL premultipliedAlpha;
   // If true, the contents of the drawing buffer are preserved between consecutive requestAnimationFrame() calls. If false, color, depth
-  // and stencil are cleared at the beginning of each requestAnimationFrame(). Generally setting this to false gives better performance.
+  // and stencil are cleared at the beginning of each requestAnimationFrame(). Generally setting this to false gives better performance. Default value: false.
   EM_BOOL preserveDrawingBuffer;
   // If true, hints the browser to initialize a low-power GPU rendering context. If false, prefers to initialize a high-performance
-  // rendering context.
+  // rendering context. Default value: false.
   EM_BOOL preferLowPowerToHighPerformance;
   // If true, requests context creation to abort if the browser is only able to create a context that does not give good 
-  // hardware-accelerated performance.
+  // hardware-accelerated performance. Default value: false.
   EM_BOOL failIfMajorPerformanceCaveat;
 
   // Emscripten-specific extensions:
   // majorVersion x minorVersion: Specifies the WebGL context version to initialize.
   // For example, pass in majorVersion=1, minorVersion=0 to request a WebGL 1.0 context, and
   // majorVersion=2, minorVersion=0 to request a WebGL 2.0 context.
+  // Default value: majorVersion=1, minorVersion=0
   int majorVersion;
   int minorVersion;
 
   // If true, all GLES2-compatible non-performance-impacting WebGL extensions will automatically be enabled for you after the context
   // has been created. If false, no extensions are enabled by default, and you need to manually call emscripten_webgl_enable_extension()
-  // to enable each extension that you want to use.
+  // to enable each extension that you want to use. Default value: true.
   EM_BOOL enableExtensionsByDefault;
 } EmscriptenWebGLContextAttributes;
 
