@@ -11,7 +11,7 @@ curr = None
 data = []
 for line in open(filename):
   i += 1
-  if line.startswith(('function ', 'define ')):
+  if line.startswith(('function ', 'define ')) and '}' not in line:
     start = i
     curr = line
   elif line.startswith('}') and curr:
