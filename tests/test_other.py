@@ -3647,3 +3647,80 @@ Size of file is: 32
     self.assertContained(r'''perhaps a typo in emcc's  -s X=Y  notation?''', err)
     self.assertContained(r'''(see src/settings.js for valid values)''', err)
 
+  def test_create_readonly(self):
+    open('src.cpp', 'w').write(r'''
+#include <cerrno>
+#include <cstring>
+#include <iostream>
+
+#include <fcntl.h>
+#include <unistd.h>
+
+using std::endl;
+
+//============================================================================
+// :: Helpers
+
+namespace
+{
+  // Helper to create a read-only file with content.
+  void readOnlyFile(const std::string& path, const std::string& content)
+  {
+    std::cout
+      << "Creating file: " << path << " with content of size="
+      << content.size() << endl;
+
+    const int fd = ::open(path.c_str(), O_CREAT | O_WRONLY, 0400);
+    if (fd == -1) {
+      const int error = errno;
+      std::cout
+        << "Failed to open file for writing: " << path << "; errno=" << error
+        << "; " << std::strerror(error) << endl;
+      return;
+    }
+
+    // Write the content to the file.
+    ssize_t result = 0;
+    if ((result = ::write(fd, content.data(), content.size()))
+        != ssize_t(content.size()))
+    {
+      const int error = errno;
+      std::cout
+        << "Failed to write to file=" << path << "; errno=" << error
+        << "; " << std::strerror(error) << endl;
+      // Fall through to close the file.
+    }
+    else {
+      std::cout
+        << "Data written to file=" << path << "; successfully wrote "
+        << result << " bytes" << endl;
+    }
+
+    ::close(fd);
+  }
+}
+
+//============================================================================
+// :: Entry Point
+
+int main()
+{
+  const char* const file = "/tmp/file";
+  unlink(file);
+  readOnlyFile(file, "This content should get written because the file "
+                     "does not yet exist and so, only the mode of the "
+                     "containing directory will influence my ability to "
+                     "create and open the file. The mode of the file only "
+                     "applies to opening of the stream, not subsequent stream "
+                     "operations after stream has opened.\n\n");
+  readOnlyFile(file, "This should not get written because the file already "
+                     "exists and is read-only.\n\n");
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''Creating file: /tmp/file with content of size=292
+Data written to file=/tmp/file; successfully wrote 292 bytes
+Creating file: /tmp/file with content of size=79
+Failed to open file for writing: /tmp/file; errno=13; Permission denied
+''', run_js('a.out.js'))
+

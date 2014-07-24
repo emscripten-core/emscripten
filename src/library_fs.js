@@ -975,6 +975,7 @@ mergeInto(LibraryManager.library, {
         }
       }
       // perhaps we need to create the node
+      var created = false;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
         if (node) {
           // if O_CREAT and O_EXCL are set, error out if the node already exists
@@ -984,6 +985,7 @@ mergeInto(LibraryManager.library, {
         } else {
           // node doesn't exist, try to create it
           node = FS.mknod(path, mode, 0);
+          created = true;
         }
       }
       if (!node) {
@@ -993,10 +995,14 @@ mergeInto(LibraryManager.library, {
       if (FS.isChrdev(node.mode)) {
         flags &= ~{{{ cDefine('O_TRUNC') }}};
       }
-      // check permissions
-      var err = FS.mayOpen(node, flags);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      // check permissions, if this is not a file we just created now (it is ok to
+      // create and write to a file with read-only permissions; it is read-only
+      // for later use)
+      if (!created) {
+        var err = FS.mayOpen(node, flags);
+        if (err) {
+          throw new FS.ErrnoError(err);
+        }
       }
       // do truncation if necessary
       if ((flags & {{{ cDefine('O_TRUNC')}}})) {
