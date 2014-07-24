@@ -6,7 +6,7 @@
 {%- else %}
   {%- set titlesuffix = "" %}
 {%- endif %}
-
+    
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -77,17 +77,25 @@
 
 <body class="wy-body-for-nav" role="document">
 
+
+<div class="grid-to-center-rtd-theme"> 
+ 
   <div class="wy-grid-for-nav">
+  
+
 
     {# SIDE NAV, TOGGLES ON MOBILE #}
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="{{ pathto(master_doc) }}" class="fa fa-home"> {{ project }}</a>
+        <!-- <a href="{{ pathto(master_doc) }}" class="fa fa-home"> {{ project }}</a> -->
+		<a href="{{ pathto(master_doc) }}"> <img src="{{ url_root }}/_static/{{ logo }}" alt="Logo" /> </a>
+		
         {% include "searchbox.html" %}
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-        {% set toctree = toctree(maxdepth=2, collapse=False, includehidden=True) %}
+
+		{% set toctree = toctree(maxdepth=4, collapse=False, includehidden=True) %} 
         {% if toctree %}
             {{ toctree }}
         {% else %}
@@ -97,20 +105,59 @@
       </div>
       &nbsp;
     </nav>
-
+	
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       {# MOBILE NAV, TRIGGLES SIDE NAV ON TOGGLE #}
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="{{ pathto(master_doc) }}">{{ project }}</a>
+         <i data-toggle="wy-nav-top" class="fa fa-bars"></i> 
+        <!-- <a href="{{ pathto(master_doc) }}">{{ project }}</a> -->
+		<a href="{{ pathto(master_doc) }}"> <img src="{{ url_root }}/_static/{{ logo }}" alt="Logo" /> </a>
       </nav>
 
-
+	    
+	  
       {# PAGE CONTENT #}
       <div class="wy-nav-content">
         <div class="rst-content">
-          {% include "breadcrumbs.html" %}
+		
+		   <!--begin hamishw addition --> 
+   
+   <!--Nav bar defined as a document followed by short version of nav text and long version
+    If no such page exists then nav item is not created. CSS defines which of the long or short version is 
+	displayed.   -->
+   {% set navigation_bar = [
+    ('docs/index', 'Docs', 'Documentation'),   
+    ('docs/getting_started/downloads', 'SDK', 'Downloads'),
+    ('docs/getting_started/contact', 'Help', 'Contact'),
+	('https://github.com/kripken/emscripten', 'Github', 'Github Project')
+] -%}
+
+   
+   <div class="main-nav-bar" style="">   
+   
+   <!-- the layout of the menu options - centered with left and right alignment of the first and last loop items respectively.
+   This is VERY UGLY as I'm adding to the CSS in the code to force the alignment. Would be better just to have the elements here and have the CSS in the CSS file. This could be done with a CSS selector, but not worked out how yet. -->
+   
+	 <ul id="menu-options">
+        {% for document, shorttext, longtext in navigation_bar %}
+            {%- if hasdoc(document) %}
+              <li{%- if loop.first %} style="text-align:left;" {%- endif %}{%- if loop.last %} style="text-align:right;" {%- endif %}><a class="navlink-short" title="{{ shorttext }}" href="{{ pathto(document) }}">{{ shorttext }}</a><a class="navlink-long" title="{{ longtext }}" href="{{ pathto(document) }}">{{ longtext }}</a></li>
+	        {%- elif document | truncate(4, True, end='') == 'http' %} 
+		      <li{%- if loop.first %} style="text-align:left;" {%- endif %}{%- if loop.last %} style="text-align:right;" {%- endif %}><a class="navlink-short" href="{{ document }}">{{ shorttext }}</a><a class="navlink-long" href="{{ document }}">{{ longtext }}</a></li>
+            {%- endif %}
+        {% endfor %}   	
+     </ul>
+	 <!-- <div style="clear:both;"></div> -->
+	 {% include "breadcrumbs.html" %}
+ 
+   </div>
+  
+   
+	
+   <!--end hamishw addition -->
+		
+          <!--HamishW move {% include "breadcrumbs.html" %} -->
           <div role="main">
             {% block body %}{% endblock %}
           </div>
@@ -155,6 +202,6 @@
   {% endif %}
 
   {%- block footer %} {% endblock %}
-
+</div>
 </body>
 </html>
