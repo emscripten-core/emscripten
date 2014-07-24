@@ -162,6 +162,10 @@ if (!Module['printErr']) {
 if (!Module['arguments']) {
   Module['arguments'] = [];
 }
+if (!Module['thisProgram']) {
+  Module['thisProgram'] = './this.program';
+}
+
 // *** Environment setup code ***
 
 // Closure helpers

@@ -43,6 +43,13 @@ typedef double __attribute__((aligned(4))) emscripten_align4_double;
 typedef double __attribute__((aligned(2))) emscripten_align2_double;
 typedef double __attribute__((aligned(1))) emscripten_align1_double;
 
+/*
+ * Function pointer types
+ */
+
+typedef void (*em_callback_func)(void);
+typedef void (*em_arg_callback_func)(void*);
+typedef void (*em_str_callback_func)(const char *);
 
 /* Functions */
 
@@ -125,7 +132,7 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * for this is to load an asset module, that is, the output of the
  * file packager.
  */
-extern void emscripten_async_load_script(const char *script, void (*onload)(void), void (*onerror)(void));
+extern void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
 
 /*
  * Set a C function as the main event loop. The JS environment
@@ -171,8 +178,8 @@ extern void emscripten_async_load_script(const char *script, void (*onload)(void
  *    before the main loop will be called the first time.
  */
 #if __EMSCRIPTEN__
-extern void emscripten_set_main_loop(void (*func)(void), int fps, int simulate_infinite_loop);
-extern void emscripten_set_main_loop_arg(void (*func)(void*), void *arg, int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+extern void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop(void);
 extern void emscripten_resume_main_loop(void);
 extern void emscripten_cancel_main_loop(void);
@@ -181,6 +188,66 @@ extern void emscripten_cancel_main_loop(void);
   while (1) { func(); usleep(1000000/fps); }
 #define emscripten_cancel_main_loop() exit(1);
 #endif
+
+/*
+ * Registers callback functions for receiving socket events.
+ * These events are analogous to WebSocket events but are emitted
+ * *after* the internal emscripten socket processing has occurred
+ * so, for example, the message callback will be triggered after
+ * the data has been added to the recv_queue. This means that an
+ * application receiving this callback can simply read/recv the data
+ * using the file descriptor passed as a parameter to the callback.
+ * All of the callbacks are passed a file descriptor representing
+ * the fd that the notified activity took place on. The error
+ * callback also takes an int representing errno and a char* that
+ * represents the error message.
+ *
+ * Only a single callback function may be registered to handle any
+ * given Event, so calling a given registration function more than
+ * once will cause the first callback to be replaced by the second.
+ * Similarly passing a NULL callback function to any
+ * emscripten_set_socket_*_callback call will deregister the callback
+ * registered for that Event.
+ *
+ * The userData pointer allows arbitrary data specified during Event
+ * registration to be passed to the callback, this is particularly
+ * useful for passing "this" pointers around in Object Oriented code.
+ *
+ * In addition to being able to register network callbacks from C
+ * it is also possible for native JavaScript code to directly use the
+ * underlying mechanism used to implement the callback registration.
+ * For example, the following are the simple logging callbacks that
+ * are registered by default when SOCKET_DEBUG is enabled
+ * Module['websocket']['on']('error', function(error) {console.log('Socket error ' + error);});
+ * Module['websocket']['on']('open', function(fd) {console.log('Socket open fd = ' + fd);});
+ * Module['websocket']['on']('listen', function(fd) {console.log('Socket listen fd = ' + fd);});
+ * Module['websocket']['on']('connection', function(fd) {console.log('Socket connection fd = ' + fd);});
+ * Module['websocket']['on']('message', function(fd) {console.log('Socket message fd = ' + fd);});
+ * Module['websocket']['on']('close', function(fd) {console.log('Socket close fd = ' + fd);});
+ *
+ * Most of the JavaScript callback functions above get passed the
+ * file descriptor of the socket that triggered the callback, the
+ * on error callback however gets passed an *array* that contains
+ * the file descriptor, the error code and an error message.
+ *
+ * Note that the underlying JavaScript implementation doesn't pass
+ * userData, this is actually mostly of use to C/C++ code and the
+ * emscripten_set_socket_*_callback calls actually create a closure
+ * containing the userData and pass that as the callback to the
+ * underlying JavaScript Event registration mechanism.
+ */
+// Triggered by a WebSocket error.
+extern void emscripten_set_socket_error_callback(void *userData, void (*func)(int fd, int err, const char* msg, void *userData));
+// Triggered when the WebSocket has actually opened.
+extern void emscripten_set_socket_open_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when listen has been called (synthetic event).
+extern void emscripten_set_socket_listen_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when the connection has actually been established.
+extern void emscripten_set_socket_connection_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when data is available to be read from the socket.
+extern void emscripten_set_socket_message_callback(void *userData, void (*func)(int fd, void *userData));
+// Triggered when the WebSocket has actually closed.
+extern void emscripten_set_socket_close_callback(void *userData, void (*func)(int fd, void *userData));
 
 /*
  * Add a function to a queue of events that will execute
@@ -196,13 +263,13 @@ extern void emscripten_cancel_main_loop(void);
  * at specific time in the future.
  */
 #if __EMSCRIPTEN__
-extern void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
-extern void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name);
+extern void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
+extern void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #else
-inline void _emscripten_push_main_loop_blocker(void (*func)(void *), void *arg, const char *name) {
+inline void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
   func(arg);
 }
-inline void _emscripten_push_uncounted_main_loop_blocker(void (*func)(void *), void *arg, const char *name) {
+inline void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
   func(arg);
 }
 #endif
@@ -233,9 +300,9 @@ inline void emscripten_set_main_loop_expected_blockers(int num) {}
  * mechanism is used.
  */
 #if __EMSCRIPTEN__
-extern void emscripten_async_call(void (*func)(void *), void *arg, int millis);
+extern void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 #else
-inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
+inline void emscripten_async_call(em_arg_callback_func func, void *arg, int millis) {
   if (millis) SDL_Delay(millis);
   func(arg);
 }
@@ -244,10 +311,22 @@ inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
 /*
  * Exits the program immediately, but leaves the runtime alive
  * so that you can continue to run code later (so global destructors
- * etc. are not run). This is implicitly performed when you do
- * an asynchronous operation like emscripten_async_call.
+ * etc. are not run). Note that the runtime is kept alive automatically
+ * when you do an asynchronous operation like emscripten_async_call,
+ * so you don't need to call this function in that case.
  */
 extern void emscripten_exit_with_live_runtime(void);
+
+/*
+ * Shuts down the runtime and exits (terminates) the program, as if
+ * you called exit(). The difference is that emscripten_force_exit
+ * will shut down the runtime even if you previously called
+ * emscripten_exit_with_live_runtime or otherwise kept the
+ * runtime alive. In other words, this method gives you the
+ * option to completely shut down the runtime after it was
+ * kept alive beyond the completion of main().
+ */
+extern void emscripten_force_exit(int status);
 
 /*
  * Hide the OS mouse cursor over the canvas. Note that SDL's
@@ -312,7 +391,7 @@ float emscripten_random(void);
  * If any error occurred 'onerror' will called.
  * The callbacks are called with the file as their argument.
  */
-void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 
 /*
  * Data version of emscripten_async_wget. Instead of writing
@@ -336,7 +415,9 @@ void emscripten_async_wget(const char* url, const char* file, void (*onload)(con
  *                @arg that was provided to this function.
  *
  */
-void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*, void*, int), void (*onerror)(void*));
+typedef void (*em_async_wget_onload_func)(void*, void*, int);
+
+void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
 
 /*
  * More feature-complete version of emscripten_async_wget. Note:
@@ -353,7 +434,10 @@ void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*
  * and file if is a success, the progress value during progress
  * and http status code if is an error.
  */
-void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*, int), void (*onprogress)(void*, int));
+typedef void (*em_async_wget2_onload_func)(void*, const char*);
+typedef void (*em_async_wget2_onstatus_func)(void*, int);
+
+void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress);
 
 /*
  * More feature-complete version of emscripten_async_wget_data. Note:
@@ -375,7 +459,11 @@ void emscripten_async_wget2(const char* url, const char* file,  const char* requ
  * If any error occurred 'onerror' will called with the HTTP status code
    and a string with the status description.
  */
-void emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, void (*onload)(void*, void*, unsigned), void (*onerror)(void*, int, const char*), void (*onprogress)(void*, int, int));
+typedef void (*em_async_wget2_data_onload_func)(void*, void *, unsigned*);
+typedef void (*em_async_wget2_data_onerror_func)(void*, int, const char*);
+typedef void (*em_async_wget2_data_onprogress_func)(void*, int, int);
+
+void emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress);
 
 /*
  * Prepare a file in asynchronous way. This does just the
@@ -387,7 +475,7 @@ void emscripten_async_wget2_data(const char* url, const char* requesttype, const
  * The callbacks are called with the file as their argument.
  * @return 0 if successful, -1 if the file does not exist
  */
-int emscripten_async_prepare(const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 
 /*
  * Data version of emscripten_async_prepare, which receives
@@ -403,7 +491,9 @@ int emscripten_async_prepare(const char* file, void (*onload)(const char*), void
  * the fake filename.
  * @suffix The file suffix, e.g. 'png' or 'jpg'.
  */
-void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*));
+typedef void (*em_async_prepare_data_onload_func)(void*, const char*);
+
+void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror);
 
 /*
  * Worker API. Basically a wrapper around web workers, lets
@@ -452,7 +542,9 @@ void emscripten_destroy_worker(worker_handle worker);
  * @callback the callback with the response (can be null)
  * @arg an argument to be passed to the callback
  */
-void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
+typedef void (*em_worker_callback_func)(char*, int, void*);
+
+void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, em_worker_callback_func callback, void *arg);
 
 /*
  * Sends a response when in a worker call. Both functions post a message
@@ -535,52 +627,7 @@ char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
  */
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 
-
-/* ===================================== */
-/* Internal APIs. Be careful with these. */
-/* ===================================== */
-
-/*
- * Profiling tools.
- * INIT must be called first, with the maximum identifier that
- * will be used. BEGIN will add some code that marks
- * the beginning of a section of code whose run time you
- * want to measure. END will finish such a section. Note: If you
- * call begin but not end, you will get invalid data!
- * The profiling data will be written out if you call Profile.dump().
- */
-extern void EMSCRIPTEN_PROFILE_INIT(int max);
-extern void EMSCRIPTEN_PROFILE_BEGIN(int id);
-extern void EMSCRIPTEN_PROFILE_END(int id);
-
-/*
- * jcache-friendly printf. printf in general will receive a string
- * literal, which becomes a global constant, which invalidates all
- * jcache entries. emscripten_jcache_printf is parsed before
- * clang into something without any string literals, so you can
- * add such printouts to your code and only the (chunk containing
- * the) function you modify will be invalided and recompiled.
- *
- * Note in particular that you need to already have a call to this
- * function in your code *before* you add one and do an incremental
- * build, so that adding an external reference does not invalidate
- * everything.
- *
- * This function assumes the first argument is a string literal
- * (otherwise you don't need it), and the other arguments, if any,
- * are neither strings nor complex expressions (but just simple
- * variables). (You can create a variable to store a complex
- * expression on the previous line, if necessary.)
- */
-#ifdef __cplusplus
-void emscripten_jcache_printf(const char *format, ...);
-void emscripten_jcache_printf_(...); /* internal use */
-#endif
-
-/* Helper API for EM_ASM - do not call this yourself */
-void emscripten_asm_const(const char *code);
-int emscripten_asm_const_int(const char *code, ...);
-double emscripten_asm_const_double(const char *code, ...);
+/* Logging utilities */
 
 /* If specified, logs directly to the browser console/inspector 
  * window. If not specified, logs via the application Module. */
@@ -645,6 +692,40 @@ void emscripten_log(int flags, ...);
  * numbers, so it is best to allocate a few bytes extra to be safe.
  */
 int emscripten_get_callstack(int flags, char *out, int maxbytes);
+
+
+/* ===================================== */
+/* Internal APIs. Be careful with these. */
+/* ===================================== */
+
+/*
+ * jcache-friendly printf. printf in general will receive a string
+ * literal, which becomes a global constant, which invalidates all
+ * jcache entries. emscripten_jcache_printf is parsed before
+ * clang into something without any string literals, so you can
+ * add such printouts to your code and only the (chunk containing
+ * the) function you modify will be invalided and recompiled.
+ *
+ * Note in particular that you need to already have a call to this
+ * function in your code *before* you add one and do an incremental
+ * build, so that adding an external reference does not invalidate
+ * everything.
+ *
+ * This function assumes the first argument is a string literal
+ * (otherwise you don't need it), and the other arguments, if any,
+ * are neither strings nor complex expressions (but just simple
+ * variables). (You can create a variable to store a complex
+ * expression on the previous line, if necessary.)
+ */
+#ifdef __cplusplus
+void emscripten_jcache_printf(const char *format, ...);
+void emscripten_jcache_printf_(...); /* internal use */
+#endif
+
+/* Helper API for EM_ASM - do not call this yourself */
+void emscripten_asm_const(const char *code);
+int emscripten_asm_const_int(const char *code, ...);
+double emscripten_asm_const_double(const char *code, ...);
 
 #ifdef __cplusplus
 }

@@ -7,7 +7,12 @@ extern "C" {
 
 #include <features.h>
 
+#ifdef __cplusplus
 #define NULL 0L
+#else
+#define NULL ((void*)0)
+#endif
+
 
 #define __NEED_size_t
 #define __NEED_time_t
@@ -82,8 +87,8 @@ struct itimerspec
 #define CLOCK_PROCESS_CPUTIME_ID 2
 #define CLOCK_THREAD_CPUTIME_ID  3
 #define CLOCK_MONOTONIC_RAW      4
-#define CLOCK_REALTIME_COURSE    5
-#define CLOCK_MONOTONIC_COURSE   6
+#define CLOCK_REALTIME_COARSE    5
+#define CLOCK_MONOTONIC_COARSE   6
 #define CLOCK_BOOTTIME           7
 #define CLOCK_REALTIME_ALARM     8
 #define CLOCK_BOOTTIME_ALARM     9
@@ -120,7 +125,7 @@ struct tm *getdate (const char *);
 
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-int stime(time_t *);
+int stime(const time_t *);
 time_t timegm(struct tm *);
 #endif
 

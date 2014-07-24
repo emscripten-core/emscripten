@@ -7,10 +7,10 @@ function emrun_register_handlers() {
   // If the address contains localhost, or we are running the page from port 6931, we can assume we're running the test runner and should post stdout logs.
   if (document.URL.search("localhost") != -1 || document.URL.search(":6931/") != -1) {
     var emrun_http_sequence_number = 1;
-    var prevExit = Module['exit'];
     var prevPrint = Module['print'];
     var prevErr = Module['printErr'];
-    Module['exit'] = function emrun_exit(returncode) { post('^exit^'+returncode); prevExit(returncode); }
+    function emrun_exit() { post('^exit^'+EXITSTATUS); };
+    Module['addOnExit'](emrun_exit);
     Module['print'] = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+text); prevPrint(text); }
     Module['printErr'] = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+text); prevErr(text); }
   }

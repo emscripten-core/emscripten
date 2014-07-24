@@ -478,8 +478,8 @@ var LibraryGL = {
           sizePerPixel = 2;
           break;
         case 0x1406 /* GL_FLOAT */:
-#if ASSERTIONS
-          assert(GL.floatExt, 'Must have OES_texture_float to use float textures');
+#if GL_ASSERTIONS
+          if (!GL.floatExt) Module.printErr('Must have OES_texture_float to use float textures');
 #endif
           switch (format) {
             case 0x1907 /* GL_RGB */:
@@ -499,6 +499,31 @@ var LibraryGL = {
               };
           }
           internalFormat = GLctx.RGBA;
+          break;
+        case 0x8D61 /* GL_HALF_FLOAT_OES */:
+          switch (format) {
+            case 0x1903 /* GL_RED */:
+              sizePerPixel = 2;
+              break;
+            case 0x8277 /* GL_RG */:
+              sizePerPixel = 2*2;
+              break;
+            case 0x1907 /* GL_RGB */:
+              sizePerPixel = 3*2;
+              break;
+            case 0x1908 /* GL_RGBA */:
+              sizePerPixel = 4*2;
+              break;
+            default:
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+              return {
+                pixels: null,
+                internalFormat: 0x0
+              };
+          }
           break;
         default:
           GL.recordError(0x0500); // GL_INVALID_ENUM
@@ -673,6 +698,8 @@ var LibraryGL = {
       // Extension available from Firefox 25 and WebKit
       GL.vaoExt = Module.ctx.getExtension('OES_vertex_array_object');
 
+      GL.drawBuffersExt = Module.ctx.getExtension('WEBGL_draw_buffers');
+
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
       // As new extensions are ratified at http://www.khronos.org/registry/webgl/extensions/ , feel free to add your new extensions
@@ -687,22 +714,22 @@ var LibraryGL = {
                                              "EXT_shader_texture_lod" ];
 
       function shouldEnableAutomatically(extension) {
-        for(var i in automaticallyEnabledExtensions) {
-          var include = automaticallyEnabledExtensions[i];
+        var ret = false;
+        automaticallyEnabledExtensions.forEach(function(include) {
           if (ext.indexOf(include) != -1) {
-            return true;
+            ret = true;
           }
-        }
-        return false;
+        });
+        return ret;
       }
 
-      var extensions = GLctx.getSupportedExtensions();
-      for(var e in extensions) {
-        var ext = extensions[e].replace('MOZ_', '').replace('WEBKIT_', '');
+ 
+      GLctx.getSupportedExtensions().forEach(function(ext) {
+        ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
         if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
           GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
         }
-      }
+      });
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
@@ -5398,7 +5425,19 @@ var LibraryGL = {
   glVertexAttribDivisorARB: 'glVertexAttribDivisor',
   glDrawArraysInstancedARB: 'glDrawArraysInstanced',
   glDrawElementsInstancedARB: 'glDrawElementsInstanced',
-  
+
+
+  glDrawBuffers__sig: 'vii',
+  glDrawBuffers: function(n, bufs) {
+#if GL_ASSERTIONS
+    assert(GL.drawBuffersExt, 'Must have WEBGL_draw_buffers extension to use drawBuffers');
+#endif
+    var bufArray = [];
+    for (var i = 0; i < n; i++)
+      bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
+
+    GL.drawBuffersExt.drawBuffersWEBGL(bufArray);
+  },
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',

@@ -10,9 +10,37 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.20.0...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.20.0...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.20.0...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.1...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.1...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.21.1...incoming
+
+v1.21.1: 7/3/2014
+------------------
+ - Fixed an issue where wrong python interpreter could get invoked on Windows when both native and cygwin python were installed.
+ - Updated musl from version 0.9.13 to version 1.0.3.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.0...1.21.1
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.21.0: 7/2/2014
+------------------
+ - Enable memory init files (.mem) by default in optimized builds (-O2+), as if  --memory-init-file 1  is specified. This makes the default behavior on optimized builds emit smaller and faster-to-load code, but does require that you ship both a .js and a .mem file (if you prefer not to, can use  --memory-init-file 1  ).
+ - Implemented new SDL 1.2 functions SDL_GetRGB, SDL_GetRGBA and SDL_putenv.
+ - Added support for /dev/random, /dev/urandom and C++11 std::random_device, which will use cryptographically secure random api if available. (#2447)
+ - Added support for CMake find_path() directive.
+ - Added support for std::unique_ptr in embind.
+ - Improved Windows support for ffdb.py.
+ - Implemented the clip_rect structure for created SDL surfaces.
+ - Fixed a regression with SDL touch events (#2466)
+ - Added support for C++11 std::thread::hardware_concurrency which backs to navigator.hardwareConcurrency. See http://wiki.whatwg.org/wiki/Navigator_HW_Concurrency (#2456)
+ - Optimized embind code generation with constexprs.
+ - Enabled the use of Runtime.add&removeFunction when closure minification is active (#2446)
+ - Implemented support for accessing WebGL when building via the proxy to worker architecture.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.20.0...1.21.0
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
 
 v1.20.0: 6/13/2014
 ------------------

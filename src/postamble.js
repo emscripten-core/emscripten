@@ -2,6 +2,9 @@
 // === Auto-generated postamble setup entry stuff ===
 
 if (memoryInitializer) {
+  if (Module['memoryInitializerPrefixURL']) {
+    memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+  }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
 #if USE_TYPED_ARRAYS == 2
@@ -61,7 +64,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       argv.push(0);
     }
   }
-  var argv = [allocate(intArrayFromString(Module['thisProgram'] || '/bin/this.program'), 'i8', ALLOC_NORMAL) ];
+  var argv = [allocate(intArrayFromString(Module['thisProgram']), 'i8', ALLOC_NORMAL) ];
   pad();
   for (var i = 0; i < argc-1; i = i + 1) {
     argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_NORMAL));
@@ -84,9 +87,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 #endif
 
     // if we're not running an evented main loop, it's time to exit
-    if (!Module['noExitRuntime']) {
-      exit(ret);
-    }
+    exit(ret);
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -127,6 +128,8 @@ function run(args) {
     if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
     Module['calledRun'] = true;
 
+    if (ABORT) return; 
+
     ensureInitRuntime();
 
     preMain();
@@ -148,7 +151,7 @@ function run(args) {
       setTimeout(function() {
         Module['setStatus']('');
       }, 1);
-      if (!ABORT) doRun();
+      doRun();
     }, 1);
   } else {
     doRun();
@@ -157,6 +160,13 @@ function run(args) {
 Module['run'] = Module.run = run;
 
 function exit(status) {
+  if (Module['noExitRuntime']) {
+#if ASSERTIONS
+    Module.printErr('exit(' + status + ') called, but noExitRuntime, so not exiting');
+#endif
+    return;
+  }
+
   ABORT = true;
   EXITSTATUS = status;
   STACKTOP = initialStackTop;
@@ -164,16 +174,14 @@ function exit(status) {
   // exit the runtime
   exitRuntime();
 
-  // TODO We should handle this differently based on environment.
-  // In the browser, the best we can do is throw an exception
-  // to halt execution, but in node we could process.exit and
-  // I'd imagine SM shell would have something equivalent.
-  // This would let us set a proper exit status (which
-  // would be great for checking test exit statuses).
-  // https://github.com/kripken/emscripten/issues/1371
-
-  // throw an exception to halt the current execution
-  throw new ExitStatus(status);
+  if (ENVIRONMENT_IS_NODE) {
+    process['exit'](status);
+  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
+    quit(status);
+  } else {
+    // no proper way to exit with a return code, throw an exception to halt the current execution
+    throw new ExitStatus(status);
+  }
 }
 Module['exit'] = Module.exit = exit;
 

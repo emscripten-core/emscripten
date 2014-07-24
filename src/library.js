@@ -60,6 +60,8 @@ LibraryManager.library = {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
     var fd = _fileno(dirp);
+    var stream = FS.getStream(fd);
+    if (stream.currReading) stream.currReading = null;
     return _close(fd);
   },
   telldir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -85,6 +87,8 @@ LibraryManager.library = {
     // void rewinddir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/rewinddir.html
     _seekdir(dirp, 0);
+    var stream = FS.getStreamFromPtr(dirp);
+    if (stream.currReading) stream.currReading = null;
   },
   readdir_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   readdir_r: function(dirp, entry, result) {
@@ -94,25 +98,32 @@ LibraryManager.library = {
     if (!stream) {
       return ___setErrNo(ERRNO_CODES.EBADF);
     }
-    var entries;
-    try {
-      entries = FS.readdir(stream.path);
-    } catch (e) {
-      return FS.handleFSError(e);
+    if (!stream.currReading) {
+      try {
+        // load the list of entries now, then readdir will traverse that list, to ignore changes to files
+        stream.currReading = FS.readdir(stream.path);
+      } catch (e) {
+        return FS.handleFSError(e);
+      }
     }
-    if (stream.position < 0 || stream.position >= entries.length) {
+    if (stream.position < 0 || stream.position >= stream.currReading.length) {
       {{{ makeSetValue('result', '0', '0', 'i8*') }}};
       return 0;
     }
     var id;
     var type;
-    var name = entries[stream.position];
-    var offset = stream.position + 1;
+    var name = stream.currReading[stream.position++];
     if (!name.indexOf('.')) {
       id = 1;
       type = 4;
     } else {
-      var child = FS.lookupNode(stream.node, name);
+      try {
+        // child may have been removed since we started to read this directory
+        var child = FS.lookupNode(stream.node, name);
+      } catch (e) {
+        // skip to the next entry (not infinite since position is incremented until currReading.length)
+        return _readdir_r(dirp, entry, result);
+      }
       id = child.id;
       type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
              FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
@@ -120,7 +131,7 @@ LibraryManager.library = {
              8;                             // DT_REG, regular file.
     }
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'offset', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, 'name.length + 1', 'i32') }}};
     for (var i = 0; i < name.length; i++) {
       {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', 'name.charCodeAt(i)', 'i8') }}};
@@ -128,10 +139,9 @@ LibraryManager.library = {
     {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', '0', 'i8') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
     {{{ makeSetValue('result', '0', 'entry', 'i8*') }}};
-    stream.position++;
     return 0;
   },
-  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES', 'malloc'],
+  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
   readdir: function(dirp) {
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
@@ -327,6 +337,7 @@ LibraryManager.library = {
     path = Pointer_stringify(path);
     // remove a trailing slash, if one - /a/b/ has basename of '', but
     // we want to create b in the context of this function
+    path = PATH.normalize(path);
     if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
     try {
       FS.mkdir(path, mode, 0);
@@ -1033,7 +1044,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  ttyname__deps: ['ttyname_r', 'malloc'],
+  ttyname__deps: ['ttyname_r'],
   ttyname: function(fildes) {
     // char *ttyname(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
@@ -1299,7 +1310,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  getlogin__deps: ['getlogin_r', 'malloc'],
+  getlogin__deps: ['getlogin_r'],
   getlogin: function() {
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
@@ -2717,7 +2728,7 @@ LibraryManager.library = {
     if (buf) _setvbuf(stream, buf, 0, 8192);  // _IOFBF, BUFSIZ.
     else _setvbuf(stream, buf, 2, 8192);  // _IONBF, BUFSIZ.
   },
-  tmpnam__deps: ['$FS', 'malloc'],
+  tmpnam__deps: ['$FS'],
   tmpnam: function(s, dir, prefix) {
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
@@ -2867,7 +2878,7 @@ LibraryManager.library = {
   // sys/mman.h
   // ==========================================================================
 
-  mmap__deps: ['$FS', 'malloc', 'memset'],
+  mmap__deps: ['$FS', 'memset'],
   mmap: function(start, num, prot, flags, fd, offset) {
     /* FIXME: Since mmap is normally implemented at the kernel level,
      * this implementation simply uses malloc underneath the call to
@@ -2957,7 +2968,6 @@ LibraryManager.library = {
 #endif
 },
 
-  calloc__deps: ['malloc'],
   calloc: function(n, s) {
     var ret = _malloc(n*s);
     _memset(ret, 0, n*s);
@@ -2997,7 +3007,7 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  realloc__deps: ['malloc', 'memcpy', 'free'],
+  realloc__deps: ['memcpy'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use
     // a real realloc with it
@@ -3167,6 +3177,7 @@ LibraryManager.library = {
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
 #endif
+  environ__deps: ['$ENV'],
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: 'environ',
@@ -3182,12 +3193,12 @@ LibraryManager.library = {
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = 'root';
+      ENV['USER'] = 'web_user';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
-      ENV['HOME'] = '/home/emscripten';
-      ENV['LANG'] = 'en_US.UTF-8';
-      ENV['_'] = './this.program';
+      ENV['HOME'] = '/home/web_user';
+      ENV['LANG'] = 'C';
+      ENV['_'] = Module['thisProgram'];
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
@@ -3572,7 +3583,7 @@ LibraryManager.library = {
       return ___setErrNo(ERRNO_CODES.EINVAL);
     }
   },
-  strerror__deps: ['strerror_r', 'malloc'],
+  strerror__deps: ['strerror_r'],
   strerror: function(errnum) {
     if (!_strerror.buffer) _strerror.buffer = _malloc(256);
     _strerror_r(errnum, _strerror.buffer, 256);
@@ -3584,7 +3595,6 @@ LibraryManager.library = {
   // ==========================================================================
 
   // Lookup tables for glibc ctype implementation.
-  __ctype_b_loc__deps: ['malloc'],
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
@@ -3610,7 +3620,6 @@ LibraryManager.library = {
     }
     return me.ret;
   },
-  __ctype_tolower_loc__deps: ['malloc'],
   __ctype_tolower_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-tolower-loc.html
     var me = ___ctype_tolower_loc;
@@ -3639,7 +3648,6 @@ LibraryManager.library = {
     }
     return me.ret;
   },
-  __ctype_toupper_loc__deps: ['malloc'],
   __ctype_toupper_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-toupper-loc.html
     var me = ___ctype_toupper_loc;
@@ -4091,12 +4099,6 @@ LibraryManager.library = {
       return false; // some unencountered type
     }
   },
-
-  // Destructors for std::exception since we don't have them implemented in libcxx as we aren't using libcxxabi.
-  // These are also needed for the dlmalloc tests.
-  _ZNSt9exceptionD0Ev: function() {},
-  _ZNSt9exceptionD1Ev: function() {},
-  _ZNSt9exceptionD2Ev: function() {},
 
   _ZNKSt9exception4whatEv__deps: ['malloc'],
   _ZNKSt9exception4whatEv: function() {
@@ -4909,7 +4911,7 @@ LibraryManager.library = {
 
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_NORMAL); // XXX leak
+    var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
     {{{ makeSetValue('addr', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('addr', QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('addr', QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -5004,7 +5006,7 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['malloc', '__tm_current', 'gmtime_r'],
+  gmtime__deps: ['__tm_current', 'gmtime_r'],
   gmtime: function(time) {
     return _gmtime_r(time, ___tm_current);
   },
@@ -5044,7 +5046,7 @@ LibraryManager.library = {
     return ret;
   },
 
-  localtime__deps: ['malloc', '__tm_current', 'localtime_r'],
+  localtime__deps: ['__tm_current', 'localtime_r'],
   localtime: function(time) {
     return _localtime_r(time, ___tm_current);
   },
@@ -5074,7 +5076,7 @@ LibraryManager.library = {
     return tmPtr;
   },
 
-  asctime__deps: ['malloc', '__tm_formatted', 'asctime_r'],
+  asctime__deps: ['__tm_formatted', 'asctime_r'],
   asctime: function(tmPtr) {
     return _asctime_r(tmPtr, ___tm_formatted);
   },
@@ -5449,13 +5451,30 @@ LibraryManager.library = {
         // If tm_isdst is zero, the standard time offset is used. 
         // If tm_isdst is greater than zero, the daylight savings time offset is used. 
         // If tm_isdst is negative, no characters are returned. 
-        // FIXME: we cannot determine time zone (or can we?)
-        return '';
+        var ret = new Date().getTimezoneOffset();
+        // convert from minutes into hhmm format (which means 60 minutes = 100 units)
+        var minutes = ret % 60;
+        ret = (100*(ret - minutes)/60) + minutes;
+        // add sign and adjust length to ?hhmm
+        if (ret >= 0) {
+          ret = '' + ret;
+          while (ret.length < 4) ret = '0' + ret;
+          return '+' + ret;
+        } else {
+          ret = '' + ret;
+          ret = ret.substr(1);
+          while (ret.length < 4) ret = '0' + ret;
+          return '-' + ret;
+        }
       },
       '%Z': function(date) {
         // Replaced by the timezone name or abbreviation, or by no bytes if no timezone information exists. [ tm_isdst]
-        // FIXME: we cannot determine time zone (or can we?)
-        return '';
+        try {
+          // Date strings typically end in (PDT) or such.
+          return new Date().toString().split('(').slice(-1)[0].split(')')[0];
+        } catch(e) {
+          return ''; // may not work in all browsers
+        }
       },
       '%%': function() {
         return '%';
@@ -6005,7 +6024,6 @@ LibraryManager.library = {
   // locale.h
   // ==========================================================================
 
-  newlocale__deps: ['malloc'],
   newlocale: function(mask, locale, base) {
     return _malloc({{{ QUANTUM_SIZE}}});
   },
@@ -6052,7 +6070,6 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
-  nl_langinfo__deps: ['malloc'],
   nl_langinfo: function(item) {
     // char *nl_langinfo(nl_item item);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
@@ -6679,7 +6696,7 @@ LibraryManager.library = {
     }
     return addr;
   },
-  inet_ntoa__deps: ['_inet_ntop4_raw', 'malloc'],
+  inet_ntoa__deps: ['_inet_ntop4_raw'],
   inet_ntoa: function(in_addr) {
     if (!_inet_ntoa.buffer) {
       _inet_ntoa.buffer = _malloc(1024);
@@ -7041,7 +7058,7 @@ LibraryManager.library = {
     return _gethostbyname(hostp);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', 'malloc'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
 
@@ -7074,7 +7091,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl', 'malloc'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -7291,7 +7308,7 @@ LibraryManager.library = {
   // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
   $GAI_ERRNO_MESSAGES: {},
 
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES', 'malloc'],
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
   gai_strerror: function(val) {
     var buflen = 256;
 
@@ -7333,7 +7350,7 @@ LibraryManager.library = {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols', 'malloc'],
+  setprotoent__deps: ['$Protocols'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -8247,6 +8264,40 @@ LibraryManager.library = {
     return 0;
   },
 
+  getsockopt__deps: ['$SOCKFS', '__setErrNo', '$ERRNO_CODES'],
+  getsockopt: function(fd, level, optname, optval, optlen) {
+    // int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getsockopt.html
+    // Minimal getsockopt aimed at resolving https://github.com/kripken/emscripten/issues/2211
+    // so only supports SOL_SOCKET with SO_ERROR.
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    if (level === {{{ cDefine('SOL_SOCKET') }}}) {
+      if (optname === {{{ cDefine('SO_ERROR') }}}) {
+        {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
+        {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
+        sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
+        return 0;
+      } else {
+        ___setErrNo(ERRNO_CODES.ENOPROTOOPT); // The option is unknown at the level indicated.
+#if ASSERTIONS
+        Runtime.warnOnce('getsockopt() returning an error as we currently only support optname SO_ERROR');
+#endif
+        return -1;
+      }
+    } else {
+      ___setErrNo(ERRNO_CODES.ENOPROTOOPT); //The option is unknown at the level indicated.
+#if ASSERTIONS
+      Runtime.warnOnce('getsockopt() returning an error as we only support level SOL_SOCKET');
+#endif
+      return -1;
+    }
+  },
+
   mkport: function() { throw 'TODO' },
 
   // ==========================================================================
@@ -8498,21 +8549,7 @@ LibraryManager.library = {
 
   emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
   emscripten_get_callstack_js: function(flags) {
-    var err = new Error();
-    if (!err.stack) {
-      // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
-      // so try that as a special-case.
-      try {
-        throw new Error(0);
-      } catch(e) {
-        err = e;
-      }
-      if (!err.stack) {
-        Runtime.warnOnce('emscripten_get_callstack_js is not supported on this browser!');
-        return '';
-      }
-    }
-    var callstack = err.stack.toString();
+    var callstack = jsStackTrace();
 
     // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everyhing up to these from the output.
     var iThisFunc = callstack.lastIndexOf('_emscripten_log');

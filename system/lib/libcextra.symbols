@@ -54,7 +54,6 @@
          T isalpha_l
          T isblank_l
          T isdigit_l
-         T isxdigit
          T isxdigit_l
          T isalnum
          T isalnum_l
@@ -242,3 +241,4 @@
          T wmemset
          T wprintf
          T fnmatch
+         T strsignal

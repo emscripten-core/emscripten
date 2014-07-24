@@ -231,6 +231,9 @@ var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
                                  // When the array is empty, the filter is disabled.
 var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
+var DEMANGLE_SUPPORT = 0; // If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
+                          // to emit fully proper demangled c++ names
+
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
                        // Runtime.debug at runtime for logging to cease, and can set it when you
                        // want it back. A simple way to set it in C++ is
@@ -346,6 +349,7 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // have a main() function and want it to run, you must include it in this
                                     // list (as _main is by default in this value, and if you override it
                                     // without keeping it there, you are in effect removing it).
+var ORIGINAL_EXPORTED_FUNCTIONS = []; // For internal use only
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This

@@ -94,12 +94,10 @@ class sanity(RunnerCore):
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
-      self.assertContained('PYTHON', output)
       if platform.system() is not 'Windows':
         # os.chmod can't make files executable on Windows
         self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
         self.assertIdentical(os.path.join(temp_bin, 'node'), re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
-        self.assertIdentical(os.path.join(temp_bin, 'python2'), re.search("^ *PYTHON *= (.*)$", output, re.M).group(1))
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
@@ -451,17 +449,17 @@ fi
               print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
               assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
               assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
-              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size/2, 'Dead code elimination must remove most of libc++'
+              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size*0.666, 'Dead code elimination must remove most of libc++'
             # should only have metadata in -O0, not 1 and 2
             if i > 0:
+              ll = None
               for ll_name in ll_names:
-                ll = None
-                try:
-                  ll = open(ll_name).read()
+                if os.path.exists(ll_name):
+                  check_call([LLVM_DIS, ll_name, '-o', ll_name + '.ll'])
+                  ll = open(ll_name + '.ll').read()
                   break
-                except:
-                  pass
               assert ll
+              print 'metas:', ll.count('\n!')
               assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']

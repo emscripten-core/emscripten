@@ -562,7 +562,7 @@ def main():
   try:
     b2g_socket.connect((HOST, PORT))
   except Exception, e:
-    if e[0] == 61: # Connection refused
+    if e[0] == 61 or e[0] == 107 or e[0] == 111: # 61 == Connection refused and 107+111 == Transport endpoint is not connected
       if (HOST == 'localhost' or HOST == '127.0.0.1') and not connect_to_simulator:
         cmd = [ADB, 'forward', 'tcp:'+str(PORT), 'localfilesystem:/data/local/debugger-socket']
         print 'Connection to ' + HOST + ':' + str(PORT) + ' refused, attempting to forward device debugger-socket to local address by calling ' + str(cmd) + ':'
@@ -660,6 +660,9 @@ def main():
     else:
       print 'Web browser is not running!'
   elif sys.argv[1] == 'log':
+    if len(sys.argv) < 3:
+      print 'Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>'
+      return 1
     clear = '-c' in sys.argv or '-clear' in sys.argv or '--clear' in sys.argv
     b2g_log(sys.argv[2], clear)
   elif sys.argv[1] == 'memory':

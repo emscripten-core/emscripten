@@ -1,44 +1,3 @@
-         T _ZNKSt16bad_array_length4whatEv
-         T _ZNKSt20bad_array_new_length4whatEv
-         T _ZNKSt9bad_alloc4whatEv
-         T _ZNSt16bad_array_lengthC1Ev
-         T _ZNSt16bad_array_lengthC2Ev
-         T _ZNSt16bad_array_lengthD0Ev
-         T _ZNSt16bad_array_lengthD1Ev
-         T _ZNSt16bad_array_lengthD2Ev
-         T _ZNSt20bad_array_new_lengthC1Ev
-         T _ZNSt20bad_array_new_lengthC2Ev
-         T _ZNSt20bad_array_new_lengthD0Ev
-         T _ZNSt20bad_array_new_lengthD1Ev
-         T _ZNSt20bad_array_new_lengthD2Ev
-         T _ZNSt9bad_allocC1Ev
-         T _ZNSt9bad_allocC2Ev
-         T _ZNSt9bad_allocD0Ev
-         T _ZNSt9bad_allocD1Ev
-         T _ZNSt9bad_allocD2Ev
-         T _ZSt15get_new_handlerv
-         T _ZSt15set_new_handlerPFvvE
-         T _ZSt17__throw_bad_allocv
-         D _ZSt7nothrow
-         D _ZTISt16bad_array_length
-         D _ZTISt20bad_array_new_length
-         D _ZTISt9bad_alloc
-         C _ZTISt9exception
-         D _ZTSSt16bad_array_length
-         D _ZTSSt20bad_array_new_length
-         D _ZTSSt9bad_alloc
-         C _ZTSSt9exception
-         D _ZTVSt16bad_array_length
-         D _ZTVSt20bad_array_new_length
-         D _ZTVSt9bad_alloc
-         W _ZdaPv
-         W _ZdaPvRKSt9nothrow_t
-         W _ZdlPv
-         W _ZdlPvRKSt9nothrow_t
-         W _Znaj
-         W _ZnajRKSt9nothrow_t
-         W _Znwj
-         W _ZnwjRKSt9nothrow_t
          T __floatscan
          T __intscan
          T __overflow
@@ -55,6 +14,7 @@
          T atol
          W bulk_free
          W calloc
+         T ffs
          W free
          T frexp
          T frexpf
@@ -112,3 +72,4 @@
          T vsprintf
          T wcrtomb
          T wctomb
+         T isxdigit

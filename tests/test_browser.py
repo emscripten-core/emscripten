@@ -1113,6 +1113,9 @@ keydown(100);keyup(100); // trigger the end
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
 
+  def test_force_exit(self):
+    self.btest('force_exit.c', force_c=True, expected='17')
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -1722,46 +1725,77 @@ void *getBindBuffer() {
     # otherwise, we just overwrite
     self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
-  def test_mem_init_ccall(self):
-    open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
-      function doCcall() {
-        ccall('note', 'string', ['number'], [2]);
+  def test_runtime_misuse(self):
+    post_prep = '''
+      var expected_ok = false;
+      function doCcall(n) {
+        ccall('note', 'string', ['number'], [n]);
       }
       var wrapped = cwrap('note', 'string', ['number']); // returns a string to suppress cwrap optimization
-      function doCwrapCall() {
-        var str = wrapped(3);
+      function doCwrapCall(n) {
+        var str = wrapped(n);
         Module.print('got ' + str);
         assert(str === 'silly-string');
       }
-
-      var ok = true;
+      function doDirectCall(n) {
+        Module['_note'](n);
+      }
+    '''
+    post_test = '''
+      var ok = false;
       try {
-        doCcall();
-        ok = false; // should fail and not reach here, runtime is not ready yet so ccall will abort
+        doCcall(1);
+        ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
         Module.print('expected fail 1');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
-      assert(ok);
+      assert(ok === expected_ok);
 
-      ok = true;
+      ok = false;
       try {
-        doCwrapCall();
-        ok = false; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
+        doCwrapCall(2);
+        ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
         Module.print('expected fail 2');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
-      assert(ok);
+      assert(ok === expected_ok);
 
+      ok = false;
+      try {
+        doDirectCall(3);
+        ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
+      } catch(e) {
+        Module.print('expected fail 3');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        ABORT = false; // hackish
+      }
+      assert(ok === expected_ok);
+    '''
+
+    post_hook = r'''
       function myJSCallback() {
         // called from main, this is an ok time
-        doCcall();
-        doCwrapCall();
+        doCcall(100);
+        doCwrapCall(200);
+        doDirectCall(300);
       }
-    ''')
 
-    self.btest('mem_init.cpp', expected='3', args=['--post-js', 'post.js', '--memory-init-file', '1'])
+      setTimeout(Module['_free'], 1000); // free is valid to call even after the runtime closes
+    '''
+
+    print 'mem init, so async, call too early'
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + post_test + post_hook)
+    self.btest('runtime_misuse.cpp', expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'])
+    print 'sync startup, call too late'
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+    self.btest('runtime_misuse.cpp', expected='600', args=['--post-js', 'post.js', '--memory-init-file', '0'])
+    print 'sync, runtime still alive, so all good'
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+    self.btest('runtime_misuse.cpp', expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'])
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
@@ -1825,15 +1859,15 @@ void *getBindBuffer() {
 
     # First run tests in Node and/or SPIDERMONKEY using run_js. Use closure compiler so we can check that
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
-    Popen([PYTHON, EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', path_from_root('tests', 'uuid', 'test.js')], stdout=PIPE, stderr=PIPE).communicate()
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js'], stdout=PIPE, stderr=PIPE).communicate()
 
-    test_js_closure = open(path_from_root('tests', 'uuid', 'test.js')).read()
+    test_js_closure = open('test.js').read()
 
     # Check that test.js compiled with --closure 1 contains ").randomBytes" and "window.crypto.getRandomValues"
     assert ").randomBytes" in test_js_closure
     assert "window.crypto.getRandomValues" in test_js_closure
 
-    out = run_js(path_from_root('tests', 'uuid', 'test.js'), full_output=True)
+    out = run_js('test.js', full_output=True)
     print out
 
     # Tidy up files that might have been created by this test.

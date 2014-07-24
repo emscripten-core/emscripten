@@ -1,6 +1,7 @@
 #include "shgetc.h"
 #include "floatscan.h"
 #include "stdio_impl.h"
+#include <wchar.h>
 #include <wctype.h>
 
 /* This read function heavily cheats. It knows:

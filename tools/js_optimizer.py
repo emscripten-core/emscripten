@@ -220,10 +220,6 @@ EMSCRIPTEN_FUNCS();
   funcs = split_funcs(js)
   js = None
 
-  if 'last' in passes and len(funcs) > 0:
-    if max([len(func[1]) for func in funcs]) > 200000:
-      print >> sys.stderr, 'warning: Output contains some very large functions, consider using OUTLINING_LIMIT to break them up (see settings.js)'
-
   # if we are making source maps, we want our debug numbering to start from the
   # top of the file, so avoid breaking the JS into chunks
   cores = 1 if source_map else int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
@@ -343,6 +339,12 @@ EMSCRIPTEN_FUNCS();
     elif x[0] > y[0]: return -1
     return 0
   funcs.sort(sorter)
+
+  if 'last' in passes and len(funcs) > 0:
+    count = funcs[0][1].count('\n')
+    if count > 3000:
+      print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
+
   for func in funcs:
     f.write(func[1])
   funcs = None

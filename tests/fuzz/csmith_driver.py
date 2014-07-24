@@ -98,13 +98,13 @@ while 1:
     shared.check_execute([shared.PYTHON, shared.EMCC, opts, fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args)
     assert os.path.exists(filename + '.js')
     print '(run)'
-    js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1, check_timeout=True)
+    js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None, cwd='/tmp/emscripten_temp')
     assert correct1 == js or correct2 == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
   # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment
   ok = False
   normal = True
-  for args, note in [([], None), (['-s', 'UNALIGNED_MEMORY=1'], 'unaligned')]:
+  for args, note in [([], None)]:#, (['-s', 'UNALIGNED_MEMORY=1'], 'unaligned')]:
     try:
       try_js(args)
       ok = True
@@ -128,7 +128,7 @@ while 1:
   #    try_js(['-s', 'SAFE_HEAP=1'])
   #  except Exception, e:
   #    print e
-  #    js = shared.run_js(filename + '.js', stderr=PIPE, full_output=True)
+  #    js = shared.run_js(filename + '.js', stderr=PIPE, full_output=True, assert_returncode=None)
   #  print js
   #  if 'SAFE_HEAP' in js:
   #    notes['safeheap'] += 1
@@ -138,7 +138,7 @@ while 1:
   # This is ok. Try in secondary JS engine too
   if opts != '-O0' and engine2 and normal:
     try:
-      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True)
+      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True, assert_returncode=None)
     except:
       print 'failed to run in secondary', js2
       break

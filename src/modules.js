@@ -444,7 +444,7 @@ var LibraryManager = {
     }
 
     // apply synonyms. these are typically not speed-sensitive, and doing it this way makes it possible to not include hacks in the compiler
-    // (and makes it simpler to switch between SDL verisons, fastcomp and non-fastcomp, etc.).
+    // (and makes it simpler to switch between SDL versions, fastcomp and non-fastcomp, etc.).
     var lib = LibraryManager.library;
     libloop: for (var x in lib) {
       if (x.lastIndexOf('__') > 0) continue; // ignore __deps, __*
@@ -453,17 +453,14 @@ var LibraryManager = {
         var target = x;
         while (typeof lib[target] === 'string') {
           if (lib[target].indexOf('(') >= 0) continue libloop;
+          if (lib[target].indexOf('Math_') == 0) continue libloop;
           target = lib[target];
         }
+        if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
-          if (target.indexOf('Math_') < 0) {
-            lib[x] = new Function('return _' + target + '.apply(null, arguments)');
-            if (!lib[x + '__deps']) lib[x + '__deps'] = [];
-            lib[x + '__deps'].push(target);
-          } else {
-            lib[x] = new Function('return ' + target + '.apply(null, arguments)');
-          }
-          continue;
+          lib[x] = new Function('return _' + target + '.apply(null, arguments)');
+          if (!lib[x + '__deps']) lib[x + '__deps'] = [];
+          lib[x + '__deps'].push(target);
         }
       }
     }

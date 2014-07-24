@@ -443,12 +443,16 @@ var Runtime = {
 
   getFuncWrapper: function(func, sig) {
     assert(sig);
-    if (!Runtime.funcWrappers[func]) {
-      Runtime.funcWrappers[func] = function dynCall_wrapper() {
+    if (!Runtime.funcWrappers[sig]) {
+      Runtime.funcWrappers[sig] = {};
+    }
+    var sigCache = Runtime.funcWrappers[sig];
+    if (!sigCache[func]) {
+      sigCache[func] = function dynCall_wrapper() {
         return Runtime.dynCall(sig, func, arguments);
       };
     }
-    return Runtime.funcWrappers[func];
+    return sigCache[func];
   },
 
   // Returns a processor of UTF.

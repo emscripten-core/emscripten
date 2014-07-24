@@ -1,13 +1,15 @@
   # Build the demo app, small examples
 
 # First thing define the common source:
-# XXX Emscripten: Force getopt.c
 SET(common_SRCS
   convert.c
   index.c
   ${OPENJPEG_SOURCE_DIR}/common/color.c
-  ${OPENJPEG_SOURCE_DIR}/common/getopt.c
 )
+
+if (NOT CMAKE_HAVE_GETOPT_H)
+  SET(common_SRCS ${common_SRCS} ${OPENJPEG_SOURCE_DIR}/common/getopt.c)
+endif()
 
 # Headers file are located here:
 INCLUDE_DIRECTORIES(

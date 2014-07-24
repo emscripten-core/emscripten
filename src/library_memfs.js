@@ -155,7 +155,9 @@ mergeInto(LibraryManager.library, {
       if (!node.contents || node.contents.subarray) { // Resize a typed array if that is being used as the backing store.
         var oldContents = node.contents;
         node.contents = new Uint8Array(new ArrayBuffer(newSize)); // Allocate new storage.
-        node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
+        if (oldContents) {
+          node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
+        }
         node.usedBytes = newSize;
         return;
       }

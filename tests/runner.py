@@ -240,15 +240,17 @@ process(sys.argv[1])
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
-    if self.emcc_args is not None and 'ASM_JS=1' in self.emcc_args:
+    if self.emcc_args is not None:
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
-        memory_init_file = 0
+        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args
+      src = open(filename + '.o.js').read()
       if memory_init_file:
-        assert '/* memory initializer */' not in open(filename + '.o.js').read()
+        # side memory init file, or an empty one in the js
+        assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
       else:
-        assert 'memory initializer */' in open(filename + '.o.js').read()
+        assert 'memory initializer */' in src
 
   def validate_asmjs(self, err):
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
@@ -464,6 +466,7 @@ process(sys.argv[1])
     js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:
+      #print engine
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
       self.assertNotContained('ERROR', js_output)
@@ -733,7 +736,7 @@ class BrowserCore(RunnerCore):
 def get_bullet_library(runner_core, use_cmake):
   if use_cmake:
     configure_commands = ['cmake', '.']
-    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']
+    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF']
     # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
     generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
                       os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),

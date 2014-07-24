@@ -4,12 +4,7 @@
  * unnecessary.
  */
 
-#include <stdlib.h>
-#include <inttypes.h>
 #include <wchar.h>
-#include <errno.h>
-
-#include "internal.h"
 
 size_t mbrlen(const char *restrict s, size_t n, mbstate_t *restrict st)
 {

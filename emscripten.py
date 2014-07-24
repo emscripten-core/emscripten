@@ -853,8 +853,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # Call js compiler
     if DEBUG: t = time.time()
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine, [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'))
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
@@ -907,7 +908,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     implemented_functions = set(metadata['implementedFunctions'])
     if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
       for requested in settings['ORIGINAL_EXPORTED_FUNCTIONS']:
-        if requested not in all_implemented:
+        if requested not in all_implemented and \
+           requested != '_malloc': # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     # Add named globals
@@ -930,7 +932,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
       funcs_js += ['\n// EMSCRIPTEN_END_FUNCS\n']
 
-      simple = os.environ.get('EMCC_SIMPLE_ASM')
       class Counter:
         i = 0
         j = 0
@@ -1113,12 +1114,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
       exported_implemented_functions.append('runPostSets')
       exports = []
-      if not simple:
-        for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
-          exports.append("%s: %s" % (export, export))
-        exports = '{ ' + ', '.join(exports) + ' }'
-      else:
-        exports = '_main'
+      for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
+        exports.append("%s: %s" % (export, export))
+      exports = '{ ' + ', '.join(exports) + ' }'
       # calculate globals
       try:
         del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -1145,10 +1143,17 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
       sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
       # received
-      if not simple:
-        receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
-      else:
-        receiving = 'var _main = Module["_main"] = asm;'
+      receiving = ''
+      if settings['ASSERTIONS']:
+        # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+        # some support code like malloc TODO: verify that malloc is actually safe to use that way
+        receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real_''' + s + '''.apply(null, arguments);
+};
+''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset']])
+      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
 
       # finalize
 
@@ -1331,7 +1336,9 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
   # Compile the assembly to Javascript.
   if settings.get('RELOOP'):
     if not relooper:
-      relooper = cache.get_path('relooper.js')
+      relooper = settings.get('RELOOPER')
+      if not relooper:
+        relooper = cache.get_path('relooper.js')
     settings.setdefault('RELOOPER', relooper)
     if not os.path.exists(relooper):
       shared.Building.ensure_relooper(relooper)
