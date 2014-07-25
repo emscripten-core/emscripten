@@ -1309,6 +1309,10 @@ try:
       fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
       if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
         fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+    if shared.Settings.ASYNCIFY:
+      fastcomp_opts += ['-emscripten-asyncify']
+      fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
+      fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
