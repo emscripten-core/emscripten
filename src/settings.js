@@ -558,6 +558,9 @@ var DEBUG_TAGS_SHOWING = [];
 // For internal use only
 var ORIGINAL_EXPORTED_FUNCTIONS = [];
 var CORRECT_OVERFLOWS_LINES = [];
+var CORRECT_SIGNS_LINES = [];
+var CORRECT_ROUNDINGS_LINES = [];
+var SAFE_HEAP_LINES = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.
 // That file is automatically parsed by tools/gen_struct_info.py.
