@@ -3723,3 +3723,30 @@ Creating file: /tmp/file with content of size=79
 Failed to open file for writing: /tmp/file; errno=13; Permission denied
 ''', run_js('a.out.js'))
 
+  def test_embed_file_large(self):
+    # If such long files are encoded on one line,
+    # they overflow the interpreter's limit
+    large_size = int(40e6)
+    open('large.txt', 'w').write('x' * large_size)
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      #include <unistd.h>
+      int main()
+      {
+          FILE* fp = fopen("large.txt", "r");
+          if (fp) {
+              printf("%d\n", fp);
+              fseek(fp, 0L, SEEK_END);
+              printf("%d\n", ftell(fp));
+          } else {
+              printf("failed to open large file.txt\n");
+          }
+          return 0;
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp', '--embed-file', 'large.txt']).communicate()
+    for engine in JS_ENGINES:
+      if engine == V8_ENGINE: continue # ooms
+      print engine
+      self.assertContained('4\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
+
