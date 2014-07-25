@@ -1900,6 +1900,11 @@ Module["preRun"].push(function () {
       print opts
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
 
+  def test_html5_webgl_create_context(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+      print opts
+      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
+
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print opts
