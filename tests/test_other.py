@@ -623,8 +623,7 @@ This pointer might make sense in another type signature: i: 0
           open(os.path.join(self.get_dir(), 'side.' + suffix), 'w').write(side)
           side = ['side.' + suffix]
         Popen([PYTHON, EMCC] + side + ['-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2'] + args).communicate()
-        # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
-        Popen([PYTHON, EMCC] + main + ['-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1'] + args).communicate()
+        Popen([PYTHON, EMCC] + main + ['-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=0'] + args).communicate()
         Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'], stdout=PIPE).communicate()
         assert os.path.exists('together.js')
         for engine in JS_ENGINES:
