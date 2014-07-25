@@ -15,16 +15,13 @@
  */
 
 mergeInto(LibraryManager.library, {
+#if ASYNCIFY
   __async: 0, // whether a truly async function has been called
   __async_unwind: 1, // whether to unwind the async stack frame
   __async_retval: 'allocate(2, "i32", ALLOC_STATIC)', // store the return value for async functions
   __async_cur_frame: 0, // address to the current frame, which stores previous frame, stack pointer and async context
 
-#if ASYNCIFY
   emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_cur_frame'],
-#else
-  emscripten_async_resume__deps: [ function(){ throw 'ERROR: Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_sleep'; } ],
-#endif
   emscripten_async_resume__sig: 'v',
   emscripten_async_resume__asm: true,
   emscripten_async_resume: function() {
@@ -103,4 +100,10 @@ mergeInto(LibraryManager.library, {
 
   emscripten_get_async_return_value_addr__deps: ['__async_retval'],
   emscripten_get_async_return_value_addr: true
+#else // ASYNCIFY
+  emscripten_sleep: function() {
+    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_sleep';
+  }
+#endif
 });
+
