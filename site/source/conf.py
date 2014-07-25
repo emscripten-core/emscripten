@@ -17,11 +17,11 @@ import os
 
 
 # At the top. #HamishW https://pypi.python.org/pypi/sphinx-bootstrap-theme/ ...
-import sphinx_bootstrap_theme
+#import sphinx_bootstrap_theme
 
 
 # At the top. #HamishW http://sphinx-better-theme.readthedocs.org/en/latest/installation.html   easy_install sphinx_better_theme
-from better import better_theme_path
+#from better import better_theme_path
 #html_theme_path = [better_theme_path]
 
 
@@ -61,6 +61,10 @@ extensions = [
     'sphinx.ext.viewcode',
     # 'breathe', #added by HamishW
 ]
+
+
+#Build "Todo" notes into the source
+#todo_include_todos = 'True' 
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

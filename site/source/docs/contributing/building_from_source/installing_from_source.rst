@@ -1,3 +1,5 @@
+.. _installing-from-source:
+
 ============================================
 Installing from Source (under-construction) 
 ============================================

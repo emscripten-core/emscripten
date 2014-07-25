@@ -1,10 +1,9 @@
 =====================================
-Getting Started (under-construction) 
+Debugging (under-construction) 
 =====================================
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    
-   downloads
-   Tutorial
+   Debugging
