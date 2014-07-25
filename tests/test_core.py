@@ -6821,6 +6821,8 @@ def process(filename):
     if os.environ.get('EMCC_FAST_COMPILER') == '0': 
       return self.skip('asyncify requires fastcomp')
 
+    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
     src = r'''
 #include <stdio.h>
 #include <emscripten.h>
