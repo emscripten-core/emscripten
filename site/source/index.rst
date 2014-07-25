@@ -24,13 +24,17 @@ News
 .. toctree::
 	:hidden:
 
+	docs/introducing_emscripten/index
 	docs/getting_started/index
+	docs/coding/index
+	docs/compiling/index
+	docs/packaging/index
 	docs/contributing/index
 	docs/api_reference/index  
 	wiki_static/index
 	deleteme_scratchpad
 	deleteme_sitechanges
-
+	docs/site/about
 
    
   

@@ -48,8 +48,8 @@ mapped_wiki_inline_code['setValue(ptr, value, type)']=':js:func:`setValue(ptr, v
 wiki_temp_directory = wiki_directory + 'temp\\'
 temp_set_of_codemarkup=set()
 logfile=open(logfilename,'w')
-snapshot_version_information='.. note:: This is a **snapshot** of the wiki: %s\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())
-
+#snapshot_version_information='.. note:: This is a **snapshot** of the wiki: %s\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())
+snapshot_version_information='.. note:: This article was migrated from the wiki (%s) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())
 
 
 def CleanWiki():	
@@ -124,7 +124,9 @@ def ConvertFilesToRst():
             headerbar=''
             for number in range(length):
                 headerbar+='='
-            titlebar=headerbar+'\n'+title+'\n'+headerbar+'\n'
+            page_reference=filenamestripped
+            page_reference_link_text = '.. _%s:\n\n' % page_reference
+            titlebar=page_reference_link_text+headerbar+'\n'+title+'\n'+headerbar+'\n'
             textinfile=''
             # Add titlebar to start of the file (from the filename)
             textinfile+=titlebar
@@ -162,7 +164,8 @@ def FixupConvertedRstFiles():
             #print 'matcobj1: %s' % matchobj.group(1)
             linktext=matchobj.group(1)
             linktext=linktext.replace(' ','-')
-            linktext=':doc:`%s`' % linktext
+            #linktext=':doc:`%s`' % linktext
+            linktext=':ref:`%s`' % linktext #use reference for linking as allows pages to be moved around
             #print 'linkdoc: %s' % linktext
             logfile.write('linkdoc: %s \n' % linktext)
             return linktext

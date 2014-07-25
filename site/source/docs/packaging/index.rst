@@ -1,10 +1,9 @@
 =====================================
-Getting Started (under-construction) 
+Packaging (under-construction) 
 =====================================
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    
-   downloads
-   Tutorial
+   Filesystem-Guide
