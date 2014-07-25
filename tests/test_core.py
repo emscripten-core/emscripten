@@ -6917,7 +6917,6 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     Settings.INCLUDE_FULL_LIBRARY = 0
     Settings.BUILD_AS_SHARED_LIB = 0
     Settings.RUNTIME_LINKED_LIBS = []
-    Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     Settings.PRECISE_I64_MATH = 0
     Settings.NAMED_GLOBALS = 0 if not embetter else 1

@@ -364,7 +364,6 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // have a main() function and want it to run, you must include it in this
                                     // list (as _main is by default in this value, and if you override it
                                     // without keeping it there, you are in effect removing it).
-var ORIGINAL_EXPORTED_FUNCTIONS = []; // For internal use only
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
@@ -555,6 +554,10 @@ var DEBUG_TAGS_SHOWING = [];
   //    unparsedFunctions
   //    metadata
   //    legalizer
+
+// For internal use only
+var ORIGINAL_EXPORTED_FUNCTIONS = [];
+var CORRECT_OVERFLOWS_LINES = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.
 // That file is automatically parsed by tools/gen_struct_info.py.
