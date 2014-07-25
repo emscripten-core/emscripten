@@ -4233,6 +4233,31 @@ def process(filename):
     self.emcc_args += ['--embed-file', 'empty.txt']
     self.do_run(src, '4\n3\n-1\n')
 
+  def test_file_large(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    # If such long files are encoded on one line,
+    # they overflow the interpreter's limit
+    large_size = int(40e6)
+    open(os.path.join(self.get_dir(), 'large.txt'), 'w').write('x' * large_size)
+    src = r'''
+      #include <stdio.h>
+      #include <unistd.h>
+      int main()
+      {
+          FILE* fp = fopen("large.txt", "r");
+          if (fp) {
+              printf("%d\n", fp);
+              fseek(fp, 0L, SEEK_END);
+              printf("%d\n", ftell(fp));
+          } else {
+              printf("failed to open large file.txt\n");
+          }
+          return 0;
+      }
+    '''
+    self.emcc_args += ['--embed-file', 'large.txt']
+    self.do_run(src, '4\n' + str(large_size) + '\n')
+
   def test_readdir(self):
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
     self.do_run(src, 'SIGILL: Illegal instruction\nsuccess', force_c=True)

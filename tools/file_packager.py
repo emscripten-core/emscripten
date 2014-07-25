@@ -414,19 +414,14 @@ for file_ in data_files:
   if file_['mode'] == 'embed':
     # Embed
     data = map(ord, open(file_['srcpath'], 'rb').read())
-    if not data:
-      str_data = '[]'
-    else:
-      str_data = ''
+    code += '''fileData%d = [];\n''' % counter
+    if data:
       chunk_size = 10240
       while len(data) > 0:
-        chunk = data[:chunk_size]
+        code += '''fileData%d.push.apply(fileData%d, %s);\n''' % (counter, counter, str(data[:chunk_size]))
         data = data[chunk_size:]
-        if not str_data:
-          str_data = str(chunk)
-        else:
-          str_data += '.concat(' + str(chunk) + ')'
-    code += '''Module['FS_createDataFile']('%s', '%s', %s, true, true);\n''' % (dirname, basename, str_data)
+    code += '''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true);\n''' % (dirname, basename, counter)
+    counter += 1
   elif file_['mode'] == 'preload':
     # Preload
     varname = 'filePreload%d' % counter
