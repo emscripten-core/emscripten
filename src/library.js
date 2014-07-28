@@ -634,7 +634,7 @@ LibraryManager.library = {
     var end_time = Date.now() + timeout;
     function check_fds_and_wait() {
       check_fds();
-      if(nonzero || ((timeout > 0) && (Date.now() >= end_time))) {
+      if (nonzero || ((timeout > 0) && (Date.now() >= end_time))) {
         var addr = asm.getAsyncRetValAddr();
         {{{ makeSetValue('addr', 0, 'nonzero', 'i32') }}};
         _emscripten_async_resume();
