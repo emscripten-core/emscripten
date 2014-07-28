@@ -3,6 +3,7 @@
 import glob, hashlib, os, re, shutil, subprocess, sys
 import tools.shared
 from tools.shared import *
+from tools.line_endings import check_line_endings
 from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_bullet_library
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
@@ -477,6 +478,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
+
+  def test_line_endings(self):
+    self.build(open(path_from_root('tests', 'hello_world.cpp')).read(), self.get_dir(), self.in_dir('hello_world.cpp'))
 
   def test_literal_negative_zero(self):
     if self.emcc_args == None: return self.skip('needs emcc')
