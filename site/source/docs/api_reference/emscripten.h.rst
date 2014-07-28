@@ -1,3 +1,5 @@
+.. _emscripten-h:
+
 ================================
 Emscripten.h (ready-for-review) 
 ================================
@@ -26,12 +28,12 @@ Defines
 	
 	This allows you to declare JavaScript in your C code "inline", which is then executed when your compiled code is run in the browser. For example, the following C code would display two alerts if it was compiled with Emscripten and run in the browser: ::
 
-		EM_ASM( window.alert(‘hai’)); 
-		window.alert(‘bai’)); )
+		EM_ASM( alert(‘hai’)); 
+		alert(‘bai’)); )
    
 	.. note:: 
 		- Double-quotes (") cannot be used in the inline assembly/JavaScript. Single-quotes (‘) can be used, as shown above.
-		- Newlines are supported
+		- Newlines (\\n, \\r etc.) are supported in the inline Javascript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using ``EM_ASM``.
 		- This works with **asm.js** (it outlines the code and does a function call to reach it). 
 		- You can’t access C variables with :c:macro:`EM_ASM`, nor receive a value back. Instead use :c:macro:`EM_ASM_INT` or :c:macro:`EM_ASM_DOUBLE`.
    
@@ -445,7 +447,7 @@ Functions
 	:type file: const char* 
 	:param requesttype: 'GET' or 'POST'.
 	:type requesttype: const char* 	
-	:param param: Request parameters. If the ``requesttype`` is a POST request, this is a POST parameter like ``key=value&key2=value2``.
+	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget2_onload_func onload: Callback on successful load of the file. The callback function parameter values are:	
@@ -480,7 +482,7 @@ Functions
 	:type url: const char*
 	:param requesttype: 'GET' or 'POST'. 
 	:type requesttype: const char*	
-	:param param: Request parameters. If the ``requesttype`` is a POST request, this is a POST parameter like ``key=value&key2=value2``.
+	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param const int free: Tells the runtime whether to free the returned buffer after ``onload`` is complete. If ``false`` freeing the buffer is the receiver's responsibility.
