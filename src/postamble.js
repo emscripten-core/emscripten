@@ -179,7 +179,7 @@ function exit(status) {
     // Instead of process.exit() directly, wait for stdout flush event.
     // See https://github.com/joyent/node/issues/1669 and https://github.com/kripken/emscripten/issues/2582
     // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
-    process.stdout.once('drain', function () {
+    process['stdout']['once']('drain', function () {
       process['exit'](status);
     });
     console.log(' '); // Make sure to print something to force the drain event to occur, in case the stdout buffer was empty.
