@@ -27,6 +27,7 @@ News
 	docs/introducing_emscripten/index
 	docs/getting_started/index
 	docs/coding/index
+	docs/optimizing/index
 	docs/compiling/index
 	docs/packaging/index
 	docs/contributing/index

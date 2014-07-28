@@ -29,8 +29,9 @@
 	('https://groups.google.com/forum/#!forum/emscripten-discuss', 'Mailing list', 'Mailing list'),
 	('https://github.com/kripken/emscripten/wiki', 'Wiki', 'Wiki'),
 	('https://plus.google.com/100622854474489221138', 'Google+', 'Google+'),
-	('docs/getting_started/release_notes', 'Release notes', 'Release notes'),
-	('docs/site/blogs', 'Blogs', 'Blogs'),
+	('docs/introducing_emscripten/release_notes', 'Release notes', 'Release notes'),
+	('docs/introducing_emscripten/community', 'Blogs', 'Blogs'),
+	('docs/introducing_emscripten/community', 'Help', 'Contact'),
 ] -%}
 
    <div class="footer-nav-bar" style="">
@@ -41,6 +42,8 @@
               <a class="footer-navlink-short" title="{{ shorttext }}" href="{{ pathto(document) }}">{{ shorttext }}</a><a class="footer-navlink-long" title="{{ longtext }}" href="{{ pathto(document) }}">{{ longtext }}</a>
 	        {%- elif document | truncate(4, True, end='') == 'http' %} 
 		      <a class="footer-navlink-short" href="{{ document }}">{{ shorttext }}</a><a class="footer-navlink-long" href="{{ document }}">{{ longtext }}</a>
+			{%- else %}  
+			  {{ shorttext }}
             {%- endif %}
         {% endfor %} 
 				
