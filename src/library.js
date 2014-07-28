@@ -596,11 +596,18 @@ LibraryManager.library = {
   // ==========================================================================
 
   __DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
+#if ASYNCIFY
+  poll__deps: ['$FS', '__DEFAULT_POLLMASK', 'emscripten_async_resume'],
+#else
   poll__deps: ['$FS', '__DEFAULT_POLLMASK'],
+#endif
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
     var nonzero = 0;
+#if ASYNCIFY
+    function check_fds() {
+#endif
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
       var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
@@ -617,7 +624,28 @@ LibraryManager.library = {
       if (mask) nonzero++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
     }
+#if ASYNCIFY
+    }
+    check_fds();
+    if (nonzero || (timeout == 0))
+      return nonzero;
+    // now we have to wait
+    asm.setAsync();
+    var end_time = Date.now() + timeout;
+    function check_fds_and_wait() {
+      check_fds();
+      if(nonzero || ((timeout > 0) && (Date.now() >= end_time))) {
+        var addr = asm.getAsyncRetValAddr();
+        {{{ makeSetValue('addr', 0, 'nonzero', 'i32') }}};
+        _emscripten_async_resume();
+      } else {
+        Browser.safeSetTimeout(check_fds_and_wait, 10);
+      }
+    }
+    Browser.safeSetTimeout(check_fds_and_wait, 10);
+#else
     return nonzero;
+#endif
   },
 
   // ==========================================================================

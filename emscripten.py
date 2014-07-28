@@ -1082,7 +1082,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       need_asyncify = '_emscripten_alloc_async_context' in exported_implemented_functions
       if need_asyncify:
         basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
-        asm_runtime_funcs += ['setAsync']
+        asm_runtime_funcs += ['setAsync', 'getAsyncRetValAddr']
 
       # function tables
       function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
@@ -1214,6 +1214,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 ''' + ('''
   function setAsync() {
     ___async = 1;
+  }
+  function getAsyncRetValAddr() {
+    return ___async_retval;
   }''' if need_asyncify else '') + '''
   function setThrew(threw, value) {
     threw = threw|0;
