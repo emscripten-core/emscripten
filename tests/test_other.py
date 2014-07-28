@@ -1517,7 +1517,7 @@ This pointer might make sense in another type signature: i: 0
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst', '--exclude-file', '*.exe']).communicate()
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'))
-    assert output == ''
+    assert output == '' or output == ' \n'
 
   def test_multidynamic_link(self):
     # Linking the same dynamic library in statically will error, normally, since we statically link it, causing dupe symbols
