@@ -3960,7 +3960,7 @@ LibraryManager.library = {
     // Call destructor if one is registered then clear it.
     var ptr = ___cxa_caught_exceptions.pop();
     if (ptr) {
-      header = ptr - ___cxa_exception_header_size;
+      var header = ptr - ___cxa_exception_header_size;
       var destructor = {{{ makeGetValue('header', 4, 'void*') }}};
       if (destructor) {
         Runtime.dynCall('vi', destructor, [ptr]);
@@ -4025,7 +4025,7 @@ LibraryManager.library = {
   __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type', '__resumeException', '__cxa_last_thrown_exception', '__cxa_exception_header_size'],
   __cxa_find_matching_catch: function(thrown, throwntype) {
     if (thrown == -1) thrown = ___cxa_last_thrown_exception;
-    header = thrown - ___cxa_exception_header_size;
+    var header = thrown - ___cxa_exception_header_size;
     if (throwntype == -1) throwntype = {{{ makeGetValue('header', 0, 'void*') }}};
     var typeArray = Array.prototype.slice.call(arguments, 2);
 
