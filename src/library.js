@@ -4010,28 +4010,27 @@ LibraryManager.library = {
     if (throwntype == -1) throwntype = {{{ makeGetValue('header', 0, 'void*') }}};
     var typeArray = Array.prototype.slice.call(arguments, 2);
 
-    // If throwntype is a pointer, this means a pointer has been
-    // thrown. When a pointer is thrown, actually what's thrown
-    // is a pointer to the pointer. We'll dereference it.
-    var thrownPtr = thrown;
-    if (throwntype != 0 && Module['___cxa_is_pointer_type'](throwntype)) {
-      var throwntypeInfoAddr= {{{ makeGetValue('throwntype', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var throwntypeInfo= {{{ makeGetValue('throwntypeInfoAddr', '0', '*') }}};
-      if (throwntypeInfo == 0)
-        thrown = {{{ makeGetValue('thrown', '0', '*') }}};
-    }
+    assert(throwntype);
+
+    var pointer = Module['___cxa_is_pointer_type'](throwntype);
+    // can_catch receives a **, add indirection
+    if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
+    {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
+    thrown = ___cxa_find_matching_catch.buffer;
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
-      if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) { // XXX thrown should be an out ptr
+      if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
+        thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
         {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
       }
     }
     // Shouldn't happen unless we have bogus data in typeArray
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
+    thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
