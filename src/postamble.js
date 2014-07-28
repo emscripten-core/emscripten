@@ -183,6 +183,11 @@ function exit(status) {
       process['exit'](status);
     });
     console.log(' '); // Make sure to print something to force the drain event to occur, in case the stdout buffer was empty.
+    // Work around another node bug where sometimes 'drain' is never fired - make another effort
+    // to emit the exit status, after a significant delay (if node hasn't fired drain by then, give up)
+    setTimeout(function() {
+      process['exit'](status);
+    }, 500);
   } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
     quit(status);
   } else {
