@@ -3993,25 +3993,6 @@ LibraryManager.library = {
   __gxx_personality_v0: function() {
   },
 
-  __cxa_is_number_type: function(type) {
-    var isNumber = false;
-    try { if (type == {{{ makeGlobalUse('__ZTIi') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIj') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIl') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIm') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIx') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIy') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIf') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTId') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIe') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIc') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIa') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIh') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIs') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIt') }}}) isNumber = true } catch(e){}
-    return isNumber;
-  },
-
   // Finds a suitable catch clause for when an exception is thrown.
   // In normal compilers, this functionality is handled by the C++
   // 'personality' routine. This is passed a fairly complex structure
@@ -4022,7 +4003,7 @@ LibraryManager.library = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type', '__resumeException', '__cxa_last_thrown_exception', '__cxa_exception_header_size'],
+  __cxa_find_matching_catch__deps: ['__resumeException', '__cxa_last_thrown_exception', '__cxa_exception_header_size'],
   __cxa_find_matching_catch: function(thrown, throwntype) {
     if (thrown == -1) thrown = ___cxa_last_thrown_exception;
     var header = thrown - ___cxa_exception_header_size;
@@ -4032,7 +4013,8 @@ LibraryManager.library = {
     // If throwntype is a pointer, this means a pointer has been
     // thrown. When a pointer is thrown, actually what's thrown
     // is a pointer to the pointer. We'll dereference it.
-    if (throwntype != 0 && !___cxa_is_number_type(throwntype)) {
+    var thrownPtr = thrown;
+    if (throwntype != 0 && Module['___cxa_is_pointer_type'](throwntype)) {
       var throwntypeInfoAddr= {{{ makeGetValue('throwntype', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
       var throwntypeInfo= {{{ makeGetValue('throwntypeInfoAddr', '0', '*') }}};
       if (throwntypeInfo == 0)
@@ -4043,8 +4025,9 @@ LibraryManager.library = {
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
-      if (___cxa_does_inherit(typeArray[i], throwntype, thrown))
+      if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) { // XXX thrown should be an out ptr
         {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
+      }
     }
     // Shouldn't happen unless we have bogus data in typeArray
     // or encounter a type for which emscripten doesn't have suitable
@@ -4060,78 +4043,6 @@ LibraryManager.library = {
     if (!___cxa_last_thrown_exception) { ___cxa_last_thrown_exception = ptr; }
     {{{ makeThrow('ptr') }}}
   },
-
-  // Recursively walks up the base types of 'possibilityType'
-  // to see if any of them match 'definiteType'.
-  __cxa_does_inherit__deps: ['__cxa_is_number_type'],
-  __cxa_does_inherit: function(definiteType, possibilityType, possibility) {
-    if (possibility == 0) return false;
-    if (possibilityType == 0 || possibilityType == definiteType)
-      return true;
-    var possibility_type_info;
-    if (___cxa_is_number_type(possibilityType)) {
-      possibility_type_info = possibilityType;
-    } else {
-      var possibility_type_infoAddr = {{{ makeGetValue('possibilityType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-      possibility_type_info = {{{ makeGetValue('possibility_type_infoAddr', '0', '*') }}};
-    }
-    switch (possibility_type_info) {
-    case 0: // possibility is a pointer
-      // See if definite type is a pointer
-      var definite_type_infoAddr = {{{ makeGetValue('definiteType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var definite_type_info = {{{ makeGetValue('definite_type_infoAddr', '0', '*') }}};
-      if (definite_type_info == 0) {
-        // Also a pointer; compare base types of pointers
-        var defPointerBaseAddr = definiteType+{{{ Runtime.QUANTUM_SIZE*2 }}};
-        var defPointerBaseType = {{{ makeGetValue('defPointerBaseAddr', '0', '*') }}};
-        var possPointerBaseAddr = possibilityType+{{{ Runtime.QUANTUM_SIZE*2 }}};
-        var possPointerBaseType = {{{ makeGetValue('possPointerBaseAddr', '0', '*') }}};
-        return ___cxa_does_inherit(defPointerBaseType, possPointerBaseType, possibility);
-      } else
-        return false; // one pointer and one non-pointer
-    case 1: // class with no base class
-      return false;
-    case 2: // class with base class
-      var parentTypeAddr = possibilityType + {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var parentType = {{{ makeGetValue('parentTypeAddr', '0', '*') }}};
-      return ___cxa_does_inherit(definiteType, parentType, possibility);
-    default:
-      return false; // some unencountered type
-    }
-  },
-
-  _ZNKSt9exception4whatEv__deps: ['malloc'],
-  _ZNKSt9exception4whatEv: function() {
-    if (!__ZNKSt9exception4whatEv.buffer) {
-      var name = "std::exception";
-      __ZNKSt9exception4whatEv.buffer = _malloc(name.length + 1);
-      writeStringToMemory(name, __ZNKSt9exception4whatEv.buffer);
-    }
-    return __ZNKSt9exception4whatEv.buffer;
-  },
-
-  // RTTI hacks for exception handling, defining type_infos for common types.
-  // The values are dummies. We simply use the addresses of these statically
-  // allocated variables as unique identifiers.
-  _ZTIb: [0], // bool
-  _ZTIi: [0], // int
-  _ZTIj: [0], // unsigned int
-  _ZTIl: [0], // long
-  _ZTIm: [0], // unsigned long
-  _ZTIx: [0], // long long
-  _ZTIy: [0], // unsigned long long
-  _ZTIf: [0], // float
-  _ZTId: [0], // double
-  _ZTIe: [0], // long double
-  _ZTIc: [0], // char
-  _ZTIa: [0], // signed char
-  _ZTIh: [0], // unsigned char
-  _ZTIs: [0], // short
-  _ZTIt: [0], // unsigned short
-  _ZTIv: [0], // void
-  _ZTIPv: [0], // void*
-
-  _ZTISt9exception: 'allocate([allocate([1,0,0,0,0,0,0], "i8", ALLOC_STATIC)+8, 0], "i32", ALLOC_STATIC)', // typeinfo for std::exception
 
   llvm_uadd_with_overflow_i8: function(x, y) {
     x = x & 0xff;

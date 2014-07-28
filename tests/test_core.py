@@ -1324,6 +1324,7 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
   def test_exceptions_3(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
     if self.run_name == 'asm2x86': return self.skip('TODO')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
@@ -1452,9 +1453,10 @@ int main(int argc, char **argv)
 
   def test_exceptions_typed(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
+    self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
 
     test_path = path_from_root('tests', 'core', 'test_exceptions_typed')
     src, output = (test_path + s for s in ('.in', '.out'))
