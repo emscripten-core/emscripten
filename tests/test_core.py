@@ -2723,6 +2723,7 @@ The current type of b is: 9
       src, output = (test_path + s for s in ('.in', '.out'))
 
       def check(result, err):
+        result = result.replace('\n \n', '\n') # remove extra node output
         return hashlib.sha1(result).hexdigest()
 
       self.do_run_from_file(src, output, output_nicerizer = check)
