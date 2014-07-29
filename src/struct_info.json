@@ -1297,6 +1297,19 @@
               "dischargingTime",
               "level",
               "charging"
+            ],
+            "EmscriptenWebGLContextAttributes": [
+              "alpha",
+              "depth",
+              "stencil",
+              "antialias",
+              "premultipliedAlpha",
+              "preserveDrawingBuffer",
+              "preferLowPowerToHighPerformance",
+              "failIfMajorPerformanceCaveat",
+              "majorVersion",
+              "minorVersion",
+              "enableExtensionsByDefault"
             ]
         }
     }

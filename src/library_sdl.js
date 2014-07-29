@@ -1325,6 +1325,7 @@ var LibrarySDL = {
     return buf;
   },
 
+  SDL_SetVideoMode__deps: ['$GL'],
   SDL_SetVideoMode: function(width, height, depth, flags) {
     ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);

@@ -648,6 +648,92 @@ extern EMSCRIPTEN_RESULT emscripten_vibrate_pattern(int *msecsArray, int numEntr
 typedef const char *(*em_beforeunload_callback)(int eventType, const void *reserved, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_beforeunload_callback(void *userData, em_beforeunload_callback callback);
 
+// Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context.
+typedef int EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
+
+/*
+ * Specifies WebGL context creation parameters, as documented at http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.2
+ */
+typedef struct EmscriptenWebGLContextAttributes {
+  // If true, request an alpha channel for the context. If you create an alpha channel, you can blend the canvas rendering with the
+  // underlying web page contents. Default value: true.
+  EM_BOOL alpha;
+  // If true, request a depth buffer of at least 16 bits. If false, no depth buffer will be initialized. Default value: true.
+  EM_BOOL depth;
+  // If true, request a stencil buffer of at least 8 bits. If false, no stencil buffer will be initialized. Default value: false.
+  EM_BOOL stencil;
+  // If true, antialiasing will be initialized with a browser-specified algorithm and quality level. If false, antialiasing is disabled. Default value: true.
+  EM_BOOL antialias;
+  // If true, the alpha channel of the rendering context will be treated as representing premultiplied alpha values. If false, the alpha
+  // channel represents non-premultiplied alpha. Default value: true.
+  EM_BOOL premultipliedAlpha;
+  // If true, the contents of the drawing buffer are preserved between consecutive requestAnimationFrame() calls. If false, color, depth
+  // and stencil are cleared at the beginning of each requestAnimationFrame(). Generally setting this to false gives better performance. Default value: false.
+  EM_BOOL preserveDrawingBuffer;
+  // If true, hints the browser to initialize a low-power GPU rendering context. If false, prefers to initialize a high-performance
+  // rendering context. Default value: false.
+  EM_BOOL preferLowPowerToHighPerformance;
+  // If true, requests context creation to abort if the browser is only able to create a context that does not give good 
+  // hardware-accelerated performance. Default value: false.
+  EM_BOOL failIfMajorPerformanceCaveat;
+
+  // Emscripten-specific extensions:
+  // majorVersion x minorVersion: Specifies the WebGL context version to initialize.
+  // For example, pass in majorVersion=1, minorVersion=0 to request a WebGL 1.0 context, and
+  // majorVersion=2, minorVersion=0 to request a WebGL 2.0 context.
+  // Default value: majorVersion=1, minorVersion=0
+  int majorVersion;
+  int minorVersion;
+
+  // If true, all GLES2-compatible non-performance-impacting WebGL extensions will automatically be enabled for you after the context
+  // has been created. If false, no extensions are enabled by default, and you need to manually call emscripten_webgl_enable_extension()
+  // to enable each extension that you want to use. Default value: true.
+  EM_BOOL enableExtensionsByDefault;
+} EmscriptenWebGLContextAttributes;
+
+/*
+ * Populates all fields of the given EmscriptenWebGLContextAttributes structure to their default values for use with WebGL 1.0.
+ * Call this function as a forward-compatible way to ensure that if there are new fields added to the EmscriptenWebGLContextAttributes
+ * structure in the future, that they also will get default-initialized without having to change any code.
+ */
+extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);
+
+/*
+ * Creates a new WebGL context. See http://www.khronos.org/registry/webgl/specs/latest/1.0/#2.1
+ * The parameter 'target' specifies the DOM canvas element in which to initialize the WebGL context. If 0 is passed for the target,
+ * the element specified by Module.canvas will be used.
+ * On success, this function returns a strictly positive value that represents a handle to the created context.
+ * On failure, this function returns a negative number that can be casted to a EMSCRIPTEN_RESULT field to get an error reason
+ * why the context creation failed.
+ * NOTE: A successful call to emscripten_webgl_create_context() will not immediately make that rendering context active. Call
+ *       emscripten_webgl_make_context_current() after creating a context to activate it.
+ * NOTE: This function will try to initialize the context version that was *exactly* requested. It will not e.g. initialize a newer
+ *       backwards-compatible version or similar. 
+ */ 
+extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
+
+/*
+ * Activates the given WebGL context for rendering. After calling this function, all gl***() functions apply to the given GL context.
+ */
+extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+
+/*
+ * Returns the currently active WebGL rendering context, or 0 if no such context is active. Calling any WebGL functions when there is no active
+ * rendering context is undefined and may throw a JavaScript exception.
+ */
+extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context();
+
+/*
+ * Deletes the given WebGL context. If that context was active, then the no context is set to active.
+ */
+extern EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+
+/*
+ * Enables the given extension on the given context.
+ * Returns EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available.
+ */
+extern EM_BOOL emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, const char *extension);
+
 /*
  * Registers a callback function for the canvas webgl context webglcontextlost and webglcontextrestored events.
  * See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
