@@ -676,6 +676,27 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+#if ASYNCIFY
+  emscripten_wget__deps: ['emscripten_async_resume'],
+  emscripten_wget: function(url, file) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    asm.setAsync();
+    Module['noExitRuntime'] = true;
+    FS.createPreloadedFile(
+      PATH.dirname(_file),
+      PATH.basename(_file),
+      _url, true, true,
+      _emscripten_async_resume,
+      _emscripten_async_resume
+    );
+  },
+#else
+  emscripten_wget: function(url, file) {
+    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_wget';
+  },
+#endif
+
   emscripten_async_wget: function(url, file, onload, onerror) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
