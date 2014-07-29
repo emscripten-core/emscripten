@@ -1501,6 +1501,7 @@ int main(int argc, char **argv)
 
   def test_bad_typeid(self):
     if self.emcc_args is None: return self.skip('requires emcc')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     Settings.DISABLE_EXCEPTION_CATCHING = 0
