@@ -1949,5 +1949,5 @@ open(filename, 'w').write(replaced)
 
   def test_wget(self):
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
-      f.write('emscripten');
+      f.write('emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
