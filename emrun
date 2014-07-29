@@ -365,38 +365,51 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     global page_exit_code, emrun_options, have_received_messages
 
     (_, _, path, query, _) = urlparse.urlsplit(self.path)
-    data = self.rfile.read(int(self.headers['Content-Length']))
-    data = data.replace("+", " ")
-    data = unquote_u(data)
-
-    # The user page sent a message with POST. Parse the message and log it to stdout/stderr.
-    is_stdout = False
-    is_stderr = False
-    seq_num = -1
-    # The html shell is expected to send messages of form ^out^(number)^(message) or ^err^(number)^(message).
-    if data.startswith('^err^'):
-      is_stderr = True
-    elif data.startswith('^out^'):
-      is_stdout = True
-    if is_stderr or is_stdout:
+    if query.startswith('file='): # Binary file dump/upload handling. Requests to "stdio.html?file=filename" will write binary data to the given file.
+      data = self.rfile.read(int(self.headers['Content-Length']))
+      filename = query[len('file='):]
+      dump_out_directory = 'dump_out'
       try:
-        i = data.index('^', 5)
-        seq_num = int(data[5:i])
-        data = data[i+1:]
+        os.mkdir(dump_out_directory)
       except:
         pass
-
-    is_exit = data.startswith('^exit^')
-
-    if data == '^pageload^': # Browser is just notifying that it has successfully launched the page.
+      filename = os.path.join(dump_out_directory, os.path.normpath(filename))
+      open(filename, 'wb').write(data)
+      print 'Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".'
       have_received_messages = True
-    elif not is_exit:
-      log = browser_loge if is_stderr else browser_logi
-      self.server.handle_incoming_message(seq_num, log, data)
-    elif not emrun_options.serve_after_exit:
-      page_exit_code = int(data[6:])
-      logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
-      self.server.shutdown()
+    else:
+      data = self.rfile.read(int(self.headers['Content-Length']))
+      data = data.replace("+", " ")
+      data = unquote_u(data)
+
+      # The user page sent a message with POST. Parse the message and log it to stdout/stderr.
+      is_stdout = False
+      is_stderr = False
+      seq_num = -1
+      # The html shell is expected to send messages of form ^out^(number)^(message) or ^err^(number)^(message).
+      if data.startswith('^err^'):
+        is_stderr = True
+      elif data.startswith('^out^'):
+        is_stdout = True
+      if is_stderr or is_stdout:
+        try:
+          i = data.index('^', 5)
+          seq_num = int(data[5:i])
+          data = data[i+1:]
+        except:
+          pass
+
+      is_exit = data.startswith('^exit^')
+
+      if data == '^pageload^': # Browser is just notifying that it has successfully launched the page.
+        have_received_messages = True
+      elif not is_exit:
+        log = browser_loge if is_stderr else browser_logi
+        self.server.handle_incoming_message(seq_num, log, data)
+      elif not emrun_options.serve_after_exit:
+        page_exit_code = int(data[6:])
+        logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve_after_exit to keep serving even after the page terminates with exit().')
+        self.server.shutdown()
 
     self.send_response(200)
     self.send_header("Content-type", "text/plain")
@@ -930,7 +943,8 @@ def main():
   if options.serve_root:
     serve_dir = os.path.abspath(options.serve_root)
   else:
-    serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
+    if file_to_serve == '.': serve_dir = os.path.abspath(file_to_serve)
+    else: serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
   url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
   if len(cmdlineparams) > 0:
     url += '?' + '&'.join(cmdlineparams)
