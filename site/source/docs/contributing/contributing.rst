@@ -22,7 +22,6 @@ Branches of interest
 
 -  **master** - The "master" branch. This is always safe to pull from and the test suite always passes.
 -  **incoming** - Branch for new code. Code in **incoming** is merged with the **master** only after it is code-reviewed and has passed all the automated tests.
--  **llvmsvn** - Branch for work to support a new version of LLVM. Activity typically begins near the end of an LLVM 6-month dev cycle. When LLVM launches the new version, we merge this branch to master and incoming, at which point our support officially moves to that new LLVM version. Only one version of LVVM is supported at a time.
 
 
 Submitting patches

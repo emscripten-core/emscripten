@@ -2,11 +2,9 @@
 preamble.js (ready-for-review) 
 =======================================================
 
-This page documents the public JavaScript APIs provided by `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_. 
+The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
-The APIs provide programmatic access for working with compiled code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
-
-.. note:: All functions should be called though the ``Module`` object (for example: ``Module.functionName``) because calling the functions directly will fail at higher optimisation levels. This is because at optimisation ``-O2`` (and higher) function names are minified by the closure compiler and the ``Module`` object becomes the only way to access them.
+.. note:: All functions should be called though the ``Module`` object (for example: ``Module.functionName``). At optimisation ``-O2`` (and higher) function names are minified by the closure compiler, and calling them directly will fail.
 
 
 .. contents:: Table of Contents
@@ -22,7 +20,7 @@ Calling compiled C functions from JavaScript
 
 	Call a compiled C function from JavaScript.
 
-	The function calls/executes a compiled C function from JavaScript and returns the result. The C function can be defined in a C file, or be C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
+	The function executes a compiled C function from JavaScript and returns the result. C++ name mangling means that "normal" C++ functions cannot be called; the function must either be defined in a **.c** file or be a C++ function defined with ``extern "C"``.
 	
 	.. code-block:: javascript
 
@@ -34,14 +32,21 @@ Calling compiled C functions from JavaScript
 		
 		// result is 30
 		
-	.. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** - add link to guide when it exists (currently in wiki at "Interacting with code").
+	.. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** — add link to guide when it exists (currently in wiki at "Interacting with code").
 	
 	.. note:: 
 		- ``ccall`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``malloc`` and js:func:`writeStringToMemory`. However you must later delete it manually!	
-		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Closure can also do so. To avoid that, add your function to the exports using something like: ::
+		- If you need a string to live forever, you can create it, for example, using ``malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!	
+		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
+		
+			::
 
-			-s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+				-s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+			
+			Exported functions can be called as normal: ::
+			
+				a_result = Module.ccall('myfunc', 'number', ['number'], 10)
+		
 
 	:param ident: The name of the C function to be called.	
 	:param returnType: The return type of the function. This will be one of the JavaScript types ``number``, ``string`` or ``array`` (use ``number`` for any C pointer, and ``array`` for JavaScript arrays and typed arrays; note that arrays are 8-bit).
@@ -56,7 +61,7 @@ Calling compiled C functions from JavaScript
 
 	Returns a native JavaScript wrapper for a C function. 
 	
-	This is similar to :js:func:`ccall`, but returns a JavaScript function which can be reused as many time as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
+	This is similar to :js:func:`ccall`, but returns a JavaScript function that can be reused as many time as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
 	
 
 	.. code-block:: javascript
@@ -70,14 +75,21 @@ Calling compiled C functions from JavaScript
 		console.log(c_javascript_add(10, 20)); // 30
 		console.log(c_javascript_add(20, 30)); // 50	
 
-	.. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** - add link to guide when it exists (currently in wiki at "Interacting with code").
+	.. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** — add link to guide when it exists (currently in wiki at "Interacting with code").
 	
 	.. note:: 
 		- ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``malloc`` and :js:func:`writeStringToMemory`. However you must later delete it manually!
-		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Closure can also do so. To avoid that, add your function to the exports using something like: ::
+		- If you need a string to live forever, you can create it, for example, using ``malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!
+		- LLVM optimizations can inline and remove functions, after which you will not be able to "wrap" them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
+		
+			::
 
-			-s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'	
+				-s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+			
+			Exported functions can be called as normal: ::
+			
+				my_func = Module.cwrap('myfunc', 'number', ['number'])
+				my_func(12)
 
 	:param ident: The name of the C function to be called.	
 	:param returnType: The return type of the function. This will be one of the JavaScript types ``number``, ``string`` or ``array`` (use ``number`` for any C pointer, and ``array`` for JavaScript arrays and typed arrays; note that arrays are 8-bit).
@@ -97,12 +109,12 @@ Accessing memory
 	
 	.. note::
 		- :js:func:`setValue` and :js:func:`getValue` only do *aligned* writes and reads.
-		- The ``type` is an LLVM IR type (one of ``i8``,``i16``,``i32``,``i64``,``float``,``double`, or a pointer type like `i8*` or just *), not JavaScript types as used in :js:func:`ccall` or :js:func:`cwrap`. This is a lower-level operation, and we do need to care what specific type is being used.	
+		- The ``type`` is an LLVM IR type (one of ``i8``, ``i16``, ``i32``, ``i64``, ``float``, ``double``, or a pointer type like ``i8*`` or just *), not JavaScript types as used in :js:func:`ccall` or :js:func:`cwrap`. This is a lower-level operation, and we do need to care what specific type is being used.	
 
 	:param ptr: A pointer (number) representing the memory address.  
 	:param value: The value to be stored 	
 	:param type: An LLVM IR type as a string (see "note" above). 	
-	:param noSafe: Developers should ignore this variable. It is on used in ``SAFE_HEAP`` compilation mode, where it can be avoid infinite recursion in some specialist use cases. 
+	:param noSafe: Developers should ignore this variable. It is only used in ``SAFE_HEAP`` compilation mode, where it can help avoid infinite recursion in some specialist use cases. 
 	:type noSafe: bool
 		
 		
@@ -124,14 +136,14 @@ Accessing memory
 
 
 
-Conversion functions - strings, pointers and arrays
+Conversion functions — strings, pointers and arrays
 ===================================================
 
 .. js:function:: Pointer_stringify(ptr[, length])
 	
 	Returns a JavaScript String from a pointer, for use in compiled code.
 	
-	:param ptr: The pointer to be converted to a ``String`.
+	:param ptr: The pointer to be converted to a ``String``.
 	:param length: The length of the data in the pointer (optional).
 	:returns: A JavaScript ``String`` containing the data from ``ptr``.
 	:rtype: String
@@ -151,27 +163,27 @@ Conversion functions - strings, pointers and arrays
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF16LE form. 
 	
-	The copy will require at most (str.length*2+1)*2 bytes of space in the HEAP.
+	The copy will require at most ``(str.length*2+1)*2`` bytes of space in the HEAP.
 
 	:param str: A JavaScript ``String`` object.
 	:type str: String
-	:param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF16LE format and null-terminated.
+	:param outPtr: Pointer to data copied from ``str``, encoded in UTF16LE format and null-terminated.
 
 
 
 .. js:function:: UTF32ToString(ptr)
 
-	Given a pointer ``ptr`` to a null-terminated UTF32LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript String object.
+	Given a pointer ``ptr`` to a null-terminated UTF32LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
-	:param ptr: A pointer to a null-terminated UTF16LE-encoded string in the Emscripten HEAP.
-	:returns: A Javascript ``String`` object	
+	:param ptr: A pointer to a null-terminated UTF32LE-encoded string in the Emscripten HEAP.
+	:returns: A Javascript ``String`` object.
 	
 
 .. js:function:: stringToUTF32(str, outPtr)
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF32LE form. 
 	
-	The copy will require at most (str.length+1)*4 bytes of space in the HEAP, but can use less, since ``str.length`` does not return the number of characters in the string, but the number of UTF-16 code units in the string.
+	The copy will require at most ``(str.length+1)*4`` bytes of space in the HEAP, but can use less, since ``str.length`` does not return the number of characters in the string, but the number of UTF-16 code units in the string.
 	
 	:param str: A JavaScript ``String`` object.
 	:type str: String
@@ -202,7 +214,7 @@ Conversion functions - strings, pointers and arrays
 	
 .. js:function:: writeStringToMemory(string, buffer, dontAddNull)
 
-	Write a JavaScript string to a specified address in the heap. 
+	Writes a JavaScript string to a specified address in the heap. 
 	
 	.. code-block:: javascript
 	
@@ -216,7 +228,7 @@ Conversion functions - strings, pointers and arrays
 
 	:param string: The string to write into memory.
 	:type string: String
-	:param buffer: The address (number) to write the string.
+	:param buffer: The address (number) where ``string`` is to be written.
 	:type buffer: Number
 	:param dontAddNull: If ``true``, the new array is not zero-terminated.
 	:type dontAddNull: bool	
@@ -225,17 +237,17 @@ Conversion functions - strings, pointers and arrays
 
 .. js:function:: writeArrayToMemory(array, buffer)
 
-	Writes an array to a specified address in the heap. Note that needs to be allocated for this array first.
+	Writes an array to a specified address in the heap. Note that memory should to be allocated for the array before it is written.
 
 	:param array: The array to write to memory.
-	:param buffer: The address (number) to write the array.
+	:param buffer: The address (number) where ``array`` is to be written.
 	:type buffer: Number
 
 	
 
 .. js:function:: writeAsciiToMemory(str, buffer, dontAddNull)
 
-	Writes an ASCII string to a specified address in the heap. Note that space to be allocated for this array first.
+	Writes an ASCII string to a specified address in the heap. Note that memory should to be allocated for the string before it is written.
 	
 	The string is assumed to only have characters in the ASCII character set. If ASSERTIONS are enabled and this is not the case, it will fail.
 	
@@ -248,8 +260,8 @@ Conversion functions - strings, pointers and arrays
 		Module.writeStringToMemory(myString, buffer);
 
 	:param string: The string to write into memory.
-	:param buffer: The address to write the string.
-	:param dontAddNull: If ``true``, the new array is not zero-terminated.
+	:param buffer: The address where ``string`` is to be written.
+	:param dontAddNull: If ``true``, the new string is not zero-terminated.
 	:type dontAddNull: bool	
 
 
@@ -277,9 +289,9 @@ Note that generally run dependencies are managed by the file packager and other 
 
 	Removes a specified ``id`` from the list of run dependencies.
 	
-	.. COMMENT (not rendered): **HamishW** Remember to link to Execution lifecycle in Browser environment or otherwise link to information on using this.
+	.. todo:: **HamishW** Remember to link to Execution lifecycle in Browser environment or otherwise link to information on using this.
 
-	:param id: The identifier for the specific dependency (added with :js:func:`addRunDependency`) that has been met.
+	:param id: The identifier for the specific dependency to be removed (added with :js:func:`addRunDependency`)
 	:type id: String
 	
 
@@ -301,54 +313,54 @@ Stack trace
 Type accessors for Typed Arrays Mode 2
 ==========================================
 
-When using *Typed Arrays Mode 2* a type array buffer is used to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.
+When using :ref:`typed-arrays-mode-2` a type array buffer is used to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.
 
 .. COMMENT (not rendered): **HamishW** Link to TO TYPED ARRAYS MODE2 DOCUMENTATION when this is ported
 
 
 .. js:data:: HEAP8
 
-	View for 8-bit signed memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 8-bit signed memory. 
 
 	
 .. js:data:: HEAP16
 
-	View for 16-bit signed memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 16-bit signed memory. 
 
 	
 .. js:data:: HEAP32
 
-	View for 32-bit signed memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 32-bit signed memory. 
 	
 
 .. js:data:: HEAPU8
 
-	View for 32-bit unsigned memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 32-bit unsigned memory. 
 
 	
 .. js:data:: HEAPU8
 
-	View for 32-bit unsigned memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 32-bit unsigned memory.
 
 	
 .. js:data:: HEAPU16
 
-	View for 16-bit unsigned memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 16-bit unsigned memory. 
 
 	
 .. js:data:: HEAPU32
 
-	View for 32-bit unsigned memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 32-bit unsigned memory. 
 
 
 .. js:data:: HEAPF32
 
-	View for 32-bit float memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 32-bit float memory. 
 
 	
 .. js:data:: HEAPF64
 
-	View for 64-bit float memory. This is a view into the type array buffer used to represent memory in Typed Arrays Mode 2.
+	View for 64-bit float memory. 
 
 	
 
@@ -357,7 +369,7 @@ When using *Typed Arrays Mode 2* a type array buffer is used to represent memory
 	
 .. COMMENT (not rendered) : The following methods are explicitly not part of the public API and not documented. Note that in some case referred to by function name, other cases by Module assignment.
 	
-	function allocate(slab, types, allocator, ptr) - Internal and use is discouraged. Documentation can remain in source code but not here.
+	function allocate(slab, types, allocator, ptr) — Internal and use is discouraged. Documentation can remain in source code but not here.
 		associated contants ALLOC_NORMAL, ALLOC_STACK, ALLOC_STATIC, ALLOC_DYNAMIC, ALLOC_NONE
 
 	function addOnPreRun
@@ -400,7 +412,7 @@ When using *Typed Arrays Mode 2* a type array buffer is used to represent memory
 	function CHECK_ALIGN_4(addr)
 	function CHECK_ALIGN_2(addr)
 	function CHECK_OVERFLOW(value, bits, ignore, sig)
-	Module['PGOMonitor'] = PGOMonitor; - a bit confusing
+	Module['PGOMonitor'] = PGOMonitor; — a bit confusing
 	Module["preloadedImages"]
 	Module["preloadedAudios"]
 
