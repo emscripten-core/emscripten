@@ -2379,6 +2379,16 @@ mergeInto(LibraryManager.library, {
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js']).communicate()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_EMCC_BUILD_DIR(self):
+    # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
+    # running a js library). We force the cwd to be src/ for technical reasons, so this lets you find out
+    # where you were.
+    open('lib.js', 'w').write(r'''
+printErr('dir was ' + process.env.EMCC_BUILD_DIR);
+''')
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js'], stderr=PIPE).communicate()
+    self.assertContained('dir was ' + self.get_dir(), err)
+
   def test_float_h(self):
     process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
     out, err = process.communicate()

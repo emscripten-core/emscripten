@@ -21,12 +21,16 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
   if type(engine) is not list:
     engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] or 'jsc' in engine[0] else []) + args
-  proc = Popen(
-      command,
-      stdin=stdin,
-      stdout=stdout,
-      stderr=stderr,
-      cwd=cwd)
+  try:
+    if cwd is not None: os.environ['EMCC_BUILD_DIR'] = os.getcwd()
+    proc = Popen(
+        command,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=stderr,
+        cwd=cwd)
+  finally:
+    if cwd is not None: del os.environ['EMCC_BUILD_DIR']
   timeout = 15*60 if check_timeout else None
   if TRACK_PROCESS_SPAWNS:
     logging.info('Blocking on process ' + str(proc.pid) + ': ' + str(command) + (' for ' + str(timeout) + ' seconds' if timeout else ' until it finishes.'))
