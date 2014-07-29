@@ -382,11 +382,24 @@ float emscripten_random(void);
  */
 
 /*
- * Load file from url in asynchronous way. In addition to
- * fetching the URL from the network, the contents are
- * prepared so that the data is usable in IMG_Load and
- * so forth (we asynchronously do the work to make the
- * browser decode the image or audio and so forth).
+ * Load file from url in *synchronous* way, for the asynchronous 
+ * version, see the emscripten_async_wget function below.
+ *
+ * In addition to fetching the URL from the network, 
+ * the contents are prepared so that the data is usable 
+ * in IMG_Load and * so forth.
+ *
+ * This function is blocking, it won't return until all
+ * operations are finished. You can then open and read
+ * the file if it succeeded.
+ *
+ * To use this function, you will need to compile your 
+ * application with the linker flag `-s ASYNCIFY=1`
+ */
+void emscripten_wget(const char* url, const char* file);
+
+/*
+ * Asynchronous version of emscripten_wget.
  * When file is ready then 'onload' callback will called.
  * If any error occurred 'onerror' will called.
  * The callbacks are called with the file as their argument.
