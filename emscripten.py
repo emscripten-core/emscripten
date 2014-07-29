@@ -14,6 +14,7 @@ import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, l
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
+from tools.shared import WINDOWS
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -708,13 +709,15 @@ Runtime.getTempRet0 = asm['getTempRet0'];
     funcs_js[i] = None
     funcs_js_item = indexize(funcs_js_item)
     funcs_js_item = blockaddrsize(funcs_js_item)
+    if WINDOWS: funcs_js_item = funcs_js_item.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
     outfile.write(funcs_js_item)
   funcs_js = None
 
-  outfile.write(indexize(post))
-  if DEBUG: logging.debug('  emscript: phase 3 took %s seconds' % (time.time() - t))
-
+  indexized = indexize(post)
+  if WINDOWS: indexized = indexized.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+  outfile.write(indexized)
   outfile.close()
+  if DEBUG: logging.debug('  emscript: phase 3 took %s seconds' % (time.time() - t))
 
 # emscript_fast: emscript'en code using the 'fast' compilation path, using
 #                an LLVM backend
@@ -1316,9 +1319,11 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table).replace('"', ''))
 
     for i in range(len(funcs_js)): # do this loop carefully to save memory
+      if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
       outfile.write(funcs_js[i])
     funcs_js = None
 
+    if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
     outfile.write(post)
 
     outfile.close()

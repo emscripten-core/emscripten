@@ -26,6 +26,7 @@ def path_from_root(*pathelems):
 sys.path += [path_from_root(''), path_from_root('third_party/websockify')]
 import tools.shared
 from tools.shared import *
+from tools.line_endings import check_line_endings
 
 # Utils
 
@@ -268,6 +269,7 @@ process(sys.argv[1])
     except:
       cwd = None
     os.chdir(self.get_dir())
+    assert(check_line_endings(filename) == 0) # Make sure that we produced proper line endings to the .js file we are about to run.
     run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'), assert_returncode=assert_returncode)
     if cwd is not None:
       os.chdir(cwd)
