@@ -1,3 +1,5 @@
+.. _emscripten-h:
+
 ================================
 Emscripten.h (ready-for-review) 
 ================================
@@ -18,7 +20,7 @@ Inline assembly/JavaScript
 Defines
 -------
 
-.. COMMENT (not rendered): **HamishW** This should be linked to section "Calling JavaScript From C/C++" when it exists.
+.. todo:: **HamishW** This should be linked to section "Calling JavaScript From C/C++" when it exists.
 
 .. c:macro:: EM_ASM(...)
 
@@ -26,12 +28,12 @@ Defines
 	
 	This allows you to declare JavaScript in your C code "inline", which is then executed when your compiled code is run in the browser. For example, the following C code would display two alerts if it was compiled with Emscripten and run in the browser: ::
 
-		EM_ASM( window.alert(‘hai’)); 
-		window.alert(‘bai’)); )
+		EM_ASM( alert(‘hai’)); 
+		alert(‘bai’)); )
    
 	.. note:: 
 		- Double-quotes (") cannot be used in the inline assembly/JavaScript. Single-quotes (‘) can be used, as shown above.
-		- Newlines are supported
+		- Newlines (\\n, \\r etc.) are supported in the inline Javascript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using ``EM_ASM``.
 		- This works with **asm.js** (it outlines the code and does a function call to reach it). 
 		- You can’t access C variables with :c:macro:`EM_ASM`, nor receive a value back. Instead use :c:macro:`EM_ASM_INT` or :c:macro:`EM_ASM_DOUBLE`.
    
@@ -177,7 +179,7 @@ Functions
 	:param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.	
 	:param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller. 
 	
-	.. COMMENT (not rendered): **HamishW** link to "Emscripten Browser Environment" doc when imported. 
+	.. todo:: **HamishW** link to "Emscripten Browser Environment" doc when imported. 
 
 
 .. c:function:: void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop)
@@ -191,7 +193,7 @@ Functions
 	:param int fps: Number of frames per second at which the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.	
 	:param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller. 
 	
-	.. COMMENT (not rendered): **HamishW** link to "Emscripten Browser Environment" doc when imported. 
+	.. todo:: **HamishW** link to "Emscripten Browser Environment" doc when imported. 
 
 	
 .. c:function:: void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name)
@@ -203,10 +205,9 @@ Functions
 	
 	In the "counted" version, blockers are counted (internally) and ``Module.setStatus`` is called with some text to report progress (``setStatus`` is a general hook that a program can define in order to show processing updates).
 	
-	.. COMMENT (not rendered): **HamishW** Remember to cross link to "browser execution environment doc or similar when it exists".
+	.. todo:: **HamishW** Remember to cross link to "browser execution environment doc or similar when it exists".
 	
 	.. note::
-		- When this function is called in a native build it is immediately executed; to keep semantics identical be careful to not push while the queue is being used.
 		- Main loop blockers block the main loop from running, and can be counted to show progress. In contrast, ``emscripten_async_calls`` are not counted, do not block the main loop, and can fire at specific time in the future.
 		
 	:param em_arg_callback_func func: The main loop blocker function. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
@@ -445,7 +446,7 @@ Functions
 	:type file: const char* 
 	:param requesttype: 'GET' or 'POST'.
 	:type requesttype: const char* 	
-	:param param: Request parameters. If the ``requesttype`` is a POST request, this is a POST parameter like ``key=value&key2=value2``.
+	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget2_onload_func onload: Callback on successful load of the file. The callback function parameter values are:	
@@ -480,7 +481,7 @@ Functions
 	:type url: const char*
 	:param requesttype: 'GET' or 'POST'. 
 	:type requesttype: const char*	
-	:param param: Request parameters. If the ``requesttype`` is a POST request, this is a POST parameter like ``key=value&key2=value2``.
+	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param const int free: Tells the runtime whether to free the returned buffer after ``onload`` is complete. If ``false`` freeing the buffer is the receiver's responsibility.
@@ -621,7 +622,7 @@ Functions
 	
 	The worker function will be called with two parameters: a data pointer, and a size. The data block defined by the pointer and size exists only during the callback: **it cannot be relied upon afterwards**. If you need to keep some of that information outside the callback, then it needs to be copied to a safe location.
 	
-	The called worker function can return data, by calling :c:func:`emscripten_worker_respond`. When the worker is called, if a callback was given it will be called with three arguments: a data pointer, a size, and an argument that was provided when calling :c:func:`emscripten_call_worker` (to more easily associate callbacks to calls). The data block defined by the data pointer and size behave like the data block in the worker function - it exists only during the callback.
+	The called worker function can return data, by calling :c:func:`emscripten_worker_respond`. When the worker is called, if a callback was given it will be called with three arguments: a data pointer, a size, and an argument that was provided when calling :c:func:`emscripten_call_worker` (to more easily associate callbacks to calls). The data block defined by the data pointer and size behave like the data block in the worker function — it exists only during the callback.
 	
 	:param worker_handle worker: A handle to the worker to be called.
 	:param funcname: The name of the function in the worker. The function must be a C function (so no C++ name mangling), and must be exported (EXPORTED_FUNCTIONS). 
@@ -636,7 +637,7 @@ Functions
 
 	:param void* arg: An argument (user data) to be passed to the callback
 
-	.. NOT-RENDERED-COMMENT : **HamishW** - need to add link to ``EXPORTED_FUNCTIONS`` information. There are some links on this around.
+	.. todo:: **HamishW** — need to add link to ``EXPORTED_FUNCTIONS`` information. There are some links on this around.
 
 .. c:function:: void emscripten_worker_respond(char *data, int size)
 	void emscripten_worker_respond_provisionally(char *data, int size)
@@ -758,7 +759,7 @@ Functions
 
 	Gets preloaded image data and the size of the image.
 	
-	The function returns pointer to loaded image or NULL - the pointer should be ``free()``'d. The width/height of the image are written to the ``w`` and ``h`` parameters if the data is valid. 
+	The function returns pointer to loaded image or NULL — the pointer should be ``free()``'d. The width/height of the image are written to the ``w`` and ``h`` parameters if the data is valid. 
 
 	:param path: Full path/filename to the file containing the preloaded image.
 	:type: const char*

@@ -1,3 +1,5 @@
+.. _bug-reports:
+
 =========================================
 Bug Reporting (ready-for-review) 
 =========================================
@@ -6,13 +8,13 @@ All bugs should be filed in the GitHub `main <https://github.com/kripken/emscrip
 
 Please supply as much relevant information as possible, including:
 
-- original source code.
-- generated **.ll** and **.js** files (in a gist, pastebin, or any other method). 
-- environment information - including *emcc* and *clang* versions (as reported by ``emcc -v``).
-- error symptoms.
-- proposed solutions, ideally with a pull request.
+- Original source code.
+- Generated **.ll** and **.js** files (in a gist, pastebin, or any other suitable method). 
+- Environment information — including *emcc* and *clang* versions (as reported by ``emcc -v``).
+- Error symptoms.
+- Proposed solutions, ideally with a pull request.
 
-.. Tip:: Compile with ``EMCC_DEBUG=1`` and grab the **/tmp/emscripten_temp/emcc-\*** files (these include the bytecode, ll, and JavaScript in several stages). Note that the **emscripten_temp** should be emptied manually first, so it only contains new content!
+.. Tip:: Compile with ``EMCC_DEBUG=1`` and grab the **/tmp/emscripten_temp/emcc-\*** files (these include the bytecode, ll, and JavaScript in several stages). Note that the **emscripten_temp** directory should be emptied manually first, so it only contains new content!
 
 
 Fastcomp LLVM-Backend and Clang bugs
@@ -30,9 +32,9 @@ Documentation (site) bugs should be filed in the same `Issue Tracker <https://gi
 
 Include relevant information including: 
 
-- the URL and title of the affected page(s), 
-- a description of the problem, 
-- suggestions for a possible solution.
+- The URL and title of the affected page(s).
+- A description of the problem.
+- Suggestions for a possible solution.
 
 .. tip:: The `Page bug <https://github.com/kripken/emscripten/issues/new?title=Bug%20in%20page:How%20to%20Report%20Bugs%20%28under-construction%29%20&body=REPLACE%20THIS%20TEXT%20WITH%20BUG%20DESCRIPTION%20%0A%0AURL:%20../../docs/site/Bug-Reports&labels=bug>`_ link on the bottom-right of every page opens the Issue Tracker pre-seeded with the current page URL and title.  
 

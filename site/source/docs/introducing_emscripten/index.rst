@@ -7,7 +7,7 @@ Introducing Emscripten (under-construction)
    :maxdepth: 1
 
    FAQ
-   contact
+   community
    emscripten_license
    bug_reports
    release_notes

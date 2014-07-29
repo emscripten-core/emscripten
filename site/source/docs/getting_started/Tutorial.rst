@@ -195,6 +195,9 @@ Further optimizations are done in ``-O2``,
 If you inspect the generated code now, you will see it looks very
 different.
 
+
+.. _running-emscripten-tests:
+
 Running the Emscripten Test Suite and Benchmarks
 ------------------------------------------------
 

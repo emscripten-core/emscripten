@@ -1,3 +1,5 @@
+.. _emscripten-license:
+
 ===================
 Open Source License
 ===================
