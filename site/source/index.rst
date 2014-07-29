@@ -14,10 +14,8 @@
 News
 ====
 
+-  `Massive <http://kripken.github.io/Massive/>`_ is a new asm.js benchmark comprised of Emscripten-compiled C/C++ codebases. Please test and give `feedback! <https://github.com/kripken/Massive>`_
 -  `Unity <https://unity3d.com/>`_ blogs about WebGL support and launches `two public demos <http://blogs.unity3d.com/2014/04/29/on-the-future-of-web-publishing-in-unity/>`_ (April 29, 2014). See the `Mozilla Blog <https://blog.mozilla.org/blog/2014/03/18/mozilla-and-unity-deliver-award-winning-game-engine-to-the-web/>`_ for more information.
--  The new :doc:`fastcomp/LLVM backend </docs/contributing/LLVM-Backend>` has been merged to master and is present in the latest SDK release.
--  `Unreal Engine 4 <https://www.unrealengine.com/blog/welcome-to-unreal-engine-4>`_ ported to the web using Emscripten (Mar 19, 2014 ). There is `more information <https://blog.mozilla.org/blog/2014/03/12/mozilla-and-epic-preview-unreal-engine-4-running-in-firefox/>`_ on the Mozilla blog.
-
 
 
 
