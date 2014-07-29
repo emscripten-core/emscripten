@@ -73,7 +73,9 @@ if (ENVIRONMENT_IS_NODE) {
   Module['thisProgram'] = process['argv'][1];
   Module['arguments'] = process['argv'].slice(2);
 
-  module['exports'] = Module;
+  if (typeof module !== 'undefined') {
+    module['exports'] = Module;
+  }
 }
 else if (ENVIRONMENT_IS_SHELL) {
   if (!Module['print']) Module['print'] = print;
