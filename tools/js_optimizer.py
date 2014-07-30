@@ -19,7 +19,7 @@ WINDOWS = sys.platform.startswith('win')
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-func_sig = re.compile('( *)function ([_\w$]+)\(')
+func_sig = re.compile('function ([_\w$]+)\(')
 import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
 class Minifier:
@@ -43,7 +43,8 @@ class Minifier:
     shell = shell.replace('0.0', '13371337') # avoid uglify doing 0.0 => 0
 
     # Find all globals in the JS functions code
-    self.globs = [m.group(2) for m in func_sig.finditer(self.js)]
+
+    self.globs = [m.group(1) for m in func_sig.finditer(self.js)]
 
     temp_file = temp_files.get('.minifyglobals.js').name
     f = open(temp_file, 'w')
@@ -208,7 +209,7 @@ EMSCRIPTEN_FUNCS();
       if i < len(parts)-1: func += '\n}\n' # last part needs no }
       m = func_sig.search(func)
       if m:
-        ident = m.group(2)
+        ident = m.group(1)
       else:
         if know_generated: continue # ignore whitespace
         ident = 'anon_%d' % i
