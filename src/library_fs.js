@@ -832,6 +832,9 @@ mergeInto(LibraryManager.library, {
     readlink: function(path) {
       var lookup = FS.lookupPath(path);
       var link = lookup.node;
+      if (!link) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
