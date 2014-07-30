@@ -1065,10 +1065,13 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
       basic_float_vars = ['NaN', 'Infinity']
 
-      if metadata.get('preciseI64MathUsed') or \
-         forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
-         forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
+      if metadata.get('preciseI64MathUsed'):
         basic_vars += ['cttz_i8', 'ctlz_i8']
+      else:
+        if forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32'):
+          basic_vars += ['cttz_i8']
+        if forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
+          basic_vars += ['ctlz_i8']
 
       if settings.get('DLOPEN_SUPPORT'):
         for sig in last_forwarded_json['Functions']['tables'].iterkeys():
