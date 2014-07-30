@@ -276,7 +276,7 @@ EMSCRIPTEN_FUNCS();
         (['--debug'] if source_map else []) + passes, filenames)
     #print [' '.join(command) for command in commands]
 
-    cores = min(cores, filenames)
+    cores = min(cores, len(filenames))
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
       if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d, using %d cores  (total: %.2f MB)' % (len(chunks), chunk_size, cores, total_size/(1024*1024.))
