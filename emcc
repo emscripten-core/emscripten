@@ -1669,6 +1669,9 @@ try:
     logging.debug('applying pre/postjses')
     src = open(final).read()
     final += '.pp.js'
+    if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
+      if pre_js: pre_js = pre_js.replace('\r\n', '\n')
+      if post_js: post_js = post_js.replace('\r\n', '\n')
     open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
 
