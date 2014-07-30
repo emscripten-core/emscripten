@@ -4565,7 +4565,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
     self.do_run(src, [
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program'), # spidermonkey, v8
-      expected.replace('{{{ THIS_PROGRAM }}}', self.get_dir() + '/src.cpp.o.js') # node, can find itself properly
+      expected.replace('{{{ THIS_PROGRAM }}}', os.path.join(os.path.normpath(self.get_dir()), 'src.cpp.o.js')) # node, can find itself properly
     ])
 
   def test_environ(self):
@@ -4574,7 +4574,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'env', 'output-mini.txt'), 'r').read()
     self.do_run(src, [
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program'), # spidermonkey, v8
-      expected.replace('{{{ THIS_PROGRAM }}}', self.get_dir() + '/src.cpp.o.js') # node, can find itself properly
+      expected.replace('{{{ THIS_PROGRAM }}}', os.path.join(os.path.normpath(self.get_dir()), 'src.cpp.o.js')) # node, can find itself properly
     ])
 
   def test_systypes(self):
