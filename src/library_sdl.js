@@ -2179,116 +2179,73 @@ var LibrarySDL = {
       };
       
       SDL.audio.audioOutput = new Audio();
-      // As a workaround use Mozilla Audio Data API on Firefox until it ships with Web Audio and sound quality issues are fixed.
-      if (typeof(SDL.audio.audioOutput['mozSetup'])==='function') {
-        SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
-        SDL.audio.mozBuffer = new Float32Array(totalSamples);
-        SDL.audio.nextPlayTime = 0;
-        SDL.audio.pushAudio = function SDL_audio_pushAudio(ptr, size) {
+
+      // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
+      // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
+      SDL.openAudioContext();
+      if (!SDL.audioContext) throw 'Web Audio API is not available!';
+      SDL.audio.soundSource = new Array(); // Use an array of sound sources as a ring buffer to queue blocks of synthesized audio to Web Audio API.
+      SDL.audio.nextSoundSource = 0; // Index of the next sound buffer in the ring buffer queue to play.
+      SDL.audio.nextPlayTime = 0; // Time in seconds when the next audio block is due to start.
+      
+      // The pushAudio function with a new audio buffer whenever there is new audio data to schedule to be played back on the device.
+      SDL.audio.pushAudio=function(ptr,sizeBytes) {
+        try {
           --SDL.audio.numAudioTimersPending;
-          var mozBuffer = SDL.audio.mozBuffer;
-          // The input audio data for SDL audio is either 8-bit or 16-bit interleaved across channels, output for Mozilla Audio Data API
-          // needs to be Float32 interleaved, so perform a sample conversion.
-          if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
-            for (var i = 0; i < totalSamples; i++) {
-              mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000;
-            }
-          } else if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
-            for (var i = 0; i < totalSamples; i++) {
-              var v = ({{{ makeGetValue('ptr', 'i', 'i8', 0, 0) }}});
-              mozBuffer[i] = ((v >= 0) ? v-128 : v+128) /128;
-            }
+          if (SDL.audio.paused) return;
+
+          var sizeSamples = sizeBytes / SDL.audio.bytesPerSample; // How many samples fit in the callback buffer?
+          var sizeSamplesPerChannel = sizeSamples / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
+          if (sizeSamplesPerChannel != SDL.audio.samples) {
+            throw 'Received mismatching audio buffer size!';
           }
-          // Submit the audio data to audio device.
-          SDL.audio.audioOutput['mozWriteAudio'](mozBuffer);
+          // Allocate new sound buffer to be played.
+          var source = SDL.audioContext['createBufferSource']();
+          if (SDL.audio.soundSource[SDL.audio.nextSoundSource]) {
+            SDL.audio.soundSource[SDL.audio.nextSoundSource]['disconnect'](); // Explicitly disconnect old source, since we know it shouldn't be running anymore.
+          }
+          SDL.audio.soundSource[SDL.audio.nextSoundSource] = source;
+          var soundBuffer = SDL.audioContext['createBuffer'](SDL.audio.channels,sizeSamplesPerChannel,SDL.audio.freq);
+          SDL.audio.soundSource[SDL.audio.nextSoundSource]['connect'](SDL.audioContext['destination']);
+
+          SDL.fillWebAudioBufferFromHeap(ptr, sizeSamplesPerChannel, soundBuffer);
+          // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
+          source['buffer'] = soundBuffer;
           
-          // Compute when the next audio callback should be called.
-          var curtime = Date.now() / 1000.0 - SDL.audio.startTime;
+          // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
+          // sample buffer has finished.
+          var curtime = SDL.audioContext['currentTime'];
 #if ASSERTIONS
           if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
             console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
           }
 #endif
           var playtime = Math.max(curtime, SDL.audio.nextPlayTime);
-          var buffer_duration = SDL.audio.samples / SDL.audio.freq;
+          var ss = SDL.audio.soundSource[SDL.audio.nextSoundSource];
+          if (typeof ss['start'] !== 'undefined') {
+            ss['start'](playtime);
+          } else if (typeof ss['noteOn'] !== 'undefined') {
+            ss['noteOn'](playtime);
+          }
+          var buffer_duration = sizeSamplesPerChannel / SDL.audio.freq;
           SDL.audio.nextPlayTime = playtime + buffer_duration;
-          // Schedule the next audio callback call to occur when the current one finishes.
-          SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1000.0 * (playtime-curtime));
+          // Timer will be scheduled before the buffer completed playing.
+          // Extra buffers are needed to avoid disturbing playing buffer.
+          SDL.audio.nextSoundSource = (SDL.audio.nextSoundSource + 1) % (SDL.audio.numSimultaneouslyQueuedBuffers + 2);
+          var secsUntilNextCall = playtime-curtime;
+          
+          // Queue the next audio frame push to be performed when the previously queued buffer has finished playing.
+          var preemptBufferFeedMSecs = 1000*buffer_duration/2.0;
+          SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*secsUntilNextCall-preemptBufferFeedMSecs));
           ++SDL.audio.numAudioTimersPending;
-          // And also schedule extra buffers _now_ if we have too few in queue.
+
+          // If we are risking starving, immediately queue extra buffers.
           if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
             ++SDL.audio.numAudioTimersPending;
             Browser.safeSetTimeout(SDL.audio.caller, 1.0);
           }
-        }
-      } else {
-        // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
-        // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
-        SDL.openAudioContext();
-        if (!SDL.audioContext) throw 'Web Audio API is not available!';
-        SDL.audio.soundSource = new Array(); // Use an array of sound sources as a ring buffer to queue blocks of synthesized audio to Web Audio API.
-        SDL.audio.nextSoundSource = 0; // Index of the next sound buffer in the ring buffer queue to play.
-        SDL.audio.nextPlayTime = 0; // Time in seconds when the next audio block is due to start.
-        
-        // The pushAudio function with a new audio buffer whenever there is new audio data to schedule to be played back on the device.
-        SDL.audio.pushAudio=function(ptr,sizeBytes) {
-          try {
-            --SDL.audio.numAudioTimersPending;
-            if (SDL.audio.paused) return;
-
-            var sizeSamples = sizeBytes / SDL.audio.bytesPerSample; // How many samples fit in the callback buffer?
-            var sizeSamplesPerChannel = sizeSamples / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
-            if (sizeSamplesPerChannel != SDL.audio.samples) {
-              throw 'Received mismatching audio buffer size!';
-            }
-            // Allocate new sound buffer to be played.
-            var source = SDL.audioContext['createBufferSource']();
-            if (SDL.audio.soundSource[SDL.audio.nextSoundSource]) {
-              SDL.audio.soundSource[SDL.audio.nextSoundSource]['disconnect'](); // Explicitly disconnect old source, since we know it shouldn't be running anymore.
-            }
-            SDL.audio.soundSource[SDL.audio.nextSoundSource] = source;
-            var soundBuffer = SDL.audioContext['createBuffer'](SDL.audio.channels,sizeSamplesPerChannel,SDL.audio.freq);
-            SDL.audio.soundSource[SDL.audio.nextSoundSource]['connect'](SDL.audioContext['destination']);
-
-            SDL.fillWebAudioBufferFromHeap(ptr, sizeSamplesPerChannel, soundBuffer);
-            // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
-            source['buffer'] = soundBuffer;
-            
-            // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
-            // sample buffer has finished.
-            var curtime = SDL.audioContext['currentTime'];
-#if ASSERTIONS
-            if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
-              console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
-            }
-#endif
-            var playtime = Math.max(curtime, SDL.audio.nextPlayTime);
-            var ss = SDL.audio.soundSource[SDL.audio.nextSoundSource];
-            if (typeof ss['start'] !== 'undefined') {
-              ss['start'](playtime);
-            } else if (typeof ss['noteOn'] !== 'undefined') {
-              ss['noteOn'](playtime);
-            }
-            var buffer_duration = sizeSamplesPerChannel / SDL.audio.freq;
-            SDL.audio.nextPlayTime = playtime + buffer_duration;
-            // Timer will be scheduled before the buffer completed playing.
-            // Extra buffers are needed to avoid disturbing playing buffer.
-            SDL.audio.nextSoundSource = (SDL.audio.nextSoundSource + 1) % (SDL.audio.numSimultaneouslyQueuedBuffers + 2);
-            var secsUntilNextCall = playtime-curtime;
-            
-            // Queue the next audio frame push to be performed when the previously queued buffer has finished playing.
-            var preemptBufferFeedMSecs = 1000*buffer_duration/2.0;
-            SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*secsUntilNextCall-preemptBufferFeedMSecs));
-            ++SDL.audio.numAudioTimersPending;
-
-            // If we are risking starving, immediately queue extra buffers.
-            if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
-              ++SDL.audio.numAudioTimersPending;
-              Browser.safeSetTimeout(SDL.audio.caller, 1.0);
-            }
-          } catch(e) {
-            console.log('Web Audio API error playing back audio: ' + e.toString());
-          }
+        } catch(e) {
+          console.log('Web Audio API error playing back audio: ' + e.toString());
         }
       }
 
