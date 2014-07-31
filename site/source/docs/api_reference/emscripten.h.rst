@@ -1,7 +1,7 @@
 .. _emscripten-h:
 
 ============
-Emscripten.h
+emscripten.h
 ============
 
 This page documents the public C++ APIs provided by `emscripten.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/emscripten.h>`_. 
@@ -35,7 +35,7 @@ Defines
 		- Double-quotes (") cannot be used in the inline assembly/JavaScript. Single-quotes (‘) can be used, as shown above.
 		- Newlines (\\n, \\r etc.) are supported in the inline Javascript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using ``EM_ASM``.
 		- This works with **asm.js** (it outlines the code and does a function call to reach it). 
-		- You can’t access C variables with :c:macro:`EM_ASM`, nor receive a value back. Instead use :c:macro:`EM_ASM_INT` or :c:macro:`EM_ASM_DOUBLE`.
+		- You can’t access C variables with :c:macro:`EM_ASM`, nor receive a value back. Instead use :c:macro:`EM_ASM_ARGS`, :c:macro:`EM_ASM_INT`, or :c:macro:`EM_ASM_DOUBLE`.
    
 	
 .. c:macro:: EM_ASM_(code, ...)
@@ -44,10 +44,12 @@ Defines
 	EM_ASM_DOUBLE(code, ...)
 	EM_ASM_INT_V(code) 
 	EM_ASM_DOUBLE_V(code) 
-			 
-	Input-output versions of EM_ASM.
 	
-	:c:macro:`EM_ASM_` (an extra "_" is added) or :c:macro:`EM_ASM_ARGS` allow values (``int`` or ``double``) to be sent into the code. If you also want a return value, :c:macro:`EM_ASM_INT` receives arguments (of ``int`` or ``double`` type) and returns an ``int``; :c:macro:`EM_ASM_DOUBLE` does the same and returns a ``double``.
+	Input-output versions of EM_ASM.
+ 	
+	:c:macro:`EM_ASM_` (an extra "_" is added) or :c:macro:`EM_ASM_ARGS` allow values (``int`` or ``double``) to be sent into the code.
+	
+	If you also want a return value, :c:macro:`EM_ASM_INT` receives arguments (of ``int`` or ``double`` type) and returns an ``int``; :c:macro:`EM_ASM_DOUBLE` does the same and returns a ``double``.
 	
 	Arguments arrive as ``$0``, ``$1`` etc. The output value should be returned: ::
 
@@ -56,7 +58,9 @@ Defines
 		  return $0 + $1;
 		}, calc(), otherCalc());
 
-	Note the { and }. If you just want to receive an output value (``int`` or ``double``) but not pass any values, you can use :c:macro:`EM_ASM_INT_V` and :c:macro:`EM_ASM_DOUBLE_V` respectively.
+	Note the ``{`` and ``}``.
+	
+	If you just want to receive an output value (``int`` or ``double``) but not pass any values, you can use :c:macro:`EM_ASM_INT_V` or :c:macro:`EM_ASM_DOUBLE_V`, respectively.
 
 
 
