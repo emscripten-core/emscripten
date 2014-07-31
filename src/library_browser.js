@@ -1010,6 +1010,9 @@ mergeInto(LibraryManager.library, {
         }
       });
 
+      // Queue new audio data.
+      if (SDL && SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
+
       if (Browser.mainLoop.shouldPause) {
         // catch pauses from the main loop itself
         Browser.mainLoop.paused = true;
