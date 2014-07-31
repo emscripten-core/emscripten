@@ -995,3 +995,36 @@ Typedefs
 	.. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
 		
+Asyncify functions
+==================
+
+Asyncify functions are asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/kripken/emscripten/wiki/Asyncify>`_ for more details.
+
+Typedefs
+--------
+
+.. c:type:: emscripten_coroutine
+
+    A handle to the strcture used by coroutine supporting functions.
+
+Functions
+---------
+
+.. c::function:: void emscripten_sleep(unsinged int ms)
+
+    Sleep for `ms` milliseconds.
+
+.. c::function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
+
+    Create a coroutine which will be run as `func(arg)`.
+
+    :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
+
+.. c::function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
+
+    Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
+
+.. c::function:: void emscripten_yield(void)
+
+    This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
+    
