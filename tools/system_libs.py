@@ -460,8 +460,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur.
-  if os.environ.get('EMCC_ONLY_FORCED_STDLIBS'):
+  # the proper list of actually needed libraries, errors can occur. See below for how we must
+  # export all the symbols in deps_info when using this option.
+  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+  if only_forced:
     temp_files = []
 
   # Scan symbols
@@ -495,6 +497,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   for symbols in symbolses:
     add_back_deps(symbols)
+
+  # If we are only doing forced stdlibs, then we don't know the actual symbols we need,
+  # and must assume all of deps_info must be exported. Note that this might cause
+  # warnings on exports that do not exist.
+  if only_forced:
+    for key, value in deps_info.iteritems():
+      for dep in value:
+        shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
   all_needed = set()
   for symbols in symbolses:

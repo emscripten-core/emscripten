@@ -3453,6 +3453,31 @@ main()
       del os.environ['EMCC_FORCE_STDLIBS']
       del os.environ['EMCC_ONLY_FORCED_STDLIBS']
 
+  def test_only_force_stdlibs_2(self):
+    open('src.cpp', 'w').write(r'''
+#include <iostream>
+#include <stdexcept>
+
+int main()
+{
+  try {
+    throw std::exception();
+    std::cout << "got here" << std::endl;
+  }
+  catch (const std::exception& ex) {
+    std::cout << "Caught exception: " << ex.what() << std::endl;
+  }
+}
+''')
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+      Popen([PYTHON, EMXX, 'src.cpp']).communicate()
+      self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
+
   def test_strftime_zZ(self):
     open('src.cpp', 'w').write(r'''
 #include <cerrno>
