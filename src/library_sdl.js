@@ -2269,27 +2269,11 @@ var LibrarySDL = {
         SDL.audio.numAudioTimersPending = 0;
         SDL.audio.timer = undefined;
       }
-      if (SDL.audio.scriptProcessorNode !== undefined) {
-        SDL.audio.scriptProcessorNode['disconnect']();
-        SDL.audio.scriptProcessorNode = undefined;
-      }
-    } else if (!SDL.audio.timer && !SDL.audio.scriptProcessorNode) {
-      // If we are using the same sampling frequency as the native sampling rate of the Web Audio graph is using, we can feed our buffers via
-      // Web Audio ScriptProcessorNode, which is a pull-mode API that calls back to our code to get audio data.
-      if (SDL.audioContext !== undefined && SDL.audio.freq == SDL.audioContext['sampleRate'] && typeof SDL.audioContext['createScriptProcessor'] !== 'undefined') {
-        var sizeSamplesPerChannel = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
-        SDL.audio.scriptProcessorNode = SDL.audioContext['createScriptProcessor'](sizeSamplesPerChannel, 0, SDL.audio.channels);
-        SDL.audio.scriptProcessorNode['onaudioprocess'] = function (e) {
-          Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
-          SDL.fillWebAudioBufferFromHeap(SDL.audio.buffer, sizeSamplesPerChannel, e['outputBuffer']);
-        }
-        SDL.audio.scriptProcessorNode['connect'](SDL.audioContext['destination']);
-      } else { // If we are using a different sampling rate, must manually queue audio data to the graph via timers.
-        // Start the audio playback timer callback loop.
-        SDL.audio.numAudioTimersPending = 1;
-        SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
-        SDL.audio.startTime = Date.now() / 1000.0; // Only used for Mozilla Audio Data API. Not needed for Web Audio API.
-      }
+    } else if (!SDL.audio.timer) {
+      // Start the audio playback timer callback loop.
+      SDL.audio.numAudioTimersPending = 1;
+      SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
+      SDL.audio.startTime = Date.now() / 1000.0; // Only used for Mozilla Audio Data API. Not needed for Web Audio API.
     }
     SDL.audio.paused = pauseOn;
   },
