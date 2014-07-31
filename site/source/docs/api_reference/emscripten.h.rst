@@ -1,8 +1,8 @@
 .. _emscripten-h:
 
-================================
-Emscripten.h (ready-for-review) 
-================================
+============
+Emscripten.h
+============
 
 This page documents the public C++ APIs provided by `emscripten.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/emscripten.h>`_. 
 

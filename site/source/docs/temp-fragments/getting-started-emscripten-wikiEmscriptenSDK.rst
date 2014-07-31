@@ -35,3 +35,36 @@ After installing the vs-tool plugin, a new 'Emscripten' platform will appear to 
 
 Note: If you copied the Emscripten platform properties from the Win32 platform, be sure to go and clean up any leftover Win32-specific #defines and other configuration from the Emscripten platform!
 
+
+Raw HTML for toggle text
+=========================
+
+There is also a good example of a Sphinx plugin that could add this directive: http://scopatz.github.io/hiddencode/
+
+.. raw:: html
+
+	<a href="javascript:hideshow(document.getElementById('adiv1'))">Installation instructions1</a>
+
+	<div id="adiv1" style="display:none;">
+	1.The NSIS installers register the Emscripten SDK as a 'standard' Windows application. To install the SDK, download an NSIS .exe file (see above), double-click on it, and run through the installer to perform the installation. After the installer finishes, the full Emscripten toolchain will be available in the directory that was chosen during the installation, and no other steps are necessary. If your system has Visual Studio 2010 installed, the vs-tool MSBuild plugin will be automatically installed as well.
+	</div>
+
+.. raw:: html
+	<script type="text/javascript">
+	function hideshow(which){
+	if (!document.getElementById)
+		return
+	if (which.style.display=="none")
+		which.style.display="block"
+	else
+		which.style.display="none"
+	}
+	
+	</script>	
+
+Some text that probably belongs in installing SDK from source.
+========================================================================
+
+This was cut from an SDK installation topic:
+
+"Run ``emsdk_env.bat`` (Windows) or ``source ./emsdk_env.sh`` (Linux and OSX) to set up the environment for the calling terminal." from topic "How do I check the installation status and version of the SDK and tools?". I think this is part of manual setup and doesn't belong here.

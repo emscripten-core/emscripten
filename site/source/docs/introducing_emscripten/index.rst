@@ -12,4 +12,3 @@ Introducing Emscripten (under-construction)
    bug_reports
    release_notes
    Talks-and-Publications
-   searching_site

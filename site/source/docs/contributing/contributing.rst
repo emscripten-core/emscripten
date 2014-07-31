@@ -1,8 +1,8 @@
 .. _contributing:
 
-================================================
-Contributing (ready-for-review) 
-================================================
+============
+Contributing
+============
 
 Anyone can contribute to Emscripten — if you find it useful and want to help improve the project, follow the suggestions below. Feel free to file :ref:`bug reports <bug-reports>`, :ref:`join the discussion <contact>` and share your own ideas with the community!
 
@@ -25,7 +25,7 @@ Branches of interest
 
 
 Submitting patches
-=====================
+==================
 
 Patches should be submitted as *pull requests* to the **incoming** branch. 
 

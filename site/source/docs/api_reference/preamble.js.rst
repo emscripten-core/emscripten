@@ -1,6 +1,6 @@
-=======================================================
-preamble.js (ready-for-review) 
-=======================================================
+===========
+preamble.js
+===========
 
 The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
@@ -36,7 +36,7 @@ Calling compiled C functions from JavaScript
 	
 	.. note:: 
 		- ``ccall`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!	
+		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!	
 		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
 		
 			::
@@ -79,7 +79,7 @@ Calling compiled C functions from JavaScript
 	
 	.. note:: 
 		- ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!
+		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!
 		- LLVM optimizations can inline and remove functions, after which you will not be able to "wrap" them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
 		
 			::
@@ -109,7 +109,7 @@ Accessing memory
 	
 	.. note::
 		- :js:func:`setValue` and :js:func:`getValue` only do *aligned* writes and reads.
-		- The ``type`` is an LLVM IR type (one of ``i8``, ``i16``, ``i32``, ``i64``, ``float``, ``double``, or a pointer type like ``i8*`` or just *), not JavaScript types as used in :js:func:`ccall` or :js:func:`cwrap`. This is a lower-level operation, and we do need to care what specific type is being used.	
+		- The ``type`` is an LLVM IR type (one of ``i8``, ``i16``, ``i32``, ``i64``, ``float``, ``double``, or a pointer type like ``i8*`` or just ``*``), not JavaScript types as used in :js:func:`ccall` or :js:func:`cwrap`. This is a lower-level operation, and we do need to care what specific type is being used.	
 
 	:param ptr: A pointer (number) representing the memory address.  
 	:param value: The value to be stored 	
@@ -125,7 +125,7 @@ Accessing memory
 
 	.. note::
 		- :js:func:`setValue` and :js:func:`getValue` only do *aligned* writes and reads!
-		- The ``type` is an LLVM IR type (one of ``i8``,``i16``,``i32``,``i64``,``float``,``double`, or a pointer type like `i8*` or just *), not JavaScript types as used in :js:func:`ccall` or :js:func:`cwrap`. This is a lower-level operation, and we do need to care what specific type is being used.	
+		- The ``type`` is an LLVM IR type (one of ``i8``, ``i16``, ``i32``, ``i64``, ``float``, ``double``, or a pointer type like ``i8*`` or just ``*``), not JavaScript types as used in :js:func:`ccall` or :js:func:`cwrap`. This is a lower-level operation, and we do need to care what specific type is being used.
 
 	:param ptr: A pointer (number) representing the memory address.  
 	:param type: An LLVM IR type as a string (see "note" above). 	
@@ -313,9 +313,7 @@ Stack trace
 Type accessors for Typed Arrays Mode 2
 ==========================================
 
-When using :ref:`typed-arrays-mode-2` a type array buffer is used to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.
-
-.. COMMENT (not rendered): **HamishW** Link to TO TYPED ARRAYS MODE2 DOCUMENTATION when this is ported
+When using :ref:`typed-arrays-mode-2` a typed array buffer (``ArrayBuffer``) is used to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.
 
 
 .. js:data:: HEAP8

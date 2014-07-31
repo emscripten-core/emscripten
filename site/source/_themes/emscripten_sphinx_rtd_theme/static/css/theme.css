@@ -21,7 +21,9 @@ table{border-collapse:collapse;border-spacing:0}td{vertical-align:top}.chromefra
 	margin-bottom:0 !important
 	}
 
-.wy-table-responsive table td,.wy-table-responsive table th{white-space:nowrap}
+.wy-table-responsive table td {white-space:nowrap}
+
+.wy-table-responsive table th{white-space:nowrap}
 
 a{color:#2980b9;text-decoration:none}a:hover{color:#3091d1}a:visited{color:#9b59b6}html{height:100%;overflow-x:hidden}body{font-family:"Lato","proxima-nova","Helvetica Neue",Arial,sans-serif;font-weight:normal;color:#404040;min-height:100%;overflow-x:hidden;background:#edf0f2}.wy-text-left{text-align:left}.wy-text-center{text-align:center}.wy-text-right{text-align:right}.wy-text-large{font-size:120%}.wy-text-normal{font-size:100%}.wy-text-small,small{font-size:80%}.wy-text-strike{text-decoration:line-through}.wy-text-warning{color:#e67e22 !important}a.wy-text-warning:hover{color:#eb9950 !important}.wy-text-info{color:#2980b9 !important}a.wy-text-info:hover{color:#409ad5 !important}.wy-text-success{color:#27ae60 !important}a.wy-text-success:hover{color:#36d278 !important}.wy-text-danger{color:#e74c3c !important}a.wy-text-danger:hover{color:#ed7669 !important}.wy-text-neutral{color:#404040 !important}a.wy-text-neutral:hover{color:#595959 !important}h1,h2,h3,h4,h5,h6,legend{margin-top:0;font-weight:700;font-family:"Roboto Slab","ff-tisa-web-pro","Georgia",Arial,sans-serif}p{line-height:24px;margin:0;font-size:16px;margin-bottom:24px}h1{font-size:175%}h2{font-size:150%}h3{font-size:125%}h4{font-size:115%}h5{font-size:110%}h6{font-size:100%}code,.rst-content tt{white-space:nowrap;max-width:100%;background:#fff;border:solid 1px #e1e4e5;font-size:75%;padding:0 5px;font-family:"Incosolata","Consolata","Monaco",monospace;color:#e74c3c;overflow-x:auto}code.code-large,.rst-content tt.code-large{font-size:90%}.wy-plain-list-disc,.rst-content .section ul,.rst-content .toctree-wrapper ul,article ul{list-style:disc;line-height:24px;margin-bottom:24px}
 .wy-plain-list-disc li,.rst-content .section ul li,.rst-content .toctree-wrapper ul li,article ul li {
@@ -341,6 +343,14 @@ width:inherit;
 }
 	
 
+	
+/* HamishW - Attempt to wrap table columns/remove the "responsive" behaviour on some tables. */	
+table.wrap-table-content  td, table.wrap-table-content  th {
+	white-space: normal;
+}
+
+
+	
 /* HamishW - fix bullet lists inside arabic decimal lists not rendering properly */	
 /* .wy-plain-list-decimal li, .rst-content .section ol li, .rst-content ol.arabic li, article ol li
 .wy-plain-list-decimal ul .simple li {
