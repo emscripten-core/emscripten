@@ -1,14 +1,16 @@
-============================
-html5.h (ready-for-review) 
-============================
+=======
+html5.h
+=======
 
-This page documents the C++ APIs provided by `html5.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/html5.h>`_.
+The C++ APIs in `html5.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code. 
 
-.. tip:: The C++ APIs map closely to their equivalent HTML5 JavaScript APIs. The HTML5 specifications listed below provide additional detailed reference "over and above" the information provided in this document.
+.. tip:: The C++ APIs map closely to their :ref:`equivalent HTML5 JavaScript APIs <specifications-html5-api>`. The HTML5 specifications listed below provide additional detailed reference "over and above" the information provided in this document.
 
 	In addition, the :ref:`test-example-code-html5-api` can be reviewed to see how the code is used.
 
-These APIs define the Emscripten low-level glue bindings for interfacing with the following HTML5 APIs:
+.. _specifications-html5-api:	
+
+The HTML5 specifications for APIs that are mapped by **html5.h** include:
 
 	- `DOM Level 3 Events: Keyboard, Mouse, Mouse Wheel, Resize, Scroll, Focus <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html>`_.
 	- `Device Orientation Events for gyro and accelerometer <http://www.w3.org/TR/orientation-event/>`_.
@@ -146,42 +148,42 @@ Most functions in this API return a result of type :c:data:`EMSCRIPTEN_RESULT`. 
 	This type is used to return the result of most functions in this API.  Positive values denote success, while zero and negative values signal failure. Possible values are listed below.
 	
 	
-.. c:macro:: EMSCRIPTEN_RESULT_SUCCESS
+	.. c:macro:: EMSCRIPTEN_RESULT_SUCCESS
 
-	The operation succeeded.
+		The operation succeeded.
 
-.. c:macro:: EMSCRIPTEN_RESULT_DEFERRED
+	.. c:macro:: EMSCRIPTEN_RESULT_DEFERRED
 
-	The requested operation cannot be completed now for :ref:`web security reasons<web-security-functions-html5-api>`, and has been deferred for completion in the next event handler.
+		The requested operation cannot be completed now for :ref:`web security reasons<web-security-functions-html5-api>`, and has been deferred for completion in the next event handler.
+		
+	.. c:macro:: EMSCRIPTEN_RESULT_NOT_SUPPORTED
+
+		The given operation is not supported by this browser or the target element.	This value will be returned at the time the callback is registered if the operation is not supported.
 	
-.. c:macro:: EMSCRIPTEN_RESULT_NOT_SUPPORTED
 
-	The given operation is not supported by this browser or the target element.	This value will be returned at the time the callback is registered if the operation is not supported.
-	
+	.. c:macro:: EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED
 
-.. c:macro:: EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED
+		The requested operation could not be completed now for :ref:`web security reasons<web-security-functions-html5-api>`. It failed because the user requested the operation not be deferred.	
 
-	The requested operation could not be completed now for :ref:`web security reasons<web-security-functions-html5-api>`. It failed because the user requested the operation not be deferred.	
+	.. c:macro:: EMSCRIPTEN_RESULT_INVALID_TARGET
 
-.. c:macro:: EMSCRIPTEN_RESULT_INVALID_TARGET
+		The operation failed because the specified target element is invalid.	
 
-	The operation failed because the specified target element is invalid.	
+	.. c:macro:: EMSCRIPTEN_RESULT_UNKNOWN_TARGET
 
-.. c:macro:: EMSCRIPTEN_RESULT_UNKNOWN_TARGET
+		The operation failed because the specified target element was not found.	
 
-	The operation failed because the specified target element was not found.	
+	.. c:macro:: EMSCRIPTEN_RESULT_INVALID_PARAM
 
-.. c:macro:: EMSCRIPTEN_RESULT_INVALID_PARAM
+		The operation failed because an invalid parameter was passed to the function.	
 
-	The operation failed because an invalid parameter was passed to the function.	
+	.. c:macro:: EMSCRIPTEN_RESULT_FAILED
 
-.. c:macro:: EMSCRIPTEN_RESULT_FAILED
+		Generic failure result message, returned if no specific result is available.	
 
-	Generic failure result message, returned if no specific result is available.	
+	.. c:macro:: EMSCRIPTEN_RESULT_NO_DATA
 
-.. c:macro:: EMSCRIPTEN_RESULT_NO_DATA
-
-	The operation failed because no data is currently available.	
+		The operation failed because no data is currently available.	
 	
 
 
@@ -199,14 +201,14 @@ Defines
 	
 .. c:macro:: DOM_KEY_LOCATION
 
-	The location of the key on the keyboard; one of the :c:data:`DOM_KEY_LOCATION_XXX values <DOM_KEY_LOCATION_STANDARD>`.	
+	The location of the key on the keyboard; one of the values below.	
 
-.. c:macro:: DOM_KEY_LOCATION_STANDARD
-	DOM_KEY_LOCATION_LEFT
-	DOM_KEY_LOCATION_RIGHT	
-	DOM_KEY_LOCATION_NUMPAD	
+	.. c:macro:: DOM_KEY_LOCATION_STANDARD
+		DOM_KEY_LOCATION_LEFT
+		DOM_KEY_LOCATION_RIGHT	
+		DOM_KEY_LOCATION_NUMPAD	
 
-	Locations of the key on the keyboard.
+		Locations of the key on the keyboard.
 
 Struct
 ------ 
@@ -716,8 +718,18 @@ Struct
 		double beta
 		double gamma
 	
-		The orientation of the device in terms of the transformation from a coordinate frame fixed on the Earth to a coordinate frame fixed in the device. 
-  
+		The `orientation <https://developer.mozilla.org/en-US/Apps/Build/gather_and_modify_data/responding_to_device_orientation_changes#Device_Orientation_API>`_ of the device in terms of the transformation from a coordinate frame fixed on the Earth to a coordinate frame fixed in the device. 
+		
+		The image (source: `dev.opera.com <http://dev.opera.com/articles/view/w3c-device-orientation-api/>`_) and definitions below illustrate the co-ordinate frame:
+		
+			- :c:type:`~EmscriptenDeviceOrientationEvent.alpha`: the rotation of the device around the Z axis.
+			- :c:type:`~EmscriptenDeviceOrientationEvent.beta`: the rotation of the device around the X axis.
+			- :c:type:`~EmscriptenDeviceOrientationEvent.gamma`: the rotation of the device around the Y axis.
+		
+		.. image:: device-orientation-axes.png
+			:target: https://developer.mozilla.org/en-US/Apps/Build/gather_and_modify_data/responding_to_device_orientation_changes#Device_Orientation_API
+			:alt: Image of device showing X, Y, Z axes
+
   
 	.. c:member:: EM_BOOL absolute
 	

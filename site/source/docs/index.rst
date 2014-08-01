@@ -14,6 +14,7 @@ Documentation Home (under-construction)
 	packaging/index
 	contributing/index
 	api_reference/index
+	tools_reference/index
 	site/index
 
    

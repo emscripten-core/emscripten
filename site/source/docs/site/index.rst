@@ -6,5 +6,5 @@ Site Links (under-construction)
    :maxdepth: 1
    
    about
-
+   glossary
 

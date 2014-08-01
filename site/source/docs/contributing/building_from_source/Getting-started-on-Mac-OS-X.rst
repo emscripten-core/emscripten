@@ -84,6 +84,8 @@ Note for `homebrew <https://github.com/Homebrew/homebrew>`__ users:
 
 	By default, git will clone the emscripten 'incoming' branch, which is the branch where the newest developments of Emscripten occur. If you want to use a more stable branch, switch to the 'master' branch: - cd ~/emscripten - git checkout master
 
+.. _getting-started-on-osx-install-python2:
+
 10. Setup 'python2': (this step is needed to workaround a bug reported in `#763 <https://github.com/kripken/emscripten/issues/763>`__)
 
 	-  In terminal, type 'python2 --version'. If you get a "command not found", type the following: ::

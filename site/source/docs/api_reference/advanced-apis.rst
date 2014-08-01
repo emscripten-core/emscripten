@@ -1,6 +1,6 @@
-==========================================
-Advanced APIs (ready-for-review) 
-==========================================
+=============
+Advanced APIs
+=============
 
 This section lists APIs that are not suitable for general use, but which may be useful to developers in some circumstances. These include APIs that are difficult or complicated to use, or which are intended primarily for Emscripten developers.
 
@@ -34,6 +34,8 @@ allocate()
 ===========
 
 ``allocate()`` is documented in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ and marked as *internal* because it is difficult to use (it has been optimized for multiple syntaxes to save space in generated code). Normally developers should instead allocate memory using ``_malloc()``, initialize it with :js:func:`setValue`, etc., but this may be useful for advanced developers in certain cases.
+
+.. todo:: **HamishW** It would be useful to have proper documentation of ``allocate()`` here. This has been deferred in the short term.
 	
 	
 Module.Runtime
@@ -41,5 +43,5 @@ Module.Runtime
 
 ``Module.Runtime`` gives access to low-level runtime functionality. Some of these, for example ``Runtime.stackSave()`` and ``Runtime.stackRestore()`` may be useful for advanced users.
 
-.. todo:: **HamishW** It would be useful to expand on what is offered by Module.Runtime
+.. todo:: **HamishW** It would be useful to expand on what is offered by ``Module.Runtime``. This has been deferred.
 

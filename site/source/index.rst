@@ -29,7 +29,8 @@ News
 	docs/compiling/index
 	docs/packaging/index
 	docs/contributing/index
-	docs/api_reference/index  
+	docs/api_reference/index
+	docs/tools_reference/index
 	wiki_static/index
 	docs/site/about
 
