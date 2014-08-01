@@ -11,6 +11,5 @@ This section provides reference for the main :term:`tools <Tool>` in the Emscrip
    :maxdepth: 1
    
    emsdk
-
-
+   emcmdprompt
 
