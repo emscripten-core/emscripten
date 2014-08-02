@@ -114,6 +114,9 @@ bv2.getAnother().PrintFloat(21.12);
 Module.print(new Module.Inner().get());
 new Module.Inner().mul(2);
 
+Module.print(Module.enum_value1);
+Module.print(Module.enum_value2);
+
 //
 
 Module.print('\ndone.')

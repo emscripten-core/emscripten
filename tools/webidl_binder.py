@@ -34,12 +34,15 @@ data = p.finish()
 
 interfaces = {}
 implements = {}
+enums = {}
 
 for thing in data:
   if isinstance(thing, WebIDL.IDLInterface):
     interfaces[thing.identifier.name] = thing
   elif isinstance(thing, WebIDL.IDLImplementsStatement):
     implements.setdefault(thing.implementor.identifier.name, []).append(thing.implementee.identifier.name)
+  elif isinstance(thing, WebIDL.IDLEnum):
+    enums[thing.identifier.name] = thing
 
 #print interfaces
 #print implements
@@ -416,6 +419,16 @@ public:
 %s
 };
 ''' % (name, type_to_c(js_impl, non_pointing=True), '\n'.join(js_impl_methods))]
+
+for name, enum in enums.iteritems():
+  mid_c += ['\n// ' + name + '\n']
+  mid_js += ['\n// ' + name + '\n']
+  for value in enum.values():
+    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE emscripten_enum_%s() {
+  return %s;
+}
+''' % (name, value, value)]
+    mid_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (value, value)]
 
 mid_c += ['\n}\n\n']
 mid_js += ['\n']

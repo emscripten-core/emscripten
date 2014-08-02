@@ -65,3 +65,7 @@ interface Inner {
   [Operator="*=", Ref] Inner mul(float x);
 };
 
+enum AnEnum {
+  "enum_value1",
+  "enum_value2"
+};

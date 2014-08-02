@@ -73,3 +73,7 @@ namespace Space {
   };
 }
 
+enum AnEnum {
+  enum_value1,
+  enum_value2
+};
