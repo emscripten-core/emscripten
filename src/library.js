@@ -4006,11 +4006,17 @@ LibraryManager.library = {
   __cxa_find_matching_catch__deps: ['__resumeException', '__cxa_last_thrown_exception', '__cxa_exception_header_size'],
   __cxa_find_matching_catch: function(thrown, throwntype) {
     if (thrown == -1) thrown = ___cxa_last_thrown_exception;
+    if (!thrown) {
+      // just pass through the null ptr
+      {{{ makeStructuralReturn([0, 0]) }}};
+    }
     var header = thrown - ___cxa_exception_header_size;
     if (throwntype == -1) throwntype = {{{ makeGetValue('header', 0, 'void*') }}};
     var typeArray = Array.prototype.slice.call(arguments, 2);
-
-    assert(throwntype);
+    if (!throwntype) {
+      // just pass through the thrown ptr
+      {{{ makeStructuralReturn(['thrown', 0]) }}};
+    }
 
     var pointer = Module['___cxa_is_pointer_type'](throwntype);
     // can_catch receives a **, add indirection
