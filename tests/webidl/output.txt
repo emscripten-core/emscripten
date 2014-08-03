@@ -58,5 +58,6 @@ object
 1
 34,34
 78
+void * 3
 
 done.

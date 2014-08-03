@@ -58,6 +58,13 @@ interface RefUser {
   [Value] StringUser getAnother();
 };
 
+interface VoidPointerUser {
+  void VoidPointerUser();
+
+  any GetVoidPointer();
+  void SetVoidPointer(any ptr);
+};
+
 [Prefix="Space::"]
 interface Inner {
   void Inner();

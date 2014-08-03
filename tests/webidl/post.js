@@ -125,6 +125,11 @@ Module.print([enumClassInstance.GetEnum(), Module.EnumClass.e_val].join(','));
 // in namespaces, see `Inner` above.
 Module.print(Module.e_namespace_val);
 
+var voidPointerUser = new Module.VoidPointerUser();
+
+voidPointerUser.SetVoidPointer(3);
+Module.print('void * ' + voidPointerUser.GetVoidPointer());
+
 //
 
 Module.print('\ndone.')
