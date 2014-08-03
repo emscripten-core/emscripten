@@ -305,7 +305,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
           func_name, class_name, func_name,
           return_prefix,
           func_name,
-          ','.join(['$%d' % i for i in range(1, max_args)]),
+          ','.join(['$%d' % i for i in range(1, max_args + 1)]),
           return_postfix,
           (', ' if js_call_args else '') + js_call_args)]
 

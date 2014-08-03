@@ -27,6 +27,7 @@ interface Child2 {
   void virtualFunc3(long x);
   void virtualFunc4(long x);
   static void runVirtualFunc(Child2 self);
+  static void runVirtualFunc3(Child2 self, long x);
 };
 
 Child2 implements Parent;

@@ -86,6 +86,9 @@ try {
   Module.print('caught: ' + e);
 }
 
+// Test virtual method dispatch from c++
+Module.Child2.prototype.runVirtualFunc3(c3, 43);
+
 c2.virtualFunc(); // original should remain the same
 Module.Child2.prototype.runVirtualFunc(c2);
 c2.virtualFunc2();
