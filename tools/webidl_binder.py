@@ -130,6 +130,11 @@ function ensureString(value) {
   return value;
 }
 
+// Ensure that Module is accessible from with EM_ASM blocks by putting it in the global scope.
+// (Otherwise the closure compiler breaks this because it doesn't know we plan to eval code with
+// the `Module` symbol later.)
+(function() { return eval('this'); }).call()['Module'] = Module;
+
 ''']
 
 C_FLOATS = ['float', 'double']
@@ -354,7 +359,7 @@ for name in names:
         continue
     if not constructor:
       mid_js += [r'''
-%s.prototype.%s = ''' % (name, m.identifier.name)]
+%s.prototype['%s'] = ''' % (name, m.identifier.name)]
     sigs = {}
     return_type = None
     for ret, args in m.signatures():
@@ -384,7 +389,7 @@ for name in names:
 
     get_name = 'get_' + attr
     mid_js += [r'''
-  %s.prototype.%s= ''' % (name, get_name)]
+  %s.prototype['%s']= ''' % (name, get_name)]
     render_function(name,
                     get_name, { 0: [] }, m.type.name,
                     None,
@@ -397,7 +402,7 @@ for name in names:
 
     set_name = 'set_' + attr
     mid_js += [r'''
-  %s.prototype.%s= ''' % (name, set_name)]
+  %s.prototype['%s']= ''' % (name, set_name)]
     render_function(name,
                     set_name, { 1: [Dummy({ 'type': m.type })] }, 'Void',
                     None,
@@ -410,7 +415,7 @@ for name in names:
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''
-  %s.prototype.__destroy__ = ''' % name]
+  %s.prototype['__destroy__'] = ''' % name]
     render_function(name,
                     '__destroy__', { 0: [] }, 'Void',
                     None,
