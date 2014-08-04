@@ -1186,7 +1186,7 @@ try:
       lib_dirs.append(arg[2:])
       newargs[i] = ''
     elif arg.startswith('-l'):
-      libs.append((i, arg[2:]))
+      libs.append((next_arg_index + 1 + i, arg[2:])) # -l libraries must be linked in last
       newargs[i] = ''
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake

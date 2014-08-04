@@ -1101,6 +1101,12 @@ int f() {
     Popen([PYTHON, EMCC, 'out.bc']).communicate()
     self.assertContained('Hello', run_js('a.out.js'))
 
+    # link using -l syntax, ensure ordering works (group-related, but not exactly testing of groups; ordering was introduced for groups, and broke this)
+    Popen([PYTHON, EMCC, '-o', 'out.bc', '-L.', '-l2', '1.o']).communicate()
+    Popen([PYTHON, EMCC, 'out.bc']).communicate()
+    self.assertContained('Hello', run_js('a.out.js'))
+
+
   def test_circular_libs(self):
     def tmp_source(name, code):
       file_name = os.path.join(self.get_dir(), name)
