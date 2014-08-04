@@ -1046,7 +1046,7 @@ This pointer might make sense in another type signature: i: 0
 
     self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-  def test_link_group_asserts(self):
+  def test_link_group(self):
     lib_src_name = os.path.join(self.get_dir(), 'lib.c')
     open(lib_src_name, 'w').write('int x() { return 42; }')
 
@@ -1077,6 +1077,29 @@ This pointer might make sense in another type signature: i: 0
     test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
     test(['-Wl,--end-group', lib_name, '-Wl,--start-group'], '--end-group without --start-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group'], None)
+
+  def test_link_group_bitcode(self):
+    one = open('1.c', 'w').write(r'''
+int f(void);
+int main() {
+  f();
+  return 0;
+}
+    ''')
+    two = open('2.c', 'w').write(r'''
+#include <stdio.h>
+int f() {
+  printf("Hello\n");
+  return 0;
+}
+    ''')
+
+    Popen([PYTHON, EMCC, '-o', '1.o', '1.c']).communicate()
+    Popen([PYTHON, EMCC, '-o', '2.o', '2.c']).communicate()
+    Popen([PYTHON, EMAR, 'crs', '2.a', '2.o']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group']).communicate()
+    Popen([PYTHON, EMCC, 'out.bc']).communicate()
+    self.assertContained('Hello', run_js('a.out.js'))
 
   def test_circular_libs(self):
     def tmp_source(name, code):

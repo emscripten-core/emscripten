@@ -1499,6 +1499,9 @@ try:
           #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
           shared.Building.llvm_opt(temp_file, llvm_opts)
 
+  # Decide what we will link
+  linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
+
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if not specified_target:
@@ -1522,10 +1525,9 @@ try:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
-        logging.debug('link: ' + str(temp_files) + specified_target)
+        logging.debug('link: ' + str(linker_inputs) + specified_target)
         # Sort arg tuples and pass the extracted values to link.
-        link_args = [f for (i, f) in sorted(temp_files)]
-        shared.Building.link(link_args, specified_target)
+        shared.Building.link(linker_inputs, specified_target)
     logging.debug('stopping at bitcode')
     exit(0)
 
@@ -1547,7 +1549,7 @@ try:
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0][1]) in BITCODE_ENDINGS or suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0][1])):
-    linker_inputs = [val for _, val in sorted(temp_files + link_flags)] + extra_files_to_link
+    linker_inputs += extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
     shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0)
     final = in_temp(target_basename + '.bc')
