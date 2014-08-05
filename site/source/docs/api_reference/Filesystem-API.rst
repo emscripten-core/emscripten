@@ -298,7 +298,7 @@ Filesystem
 
 .. js:function:: FS.lstat(path)
 
-	Identical to :ref:`FS.stat`, However, if ``path`` is a symbolic link then the returned stats will be for the link itself, not the file that it links to.
+	Identical to :js:func:`FS.stat`, However, if ``path`` is a symbolic link then the returned stats will be for the link itself, not the file that it links to.
 
 	:param string path: Path of the target file.
 	:throws **HamishW**:
@@ -321,7 +321,7 @@ Filesystem
 
 .. js:function:: FS.lchmod(path, mode)
 
-	Identical to :ref:`FS.chmod`. However, if ``path`` is a symbolic link then the mode will be set on the link itself, not the file that it links to.
+	Identical to :js:func:`FS.chmod`. However, if ``path`` is a symbolic link then the mode will be set on the link itself, not the file that it links to.
 
 	:param string path: Path of the target file.
 	:param int mode: **HamishW**.
@@ -330,7 +330,7 @@ Filesystem
 
 .. js:function:: FS.fchmod(fd, mode)
 
-	Identical to :ref:`FS.chmod`. However, a raw file descriptor is supplied as ``fd``.
+	Identical to :js:func:`FS.chmod`. However, a raw file descriptor is supplied as ``fd``.
 
 	:param int fd: Descriptor of target file.
 	:param int mode: **HamishW**.
@@ -353,7 +353,7 @@ Filesystem
 
 .. js:function:: FS.lchown(path, uid, gid)
 
-	Identical to Identical to :ref:`FS.chown`. However, if path is a symbolic link then the properties will be set on the link itself, not the file that it links to.
+	Identical to Identical to :js:func:`FS.chown`. However, if path is a symbolic link then the properties will be set on the link itself, not the file that it links to.
 
 	:param string path: Path of the target file.
 	:param int uid: **HamishW**.
@@ -364,7 +364,7 @@ Filesystem
 
 .. js:function:: FS.fchown(fd, uid, gid)
 
-	Identical to :ref:`FS.chown`. However, a raw file descriptor is supplied as ``fd``.
+	Identical to :js:func:`FS.chown`. However, a raw file descriptor is supplied as ``fd``.
 
 	:param int fd: Descriptor of target file.
 	:param int uid: **HamishW**.
@@ -531,7 +531,7 @@ Filesystem
 	
 .. js:function:: FS.readFile(path, opts)
 
-	Reads the entire file at ``path`` and returns it as a ``string`` (encoding is 'utf8'), or as a new ``Uint8Array`` buffer (encoding is `binary').
+	Reads the entire file at ``path`` and returns it as a ``string`` (encoding is 'utf8'), or as a new ``Uint8Array`` buffer (encoding is 'binary').
 
 	:param string path: The file to read.
 	:param object opts:
@@ -699,7 +699,7 @@ Paths
 
 	:returns: an object with the the format:
 	
-		.. code-block:: JavaScript
+		.. code-block:: javascript
 
 			{
 			  path: resolved_path,

@@ -31,7 +31,6 @@ News
 	docs/contributing/index
 	docs/api_reference/index
 	docs/tools_reference/index
-	wiki_static/index
 	docs/site/about
 
    
@@ -45,5 +44,5 @@ News
 	This page not yet designed. Thought is to include:
 		* Introduction
 		* Quickstart Signpost - with prominent link to "Getting Started" Tutorial
-		* Signposts for: News, Top Demos, Contibuting, Github Project
+		* Signposts for: News, Top Demos, Contributing, Github Project
 		* (Possibly) Signposts to: Twitter feed, Github issues (new, resolved)

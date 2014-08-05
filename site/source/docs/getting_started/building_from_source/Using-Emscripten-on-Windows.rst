@@ -65,7 +65,7 @@ Configuring Emscripten
 	  
    3. Edit the variable TEMP\_DIR to point to a valid Windows path on your local system, e.g. ``TEMP_DIR = 'C:/tmp'``, and create that folder on the local filesystem if it doesn't exist.
    4. If you are planning on using Cygwin and cygwin make in the future, copy the .emscripten file to your cygwin home folder as well, e.g. 
-   copy C:.emscripten C: (There is a bug in Emscripten that it currently looks for the file .emscripten in two places (Win7 user home folder or cygwin user home folder), depending on the environment it is executed in, so as a current workaround these files must be present and identical on Windows. (see `issue #411 <https://github.com/kripken/emscripten/issues/411>`_))
+      copy C:.emscripten C: (There is a bug in Emscripten that it currently looks for the file .emscripten in two places (Win7 user home folder or cygwin user home folder), depending on the environment it is executed in, so as a current workaround these files must be present and identical on Windows. (see `issue #411 <https://github.com/kripken/emscripten/issues/411>`_))
 
    
 Integrating Emscripten to Visual Studio 2010

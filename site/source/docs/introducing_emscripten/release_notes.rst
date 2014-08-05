@@ -14,7 +14,7 @@ ChangeLog
 
 The changelog for Emscripten |release| (|today|) is listed below (master version `here <https://github.com/kripken/emscripten/blob/master/ChangeLog>`_).
 
-.. include::   ..\..\..\..\ChangeLog
+.. include::   ../../../../ChangeLog
    :literal:
 
 
