@@ -161,14 +161,20 @@ Emscripten has an extensive test suite at `tests/runner.py <https://github.com/k
 
     python tests/runner.py
 
-The individual tests are listed in the different test suites - for example "test_hello_world" is defined in the `core test suite here <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L12>`_. You can run an individual test as follows: ::
+The individual tests are listed in the different test suites - for example "test_hello_world" is defined in the `core test suite here <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L12>`_. You can run individual tests as shown: ::
 
     python tests/runner.py test_hello_world
 
 .. todo:: **HamishW** Confirm that this is how test suites are done. We really should have a stand alone topic for this and link to it at this point.
 
-To view the generated code from that individual test, first do: ::
+To view the generated code from that individual test, you can first set ``EMCC_DEBUG=1``. This is shown for both Windows and Linxu below: ::
 
+	# On Windows, use "set" to set and un-set the environment variable:
+	set EMCC_DEBUG=1 
+	python tests/runner.py test_hello_world
+	set EMCC_DEBUG=0
+	
+	# On Linux, you can do this all in one line
 	EMCC_DEBUG=1 python tests/runner.py test_hello_world
 	
 The generated code is copied into the the temp directory (**TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is defined in :ref:`~/.emscripten <compiler-configuration-file>`. By default the temporary directory location is **/tmp**). 
@@ -182,7 +188,7 @@ Note that **Node.js** cannot run all of the tests in the suite; if you care abou
 
 ----
 
-To run the Emscripten benchmarks, enter the following command: ::
+To run the Emscripten benchmark tests, enter the following command: ::
 
     python tests/runner.py benchmark
 
@@ -193,7 +199,7 @@ This will compile a sequence of benchmarks and run them several times, reporting
 General tips and next steps
 ======================================
 
-This tutorial has provided a high level view on how to call Emscripten from the command line, but of course there is far more to using the tool. Below are more general tips for using Emscripten:
+This tutorial walked you through your first steps in calling Emscripten from the command line. There is, of course, far more you can do with the tool. Below are other general tips for using Emscripten:
 
 -  This site has lots more information about :ref:`compiling and building projects <compiling-and-running-projects-index>`, :ref:`integrating your native code with the web environment <integrating-porting-index>`, :ref:`packaging your code <packaging-code-index>` and publishing.
 -  The Emscripten test suite is a great place to look for examples of how to use Emscripten. For example, if you want to better understand how the *emcc* ``--pre-js`` option works, search for ``--pre-js`` in the test suite: the test suite is extensive and there are likely to be at least some examples.
