@@ -3814,3 +3814,32 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
       print engine
       self.assertContained('4\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
 
+  def test_force_exit(self):
+    open('src.cpp', 'w').write(r'''
+#include <emscripten/emscripten.h>
+
+namespace
+{
+  extern "C"
+  EMSCRIPTEN_KEEPALIVE
+  void callback()
+  {
+    EM_ASM({ Module.print('callback pre()') });
+    ::emscripten_force_exit(42);
+    EM_ASM({ Module.print('callback post()') });
+    }
+}
+
+int
+main()
+{
+  EM_ASM({ setTimeout(function() { Module.print("calling callback()"); _callback() }, 100) });
+  ::emscripten_exit_with_live_runtime();
+  return 123;
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    output = run_js('a.out.js', engine=NODE_JS, assert_returncode=42)
+    assert 'callback pre()' in output
+    assert 'callback post()' not in output
+
