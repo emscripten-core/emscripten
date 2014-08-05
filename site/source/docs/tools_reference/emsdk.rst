@@ -4,14 +4,15 @@
 Emscripten SDK Manager (emsdk) (ready-for-review)
 =====================================================
 
-**The Emscripten SDK management script (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to "install" the SDK once; after that emsdk can do all further updates!**
+**The Emscripten SDK management script (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
+
+This document provides the command syntax, and a :ref:`set of guides <emsdk_howto>` explaining how to perform both common and advanced maintenance operations.
 
 Purpose
 ============================================
 
-With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, ranging from the very first, through to the :ref:`bleeding edge updates <emsdk-master-or-incoming-sdk>` still on Github. Most operations are of the form ``emsdk command``. To access the *emsdk*, launch the :ref:`Emscripten Command Prompt <emcmdprompt>`.
+With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk*, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``emsdk command``.
 
-This document provides the command syntax, and a :ref:`set of guides <emsdk_howto>` explaining how to perform both common and advanced maintenance operations.
 
 
 Command line syntax
@@ -34,7 +35,7 @@ Arguments
    * - ``list [--old]``
      - Lists all current SDKs and tools and their installation status. With the ``--old`` parameter, historical versions are also shown.
    * - ``update``
-     - Fetches the latest list of all available tools and SDKs (but does not install them)
+     - Fetches the latest list of all available tools and SDKs (but does not install them).
    * - ``install <tool/sdk>``
      - Downloads and installs the :ref:`specified tool or SDK <emsdk-specified-tool-sdk>`.
    * - ``uninstall <tool/sdk>``
@@ -44,9 +45,10 @@ Arguments
    * - ``help``
      - Lists all supported commands. The same list is output if no command is specified.	 
 
-.. note:: For Mac OSX the commands are called with  **./emsdk**  and **./emcmdprompt.bat** respectively.
+.. note:: 
 
-Note that **emcmdprompt.bat** is also displayed as an option in the ``emsdk help``. This is not intended to be called through the command line. See :ref:`emcmdprompt` for more information.
+	- For Mac OSX the commands are called with  **./emsdk**.
+	- **emcmdprompt.bat** is also displayed as an option in the ``emsdk help``. This is :ref:`not intended <emcmdprompt-command-line-syntax>` to be called through the command line.
 
 
 .. _emsdk-specified-tool-sdk:
@@ -58,16 +60,14 @@ The ``<tool/sdk>`` given above as a command argument is one of the targets liste
 
 Note that some of the tools and SDK names include  *master* or *incoming*: these targets are used to clone and pull the very latest versions from the Emscripten incoming and master branches.
 
-Finally, you can specify a target of ``latest`` to grab the most current SDK.
-
-.. todo:: **HamishW**  emcmdprompt.bat does not appear to work. Need to check with Jukka
+You can also specify a target of ``latest`` to grab the most current SDK.
 
 
 
 SDK manager concepts
 ==============================
 
-The SDK contains a number of different :term:`tools <Tool>`, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. The *emsdk* can fetch the different versions of all these tools and also specific SDKs. These are put into different directories under the main SDK installation folder, grouped by tool and version. 
+The Emscripten toolchain includes a number of different :term:`tools <Tool>`, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. The *emsdk* can fetch the different versions of all these tools and also specific :term:`SDKs <SDK>`. These are put into different directories under the root folder you specified when you installed the SDK, grouped by tool and version. 
 
 A user-specific file (**~/.emscripten**) stores the active "compiler configuration"; the :term:`active <Active Tool/SDK>` configuration is the specific set of tools that are used by default if Emscripten in called on the :ref:`Emscripten Command Prompt <emcmdprompt>`. Users can call *emsdk* with the ``activate`` argument to make a specific tool or SDK active.
 
@@ -83,9 +83,10 @@ The following topics explain how to perform both common and advanced maintenance
 
 .. _emsdk-get-latest-sdk:
 
+
 How do I just get the latest SDK?
 ------------------------------------------------------------------------------------------------
-Use the ``update`` argument to fetch the current registry of available tools, and then the ``latest`` target to get the most recent SDK: ::
+Use the ``update`` argument to fetch the current registry of available tools, and then specify the ``latest`` install target to get the most recent SDK: ::
 
 	# Fetch the latest registry of available tools.
 	emsdk update
@@ -111,13 +112,13 @@ To get a list of all currently installed tools and SDK versions (and all availab
 
 	emsdk list
 
-A line will be printed for each tool/SDK that is available for installation. The text ``INSTALLED`` will be shown for each tool that has already been installed. If a tool/SDK is currently active, a star (\*) will be shown next to it. 
+A line will be printed for each tool and SDK that is available for installation. The text ``INSTALLED`` will be shown for each tool that has already been installed. If a tool/SDK is currently active, a star (\*) will be shown next to it. 
 
 	
 How do I install a tool/SDK version?
 ------------------------------------
 
-Use the ``install`` argument to download and install a new tool or an SDK version: ::
+Use the ``install`` argument to download and install a new tool or SDK version: ::
 
 	emsdk install <tool/sdk name>
 
@@ -132,9 +133,7 @@ Use the ``uninstall`` argument to delete a given tool or SDK from the local comp
 	emsdk uninstall <tool/sdk name>
 	
 
-See :ref:`downloads-uninstall-the-sdk` if you need to completely remove Emscripten from your system. 
-
-
+If you want to completely remove Emscripten from your system, follow the guide at :ref:`downloads-uninstall-the-sdk`.
 
 	
 How do I check for updates to the Emscripten SDK?
@@ -165,7 +164,7 @@ How do I install an old Emscripten compiler version?
 	emsdk list --old
 	emsdk install <name_of_tool>
 	
-On Windows, you can directly install an old SDK version by using one of the :ref:`archived offline NSIS installers <archived-nsis-windows-sdk-releases>`. 
+On Windows, you can directly install an old SDK version by using one of :ref:`these archived NSIS installers <archived-nsis-windows-sdk-releases>`. 
 
 
 
@@ -174,9 +173,9 @@ On Windows, you can directly install an old SDK version by using one of the :ref
 How do I track the latest Emscripten development with the SDK?
 ------------------------------------------------------------------------------------------------
 
-It is also possible to use the latest and greatest versions of the tools on the Github repositories! This allows you to obtain new features and latest fixes immediately as they are pushed to Github, without having to wait for release to be tagged. **No Github account or a fork of Emscripten is required.** 
+It is also possible to use the latest and greatest versions of the tools on the Github repositories! This allows you to obtain new features and latest fixes immediately as they are pushed to Github, without having to wait for release to be tagged. **No Github account or fork of Emscripten is required.** 
 
-To switch to using the latest upstream git development branch ``incoming``, run the following:
+To switch to using the latest upstream git development branch (``incoming``), run the following:
 
 ::
 
@@ -186,10 +185,10 @@ To switch to using the latest upstream git development branch ``incoming``, run 
 	# Clone+pull the latest kripken/emscripten/incoming.
 	emsdk install sdk-incoming-64bit
 	
-	# Set the incoming SDK as the active.
+	# Set the "incoming SDK" as the active version.
 	emsdk activate sdk-incoming-64bit 	
 
-If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` above.
+If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` in the commands above.
 
 .. note:: On Windows, *git* may fail with the error message: 
 

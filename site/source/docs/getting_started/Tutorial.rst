@@ -1,314 +1,207 @@
 .. _Tutorial:
 
+============================================
+Emscripten Tutorial (under-construction)
+============================================
+
+**Using Emscripten is, at a base level, fairly simple. This tutorial takes you through the steps needed to compile your first Emscripten examples from the command line. It also shows how to preload files and set the compiler optimization flags.**
+
+.. note:: We don't cover it in this tutorial, but Emscripten is also integrated with Microsoft Visual Studio 2010.
+
+	The :term:`vs-tool` plugin is automatically deployed by the :term:`Windows NSIS Installer Emscripten SDK` if *Visual Studio 2010* is present on your system. This adds an 'Emscripten' configuration to the list of available Solution Configurations in Visual Studio. Activate this configuration for a solution/project to make Visual Studio run the project build through Emscripten, producing **.html** or **.js** output depending on the configured project properties.
+
+First things first
 ======================
-Tutorial (wiki-import)
-======================
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
-Emscripten Tutorial
-===================
+Make sure you have :ref:`downloaded and installed <sdk-download-and-install>` Emscripten (the exact approach for doing this will depend your operating system: Windows, Mac or Linux).
 
-Emscripten is an open source LLVM to JavaScript compiler. With it, you
-can compile C and C++ code into JavaScript and run it on the web. And
-it's easy! This tutorial will show you how to use it.
+Emscripten is accessed using the :ref:`emcc`. This script invokes all the other tools needed to build your code, and can act as a drop-in replacement for a standard compiler like *gcc*. It is called on the command line using ``emcc`` or ``em++``
 
-Requirements
-------------
+.. note:: On Mac OS X the tool is called using the slightly different syntax: ``./emcc`` or ``./em++`` (or even directly via Python: ``python emcc``). The remainder of this tutorial uses the Windows syntax (``emcc``).
 
-To use Emscripten and complete this tutorial, first `get
-Emscripten <https://github.com/kripken/emscripten/wiki/Emscripten-SDK>`__!
+For the next section you will need to open a command prompt:
 
-Before continuing, it's a good idea to make sure the requirements work.
+- On Linux or Mac OS X, open a *Terminal*. 
+- On Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`, a command prompt that has been pre-configured with the correct system paths and settings to point to the :term:`active <Active Tool/SDK>` Emscripten tools. To access this prompt, type **Emscripten** in the Windows 8 start screen, and then select the **Emscripten Command Prompt** option.
 
-First, change directory to where Emscripten is located, the rest of this
-tutorial will assume that that is where you are running commands (or,
-add a path to another location if you prefer). Then try
+Navigate with the command prompt to the :term:`SDK root directory` for your target SDK. This is an SDK-version-specific folder below the :term:`emsdk root directory`, e.g.: **<Emsdk Root>\\emscripten\\1.20.0\\**.
 
-::
+.. warning:: Emscripten test code must be built from the "SDK Root" above (some of the code is dependent on file locations, and will build but not run if compiled from another location). 
 
-    clang tests/hello_world.cpp
-    ./a.out
 
-(Add the path to clang if it isn't installed systemwide.) That uses
-Clang and LLVM to compile a "hello world" app and run it. The second
-command there should print "hello, world!". Then, test Node.js with
+Verifying Emscripten
+=====================
 
-OS X Note: Since 10.9 Apple has decided that the standard C++ libraries
-are not part of the system, but part of XCode. If you get the following
-error ``fatal error: 'stdio.h' file not found`` then run
-``xcode-select --install`` to install the command line tools before
-trying again.
+If you haven't run Emscripten before, run it now with: ::
 
-::
+    emcc -v 
 
-    node src/hello_world.js
+If the output contains warnings about missing tools, see :ref:`verifying-the-emscripten-environment` for debugging help. Otherwise continue to the next sections where we'll build some code.
 
-which should also print out "hello, world!". (As before, add the path to
-node if it isn't installed systemwide.)
-
-Setting up Emscripten
----------------------
-
-If you haven't run Emscripten before, run it now with
-
-::
-
-    ./emcc
-
-If you are on Windows, you will call
-
-::
-
-    emcc
-
-instead. If you are having trouble with python versions, you can also
-explicitly invoke
-
-::
-
-    python emcc
-
-especially if ``python2`` is not defined in your system (``python2``
-allows python 2 and 3 to be installed together on one system, which is
-increasingly common; as an alternative to ``python emcc``, you can also
-add a symlink to ``python`` from ``python2``). In that case you should
-also update PYTHON in ``~/.emscripten``, see below about that file.
-
-"emcc" is the "Emscripten compiler frontend", an easy way to use
-Emscripten basically as a drop-in replacement for a standard compiler
-like gcc.
-
-The first time you run emcc (or any other of the Emscripten tools), it
-will create a settings file at ``~/.emscripten`` (``~`` is your user's
-home directory) and exit. You should edit that file now, changing the
-directory locations of LLVM and Node to the right places in your setup
-(specifically, edit ``LLVM_ROOT`` and ``NODE_JS``). If those paths are
-not right, Emscripten will not find LLVM, Clang or Node.js and it will
-fail. Look at the comments in that file that explain what the settings
-are and which you need to change.
-
-After setting those paths, run ``./emcc`` again. It should do some
-sanity checks which test the specified paths in ``~/.emscripten``. If
-they don't all pass, you might have a typo somewhere. When everything is
-set up properly, running ``./emcc`` should tell you
-``emcc: no input files`` (since we didn't specify any input files), and
-you can proceed to the next section in this tutorial.
 
 Running Emscripten
-------------------
+======================================
 
-You can now compile your first file! First, let's build the same "hello
-world" C++ file from before, but this time using Emscripten:
+You can now compile your first C++ file to JavaScript!
 
-::
+First, lets have a look at the file to be compiled: **hello_world.cpp**. This is the simplest test code in the SDK, and as you can see, all it does is print "hello, world!" to the console and then exit.
 
-    ./emcc tests/hello_world.cpp
+.. include:: ..\..\..\..\tests\hello_world.cpp
+   :literal:
+   
 
-There should now be an ``a.out.js`` file in the current directory. Run
-it with
+
+To build the JavaScript version of this code we simply specify the C++ file after *emcc*: ::
+
+	emcc tests\hello_world.cpp
+
+
+There should now be an **a.out.js** file in the current directory. Run it using :term:`node`:
 
 ::
 
     node a.out.js
 
-and it should print "hello, world!" as expected.
+This prints "hello, world!" to the console, as expected.
 
--  If an error occurs when running emcc, try to run it with ``-v``,
-   which will print out information that can help pinpoint the problem.
+.. tip:: If an error occurs when calling *emcc*, run it with the ``-v`` option to print out a lot of useful debug information.
+
+
+
 
 Generating HTML
-~~~~~~~~~~~~~~~
+======================================
 
-Emscripten can also generate HTML with embedded JavaScript. Try this
-command:
+Emscripten can also generate HTML for testing embedded JavaScript. To generate HTML, use the ``-o`` (output) command and specify an html file as the target file: ::
 
-::
+    emcc tests/hello_world.cpp -o hello.html
 
-    ./emcc tests/hello_world_sdl.cpp -o hello.html
+Open the web page in a web browser. As you can see, the framework defines a text area for displaying the output of the ``printf()`` calls in the native code.
 
-By specifying that the output is an HTML file, you have told Emscripten
-to generate a complete HTML page. In this case, the source code uses the
-SDL API to show a colored cube. Open the web page in your web browser to
-see it (it should work in any browser that supports the Canvas element.)
+The HTML isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a Canvas element (on browsers that support it). For an example, build the **hello_world_sdl.cpp** test code and then refresh the browser: ::
 
-Using Files
-~~~~~~~~~~~
+    emcc tests/hello_world_sdl.cpp -o hello.html
 
-Your C/C++ code can access files using the normal libc API (stdio:
-fopen, etc.). Try this command:
+The source code for the second example is given below:
 
-::
+.. include:: ..\..\..\..\tests\hello_world_sdl.cpp
+   :literal:
+   
 
-    ./emcc tests/hello_world_file.cpp -o hello.html --preload-file tests/hello_world_file.txt
+Using files
+======================================
 
-Open ``hello.html`` in a web browser and you will see the data from a
-file being written out. (Note: Chrome is unable to do ``file://`` XHRs,
-so for ``hello.html`` to work in that browser you need a webserver, for
-example ``python -m SimpleHTTPServer 8888`` and then open
-``localhost:8888/hello.html``.) Open ``tests/hello_world_file.cpp`` to
-see the C++ source code, and ``tests/hello_world_file.txt`` to see the
-data. The ``--preload-file`` option will automatically preload the file
-before running the compiled code. This is useful because loading data
-from the network cannot be done synchronously in browsers outside Web
-Workers. Almost all C/C++ code is synchronous, so preloading is the
-simplest solution.
+Your C/C++ code can access files using the normal libc API (stdio: ``fopen``, etc.). 
 
-For an example of files with SDL, change to the ``tests/`` directory and
-run
+JavaScript is usually run in the sandboxed environment of a web browser, without direct access to the local filesystem. Emscripten simulates a file system which you can access from the compiled code using the normal libc API. Files that you want to access should be :ref:`preloaded <emcc-preload-file>` or :ref:`embedded <emcc-embed-file>` into the virtual file system. 
 
-::
+Preloading generates a virtual filesystem that corresponds to the filesystem structure at *compile* time, relative to the current directory. 
+	
+.. todo:: **HamishW** When filesystem guide updated may be a better link for preloading and embedding than the emcc links above. These might even be better as term links in glossary.
 
-    ../emcc hello_image_sdl.c --preload-file screenshot.jpg -o a.html
+The `hello_world_file.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
 
-Then browse to a.html. Note that we must run the command from tests/,
-since file preloading will generate files in the virtual filesystem that
-correspond to the current filesystem as it is seen at compile time. When
-we run the command in tests/, then the file is accessible as
-``screenshot.jpg`` and not ``tests/screenshot.jpg``, and the former is
-what the code expects.
+.. include:: ..\..\..\..\tests\hello_world_file.cpp
+   :literal:
+   
+.. include:: ..\..\..\..\tests\hello_world_file.txt
+   :literal:
 
-See also: :ref:`Synchronous-virtual-XHR-backed-file-system-usage`.
+.. note:: The code loads a file at `tests/hello_world_file.txt <https://github.com/kripken/emscripten/blob/master/tests/hello_world_file.txt>`_. We compile the example from the directory "above" **tests** to ensure that the text file is stored at this location in the virtual filesystem.
+   
+The following command is used to preload the data file. The ``--preload-file`` option will automatically preload the file before running the compiled code. This is useful because loading data from the network cannot be done synchronously in browsers outside Web Workers. ::
 
-Optimizing Code
----------------
+    emcc tests/hello_world_file.cpp -o hello.html --preload-file tests/hello_world_file.txt
+	
 
-Emscripten will by default generate unoptimized code, just like gcc
-does. You can generate slightly-optimized code with ``-O1``, for example
+Open ``hello.html`` in the *Firefox web browser* to see the data from **hello_world_file.txt** being displayed. 
 
-::
+.. note:: Unfortunately *Chrome* and *Internet Explorer* do not support ``file://`` :term:`XHR` requests, and can't directly load the local file in which preloaded data is stored. For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``localhost:8080/hello.html``).
 
-    ./emcc -O1 tests/hello_world.cpp
+----
 
-The "hello world" code here doesn't really need to be optimized, so you
-won't see a difference in speed when running it. But, you can look at
-the generated code to see the differences: ``-O1`` applies several minor
-optimizations to the code (simple ones that don't increase compilation
-time), and removes some runtime assertions. For example, ``printf`` will
-have been replaced by ``puts`` in the generated code.
+For an example of how to load files with SDL, check out `tests/hello_image_sdl.c <https://github.com/kripken/emscripten/blob/master/tests/hello_image_sdl.c>`_:
 
-Further optimizations are done in ``-O2``,
+.. include:: ..\..\..\..\tests\hello_image_sdl.c
+   :literal:
 
-::
+The source code expects a file **screenshot.jpg** in the current directory. As discussed above, this means that we need to compile the source and preload from the same directory that contains the screenshot. Change to the **tests/** directory and run: ::
 
-    ./emcc -O2 tests/hello_world.cpp
+    emcc hello_image_sdl.c --preload-file screenshot.jpg -o a.html
 
-If you inspect the generated code now, you will see it looks very
-different.
+Then browse to **a.html** (again, noting that you will need to use either Mozilla Firefox or a web server). You should see a pretty cool image displayed.
+
+For more information about working with the file system see the :ref:`Filesystem-Guide`, :ref:`Filesystem-API` and :ref:`Synchronous-virtual-XHR-backed-file-system-usage`.
+
+
+Optimizing code
+======================================
+
+Emscripten, like *gcc*, generates unoptimized code by default. You can generate slightly-optimized code with the ``-O1`` command line argument (run the test code from the :term:`SDK root directory`): ::
+
+    emcc -O1 tests/hello_world.cpp
+
+The "hello world" code created in **a.out.js** doesn't really need to be optimized, so you won't see a difference in speed when compared to the unoptimized version. 
+
+However, you can compare the generated code to see the differences. ``-O1`` applies several minor optimizations and removes some runtime assertions. For example, ``printf`` will have been replaced by ``puts`` in the generated code.
+
+The optimizations provided by ``-O2`` are much more aggressive. If you run the following command and inspect the generated code (**a.out.js**) you will see that it looks very different: ::
+
+    emcc -O2 tests/hello_world.cpp
+
+For more information about compiler optimization options see :ref:`Optimizing-Code` and the :ref:`emcc tool reference<emcc-compiler-optimization-options>`.
 
 
 .. _running-emscripten-tests:
 
 Running the Emscripten Test Suite and Benchmarks
-------------------------------------------------
+============================================================================
 
-Emscripten has an extensive test suite. You can run it with
-
-::
+Emscripten has an extensive test suite at `tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_. To run every test (this may take several hours), simply call the test script: ::
 
     python tests/runner.py
 
-This will take a long time, perhaps several hours - there are many many
-tests! You can run an individual test as follows:
-
-::
+The individual tests are listed in the different test suites - for example "test_hello_world" is defined in the `core test suite here <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L12>`_. You can run individual tests as shown: ::
 
     python tests/runner.py test_hello_world
 
-If you want to view the generated code from that individual test, do
-``EMCC_DEBUG=1 python tests/runner.py test_hello_world``, and then you
-can look inside the temp directory (``TEMP_DIR/emscripten_temp``, where
-``TEMP_DIR`` is defined in ``~/.emscripten`` - by default it is
-``/tmp``). Note that you can use ``EMCC_DEBUG`` with emcc in general,
-not just with the test runner - it tells emcc to save the internal code
-generation stages (much like ``emcc -v``).
+.. todo:: **HamishW** Confirm that this is how test suites are done. We really should have a stand alone topic for this and link to it at this point.
 
-A test suite specific feature is ``EM_SAVE_DIR=1`` in the environment,
-which will save the temp dir the test runner users, in the same place as
-mentioned in the previous paragraph. This is useful if the test you are
-running creates some temp files.
+To view the generated code from that individual test, you can first set ``EMCC_DEBUG=1``. This is shown for both Windows and Linxu below: ::
 
-Note that Node.js cannot run 100% of the tests in the suite; if you care
-about running them all, you should get the SpiderMonkey shell (a recent
-trunk version).
+	# On Windows, use "set" to set and un-set the environment variable:
+	set EMCC_DEBUG=1 
+	python tests/runner.py test_hello_world
+	set EMCC_DEBUG=0
+	
+	# On Linux, you can do this all in one line
+	EMCC_DEBUG=1 python tests/runner.py test_hello_world
+	
+The generated code is copied into the the temp directory (**TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is defined in :ref:`~/.emscripten <compiler-configuration-file>`. By default the temporary directory location is **/tmp**). 
 
-You can run the Emscripten benchmarks using
+.. note:: You can use ``EMCC_DEBUG`` with :ref:`emcc <emcc>` as well (not just with the test runner). This tells *emcc* to save the internal code generation stages (much like ``emcc -v``).
 
-::
+You can also specify ``EM_SAVE_DIR=1`` in the environment (this is a test suite specific feature) to save the temporary directory that the test runner users to the same place as mentioned in the previous paragraph. This is useful if the test being run creates temporary files.
+
+Note that **Node.js** cannot run all of the tests in the suite; if you care about running them all, you should get a recent trunk version of the `SpiderMonkey <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ shell.
+
+
+----
+
+To run the Emscripten benchmark tests, enter the following command: ::
 
     python tests/runner.py benchmark
 
-This will compile a sequence of benchmarks and run them several times,
-reporting averaged statistics including a comparison to how fast the
-same code runs when compiled to a native executable.
+This will compile a sequence of benchmarks and run them several times, reporting averaged statistics including a comparison to how fast the same code runs when compiled to a native executable.
 
-Under the Hood
---------------
 
-The goal in this tutorial is to show you how to use emcc to compile code
-to JavaScript. The commands are very simple, and normally you don't need
-to understand what goes on underneath. However, if you're curious or you
-want to do something more advanced with Emscripten, then understanding
-more about how it works can be useful.
 
-Cross-Compiling
-~~~~~~~~~~~~~~~
+General tips and next steps
+======================================
 
-The main 'under the hood' topic to be aware of is that **emcc is a
-cross-compiler**: You are on a 'normal' OS, running native code, but
-using emcc you are building for a different environment, JavaScript.
-Other examples of cross-compiling are building for an ARM phone on an
-x86 desktop, etc. When cross-compiling, the thing to keep in mind is
-that you need to build with settings for the target platform, not the
-one you are currently on. For that reason, Emscripten (and other
-cross-compilers) ship with a complete build environment, including
-system headers and so forth. When you run emcc, it does **not** use your
-/usr/include directory, instead it uses the system headers bundled with
-Emscripten (in system/include). One thing to be aware of is if you build
-a project that has hardcoded includes, for example
-``-I/usr/include/something``: Using system headers that way is dangerous
-when you are cross-compiling, since the headers are meant for your local
-system, not for the platform you are actually building for.
+This tutorial walked you through your first steps in calling Emscripten from the command line. There is, of course, far more you can do with the tool. Below are other general tips for using Emscripten:
 
-Emscripten Options
-~~~~~~~~~~~~~~~~~~
-
-The Emscripten compiler (the core code called by emcc that translates
-LLVM assembly to JavaScript) has various options, which sometimes are
-useful to modify. To see the options look in ``src/settings.js``, they
-appear there with descriptions of what they do in comments. To modify a
-setting, use the ``-s`` option to emcc, for example
-
-::
-
-    emcc source.cpp -s TOTAL_STACK=10000000
-
-This invocation of emcc will generate JavaScript that sets aside a lot
-of space for the stack.
-
-General Tips and Next Steps
----------------------------
-
-After finishing this tutorial, here are some general tips for using
-Emscripten:
-
--  There is a lot of useful information on this wiki. In particular, you
-   might be interested in the following pages:
--  
--  
--  
--  
--  
--  If the documentation is lacking for something, use the test suite.
-   Emscripten has an extensive test suite, and everything in it works
-   perfectly on our test machines. For example, if you want to better
-   understand how the ``--pre-js`` option to emcc works, search for
-   ``--pre-js`` in the test suite (``tests/``, and usually the result
-   will be in ``tests/runner.py``).
--  To learn how to use emscripten in advanced ways, read
-   ``src/settings.js`` which describes the compiler options, and
-   ``system/include/emscripten/emscripten.h`` which describes
-   JS-specific C APIs that your C/C++ programs can use when compiled
-   with emscripten.
--  Use the links on the main wiki page to the Emscripten IRC channel and
-   mailing list. When in doubt, get in touch!
-
+-  This site has lots more information about :ref:`compiling and building projects <compiling-and-running-projects-index>`, :ref:`integrating your native code with the web environment <integrating-porting-index>`, :ref:`packaging your code <packaging-code-index>` and publishing.
+-  The Emscripten test suite is a great place to look for examples of how to use Emscripten. For example, if you want to better understand how the *emcc* ``--pre-js`` option works, search for ``--pre-js`` in the test suite: the test suite is extensive and there are likely to be at least some examples.
+-  To learn how to use Emscripten in advanced ways, read :ref:`src/settings.js <settings-js>` and :ref:`emcc <emcc>` which describe the compiler options, and :ref:`emscripten-h` which describes JavaScript-specific C APIs that your C/C++ programs can use when compiled with Emscripten.
+-  When in doubt, :ref:`get in touch <contact>`!
