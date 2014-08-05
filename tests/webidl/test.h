@@ -77,3 +77,19 @@ enum AnEnum {
   enum_value1,
   enum_value2
 };
+
+namespace EnumNamespace {
+  enum EnumInNamespace {
+    e_namespace_val = 78
+  };
+};
+
+class EnumClass {
+ public:
+  enum EnumWithinClass {
+    e_val = 34
+  };
+  EnumWithinClass GetEnum() { return e_val; }
+
+  EnumNamespace::EnumInNamespace GetEnumFromNameSpace() { return EnumNamespace::e_namespace_val; }
+};
