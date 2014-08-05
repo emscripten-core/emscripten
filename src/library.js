@@ -3879,6 +3879,7 @@ LibraryManager.library = {
   __cxa_throw__sig: 'viii',
   __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '__cxa_exception_header_size', '__cxa_last_thrown_exception'],
   __cxa_throw: function(ptr, type, destructor) {
+#if USE_TYPED_ARRAYS != 2
     if (!___cxa_throw.initialized) {
       try {
         {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv119__pointer_type_infoE'), '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
@@ -3891,6 +3892,7 @@ LibraryManager.library = {
       } catch(e){}
       ___cxa_throw.initialized = true;
     }
+#endif
 #if EXCEPTION_DEBUG
     Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + stackTrace());
 #endif
