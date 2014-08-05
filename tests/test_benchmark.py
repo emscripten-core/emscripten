@@ -118,7 +118,7 @@ process(sys.argv[1])
     self.filename = final
 
   def run(self, args):
-    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
+    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
 # Benchmarkers
 try:
