@@ -3843,3 +3843,29 @@ main()
     assert 'callback pre()' in output
     assert 'callback post()' not in output
 
+  def test_bad_locale(self):
+    open('src.cpp', 'w').write(r'''
+
+#include <locale.h>
+#include <stdio.h>
+#include <wctype.h>
+
+int
+main(const int argc, const char * const * const argv)
+{
+  const char * const locale = (argc > 1 ? argv[1] : "C");
+  const char * const actual = setlocale(LC_ALL, locale);
+  if(actual == NULL) {
+    printf("%s locale not supported\n",
+           locale);
+    return 0;
+  }
+  printf("locale set to %s: %s\n", locale, actual);
+}
+
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
+    self.assertContained('waka locale not supported', run_js('a.out.js', args=['waka']))
+

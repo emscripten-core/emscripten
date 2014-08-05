@@ -5954,8 +5954,12 @@ LibraryManager.library = {
   },
 
   setlocale: function(category, locale) {
-    if (!_setlocale.ret) _setlocale.ret = allocate([0], 'i8', ALLOC_NORMAL);
-    return _setlocale.ret;
+    locale = Pointer_stringify(locale);
+    if (locale === 'C' || locale === '') {
+      if (!_setlocale.ret) _setlocale.ret = allocate(intArrayFromString('C'), 'i8', ALLOC_NORMAL);
+      return _setlocale.ret;
+    }
+    return 0;
   },
 
   localeconv: function() {
