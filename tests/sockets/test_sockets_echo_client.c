@@ -44,8 +44,10 @@ void finish(int result) {
   }
 #ifdef __EMSCRIPTEN__
   REPORT_RESULT();
-#endif
+  emscripten_force_exit(result);
+#else
   exit(result);
+#endif
 }
 
 void main_loop() {
