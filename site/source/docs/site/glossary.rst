@@ -4,14 +4,40 @@ Glossary (under-construction)
 
 
 
+Emscripten Tools
+==================
+
 .. glossary::
 	:sorted:
 
 	vs-tool
-		Visual Studio 2010 plugin to integrate MinGW, Clang and Emscripten to the VS IDE.  Automatically added by the Emscripten SDK NSIS Installer if Visual Studio 2010 is present on the target system. Note, at time of writing this only supports Visual Studio 2010.
+		Visual Studio 2010 plugin to integrate MinGW, Clang and Emscripten to the VS IDE.  Automatically added by the :term:`Windows NSIS Installer Emscripten SDK` if Visual Studio 2010 is present on the target system. 
+		
+		.. note:: At time of writing this only supports Visual Studio 2010 (check `here <https://github.com/juj/vs-tool/issues/5>`_ to see if the VS 2012 support has been added).
 
 
-.. todo:: **HamishW** Is there a link we can put for the version support? Should remove the "Note, at time of writing" when fixed.
+	Clang
+		**HamishW**
+		
+	emcc
+		**HamishW**
+	
+	emsdk
+		**HamishW**
+		
+	Emscripten Command Prompt
+		**HamishW**
+		
+	Compiler Configuration File
+		The :ref:`Compiler Configuration File <compiler-configuration-file>` stores the :term:`active <Active Tool/SDK>` tools and SDKs as defined using :term:`emsdk activate <emsdk>`.
+		
+	LLVM
+		**HamishW**
+		
+	node
+		**HamishW**
+	
+	
 
 
 SDK Terms
@@ -39,9 +65,13 @@ The following terms are used when referring to the SDK and :ref:`emsdk`:
 		A portable, no-installer, version of the SDK package. It is identical to the :term:`NSIS SDK installer <Windows NSIS Installer Emscripten SDK>`, except that it does not interact with the Windows registry. This allows Emscripten to be used on a computer without administrative privileges, and means that the installation to be migrated from one location (directory or computer) to another by simply copying/zipping up the directory contents.
 		
 	Windows NSIS Installer Emscripten SDK
-		A Windows NSIS installer of the Emscripten SDK. This registers the Emscripten SDK as a ‘standard’ Windows application. allow it to be installed and removed from Windows like any other app.
+		A Windows NSIS installer of the Emscripten SDK. This registers the Emscripten SDK as a ‘standard’ Windows application, allowing it to be installed and removed from Windows like any other app. This installer also automatically deploys :term:`vs-tool` if Visual Studio 2010 is present on the target system.
 		
-
+	emsdk root directory
+		The :term:`emsdk` can manage any number of :term:`tools <Tool>` and :term:`SDKs <SDK>`, and these are stored in :term:`subdirectories <SDK root directory>` of the *emsdk root directory*. The **emssdk root** is the directory specified when you first installed an SDK.
+		
+	SDK root directory
+		The :term:`emsdk` can store any number of tools and SDKs. The *SDK root directory* is the directory used to store a particular :term:`SDK`. It is located with respect to the :term:`emsdk root directory` as shown: **<emsdk root>\\emscripten\\<sdk root directory>\\**
 
 		
 		

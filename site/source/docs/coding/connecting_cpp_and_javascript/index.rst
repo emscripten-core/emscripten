@@ -9,5 +9,6 @@ This section is for articles about calling the (originally) C/C++ functions from
    
 	Interacting-with-code
 	embind
+	using_the_embind_val_class_from_cpp
 	WebIDL-Binder
    

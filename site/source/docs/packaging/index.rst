@@ -1,3 +1,5 @@
+.. _packaging-code-index:
+
 =====================================
 Packaging (under-construction) 
 =====================================
