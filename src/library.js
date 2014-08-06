@@ -19,11 +19,11 @@
 
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
-  stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
-  stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
-  stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
-  _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
-  __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stdin: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
+  stdout: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
+  stderr: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
+  _impure_ptr: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
+  __dso_handle: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
   $PROCINFO: {
     // permissions
     /*
@@ -2024,7 +2024,7 @@ LibraryManager.library = {
     */
   },
   fgetc__deps: ['$FS', 'fread'],
-  fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
+  fgetc__postset: '_fgetc.ret = ENVIRONMENT_IS_PTHREAD?0:allocate([0], "i8", ALLOC_STATIC);',
   fgetc: function(stream) {
     // int fgetc(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetc.html
@@ -2143,7 +2143,7 @@ LibraryManager.library = {
     return fd === -1 ? 0 : FS.getPtrForStream(FS.getStream(fd));
   },
   fputc__deps: ['$FS', 'write', 'fileno'],
-  fputc__postset: '_fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
+  fputc__postset: '_fputc.ret = ENVIRONMENT_IS_PTHREAD?0:allocate([0], "i8", ALLOC_STATIC);',
   fputc: function(c, stream) {
     // int fputc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputc.html
@@ -2836,7 +2836,7 @@ LibraryManager.library = {
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
   environ__deps: ['$ENV'],
-  environ: 'allocate(1, "i32*", ALLOC_STATIC)',
+  environ: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: 'environ',
   __buildEnvironment__deps: ['__environ'],
@@ -5833,57 +5833,9 @@ LibraryManager.library = {
   // pthread.h (stubs for mutexes only - no thread support yet!)
   // ==========================================================================
 
-  pthread_mutex_init: function() {},
-  pthread_mutex_destroy: function() {},
-  pthread_mutexattr_init: function() {},
-  pthread_mutexattr_settype: function() {},
-  pthread_mutexattr_destroy: function() {},
-  pthread_mutex_lock: function() {},
-  pthread_mutex_unlock: function() {},
-  pthread_mutex_trylock: function() {
-    return 0;
-  },
-  pthread_mutexattr_setpshared: function(attr, pshared) {
-    // XXX implement if/when getpshared is required
-    return 0;
-  },
-  pthread_cond_init: function() {},
-  pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {
-    return 0;
-  },
-  pthread_cond_wait: function() {
-    return 0;
-  },
-  pthread_cond_timedwait: function() {
-    return 0;
-  },
-  pthread_self: function() {
-    //FIXME: assumes only a single thread
-    return 0;
-  },
-  pthread_attr_init: function(attr) {
-    /* int pthread_attr_init(pthread_attr_t *attr); */
-    //FIXME: should allocate a pthread_attr_t
-    return 0;
-  },
   pthread_getattr_np: function(thread, attr) {
     /* int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr); */
     //FIXME: should fill in attributes of the given thread in pthread_attr_t
-    return 0;
-  },
-  pthread_attr_destroy: function(attr) {
-    /* int pthread_attr_destroy(pthread_attr_t *attr); */
-    //FIXME: should destroy the pthread_attr_t struct
-    return 0;
-  },
-  pthread_attr_getstack: function(attr, stackaddr, stacksize) {
-    /* int pthread_attr_getstack(const pthread_attr_t *restrict attr,
-       void **restrict stackaddr, size_t *restrict stacksize); */
-    /*FIXME: assumes that there is only one thread, and that attr is the
-      current thread*/
-    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}};
-    {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}};
     return 0;
   },
 
@@ -5929,17 +5881,6 @@ LibraryManager.library = {
       return 0;
     }
     return ERRNO_CODES.EINVAL;
-  },
-
-  pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push(function() { Runtime.dynCall('vi', routine, [arg]) })
-    _pthread_cleanup_push.level = __ATEXIT__.length;
-  },
-
-  pthread_cleanup_pop: function() {
-    assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
-    __ATEXIT__.pop();
-    _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
   pthread_rwlock_init: function() {
@@ -8124,9 +8065,4 @@ function autoAddDeps(object, name) {
     }
   }
 }
-
-// Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach'].forEach(function(aborter) {
-  LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
-});
 
