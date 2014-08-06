@@ -3869,3 +3869,21 @@ main(const int argc, const char * const * const argv)
     self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
     self.assertContained('waka locale not supported', run_js('a.out.js', args=['waka']))
 
+  def test_js_malloc(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <emscripten.h>
+
+int main() {
+  EM_ASM({
+    for (var i = 0; i < 1000; i++) {
+      var ptr = Module._malloc(1024*1024); // only done in JS, but still must not leak
+      Module._free(ptr);
+    }
+  });
+  printf("ok.\n");
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok.', run_js('a.out.js', args=['C']))
+
