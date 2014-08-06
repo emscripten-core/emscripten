@@ -466,9 +466,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if only_forced:
     temp_files = []
 
-  # Scan symbols
-  symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
-
   # Add in some hacks for js libraries. If a js lib depends on a symbol provided by a C library, it must be
   # added to here, because our deps go only one way (each library here is checked, then we check the next
   # in order - libcxx, libcxextra, etc. - and then we run the JS compiler and provide extra symbols from
@@ -489,11 +486,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if more:
       add_back_deps(need) # recurse to get deps of deps
 
-  ## depend on exported functions
-  #assert len(symbolses) > 0
-  #for export in shared.Settings.EXPORTED_FUNCTIONS:
-  #  if shared.Settings.VERBOSE: logging.debug('adding dependency on export %s' % export)
-  #  symbolses[0].undefs.add(export[1:])
+  # Scan symbols
+  symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
+
+  if len(symbolses) == 0:
+    class Dummy:
+      defs = set()
+      undefs = set()
+    symbolses.append(Dummy())
+
+  # depend on exported functions
+  for export in shared.Settings.EXPORTED_FUNCTIONS:
+    if shared.Settings.VERBOSE: logging.debug('adding dependency on export %s' % export)
+    symbolses[0].undefs.add(export[1:])
 
   for symbols in symbolses:
     add_back_deps(symbols)
