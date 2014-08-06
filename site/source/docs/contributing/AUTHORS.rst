@@ -10,7 +10,7 @@ The `AUTHORS <https://github.com/kripken/emscripten/blob/incoming/AUTHORS>`_ fil
 
 The contributors for releases up to Emscripten |release| inclusive (|today|) are listed below.
 
-.. include::   ..\..\..\..\AUTHORS
+.. include::   ../../../../AUTHORS
    :literal:
 
 

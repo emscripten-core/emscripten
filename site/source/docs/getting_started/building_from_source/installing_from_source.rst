@@ -62,7 +62,7 @@ The following guides explain setting up Emscripten and its prerequisites manuall
 
 
 Configuring the basic Emscripten settings file
-============================================
+==============================================
 
 .. COMMENT - HAMISHW from the MDN - and I suspect no longer needed now we have LLVM Backend. Check and delete if needed. 
 
