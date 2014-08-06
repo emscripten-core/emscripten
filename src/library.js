@@ -5943,22 +5943,39 @@ LibraryManager.library = {
   // locale.h
   // ==========================================================================
 
-  newlocale: function(mask, locale, base) {
-    return _malloc({{{ QUANTUM_SIZE}}});
+  $LOCALE: {
+    curr: 0,
+    check: function(locale) {
+      if (locale) locale = Pointer_stringify(locale);
+      return locale === 'C' || !locale;
+    },
   },
 
-  freelocale__deps: ['free'],
+  newlocale__deps: ['$LOCALE', 'calloc'],
+  newlocale: function(mask, locale, base) {
+    if (!LOCALE.check(locale)) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return 0;
+    }
+    if (!base) base = Module._calloc(4);
+    return base;
+  },
+
+  freelocale__deps: ['$LOCALE', 'free'],
   freelocale: function(locale) {
     _free(locale);
   },
 
+  uselocale__deps: ['$LOCALE'],
   uselocale: function(locale) {
-    return 0;
+    var old = LOCALE.curr;
+    if (locale) LOCALE.curr = locale;
+    return old;
   },
 
+  setlocale__deps: ['$LOCALE'],
   setlocale: function(category, locale) {
-    if (locale) locale = Pointer_stringify(locale);
-    if (locale === 'C' || !locale) {
+    if (LOCALE.check(locale)) {
       if (!_setlocale.ret) _setlocale.ret = allocate(intArrayFromString('C'), 'i8', ALLOC_NORMAL);
       return _setlocale.ret;
     }

@@ -3872,3 +3872,42 @@ int main() {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('ok.', run_js('a.out.js', args=['C']))
 
+  def test_locale_wrong(self):
+    open('src.cpp', 'w').write(r'''
+#include <locale>
+#include <iostream>
+#include <stdexcept>
+
+int
+main(const int argc, const char * const * const argv)
+{
+  const char * const name = argc > 1 ? argv[1] : "C";
+
+  try {
+    const std::locale locale(name);
+    std::cout
+      << "Constructed locale \"" << name << "\"\n"
+      << "This locale is "
+      << (locale == std::locale::global(locale) ? "" : "not ")
+      << "the global locale.\n"
+      << "This locale is " << (locale == std::locale::classic() ? "" : "not ")
+      << "the C locale." << std::endl;
+
+  } catch(const std::runtime_error &ex) {
+    std::cout
+      << "Can't construct locale \"" << name << "\": " << ex.what()
+      << std::endl;
+    return 1;
+
+  } catch(...) {
+    std::cout
+      << "FAIL: Unexpected exception constructing locale \"" << name << '\"'
+      << std::endl;
+    return 127;
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
+    self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
+
