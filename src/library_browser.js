@@ -1132,6 +1132,7 @@ mergeInto(LibraryManager.library, {
       bufferSize: 0
     };
     info.worker.onmessage = function info_worker_onmessage(msg) {
+      if (ABORT) return;
       var info = Browser.workers[id];
       if (!info) return; // worker was destroyed meanwhile
       var callbackId = msg.data['callbackId'];
