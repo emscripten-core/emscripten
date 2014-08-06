@@ -3914,6 +3914,7 @@ LibraryManager.library = {
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
     var ptr = ___cxa_caught_exceptions.pop();
+    ___cxa_last_thrown_exception = ptr;
     {{{ makeThrow('ptr') }}}
   },
   llvm_eh_exception__deps: ['__cxa_last_thrown_exception'],
