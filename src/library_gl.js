@@ -1067,9 +1067,13 @@ var LibraryGL = {
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-#if ASSERTIONS
-    assert(type == 0x1401 /* GL_UNSIGNED_BYTE */);
+    if (type != 0x1401/*GL_UNSIGNED_BYTE*/) {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_ENUM in glReadPixels: Unsupported type ' + type + '!');
 #endif
+      return;
+    }
     var sizePerPixel;
     switch (format) {
       case 0x1907 /* GL_RGB */:
