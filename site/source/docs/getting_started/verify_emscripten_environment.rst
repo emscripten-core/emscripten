@@ -12,11 +12,15 @@ Testing the environment
 
 The first step in verifying the environment is to run Emscripten with the version command (``-v``). 
 
-Open a terminal in the directory in which you installed Emscripten (on Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`). Then call the :ref:`Emscripten Compiler Frontend (emcc) <emcc>` as shown: ::
+Open a terminal in the directory in which you installed Emscripten (on Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`). Then call the :ref:`Emscripten Compiler Frontend (emcc) <emcc>` as shown: 
 
-	emcc -v
+::
+
+	./emcc -v
+
+.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**: 
 	
-The command prints out information about the toolchain and runs some basic sanity checks. The following output reports an installation where Java is missing: 
+The command prints out information about the toolchain and runs some basic sanity checks. For example, the following output reports an installation where Java is missing: 
 
 .. code-block:: javascript
 	:emphasize-lines: 6
@@ -28,15 +32,15 @@ The command prints out information about the toolchain and runs some basic sanit
 	INFO     root: (Emscripten: Running sanity checks)
 	WARNING  root: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten
 
-:ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc -v`` should give no warnings, and if you just enter ``emcc`` (without any input files), it should only give the following warning: ::
+At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``./emcc -v`` should give no warnings, and if you just enter ``./emcc`` (without any input files), it should only give the following warning: ::
 
 	WARNING  root: no input files
 
 The next test is to actually build some code! On the command prompt try to build the **hello_world.cpp** test code (in this case, from the 1.21.0 SDK): ::
 
-		emcc .\emscripten\1.21.0\tests\hello_world.cpp
+		./emcc ./emscripten/1.21.0/tests/hello_world.cpp
 	
-This command should complete without warnings and you will find the compiled javascript file (**a.out.js**) has been created in the current directory.
+This command should complete without warnings and you should find the newly-compiled JavaScript file (**a.out.js**) in the current directory.
 
 If compiling succeeds, you're ready for the :ref:`Tutorial`. If not, check out the troubleshooting instructions below.
 
@@ -46,7 +50,7 @@ If compiling succeeds, you're ready for the :ref:`Tutorial`. If not, check out t
 Troubleshooting
 ===============
 
-As above, first try to run ``emcc -v`` and examine the output to find missing components. You can also try ``emcc --clear-cache`` to empty the compiler's internal cache, which will then be rebuilt next time it is used. 
+First run ``./emcc -v`` and examine the output to find missing components. You can also try ``./emcc --clear-cache`` to empty the compiler's internal cache and reset it to a known good state. 
 
 .. _fixing-missing-components-emcc:
 
@@ -56,13 +60,13 @@ Installing missing components
 Missing tools can often be added using the :ref:`emsdk`. For example, to fix a warning that Java is missing, locate it in the repository, install it, and then set it as active: ::
 	
 	#List all the components. Look for the missing component (in this case "java-7.45-64bit")
-	emsdk list
+	./emsdk list
 	
 	#Install the missing component 
-	emsdk install java-7.45-64bit
+	./emsdk install java-7.45-64bit
 	
 	#Set the component as active
-	emsdk activate java-7.45-64bit
+	./emsdk activate java-7.45-64bit
 
 If the missing component is not listed in *emsdk*, then review the component's installation section in :ref:`installing-from-source`.
 
@@ -72,10 +76,10 @@ Other common problems
 
 Other common problems to check for are:
 
-   -  Typographic errors in the paths in :ref:`.emscripten <compiler-configuration-file>`. These are less likely if you update the file using :ref:`emsdk <emsdk>`.
-   -  Using older versions of Node or JS engines. Use the default versions for the SDK as listed with :ref:`emsdk list <emsdk>`.
+   -  Errors in the paths in :ref:`.emscripten <compiler-configuration-file>`. These are less likely if you update the file using :ref:`emsdk <emsdk>`.
+   -  Using older versions of Node or JavaScript engines. Use the default versions for the SDK as listed with :ref:`emsdk list <emsdk>`.
    -  Using older versions of LLVM. The correct versions come with the SDK, but if you're building the environment from source see :ref:`LLVM-Backend` for the proper repos for LLVM and Clang.
-   -  Not having ``python2`` defined in your system. For compatibility with systems that install python 2.x alongside 3.x, we look for ``python2``. If you only have python 2.x installed, make ``python2`` be a symlink to ``python`` and update :ref:`.emscripten <compiler-configuration-file>`.  You can also invoke the python scripts directly: ::
+   -  Not having *python2* defined in your system. For compatibility with systems that install python 2.x alongside 3.x, we look for *python2*. If you only have python 2.x installed, symlink *python2*  to *python* and update :ref:`.emscripten <compiler-configuration-file>`.  You can also invoke the python scripts directly: ::
    
 		``python emcc``
 

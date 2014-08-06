@@ -13,5 +13,4 @@ This section provides reference for the main :term:`tools <Tool>` in the Emscrip
    emsdk
    emcc
    emcmdprompt
-   compiler_configuration_file
 
