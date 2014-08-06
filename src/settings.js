@@ -520,4 +520,6 @@ var ORIGINAL_EXPORTED_FUNCTIONS = [];
 // If you modify the headers, just clear your cache and emscripten libc should see
 // the new values.
 
+var USE_PTHREADS = 0;
+
 // Reserved: variables containing POINTER_MASKING.

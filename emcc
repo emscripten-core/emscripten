@@ -433,6 +433,7 @@ try:
   emrun = False
   save_bc = False
   memory_init_file = None
+  pthreads = False
   use_preload_cache = False
   no_heap_copy = False
   proxy_to_worker = False
@@ -686,6 +687,10 @@ try:
       if not default_object_extension.startswith('.'):
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
+    elif newargs[i] == '-lpthread':
+      newargs[i] = ''
+      pthreads = True
+      default_cxx_std = False
 
   if should_exit:
     sys.exit(0)
@@ -699,6 +704,7 @@ try:
   if emrun:
     pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
     post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
@@ -734,6 +740,23 @@ try:
   # list. In order to add extra implicit args (embind.cc, etc) below, we keep a
   # counter for the next index that should be used.
   next_arg_index = len(newargs)
+
+  if pthreads:
+    pre_js += open(shared.path_from_root('src', 'atomics_polyfill.js')).read() + '\n'
+    settings_changes.append('USE_PTHREADS=1')
+    js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+
+    def add_sources_in_dir(d):
+      global next_arg_index
+      for subdir, dirs, files in os.walk(d):
+        for file in files:
+          input_files.append((next_arg_index, subdir+'/'+file))
+          next_arg_index += 1
+
+    add_sources_in_dir(shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'thread'))
+    add_sources_in_dir(shared.path_from_root('system', 'lib', 'pthread'))
+    newargs += ['-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')]
+    newargs += ['-x', 'c']
 
   has_source_inputs = False
   has_header_inputs = False
@@ -1350,6 +1373,9 @@ try:
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
       src = None
+
+  if pthreads:
+    shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
   log_time('source transforms')
 
