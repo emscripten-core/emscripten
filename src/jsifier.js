@@ -310,7 +310,7 @@ function JSify(data, functionsOnly) {
       }
 
       if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-        print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n'); // We can't immediately allocate in a pthread, must wait until we have shared the HEAP.
         print('assert(tempDoublePtr % 8 == 0);\n');
         print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
