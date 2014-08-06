@@ -86,3 +86,18 @@ interface EnumClass {
   EnumNamespace_EnumInNamespace GetEnumFromNameSpace();
 };
 
+interface TypeTestClass {
+  void TypeTestClass();
+
+  byte ReturnCharMethod();
+  void AcceptCharMethod(byte x);
+
+  octet ReturnUnsignedCharMethod();
+  void AcceptUnsignedCharMethod(octet x);
+
+  unsigned short ReturnUnsignedShortMethod();
+  void AcceptUnsignedShortMethod(unsigned short x);
+
+  unsigned long ReturnUnsignedLongMethod();
+  void AcceptUnsignedLongMethod(unsigned long x);
+};
