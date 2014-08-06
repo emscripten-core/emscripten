@@ -47,8 +47,8 @@ static inline void a_or_l(volatile void *p, long v)
 
 static inline void *a_cas_p(volatile void *p, void *t, void *s)
 {
-	if (*(long*)p == t)
-		*(long*)p = s;
+	if (*(long*)p == (long)t)
+		*(long*)p = (long)s;
 	return t;
 }
 
