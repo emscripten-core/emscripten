@@ -302,7 +302,9 @@ function JSify(data, functionsOnly) {
           return true;
         });
         // write out the singleton big memory initialization value
+        print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
         print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
+        print('}')
       } else {
         print('/* no memory initializer */'); // test purposes
       }
