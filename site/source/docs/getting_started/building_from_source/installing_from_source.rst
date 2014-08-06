@@ -13,11 +13,11 @@ Things you'll need
 ============================================
 
 - The Emscripten code, from GitHub (git clone git://github.com/kripken/emscripten.git. The master branch is fine, it is guaranteed to always be stable. We merge to master only after all tests pass.)
-- Emscripten's LLVM and Clang. Emscripten now has an LLVM backend ("fastcomp"), which means you need to use our LLVM+Clang. See `Getting Fastcomp <LLVM-Backend#getting-fastcomp>`_ in the :doc:`LLVM Backend` page. 
+- Emscripten's LLVM and Clang. Emscripten now has an LLVM backend ("fastcomp"), which means you need to use our LLVM+Clang. See `Getting Fastcomp <../../contributing/LLVM-Backend.html#getting-fastcomp>`_ in the `LLVM Backend <../../contributing/LLVM-Backend.html>`__ page. 
 
 	.. note::
 		
-		- The `LLVM Backend <https://github.com/kripken/emscripten/wiki/LLVM-Backend>`__ page has instructions for building Emscripten's LLVM+Clang. After you build it, run ``emcc -v``, which should print out the version number as well as run some basic tests.
+		- The `LLVM Backend <../../contributing/LLVM-Backend.html>`__ page has instructions for building Emscripten's LLVM+Clang. After you build it, run ``emcc -v``, which should print out the version number as well as run some basic tests.
 		- It is possible but not recommended to disable  fastcomp and use a stock version of LLVM (see the link for more information).
 		
 - **Node.js** (0.8 or above; 0.10.17 or above to run websocket-using servers in node)
