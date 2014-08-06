@@ -1067,9 +1067,6 @@ var LibraryGL = {
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-#if ASSERTIONS
-    assert(type == 0x1401 /* GL_UNSIGNED_BYTE */);
-#endif
     var sizePerPixel;
     switch (format) {
       case 0x1907 /* GL_RGB */:
@@ -1086,7 +1083,22 @@ var LibraryGL = {
         return;
     }
     var totalSize = width*height*sizePerPixel;
-    GLctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
+    if (type == 0x1401 /* GL_UNSIGNED_BYTE */ || type == 0x1400 /* GL_BYTE */) {
+      GLctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
+    } else if (type == 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */ || type == 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */
+      || type == 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */ || type == 0x1403 /* GL_UNSIGNED_SHORT */ || type == 0x1402 /* GL_SHORT */) {
+      GLctx.readPixels(w, y, width, height, format, type, HEAPU16.subarray(pixels >> 1, pixels + totalSize >> 1));
+    } else if (type == 0x1404 /* GL_INT */ || type == 0x1405 /* GL_UNSIGNED_INT */) {
+      GLctx.readPixels(w, y, width, height, format, type, HEAPU32.subarray(pixels >> 2, pixels + totalSize >> 2));
+    } else if (type == 0x1406 /* GL_FLOAT */) {
+      GLctx.readPixels(w, y, width, height, format, type, HEAPF32.subarray(pixels >> 2, pixels + totalSize >> 2));
+    } else {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_ENUM in glReadPixels: Unrecognized type ' + type + '!');
+#endif
+      return;
+    }
   },
 
   glBindTexture__sig: 'vii',
