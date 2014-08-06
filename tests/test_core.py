@@ -718,12 +718,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       # Now let's see some code that should just work in USE_TYPED_ARRAYS == 2, but requires
       # corrections otherwise
+      Settings.CHECK_SIGNS = 0
       if Settings.USE_TYPED_ARRAYS == 2:
         Settings.CORRECT_SIGNS = 0
-        Settings.CHECK_SIGNS = 1 if not Settings.ASM_JS else 0
       else:
         Settings.CORRECT_SIGNS = 1
-        Settings.CHECK_SIGNS = 0
 
       src = '''
         #include <stdio.h>
@@ -3140,6 +3139,7 @@ def process(filename):
 
   def test_dlfcn_data_and_fptr(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if not self.can_dlfcn(): return
 
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
@@ -3236,6 +3236,7 @@ def process(filename):
                  post_build=self.dlfcn_post_build)
 
   def test_dlfcn_alias(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
 
     Settings.LINKABLE = 1
@@ -3286,6 +3287,7 @@ def process(filename):
 
   def test_dlfcn_varargs(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
 
     if not self.can_dlfcn(): return
 
@@ -3342,7 +3344,7 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_self(self):
-    if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
     Settings.DLOPEN_SUPPORT = 1
 
@@ -3356,7 +3358,7 @@ def process(filename):
           raise Exception('Could not find symbol table!')
       table = table[table.find('{'):table.find('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') <= 4
+      assert table.count(',') <= 8
 
     test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5729,7 +5731,7 @@ def process(filename):
 
       # Run with PGO, see that unused is true to its name
       Settings.PGO = 1
-      test("*9*\n-s DEAD_FUNCTIONS='[\"_unused\"]'")
+      test("*9*\n-s DEAD_FUNCTIONS='[\"_free\",\"_unused\"]'")
       Settings.PGO = 0
 
       # Kill off the dead function, still works and it is not emitted
@@ -6649,10 +6651,10 @@ def process(filename):
     Settings.CORRECT_SIGNS = 1
     self.do_run(src, '*0*') # Now it will work properly
 
-    # And now let's fix just that one line
-    Settings.CORRECT_SIGNS = 2
-    Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
-    self.do_run(src, '*0*')
+    ## And now let's fix just that one line
+    #Settings.CORRECT_SIGNS = 2
+    #Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
+    #self.do_run(src, '*0*')
 
     # Fixing the wrong line should not work
     Settings.CORRECT_SIGNS = 2
