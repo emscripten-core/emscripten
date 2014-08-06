@@ -82,7 +82,7 @@ The *Compiler Configuration File* stores the :term:`active <Active Tool/SDK>` co
 
 The configuration file is named **.emscripten**. It is user-specific, and is located in the user's home directory (**~/.emscripten** on Linux).
 
-The file should not be updated directly. Instead use the :ref:`emsdk` to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
+The file should not be updated directly. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
 
 Below is a typical **.emscripten** file, taken from a user's root directory on Windows:
 

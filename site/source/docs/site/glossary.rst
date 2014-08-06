@@ -34,7 +34,10 @@ Emscripten Tools
 	LLVM
 		**HamishW**
 		
-	node
+	Fastcomp
+		**HamishW**
+		
+	node.js
 		**HamishW**
 	
 	

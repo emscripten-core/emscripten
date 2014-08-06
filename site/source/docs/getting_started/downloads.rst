@@ -28,6 +28,8 @@ Windows
 
 Linux and Mac OS X
 ------------------
+
+.. _portable-emscripten-sdk-linux-osx:
 	
 - `Portable Emscripten SDK for Linux and OS X <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz>`_ (emsdk-portable.tar.gz) 
 		A tar.gz archive package of the SDK that does not require system installation privileges. To install, follow :ref:`the general instructions <all-os-installation_instructions-portable-SDK>` and :ref:`platform-specific notes <platform-notes-installation_instructions-portable-SDK>`.

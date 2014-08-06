@@ -53,7 +53,7 @@ First, lets have a look at the file to be compiled: **hello_world.cpp**. This is
 
 To build the JavaScript version of this code we simply specify the C++ file after *emcc*: ::
 
-	emcc tests\hello_world.cpp
+	emcc tests/hello_world.cpp
 
 
 There should now be an **a.out.js** file in the current directory. Run it using :term:`node`:
