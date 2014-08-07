@@ -1,0 +1,2018 @@
+
+    
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>emscripten.h &mdash; Emscripten 1.20.0 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="top" title="Emscripten 1.20.0 documentation" href="../../index.html"/>
+        <link rel="up" title="API Reference (under-construction)" href="index.html"/>
+        <link rel="next" title="html5.h" href="html5.h.html"/>
+        <link rel="prev" title="API Reference (under-construction)" href="index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+
+<div class="grid-to-center-rtd-theme"> 
+ 
+  <div class="wy-grid-for-nav">
+  
+
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <!-- <a href="../../index.html" class="fa fa-home"> Emscripten</a> -->
+		<a href="../../index.html"> <img src="../..//_static/Emscripten_logo_full.png" alt="Logo" /> </a>
+		
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+
+		 
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../introducing_emscripten/index.html">Introducing Emscripten (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/FAQ.html">FAQ (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/FAQ.html#general">General</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/FAQ.html#using-emscripten">Using Emscripten</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/community.html">Community</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#get-in-touch">Get in touch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#report-a-bug">Report a bug</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#blogs">Blogs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#contribute">Contribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/emscripten_license.html">Open Source License</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/bug_reports.html">Bug Reporting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/bug_reports.html#fastcomp-llvm-backend-and-clang-bugs">Fastcomp LLVM-Backend and Clang bugs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/bug_reports.html#site-and-documentation-bugs">Site and documentation bugs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/release_notes.html">Release Notes (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/release_notes.html#changelog">ChangeLog</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html">Talks and Publications (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html#talks">Talks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html#papers">Papers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html#books">Books</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/index.html">Getting Started (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getting_started/downloads.html">Download and install (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#sdk-downloads">SDK Downloads</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#windows">Windows</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#linux-and-mac-os-x">Linux and Mac OS X</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#installation-instructions">Installation instructions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#windows-installing-using-an-nsis-installer">Windows: Installing using an NSIS installer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#windows-osx-and-linux-installing-the-portable-sdk">Windows, OSX and Linux: Installing the Portable SDK</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#platform-specific-notes">Platform-specific notes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#verifying-the-installation">Verifying the installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#updating-the-sdk">Updating the SDK</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#uninstalling-the-emscripten-sdk">Uninstalling the Emscripten SDK</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#archived-releases">Archived releases</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getting_started/Tutorial.html">Emscripten Tutorial (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#first-things-first">First things first</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#verifying-emscripten">Verifying Emscripten</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#running-emscripten">Running Emscripten</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#generating-html">Generating HTML</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#using-files">Using files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#optimizing-code">Optimizing code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#running-the-emscripten-test-suite-and-benchmarks">Running the Emscripten Test Suite and Benchmarks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#general-tips-and-next-steps">General tips and next steps</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../coding/index.html">Integrating/Porting (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html">CodeGuidelinesAndLimitations (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#code-that-cannot-be-compiled">Code that CANNOT be compiled</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#function-pointer-issues">Function pointer issues</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#code-that-does-compile-but-might-be-slower-than-expected">Code that DOES compile, but might be slower than expected</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#code-that-might-be-useful-to-avoid">Code that MIGHT be useful to avoid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#networking">Networking</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Emscripten-browser-environment.html">Emscripten browser environment (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#browser-main-loop">Browser main loop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#implementing-an-asynchronous-main-loop-in-c-c">Implementing an asynchronous main loop in C/C++</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#execution-lifecycle">Execution lifecycle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#notes">Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/index.html">Connecting C++ and JavaScript (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/Interacting-with-code.html">Interacting with code (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/Interacting-with-code.html#interacting-with-compiled-code">Interacting with Compiled Code</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html">embind (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#what-is-embind">What is embind?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#a-quick-example">A Quick Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#classes">Classes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#memory-management">Memory Management</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#value-types">Value Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#advanced-class-concepts">Advanced Class Concepts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#overloaded-functions">Overloaded Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#enums">Enums</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#constants">Constants</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#val">val</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#built-in-type-conversions">Built-in Type Conversions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#performance">Performance</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#future-work">Future Work</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#how-does-it-work">How does it work?</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/using_the_embind_val_class_from_cpp.html">Using Web Audio API from Cpp with the Embind val class (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/using_the_embind_val_class_from_cpp.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/using_the_embind_val_class_from_cpp.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/WebIDL-Binder.html">WebIDL Binder (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/WebIDL-Binder.html#id1">WebIDL Binder</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/multimedia_and_graphics/index.html">Multimedia and Graphics (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html">EGL Support in Emscripten (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html#what-egl-is-not">What EGL is not?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html#how-to-create-a-webgl-context-using-egl">How to create a WebGL context using EGL?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html#implementation-status-and-notes">Implementation Status and Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html">OpenGL support (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#emulation-levels">Emulation levels</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#what-is-the-webgl-friendly-subset-of-opengl">What is the &#8220;WebGL-friendly subset of OpenGL&#8221;?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#writing-for-the-webgl-friendly-subset-of-opengl">Writing for the WebGL-friendly subset of OpenGL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#what-if-i-need-additional-gl-features-not-supported-yet">What if I need additional GL features not supported yet?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Asm-pointer-casts.html">Asm pointer casts (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Synchronous-Virtual-XHR-Backed-File-System-Usage.html">Synchronous Virtual XHR Backed File System Usage (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Synchronous-Virtual-XHR-Backed-File-System-Usage.html#instructions-for-use">Instructions for use</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/debugging/index.html">Debugging (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/debugging/Debugging.html">Debugging (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/debugging/Debugging.html#id1">Debugging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/debugging/Debugging.html#debugging-emscripten-issues">Debugging Emscripten Issues</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Browser-limitations.html">Browser limitations (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Garbage_Collection.html">GC (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#api-changes-from-boehm">API Changes From Boehm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#mechanism">Mechanism</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#pitfalls">Pitfalls</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#relevant-files">Relevant Files</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../optimizing/index.html">Optimization (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../optimizing/Optimizing-Code.html">Optimizing Code (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#optimizing-the-generated-code">Optimizing the Generated Code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#using-emcc">Using emcc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#how-to-optimize-code">How to optimize code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#advanced-compiler-settings">Advanced compiler settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#very-large-projects">Very large projects</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#memory-initialization">Memory initialization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#optimization-levels">Optimization levels</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#code-size">Code size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#outlining">Outlining</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#aggressive-variable-elimination">Aggressive Variable Elimination</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#other-optimization-issues">Other optimization issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#exception-catching">Exception Catching</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#viewing-code-optimization-passes">Viewing code optimization passes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#inlining">Inlining</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#unsafe-optimizations">Unsafe optimizations</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#profiling">Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#troubleshooting-slowness">Troubleshooting Slowness</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../optimizing/Optimizing-the-source-code.html">Optimizing the source code (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-the-source-code.html#id1">Optimizing the source code</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../compiling/index.html">Compiling and running projects (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../compiling/Building-Projects.html">Building Projects (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Building-Projects.html#id1">Building Projects</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#optimizations">Optimizations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#debug-info">Debug info</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#notes">Notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#build-system-self-execution">Build System Self-Execution</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#dynamic-linking">Dynamic Linking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#linking-in-libraries">Linking in libraries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#configure">Configure</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compiling/Code-Generation-Modes.html">Code Generation Modes (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#id1">Code Generation Modes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#typed-arrays">Typed Arrays</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#bit-integer-modes">64-bit Integer Modes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#double-mode">Double Mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#exceptions">Exceptions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#memory-compression-a-k-a-quantum-size-1">Memory Compression (a.k.a QUANTUM_SIZE == 1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html">Running html files with emrun (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#features">Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#quick-how-to">Quick how-to</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#choosing-the-browser-to-run">Choosing the browser to run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#controlling-web-server-operation">Controlling web server operation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#controlling-log-output">Controlling log output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#cleaning-up-after-the-run">Cleaning up after the run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#running-web-pages-on-an-android-device">Running web pages on an Android device</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../packaging/index.html">Packaging (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../packaging/Filesystem-Guide.html">Filesystem Guide (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../packaging/Filesystem-Guide.html#id1">Filesystem Guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../packaging/Filesystem-Guide.html#packaging-files">Packaging files</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../packaging/Filesystem-Guide.html#customizing-the-data-url">Customizing the data URL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../packaging/Filesystem-Guide.html#mapping">&#64; Mapping</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../packaging/Filesystem-Guide.html#monitoring-read-files">Monitoring Read Files</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../packaging/Filesystem-Guide.html#manually-using-the-fs-api">Manually using the FS API</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../building_from_source/index.html">Installing Emscripten from source (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/installing_from_source.html">Installing from Source (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#things-you-ll-need">Things you&#8217;ll need</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#additional-notes">Additional Notes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#windows-and-osx-guides-for-manual-building">Windows and OSX: guides for manual building</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#linux-guides-for-manual-building">Linux: guides for manual building</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#configuring-the-basic-emscripten-settings-file">Configuring the basic Emscripten settings file</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html">Manually setting up Emscripten on Linux (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#installing-required-tools">Installing required tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#configuring-emscripten">Configuring Emscripten</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#notes-take-from-existing-doc-sources">Notes take from existing doc sources</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#things-you-ll-need">Things you&#8217;ll need</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#additional-notes">Additional Notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#linux-guides-for-manual-building">Linux: guides for manual building</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#configuring-the-basic-emscripten-settings-file">Configuring the basic Emscripten settings file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#linux-from-the-portable-sdk-installation-notes">Linux - from the portable SDK installation notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#installing-node-js">Installing Node.js</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html">Using Emscripten on Windows (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#setting-up-the-emscripten-toolchain-on-windows">Setting up the Emscripten Toolchain on Windows</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#installing-required-tools">Installing required tools</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#configuring-emscripten">Configuring Emscripten</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#integrating-emscripten-to-visual-studio-2010">Integrating Emscripten to Visual Studio 2010</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#tips-for-using-emscripten-from-the-visual-studio-2010-ide">Tips for using Emscripten from the Visual Studio 2010 IDE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#building-llvm-clang-from-source">Building LLVM/Clang from Source</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/Getting-started-on-Mac-OS-X.html">Getting started on Mac OS X (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/LLVM-Backend.html">LLVM Backend (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#llvm-backend-aka-fastcomp">LLVM Backend, aka &#8220;fastcomp&#8221;</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#overview-of-fastcomp">Overview of Fastcomp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#getting-fastcomp">Getting Fastcomp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#backend-code-structure">Backend code structure</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#why-did-this-change-happen">Why did this change happen?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#status-of-original-compiler-and-how-to-disable-fastcomp">Status of Original Compiler (and how to disable fastcomp)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#faq">FAQ</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html">Verifying the Emscripten Development Environment (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#testing-the-environment">Testing the environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#installing-missing-components">Installing missing components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#other-common-problems">Other common problems</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing to Emscripten (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/contributing.html">Contributing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#getting-started">Getting started</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#branches-of-interest">Branches of interest</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#submitting-patches">Submitting patches</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#code-reviews">Code reviews</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#next-steps">Next steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/developers_guide.html">Developer&#8217;s Guide (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#basic-useful-stuff">Basic useful stuff</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#running-a-specific-test">Running a specific test</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#test-failures">Test failures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#general-compiler-overview">General compiler overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#wiki-pages-you-should-read">Wiki pages you should read</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#bisection">Bisection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#debugging-tricks">Debugging tricks</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/LLVM-Types-in-JavaScript.html">LLVM Types in JavaScript (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/AUTHORS.html">AUTHORS (ready-for-review)</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Reference (under-construction)</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="">emscripten.h</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#inline-assembly-javascript">Inline assembly/JavaScript</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#defines">Defines</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#calling-javascript-from-c-c">Calling JavaScript From C/C++</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#function-pointer-types-for-callbacks">Function pointer types for callbacks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#browser-execution-environment">Browser Execution Environment</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id3">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#emscripten-file-system-api">Emscripten File System API</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#typedefs">Typedefs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#compiling">Compiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#worker-api">Worker API</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id5">Typedefs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#logging-utilities">Logging utilities</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id7">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#networking">Networking</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id9">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">Functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="html5.h.html">html5.h</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#how-to-use-this-api">How to use this API</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#registration-functions">Registration functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#callback-functions">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#functions-affected-by-web-security">Functions affected by web security</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#test-example-code">Test/Example code</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#general-types">General types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#function-result-values">Function result values</a></li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#keys">Keys</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#defines">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#struct">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id2">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#mouse">Mouse</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id3">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id4">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id5">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id6">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#wheel">Wheel</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id7">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id10">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id11">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id12">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#ui">UI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id14">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id15">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id16">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id17">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#focus">Focus</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id20">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id21">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id23">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id24">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#device-orientation">Device orientation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id29">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id30">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id31">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id32">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#device-motion">Device motion</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id34">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id35">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id37">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id38">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#id41">Orientation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id42">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id43">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id45">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id46">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#fullscreen">Fullscreen</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id48">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id49">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id52">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id53">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#pointerlock">Pointerlock</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id56">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id57">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id60">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id61">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#visibility">Visibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id64">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id65">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id67">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id68">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#touch">Touch</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id70">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id71">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id72">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id73">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#gamepad">Gamepad</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id75">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id77">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id79">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id80">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#battery">Battery</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id82">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id83">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id85">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id86">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#vibration">Vibration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id88">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#page-unload">Page unload</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id90">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id91">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id92">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#webgl-context">WebGL context</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id94">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id96">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id97">Functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="preamble.js.html">preamble.js</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="preamble.js.html#calling-compiled-c-functions-from-javascript">Calling compiled C functions from JavaScript</a></li>
+<li class="toctree-l3"><a class="reference internal" href="preamble.js.html#accessing-memory">Accessing memory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="preamble.js.html#conversion-functions-strings-pointers-and-arrays">Conversion functions — strings, pointers and arrays</a></li>
+<li class="toctree-l3"><a class="reference internal" href="preamble.js.html#run-dependencies">Run dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="preamble.js.html#stack-trace">Stack trace</a></li>
+<li class="toctree-l3"><a class="reference internal" href="preamble.js.html#type-accessors-for-typed-arrays-mode-2">Type accessors for Typed Arrays Mode 2</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Filesystem-API.html">Filesystem API (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#persistence">Persistence</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#memfs">MEMFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#nodefs">NODEFS</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Filesystem-API.html#mount-options">Mount options</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#idbfs">IDBFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#devices">Devices</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Filesystem-API.html#setting-up-standard-i-o-devices">Setting up standard I/O devices</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#filesystem">Filesystem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#file-types">File types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#paths">Paths</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-apis.html">Advanced APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="advanced-apis.html#settings-js">settings.js</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced-apis.html#allocate">allocate()</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced-apis.html#module-runtime">Module.Runtime</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../tools_reference/index.html">Tools Reference (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tools_reference/emsdk.html">Emscripten SDK Manager (emsdk) (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#purpose">Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#command-line-syntax">Command line syntax</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#arguments">Arguments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#tools-and-sdk-targets">Tools and SDK targets</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#sdk-manager-concepts">SDK manager concepts</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#emscripten-compiler-configuration-file-emscripten">Emscripten Compiler Configuration File (.emscripten)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#how-to-guides">&#8220;How to&#8221; guides</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-just-get-the-latest-sdk">How do I just get the latest SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-use-emsdk">How do I use emsdk?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-check-which-versions-of-the-sdk-and-tools-are-installed">How do I check which versions of the SDK and tools are installed?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-install-a-tool-sdk-version">How do I install a tool/SDK version?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-remove-a-tool-or-an-sdk">How do I remove a tool or an SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-check-for-updates-to-the-emscripten-sdk">How do I check for updates to the Emscripten SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-change-the-currently-active-sdk-version">How do I change the currently active SDK version?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-install-an-old-emscripten-compiler-version">How do I install an old Emscripten compiler version?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-track-the-latest-emscripten-development-with-the-sdk">How do I track the latest Emscripten development with the SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-use-my-own-emscripten-github-fork-with-the-sdk">How do I use my own Emscripten Github fork with the SDK?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools_reference/emcc.html">Emscripten Compiler Frontend (emcc) (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcc.html#purpose">Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcc.html#command-line-syntax">Command line syntax</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emcc.html#arguments">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcc.html#environment-variables">Environment variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools_reference/emcmdprompt.html">Emscripten Windows Command Prompt (emcmdprompt.bat) (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcmdprompt.html#purpose">Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcmdprompt.html#command-line-syntax">Command line syntax</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../site/about.html">About site (ready-for-review)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#page-management-markup">Page management markup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#reporting-bugs">Reporting bugs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#searching-the-site">Searching the site</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#building-the-site">Building the site</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#make-html">make html</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#installing-sphinx">Installing Sphinx</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../site/about.html#ubuntu">Ubuntu</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#writing-and-updating-articles">Writing and updating articles</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#style-guide">Style guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#how-to-link-to-a-document-or-heading">How to link to a document or heading</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#recommended-section-heading-markup">Recommended section/heading markup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#working-in-markdown">Working in markdown</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#read-the-docs-theme">Read the docs theme</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#site-license">Site license</a></li>
+</ul>
+</li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+	
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+         <i data-toggle="wy-nav-top" class="fa fa-bars"></i> 
+        <!-- <a href="../../index.html">Emscripten</a> -->
+		<a href="../../index.html"> <img src="../..//_static/Emscripten_logo_full.png" alt="Logo" /> </a>
+      </nav>
+
+	    
+	  
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+		
+		   <!--begin hamishw addition --> 
+   
+   <!--Nav bar defined as a document followed by short version of nav text and long version
+    If no such page exists then nav item is not created. CSS defines which of the long or short version is 
+	displayed.   -->
+   <div class="main-nav-bar" style="">   
+   
+   <!-- the layout of the menu options - centered with left and right alignment of the first and last loop items respectively.
+   This is VERY UGLY as I'm adding to the CSS in the code to force the alignment. Would be better just to have the elements here and have the CSS in the CSS file. This could be done with a CSS selector, but not worked out how yet. -->
+   
+	 <ul id="menu-options">
+        
+              <li style="text-align:left;"><a class="navlink-short" title="Docs" href="../index.html">Docs</a><a class="navlink-long" title="Documentation" href="../index.html">Documentation</a></li>
+        
+              <li><a class="navlink-short" title="SDK" href="../getting_started/downloads.html">SDK</a><a class="navlink-long" title="Downloads" href="../getting_started/downloads.html">Downloads</a></li>
+        
+              <li><a class="navlink-short" title="Help" href="../introducing_emscripten/community.html">Help</a><a class="navlink-long" title="Community" href="../introducing_emscripten/community.html">Community</a></li>
+         
+		      <li style="text-align:right;"><a class="navlink-short" href="https://github.com/kripken/emscripten">Github</a><a class="navlink-long" href="https://github.com/kripken/emscripten">Github Project</a></li>
+           	
+     </ul>
+	 <!-- <div style="clear:both;"></div> -->
+	 <div role="navigation" aria-label="breadcrumbs navigation">
+
+  <div class="breadcrumb-box">
+     <a class="breadcrumb-box-item" href="../../index.html">Home</a> 
+      
+          <a class="breadcrumb-box-item" href="index.html">&raquo;&nbsp;API Reference (under-construction)</a>
+      
+    <div class="breadcrumb-box-item">&raquo;&nbsp;emscripten.h</div>
+  </div>
+ 
+</div>
+ 
+   </div>
+  
+   
+	
+   <!--end hamishw addition -->
+		
+          <!--HamishW move <div role="navigation" aria-label="breadcrumbs navigation">
+
+  <div class="breadcrumb-box">
+     <a class="breadcrumb-box-item" href="../../index.html">Home</a> 
+      
+          <a class="breadcrumb-box-item" href="index.html">&raquo;&nbsp;API Reference (under-construction)</a>
+      
+    <div class="breadcrumb-box-item">&raquo;&nbsp;emscripten.h</div>
+  </div>
+ 
+</div> -->
+          <div role="main">
+            
+  <div class="section" id="emscripten-h">
+<span id="id1"></span><h1>emscripten.h<a class="headerlink" href="#emscripten-h" title="Permalink to this headline">¶</a></h1>
+<p>This page documents the public C++ APIs provided by <a class="reference external" href="https://github.com/kripken/emscripten/blob/master/system/include/emscripten/emscripten.h">emscripten.h</a>.</p>
+<p>Emscripten uses existing/familiar APIs where possible (for example: SDL). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API.</p>
+<div class="contents local topic" id="table-of-contents">
+<p class="topic-title first">Table of Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#inline-assembly-javascript" id="id11">Inline assembly/JavaScript</a></li>
+<li><a class="reference internal" href="#calling-javascript-from-c-c" id="id12">Calling JavaScript From C/C++</a></li>
+<li><a class="reference internal" href="#browser-execution-environment" id="id13">Browser Execution Environment</a></li>
+<li><a class="reference internal" href="#emscripten-file-system-api" id="id14">Emscripten File System API</a></li>
+<li><a class="reference internal" href="#compiling" id="id15">Compiling</a></li>
+<li><a class="reference internal" href="#worker-api" id="id16">Worker API</a></li>
+<li><a class="reference internal" href="#logging-utilities" id="id17">Logging utilities</a></li>
+<li><a class="reference internal" href="#networking" id="id18">Networking</a></li>
+</ul>
+</div>
+<div class="section" id="inline-assembly-javascript">
+<h2><a class="toc-backref" href="#id11">Inline assembly/JavaScript</a><a class="headerlink" href="#inline-assembly-javascript" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="defines">
+<h3>Defines<a class="headerlink" href="#defines" title="Permalink to this headline">¶</a></h3>
+<dl class="macro">
+<dt id="c.EM_ASM">
+<tt class="descname">EM_ASM</tt><big>(</big>...<big>)</big><a class="headerlink" href="#c.EM_ASM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenient syntax for inline assembly/JavaScript.</p>
+<p>This allows you to declare JavaScript in your C code &#8220;inline&#8221;, which is then executed when your compiled code is run in the browser. For example, the following C code would display two alerts if it was compiled with Emscripten and run in the browser:</p>
+<div class="highlight-cpp"><div class="highlight"><pre>EM_ASM( alert(‘hai’));
+alert(‘bai’)); )
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last simple">
+<li>Double-quotes (&#8221;) cannot be used in the inline assembly/JavaScript. Single-quotes (‘) can be used, as shown above.</li>
+<li>Newlines (\n, \r etc.) are supported in the inline Javascript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using <tt class="docutils literal"><span class="pre">EM_ASM</span></tt>.</li>
+<li>This works with <strong>asm.js</strong> (it outlines the code and does a function call to reach it).</li>
+<li>You can’t access C variables with <a class="reference internal" href="#c.EM_ASM" title="EM_ASM"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM</span></tt></a>, nor receive a value back. Instead use <a class="reference internal" href="#c.EM_ASM_ARGS" title="EM_ASM_ARGS"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_ARGS</span></tt></a>, <a class="reference internal" href="#c.EM_ASM_INT" title="EM_ASM_INT"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_INT</span></tt></a>, or <a class="reference internal" href="#c.EM_ASM_DOUBLE" title="EM_ASM_DOUBLE"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_DOUBLE</span></tt></a>.</li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_ASM_">
+<tt class="descname">EM_ASM_</tt><big>(</big>code, ...<big>)</big><a class="headerlink" href="#c.EM_ASM_" title="Permalink to this definition">¶</a></dt>
+<dt id="c.EM_ASM_ARGS">
+<tt class="descname">EM_ASM_ARGS</tt><big>(</big>code, ...<big>)</big><a class="headerlink" href="#c.EM_ASM_ARGS" title="Permalink to this definition">¶</a></dt>
+<dt id="c.EM_ASM_INT">
+<tt class="descname">EM_ASM_INT</tt><big>(</big>code, ...<big>)</big><a class="headerlink" href="#c.EM_ASM_INT" title="Permalink to this definition">¶</a></dt>
+<dt id="c.EM_ASM_DOUBLE">
+<tt class="descname">EM_ASM_DOUBLE</tt><big>(</big>code, ...<big>)</big><a class="headerlink" href="#c.EM_ASM_DOUBLE" title="Permalink to this definition">¶</a></dt>
+<dt id="c.EM_ASM_INT_V">
+<tt class="descname">EM_ASM_INT_V</tt><big>(</big>code<big>)</big><a class="headerlink" href="#c.EM_ASM_INT_V" title="Permalink to this definition">¶</a></dt>
+<dt id="c.EM_ASM_DOUBLE_V">
+<tt class="descname">EM_ASM_DOUBLE_V</tt><big>(</big>code<big>)</big><a class="headerlink" href="#c.EM_ASM_DOUBLE_V" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input-output versions of EM_ASM.</p>
+<p><a class="reference internal" href="#c.EM_ASM_" title="EM_ASM_"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_</span></tt></a> (an extra &#8220;_&#8221; is added) or <a class="reference internal" href="#c.EM_ASM_ARGS" title="EM_ASM_ARGS"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_ARGS</span></tt></a> allow values (<tt class="docutils literal"><span class="pre">int</span></tt> or <tt class="docutils literal"><span class="pre">double</span></tt>) to be sent into the code.</p>
+<p>If you also want a return value, <a class="reference internal" href="#c.EM_ASM_INT" title="EM_ASM_INT"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_INT</span></tt></a> receives arguments (of <tt class="docutils literal"><span class="pre">int</span></tt> or <tt class="docutils literal"><span class="pre">double</span></tt> type) and returns an <tt class="docutils literal"><span class="pre">int</span></tt>; <a class="reference internal" href="#c.EM_ASM_DOUBLE" title="EM_ASM_DOUBLE"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_DOUBLE</span></tt></a> does the same and returns a <tt class="docutils literal"><span class="pre">double</span></tt>.</p>
+<p>Arguments arrive as <tt class="docutils literal"><span class="pre">$0</span></tt>, <tt class="docutils literal"><span class="pre">$1</span></tt> etc. The output value should be returned:</p>
+<div class="highlight-cpp"><div class="highlight"><pre>int x = EM_ASM_INT({
+  console.log(&#39;I received: &#39; + [$0, $1]);
+  return $0 + $1;
+}, calc(), otherCalc());
+</pre></div>
+</div>
+<p>Note the <tt class="docutils literal"><span class="pre">{</span></tt> and <tt class="docutils literal"><span class="pre">}</span></tt>.</p>
+<p>If you just want to receive an output value (<tt class="docutils literal"><span class="pre">int</span></tt> or <tt class="docutils literal"><span class="pre">double</span></tt>) but not pass any values, you can use <a class="reference internal" href="#c.EM_ASM_INT_V" title="EM_ASM_INT_V"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_INT_V</span></tt></a> or <a class="reference internal" href="#c.EM_ASM_DOUBLE_V" title="EM_ASM_DOUBLE_V"><tt class="xref c c-macro docutils literal"><span class="pre">EM_ASM_DOUBLE_V</span></tt></a>, respectively.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="calling-javascript-from-c-c">
+<h2><a class="toc-backref" href="#id12">Calling JavaScript From C/C++</a><a class="headerlink" href="#calling-javascript-from-c-c" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="function-pointer-types-for-callbacks">
+<h3>Function pointer types for callbacks<a class="headerlink" href="#function-pointer-types-for-callbacks" title="Permalink to this headline">¶</a></h3>
+<p>The following types are used to define function callback signatures used in a number of functions in this file.</p>
+<dl class="type">
+<dt id="c.em_callback_func">
+<tt class="descname">em_callback_func</tt><a class="headerlink" href="#c.em_callback_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>General function pointer type for use in callbacks with no parameters.</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_callback_func</span><span class="p">)(</span><span class="kt">void</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_arg_callback_func">
+<tt class="descname">em_arg_callback_func</tt><a class="headerlink" href="#c.em_arg_callback_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generic function pointer type for use in callbacks with a single <tt class="docutils literal"><span class="pre">void*</span></tt> parameter.</p>
+<p>This type is used to define function callbacks that need to pass arbitrary data. For example, <a class="reference internal" href="#c.emscripten_set_main_loop_arg" title="emscripten_set_main_loop_arg"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_main_loop_arg()</span></tt></a> sets user-defined data, and passes it to a callback of this type on completion.</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_arg_callback_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_str_callback_func">
+<tt class="descname">em_str_callback_func</tt><a class="headerlink" href="#c.em_str_callback_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>General function pointer type for use in callbacks with a C string (<tt class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span></tt>) parameter.</p>
+<p>This type is used for function callbacks that need to be passed a C string. For example, it is used in <a class="reference internal" href="#c.emscripten_async_wget" title="emscripten_async_wget"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget()</span></tt></a> to pass the name of a file that has been asynchronously loaded.</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_str_callback_func</span><span class="p">)(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="c.emscripten_run_script">
+void <tt class="descname">emscripten_run_script</tt><big>(</big>const char<em>&nbsp;*script</em><big>)</big><a class="headerlink" href="#c.emscripten_run_script" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interface to the underlying JavaScript engine. This function will <tt class="docutils literal"><span class="pre">eval()</span></tt> the given script.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>script</strong> (<em>const char*</em>) &#8211; The script to evaluate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">void</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_run_script_int">
+int <tt class="descname">emscripten_run_script_int</tt><big>(</big>const char<em>&nbsp;*script</em><big>)</big><a class="headerlink" href="#c.emscripten_run_script_int" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interface to the underlying JavaScript engine. This function will <tt class="docutils literal"><span class="pre">eval()</span></tt> the given script.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>script</strong> (<em>const char*</em>) &#8211; The script to evaluate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The result of the evaluation, as an integer.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_run_script_string">
+char *<tt class="descname">emscripten_run_script_string</tt><big>(</big>const char<em>&nbsp;*script</em><big>)</big><a class="headerlink" href="#c.emscripten_run_script_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interface to the underlying JavaScript engine. This function will <tt class="docutils literal"><span class="pre">eval()</span></tt> the given script. Note that this overload uses a single buffer shared between calls.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>script</strong> (<em>const char*</em>) &#8211; The script to evaluate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The result of the evaluation, as a string.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">char*</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_async_run_script">
+void <tt class="descname">emscripten_async_run_script</tt><big>(</big>const char<em>&nbsp;*script</em>, int<em>&nbsp;millis</em><big>)</big><a class="headerlink" href="#c.emscripten_async_run_script" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asynchronously run a script, after a specified amount of time.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>script</strong> (<em>const char*</em>) &#8211; The script to evaluate.</li>
+<li><strong>millis</strong> (<em>int</em>) &#8211; The amount of time before the script is run, in milliseconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">void</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_async_load_script">
+void <tt class="descname">emscripten_async_load_script</tt><big>(</big>const char<em>&nbsp;*script</em>, <a class="reference internal" href="#c.em_callback_func" title="em_callback_func">em_callback_func</a><em>&nbsp;onload</em>, <a class="reference internal" href="#c.em_callback_func" title="em_callback_func">em_callback_func</a><em>&nbsp;onerror</em><big>)</big><a class="headerlink" href="#c.emscripten_async_load_script" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asynchronously loads a script from a URL.</p>
+<p>This integrates with the run dependencies system, so your script can call <tt class="docutils literal"><span class="pre">addRunDependency</span></tt> multiple times, prepare various asynchronous tasks, and call <tt class="docutils literal"><span class="pre">removeRunDependency</span></tt> on them; when all are complete (or there were no run dependencies to begin with), <tt class="docutils literal"><span class="pre">onload</span></tt> is called. An example use for this is to load an asset module, that is, the output of the file packager.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>script</strong> (<em>const char*</em>) &#8211; The script to evaluate.</li>
+<li><strong>onload</strong> (<a class="reference internal" href="#c.em_callback_func" title="em_callback_func"><em>em_callback_func</em></a>) &#8211; A callback function, with no parameters, that is executed when the script has fully loaded.</li>
+<li><strong>onerror</strong> (<a class="reference internal" href="#c.em_callback_func" title="em_callback_func"><em>em_callback_func</em></a>) &#8211; A callback function, with no parameters, that is executed if there is an error in loading.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">void</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="browser-execution-environment">
+<h2><a class="toc-backref" href="#id13">Browser Execution Environment</a><a class="headerlink" href="#browser-execution-environment" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id3">
+<h3>Functions<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="c.emscripten_set_main_loop">
+void <tt class="descname">emscripten_set_main_loop</tt><big>(</big><a class="reference internal" href="#c.em_callback_func" title="em_callback_func">em_callback_func</a><em>&nbsp;func</em>, int<em>&nbsp;fps</em>, int<em>&nbsp;simulate_infinite_loop</em><big>)</big><a class="headerlink" href="#c.emscripten_set_main_loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a C function as the main event loop.</p>
+<p>If the main loop function needs to receive user-defined data, use <a class="reference internal" href="#c.emscripten_set_main_loop_arg" title="emscripten_set_main_loop_arg"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_main_loop_arg()</span></tt></a> instead.</p>
+<p>The JavaScript environment will call that function at a specified number of frames per second. Setting 0 or a negative value as the <tt class="docutils literal"><span class="pre">fps</span></tt> will instead use the browser’s <tt class="docutils literal"><span class="pre">requestAnimationFrame</span></tt> mechanism to call the main loop function. This is <strong>HIGHLY</strong> recommended if you are doing rendering, as the browser’s <tt class="docutils literal"><span class="pre">requestAnimationFrame</span></tt> will make sure you render at a proper smooth rate that lines up with the the browser and monitor in a proper way. (If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.)</p>
+<p>If <tt class="docutils literal"><span class="pre">simulate_infinite_loop</span></tt> is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to <a class="reference internal" href="#c.emscripten_set_main_loop" title="emscripten_set_main_loop"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_main_loop()</span></tt></a> being run, which is the closest we can get to simulating an infinite loop (we do something similar in <tt class="docutils literal"><span class="pre">glutMainLoop</span></tt> in GLUT). If this parameter is false, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, <tt class="docutils literal"><span class="pre">atexit</span></tt>, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if <tt class="docutils literal"><span class="pre">simulate_infinite_loop</span></tt> is false, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">See <a class="reference internal" href="#c.emscripten_set_main_loop_expected_blockers" title="emscripten_set_main_loop_expected_blockers"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_main_loop_expected_blockers()</span></tt></a>, <a class="reference internal" href="#c.emscripten_pause_main_loop" title="emscripten_pause_main_loop"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_pause_main_loop()</span></tt></a>, <a class="reference internal" href="#c.emscripten_resume_main_loop" title="emscripten_resume_main_loop"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_resume_main_loop()</span></tt></a> and <a class="reference internal" href="#c.emscripten_cancel_main_loop" title="emscripten_cancel_main_loop"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_cancel_main_loop()</span></tt></a> for information about blocking, pausing, and resuming the main loop.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>func</strong> (<a class="reference internal" href="#c.em_callback_func" title="em_callback_func"><em>em_callback_func</em></a>) &#8211; C function to set as main event loop.</li>
+<li><strong>fps</strong> (<em>int</em>) &#8211; Number of frames per second that the JavaScript will call the function. Setting <tt class="docutils literal"><span class="pre">int</span> <span class="pre">&lt;=0</span></tt> (recommended) uses the browser’s <tt class="docutils literal"><span class="pre">requestAnimationFrame</span></tt> mechanism to call the function.</li>
+<li><strong>simulate_infinite_loop</strong> (<em>int</em>) &#8211; If true, this function will throw an exception in order to stop execution of the caller.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_set_main_loop_arg">
+void <tt class="descname">emscripten_set_main_loop_arg</tt><big>(</big><a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func">em_arg_callback_func</a><em>&nbsp;func</em>, void<em>&nbsp;*arg</em>, int<em>&nbsp;fps</em>, int<em>&nbsp;simulate_infinite_loop</em><big>)</big><a class="headerlink" href="#c.emscripten_set_main_loop_arg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a C function as the main event loop, passing it user-defined data.</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last">The information in <a class="reference internal" href="#c.emscripten_set_main_loop" title="emscripten_set_main_loop"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_main_loop()</span></tt></a> also applies to this function.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>func</strong> (<a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func"><em>em_arg_callback_func</em></a>) &#8211; C function to set as main event loop. The function signature must have a <tt class="docutils literal"><span class="pre">void*</span></tt> parameter for passing the <tt class="docutils literal"><span class="pre">arg</span></tt> value.</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; User-defined data passed to the main loop function, untouched by the API itself.</li>
+<li><strong>fps</strong> (<em>int</em>) &#8211; Number of frames per second at which the JavaScript will call the function. Setting <tt class="docutils literal"><span class="pre">int</span> <span class="pre">&lt;=0</span></tt> (recommended) uses the browser’s <tt class="docutils literal"><span class="pre">requestAnimationFrame</span></tt> mechanism to call the function.</li>
+<li><strong>simulate_infinite_loop</strong> (<em>int</em>) &#8211; If true, this function will throw an exception in order to stop execution of the caller.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c._emscripten_push_main_loop_blocker">
+void <tt class="descname">_emscripten_push_main_loop_blocker</tt><big>(</big><a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func">em_arg_callback_func</a><em>&nbsp;func</em>, void<em>&nbsp;*arg</em>, const char<em>&nbsp;*name</em><big>)</big><a class="headerlink" href="#c._emscripten_push_main_loop_blocker" title="Permalink to this definition">¶</a></dt>
+<dt id="c._emscripten_push_uncounted_main_loop_blocker">
+void <tt class="descname">_emscripten_push_uncounted_main_loop_blocker</tt><big>(</big><a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func">em_arg_callback_func</a><em>&nbsp;func</em>, void<em>&nbsp;*arg</em>, const char<em>&nbsp;*name</em><big>)</big><a class="headerlink" href="#c._emscripten_push_uncounted_main_loop_blocker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a function that <strong>blocks</strong> the main loop.</p>
+<p>The function is added to the back of a queue of events to be blocked; the main loop will not run until all blockers in the queue complete.</p>
+<p>In the &#8220;counted&#8221; version, blockers are counted (internally) and <tt class="docutils literal"><span class="pre">Module.setStatus</span></tt> is called with some text to report progress (<tt class="docutils literal"><span class="pre">setStatus</span></tt> is a general hook that a program can define in order to show processing updates).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last simple">
+<li>Main loop blockers block the main loop from running, and can be counted to show progress. In contrast, <tt class="docutils literal"><span class="pre">emscripten_async_calls</span></tt> are not counted, do not block the main loop, and can fire at specific time in the future.</li>
+</ul>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>func</strong> (<a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func"><em>em_arg_callback_func</em></a>) &#8211; The main loop blocker function. The function signature must have a <tt class="docutils literal"><span class="pre">void*</span></tt> parameter for passing the <tt class="docutils literal"><span class="pre">arg</span></tt> value.</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; User-defined arguments to pass to the blocker function.</li>
+<li><strong>name</strong> (<em>const char*</em>) &#8211; A name for the function blocker. Used to identify the functions during debugging.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">void</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_pause_main_loop">
+void <tt class="descname">emscripten_pause_main_loop</tt><big>(</big>void<big>)</big><a class="headerlink" href="#c.emscripten_pause_main_loop" title="Permalink to this definition">¶</a></dt>
+<dt id="c.emscripten_resume_main_loop">
+void <tt class="descname">emscripten_resume_main_loop</tt><big>(</big>void<big>)</big><a class="headerlink" href="#c.emscripten_resume_main_loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pause and resume the main loop.</p>
+<p>Pausing and resuming the main loop is useful if your app needs to perform some synchronous operation, for example to load a file from the network. It might be wrong to run the main loop before that finishes (the original code assumes that), so you can break the code up into asynchronous callbacks, but you must pause the main loop until they complete.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">These are fairly low-level functions. <tt class="xref c c-func docutils literal"><span class="pre">emscripten_push_main_loop_blocker()</span></tt> (and friends) provide more convenient alternatives.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_cancel_main_loop">
+void <tt class="descname">emscripten_cancel_main_loop</tt><big>(</big>void<big>)</big><a class="headerlink" href="#c.emscripten_cancel_main_loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancels the main event loop.</p>
+<p>See also <a class="reference internal" href="#c.emscripten_set_main_loop" title="emscripten_set_main_loop"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_main_loop()</span></tt></a> and <a class="reference internal" href="#c.emscripten_set_main_loop_arg" title="emscripten_set_main_loop_arg"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_main_loop_arg()</span></tt></a> for information about setting and using the main loop.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_set_main_loop_expected_blockers">
+void <tt class="descname">emscripten_set_main_loop_expected_blockers</tt><big>(</big>int<em>&nbsp;num</em><big>)</big><a class="headerlink" href="#c.emscripten_set_main_loop_expected_blockers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the number of blockers that are about to be pushed.</p>
+<p>The number is used for reporting the <em>relative progress</em> through a set of blockers, after which the main loop will continue.</p>
+<p>For example, a game might have to run 10 blockers before starting a new level. The operation would first set this value as &#8216;10&#8217; and then push the 10 blockers. When the 3<sup>rd</sup> blocker (say) completes, progress is displayed as 3/10.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>num</strong> (<em>int</em>) &#8211; The number of blockers that are about to be pushed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<tt class="descname">void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);</tt></dt>
+<dd><p>Call a C function asynchronously, that is, after returning control to the JavaScript event loop.</p>
+<p>This is done by a <tt class="docutils literal"><span class="pre">setTimeout</span></tt>.</p>
+<p>When building natively this becomes a simple direct call, after <tt class="docutils literal"><span class="pre">SDL_Delay</span></tt> (you must include <strong>SDL.h</strong> for that).</p>
+<p>If <tt class="docutils literal"><span class="pre">millis</span></tt> is negative, the browser&#8217;s <tt class="docutils literal"><span class="pre">requestAnimationFrame</span></tt> mechanism is used.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>func</strong> (<a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func"><em>em_arg_callback_func</em></a>) &#8211; The C function to call asynchronously. The function signature must have a <tt class="docutils literal"><span class="pre">void*</span></tt> parameter for passing the <tt class="docutils literal"><span class="pre">arg</span></tt> value.</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; User-defined argument to pass to the C function.</li>
+<li><strong>millis</strong> (<em>int</em>) &#8211; Timeout before function is called.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_exit_with_live_runtime">
+void <tt class="descname">emscripten_exit_with_live_runtime</tt><big>(</big>void<big>)</big><a class="headerlink" href="#c.emscripten_exit_with_live_runtime" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exits the program immediately, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). This is implicitly performed when you do an asynchronous operation like <tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_call()</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_set_canvas_size">
+void <tt class="descname">emscripten_set_canvas_size</tt><big>(</big>int<em>&nbsp;width</em>, int<em>&nbsp;height</em><big>)</big><a class="headerlink" href="#c.emscripten_set_canvas_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resizes the pixel width and height of the <tt class="docutils literal"><span class="pre">&lt;canvas&gt;</span></tt> element on the Emscripten web page.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>width</strong> (<em>int</em>) &#8211; New pixel width of canvas element.</li>
+<li><strong>height</strong> (<em>int</em>) &#8211; New pixel height of canvas element.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_get_canvas_size">
+void <tt class="descname">emscripten_get_canvas_size</tt><big>(</big>int *<em>&nbsp;width</em>, int *<em>&nbsp;height</em>, int *<em>&nbsp;isFullscreen</em><big>)</big><a class="headerlink" href="#c.emscripten_get_canvas_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the current pixel width and height of the <tt class="docutils literal"><span class="pre">&lt;canvas&gt;</span></tt> element as well as whether the canvas is fullscreen or not.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>width</strong> (<em>int*</em>) &#8211; Pixel width of canvas element.</li>
+<li><strong>height</strong> (<em>int*</em>) &#8211; New pixel height of canvas element.</li>
+<li><strong>isFullscreen</strong> (<em>int*</em>) &#8211; If True (<tt class="docutils literal"><span class="pre">*int</span> <span class="pre">&gt;</span> <span class="pre">0</span></tt>), <tt class="docutils literal"><span class="pre">&lt;canvas&gt;</span></tt> is full screen.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_get_now">
+double <tt class="descname">emscripten_get_now</tt><big>(</big>void<big>)</big><a class="headerlink" href="#c.emscripten_get_now" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the highest-precision representation of the current time that the browser provides.</p>
+<p>This uses either <tt class="docutils literal"><span class="pre">Date.now</span></tt> or <tt class="docutils literal"><span class="pre">performance.now</span></tt>. The result is not an absolute time, and is only meaningful in comparison to other calls to this function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">double</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The current time, in milliseconds (ms).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_random">
+float <tt class="descname">emscripten_random</tt><big>(</big>void<big>)</big><a class="headerlink" href="#c.emscripten_random" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a random number in the range 0-1. This maps to <tt class="docutils literal"><span class="pre">Math.random()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A random number.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="emscripten-file-system-api">
+<h2><a class="toc-backref" href="#id14">Emscripten File System API</a><a class="headerlink" href="#emscripten-file-system-api" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="typedefs">
+<h3>Typedefs<a class="headerlink" href="#typedefs" title="Permalink to this headline">¶</a></h3>
+<dl class="type">
+<dt id="c.em_async_wget_onload_func">
+<tt class="descname">em_async_wget_onload_func</tt><a class="headerlink" href="#c.em_async_wget_onload_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the <tt class="docutils literal"><span class="pre">onload</span></tt> callback of <a class="reference internal" href="#c.emscripten_async_wget_data" title="emscripten_async_wget_data"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget_data()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_async_wget_onload_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_async_wget2_onload_func">
+<tt class="descname">em_async_wget2_onload_func</tt><a class="headerlink" href="#c.em_async_wget2_onload_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the <tt class="docutils literal"><span class="pre">onload</span></tt> callback of <a class="reference internal" href="#c.emscripten_async_wget2" title="emscripten_async_wget2"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget2()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_async_wget2_onload_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_async_wget2_onstatus_func">
+<tt class="descname">em_async_wget2_onstatus_func</tt><a class="headerlink" href="#c.em_async_wget2_onstatus_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the <tt class="docutils literal"><span class="pre">onerror</span></tt> and <tt class="docutils literal"><span class="pre">onprogress</span></tt> callbacks of <a class="reference internal" href="#c.emscripten_async_wget2" title="emscripten_async_wget2"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget2()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_async_wget2_onstatus_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_async_wget2_data_onload_func">
+<tt class="descname">em_async_wget2_data_onload_func</tt><a class="headerlink" href="#c.em_async_wget2_data_onload_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the <tt class="docutils literal"><span class="pre">onload</span></tt> callback of <a class="reference internal" href="#c.emscripten_async_wget2_data" title="emscripten_async_wget2_data"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget2_data()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_async_wget2_data_onload_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="kt">unsigned</span><span class="o">*</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_async_wget2_data_onerror_func">
+<tt class="descname">em_async_wget2_data_onerror_func</tt><a class="headerlink" href="#c.em_async_wget2_data_onerror_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the <tt class="docutils literal"><span class="pre">onerror</span></tt> callback of <a class="reference internal" href="#c.emscripten_async_wget2_data" title="emscripten_async_wget2_data"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget2_data()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_async_wget2_data_onerror_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_async_wget2_data_onprogress_func">
+<tt class="descname">em_async_wget2_data_onprogress_func</tt><a class="headerlink" href="#c.em_async_wget2_data_onprogress_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the <tt class="docutils literal"><span class="pre">onprogress</span></tt> callback of <a class="reference internal" href="#c.emscripten_async_wget2_data" title="emscripten_async_wget2_data"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget2_data()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_async_wget2_data_onprogress_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_async_prepare_data_onload_func">
+<tt class="descname">em_async_prepare_data_onload_func</tt><a class="headerlink" href="#c.em_async_prepare_data_onload_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the <tt class="docutils literal"><span class="pre">onload</span></tt> callback of <a class="reference internal" href="#c.emscripten_async_prepare_data" title="emscripten_async_prepare_data"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_prepare_data()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_async_prepare_data_onload_func</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="id4">
+<h3>Functions<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="c.emscripten_async_wget">
+void <tt class="descname">emscripten_async_wget</tt><big>(</big>const char*<em>&nbsp;url</em>, const char*<em>&nbsp;file</em>, <a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func">em_str_callback_func</a><em>&nbsp;onload</em>, <a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func">em_str_callback_func</a><em>&nbsp;onerror</em><big>)</big><a class="headerlink" href="#c.emscripten_async_wget" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a file from a URL asynchronously.</p>
+<p>In addition to fetching the URL from the network, the contents are prepared so that the data is usable in <tt class="docutils literal"><span class="pre">IMG_Load</span></tt> and so forth (we asynchronously do the work to make the browser decode the image or audio and so forth).</p>
+<p>When file is ready the <tt class="docutils literal"><span class="pre">onload</span></tt> callback will be called. If any error occurs <tt class="docutils literal"><span class="pre">onerror</span></tt> will be called. The callbacks are called with the file as their argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>char* url</strong> (<em>const</em>) &#8211; The URL to load.</li>
+<li><strong>char* file</strong> (<em>const</em>) &#8211; The name of the file created and loaded from the URL. If the file already exists it will be overwritten.</li>
+<li><strong>onload</strong> (<a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func"><em>em_str_callback_func</em></a>) &#8211; <p>Callback on successful load of the file. The callback function parameter value is:</p>
+<ul>
+<li><em>(const char</em>)* : The name of the <tt class="docutils literal"><span class="pre">file</span></tt> that was loaded from the URL.</li>
+</ul>
+</li>
+<li><strong>onerror</strong> (<a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func"><em>em_str_callback_func</em></a>) &#8211; <p>Callback in the event of failure. The callback function parameter value is:</p>
+<ul>
+<li><em>(const char</em>)* : The name of the <tt class="docutils literal"><span class="pre">file</span></tt> that failed to load from the URL.</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_async_wget_data">
+void <tt class="descname">emscripten_async_wget_data</tt><big>(</big>const char*<em>&nbsp;url</em>, void<em>&nbsp;*arg</em>, <a class="reference internal" href="#c.em_async_wget_onload_func" title="em_async_wget_onload_func">em_async_wget_onload_func</a><em>&nbsp;onload</em>, <a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func">em_arg_callback_func</a><em>&nbsp;onerror</em><big>)</big><a class="headerlink" href="#c.emscripten_async_wget_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a buffer from a URL asynchronously.</p>
+<p>This is the &#8220;data&#8221; version of <a class="reference internal" href="#c.emscripten_async_wget" title="emscripten_async_wget"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget()</span></tt></a>.</p>
+<p>Instead of writing to a file, this function writes to a buffer directly in memory. This avoids the overhead of using the emulated file system; note however that since files are not used, it cannot do the &#8216;prepare&#8217; stage to set things up for <tt class="docutils literal"><span class="pre">IMG_Load</span></tt> and so forth (<tt class="docutils literal"><span class="pre">IMG_Load</span></tt> etc. work on files).</p>
+<p>When file is ready then the <tt class="docutils literal"><span class="pre">onload</span></tt> callback will be called. If any error occurred <tt class="docutils literal"><span class="pre">onerror</span></tt> will be called. The callbacks are called with the file as their argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>url</strong> (<em>const char*</em>) &#8211; The URL of the file to load.</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.</li>
+<li><strong>onload</strong> (<a class="reference internal" href="#c.em_async_wget_onload_func" title="em_async_wget_onload_func"><em>em_async_wget_onload_func</em></a>) &#8211; <p>Callback on successful load of the URL into the buffer. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(void</em>)* : A pointer to a buffer with the data. Note that, as with the worker API, the data buffer only lives during the callback; it must be used or copied during that time.</li>
+<li><em>(int)</em> : The size of the buffer, in bytes.</li>
+</ul>
+</li>
+<li><strong>onerror</strong> (<a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func"><em>em_arg_callback_func</em></a>) &#8211; <p>Callback in the event of failure. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_async_wget2">
+void <tt class="descname">emscripten_async_wget2</tt><big>(</big>const char*<em>&nbsp;url</em>, const char*<em>&nbsp;file</em>, const char*<em>&nbsp;requesttype</em>, const char*<em>&nbsp;param</em>, void<em>&nbsp;*arg</em>, <a class="reference internal" href="#c.em_async_wget2_onload_func" title="em_async_wget2_onload_func">em_async_wget2_onload_func</a><em>&nbsp;onload</em>, <a class="reference internal" href="#c.em_async_wget2_onstatus_func" title="em_async_wget2_onstatus_func">em_async_wget2_onstatus_func</a><em>&nbsp;onerror</em>, <a class="reference internal" href="#c.em_async_wget2_onstatus_func" title="em_async_wget2_onstatus_func">em_async_wget2_onstatus_func</a><em>&nbsp;onprogress</em><big>)</big><a class="headerlink" href="#c.emscripten_async_wget2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a file from a URL asynchronously.</p>
+<p>This is an <strong>experimental</strong> &#8220;more feature-complete&#8221; version of <a class="reference internal" href="#c.emscripten_async_wget" title="emscripten_async_wget"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget()</span></tt></a>.</p>
+<p>In addition to fetching the URL from the network, the contents are prepared so that the data is usable in <tt class="docutils literal"><span class="pre">IMG_Load</span></tt> and so forth (we asynchronously do the work to make the browser decode the image, audio, etc.).</p>
+<p>When the file is ready the <tt class="docutils literal"><span class="pre">onload</span></tt> callback will be called with the object pointers given in <tt class="docutils literal"><span class="pre">arg</span></tt> and <tt class="docutils literal"><span class="pre">file</span></tt>. During the download the <tt class="docutils literal"><span class="pre">onprogress</span></tt> callback is called.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>url</strong> (<em>const char*</em>) &#8211; The URL of the file to load.</li>
+<li><strong>file</strong> (<em>const char*</em>) &#8211; The name of the file created and loaded from the URL. If the file already exists it will be overwritten.</li>
+<li><strong>requesttype</strong> (<em>const char*</em>) &#8211; &#8216;GET&#8217; or &#8216;POST&#8217;.</li>
+<li><strong>param</strong> (<em>const char*</em>) &#8211; Request parameters for POST requests (see <tt class="docutils literal"><span class="pre">requesttype</span></tt>). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. <tt class="docutils literal"><span class="pre">key=value&amp;key2=value2</span></tt>.</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.</li>
+<li><strong>onload</strong> (<a class="reference internal" href="#c.em_async_wget2_onload_func" title="em_async_wget2_onload_func"><em>em_async_wget2_onload_func</em></a>) &#8211; <p>Callback on successful load of the file. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(const char</em>)* : The <tt class="docutils literal"><span class="pre">file</span></tt> passed to the original call.</li>
+</ul>
+</li>
+<li><strong>onerror</strong> (<a class="reference internal" href="#c.em_async_wget2_onstatus_func" title="em_async_wget2_onstatus_func"><em>em_async_wget2_onstatus_func</em></a>) &#8211; <p>Callback in the event of failure. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(int)</em> : The HTTP status code.</li>
+</ul>
+</li>
+<li><strong>onprogress</strong> (<a class="reference internal" href="#c.em_async_wget2_onstatus_func" title="em_async_wget2_onstatus_func"><em>em_async_wget2_onstatus_func</em></a>) &#8211; <p>Callback during load of the file. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(int)</em> : The progress (percentage completed).</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_async_wget2_data">
+void <tt class="descname">emscripten_async_wget2_data</tt><big>(</big>const char*<em>&nbsp;url</em>, const char*<em>&nbsp;requesttype</em>, const char*<em>&nbsp;param</em>, void<em>&nbsp;*arg</em>, int<em>&nbsp;free</em>, <a class="reference internal" href="#c.em_async_wget2_data_onload_func" title="em_async_wget2_data_onload_func">em_async_wget2_data_onload_func</a><em>&nbsp;onload</em>, <a class="reference internal" href="#c.em_async_wget2_data_onerror_func" title="em_async_wget2_data_onerror_func">em_async_wget2_data_onerror_func</a><em>&nbsp;onerror</em>, <a class="reference internal" href="#c.em_async_wget2_data_onprogress_func" title="em_async_wget2_data_onprogress_func">em_async_wget2_data_onprogress_func</a><em>&nbsp;onprogress</em><big>)</big><a class="headerlink" href="#c.emscripten_async_wget2_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a buffer from a URL asynchronously.</p>
+<p>This is the &#8220;data&#8221; version of <a class="reference internal" href="#c.emscripten_async_wget2" title="emscripten_async_wget2"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget2()</span></tt></a>. It is an <strong>experimental</strong> &#8220;more feature complete&#8221; version of <a class="reference internal" href="#c.emscripten_async_wget_data" title="emscripten_async_wget_data"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget_data()</span></tt></a>.</p>
+<p>Instead of writing to a file, this function writes to a buffer directly in memory. This avoids the overhead of using the emulated file system; note however that since files are not used, it cannot do the &#8216;prepare&#8217; stage to set things up for <tt class="docutils literal"><span class="pre">IMG_Load</span></tt> and so forth (<tt class="docutils literal"><span class="pre">IMG_Load</span></tt> etc. work on files).</p>
+<p>In addition to fetching the URL from the network, the contents are prepared so that the data is usable in <tt class="docutils literal"><span class="pre">IMG_Load</span></tt> and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).</p>
+<p>When the file is ready the <tt class="docutils literal"><span class="pre">onload</span></tt> callback will be called with the object pointers given in <tt class="docutils literal"><span class="pre">arg</span></tt>, a pointer to the buffer in memory, and an unsigned integer containing the size of the buffer. During the download the <tt class="docutils literal"><span class="pre">onprogress</span></tt> callback is called with progress information. If an error occurs, <tt class="docutils literal"><span class="pre">onerror</span></tt> will be called with the HTTP status code and a string containing the status description.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>url</strong> (<em>const char*</em>) &#8211; The URL of the file to load.</li>
+<li><strong>requesttype</strong> (<em>const char*</em>) &#8211; &#8216;GET&#8217; or &#8216;POST&#8217;.</li>
+<li><strong>param</strong> (<em>const char*</em>) &#8211; Request parameters for POST requests (see <tt class="docutils literal"><span class="pre">requesttype</span></tt>). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. <tt class="docutils literal"><span class="pre">key=value&amp;key2=value2</span></tt>.</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.</li>
+<li><strong>int free</strong> (<em>const</em>) &#8211; Tells the runtime whether to free the returned buffer after <tt class="docutils literal"><span class="pre">onload</span></tt> is complete. If <tt class="docutils literal"><span class="pre">false</span></tt> freeing the buffer is the receiver&#8217;s responsibility.</li>
+<li><strong>onload</strong> (<a class="reference internal" href="#c.em_async_wget2_data_onload_func" title="em_async_wget2_data_onload_func"><em>em_async_wget2_data_onload_func</em></a>) &#8211; <p>Callback on successful load of the file. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(void</em>)* : A pointer to the buffer in memory.</li>
+<li><em>(unsigned)</em> : The size of the buffer (in bytes).</li>
+</ul>
+</li>
+<li><strong>onerror</strong> (<a class="reference internal" href="#c.em_async_wget2_data_onerror_func" title="em_async_wget2_data_onerror_func"><em>em_async_wget2_data_onerror_func</em></a>) &#8211; <p>Callback in the event of failure. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(int)</em> : The HTTP error code.</li>
+<li><em>(const char</em>)* : A string with the status description.</li>
+</ul>
+</li>
+<li><strong>onprogress</strong> (<a class="reference internal" href="#c.em_async_wget2_data_onprogress_func" title="em_async_wget2_data_onprogress_func"><em>em_async_wget2_data_onprogress_func</em></a>) &#8211; <p>Callback called (regularly) during load of the file to update progress. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(int)</em> : The number of bytes loaded.</li>
+<li><em>(int)</em> : The total size of the data in bytes, or zero if the size is unavailable.</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_async_prepare">
+int <tt class="descname">emscripten_async_prepare</tt><big>(</big>const char*<em>&nbsp;file</em>, <a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func">em_str_callback_func</a><em>&nbsp;onload</em>, <a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func">em_str_callback_func</a><em>&nbsp;onerror</em><big>)</big><a class="headerlink" href="#c.emscripten_async_prepare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepares a file asynchronously.</p>
+<p>This does just the preparation part of <a class="reference internal" href="#c.emscripten_async_wget" title="emscripten_async_wget"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_wget()</span></tt></a>. That is, it works on file data already present and performs any required asynchronous operations (for example, decoding images for use in <tt class="docutils literal"><span class="pre">IMG_Load</span></tt>, decoding audio for use in <tt class="docutils literal"><span class="pre">Mix_LoadWAV</span></tt>, etc.).</p>
+<p>Once the operations are complete (the file is prepared), the <tt class="docutils literal"><span class="pre">onload</span></tt> callback will be called. If any error occurs <tt class="docutils literal"><span class="pre">onerror</span></tt> will be called. The callbacks are called with the file as their argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>file</strong> (<em>const char*</em>) &#8211; The name of the file to prepare.</li>
+<li><strong>onload</strong> (<a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func"><em>em_str_callback_func</em></a>) &#8211; <p>Callback on successful preparation of the file. The callback function parameter value is:</p>
+<ul>
+<li><em>(const char</em>)* : The name of the <tt class="docutils literal"><span class="pre">file</span></tt> that was prepared.</li>
+</ul>
+</li>
+<li><strong>onerror</strong> (<a class="reference internal" href="#c.em_str_callback_func" title="em_str_callback_func"><em>em_str_callback_func</em></a>) &#8211; <p>Callback in the event of failure. The callback function parameter value is:</p>
+<ul>
+<li><em>(const char</em>)* : The name of the <tt class="docutils literal"><span class="pre">file</span></tt> for which the prepare failed.</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">0 if successful, -1 if the file does not exist</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_async_prepare_data">
+void <tt class="descname">emscripten_async_prepare_data</tt><big>(</big>char*<em>&nbsp;data</em>, int<em>&nbsp;size</em>, const char<em>&nbsp;*suffix</em>, void<em>&nbsp;*arg</em>, <a class="reference internal" href="#c.em_async_prepare_data_onload_func" title="em_async_prepare_data_onload_func">em_async_prepare_data_onload_func</a><em>&nbsp;onload</em>, <a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func">em_arg_callback_func</a><em>&nbsp;onerror</em><big>)</big><a class="headerlink" href="#c.emscripten_async_prepare_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepares a buffer of data asynchronously. This is a &#8220;data&#8221; version of <a class="reference internal" href="#c.emscripten_async_prepare" title="emscripten_async_prepare"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_async_prepare()</span></tt></a>, which receives raw data as input instead of a filename (this can prevent the need to write data to a file first).</p>
+<p>When file is loaded then the <tt class="docutils literal"><span class="pre">onload</span></tt> callback will be called. If any error occurs <tt class="docutils literal"><span class="pre">onerror</span></tt> will be called.</p>
+<p><tt class="docutils literal"><span class="pre">onload</span></tt> also receives a second parameter, which is a &#8216;fake&#8217; filename which you can pass into <tt class="docutils literal"><span class="pre">IMG_Load</span></tt> (it is not an actual file, but it identifies this image for <tt class="docutils literal"><span class="pre">IMG_Load</span></tt> to be able to process it). Note that the user of this API is responsible for <tt class="docutils literal"><span class="pre">free()</span></tt> ing the memory allocated for the fake filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>data</strong> (<em>char*</em>) &#8211; The buffer of data to prepare.</li>
+<li><strong>suffix</strong> (<em>const char*</em>) &#8211; The file suffix, e.g. &#8216;png&#8217; or &#8216;jpg&#8217;.</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.</li>
+<li><strong>onload</strong> (<a class="reference internal" href="#c.em_async_prepare_data_onload_func" title="em_async_prepare_data_onload_func"><em>em_async_prepare_data_onload_func</em></a>) &#8211; <p>Callback on successful preparation of the file. The callback function parameter values are:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+<li><em>(const char</em>)* : A &#8216;fake&#8217; filename which you can pass into <tt class="docutils literal"><span class="pre">IMG_Load</span></tt>. See above for more information.</li>
+</ul>
+</li>
+<li><strong>onerror</strong> (<a class="reference internal" href="#c.em_arg_callback_func" title="em_arg_callback_func"><em>em_arg_callback_func</em></a>) &#8211; <p>Callback in the event of failure. The callback function parameter value is:</p>
+<ul>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="compiling">
+<h2><a class="toc-backref" href="#id15">Compiling</a><a class="headerlink" href="#compiling" title="Permalink to this headline">¶</a></h2>
+<dl class="macro">
+<dt id="c.EMSCRIPTEN_KEEPALIVE">
+<tt class="descname">EMSCRIPTEN_KEEPALIVE</tt><a class="headerlink" href="#c.EMSCRIPTEN_KEEPALIVE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Forces LLVM to not dead-code-eliminate a function.</p>
+<p>This also exports the function, as if you added it to <tt class="docutils literal"><span class="pre">EXPORTED_FUNCTIONS</span></tt>.</p>
+<p>For example:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="kt">void</span> <span class="n">EMSCRIPTEN_KEEPALIVE</span> <span class="nf">my_function</span><span class="p">()</span> <span class="p">{</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;I am being kept alive</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span> <span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="worker-api">
+<h2><a class="toc-backref" href="#id16">Worker API</a><a class="headerlink" href="#worker-api" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id5">
+<h3>Typedefs<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<dl class="var">
+<dt id="c.worker_handle">
+int <tt class="descname">worker_handle</tt><a class="headerlink" href="#c.worker_handle" title="Permalink to this definition">¶</a></dt>
+<dd><p>A wrapper around web workers that lets you create workers and communicate with them.</p>
+<p>Note that the current API is mainly focused on a main thread that sends jobs to workers and waits for responses, i.e., in an asymmetrical manner, there is no current API to send a message without being asked for it from a worker to the main thread.</p>
+</dd></dl>
+
+<dl class="type">
+<dt id="c.em_worker_callback_func">
+<tt class="descname">em_worker_callback_func</tt><a class="headerlink" href="#c.em_worker_callback_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function pointer type for the callback from <a class="reference internal" href="#c.emscripten_call_worker" title="emscripten_call_worker"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_call_worker()</span></tt></a> (specific values of the parameters documented in that method).</p>
+<p>Defined as:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">em_worker_callback_func</span><span class="p">)(</span><span class="kt">char</span><span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="id6">
+<h3>Functions<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="c.emscripten_create_worker">
+<a class="reference internal" href="#c.worker_handle" title="worker_handle">worker_handle</a> <tt class="descname">emscripten_create_worker</tt><big>(</big>const char *<em>&nbsp;url</em><big>)</big><a class="headerlink" href="#c.emscripten_create_worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a worker.</p>
+<p>A worker must be compiled separately from the main program, and with the <tt class="docutils literal"><span class="pre">BUILD_AS_WORKER</span></tt> flag set to 1.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>url</strong> (<em>const char*</em>) &#8211; The URL of the worker script.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A handle to the newly created worker.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">worker_handle</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_destroy_worker">
+void <tt class="descname">emscripten_destroy_worker</tt><big>(</big><a class="reference internal" href="#c.worker_handle" title="worker_handle">worker_handle</a><em>&nbsp;worker</em><big>)</big><a class="headerlink" href="#c.emscripten_destroy_worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Destroys a worker. See <a class="reference internal" href="#c.emscripten_create_worker" title="emscripten_create_worker"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_create_worker()</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>worker</strong> (<a class="reference internal" href="#c.worker_handle" title="worker_handle"><em>worker_handle</em></a>) &#8211; A handle to the worker to be destroyed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_call_worker">
+void <tt class="descname">emscripten_call_worker</tt><big>(</big><a class="reference internal" href="#c.worker_handle" title="worker_handle">worker_handle</a><em>&nbsp;worker</em>, const char<em>&nbsp;*funcname</em>, char<em>&nbsp;*data</em>, int<em>&nbsp;size</em>, <a class="reference internal" href="#c.em_worker_callback_func" title="em_worker_callback_func">em_worker_callback_func</a><em>&nbsp;callback</em>, void<em>&nbsp;*arg</em><big>)</big><a class="headerlink" href="#c.emscripten_call_worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asynchronously calls a worker.</p>
+<p>The worker function will be called with two parameters: a data pointer, and a size. The data block defined by the pointer and size exists only during the callback: <strong>it cannot be relied upon afterwards</strong>. If you need to keep some of that information outside the callback, then it needs to be copied to a safe location.</p>
+<p>The called worker function can return data, by calling <a class="reference internal" href="#c.emscripten_worker_respond" title="emscripten_worker_respond"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_worker_respond()</span></tt></a>. When the worker is called, if a callback was given it will be called with three arguments: a data pointer, a size, and an argument that was provided when calling <a class="reference internal" href="#c.emscripten_call_worker" title="emscripten_call_worker"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_call_worker()</span></tt></a> (to more easily associate callbacks to calls). The data block defined by the data pointer and size behave like the data block in the worker function — it exists only during the callback.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>worker</strong> (<a class="reference internal" href="#c.worker_handle" title="worker_handle"><em>worker_handle</em></a>) &#8211; A handle to the worker to be called.</li>
+<li><strong>funcname</strong> (<em>const char*</em>) &#8211; The name of the function in the worker. The function must be a C function (so no C++ name mangling), and must be exported (EXPORTED_FUNCTIONS).</li>
+<li><strong>data</strong> (<em>char*</em>) &#8211; The address of a block of memory to copy over.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The size of the block of memory.</li>
+<li><strong>callback</strong> (<a class="reference internal" href="#c.em_worker_callback_func" title="em_worker_callback_func"><em>em_worker_callback_func</em></a>) &#8211; <p>Worker callback with the response. This can be <tt class="docutils literal"><span class="pre">null</span></tt>. The callback function parameter values are:</p>
+<ul>
+<li><em>(char</em>)* : The <tt class="docutils literal"><span class="pre">data</span></tt> pointer provided in <a class="reference internal" href="#c.emscripten_call_worker" title="emscripten_call_worker"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_call_worker()</span></tt></a>.</li>
+<li><em>(int)</em> : The <tt class="docutils literal"><span class="pre">size</span></tt> of the block of data.</li>
+<li><em>(void</em>)* : A pointer to <tt class="docutils literal"><span class="pre">arg</span></tt> (user defined data).</li>
+</ul>
+</li>
+<li><strong>arg</strong> (<em>void*</em>) &#8211; An argument (user data) to be passed to the callback</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_worker_respond">
+void <tt class="descname">emscripten_worker_respond</tt><big>(</big>char<em>&nbsp;*data</em>, int<em>&nbsp;size</em><big>)</big><a class="headerlink" href="#c.emscripten_worker_respond" title="Permalink to this definition">¶</a></dt>
+<dt id="c.emscripten_worker_respond_provisionally">
+void <tt class="descname">emscripten_worker_respond_provisionally</tt><big>(</big>char<em>&nbsp;*data</em>, int<em>&nbsp;size</em><big>)</big><a class="headerlink" href="#c.emscripten_worker_respond_provisionally" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends a response when in a worker call.</p>
+<p>Both functions post a message back to the thread which called the worker. The <a class="reference internal" href="#c.emscripten_worker_respond_provisionally" title="emscripten_worker_respond_provisionally"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_worker_respond_provisionally()</span></tt></a> variant can be invoked multiple times, which will queue up messages to be posted to the worker’s creator. Eventually, the _respond variant must be invoked, which will disallow further messages and free framework resources previously allocated for this worker call.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Calling the provisional version is optional, but you must call the non-provisional version to avoid leaks.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>data</strong> (<em>char*</em>) &#8211; The message to be posted.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The size of the message, in bytes.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_get_worker_queue_size">
+int <tt class="descname">emscripten_get_worker_queue_size</tt><big>(</big><a class="reference internal" href="#c.worker_handle" title="worker_handle">worker_handle</a><em>&nbsp;worker</em><big>)</big><a class="headerlink" href="#c.emscripten_get_worker_queue_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks how many responses are being waited for from a worker.</p>
+<p>This only counts calls to <a class="reference internal" href="#c.emscripten_call_worker" title="emscripten_call_worker"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_call_worker()</span></tt></a> that had a callback (calls with null callbacks are ignored), and where the response has not yet been received. It is a simple way to check on the status of the worker to see how busy it is, and do basic decisions about throttling.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>worker</strong> (<a class="reference internal" href="#c.worker_handle" title="worker_handle"><em>worker_handle</em></a>) &#8211; The handle to the relevant worker.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The number of responses waited on from a worker.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="logging-utilities">
+<h2><a class="toc-backref" href="#id17">Logging utilities</a><a class="headerlink" href="#logging-utilities" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h3>Defines<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<dl class="macro">
+<dt id="c.EM_LOG_CONSOLE">
+<tt class="descname">EM_LOG_CONSOLE</tt><a class="headerlink" href="#c.EM_LOG_CONSOLE" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, logs directly to the browser console/inspector window. If not specified, logs via the application Module.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_LOG_WARN">
+<tt class="descname">EM_LOG_WARN</tt><a class="headerlink" href="#c.EM_LOG_WARN" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, prints a warning message.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_LOG_ERROR">
+<tt class="descname">EM_LOG_ERROR</tt><a class="headerlink" href="#c.EM_LOG_ERROR" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, prints an error message. If neither <a class="reference internal" href="#c.EM_LOG_WARN" title="EM_LOG_WARN"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_WARN</span></tt></a> or <a class="reference internal" href="#c.EM_LOG_ERROR" title="EM_LOG_ERROR"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_ERROR</span></tt></a> is specified, an info message is printed. <a class="reference internal" href="#c.EM_LOG_WARN" title="EM_LOG_WARN"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_WARN</span></tt></a> and <a class="reference internal" href="#c.EM_LOG_ERROR" title="EM_LOG_ERROR"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_ERROR</span></tt></a> are mutually exclusive.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_LOG_C_STACK">
+<tt class="descname">EM_LOG_C_STACK</tt><a class="headerlink" href="#c.EM_LOG_C_STACK" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, prints a call stack that contains file names referring to original C sources using source map information.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_LOG_JS_STACK">
+<tt class="descname">EM_LOG_JS_STACK</tt><a class="headerlink" href="#c.EM_LOG_JS_STACK" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, prints a call stack that contains file names referring to lines in the built .js/.html file along with the message. The flags <a class="reference internal" href="#c.EM_LOG_C_STACK" title="EM_LOG_C_STACK"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_C_STACK</span></tt></a> and <a class="reference internal" href="#c.EM_LOG_JS_STACK" title="EM_LOG_JS_STACK"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_JS_STACK</span></tt></a> can be combined to output both untranslated and translated file and line information.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_LOG_DEMANGLE">
+<tt class="descname">EM_LOG_DEMANGLE</tt><a class="headerlink" href="#c.EM_LOG_DEMANGLE" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, C/C++ function names are de-mangled before printing. Otherwise, the mangled post-compilation JavaScript function names are displayed.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_LOG_NO_PATHS">
+<tt class="descname">EM_LOG_NO_PATHS</tt><a class="headerlink" href="#c.EM_LOG_NO_PATHS" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, the pathnames of the file information in the call stack will be omitted.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EM_LOG_FUNC_PARAMS">
+<tt class="descname">EM_LOG_FUNC_PARAMS</tt><a class="headerlink" href="#c.EM_LOG_FUNC_PARAMS" title="Permalink to this definition">¶</a></dt>
+<dd><p>If specified, prints out the actual values of the parameters the functions were invoked with.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="id8">
+<h3>Functions<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="c.emscripten_get_compiler_setting">
+int <tt class="descname">emscripten_get_compiler_setting</tt><big>(</big>const char<em>&nbsp;*name</em><big>)</big><a class="headerlink" href="#c.emscripten_get_compiler_setting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the value of a compiler setting.</p>
+<p>For example, to return the integer representing the value of <tt class="docutils literal"><span class="pre">PRECISE_F32</span></tt> during compilation:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">emscripten_get_compiler_setting</span><span class="p">(</span><span class="s">&quot;PRECISE_F32&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For values containing anything other than an integer, a string is returned (you will need to cast the <tt class="docutils literal"><span class="pre">int</span></tt> return value to a <tt class="docutils literal"><span class="pre">char*</span></tt>).</p>
+<p>Some useful things this can do is provide the version of Emscripten (“EMSCRIPTEN_VERSION”), the optimization level (“OPT_LEVEL”), debug level (“DEBUG_LEVEL”), etc.</p>
+<p>For this command to work, you must build with the following compiler option (as we do not want to increase the build size with this metadata):</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="o">-</span><span class="n">s</span> <span class="n">RETAIN_COMPILER_SETTINGS</span><span class="o">=</span><span class="mi">1</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>const char*</em>) &#8211; The compiler setting to return.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The value of the specified setting. Note that for values other than an integer, a string is returned (cast the <tt class="docutils literal"><span class="pre">int</span></tt> return value to a <tt class="docutils literal"><span class="pre">char*</span></tt>).</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_debugger">
+void <tt class="descname">emscripten_debugger</tt><big>(</big><big>)</big><a class="headerlink" href="#c.emscripten_debugger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emits <tt class="docutils literal"><span class="pre">debugger</span></tt>.</p>
+<p>This is inline in the code, which tells the JavaScript engine to invoke the debugger if it gets there.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_log">
+void <tt class="descname">emscripten_log</tt><big>(</big>int<em>&nbsp;flags</em>, ...<big>)</big><a class="headerlink" href="#c.emscripten_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints out a message to the console, optionally with the callstack information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>flags</strong> (<em>int</em>) &#8211; A binary OR of items from the list of <a class="reference internal" href="#c.EM_LOG_CONSOLE" title="EM_LOG_CONSOLE"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_xxx</span></tt></a> flags that specify printing options.</li>
+<li><strong>...</strong> &#8211; A <tt class="docutils literal"><span class="pre">printf</span></tt>-style &#8220;format, ...&#8221; parameter list that is parsed according to the <tt class="docutils literal"><span class="pre">printf</span></tt> formatting rules.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_get_callstack">
+int <tt class="descname">emscripten_get_callstack</tt><big>(</big>int<em>&nbsp;flags</em>, char<em>&nbsp;*out</em>, int<em>&nbsp;maxbytes</em><big>)</big><a class="headerlink" href="#c.emscripten_get_callstack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Programmatically obtains the current callstack.</p>
+<p>To query the amount of bytes needed for a callstack without writing it, pass 0 to <tt class="docutils literal"><span class="pre">out</span></tt> and <tt class="docutils literal"><span class="pre">maxbytes</span></tt>, in which case the function will return the number of bytes (including the terminating zero) that will be needed to hold the full callstack. Note that this might be fully accurate since subsequent calls will carry different line numbers, so it is best to allocate a few bytes extra to be safe.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>flags</strong> (<em>int</em>) &#8211; A binary OR of items from the list of <a class="reference internal" href="#c.EM_LOG_CONSOLE" title="EM_LOG_CONSOLE"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_xxx</span></tt></a> flags that specify printing options. The flags <a class="reference internal" href="#c.EM_LOG_CONSOLE" title="EM_LOG_CONSOLE"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_CONSOLE</span></tt></a>, <a class="reference internal" href="#c.EM_LOG_WARN" title="EM_LOG_WARN"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_WARN</span></tt></a> and <a class="reference internal" href="#c.EM_LOG_ERROR" title="EM_LOG_ERROR"><tt class="xref c c-data docutils literal"><span class="pre">EM_LOG_ERROR</span></tt></a> do not apply in this function and are ignored.</li>
+<li><strong>out</strong> (<em>char*</em>) &#8211; A pointer to a memory region where the callstack string will be written to. The string outputted by this function will always be null-terminated.</li>
+<li><strong>maxbytes</strong> (<em>int</em>) &#8211; The maximum number of bytes that this function can write to the memory pointed to by <tt class="docutils literal"><span class="pre">out</span></tt>. If there is not enough space, the output will be truncated (but always null-terminated).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The number of bytes written (not number of characters, so this will also include the terminating zero).</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_get_preloaded_image_data">
+char *<tt class="descname">emscripten_get_preloaded_image_data</tt><big>(</big>const char<em>&nbsp;*path</em>, int<em>&nbsp;*w</em>, int<em>&nbsp;*h</em><big>)</big><a class="headerlink" href="#c.emscripten_get_preloaded_image_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets preloaded image data and the size of the image.</p>
+<p>The function returns pointer to loaded image or NULL — the pointer should be <tt class="docutils literal"><span class="pre">free()</span></tt>&#8216;d. The width/height of the image are written to the <tt class="docutils literal"><span class="pre">w</span></tt> and <tt class="docutils literal"><span class="pre">h</span></tt> parameters if the data is valid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> &#8211; Full path/filename to the file containing the preloaded image.</li>
+<li><strong>w</strong> (<em>int*</em>) &#8211; Width of the image (if data is valid).</li>
+<li><strong>h</strong> (<em>int*</em>) &#8211; Height of the image (if data is valid).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first">const char*</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A pointer to the preloaded image or NULL.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">char*</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.emscripten_get_preloaded_image_data_from_FILE">
+char *<tt class="descname">emscripten_get_preloaded_image_data_from_FILE</tt><big>(</big>FILE<em>&nbsp;*file</em>, int<em>&nbsp;*w</em>, int<em>&nbsp;*h</em><big>)</big><a class="headerlink" href="#c.emscripten_get_preloaded_image_data_from_FILE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets preloaded image data from a C <tt class="docutils literal"><span class="pre">FILE*</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>file</strong> (<em>FILE*</em>) &#8211; The <tt class="docutils literal"><span class="pre">FILE</span></tt> containing the preloaded image.</li>
+<li><strong>w</strong> (<em>int*</em>) &#8211; Width of the image (if data is valid).</li>
+<li><strong>h</strong> (<em>int*</em>) &#8211; Height of the image (if data is valid).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first">const char*</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A pointer to the preloaded image or NULL.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">char*</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="networking">
+<h2><a class="toc-backref" href="#id18">Networking</a><a class="headerlink" href="#networking" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id9">
+<h3>Defines<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<dl class="macro">
+<dt id="c.EMSCRIPTEN_NETWORK_WEBSOCKETS">
+<tt class="descname">EMSCRIPTEN_NETWORK_WEBSOCKETS</tt><a class="headerlink" href="#c.EMSCRIPTEN_NETWORK_WEBSOCKETS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used to select the websockets networking backend in <a class="reference internal" href="#c.emscripten_set_network_backend" title="emscripten_set_network_backend"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_network_backend()</span></tt></a></p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.EMSCRIPTEN_NETWORK_WEBRTC">
+<tt class="descname">EMSCRIPTEN_NETWORK_WEBRTC</tt><a class="headerlink" href="#c.EMSCRIPTEN_NETWORK_WEBRTC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used to select the WebRTC networking backend in <a class="reference internal" href="#c.emscripten_set_network_backend" title="emscripten_set_network_backend"><tt class="xref c c-func docutils literal"><span class="pre">emscripten_set_network_backend()</span></tt></a></p>
+</dd></dl>
+
+</div>
+<div class="section" id="id10">
+<h3>Functions<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="c.emscripten_set_network_backend">
+void <tt class="descname">emscripten_set_network_backend</tt><big>(</big>int<em>&nbsp;backend</em><big>)</big><a class="headerlink" href="#c.emscripten_set_network_backend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Selects the networking backend to use.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last simple">
+<li>This function must be called before any network functions are called.</li>
+</ul>
+</div>
+<p>By default Emscripten&#8217;s socket/networking implementation will use websockets. With this function you can change that to WebRTC.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>backend</strong> (<em>int</em>) &#8211; The backend to use. One of <a class="reference internal" href="#c.EMSCRIPTEN_NETWORK_WEBSOCKETS" title="EMSCRIPTEN_NETWORK_WEBSOCKETS"><tt class="xref c c-macro docutils literal"><span class="pre">EMSCRIPTEN_NETWORK_WEBSOCKETS</span></tt></a> and <a class="reference internal" href="#c.EMSCRIPTEN_NETWORK_WEBRTC" title="EMSCRIPTEN_NETWORK_WEBRTC"><tt class="xref c c-macro docutils literal"><span class="pre">EMSCRIPTEN_NETWORK_WEBRTC</span></tt></a></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="html5.h.html" class="btn btn-neutral float-right" title="html5.h"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="API Reference (under-construction)"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+     
+  <!--begin hamishw addition -->
+  
+    
+  
+  <!--  -->
+   
+   <!--Footer important links
+    If no such page exists then nav item is not created. CSS defines which of the long or short version is 
+	displayed.   -->
+
+	
+   <div class="footer-nav-bar" style="">
+     <div class="footer-options">
+   
+        
+              <a class="footer-navlink-short" title="Report Bug" href="../introducing_emscripten/bug_reports.html">Report Bug</a><a class="footer-navlink-long" title="Report Bug" href="../introducing_emscripten/bug_reports.html">Report Bug</a>
+        
+              <a class="footer-navlink-short" title="Licensing" href="../introducing_emscripten/emscripten_license.html">Licensing</a><a class="footer-navlink-long" title="Licensing" href="../introducing_emscripten/emscripten_license.html">Licensing</a>
+        
+              <a class="footer-navlink-short" title="Contributing" href="../contributing/contributing.html">Contributing</a><a class="footer-navlink-long" title="Contributing" href="../contributing/contributing.html">Contributing</a>
+         
+		      <a class="footer-navlink-short" href="https://groups.google.com/forum/#!forum/emscripten-discuss">Mailing list</a><a class="footer-navlink-long" href="https://groups.google.com/forum/#!forum/emscripten-discuss">Mailing list</a>
+         
+		      <a class="footer-navlink-short" href="https://github.com/kripken/emscripten/wiki">Wiki</a><a class="footer-navlink-long" href="https://github.com/kripken/emscripten/wiki">Wiki</a>
+         
+		      <a class="footer-navlink-short" href="https://plus.google.com/100622854474489221138">Google+</a><a class="footer-navlink-long" href="https://plus.google.com/100622854474489221138">Google+</a>
+        
+              <a class="footer-navlink-short" title="Release notes" href="../introducing_emscripten/release_notes.html">Release notes</a><a class="footer-navlink-long" title="Release notes" href="../introducing_emscripten/release_notes.html">Release notes</a>
+        
+              <a class="footer-navlink-short" title="Blogs" href="../introducing_emscripten/community.html">Blogs</a><a class="footer-navlink-long" title="Blogs" href="../introducing_emscripten/community.html">Blogs</a>
+        
+              <a class="footer-navlink-short" title="Help" href="../introducing_emscripten/community.html">Help</a><a class="footer-navlink-long" title="Contact" href="../introducing_emscripten/community.html">Contact</a>
+         
+				
+     </div>
+	 
+	
+ 
+   </div>
+  
+    <!-- <div role="navigation" aria-label="breadcrumbs navigation">
+
+  <div class="breadcrumb-box">
+     <a class="breadcrumb-box-item" href="../../index.html">Home</a> 
+      
+          <a class="breadcrumb-box-item" href="index.html">&raquo;&nbsp;API Reference (under-construction)</a>
+      
+    <div class="breadcrumb-box-item">&raquo;&nbsp;emscripten.h</div>
+  </div>
+ 
+</div> -->
+  
+    <!-- <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a> --.
+   <!--end hamishw addition -->
+  
+  
+	  
+<!-- end section moved here by hamishw -->
+  <div role="contentinfo" class="copyright-box">
+    <!-- section moved here by hamishw - needs tidying, which is why it is still in breadcrumbs mode --> 
+  <ul class="wy-breadcrumbs">
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../../_sources/docs/api_reference/emscripten.h.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+
+	  <li class="wy-breadcrumbs-aside">
+         <a href="../site/about.html">About site</a>
+      </li>
+	  
+	  <li class="wy-breadcrumbs-aside">
+        <a href="https://github.com/kripken/emscripten/issues/new?title=Bug%20in%20page:emscripten.h%20&body=REPLACE%20THIS%20TEXT%20WITH%20BUG%20DESCRIPTION%20%0A%0AURL:%20../../docs/api_reference/emscripten.h&labels=bug">Page bug</a>
+      </li>
+  </ul>
+  
+    <p>
+        <!-- &copy; Copyright 2014, . -->
+		&copy; Copyright 2014,  <a href="../../docs\contributing\AUTHORS.html">Emscripten Contributors</a>.
+		<!-- update theme to remove the translation stuff here - it was breaking due to link to AUTHORS file. This is a cludge to allow specific link to my authors file -->
+    </p>
+	
+  </div>
+  
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'1.20.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+</div>
+</body>
+</html>
