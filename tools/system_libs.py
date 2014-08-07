@@ -27,8 +27,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       symbols = filter(lambda symbol: symbol not in exclude, symbols)
     return set(symbols)
 
-  lib_opts = ['-O2', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')]
-
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
   libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
@@ -49,7 +47,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       pool = multiprocessing.Pool(processes=cores)
       pool.map(call_process, commands, chunksize=1)
 
-  def build_libc(lib_filename, files):
+  def build_libc(lib_filename, files, lib_opts):
     o_s = []
     prev_cxx = os.environ.get('EMMAKEN_CXX')
     if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
@@ -64,7 +62,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
-  def build_libcxx(src_dirname, lib_filename, files):
+  def build_libcxx(src_dirname, lib_filename, files, lib_opts):
     o_s = []
     commands = []
     for src in files:
@@ -136,7 +134,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     ]
     for directory, sources in musl_files:
       libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libc.bc', libc_files)
+    return build_libc('libc.bc', libc_files, ['-O2'])
 
   def apply_libc(need):
     # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
@@ -378,7 +376,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libcextra_files = []
     for directory, sources in musl_files:
       libcextra_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libcextra.bc', libcextra_files)
+    return build_libc('libcextra.bc', libcextra_files, ['-O2'])
 
   # libcxx
   def create_libcxx():
@@ -407,7 +405,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxx(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
@@ -433,7 +431,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'private_typeinfo.cpp',
       os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxxabi(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
