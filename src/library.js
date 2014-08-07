@@ -5957,7 +5957,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ENOENT);
       return 0;
     }
-    if (!base) base = Module._calloc(4);
+    if (!base) base = _calloc(1, 4);
     return base;
   },
 
