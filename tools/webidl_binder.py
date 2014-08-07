@@ -139,8 +139,16 @@ def type_to_c(t, non_pointing=False):
   t = t.replace(' (Wrapper)', '')
   if t == 'Long':
     return 'int'
+  elif t == 'UnsignedLong':
+    return 'unsigned int'
   elif t == 'Short':
     return 'short'
+  elif t == 'UnsignedShort':
+    return 'unsigned short'
+  elif t == 'Byte':
+    return 'char'
+  elif t == 'Octet':
+    return 'unsigned char'
   elif t == 'Void':
     return 'void'
   elif t == 'String':

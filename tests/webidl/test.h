@@ -93,3 +93,18 @@ class EnumClass {
 
   EnumNamespace::EnumInNamespace GetEnumFromNameSpace() { return EnumNamespace::e_namespace_val; }
 };
+
+class TypeTestClass {
+ public:
+  char ReturnCharMethod() { return (2<<6)-1; }
+  void AcceptCharMethod(char x) { printf("char: %d\n", x); }
+
+  unsigned char ReturnUnsignedCharMethod() { return (2<<7)-1; }
+  void AcceptUnsignedCharMethod(unsigned char x) { printf("unsigned char: %u\n", x); }
+
+  unsigned short int ReturnUnsignedShortMethod() { return (2<<15)-1; }
+  void AcceptUnsignedShortMethod(unsigned short x) { printf("unsigned short int: %u\n", x); }
+
+  unsigned long ReturnUnsignedLongMethod() { return (2<<31)-1; }
+  void AcceptUnsignedLongMethod(unsigned long x) { printf("unsigned long int: %u\n", x); }
+};

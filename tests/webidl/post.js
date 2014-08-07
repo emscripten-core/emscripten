@@ -125,6 +125,25 @@ Module.print([enumClassInstance.GetEnum(), Module.EnumClass.e_val].join(','));
 // in namespaces, see `Inner` above.
 Module.print(Module.e_namespace_val);
 
+typeTester = new TypeTestClass();
+
+Module.print('return char ' + typeTester.ReturnCharMethod());
+typeTester.AcceptCharMethod((2<<6)-1);
+// Prints -1 because the c++ code accepts unsigned char.
+typeTester.AcceptCharMethod((2<<7)-1);
+
+// Prints -1 because all integers are signed in javascript.
+Module.print('return unsigned char ' + typeTester.ReturnUnsignedCharMethod());
+typeTester.AcceptUnsignedCharMethod((2<<7)-1);
+
+// Prints -1 because all integers are signed in javascript.
+Module.print('return unsigned short ' + typeTester.ReturnUnsignedShortMethod());
+typeTester.AcceptUnsignedShortMethod((2<<15)-1);
+
+// Prints -1 because all integers are signed in javascript.
+Module.print('return unsigned long ' + typeTester.ReturnUnsignedLongMethod());
+typeTester.AcceptUnsignedLongMethod((2<<31)-1);
+
 //
 
 Module.print('\ndone.')
