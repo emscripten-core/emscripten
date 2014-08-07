@@ -6288,13 +6288,18 @@ def process(filename):
     assert os.path.exists('glue.cpp')
     assert os.path.exists('glue.js')
 
-    self.emcc_args += ['--post-js', 'glue.js']
+    open('export.js', 'w').write('''this['Module'] = Module;\n''')
+    self.emcc_args += ['--post-js', 'glue.js', '--post-js', 'export.js']
     shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
     shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
     src = open('test.cpp').read()
     def post(filename):
       src = open(filename, 'a')
-      src.write('\n\n' + open(path_from_root('tests', 'webidl', 'post.js')).read() + '\n\n')
+      src.write('\n\n')
+      src.write('var Module = this.Module;\n')
+      src.write('\n\n')
+      src.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
+      src.write('\n\n')
       src.close()
     self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read(), post_build=(None, post))
 
