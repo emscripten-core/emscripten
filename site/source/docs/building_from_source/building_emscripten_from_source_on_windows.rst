@@ -1,8 +1,8 @@
 .. _Using-Emscripten-on-Windows:
 
-=========================================
-Using Emscripten on Windows (wiki-import)
-=========================================
+==============================================
+Building Emscripten on Windows (wiki-import)
+==============================================
 
 .. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
@@ -66,6 +66,55 @@ Configuring Emscripten
    3. Edit the variable TEMP\_DIR to point to a valid Windows path on your local system, e.g. ``TEMP_DIR = 'C:/tmp'``, and create that folder on the local filesystem if it doesn't exist.
    4. If you are planning on using Cygwin and cygwin make in the future, copy the .emscripten file to your cygwin home folder as well, e.g. 
    copy C:.emscripten C: (There is a bug in Emscripten that it currently looks for the file .emscripten in two places (Win7 user home folder or cygwin user home folder), depending on the environment it is executed in, so as a current workaround these files must be present and identical on Windows. (see `issue #411 <https://github.com/kripken/emscripten/issues/411>`_))
+   
+
+.. comment: **Hamish** Can we/should we integrate some of the following:
+
+	Configuring the basic Emscripten settings file
+	============================================
+
+	.. COMMENT - HAMISHW from the MDN - and I suspect no longer needed now we have LLVM Backend. Check and delete if needed. 
+
+	The first time you run emcc (or any of the other Emscripten tools, for that matter), it will create a settings file at ``~/.emscripten`` (~ is your user's home directory) and exit. This file contains a number of settings that provide Emscripten with the Paths to all its requirements (LLVM, clang, etc.) amongst other things, and looks something like so: ::
+
+		import os
+		LLVM_ROOT='C:/Program Files/Emscripten/clang/3.2_64bit/bin'
+		NODE_JS='C:/Program Files/Emscripten/node/0.10.17_64bit/node.exe'
+		PYTHON='C:/Program Files/Emscripten/python/2.7.5.3_64bit/python.exe'
+		JAVA='C:/Program Files/Emscripten/java/7.45_64bit/bin/java.exe'
+		EMSCRIPTEN_ROOT='C:/Program Files/Emscripten/emscripten/1.7.8'
+		CRUNCH='C:/Program Files/Emscripten/crunch/1.03/crunch.exe'
+		MINGW_ROOT='C:/Program Files/Emscripten/mingw/4.6.2_32bit'
+		SPIDERMONKEY_ENGINE = ''
+		V8_ENGINE = ''
+		TEMP_DIR = 'c:/users/cmills/appdata/local/temp'
+		COMPILER_ENGINE = NODE_JS
+		JS_ENGINES = [NODE_JS]
+
+	If you used an emsdk installer to install Emscripten everything would be set up automatically, but since you probably built everything manually (since you are reading this section) you'll need to set the Emscripten settings yourself.
+
+	1. If you haven't run Emscripten before, run it now with (assumes you are in ``emsdk`` and haven't set it's location in your PATH):
+
+		::
+		
+		./Emscripten/1.7.8/emcc
+		
+		.. note:: This is for Mac/Linux; on Windows you would use emcc instead.
+		.. note:: If you are having trouble with python versions, you can also explicitly invoke 
+			::
+			
+				python emcc
+
+			especially if python2 is not defined in your system. python2 allows python 2 and 3 to be installed together on one system, which is increasingly common; as an alternative to python emcc, you can also add a symlink to python from python2). In that case you should also update the PYTHON line in the ~/.emscripten settings file.
+		
+	#. Edit the ``~/.emscripten`` file now using your favourite text editor.
+
+	#. Change the directory locations of ``LLVM_ROOT`` and ``NODE_JS`` to the right places in your setup (specifically, edit ``LLVM_ROOT`` and ``NODE_JS``). If those paths are not right, Emscripten will not find LLVM, Clang or Node.js and return a failure message. Look at the comments in the file that explain what the settings are and which ones you need to change.
+
+	#. After setting those paths, run ``./Emscripten/1.7.8/emcc`` again. It should again perform the sanity checks to test the specified paths. If they don't all pass, you might have a typo somewhere. When everything is set up properly, running ``./Emscripten/1.7.8/emcc`` should return ``emcc: no input files``, and you should be ready to use it.   
+
+
+
 
    
 Integrating Emscripten to Visual Studio 2010

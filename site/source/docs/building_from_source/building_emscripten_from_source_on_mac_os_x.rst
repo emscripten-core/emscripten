@@ -1,8 +1,8 @@
 .. _Getting-started-on-Mac-OS-X:
 
-=========================================
-Getting started on Mac OS X (wiki-import)
-=========================================
+================================================
+Building Emscripten on Mac OS X (wiki-import)
+================================================
 .. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
 This guide instructs step-by-step on how to setup emscripten on a clean Mac OS X box. The steps have been tested against OS X version 10.8.2.
