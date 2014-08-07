@@ -110,7 +110,7 @@ Below is a typical **.emscripten** file, taken from a user's root directory on W
 "How to" guides
 =========================
 
-The following topics explain how to perform both common and advanced maintenance operations, ranging from installing the latest SDK through to installing your own fork from Github.
+The following topics explain how to perform both common and advanced maintenance operations, ranging from installing the latest SDK through to installing your own fork from Github. 
 
 .. note:: The examples below show the commands for Windows and Linux. The commands are the same on Mac OSX, but you need to replace **emsdk** with **./emsdk**.
 

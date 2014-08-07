@@ -4,8 +4,8 @@ Glossary (under-construction)
 
 
 
-Emscripten Tools
-==================
+Emscripten tools and dependencies
+=======================================
 
 .. glossary::
 	:sorted:
@@ -40,7 +40,17 @@ Emscripten Tools
 	node.js
 		**HamishW**
 	
+	Python
+		**HamishW**
 	
+	Java
+		**HamishW**
+		
+	Closure Compiler
+		**HamishW**
+		
+	Git
+		**HamishW**
 
 
 SDK Terms
