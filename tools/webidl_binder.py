@@ -159,6 +159,8 @@ def type_to_c(t, non_pointing=False):
     return 'double'
   elif t == 'Boolean':
     return 'bool'
+  elif t == 'Any':
+    return 'void*'
   elif t in interfaces:
     return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
   else:

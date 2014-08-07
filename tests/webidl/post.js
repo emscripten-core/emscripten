@@ -143,6 +143,10 @@ typeTester.AcceptUnsignedShortMethod((2<<15)-1);
 // Prints -1 because all integers are signed in javascript.
 Module.print('return unsigned long ' + typeTester.ReturnUnsignedLongMethod());
 typeTester.AcceptUnsignedLongMethod((2<<31)-1);
+var voidPointerUser = new Module.VoidPointerUser();
+
+voidPointerUser.SetVoidPointer(3);
+Module.print('void * ' + voidPointerUser.GetVoidPointer());
 
 //
 

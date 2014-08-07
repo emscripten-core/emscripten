@@ -65,6 +65,13 @@ struct RefUser {
   StringUser getAnother() { return StringUser("another", 5); }
 };
 
+struct VoidPointerUser {
+  void *ptr;
+
+  void *GetVoidPointer() { return ptr; }
+  void SetVoidPointer(void *p) { ptr = p; }
+};
+
 namespace Space {
   struct Inner {
     Inner() {}

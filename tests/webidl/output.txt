@@ -67,5 +67,6 @@ return unsigned short -1
 unsigned short int: 65535
 return unsigned long -1
 unsigned long int: 4294967295
+void * 3
 
 done.
