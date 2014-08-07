@@ -2081,6 +2081,10 @@ var LibrarySDL = {
     return result;
   },
 
+  IMG_Quit: function() {
+    Module.print('IMG_Quit called (and ignored)');
+  },
+
   // SDL_Audio
 
   SDL_OpenAudio: function(desired, obtained) {
@@ -2830,6 +2834,10 @@ var LibrarySDL = {
   TTF_FontHeight: function(font) {
     var fontData = SDL.fonts[font];
     return fontData.size;
+  },
+
+  TTF_Quit: function() {
+    Module.print('TTF_Quit called (and ignored)');
   },
 
   // SDL gfx
