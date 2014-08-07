@@ -2169,6 +2169,13 @@ module({
             });
         });
 
+        test("can clone instances that have been scheduled for deletion", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            var v2 = v.clone();
+            v2.delete();
+        });
+
         test("deleteLater returns the object", function() {
             var v = (new cm.ValHolder({})).deleteLater();
             assert.deepEqual({}, v.getVal());

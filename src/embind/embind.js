@@ -1528,6 +1528,7 @@ var LibraryEmbind = {
         });
 
         clone.$$.count.value += 1;
+        clone.$$.deleteScheduled = false;
         return clone;
     }
   },
