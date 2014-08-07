@@ -2825,6 +2825,11 @@ The current type of b is: 9
 
     self.do_run_from_file(src, output)
 
+  def test_stack_overflow(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    Settings.ASSERTIONS = 1
+    self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'abort()')
+
   def test_nestedstructs(self):
       src = '''
         #include <stdio.h>
