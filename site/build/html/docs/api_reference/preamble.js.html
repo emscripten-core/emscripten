@@ -1,0 +1,1398 @@
+
+    
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>preamble.js &mdash; Emscripten 1.20.0 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="top" title="Emscripten 1.20.0 documentation" href="../../index.html"/>
+        <link rel="up" title="API Reference (under-construction)" href="index.html"/>
+        <link rel="next" title="Filesystem API (under-construction)" href="Filesystem-API.html"/>
+        <link rel="prev" title="html5.h" href="html5.h.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+
+<div class="grid-to-center-rtd-theme"> 
+ 
+  <div class="wy-grid-for-nav">
+  
+
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <!-- <a href="../../index.html" class="fa fa-home"> Emscripten</a> -->
+		<a href="../../index.html"> <img src="../..//_static/Emscripten_logo_full.png" alt="Logo" /> </a>
+		
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+
+		 
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../introducing_emscripten/index.html">Introducing Emscripten (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/FAQ.html">FAQ (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/FAQ.html#general">General</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/FAQ.html#using-emscripten">Using Emscripten</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/community.html">Community</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#get-in-touch">Get in touch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#report-a-bug">Report a bug</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#blogs">Blogs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/community.html#contribute">Contribute</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/emscripten_license.html">Open Source License</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/bug_reports.html">Bug Reporting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/bug_reports.html#fastcomp-llvm-backend-and-clang-bugs">Fastcomp LLVM-Backend and Clang bugs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/bug_reports.html#site-and-documentation-bugs">Site and documentation bugs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/release_notes.html">Release Notes (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/release_notes.html#changelog">ChangeLog</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html">Talks and Publications (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html#talks">Talks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html#papers">Papers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../introducing_emscripten/Talks-and-Publications.html#books">Books</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/index.html">Getting Started (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getting_started/downloads.html">Download and install (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#sdk-downloads">SDK Downloads</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#windows">Windows</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#linux-and-mac-os-x">Linux and Mac OS X</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#installation-instructions">Installation instructions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#windows-installing-using-an-nsis-installer">Windows: Installing using an NSIS installer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#windows-osx-and-linux-installing-the-portable-sdk">Windows, OSX and Linux: Installing the Portable SDK</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../getting_started/downloads.html#platform-specific-notes">Platform-specific notes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#verifying-the-installation">Verifying the installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#updating-the-sdk">Updating the SDK</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#uninstalling-the-emscripten-sdk">Uninstalling the Emscripten SDK</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/downloads.html#archived-releases">Archived releases</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getting_started/Tutorial.html">Emscripten Tutorial (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#first-things-first">First things first</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#verifying-emscripten">Verifying Emscripten</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#running-emscripten">Running Emscripten</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#generating-html">Generating HTML</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#using-files">Using files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#optimizing-code">Optimizing code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#running-the-emscripten-test-suite-and-benchmarks">Running the Emscripten Test Suite and Benchmarks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting_started/Tutorial.html#general-tips-and-next-steps">General tips and next steps</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../coding/index.html">Integrating/Porting (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html">CodeGuidelinesAndLimitations (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#code-that-cannot-be-compiled">Code that CANNOT be compiled</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#function-pointer-issues">Function pointer issues</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#code-that-does-compile-but-might-be-slower-than-expected">Code that DOES compile, but might be slower than expected</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#code-that-might-be-useful-to-avoid">Code that MIGHT be useful to avoid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/CodeGuidelinesAndLimitations.html#networking">Networking</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Emscripten-browser-environment.html">Emscripten browser environment (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#browser-main-loop">Browser main loop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#implementing-an-asynchronous-main-loop-in-c-c">Implementing an asynchronous main loop in C/C++</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#execution-lifecycle">Execution lifecycle</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Emscripten-browser-environment.html#notes">Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/index.html">Connecting C++ and JavaScript (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/Interacting-with-code.html">Interacting with code (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/Interacting-with-code.html#interacting-with-compiled-code">Interacting with Compiled Code</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html">embind (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#what-is-embind">What is embind?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#a-quick-example">A Quick Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#classes">Classes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#memory-management">Memory Management</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#value-types">Value Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#advanced-class-concepts">Advanced Class Concepts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#overloaded-functions">Overloaded Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#enums">Enums</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#constants">Constants</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#val">val</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#built-in-type-conversions">Built-in Type Conversions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#performance">Performance</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#future-work">Future Work</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/embind.html#how-does-it-work">How does it work?</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/using_the_embind_val_class_from_cpp.html">Using Web Audio API from Cpp with the Embind val class (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/using_the_embind_val_class_from_cpp.html#overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/using_the_embind_val_class_from_cpp.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/WebIDL-Binder.html">WebIDL Binder (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/connecting_cpp_and_javascript/WebIDL-Binder.html#id1">WebIDL Binder</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/multimedia_and_graphics/index.html">Multimedia and Graphics (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html">EGL Support in Emscripten (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html#what-egl-is-not">What EGL is not?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html#how-to-create-a-webgl-context-using-egl">How to create a WebGL context using EGL?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/EGL-Support-in-Emscripten.html#implementation-status-and-notes">Implementation Status and Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html">OpenGL support (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#emulation-levels">Emulation levels</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#what-is-the-webgl-friendly-subset-of-opengl">What is the &#8220;WebGL-friendly subset of OpenGL&#8221;?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#writing-for-the-webgl-friendly-subset-of-opengl">Writing for the WebGL-friendly subset of OpenGL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/multimedia_and_graphics/OpenGL-support.html#what-if-i-need-additional-gl-features-not-supported-yet">What if I need additional GL features not supported yet?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Asm-pointer-casts.html">Asm pointer casts (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Synchronous-Virtual-XHR-Backed-File-System-Usage.html">Synchronous Virtual XHR Backed File System Usage (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Synchronous-Virtual-XHR-Backed-File-System-Usage.html#instructions-for-use">Instructions for use</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/debugging/index.html">Debugging (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/debugging/Debugging.html">Debugging (wiki-import)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../coding/debugging/Debugging.html#id1">Debugging</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../coding/debugging/Debugging.html#debugging-emscripten-issues">Debugging Emscripten Issues</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Browser-limitations.html">Browser limitations (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../coding/Garbage_Collection.html">GC (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#api-changes-from-boehm">API Changes From Boehm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#mechanism">Mechanism</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#pitfalls">Pitfalls</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../coding/Garbage_Collection.html#relevant-files">Relevant Files</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../optimizing/index.html">Optimization (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../optimizing/Optimizing-Code.html">Optimizing Code (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#optimizing-the-generated-code">Optimizing the Generated Code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#using-emcc">Using emcc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#how-to-optimize-code">How to optimize code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#advanced-compiler-settings">Advanced compiler settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#very-large-projects">Very large projects</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#memory-initialization">Memory initialization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#optimization-levels">Optimization levels</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#code-size">Code size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#outlining">Outlining</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#aggressive-variable-elimination">Aggressive Variable Elimination</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#other-optimization-issues">Other optimization issues</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#exception-catching">Exception Catching</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#viewing-code-optimization-passes">Viewing code optimization passes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#inlining">Inlining</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../optimizing/Optimizing-Code.html#unsafe-optimizations">Unsafe optimizations</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#profiling">Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-Code.html#troubleshooting-slowness">Troubleshooting Slowness</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../optimizing/Optimizing-the-source-code.html">Optimizing the source code (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../optimizing/Optimizing-the-source-code.html#id1">Optimizing the source code</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../compiling/index.html">Compiling and running projects (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../compiling/Building-Projects.html">Building Projects (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Building-Projects.html#id1">Building Projects</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#optimizations">Optimizations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#debug-info">Debug info</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#notes">Notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#build-system-self-execution">Build System Self-Execution</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#dynamic-linking">Dynamic Linking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#linking-in-libraries">Linking in libraries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Building-Projects.html#configure">Configure</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compiling/Code-Generation-Modes.html">Code Generation Modes (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#id1">Code Generation Modes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#typed-arrays">Typed Arrays</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#bit-integer-modes">64-bit Integer Modes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#double-mode">Double Mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#exceptions">Exceptions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compiling/Code-Generation-Modes.html#memory-compression-a-k-a-quantum-size-1">Memory Compression (a.k.a QUANTUM_SIZE == 1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html">Running html files with emrun (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#features">Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#quick-how-to">Quick how-to</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#choosing-the-browser-to-run">Choosing the browser to run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#controlling-web-server-operation">Controlling web server operation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#controlling-log-output">Controlling log output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#cleaning-up-after-the-run">Cleaning up after the run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compiling/Running-html-files-with-emrun.html#running-web-pages-on-an-android-device">Running web pages on an Android device</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../packaging/index.html">Packaging (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../packaging/Filesystem-Guide.html">Filesystem Guide (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../packaging/Filesystem-Guide.html#id1">Filesystem Guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../packaging/Filesystem-Guide.html#packaging-files">Packaging files</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../packaging/Filesystem-Guide.html#customizing-the-data-url">Customizing the data URL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../packaging/Filesystem-Guide.html#mapping">&#64; Mapping</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../packaging/Filesystem-Guide.html#monitoring-read-files">Monitoring Read Files</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../packaging/Filesystem-Guide.html#manually-using-the-fs-api">Manually using the FS API</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../building_from_source/index.html">Installing Emscripten from source (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/installing_from_source.html">Installing from Source (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#things-you-ll-need">Things you&#8217;ll need</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#additional-notes">Additional Notes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#windows-and-osx-guides-for-manual-building">Windows and OSX: guides for manual building</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#linux-guides-for-manual-building">Linux: guides for manual building</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/installing_from_source.html#configuring-the-basic-emscripten-settings-file">Configuring the basic Emscripten settings file</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html">Manually setting up Emscripten on Linux (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#installing-required-tools">Installing required tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#configuring-emscripten">Configuring Emscripten</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#notes-take-from-existing-doc-sources">Notes take from existing doc sources</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#things-you-ll-need">Things you&#8217;ll need</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#additional-notes">Additional Notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#linux-guides-for-manual-building">Linux: guides for manual building</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#configuring-the-basic-emscripten-settings-file">Configuring the basic Emscripten settings file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#linux-from-the-portable-sdk-installation-notes">Linux - from the portable SDK installation notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/manually_setting_up_emscripten_on_linux.html#installing-node-js">Installing Node.js</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html">Using Emscripten on Windows (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#setting-up-the-emscripten-toolchain-on-windows">Setting up the Emscripten Toolchain on Windows</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#installing-required-tools">Installing required tools</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#configuring-emscripten">Configuring Emscripten</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#integrating-emscripten-to-visual-studio-2010">Integrating Emscripten to Visual Studio 2010</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#tips-for-using-emscripten-from-the-visual-studio-2010-ide">Tips for using Emscripten from the Visual Studio 2010 IDE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/Using-Emscripten-on-Windows.html#building-llvm-clang-from-source">Building LLVM/Clang from Source</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/Getting-started-on-Mac-OS-X.html">Getting started on Mac OS X (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/LLVM-Backend.html">LLVM Backend (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#llvm-backend-aka-fastcomp">LLVM Backend, aka &#8220;fastcomp&#8221;</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#overview-of-fastcomp">Overview of Fastcomp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#getting-fastcomp">Getting Fastcomp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#backend-code-structure">Backend code structure</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#why-did-this-change-happen">Why did this change happen?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#status-of-original-compiler-and-how-to-disable-fastcomp">Status of Original Compiler (and how to disable fastcomp)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/LLVM-Backend.html#faq">FAQ</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html">Verifying the Emscripten Development Environment (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#testing-the-environment">Testing the environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#installing-missing-components">Installing missing components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../building_from_source/verify_emscripten_environment.html#other-common-problems">Other common problems</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing to Emscripten (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/contributing.html">Contributing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#getting-started">Getting started</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#branches-of-interest">Branches of interest</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#submitting-patches">Submitting patches</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#code-reviews">Code reviews</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/contributing.html#next-steps">Next steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/developers_guide.html">Developer&#8217;s Guide (wiki-import)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#basic-useful-stuff">Basic useful stuff</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#running-a-specific-test">Running a specific test</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#test-failures">Test failures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#general-compiler-overview">General compiler overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#wiki-pages-you-should-read">Wiki pages you should read</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#bisection">Bisection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/developers_guide.html#debugging-tricks">Debugging tricks</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/LLVM-Types-in-JavaScript.html">LLVM Types in JavaScript (wiki-import)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/AUTHORS.html">AUTHORS (ready-for-review)</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Reference (under-construction)</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="emscripten.h.html">emscripten.h</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#inline-assembly-javascript">Inline assembly/JavaScript</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#defines">Defines</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#calling-javascript-from-c-c">Calling JavaScript From C/C++</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#function-pointer-types-for-callbacks">Function pointer types for callbacks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#browser-execution-environment">Browser Execution Environment</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id3">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#emscripten-file-system-api">Emscripten File System API</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#typedefs">Typedefs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id4">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#compiling">Compiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#worker-api">Worker API</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id5">Typedefs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id6">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#logging-utilities">Logging utilities</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id7">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id8">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emscripten.h.html#networking">Networking</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id9">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="emscripten.h.html#id10">Functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="html5.h.html">html5.h</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#how-to-use-this-api">How to use this API</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#registration-functions">Registration functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#callback-functions">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#functions-affected-by-web-security">Functions affected by web security</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#test-example-code">Test/Example code</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#general-types">General types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#function-result-values">Function result values</a></li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#keys">Keys</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#defines">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#struct">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id2">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#mouse">Mouse</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id3">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id4">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id5">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id6">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#wheel">Wheel</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id7">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id10">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id11">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id12">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#ui">UI</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id14">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id15">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id16">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id17">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#focus">Focus</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id20">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id21">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id23">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id24">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#device-orientation">Device orientation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id29">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id30">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id31">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id32">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#device-motion">Device motion</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id34">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id35">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id37">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id38">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#id41">Orientation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id42">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id43">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id45">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id46">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#fullscreen">Fullscreen</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id48">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id49">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id52">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id53">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#pointerlock">Pointerlock</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id56">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id57">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id60">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id61">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#visibility">Visibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id64">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id65">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id67">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id68">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#touch">Touch</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id70">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id71">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id72">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id73">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#gamepad">Gamepad</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id75">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id77">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id79">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id80">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#battery">Battery</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id82">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id83">Struct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id85">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id86">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#vibration">Vibration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id88">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#page-unload">Page unload</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id90">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id91">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id92">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="html5.h.html#webgl-context">WebGL context</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id94">Defines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id96">Callback functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="html5.h.html#id97">Functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">preamble.js</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#calling-compiled-c-functions-from-javascript">Calling compiled C functions from JavaScript</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#accessing-memory">Accessing memory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#conversion-functions-strings-pointers-and-arrays">Conversion functions — strings, pointers and arrays</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-dependencies">Run dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#stack-trace">Stack trace</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#type-accessors-for-typed-arrays-mode-2">Type accessors for Typed Arrays Mode 2</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Filesystem-API.html">Filesystem API (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#persistence">Persistence</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#memfs">MEMFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#nodefs">NODEFS</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Filesystem-API.html#mount-options">Mount options</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#idbfs">IDBFS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#devices">Devices</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Filesystem-API.html#setting-up-standard-i-o-devices">Setting up standard I/O devices</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#filesystem">Filesystem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#file-types">File types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Filesystem-API.html#paths">Paths</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-apis.html">Advanced APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="advanced-apis.html#settings-js">settings.js</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced-apis.html#allocate">allocate()</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced-apis.html#module-runtime">Module.Runtime</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../tools_reference/index.html">Tools Reference (under-construction)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tools_reference/emsdk.html">Emscripten SDK Manager (emsdk) (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#purpose">Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#command-line-syntax">Command line syntax</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#arguments">Arguments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#tools-and-sdk-targets">Tools and SDK targets</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#sdk-manager-concepts">SDK manager concepts</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#emscripten-compiler-configuration-file-emscripten">Emscripten Compiler Configuration File (.emscripten)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emsdk.html#how-to-guides">&#8220;How to&#8221; guides</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-just-get-the-latest-sdk">How do I just get the latest SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-use-emsdk">How do I use emsdk?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-check-which-versions-of-the-sdk-and-tools-are-installed">How do I check which versions of the SDK and tools are installed?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-install-a-tool-sdk-version">How do I install a tool/SDK version?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-remove-a-tool-or-an-sdk">How do I remove a tool or an SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-check-for-updates-to-the-emscripten-sdk">How do I check for updates to the Emscripten SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-change-the-currently-active-sdk-version">How do I change the currently active SDK version?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-install-an-old-emscripten-compiler-version">How do I install an old Emscripten compiler version?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-track-the-latest-emscripten-development-with-the-sdk">How do I track the latest Emscripten development with the SDK?</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emsdk.html#how-do-i-use-my-own-emscripten-github-fork-with-the-sdk">How do I use my own Emscripten Github fork with the SDK?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools_reference/emcc.html">Emscripten Compiler Frontend (emcc) (under-construction)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcc.html#purpose">Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcc.html#command-line-syntax">Command line syntax</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tools_reference/emcc.html#arguments">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcc.html#environment-variables">Environment variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools_reference/emcmdprompt.html">Emscripten Windows Command Prompt (emcmdprompt.bat) (ready-for-review)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcmdprompt.html#purpose">Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools_reference/emcmdprompt.html#command-line-syntax">Command line syntax</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../site/about.html">About site (ready-for-review)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#page-management-markup">Page management markup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#reporting-bugs">Reporting bugs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#searching-the-site">Searching the site</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#building-the-site">Building the site</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#make-html">make html</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#installing-sphinx">Installing Sphinx</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../site/about.html#ubuntu">Ubuntu</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#writing-and-updating-articles">Writing and updating articles</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#style-guide">Style guide</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#how-to-link-to-a-document-or-heading">How to link to a document or heading</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#recommended-section-heading-markup">Recommended section/heading markup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../site/about.html#working-in-markdown">Working in markdown</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#read-the-docs-theme">Read the docs theme</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../site/about.html#site-license">Site license</a></li>
+</ul>
+</li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+	
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+         <i data-toggle="wy-nav-top" class="fa fa-bars"></i> 
+        <!-- <a href="../../index.html">Emscripten</a> -->
+		<a href="../../index.html"> <img src="../..//_static/Emscripten_logo_full.png" alt="Logo" /> </a>
+      </nav>
+
+	    
+	  
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+		
+		   <!--begin hamishw addition --> 
+   
+   <!--Nav bar defined as a document followed by short version of nav text and long version
+    If no such page exists then nav item is not created. CSS defines which of the long or short version is 
+	displayed.   -->
+   <div class="main-nav-bar" style="">   
+   
+   <!-- the layout of the menu options - centered with left and right alignment of the first and last loop items respectively.
+   This is VERY UGLY as I'm adding to the CSS in the code to force the alignment. Would be better just to have the elements here and have the CSS in the CSS file. This could be done with a CSS selector, but not worked out how yet. -->
+   
+	 <ul id="menu-options">
+        
+              <li style="text-align:left;"><a class="navlink-short" title="Docs" href="../index.html">Docs</a><a class="navlink-long" title="Documentation" href="../index.html">Documentation</a></li>
+        
+              <li><a class="navlink-short" title="SDK" href="../getting_started/downloads.html">SDK</a><a class="navlink-long" title="Downloads" href="../getting_started/downloads.html">Downloads</a></li>
+        
+              <li><a class="navlink-short" title="Help" href="../introducing_emscripten/community.html">Help</a><a class="navlink-long" title="Community" href="../introducing_emscripten/community.html">Community</a></li>
+         
+		      <li style="text-align:right;"><a class="navlink-short" href="https://github.com/kripken/emscripten">Github</a><a class="navlink-long" href="https://github.com/kripken/emscripten">Github Project</a></li>
+           	
+     </ul>
+	 <!-- <div style="clear:both;"></div> -->
+	 <div role="navigation" aria-label="breadcrumbs navigation">
+
+  <div class="breadcrumb-box">
+     <a class="breadcrumb-box-item" href="../../index.html">Home</a> 
+      
+          <a class="breadcrumb-box-item" href="index.html">&raquo;&nbsp;API Reference (under-construction)</a>
+      
+    <div class="breadcrumb-box-item">&raquo;&nbsp;preamble.js</div>
+  </div>
+ 
+</div>
+ 
+   </div>
+  
+   
+	
+   <!--end hamishw addition -->
+		
+          <!--HamishW move <div role="navigation" aria-label="breadcrumbs navigation">
+
+  <div class="breadcrumb-box">
+     <a class="breadcrumb-box-item" href="../../index.html">Home</a> 
+      
+          <a class="breadcrumb-box-item" href="index.html">&raquo;&nbsp;API Reference (under-construction)</a>
+      
+    <div class="breadcrumb-box-item">&raquo;&nbsp;preamble.js</div>
+  </div>
+ 
+</div> -->
+          <div role="main">
+            
+  <div class="section" id="preamble-js">
+<h1>preamble.js<a class="headerlink" href="#preamble-js" title="Permalink to this headline">¶</a></h1>
+<p>The JavaScript APIs in <a class="reference external" href="https://github.com/kripken/emscripten/blob/master/src/preamble.js">preamble.js</a> provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript <tt class="docutils literal"><span class="pre">Strings</span></tt> and <tt class="docutils literal"><span class="pre">Strings</span></tt> to pointers (with different encodings/formats), and other convenience functions.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All functions should be called though the <tt class="docutils literal"><span class="pre">Module</span></tt> object (for example: <tt class="docutils literal"><span class="pre">Module.functionName</span></tt>). At optimisation <tt class="docutils literal"><span class="pre">-O2</span></tt> (and higher) function names are minified by the closure compiler, and calling them directly will fail.</p>
+</div>
+<div class="contents local topic" id="table-of-contents">
+<p class="topic-title first">Table of Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#calling-compiled-c-functions-from-javascript" id="id2">Calling compiled C functions from JavaScript</a></li>
+<li><a class="reference internal" href="#accessing-memory" id="id3">Accessing memory</a></li>
+<li><a class="reference internal" href="#conversion-functions-strings-pointers-and-arrays" id="id4">Conversion functions — strings, pointers and arrays</a></li>
+<li><a class="reference internal" href="#run-dependencies" id="id5">Run dependencies</a></li>
+<li><a class="reference internal" href="#stack-trace" id="id6">Stack trace</a></li>
+<li><a class="reference internal" href="#type-accessors-for-typed-arrays-mode-2" id="id7">Type accessors for Typed Arrays Mode 2</a></li>
+</ul>
+</div>
+<div class="section" id="calling-compiled-c-functions-from-javascript">
+<h2><a class="toc-backref" href="#id2">Calling compiled C functions from JavaScript</a><a class="headerlink" href="#calling-compiled-c-functions-from-javascript" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="ccall">
+<tt class="descname">ccall</tt><big>(</big><em>ident</em>, <em>returnType</em>, <em>argTypes</em>, <em>args</em><big>)</big><a class="headerlink" href="#ccall" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call a compiled C function from JavaScript.</p>
+<p>The function executes a compiled C function from JavaScript and returns the result. C++ name mangling means that &#8220;normal&#8221; C++ functions cannot be called; the function must either be defined in a <strong>.c</strong> file or be a C++ function defined with <tt class="docutils literal"><span class="pre">extern</span> <span class="pre">&quot;C&quot;</span></tt>.</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="c1">// Call C from JavaScript</span>
+<span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="nx">Module</span><span class="p">.</span><span class="nx">ccall</span><span class="p">(</span><span class="s1">&#39;c_add&#39;</span><span class="p">,</span> <span class="c1">// name of C function</span>
+        <span class="s1">&#39;number&#39;</span><span class="p">,</span> <span class="c1">// return type</span>
+        <span class="p">[</span><span class="s1">&#39;number&#39;</span><span class="p">,</span> <span class="s1">&#39;number&#39;</span><span class="p">],</span> <span class="c1">// argument types</span>
+        <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]);</span> <span class="c1">// arguments</span>
+
+<span class="c1">// result is 30</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last">
+<li><p class="first"><tt class="docutils literal"><span class="pre">ccall</span></tt> uses the C stack for temporary values. If you pass a string then it is only &#8220;alive&#8221; until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data.</p>
+</li>
+<li><p class="first">If you need a string to live forever, you can create it, for example, using <tt class="docutils literal"><span class="pre">_malloc</span></tt> and <a class="reference internal" href="#writeStringToMemory" title="writeStringToMemory"><tt class="xref js js-func docutils literal"><span class="pre">writeStringToMemory()</span></tt></a>. However, you must later delete it manually!</p>
+</li>
+<li><p class="first">LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the <em>Closure Compiler</em> are inaccessible. In either case, the solution is to add the functions to the <tt class="docutils literal"><span class="pre">EXPORTED_FUNCTIONS</span></tt> list when you invoke <em>emcc</em> :</p>
+<blockquote>
+<div><div class="highlight-cpp"><div class="highlight"><pre>-s EXPORTED_FUNCTIONS=&#39;[&quot;_main&quot;, &quot;_myfunc&quot;]&#39;
+</pre></div>
+</div>
+<p>Exported functions can be called as normal:</p>
+<div class="highlight-cpp"><div class="highlight"><pre>a_result = Module.ccall(&#39;myfunc&#39;, &#39;number&#39;, [&#39;number&#39;], 10)
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>ident</strong> &#8211; The name of the C function to be called.</li>
+<li><strong>returnType</strong> &#8211; The return type of the function. This will be one of the JavaScript types <tt class="docutils literal"><span class="pre">number</span></tt>, <tt class="docutils literal"><span class="pre">string</span></tt> or <tt class="docutils literal"><span class="pre">array</span></tt> (use <tt class="docutils literal"><span class="pre">number</span></tt> for any C pointer, and <tt class="docutils literal"><span class="pre">array</span></tt> for JavaScript arrays and typed arrays; note that arrays are 8-bit).</li>
+<li><strong>argTypes</strong> &#8211; An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in <tt class="docutils literal"><span class="pre">returnType</span></tt>, except that <tt class="docutils literal"><span class="pre">array</span></tt> is not supported as there is no way for us to know the length of the array).</li>
+<li><strong>args</strong> &#8211; An array of the arguments to the function, as native JavaScript values (as in <tt class="docutils literal"><span class="pre">returnType</span></tt>). Note that string arguments will be stored on the stack (the JavaScript string will become a C string on the stack).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The result of the function call as a native JavaScript value (as in <tt class="docutils literal"><span class="pre">returnType</span></tt>).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cwrap">
+<tt class="descname">cwrap</tt><big>(</big><em>ident</em>, <em>returnType</em>, <em>argTypes</em><big>)</big><a class="headerlink" href="#cwrap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a native JavaScript wrapper for a C function.</p>
+<p>This is similar to <a class="reference internal" href="#ccall" title="ccall"><tt class="xref js js-func docutils literal"><span class="pre">ccall()</span></tt></a>, but returns a JavaScript function that can be reused as many time as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using <tt class="docutils literal"><span class="pre">extern</span> <span class="pre">&quot;C&quot;</span></tt> (to prevent name mangling).</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="c1">// Call C from JavaScript</span>
+<span class="kd">var</span> <span class="nx">c_javascript_add</span> <span class="o">=</span> <span class="nx">Module</span><span class="p">.</span><span class="nx">cwrap</span><span class="p">(</span><span class="s1">&#39;c_add&#39;</span><span class="p">,</span> <span class="c1">// name of C function</span>
+        <span class="s1">&#39;number&#39;</span><span class="p">,</span> <span class="c1">// return type</span>
+        <span class="p">[</span><span class="s1">&#39;number&#39;</span><span class="p">,</span> <span class="s1">&#39;number&#39;</span><span class="p">]);</span> <span class="c1">// argument types</span>
+
+<span class="c1">// Call c_javascript_add normally</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">c_javascript_add</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">));</span> <span class="c1">// 30</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">c_javascript_add</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">));</span> <span class="c1">// 50</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last">
+<li><p class="first"><tt class="docutils literal"><span class="pre">cwrap</span></tt> uses the C stack for temporary values. If you pass a string then it is only &#8220;alive&#8221; until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data.</p>
+</li>
+<li><p class="first">If you need a string to live forever, you can create it, for example, using <tt class="docutils literal"><span class="pre">_malloc</span></tt> and <a class="reference internal" href="#writeStringToMemory" title="writeStringToMemory"><tt class="xref js js-func docutils literal"><span class="pre">writeStringToMemory()</span></tt></a>. However, you must later delete it manually!</p>
+</li>
+<li><p class="first">LLVM optimizations can inline and remove functions, after which you will not be able to &#8220;wrap&#8221; them. Similarly, function names minified by the <em>Closure Compiler</em> are inaccessible. In either case, the solution is to add the functions to the <tt class="docutils literal"><span class="pre">EXPORTED_FUNCTIONS</span></tt> list when you invoke <em>emcc</em> :</p>
+<blockquote>
+<div><div class="highlight-cpp"><div class="highlight"><pre>-s EXPORTED_FUNCTIONS=&#39;[&quot;_main&quot;, &quot;_myfunc&quot;]&#39;
+</pre></div>
+</div>
+<p>Exported functions can be called as normal:</p>
+<div class="highlight-cpp"><div class="highlight"><pre>my_func = Module.cwrap(&#39;myfunc&#39;, &#39;number&#39;, [&#39;number&#39;])
+my_func(12)
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>ident</strong> &#8211; The name of the C function to be called.</li>
+<li><strong>returnType</strong> &#8211; The return type of the function. This will be one of the JavaScript types <tt class="docutils literal"><span class="pre">number</span></tt>, <tt class="docutils literal"><span class="pre">string</span></tt> or <tt class="docutils literal"><span class="pre">array</span></tt> (use <tt class="docutils literal"><span class="pre">number</span></tt> for any C pointer, and <tt class="docutils literal"><span class="pre">array</span></tt> for JavaScript arrays and typed arrays; note that arrays are 8-bit).</li>
+<li><strong>argTypes</strong> &#8211; An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in <tt class="docutils literal"><span class="pre">returnType</span></tt>, except that <tt class="docutils literal"><span class="pre">array</span></tt> is not supported as there is no way for us to know the length of the array).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A JavaScript function that can be used for running the C function.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="accessing-memory">
+<h2><a class="toc-backref" href="#id3">Accessing memory</a><a class="headerlink" href="#accessing-memory" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="setValue">
+<tt class="descname">setValue</tt><big>(</big><em>ptr</em>, <em>value</em>, <em>type</em><span class="optional">[</span>, <em>noSafe</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#setValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a value at a specific memory address at run-time.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last simple">
+<li><a class="reference internal" href="#setValue" title="setValue"><tt class="xref js js-func docutils literal"><span class="pre">setValue()</span></tt></a> and <a class="reference internal" href="#getValue" title="getValue"><tt class="xref js js-func docutils literal"><span class="pre">getValue()</span></tt></a> only do <em>aligned</em> writes and reads.</li>
+<li>The <tt class="docutils literal"><span class="pre">type</span></tt> is an LLVM IR type (one of <tt class="docutils literal"><span class="pre">i8</span></tt>, <tt class="docutils literal"><span class="pre">i16</span></tt>, <tt class="docutils literal"><span class="pre">i32</span></tt>, <tt class="docutils literal"><span class="pre">i64</span></tt>, <tt class="docutils literal"><span class="pre">float</span></tt>, <tt class="docutils literal"><span class="pre">double</span></tt>, or a pointer type like <tt class="docutils literal"><span class="pre">i8*</span></tt> or just <tt class="docutils literal"><span class="pre">*</span></tt>), not JavaScript types as used in <a class="reference internal" href="#ccall" title="ccall"><tt class="xref js js-func docutils literal"><span class="pre">ccall()</span></tt></a> or <a class="reference internal" href="#cwrap" title="cwrap"><tt class="xref js js-func docutils literal"><span class="pre">cwrap()</span></tt></a>. This is a lower-level operation, and we do need to care what specific type is being used.</li>
+</ul>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ptr</strong> &#8211; A pointer (number) representing the memory address.</li>
+<li><strong>value</strong> &#8211; The value to be stored</li>
+<li><strong>type</strong> &#8211; An LLVM IR type as a string (see &#8220;note&#8221; above).</li>
+<li><strong>noSafe</strong> (<em>bool</em>) &#8211; Developers should ignore this variable. It is only used in <tt class="docutils literal"><span class="pre">SAFE_HEAP</span></tt> compilation mode, where it can help avoid infinite recursion in some specialist use cases.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="getValue">
+<tt class="descname">getValue</tt><big>(</big><em>ptr</em>, <em>type</em><span class="optional">[</span>, <em>noSafe</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#getValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a value at a specific memory address at run-time.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ul class="last simple">
+<li><a class="reference internal" href="#setValue" title="setValue"><tt class="xref js js-func docutils literal"><span class="pre">setValue()</span></tt></a> and <a class="reference internal" href="#getValue" title="getValue"><tt class="xref js js-func docutils literal"><span class="pre">getValue()</span></tt></a> only do <em>aligned</em> writes and reads!</li>
+<li>The <tt class="docutils literal"><span class="pre">type</span></tt> is an LLVM IR type (one of <tt class="docutils literal"><span class="pre">i8</span></tt>, <tt class="docutils literal"><span class="pre">i16</span></tt>, <tt class="docutils literal"><span class="pre">i32</span></tt>, <tt class="docutils literal"><span class="pre">i64</span></tt>, <tt class="docutils literal"><span class="pre">float</span></tt>, <tt class="docutils literal"><span class="pre">double</span></tt>, or a pointer type like <tt class="docutils literal"><span class="pre">i8*</span></tt> or just <tt class="docutils literal"><span class="pre">*</span></tt>), not JavaScript types as used in <a class="reference internal" href="#ccall" title="ccall"><tt class="xref js js-func docutils literal"><span class="pre">ccall()</span></tt></a> or <a class="reference internal" href="#cwrap" title="cwrap"><tt class="xref js js-func docutils literal"><span class="pre">cwrap()</span></tt></a>. This is a lower-level operation, and we do need to care what specific type is being used.</li>
+</ul>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>ptr</strong> &#8211; A pointer (number) representing the memory address.</li>
+<li><strong>type</strong> &#8211; An LLVM IR type as a string (see &#8220;note&#8221; above).</li>
+<li><strong>noSafe</strong> (<em>bool</em>) &#8211; Developers should ignore this variable. It is on used in <tt class="docutils literal"><span class="pre">SAFE_HEAP</span></tt> compilation mode, where it can be avoid infinite recursion in some specialist use cases.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The value stored at the specified memory address.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="conversion-functions-strings-pointers-and-arrays">
+<h2><a class="toc-backref" href="#id4">Conversion functions — strings, pointers and arrays</a><a class="headerlink" href="#conversion-functions-strings-pointers-and-arrays" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="Pointer_stringify">
+<tt class="descname">Pointer_stringify</tt><big>(</big><em>ptr</em><span class="optional">[</span>, <em>length</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Pointer_stringify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a JavaScript String from a pointer, for use in compiled code.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>ptr</strong> &#8211; The pointer to be converted to a <tt class="docutils literal"><span class="pre">String</span></tt>.</li>
+<li><strong>length</strong> &#8211; The length of the data in the pointer (optional).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A JavaScript <tt class="docutils literal"><span class="pre">String</span></tt> containing the data from <tt class="docutils literal"><span class="pre">ptr</span></tt>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">String</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="UTF16ToString">
+<tt class="descname">UTF16ToString</tt><big>(</big><em>ptr</em><big>)</big><a class="headerlink" href="#UTF16ToString" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a pointer <tt class="docutils literal"><span class="pre">ptr</span></tt> to a null-terminated UTF16LE-encoded string in the Emscripten HEAP, returns a copy of that string as a Javascript <tt class="docutils literal"><span class="pre">String</span></tt> object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>ptr</strong> &#8211; A pointer to a null-terminated UTF16LE-encoded string in the Emscripten HEAP.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A Javascript <tt class="docutils literal"><span class="pre">String</span></tt> object</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stringToUTF16">
+<tt class="descname">stringToUTF16</tt><big>(</big><em>str</em>, <em>outPtr</em><big>)</big><a class="headerlink" href="#stringToUTF16" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copies the given JavaScript <tt class="docutils literal"><span class="pre">String</span></tt> object <tt class="docutils literal"><span class="pre">str</span></tt> to the Emscripten HEAP at address <tt class="docutils literal"><span class="pre">outPtr</span></tt>, null-terminated and encoded in UTF16LE form.</p>
+<p>The copy will require at most <tt class="docutils literal"><span class="pre">(str.length*2+1)*2</span></tt> bytes of space in the HEAP.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>str</strong> (<em>String</em>) &#8211; A JavaScript <tt class="docutils literal"><span class="pre">String</span></tt> object.</li>
+<li><strong>outPtr</strong> &#8211; Pointer to data copied from <tt class="docutils literal"><span class="pre">str</span></tt>, encoded in UTF16LE format and null-terminated.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="UTF32ToString">
+<tt class="descname">UTF32ToString</tt><big>(</big><em>ptr</em><big>)</big><a class="headerlink" href="#UTF32ToString" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a pointer <tt class="docutils literal"><span class="pre">ptr</span></tt> to a null-terminated UTF32LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript <tt class="docutils literal"><span class="pre">String</span></tt> object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>ptr</strong> &#8211; A pointer to a null-terminated UTF32LE-encoded string in the Emscripten HEAP.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A Javascript <tt class="docutils literal"><span class="pre">String</span></tt> object.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="stringToUTF32">
+<tt class="descname">stringToUTF32</tt><big>(</big><em>str</em>, <em>outPtr</em><big>)</big><a class="headerlink" href="#stringToUTF32" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copies the given JavaScript <tt class="docutils literal"><span class="pre">String</span></tt> object <tt class="docutils literal"><span class="pre">str</span></tt> to the Emscripten HEAP at address <tt class="docutils literal"><span class="pre">outPtr</span></tt>, null-terminated and encoded in UTF32LE form.</p>
+<p>The copy will require at most <tt class="docutils literal"><span class="pre">(str.length+1)*4</span></tt> bytes of space in the HEAP, but can use less, since <tt class="docutils literal"><span class="pre">str.length</span></tt> does not return the number of characters in the string, but the number of UTF-16 code units in the string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>str</strong> (<em>String</em>) &#8211; A JavaScript <tt class="docutils literal"><span class="pre">String</span></tt> object.</li>
+<li><strong>outPtr</strong> &#8211; Pointer to data copied from <tt class="docutils literal"><span class="pre">str</span></tt>, encoded in encoded in UTF32LE format and null-terminated.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="intArrayFromString">
+<tt class="descname">intArrayFromString</tt><big>(</big><em>stringy</em>, <em>dontAddNull</em><span class="optional">[</span>, <em>length</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#intArrayFromString" title="Permalink to this definition">¶</a></dt>
+<dd><p>This converts a JavaScript string into a C-line array of numbers, 0-terminated.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>stringy</strong> (<em>String</em>) &#8211; The string to be converted.</li>
+<li><strong>dontAddNull</strong> (<em>bool</em>) &#8211; If <tt class="docutils literal"><span class="pre">true</span></tt>, the new array is not zero-terminated.</li>
+<li><strong>length</strong> &#8211; The length of the array (optional).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The array created from <tt class="docutils literal"><span class="pre">stringy</span></tt>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="intArrayToString">
+<tt class="descname">intArrayToString</tt><big>(</big><em>array</em><big>)</big><a class="headerlink" href="#intArrayToString" title="Permalink to this definition">¶</a></dt>
+<dd><p>This creates a JavaScript string from a zero-terminated C-line array of numbers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first simple">
+<li><strong>array</strong> &#8211; The array to convert.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <tt class="docutils literal"><span class="pre">String</span></tt>, containing the content of <tt class="docutils literal"><span class="pre">array</span></tt>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="writeStringToMemory">
+<tt class="descname">writeStringToMemory</tt><big>(</big><em>string</em>, <em>buffer</em>, <em>dontAddNull</em><big>)</big><a class="headerlink" href="#writeStringToMemory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes a JavaScript string to a specified address in the heap.</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="c1">// Allocate space for string and extra &#39;0&#39; at the end</span>
+<span class="kd">var</span> <span class="nx">buffer</span> <span class="o">=</span> <span class="nx">Module</span><span class="p">.</span><span class="nx">_malloc</span><span class="p">(</span><span class="nx">myString</span><span class="p">.</span><span class="nx">length</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+
+<span class="c1">// Write the string to memory</span>
+<span class="nx">Module</span><span class="p">.</span><span class="nx">writeStringToMemory</span><span class="p">(</span><span class="nx">myString</span><span class="p">,</span> <span class="nx">buffer</span><span class="p">);</span>
+
+<span class="c1">// We can now send buffer into a C function, it is just a normal char* pointer</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>string</strong> (<em>String</em>) &#8211; The string to write into memory.</li>
+<li><strong>buffer</strong> (<em>Number</em>) &#8211; The address (number) where <tt class="docutils literal"><span class="pre">string</span></tt> is to be written.</li>
+<li><strong>dontAddNull</strong> (<em>bool</em>) &#8211; If <tt class="docutils literal"><span class="pre">true</span></tt>, the new array is not zero-terminated.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="writeArrayToMemory">
+<tt class="descname">writeArrayToMemory</tt><big>(</big><em>array</em>, <em>buffer</em><big>)</big><a class="headerlink" href="#writeArrayToMemory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes an array to a specified address in the heap. Note that memory should to be allocated for the array before it is written.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>array</strong> &#8211; The array to write to memory.</li>
+<li><strong>buffer</strong> (<em>Number</em>) &#8211; The address (number) where <tt class="docutils literal"><span class="pre">array</span></tt> is to be written.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="writeAsciiToMemory">
+<tt class="descname">writeAsciiToMemory</tt><big>(</big><em>str</em>, <em>buffer</em>, <em>dontAddNull</em><big>)</big><a class="headerlink" href="#writeAsciiToMemory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes an ASCII string to a specified address in the heap. Note that memory should to be allocated for the string before it is written.</p>
+<p>The string is assumed to only have characters in the ASCII character set. If ASSERTIONS are enabled and this is not the case, it will fail.</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="c1">// Allocate space for string</span>
+<span class="kd">var</span> <span class="nx">buffer</span> <span class="o">=</span> <span class="nx">Module</span><span class="p">.</span><span class="nx">_malloc</span><span class="p">(</span><span class="nx">myString</span><span class="p">.</span><span class="nx">length</span><span class="p">);</span>
+
+<span class="c1">// Write the string to memory</span>
+<span class="nx">Module</span><span class="p">.</span><span class="nx">writeStringToMemory</span><span class="p">(</span><span class="nx">myString</span><span class="p">,</span> <span class="nx">buffer</span><span class="p">);</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>string</strong> &#8211; The string to write into memory.</li>
+<li><strong>buffer</strong> &#8211; The address where <tt class="docutils literal"><span class="pre">string</span></tt> is to be written.</li>
+<li><strong>dontAddNull</strong> (<em>bool</em>) &#8211; If <tt class="docutils literal"><span class="pre">true</span></tt>, the new string is not zero-terminated.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="run-dependencies">
+<h2><a class="toc-backref" href="#id5">Run dependencies</a><a class="headerlink" href="#run-dependencies" title="Permalink to this headline">¶</a></h2>
+<p>Note that generally run dependencies are managed by the file packager and other parts of the system. It is rare for developers to use this API directly.</p>
+<dl class="function">
+<dt id="addRunDependency">
+<tt class="descname">addRunDependency</tt><big>(</big><em>id</em><big>)</big><a class="headerlink" href="#addRunDependency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds an <tt class="docutils literal"><span class="pre">id</span></tt> to the list of run dependencies.</p>
+<p>This adds a run dependency and increments the run dependency counter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>String</em>) &#8211; An arbitrary id representing the operation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="removeRunDependency">
+<tt class="descname">removeRunDependency</tt><big>(</big><em>id</em><big>)</big><a class="headerlink" href="#removeRunDependency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes a specified <tt class="docutils literal"><span class="pre">id</span></tt> from the list of run dependencies.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"><ul class="first last simple">
+<li><strong>id</strong> (<em>String</em>) &#8211; The identifier for the specific dependency to be removed (added with <a class="reference internal" href="#addRunDependency" title="addRunDependency"><tt class="xref js js-func docutils literal"><span class="pre">addRunDependency()</span></tt></a>)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="stack-trace">
+<h2><a class="toc-backref" href="#id6">Stack trace</a><a class="headerlink" href="#stack-trace" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="stackTrace">
+<tt class="descname">stackTrace</tt><big>(</big><big>)</big><a class="headerlink" href="#stackTrace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the current stack track.</p>
+<blockquote>
+<div><div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The stack trace is not available at least on IE10 and Safari 6.</p>
+</div>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The current stack trace, if available.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="type-accessors-for-typed-arrays-mode-2">
+<h2><a class="toc-backref" href="#id7">Type accessors for Typed Arrays Mode 2</a><a class="headerlink" href="#type-accessors-for-typed-arrays-mode-2" title="Permalink to this headline">¶</a></h2>
+<p>When using <a class="reference internal" href="../compiling/Code-Generation-Modes.html#typed-arrays-mode-2"><em>Typed Arrays Mode 2</em></a> a typed array buffer (<tt class="docutils literal"><span class="pre">ArrayBuffer</span></tt>) is used to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.</p>
+<dl class="data">
+<dt id="HEAP8">
+<tt class="descname">HEAP8</tt><a class="headerlink" href="#HEAP8" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 8-bit signed memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="HEAP16">
+<tt class="descname">HEAP16</tt><a class="headerlink" href="#HEAP16" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 16-bit signed memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="HEAP32">
+<tt class="descname">HEAP32</tt><a class="headerlink" href="#HEAP32" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 32-bit signed memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="HEAPU8">
+<tt class="descname">HEAPU8</tt><a class="headerlink" href="#HEAPU8" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 32-bit unsigned memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt>
+<tt class="descname">HEAPU8</tt></dt>
+<dd><p>View for 32-bit unsigned memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="HEAPU16">
+<tt class="descname">HEAPU16</tt><a class="headerlink" href="#HEAPU16" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 16-bit unsigned memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="HEAPU32">
+<tt class="descname">HEAPU32</tt><a class="headerlink" href="#HEAPU32" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 32-bit unsigned memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="HEAPF32">
+<tt class="descname">HEAPF32</tt><a class="headerlink" href="#HEAPF32" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 32-bit float memory.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="HEAPF64">
+<tt class="descname">HEAPF64</tt><a class="headerlink" href="#HEAPF64" title="Permalink to this definition">¶</a></dt>
+<dd><p>View for 64-bit float memory.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="Filesystem-API.html" class="btn btn-neutral float-right" title="Filesystem API (under-construction)"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="html5.h.html" class="btn btn-neutral" title="html5.h"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+     
+  <!--begin hamishw addition -->
+  
+    
+  
+  <!--  -->
+   
+   <!--Footer important links
+    If no such page exists then nav item is not created. CSS defines which of the long or short version is 
+	displayed.   -->
+
+	
+   <div class="footer-nav-bar" style="">
+     <div class="footer-options">
+   
+        
+              <a class="footer-navlink-short" title="Report Bug" href="../introducing_emscripten/bug_reports.html">Report Bug</a><a class="footer-navlink-long" title="Report Bug" href="../introducing_emscripten/bug_reports.html">Report Bug</a>
+        
+              <a class="footer-navlink-short" title="Licensing" href="../introducing_emscripten/emscripten_license.html">Licensing</a><a class="footer-navlink-long" title="Licensing" href="../introducing_emscripten/emscripten_license.html">Licensing</a>
+        
+              <a class="footer-navlink-short" title="Contributing" href="../contributing/contributing.html">Contributing</a><a class="footer-navlink-long" title="Contributing" href="../contributing/contributing.html">Contributing</a>
+         
+		      <a class="footer-navlink-short" href="https://groups.google.com/forum/#!forum/emscripten-discuss">Mailing list</a><a class="footer-navlink-long" href="https://groups.google.com/forum/#!forum/emscripten-discuss">Mailing list</a>
+         
+		      <a class="footer-navlink-short" href="https://github.com/kripken/emscripten/wiki">Wiki</a><a class="footer-navlink-long" href="https://github.com/kripken/emscripten/wiki">Wiki</a>
+         
+		      <a class="footer-navlink-short" href="https://plus.google.com/100622854474489221138">Google+</a><a class="footer-navlink-long" href="https://plus.google.com/100622854474489221138">Google+</a>
+        
+              <a class="footer-navlink-short" title="Release notes" href="../introducing_emscripten/release_notes.html">Release notes</a><a class="footer-navlink-long" title="Release notes" href="../introducing_emscripten/release_notes.html">Release notes</a>
+        
+              <a class="footer-navlink-short" title="Blogs" href="../introducing_emscripten/community.html">Blogs</a><a class="footer-navlink-long" title="Blogs" href="../introducing_emscripten/community.html">Blogs</a>
+        
+              <a class="footer-navlink-short" title="Help" href="../introducing_emscripten/community.html">Help</a><a class="footer-navlink-long" title="Contact" href="../introducing_emscripten/community.html">Contact</a>
+         
+				
+     </div>
+	 
+	
+ 
+   </div>
+  
+    <!-- <div role="navigation" aria-label="breadcrumbs navigation">
+
+  <div class="breadcrumb-box">
+     <a class="breadcrumb-box-item" href="../../index.html">Home</a> 
+      
+          <a class="breadcrumb-box-item" href="index.html">&raquo;&nbsp;API Reference (under-construction)</a>
+      
+    <div class="breadcrumb-box-item">&raquo;&nbsp;preamble.js</div>
+  </div>
+ 
+</div> -->
+  
+    <!-- <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a> --.
+   <!--end hamishw addition -->
+  
+  
+	  
+<!-- end section moved here by hamishw -->
+  <div role="contentinfo" class="copyright-box">
+    <!-- section moved here by hamishw - needs tidying, which is why it is still in breadcrumbs mode --> 
+  <ul class="wy-breadcrumbs">
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../../_sources/docs/api_reference/preamble.js.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+
+	  <li class="wy-breadcrumbs-aside">
+         <a href="../site/about.html">About site</a>
+      </li>
+	  
+	  <li class="wy-breadcrumbs-aside">
+        <a href="https://github.com/kripken/emscripten/issues/new?title=Bug%20in%20page:preamble.js%20&body=REPLACE%20THIS%20TEXT%20WITH%20BUG%20DESCRIPTION%20%0A%0AURL:%20../../docs/api_reference/preamble.js&labels=bug">Page bug</a>
+      </li>
+  </ul>
+  
+    <p>
+        <!-- &copy; Copyright 2014, . -->
+		&copy; Copyright 2014,  <a href="../../docs\contributing\AUTHORS.html">Emscripten Contributors</a>.
+		<!-- update theme to remove the translation stuff here - it was breaking due to link to AUTHORS file. This is a cludge to allow specific link to my authors file -->
+    </p>
+	
+  </div>
+  
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'1.20.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+</div>
+</body>
+</html>
