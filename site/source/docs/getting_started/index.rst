@@ -7,6 +7,4 @@ Getting Started (under-construction)
    :maxdepth: 1
    
    downloads
-   building_from_source/index
-   verify_emscripten_environment
    Tutorial

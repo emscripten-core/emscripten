@@ -37,12 +37,12 @@ can manually run those checks with ``emcc -v``), and briefly explain the
 issue and link to this page (where, later down, you can see how to
 disable fastcomp).
 
+.. _building-fastcomp-from-source:
+
 Getting Fastcomp
 ----------------
 
-To use fastcomp, you need both emscripten (see the :ref:`Tutorial`) and the
-emscripten LLVM code, either from the SDK or from source. Instructions
-from source are as follows:
+To use fastcomp, you need both Emscripten (see the :ref:`Tutorial`) and the Emscripten LLVM code, either from the SDK or from source. Instructions from source are as follows:
 
 -  Clone the fastcomp LLVM repository:
    https://github.com/kripken/emscripten-fastcomp (doesn't matter where
@@ -56,15 +56,28 @@ from source are as follows:
    development we used another one, so make sure you are using this one
    now.)
 -  Build it:
--  ``cd ..`` to get back to the root of the llvm checkout
--  ``mkdir build`` and then ``cd build`` (it is better to build into a
-   separate build dir)
--  ``../configure --enable-optimized --disable-assertions --enable-targets=host,js``
--  (Alternatively, you can use CMake instead of configure:
-   ``cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF``
-   ``-DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF -DCLANG_INCLUDE_TESTS=OFF``,
-   replace X86 if you are on something else.)
--  ``make -j 4`` (or whatever number of cores you want to use)
+	-  ``cd ..`` to get back to the root of the llvm checkout
+	-  ``mkdir build`` and then ``cd build`` (it is better to build into a
+	   separate build dir)
+	-  Configure the build using the *configure* script or *Cmake*:
+	
+		- Using *configure*: 
+		
+		::
+		
+			../configure --enable-optimized --disable-assertions --enable-targets=host,js
+			
+	-  Using *CMake*: 
+
+		::
+		
+			cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" 
+				-DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF
+				-DCLANG_INCLUDE_TESTS=OFF
+			
+	   replace X86 if you are on something else..
+	   
+	-  ``make -j 4`` (or whatever number of cores you want to use)
 -  Set it up in ~/.emscripten (set the path to the llvm checkout +
    something like ``/build/Release/bin`` as LLVM\_ROOT, look for where
    the ``clang`` binary shows up under ``build/``)

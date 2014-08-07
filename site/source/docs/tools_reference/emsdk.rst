@@ -67,9 +67,42 @@ You can also specify a target of ``latest`` to grab the most current SDK.
 SDK manager concepts
 ==============================
 
-The Emscripten toolchain includes a number of different :term:`tools <Tool>`, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. The *emsdk* can fetch the different versions of all these tools and also specific :term:`SDKs <SDK>`. These are put into different directories under the root folder you specified when you installed the SDK, grouped by tool and version. 
+The Emscripten toolchain includes a number of different :term:`tools <Tool>`, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. The :term:`SDK` delivers a full set of these tools for a particular Emscripten release, in a convenient installer package.
 
-A user-specific file (**~/.emscripten**) stores the active "compiler configuration"; the :term:`active <Active Tool/SDK>` configuration is the specific set of tools that are used by default if Emscripten in called on the :ref:`Emscripten Command Prompt <emcmdprompt>`. Users can call *emsdk* with the ``activate`` argument to make a specific tool or SDK active.
+The *emsdk* can be used to fetch and install both current and legacy versions of individual tools and SDKs. A particular SDK (or tool) can then be set as :term:`active <Active Tool/SDK>`, meaning that it will be used when Emscripten is run. The active "compiler configuration" is stored in a user-specific file (*~/.emscripten*), which is discussed in the next section.
+
+.. note:: The different tools and SDKs managed by *emsdk* are stored in different directories under the root folder you specified when you first installed an SDK, grouped by tool and version. 
+
+.. _compiler-configuration-file:
+
+Emscripten Compiler Configuration File (.emscripten) 
+----------------------------------------------------
+
+The *Compiler Configuration File* stores the :term:`active <Active Tool/SDK>` configuration on behalf of the *emsdk*. The active configuration defines the specific set of tools that are used by default if Emscripten in called on the :ref:`Emscripten Command Prompt <emcmdprompt>`. 
+
+The configuration file is named **.emscripten**. It is user-specific, and is located in the user's home directory (**~/.emscripten** on Linux).
+
+The file should not be updated directly. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
+
+Below is a typical **.emscripten** file, taken from a user's root directory on Windows:
+
+.. todo:: **HamishW** When I've fully tested on ubuntu perhaps include the file from there (since Linux is the most used platform.
+
+::
+
+	import os
+	SPIDERMONKEY_ENGINE = ''
+	NODE_JS = 'node'
+	LLVM_ROOT='C:/Program Files/Emscripten/clang/e1.21.0_64bit'
+	NODE_JS='C:/Program Files/Emscripten/node/0.10.17_64bit/node.exe'
+	PYTHON='C:/Program Files/Emscripten/python/2.7.5.3_64bit/python.exe'
+	EMSCRIPTEN_ROOT='C:/Program Files/Emscripten/emscripten/1.21.0'
+	JAVA='C:/Program Files/Emscripten/java/7.45_64bit/bin/java.exe'
+	V8_ENGINE = ''
+	TEMP_DIR = 'c:/users/hamis_~1/appdata/local/temp'
+	COMPILER_ENGINE = NODE_JS
+	JS_ENGINES = [NODE_JS]
+
 
 
 .. _emsdk_howto:

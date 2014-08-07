@@ -1,14 +1,14 @@
 .. _emcmdprompt:
 
-===================================================================
-Emscripten Command Prompt (emcmdprompt.bat) (ready-for-review)
-===================================================================
+=======================================================================
+Emscripten Windows Command Prompt (emcmdprompt.bat) (ready-for-review)
+=======================================================================
 
 
 Purpose
 ============================================
 
-The *Emscripten Command Prompt* is used to call Emscripten tools from the command line.  
+The *Emscripten Command Prompt* is used to call Emscripten tools from the command line on Windows.  
 
 The prompt is added to the *Windows Start Menu* programs by the :term:`NSIS Installer <Windows NSIS Installer Emscripten SDK>`. It can be launched by typing **Emscripten** in the Windows 8 start screen, and then selecting the **Emscripten Command Prompt** option. The prompt can also be launched from the file system by locating and opening the file **emcmdprompt.bat**.
 

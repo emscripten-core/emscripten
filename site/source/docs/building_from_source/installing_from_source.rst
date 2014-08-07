@@ -42,10 +42,12 @@ Windows and OSX: guides for manual building
 
 The following guides explain setting up Emscripten and its prerequisites manually on Windows and Mac OSX:
 
-- :doc:`Build Clang on Mac OS X`.
-- :doc:`Download a prebuilt Clang on Mac OS X`.
-- :doc:`Get Emscripten and Clang via brew` by nathanhammond.
-- :doc:`Manual Emscripten setup on Windows`.
+- `Build Clang on Mac OS X <https://github.com/kripken/emscripten/wiki/Getting-started-on-Mac-OS-X>`_.
+- `Download a prebuilt Clang on Mac OS X <https://gist.github.com/dweekly/5873953>`_.
+- `Get Emscripten and Clang via brew <https://gist.github.com/nathanhammond/1974955>`_ by nathanhammond.
+- `Manual Emscripten setup on Windows <https://github.com/kripken/emscripten/wiki/Using-Emscripten-on-Windows>`_.
+   
+   
 
 Linux: guides for manual building
 ============================================
@@ -56,9 +58,12 @@ Linux: guides for manual building
 The following guides explain setting up Emscripten and its prerequisites manually on Linux:
 
 - For help on Ubuntu, you can follow the :doc:`Getting Started on Ubuntu 12.10` guide for instructions on how to obtain the prerequisites and build Clang manually using CMake.
-- For help on Debian, see this :doc:`guide by EarthServer`.
-- rhelmer has provided a Vagrant VM for Emscripten, see :doc:`emscripten-vagrant`.
-- Dirk Krause created an :doc:`Amazon EC2 image` for Emscripten.
+- For help on Debian, see this `guide by EarthServer <https://earthserver.com/Setting_up_emscripten_development_environment_on_Linux>`_.
+- rhelmer has provided a Vagrant VM for Emscripten, see `emscripten-vagrant <https://github.com/rhelmer/emscripten-vagrant>`_.
+- Dirk Krause created an `Amazon EC2 image <https://groups.google.com/forum/?fromgroups=#!topic/emscripten-discuss/H8kG0kP1eDE>`_ for Emscripten.
+
+
+
 
 
 Configuring the basic Emscripten settings file

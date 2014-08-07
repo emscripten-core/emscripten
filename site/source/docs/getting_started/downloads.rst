@@ -6,7 +6,7 @@ Download and install (ready-for-review)
 
 .. note:: The *Emscripten SDK* provides the whole Emscripten toolchain (*Clang*, *Python*, *Node.js* and *Visual Studio* integration) in a single easy-to-install package, with integrated support for :ref:`updating to newer SDKs <updating-the-emscripten-sdk>` as they are released.
 
-.. tip:: If you are :doc:`contributing <../contributing/contributing>` to Emscripten (or if you wish to build 32bit versions of the SDK) you should :ref:`set up Emscripten from source <installing-from-source>`.
+.. tip:: If you are :doc:`contributing <../contributing/contributing>` to Emscripten you should :ref:`set up Emscripten from source <installing-from-source>`.
 
 
 SDK Downloads
@@ -28,6 +28,8 @@ Windows
 
 Linux and Mac OS X
 ------------------
+
+.. _portable-emscripten-sdk-linux-osx:
 	
 - `Portable Emscripten SDK for Linux and OS X <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz>`_ (emsdk-portable.tar.gz) 
 		A tar.gz archive package of the SDK that does not require system installation privileges. To install, follow :ref:`the general instructions <all-os-installation_instructions-portable-SDK>` and :ref:`platform-specific notes <platform-notes-installation_instructions-portable-SDK>`.
@@ -63,20 +65,20 @@ If you want to use the *Portable Emscripten SDK*, the initial setup process is a
 1. Download and unzip the portable SDK package to a directory of your choice. This directory will contain the Emscripten SDK.
 #. Open a command prompt inside the SDK directory and run the following :ref:`emsdk <emsdk>` commands to get the latest SDK tools and set them as :term:`active <Active Tool/SDK>`. 
 
-	.. note:: On Mac OS X, invoke the tool with **./emsdk** instead of **emsdk**: 
+	.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**: 
 	
 	::
 
 		# Fetch the latest registry of available tools.
-		emsdk update
+		./emsdk update
 		
 		# Download and install the latest SDK tools.
-		emsdk install latest
+		./emsdk install latest
 
 		# Make the "latest" SDK "active"
-		emsdk activate latest	
+		./emsdk activate latest	
 
-Whenever you change the location of the Portable SDK (e.g. take it to another computer), re-run the final command: ``emsdk activate latest``.
+Whenever you change the location of the Portable SDK (e.g. take it to another computer), re-run the final command: ``./emsdk activate latest``.
 
 .. tip:: The instructions above can also be used to get new SDKs, as they are released.
 
@@ -94,7 +96,7 @@ Mac OS X
 	1. Install XCode and the XCode Command Line Tools. This will provide *git* to the system PATH. For more help on this step, see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_.
 	2. Install git directly from http://git-scm.com/.
 
-- *Java* is not bundled with the Emscripten SDK. After installing Emscripten via :ref:`emsdk <emsdk>`, typing ``emcc --help`` should pop up a dialog that will automatically download a Java Runtime to the system: ::
+- *Java* is not bundled with the Emscripten SDK. After installing Emscripten via :ref:`emsdk <emsdk>`, typing ``./emcc --help`` should pop up a dialog that will automatically download a Java Runtime to the system: ::
 
 	Java is not installed. To open Java, you need a Java SE 6 runtime. 
 	Would you like to install one now?
@@ -132,11 +134,11 @@ Updating the SDK
 Type the following (omitting comments) on the :ref:`Emscripten Command Prompt <emcmdprompt>`: ::
 
 	# Fetch the latest registry of available tools.
-	emsdk update
+	./emsdk update
 	# Download and install the latest SDK tools.
-	emsdk install latest
+	./emsdk install latest
 	# Set up the compiler configuration to point to the "latest" SDK.
-	emsdk activate latest
+	./emsdk activate latest
 
 The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on Github <emsdk-master-or-incoming-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
 

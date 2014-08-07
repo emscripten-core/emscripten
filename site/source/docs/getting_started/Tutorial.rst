@@ -46,14 +46,14 @@ You can now compile your first C++ file to JavaScript!
 
 First, lets have a look at the file to be compiled: **hello_world.cpp**. This is the simplest test code in the SDK, and as you can see, all it does is print "hello, world!" to the console and then exit.
 
-.. include:: ..\..\..\..\tests\hello_world.cpp
+.. include:: ../../../../tests/hello_world.cpp
    :literal:
    
 
 
 To build the JavaScript version of this code we simply specify the C++ file after *emcc*: ::
 
-	emcc tests\hello_world.cpp
+	emcc tests/hello_world.cpp
 
 
 There should now be an **a.out.js** file in the current directory. Run it using :term:`node`:
@@ -84,7 +84,7 @@ The HTML isn't limited just to just displaying text. You can also use the SDL AP
 
 The source code for the second example is given below:
 
-.. include:: ..\..\..\..\tests\hello_world_sdl.cpp
+.. include:: ../../../../tests/hello_world_sdl.cpp
    :literal:
    
 
@@ -101,10 +101,10 @@ Preloading generates a virtual filesystem that corresponds to the filesystem str
 
 The `hello_world_file.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
 
-.. include:: ..\..\..\..\tests\hello_world_file.cpp
+.. include:: ../../../../tests/hello_world_file.cpp
    :literal:
    
-.. include:: ..\..\..\..\tests\hello_world_file.txt
+.. include:: ../../../../tests/hello_world_file.txt
    :literal:
 
 .. note:: The code loads a file at `tests/hello_world_file.txt <https://github.com/kripken/emscripten/blob/master/tests/hello_world_file.txt>`_. We compile the example from the directory "above" **tests** to ensure that the text file is stored at this location in the virtual filesystem.
@@ -122,7 +122,7 @@ Open ``hello.html`` in the *Firefox web browser* to see the data from **hello_wo
 
 For an example of how to load files with SDL, check out `tests/hello_image_sdl.c <https://github.com/kripken/emscripten/blob/master/tests/hello_image_sdl.c>`_:
 
-.. include:: ..\..\..\..\tests\hello_image_sdl.c
+.. include:: ../../../../tests/hello_image_sdl.c
    :literal:
 
 The source code expects a file **screenshot.jpg** in the current directory. As discussed above, this means that we need to compile the source and preload from the same directory that contains the screenshot. Change to the **tests/** directory and run: ::

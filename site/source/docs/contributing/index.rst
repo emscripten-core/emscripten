@@ -9,8 +9,6 @@ Contributing to Emscripten (under-construction)
    
    contributing
    developers_guide
-
-   LLVM-Backend
    LLVM-Types-in-JavaScript
    AUTHORS
 

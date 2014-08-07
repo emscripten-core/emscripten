@@ -1,6 +1,12 @@
 ================================
+Test page
+================================
+
+
+
 Getting Started with Emscripten
 ================================
+
 
 .. note:: This is fragment from the wiki topic Emscripten SDK. Not yet got a home.
 
@@ -69,6 +75,10 @@ This was cut from an SDK installation topic:
 
 "Run ``emsdk_env.bat`` (Windows) or ``source ./emsdk_env.sh`` (Linux and OSX) to set up the environment for the calling terminal." from topic "How do I check the installation status and version of the SDK and tools?". I think this is part of manual setup and doesn't belong here.
 
+
+
+
+
 Text from tutorial that might belong in "introducting emscripten" and troubleshooting
 ===========================================================================================================
 
@@ -91,3 +101,52 @@ The Emscripten compiler (the core code called by emcc that translates LLVM assem
     emcc source.cpp -s TOTAL_STACK=10000000
 
 This invocation of emcc will generate JavaScript that sets aside a lot of space for the stack.
+
+
+
+
+-----
+
+Section below some temp test
+
+-----
+
+Section below some temp test
+
+========================================================
+Emscripten Compiler Frontend (emcc) (import as code)
+========================================================
+
+**This document provides the command syntax for the Emscription Compiler Frontend.**
+
+.. note:: The information in this page was output by running ``emcc --help`` on the version of *emcc* in the Emscripten 1.20.0 SDK. The most recent version is `emcc (master) <https://github.com/kripken/emscripten/blob/master/emcc>`_ 
+
+Purpose
+============================================
+
+The Emscripten Compiler Frontend (``emcc``) is used to call the Emscripten compiler from the command line. It is effectively a drop-in replacement for a standard compiler like *gcc*.
+
+
+Command line syntax
+============================================
+
+::
+
+	emcc [options] file...
+
+The input file(s) can be either source code files that *Clang* can handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable form.
+
+Most normal gcc/g++ options will work, for example:
+
+  --help                   Display this information
+  --version                Display compiler version information
+
+Options that are modified or new in *emcc* are listed below (imported from latest version of emcc)
+
+.. include:: ../../../../emcc
+	:start-after: Options that are modified or new in %s include:
+	:end-before: (autoconf likes to see elf above to enable shared object support)
+	:code:
+   
+
+
