@@ -236,18 +236,20 @@ extern void emscripten_cancel_main_loop(void);
  * containing the userData and pass that as the callback to the
  * underlying JavaScript Event registration mechanism.
  */
+typedef void (*em_socket_callback)(int fd, void *userData);
+typedef void (*em_socket_error_callback)(int fd, int err, const char* msg, void *userData);
 // Triggered by a WebSocket error.
-extern void emscripten_set_socket_error_callback(void *userData, void (*func)(int fd, int err, const char* msg, void *userData));
+extern void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback *callback);
 // Triggered when the WebSocket has actually opened.
-extern void emscripten_set_socket_open_callback(void *userData, void (*func)(int fd, void *userData));
+extern void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
 // Triggered when listen has been called (synthetic event).
-extern void emscripten_set_socket_listen_callback(void *userData, void (*func)(int fd, void *userData));
+extern void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
 // Triggered when the connection has actually been established.
-extern void emscripten_set_socket_connection_callback(void *userData, void (*func)(int fd, void *userData));
+extern void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
 // Triggered when data is available to be read from the socket.
-extern void emscripten_set_socket_message_callback(void *userData, void (*func)(int fd, void *userData));
+extern void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
 // Triggered when the WebSocket has actually closed.
-extern void emscripten_set_socket_close_callback(void *userData, void (*func)(int fd, void *userData));
+extern void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
 
 /*
  * Add a function to a queue of events that will execute
