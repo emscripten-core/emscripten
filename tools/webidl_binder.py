@@ -130,11 +130,6 @@ function ensureString(value) {
   return value;
 }
 
-// Ensure that Module is accessible from with EM_ASM blocks by putting it in the global scope.
-// (Otherwise the closure compiler breaks this because it doesn't know we plan to eval code with
-// the `Module` symbol later.)
-(function() { return eval('this'); }).call()['Module'] = Module;
-
 ''']
 
 C_FLOATS = ['float', 'double']
