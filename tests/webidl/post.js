@@ -86,6 +86,9 @@ try {
   Module.print('caught: ' + e);
 }
 
+// Test virtual method dispatch from c++
+Module.Child2.prototype.runVirtualFunc3(c3, 43);
+
 c2.virtualFunc(); // original should remain the same
 Module.Child2.prototype.runVirtualFunc(c2);
 c2.virtualFunc2();
@@ -125,7 +128,7 @@ Module.print([enumClassInstance.GetEnum(), Module.EnumClass.e_val].join(','));
 // in namespaces, see `Inner` above.
 Module.print(Module.e_namespace_val);
 
-typeTester = new TypeTestClass();
+typeTester = new Module.TypeTestClass();
 
 Module.print('return char ' + typeTester.ReturnCharMethod());
 typeTester.AcceptCharMethod((2<<6)-1);

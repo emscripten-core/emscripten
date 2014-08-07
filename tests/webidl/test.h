@@ -36,6 +36,7 @@ public:
   static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
   virtual void virtualFunc3(int x) { printf("*virtualf3: %d*\n", x); }
   virtual void virtualFunc4(int x) { printf("*virtualf4: %d*\n", x); }
+  static void runVirtualFunc3(Child2 *self, int x) { self->virtualFunc3(x); };
 
 private:
   void doSomethingSecret() { printf("security breached!\n"); }; // we should not be able to do this

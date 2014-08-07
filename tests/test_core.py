@@ -6280,8 +6280,8 @@ def process(filename):
   def test_webidl(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
-    #if self.run_name == 'asm2': self.emcc_args += ['--closure', '1', '-g1'] # extra testing
-  
+    if self.run_name == 'asm2': self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+
     output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
                             path_from_root('tests', 'webidl', 'test.idl'),
                             'glue']).communicate()[0]
