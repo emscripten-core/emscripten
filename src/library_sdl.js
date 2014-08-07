@@ -1262,6 +1262,10 @@ var LibrarySDL = {
   SDL_LoadBMP_RW: 'IMG_Load',
   IMG_Load_RW: 'IMG_Load',
 
+  IMG_Quit: function() {
+    Module.print('IMG_Quit called (and ignored)');
+  },
+
   // SDL_Audio
 
   // TODO fix SDL_OpenAudio, and add some tests for it.  It's currently broken.
@@ -1767,6 +1771,10 @@ var LibrarySDL = {
   TTF_FontHeight: function(font) {
     var fontData = SDL.fonts[font];
     return fontData.size;
+  },
+
+  TTF_Quit: function() {
+    Module.print('TTF_Quit called (and ignored)');
   },
 
   // SDL gfx
