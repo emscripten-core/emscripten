@@ -131,6 +131,7 @@ void http::runRequest(const char* page, int assync) {
 */
 void http::abortRequest() {
 	emscripten_async_wget2_abort(_handle);
+	_status = ST_ABORTED;
 }
 
 /**
@@ -249,7 +250,8 @@ void wait_http(void* request) {
     	} else {
 			if (req->getStatus() == http::ST_OK) { 
 				printf("Success Request n°%d : %s\n",req->getId(),req->getContent());
-	
+			} else if (req->getStatus() == http::ST_ABORTED) {
+				printf("Aborted Request n°%d", req->getId());
 			} else {
 				printf("Error Request n°%d : %s\n",req->getId(), req->getError());
     		}
@@ -265,8 +267,8 @@ void wait_http(void* request) {
 int main() {
 	time_elapsed = emscripten_get_now();
 
-	http* http1 = new http("http://localhost/~boristsarev",http::REQUEST_GET,"Demo1.js");
-	http1->runRequest("/download.php?url=Demo1.js",http::ASSYNC_THREAD);
+	http* http1 = new http("https://github.com",http::REQUEST_GET,"emscripten_master.zip");
+	http1->runRequest("/kripken/emscripten/archive/master.zip",http::ASSYNC_THREAD);
 
 	http* http2 = new http("https://github.com",http::REQUEST_GET,"wolfviking_master.zip");
 	http2->runRequest("/wolfviking0/image.js/archive/master.zip",http::ASSYNC_THREAD);

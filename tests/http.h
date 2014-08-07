@@ -21,7 +21,8 @@ class http {
 		enum Status {
 			ST_PENDING = 0,
 			ST_FAILED,
-			ST_OK
+			ST_OK,
+			ST_ABORTED,
 		};
 
 		enum RequestType {
