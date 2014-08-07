@@ -6288,12 +6288,15 @@ def process(filename):
     assert os.path.exists('glue.cpp')
     assert os.path.exists('glue.js')
 
-    self.emcc_args += ['--post-js', 'glue.js',
-                       '--post-js', path_from_root('tests', 'webidl', 'post.js')]
+    self.emcc_args += ['--post-js', 'glue.js']
     shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
     shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
     src = open('test.cpp').read()
-    self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read())
+    def post(filename):
+      src = open(filename, 'a')
+      src.write('\n\n' + open(path_from_root('tests', 'webidl', 'post.js')).read() + '\n\n')
+      src.close()
+    self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read(), post_build=(None, post))
 
   def test_typeinfo(self):
     if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp does not support RUNTIME_TYPE_INFO')
