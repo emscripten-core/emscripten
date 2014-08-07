@@ -114,6 +114,17 @@ bv2.getAnother().PrintFloat(21.12);
 Module.print(new Module.Inner().get());
 new Module.Inner().mul(2);
 
+Module.print(Module.enum_value1);
+Module.print(Module.enum_value2);
+
+// Enums from classes are accessed via the class.
+enumClassInstance = new Module.EnumClass();
+Module.print([enumClassInstance.GetEnum(), Module.EnumClass.e_val].join(','));
+
+// Enums from namespaces are accessed via the top-level module, as with classes defined
+// in namespaces, see `Inner` above.
+Module.print(Module.e_namespace_val);
+
 //
 
 Module.print('\ndone.')

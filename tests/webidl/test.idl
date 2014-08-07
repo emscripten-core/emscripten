@@ -65,3 +65,24 @@ interface Inner {
   [Operator="*=", Ref] Inner mul(float x);
 };
 
+enum AnEnum {
+  "enum_value1",
+  "enum_value2"
+};
+
+enum EnumClass_EnumWithinClass {
+  "EnumClass::e_val"
+};
+
+enum EnumNamespace_EnumInNamespace {
+  "EnumNamespace::e_namespace_val"
+};
+
+interface EnumClass {
+  void EnumClass();
+
+  EnumClass_EnumWithinClass GetEnum();
+
+  EnumNamespace_EnumInNamespace GetEnumFromNameSpace();
+};
+

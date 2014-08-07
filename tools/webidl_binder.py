@@ -34,12 +34,15 @@ data = p.finish()
 
 interfaces = {}
 implements = {}
+enums = {}
 
 for thing in data:
   if isinstance(thing, WebIDL.IDLInterface):
     interfaces[thing.identifier.name] = thing
   elif isinstance(thing, WebIDL.IDLImplementsStatement):
     implements.setdefault(thing.implementor.identifier.name, []).append(thing.implementee.identifier.name)
+  elif isinstance(thing, WebIDL.IDLEnum):
+    enums[thing.identifier.name] = thing
 
 #print interfaces
 #print implements
@@ -416,6 +419,31 @@ public:
 %s
 };
 ''' % (name, type_to_c(js_impl, non_pointing=True), '\n'.join(js_impl_methods))]
+
+for name, enum in enums.iteritems():
+  mid_c += ['\n// ' + name + '\n']
+  mid_js += ['\n// ' + name + '\n']
+  for value in enum.values():
+    function_id = "%s_%s" % (name, value.split('::')[-1])
+    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE emscripten_enum_%s() {
+  return %s;
+}
+''' % (name, function_id, value)]
+    symbols = value.split('::')
+    if len(symbols) == 1:
+      identifier = symbols[0]
+      mid_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+    elif len(symbols) == 2:
+      [namespace, identifier] = symbols
+      if namespace in interfaces:
+        # namespace is a class
+        mid_js += ["Module['%s']['%s'] = _emscripten_enum_%s();\n" % \
+                  (namespace, identifier, function_id)]
+      else:
+        # namespace is a namespace, so the enums get collapsed into the top level namespace.
+        mid_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+    else:
+      throw ("Illegal enum value %s" % value)
 
 mid_c += ['\n}\n\n']
 mid_js += ['\n']
