@@ -1,8 +1,9 @@
+
 .. _emcc:
 
-========================================================
+=========================================================
 Emscripten Compiler Frontend (emcc) (under-construction)
-========================================================
+=========================================================
 
 **This document provides the command syntax for the Emscription Compiler Frontend.**
 

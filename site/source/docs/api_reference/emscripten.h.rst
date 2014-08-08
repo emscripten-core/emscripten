@@ -175,7 +175,9 @@ Functions
 
 	The JavaScript environment will call that function at a specified number of frames per second. Setting 0 or a negative value as the ``fps`` will instead use the browser’s ``requestAnimationFrame`` mechanism to call the main loop function. This is **HIGHLY** recommended if you are doing rendering, as the browser’s ``requestAnimationFrame`` will make sure you render at a proper smooth rate that lines up with the the browser and monitor in a proper way. (If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.)
 	
-	If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in ``glutMainLoop`` in GLUT). If this parameter is false, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is false, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
+	If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in ``glutMainLoop`` in GLUT). If this parameter is ``false``, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is ``false``, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
+	
+	.. tip:: There can be only *one* main loop function at a time. To change the main loop function, first :c:func:`cancel <emscripten_cancel_main_loop>` the current loop, and then call this function to set another.
 	
 	.. note:: See :c:func:`emscripten_set_main_loop_expected_blockers`, :c:func:`emscripten_pause_main_loop`, :c:func:`emscripten_resume_main_loop` and :c:func:`emscripten_cancel_main_loop` for information about blocking, pausing, and resuming the main loop.
 	
@@ -267,7 +269,16 @@ Functions
 
 .. c:function:: void emscripten_exit_with_live_runtime(void)
 
-	Exits the program immediately, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). This is implicitly performed when you do an asynchronous operation like :c:func:`emscripten_async_call`.
+	Exits the program immediately, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). Note that the runtime is kept alive automatically when you do an asynchronous operation like :c:func:`emscripten_async_call`, so you don't need to call this function for those cases.
+
+	
+.. c:function:: void emscripten_force_exit(int status)
+
+	Shuts down the runtime and exits (terminates) the program, as if you called ``exit()``. 
+	
+	The difference is that ``emscripten_force_exit`` will shut down the runtime even if you previously called :c:func:`emscripten_exit_with_live_runtime` or otherwise kept the runtime alive. In other words, this method gives you the option to completely shut down the runtime after it was kept alive beyond the completion of ``main()``.
+
+	:param int status: The same as for the *libc* function `exit() <http://linux.die.net/man/3/exit>`_.
 
 
 .. c:function::void emscripten_hide_mouse(void)
@@ -389,12 +400,26 @@ Typedefs
 
 Functions
 ---------
+
+.. c:function:: void emscripten_wget(const char* url, const char* file)
+
+	Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
+
+	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).
+ 
+	This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
+
+	To use this function, you will need to compile your application with the linker flag ``-s ASYNCIFY=1``
+
+	:param const char* url: The URL to load.
+	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten.
+
 	
 .. c:function:: void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 		 
 	Loads a file from a URL asynchronously. 
 
-	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio and so forth).
+	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).
 
 	When file is ready the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 	
@@ -434,7 +459,7 @@ Functions
 		- *(void*)* : A pointer to ``arg`` (user defined data).
 
 
-.. c:function:: void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
+.. c:function:: int emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
 		 
 	Loads a file from a URL asynchronously. 
 	
@@ -468,8 +493,10 @@ Functions
 		- *(void*)* : A pointer to ``arg`` (user defined data).
 		- *(int)* : The progress (percentage completed).
 
+	:returns: A handle to request (``int``) that can be used to :c:func:`abort <emscripten_async_wget2_abort>` the request.
 	
-.. c:function:: void emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress)
+	
+.. c:function:: int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress)
 		 
 	Loads a buffer from a URL asynchronously. 
 	
@@ -507,7 +534,16 @@ Functions
 		- *(void*)* : A pointer to ``arg`` (user defined data).
 		- *(int)* : The number of bytes loaded.  
 		- *(int)* : The total size of the data in bytes, or zero if the size is unavailable.
+
+	:returns: A handle to request (``int``) that can be used to :c:func:`abort <emscripten_async_wget2_abort>` the request.		
+
+
+.. c:function:: emscripten_async_wget2_abort(int handle)
+
+	Abort an asynchronous request raised using :c:func:`emscripten_async_wget2` or :c:func:`emscripten_async_wget2_data`.
 	
+	:param int handle: A handle to request to be aborted.
+
 
 	
 .. c:function:: int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
@@ -786,8 +822,8 @@ Functions
 
 	
 	
-Networking
-==========
+Networking backend
+==================
 
 Defines
 -------
@@ -815,5 +851,147 @@ Functions
 	
 	:param int backend: The backend to use. One of :c:macro:`EMSCRIPTEN_NETWORK_WEBSOCKETS` and :c:macro:`EMSCRIPTEN_NETWORK_WEBRTC`
 
+
+	
+.. _emscripten-api-reference-sockets:
+
+Socket event registration
+============================
+
+The functions in this section register callback functions for receiving socket events. These events are analogous to `WebSocket <https://developer.mozilla.org/en/docs/WebSockets>`_ events but are emitted *after* the internal Emscripten socket processing has occurred. This means, for example, that the message callback will be triggered after the data has been added to the *recv_queue*, so that an application receiving this callback can simply read the data using the file descriptor passed as a parameter to the callback. All of the callbacks are passed a file descriptor (``fd``) representing the socket that the notified activity took place on. The error callback also takes an ``int`` representing the socket error number (``errno``) and a ``char*`` that represents the error message (``msg``).
+
+Only a single callback function may be registered to handle any given event, so calling a given registration function more than once will cause the first callback to be replaced. Similarly, passing a ``NULL`` callback function to any ``emscripten_set_socket_*_callback`` call will de-register the callback registered for that event.
+
+The ``userData`` pointer allows arbitrary data specified during event registration to be passed to the callback, this is particularly useful for passing ``this`` pointers around in Object Oriented code.
+
+In addition to being able to register network callbacks from C it is also possible for native JavaScript code to directly use the underlying mechanism used to implement the callback registration. For example, the following code shows simple logging callbacks that are registered by default when ``SOCKET_DEBUG`` is enabled: 
+
+.. code-block:: javascript
+
+	Module['websocket']['on']('error', function(error) {console.log('Socket error ' + error);});
+	Module['websocket']['on']('open', function(fd) {console.log('Socket open fd = ' + fd);});
+	Module['websocket']['on']('listen', function(fd) {console.log('Socket listen fd = ' + fd);});
+	Module['websocket']['on']('connection', function(fd) {console.log('Socket connection fd = ' + fd);});
+	Module['websocket']['on']('message', function(fd) {console.log('Socket message fd = ' + fd);});
+	Module['websocket']['on']('close', function(fd) {console.log('Socket close fd = ' + fd);});
+
+Most of the JavaScript callback functions above get passed the file descriptor of the socket that triggered the callback, the on error callback however gets passed an *array* that contains the file descriptor, the error code and an error message.
+
+.. note:: The underlying JavaScript implementation doesn't pass ``userData``. This is mostly of use to C/C++ code and the ``emscripten_set_socket_*_callback`` calls simply create a closure containing the ``userData`` and pass that as the callback to the underlying JavaScript event registration mechanism.
+
+
+Callback functions
+------------------
+
+.. c:type:: em_socket_callback
+
+	Function pointer for :c:func:`emscripten_set_socket_open_callback`, and the other socket functions (except :c:func:`emscripten_set_socket_error_callback`). This is defined as:
+
+	.. code-block:: cpp
+
+		typedef void (*em_socket_callback)(int fd, void *userData);
+	
+	:param int fd: The file descriptor of the socket that triggered the callback.
+	:param void* userData: The ``userData`` originally passed to the event registration function.
 	
 
+.. c:type:: em_socket_error_callback
+
+	Function pointer for the :c:func:`emscripten_set_socket_error_callback`, defined as:
+
+	.. code-block:: cpp
+
+		typedef void (*em_socket_error_callback)(int fd, int err, const char* msg, void *userData);
+	
+	:param int fd: The file descriptor of the socket that triggered the callback.
+	:param int err: The code for the error that occurred.
+	:param int msg: The message for the error that occurred.
+	:param void* userData: The ``userData`` originally passed to the event registration function.
+
+
+
+Functions
+---------
+
+.. c:function:: void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback *callback)
+
+	Triggered by a ``WebSocket`` error. 
+	
+	See :ref:`emscripten-api-reference-sockets` for more information.
+	
+	:param void* userData: Arbitrary user data to be passed to the callback.
+	:param em_socket_error_callback* callback: Pointer to a callback function. The callback returns a file descriptor, error code and message, and the arbitrary ``userData`` passed to this function.
+
+
+.. c:function:: void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback)
+
+	Triggered when the ``WebSocket`` has opened.
+
+	See :ref:`emscripten-api-reference-sockets` for more information.
+	
+	:param void* userData: Arbitrary user data to be passed to the callback.
+	:param em_socket_callback callback: Pointer to a callback function. The callback returns a file descriptor and the arbitrary ``userData`` passed to this function.
+
+		
+.. c:function:: void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback)
+
+	Triggered when ``listen`` has been called (synthetic event).
+
+	See :ref:`emscripten-api-reference-sockets` for more information.
+	
+	:param void* userData: Arbitrary user data to be passed to the callback.
+	:param em_socket_callback callback: Pointer to a callback function. The callback returns a file descriptor and the arbitrary ``userData`` passed to this function.
+		
+
+.. c:function:: void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback)
+
+	Triggered when the connection has been established.
+
+	See :ref:`emscripten-api-reference-sockets` for more information.
+	
+	:param void* userData: Arbitrary user data to be passed to the callback.
+	:param em_socket_callback callback: Pointer to a callback function. The callback returns a file descriptor and the arbitrary ``userData`` passed to this function.
+
+		
+
+.. c:function:: void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback)
+
+	Triggered when data is available to be read from the socket.
+
+	See :ref:`emscripten-api-reference-sockets` for more information.
+	
+	:param void* userData: Arbitrary user data to be passed to the callback.
+	:param em_socket_callback callback: Pointer to a callback function. The callback returns a file descriptor and the arbitrary ``userData`` passed to this function.
+	
+	
+
+.. c:function:: void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback)
+
+	Triggered when the ``WebSocket`` has closed.
+
+	See :ref:`emscripten-api-reference-sockets` for more information.
+	
+	:param void* userData: Arbitrary user data to be passed to the callback.
+	:param em_socket_callback callback: Pointer to a callback function. The callback returns a file descriptor and the arbitrary ``userData`` passed to this function.
+
+		
+Unaligned types
+===============
+
+Typedefs
+---------
+
+.. c:type:: emscripten_align1_short
+	emscripten_align2_int
+	emscripten_align1_int
+	emscripten_align2_float
+	emscripten_align1_float
+	emscripten_align4_double
+	emscripten_align2_double
+	emscripten_align1_double
+
+	Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where ``SAFE_HEAP`` found an unaligned operation. 
+	
+	.. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
+
+		

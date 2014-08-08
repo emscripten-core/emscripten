@@ -1,6 +1,8 @@
-=======
+.. _html5-h:
+
+========
 html5.h
-=======
+========
 
 The C++ APIs in `html5.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code. 
 
@@ -605,6 +607,11 @@ Functions
 	EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback)
 		
 	Registers a callback function for receiving DOM element `resize <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize>`_ and `scroll <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-scroll>`_ events.
+	
+	.. note:: 
+	
+		- For the ``resize`` callback, pass in target = 0 to get ``resize`` events from the ``Window`` object. 
+		- The DOM3 Events specification only requires that the ``Window`` object sends resize events. It is valid to register a ``resize`` callback on other DOM elements, but the browser is not required to fire ``resize`` events for these.
 
 	:param target: |target-parameter-doc|
 	:type target: const char*
@@ -1713,6 +1720,69 @@ Defines
 			 
     Emscripten `WebGL context <http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2>`_ events.
 
+.. c:type:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
+
+	Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context (this is a typedef to an ``int``).
+	
+	
+Struct
+------
+
+.. c:type:: EmscriptenWebGLContextAttributes
+
+	Specifies `WebGL context creation parameters <http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.2>`_. 
+		
+	.. c:member:: EM_BOOL alpha
+	
+		If ``true``, request an alpha channel for the context. If you create an alpha channel, you can blend the canvas rendering with the underlying web page contents. Default value: ``true``.
+	
+	.. c:member:: EM_BOOL depth
+	
+		If ``true``, request a depth buffer of at least 16 bits. If ``false``, no depth buffer will be initialized. Default value: ``true``.
+
+	.. c:member:: EM_BOOL stencil
+
+		If ``true``, request a stencil buffer of at least 8 bits. If ``false``, no stencil buffer will be initialized. Default value: ``false``.
+
+	.. c:member:: EM_BOOL antialias
+
+		If ``true``, antialiasing will be initialized with a browser-specified algorithm and quality level. If ``false``, antialiasing is disabled. Default value: ``true``.
+
+
+	.. c:member:: EM_BOOL premultipliedAlpha
+
+		If ``true``, the alpha channel of the rendering context will be treated as representing premultiplied alpha values. If ``false``, the alpha channel represents non-premultiplied alpha. Default value: ``true``.
+
+	
+	.. c:member:: EM_BOOL preserveDrawingBuffer
+
+		If ``true``, the contents of the drawing buffer are preserved between consecutive ``requestAnimationFrame()`` calls. If ``false``, color, depth and stencil are cleared at the beginning of each ``requestAnimationFrame()``. Generally setting this to ``false`` gives better performance. Default value: ``false``.
+  
+  
+	.. c:member:: EM_BOOL preferLowPowerToHighPerformance
+
+		If ``true``, hints the browser to initialize a low-power GPU rendering context. If ``false``, prefers to initialize a high-performance rendering context. Default value: ``false``.
+
+	.. c:member:: EM_BOOL failIfMajorPerformanceCaveat	
+ 
+		If ``true``, requests context creation to abort if the browser is only able to create a context that does not give good hardware-accelerated performance. Default value: ``false``.
+
+
+	.. c:member:: int majorVersion
+		int minorVersion
+	
+		Emscripten-specific extensions which specify the WebGL context version to initialize.
+
+		For example, pass in ``majorVersion=1``, ``minorVersion=0`` to request a WebGL 1.0 context, and ``majorVersion=2``, ``minorVersion=0`` to request a WebGL 2.0 context.
+
+		Default value: ``majorVersion=1``, ``minorVersion=0``
+
+  
+	.. c:member:: EM_BOOL enableExtensionsByDefault	
+
+		If ``true``, all GLES2-compatible non-performance-impacting WebGL extensions will automatically be enabled for you after the context has been created. If ``false``, no extensions are enabled by default, and you need to manually call :c:func:`emscripten_webgl_enable_extension` to enable each extension that you want to use. Default value: ``true``.
+
+
 	
 Callback functions
 ------------------
@@ -1753,7 +1823,6 @@ Functions
 	:rtype: |EMSCRIPTEN_RESULT|
 
 
-
 .. c:function:: EM_BOOL emscripten_is_webgl_context_lost(const char *target)
 
 	Queries the given canvas element for whether its WebGL context is in a lost state.
@@ -1764,6 +1833,73 @@ Functions
 	:rtype: |EM_BOOL|
 
 	
+.. c:function:: void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes)
+
+	Populates all fields of the given :c:type:`EmscriptenWebGLContextAttributes` structure to their default values for use with WebGL 1.0.
+	
+	Call this function as a forward-compatible way to ensure that if there are new fields added to the ``EmscriptenWebGLContextAttributes`` structure in the future, that they also will get default-initialized without having to change any code.
+ 
+	:param attributes: The structure to be populated.
+	:type attributes: EmscriptenWebGLContextAttributes*
+
+
+
+.. c:function:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes)
+
+	Creates and returns a new `WebGL context <http://www.khronos.org/registry/webgl/specs/latest/1.0/#2.1>`_.
+	
+	.. note:: 
+	
+		- A successful call to this function will not immediately make that rendering context active. Call :c:func:`emscripten_webgl_make_context_current` after creating a context to activate it.
+		- This function will try to initialize the context version that was *exactly* requested. It will not e.g. initialize a newer backwards-compatible version or similar. 
+
+	:param target: The DOM canvas element in which to initialize the WebGL context. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+	:type target: const char*
+	:param attributes: The attributes of the requested context version.
+	:type attributes: EmscriptenWebGLContextAttributes*
+	:returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
+	:rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
+
+	
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
+
+	Activates the given WebGL context for rendering. After calling this function, all OpenGL functions (``glBindBuffer()``, ``glDrawArrays()``, etc.) can be applied to the given GL context.
+
+	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context to activate.
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+
+	
+.. c:function:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context()
+
+	Returns the currently active WebGL rendering context, or 0 if no context is active. Calling any WebGL functions when there is no active rendering context is undefined and may throw a JavaScript exception.
+
+	:returns: The currently active WebGL rendering context, or 0 if no context is active.
+	:rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
+	
+	
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
+
+	Deletes the given WebGL context. If that context was active, then the no context is set to active.
+
+	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context to delete.
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+
+
+.. c:function:: EM_BOOL emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, const char *extension)
+
+	Enables the given extension on the given context.
+
+	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context on which the extension is to be enabled.
+	:param extension: A string identifyingthea `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
+	:type extension: const char*
+	:returns: EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available. 
+	:rtype: |EM_BOOL|
+ 
+	.. comment : **HamishW** Are EM_TRUE, EM_FALSE defined?
+
+	
 	
 .. COMMENT (not rendered): Section below is automated copy and replace text.
 
@@ -1771,6 +1907,8 @@ Functions
 	
 .. |EMSCRIPTEN_RESULT| replace:: :c:type:`EMSCRIPTEN_RESULT`
 .. |EM_BOOL| replace:: :c:type:`EM_BOOL`
+.. |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE| replace:: :c:type:`EMSCRIPTEN_WEBGL_CONTEXT_HANDLE`
+
 
 .. COMMENT (not rendered): Following values are common to many functions, and currently only updated in one place (here).
 .. COMMENT (not rendered): These can be properly replaced if required either wholesale or on an individual basis.
