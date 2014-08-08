@@ -15,7 +15,7 @@ First things first
 
 Make sure you have :ref:`downloaded and installed <sdk-download-and-install>` Emscripten (the exact approach for doing this will depend your operating system: Windows, Mac or Linux).
 
-Emscripten is accessed using the :ref:`emcc`. This script invokes all the other tools needed to build your code, and can act as a drop-in replacement for a standard compiler like *gcc*. It is called on the command line using ``emcc`` or ``em++``
+Emscripten is accessed using the :ref:`emcc <emcc>`. This script invokes all the other tools needed to build your code, and can act as a drop-in replacement for a standard compiler like *gcc*. It is called on the command line using ``emcc`` or ``em++``
 
 .. note:: On Mac OS X the tool is called using the slightly different syntax: ``./emcc`` or ``./em++`` (or even directly via Python: ``python emcc``). The remainder of this tutorial uses the Windows syntax (``emcc``).
 
