@@ -1793,7 +1793,7 @@ int main () {
 
   def test_stack_varargs2(self):
     if self.emcc_args is None: return # too slow in other modes
-    Settings.TOTAL_STACK = 1024
+    Settings.TOTAL_STACK = 1536
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
