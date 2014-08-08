@@ -5947,7 +5947,7 @@ LibraryManager.library = {
     curr: 0,
     check: function(locale) {
       if (locale) locale = Pointer_stringify(locale);
-      return locale === 'C' || !locale;
+      return locale === 'C' || locale === 'POSIX' || !locale;
     },
   },
 
