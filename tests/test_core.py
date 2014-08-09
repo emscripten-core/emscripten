@@ -6557,7 +6557,9 @@ def process(filename):
       def clean(code):
         code = re.sub(r'\n+[ \n]*\n+', '\n', code)
         code = code.replace('{\n}', '{}')
-        return '\n'.join(sorted(code.split('\n')))
+        lines = code.split('\n')
+        lines = filter(lambda line: ': do {' not in line and ' break L' not in line, lines) # ignore labels; they can change in each compile
+        return '\n'.join(sorted(lines))
       self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
