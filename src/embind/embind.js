@@ -2105,6 +2105,9 @@ var LibraryEmbind = {
   $char_9: '9'.charCodeAt(0),
   $makeLegalFunctionName__deps: ['$char_0', '$char_9'],
   $makeLegalFunctionName: function(name) {
+    if (undefined === name) {
+        return '_unknown';
+    }
     name = name.replace(/[^a-zA-Z0-9_]/g, '$');
     var f = name.charCodeAt(0);
     if (f >= char_0 && f <= char_9) {
