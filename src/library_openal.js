@@ -282,6 +282,12 @@ var LibraryOpenAL = {
       }
       {{{ makeSetValue('data', '0', '0', 'i32') }}};
       break;
+    case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
+      if (!device) {
+        AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', '4', 'i32') }}};
     default:
 #if OPENAL_DEBUG
       console.log("alcGetIntegerv with param " + param + " not implemented yet");
@@ -529,6 +535,11 @@ var LibraryOpenAL = {
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
       break;
     }
+  },
+
+  alSource3i: ['alSource3f'],
+  alSource3i: function(source, param, v1, v2, v3) {
+    _alSource3f(source, param, v1, v2, v3);
   },
 
   alSource3f: function(source, param, v1, v2, v3) {
@@ -1178,6 +1189,31 @@ var LibraryOpenAL = {
     }
   },
 
+  alListener3f: function(param, v1, v2, v3) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alListenerfv called without a valid context");
+#endif
+      return;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      AL.currentContext.ctx.listener._position = [v1, v2, v3];
+      AL.currentContext.ctx.listener.setPosition(v1, v2, v3);
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      AL.currentContext.ctx.listener._velocity = [v1, v2, v3];
+      AL.currentContext.ctx.listener.setVelocity(v1, v2, v3);
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alListener3f with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
   alListenerfv: function(param, values) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1342,6 +1378,13 @@ var LibraryOpenAL = {
 
   alcGetProcAddress: function(device, fname) {
     return 0;
+  },
+
+  alGetEnumValue: function(name) {
+    return 0;
+  },
+
+  alSpeedOfSound: function(value) {
   },
 
   alDopplerFactor: function(value) {
