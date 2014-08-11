@@ -5486,7 +5486,6 @@ def process(filename):
           '2xi40', # pnacl limitations in ExpandGetElementPtr
           'quoted', # current fastcomp limitations FIXME
           'atomicrmw_unaligned', # TODO XXX
-          'emptyasm_aue' # we don't support inline asm
         ]: continue
 
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
