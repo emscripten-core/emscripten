@@ -2517,3 +2517,5 @@ window.close = function() {
   def test_pthread_create(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread'])
 
+  def test_pthread_cancel(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='0', args=['-lpthread'])
