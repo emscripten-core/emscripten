@@ -447,6 +447,7 @@ var LibraryManager = {
       'library_uuid.js',
       'library_glew.js',
       'library_html5.js',
+      'library_signals.js',
       'library_async.js'
     ].concat(additionalLibraries);
 

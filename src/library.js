@@ -1148,14 +1148,6 @@ LibraryManager.library = {
       return -1;
     }
   },
-  alarm: function(seconds) {
-    // unsigned alarm(unsigned seconds);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
-    // We don't support signals, and there's no way to indicate failure, so just
-    // fail silently.
-    return 0;
-  },
-  ualarm: 'alarm',
   confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
   confstr: function(name, buf, len) {
     // size_t confstr(int name, char *buf, size_t len);
@@ -1353,14 +1345,6 @@ LibraryManager.library = {
     // Niceness makes no sense in a single-process environment.
     ___setErrNo(ERRNO_CODES.EPERM);
     return 0;
-  },
-  pause__deps: ['__setErrNo', '$ERRNO_CODES'],
-  pause: function() {
-    // int pause(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/pause.html
-    // We don't support signals, so we return immediately.
-    ___setErrNo(ERRNO_CODES.EINTR);
-    return -1;
   },
   setgid__deps: ['__setErrNo', '$ERRNO_CODES'],
   setgid: function(gid) {
@@ -5667,9 +5651,6 @@ LibraryManager.library = {
     return 0;
   },
 
-  setitimer: function() { throw 'setitimer not implemented yet' },
-  getitimer: function() { throw 'getitimer not implemented yet' },
-
   // ==========================================================================
   // sys/time.h
   // ==========================================================================
@@ -5856,66 +5837,6 @@ LibraryManager.library = {
   emscripten_longjmp__deps: ['longjmp'],
   emscripten_longjmp: function(env, value) {
     _longjmp(env, value);
-  },
-
-  // ==========================================================================
-  // signal.h
-  // ==========================================================================
-
-  signal: function(sig, func) {
-    // TODO
-    return 0;
-  },
-  sigemptyset: function(set) {
-    // int sigemptyset(sigset_t *set);
-    {{{ makeSetValue('set', '0', '0', 'i32') }}};
-    return 0;
-  },
-  sigfillset: function(set) {
-    {{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
-    return 0;
-  },
-  sigaddset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
-    return 0;
-  },
-  sigdelset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
-    return 0;
-  },
-  sigismember: function(set, signum) {
-    return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
-  },
-  sigaction: function(set) {
-    // TODO:
-    return 0;
-  },
-  sigprocmask: 'sigaction',
-  __libc_current_sigrtmin: function() {
-    return 0;
-  },
-  __libc_current_sigrtmax: function() {
-    return 0;
-  },
-  kill__deps: ['$ERRNO_CODES', '__setErrNo'],
-  kill: function(pid, sig) {
-    // int kill(pid_t pid, int sig);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
-    // Makes no sense in a single-process environment.
-    ___setErrNo(ERRNO_CODES.EPERM);
-    return -1;
-  },
-  killpg: 'kill',
-
-  siginterrupt: function() { throw 'siginterrupt not implemented' },
-
-  raise__deps: ['$ERRNO_CODES', '__setErrNo'],
-  raise: function(sig) {
-    ___setErrNo(ERRNO_CODES.ENOSYS);
-#if ASSERTIONS
-    Runtime.warnOnce('raise() returning an error as we do not support it');
-#endif
-    return -1;
   },
 
   // ==========================================================================
