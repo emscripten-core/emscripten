@@ -10,7 +10,7 @@ Building Emscripten from Source (ready-for-review)
 	
 .. note:: A user can't "manually " build from sources and use the SDK at the same time, because the SDK overwrites manual changes made to the user's :ref:`compiler configuration file <configuring-emscripten-settings>`.
 
-This section shows how to get the source and dependencies and build Emscripten from sources.
+This section shows how to get the source and dependencies and manually build the Emscripten toolchain.
 
 The instructions for building Emscripten on the different platforms are given below, followed by guidance on how to update the configuration file and validate your environment once it is complete:
 
