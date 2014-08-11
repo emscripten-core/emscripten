@@ -19,13 +19,13 @@ Download one of the SDK installers below to get started with Emscripten developm
 Windows
 -------
 
-- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.21.0-web-64bit.exe>`_ (emsdk-1.21.0-web-64bit.exe)
+- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-web-64bit.exe>`_ (emsdk-1.22.0-web-64bit.exe)
 		An NSIS installer that fetches and installs the latest Emscripten SDK from the web. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.21.0-full-64bit.exe>`_ (emsdk-1.21.0-full-64bit.exe)
+- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-full-64bit.exe>`_ (emsdk-1.22.0-full-64bit.exe)
 		An NSIS installer that bundles together the current Emscripten toolchain as an offline-installable package. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.21.0-portable-64bit.zip>`_ (emsdk-1.21.0-portable-64bit.zip)
+- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-portable-64bit.zip>`_ (emsdk-1.22.0-portable-64bit.zip)
 		A zipped package of the SDK that does not require system installation privileges. To install, follow :ref:`these <all-os-installation_instructions-portable-SDK>` instructions.
 
 Linux and Mac OS X
