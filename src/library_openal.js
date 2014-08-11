@@ -446,7 +446,7 @@ var LibraryOpenAL = {
       if (value === 1 /* AL_TRUE */) {
         if (src.panner) {
           src.panner = null;
-            
+
           // Disconnect from the panner.
           src.gain.disconnect();
 
@@ -1385,12 +1385,15 @@ var LibraryOpenAL = {
   },
 
   alSpeedOfSound: function(value) {
+    Runtime.warnOnce('alSpeedOfSound() is not yet implemented! Ignoring all calls to it.'
   },
 
   alDopplerFactor: function(value) {
+    Runtime.warnOnce('alDopplerFactor() is not yet implemented! Ignoring all calls to it.'
   },
 
   alDopplerVelocity: function(value) {
+    Runtime.warnOnce('alDopplerVelocity() is not yet implemented! Ignoring all calls to it.'
   }
 };
 
