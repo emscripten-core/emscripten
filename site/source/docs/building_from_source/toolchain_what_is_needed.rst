@@ -1,10 +1,14 @@
 .. _emscripten-toolchain-top:
 
-============================================================
-Emscripten Toolchain (under-construction)
-============================================================
+=======================================
+Emscripten Toolchain (ready-for-review)
+=======================================
 
-The :ref:`SDKs <sdk-download-and-install>` deliver (or explain how to obtain) everything you need for developing with Emscripten. However if you're building from source you'll need to gather the tools below yourself.
+The instructions below list the main tools and dependencies in an Emscripten environment, along with instructions on how to test which dependencies are installed.
+
+.. tip:: The :ref:`SDK <sdk-download-and-install>` provides the **easiest** and **most reliable** method for getting, using, updating and managing Emscripten environments, including **building from source**. If you're using the SDK you won't *need* these instructions, and they are provided for information only.
+
+	The instructions are useful if you're :ref:`manually <installing-from-source>` building from source.
 
 .. _toolchain-what-you-need:
 
@@ -22,7 +26,7 @@ A complete Emscripten environment includes the following tools:
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects. 
 
-When building from sources you will also need a compiler environment (to build :ref:`Fastcomp <LLVM-Backend>`):
+When building manually from sources you will also need a compiler environment (to build :ref:`Fastcomp <LLVM-Backend>`):
 
 	- *gcc* (4.6 or later)
 	
@@ -31,7 +35,7 @@ When building from sources you will also need a compiler environment (to build :
 .. _toolchain-test-which-dependencies-are-installed:
 
 Test which tools are installed
-====================================
+==============================
 
 Some of the tools are pre-installed on the various platforms (for example, Python is always available on Linux builds). 
 

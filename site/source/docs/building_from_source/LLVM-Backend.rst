@@ -21,24 +21,50 @@ Fastcomp is an **LLVM backend**. It is **not** in upstream LLVM yet, it is far t
 
 This means that if you use another build of LLVM - like an older one you built yourself, or one from your linux distro's repos, etc. - it will **not** contain fastcomp. Emscripten will give an error about this (you can manually run those checks with ``emcc -v``), and briefly explain the issue and link to this page (where, later down, you can see how to disable fastcomp).
 
-.. _building-fastcomp-from-source:
+
 
 Getting Fastcomp
 ----------------
 
+
+.. _building-fastcomp-from-source:
+
+Building fastcomp from source
+--------------------------------
+
 To use fastcomp, you need both Emscripten (see the :ref:`Tutorial`) and the Emscripten LLVM code, either from the SDK or from source. Instructions from source are as follows:
 
--  Clone the fastcomp LLVM repository: https://github.com/kripken/emscripten-fastcomp. Note that it doesn't matter where
-   you do this; you'll point to that directory when you edit ``~/.emscripten``, see later down): ::
-   
+-  Clone the fastcomp `LLVM repository <https://github.com/kripken/emscripten-fastcomp>`_: 
+
+	::
+	
 		git clone https://github.com/kripken/emscripten-fastcomp
+
+	.. note:: It doesn't matter where you clone *fastcomp* because Emscripten gets the information from the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. We show how to update this file later in these instructions:
+	
 		
-- Enter ``tools`` and clone the fastcomp Clang repository: https://github.com/kripken/emscripten-fastcomp-clang Note: **you must clone it into a dir named "clang"**, so that clang is present in ``tools/clang``! Use something like ``git clone ..repo.. clang``. (Another note: **this repo has changed**, earlier in fastcomp development we used another one, so make sure you are using this one now.) 
--  Build it:
-	-  ``cd ..`` to get back to the root of the llvm checkout
-	-  ``mkdir build`` and then ``cd build`` (it is better to build into a
-	   separate build dir)
-	-  Configure the build using the *configure* script or *Cmake*:
+- Navigate to the **tools** directory (**emscripten-fastcomp/tools**) and clone the `kripken/emscripten-fastcomp-clang <https://github.com/kripken/emscripten-fastcomp-clang>`_ repository into a *clang* subdirectory: 
+
+	::
+	
+		cd tools
+		git clone https://github.com/kripken/emscripten-fastcomp-clang clang
+
+	.. warning:: You **must** clone it into a dir named "clang", so that clang is present in **tools/clang**! 
+	
+	.. note:: This repo has changed. Early in fastcomp development we used a different directory.
+	
+-  Build fastcomp
+
+	-  Navigate back to the root of the llvm clone (**/emscripten-fastcomp**), then create and navigate into a new directory "**build**" (we highly recommend creating a separate build directory):
+	
+		::
+		
+			cd ..
+			mkdir build
+			cd build
+	
+	-  Configure the build using *either* the *configure* script or *cmake* (configure is located in the parent directory):
 	
 		- Using *configure*: 
 		
@@ -52,10 +78,23 @@ To use fastcomp, you need both Emscripten (see the :ref:`Tutorial`) and the Emsc
 			
 				cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF -DCLANG_INCLUDE_TESTS=OFF
 				
-		   replace X86 if you are on something else..
+			.. note:: replace X86 if you are on something else..
 	   
-	-  ``make -j 4`` (or whatever number of cores you want to use)
--  Set it up in ~/.emscripten (set the path to the llvm checkout + something like ``/build/Release/bin`` as LLVM\_ROOT, look for where the ``clang`` binary shows up under ``build/``)
+	-  Call *make* to build the sources, specifying the number of available cores:
+
+		::
+		
+			make -j 4
+
+.. _llvm-update-compiler-configuration-file:
+			
+-  Update the :ref:`~/.emscripten <compiler-configuration-file>`, specifying the location of *fastcomp* in using the ``LLVM_ROOT`` variable. The path should be set to the location of the *clang* binary under the **build** directory. This will be something like **<LVVM root>/build/Release/bin** or **<LVVM root>/build/bin**: 
+
+	::
+	
+		LLVM_ROOT='' **HamishW**
+		
+	.. note:: If **~/.emscripten** does not yet exist, you can create it by running ``./emcc --help`` in your **emscripten** directory (assuming Emscripten has already been downloaded).
 
 Branches
 ~~~~~~~~
