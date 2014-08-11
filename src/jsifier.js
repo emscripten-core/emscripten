@@ -1906,8 +1906,10 @@ function JSify(data, functionsOnly) {
       print('}');
     }
     if (PROXY_TO_WORKER) {
+      print('if (ENVIRONMENT_IS_WORKER) {\n');
       print(read('webGLWorker.js'));
       print(read('proxyWorker.js'));
+      print('}');
     }
     if (DETERMINISTIC) {
       print(read('deterministic.js'));

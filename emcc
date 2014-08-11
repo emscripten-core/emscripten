@@ -1859,7 +1859,20 @@ try:
     js_target = unsuffixed(target) + '.js'
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '</script>'))
+      child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+      html.write(shell.replace('{{{ SCRIPT }}}', '''
+<script>
+  if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
+    console.log('running code in a web worker');
+''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', child_js) + '''
+  } else {
+    // note: no support for code mods (PRECISE_F32==2)
+    console.log('running code on the main thread');
+    var script = document.createElement('script');
+    script.src = "%s.js";
+    document.body.appendChild(script);
+  }
+</script>''' % child_js))
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path

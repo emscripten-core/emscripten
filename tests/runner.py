@@ -526,6 +526,7 @@ def server_func(dir, q):
   class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
+        print '[server response:', self.path, ']'
         q.put(self.path)
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
@@ -561,6 +562,7 @@ class BrowserCore(RunnerCore):
     time.sleep(0.1)
 
   def run_browser(self, html_file, message, expectedResult=None):
+    print '[browser launch:', html_file, ']'
     if expectedResult is not None:
       try:
         queue = multiprocessing.Queue()
@@ -690,7 +692,7 @@ class BrowserCore(RunnerCore):
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-      args=[], outfile='test.html', message='.', also_proxied=False): # TODO: use in all other tests
+      args=[], outfile='test.html', message='.', also_proxied=False, url_suffix=''): # TODO: use in all other tests
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -716,7 +718,7 @@ class BrowserCore(RunnerCore):
     assert os.path.exists(outfile)
     if post_build: post_build()
     if type(expected) is str: expected = [expected]
-    self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
+    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected])
     if also_proxied:
       print 'proxied...'
       # save non-proxied

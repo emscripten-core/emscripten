@@ -748,6 +748,25 @@ window.close = function() {
   def test_glgears_proxy(self):
     self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=self.post_manual_reftest)
 
+    # test noProxy option applied at runtime
+
+    # run normally (duplicates above test, but verifies we can run outside of the btest harness
+    self.run_browser('test.html', None, ['/report_result?0'])
+
+    # run with noProxy
+    self.run_browser('test.html?noProxy', None, ['/report_result?0'])
+
+    # run with noProxy, but make main thread fail
+    original = open('test.js').read()
+    open('test.js', 'w').write(original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('test.html?noProxy', None, ['/report_result?999'])
+    self.run_browser('test.html', None, ['/report_result?0']) # this is still cool
+
+    # run without noProxy, so proxy, but make worker fail
+    open('test.js', 'w').write(original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('test.html', None, ['/report_result?999'])
+    self.run_browser('test.html?noProxy', None, ['/report_result?0']) # this is still cool
+
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1']).communicate()
