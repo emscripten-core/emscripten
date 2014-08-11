@@ -1447,7 +1447,8 @@ try:
             return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + default_object_extension
           return specified_target
         return unsuffixed(input_file) + final_ending
-      return unsuffixed(input_file) + default_object_extension
+      else:
+        if has_dash_c: return unsuffixed(input_file) + default_object_extension
     return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode

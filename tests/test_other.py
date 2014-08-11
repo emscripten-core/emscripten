@@ -1,4 +1,5 @@
 import multiprocessing, os, re, shutil, subprocess, sys
+import glob
 import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_bullet_library, nonfastcomp
@@ -3910,4 +3911,20 @@ main(const int argc, const char * const * const argv)
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
     self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
+
+  def test_cleanup_os(self):
+    # issue 2644
+    def test(args, be_clean):
+      print args
+      self.clear()
+      shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
+      open('b.c', 'w').write(' ')
+      Popen([PYTHON, EMCC, 'a.c', 'b.c'] + args).communicate()
+      clutter = glob.glob('*.o')
+      if be_clean: assert len(clutter) == 0, 'should not leave clutter ' + str(clutter)
+      else: assert len(clutter) == 2, 'should leave .o files'
+    test(['-o', 'c.bc'], True)
+    test(['-o', 'c.js'], True)
+    test(['-o', 'c.html'], True)
+    test(['-c'], False)
 
