@@ -1385,15 +1385,15 @@ var LibraryOpenAL = {
   },
 
   alSpeedOfSound: function(value) {
-    Runtime.warnOnce('alSpeedOfSound() is not yet implemented! Ignoring all calls to it.'
+    Runtime.warnOnce('alSpeedOfSound() is not yet implemented! Ignoring all calls to it.');
   },
 
   alDopplerFactor: function(value) {
-    Runtime.warnOnce('alDopplerFactor() is not yet implemented! Ignoring all calls to it.'
+    Runtime.warnOnce('alDopplerFactor() is not yet implemented! Ignoring all calls to it.');
   },
 
   alDopplerVelocity: function(value) {
-    Runtime.warnOnce('alDopplerVelocity() is not yet implemented! Ignoring all calls to it.'
+    Runtime.warnOnce('alDopplerVelocity() is not yet implemented! Ignoring all calls to it.');
   }
 };
 
