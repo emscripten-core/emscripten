@@ -50,7 +50,7 @@ To use fastcomp, you need both Emscripten (see the :ref:`Tutorial`) and the Emsc
 		cd tools
 		git clone https://github.com/kripken/emscripten-fastcomp-clang clang
 
-	.. warning:: You **must** clone it into a dir named "clang", so that clang is present in **tools/clang**! 
+	.. warning:: You **must** clone it into a dir named "clang" (as is done by that command), so that clang is present in **tools/clang**! 
 	
 	.. note:: This repo has changed. Early in fastcomp development we used a different directory.
 	
@@ -88,7 +88,7 @@ To use fastcomp, you need both Emscripten (see the :ref:`Tutorial`) and the Emsc
 
 .. _llvm-update-compiler-configuration-file:
 			
--  Update the :ref:`~/.emscripten <compiler-configuration-file>`, specifying the location of *fastcomp* in using the ``LLVM_ROOT`` variable. The path should be set to the location of the *clang* binary under the **build** directory. This will be something like **<LVVM root>/build/Release/bin** or **<LVVM root>/build/bin**: 
+-  Update the :ref:`~/.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in using the ``LLVM_ROOT`` variable. The path should be set to the location of the *clang* binary under the **build** directory. This will be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**: 
 
 	::
 	
@@ -113,8 +113,11 @@ to synchronize points between them, which helps.
 -  emscripten-version.txt in fastcomp (llvm)
 -  emscripten-version.txt in fastcomp-clang (clang)
 
-Version numbers are typically X.Y.Z where X is a major number (changes very rarely), Y is a release number (changes each time we merge incoming to master, so these numbers indicate points where all tests passed) and Z is minor update that is just a sync point between the repos, or is needed when libc changes in emscripten (version changes clear the
-cache).
+Version numbers are typically X.Y.Z where
+
+- X is a major number (changes very rarely)
+- Y is a release number (changes each time we merge incoming to master, so these numbers indicate points where all tests passed), and
+- Z is minor update that is just a sync point between the repos, or is needed when libc changes in emscripten (version changes clear the cache).
 
 Compilation Notes
 ~~~~~~~~~~~~~~~~~

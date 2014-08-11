@@ -6,7 +6,7 @@ Building Emscripten from Source (ready-for-review)
 
 .. tip:: The *SDK* provides the **easiest** and **most reliable** method for **building from source**. Just :ref:`download the SDK <sdk-download-and-install>` and follow the brief instructions :ref:`here <emsdk-master-or-incoming-sdk>`.
 
-	This section is provided for developers who, for whatever reason, prefer a manual approach.
+	This section is provided for developers who prefer a manual approach and/or are contributing to Emscripten development.
 	
 .. note:: A user can't "manually " build from sources and use the SDK at the same time, because the SDK overwrites manual changes made to the user's :ref:`compiler configuration file <configuring-emscripten-settings>`.
 

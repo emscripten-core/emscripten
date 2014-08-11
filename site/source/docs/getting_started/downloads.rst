@@ -136,7 +136,7 @@ The SDK can be used to fetch and build the latest version of Emscripten from sou
 
 .. note:: The SDK is the recommended method of building Emscripten from source because it makes the process very easy, and allows you to treat the build as "just another SDK". Using the SDK allows you to easily toggle between the current SDK, older SDKs, and source-built environments, and to update to new SDKs and source updates as they become available. 
 	
-	It is also possible to :ref:`manually build from sources <installing-from-source>`, but this approach is more difficult, incompatible with the :ref:`SDK manager <emsdk>`, and not really needed!
+	It is also possible to :ref:`manually build from source <installing-from-source>`, but this approach is more difficult, incompatible with the :ref:`SDK manager <emsdk>`, and in general not really needed, unless you are contributing to Emscripten development itself (as opposed to just using it).
 	
 You will also need a compiler toolchain to build from source:
 

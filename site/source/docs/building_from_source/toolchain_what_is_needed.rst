@@ -21,7 +21,7 @@ A complete Emscripten environment includes the following tools:
 	- :term:`Python` 2.x (2.7.3 or above preferred)
 	- :term:`Java` (1.6.0_31 or later).  Java is optional. It is required to use the :term:`Closure Compiler` (in order to minify your code).
 	- :term:`Git` client. Git required if building tools from source. 
-	- :term:`Fastcomp` (Emscripten's LLVM and Clang)
+	- :term:`Fastcomp` (Emscripten's fork of LLVM and Clang)
 	- The `Emscripten code <https://github.com/kripken/emscripten>`_, from GitHub 
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects. 
@@ -30,7 +30,7 @@ When building manually from sources you will also need a compiler environment (t
 
 	- *gcc* (4.6 or later)
 	
-.. note:: The *Spidermonkey* shell is also required if you want to run **all** the test code. Most developers will not need this, and should use *node.js*.
+.. note:: The *Spidermonkey* shell is also required if you want to run **100%** of the tests in the test suite. Most developers will not need this, and need only *node.js*.
 
 .. _toolchain-test-which-dependencies-are-installed:
 
