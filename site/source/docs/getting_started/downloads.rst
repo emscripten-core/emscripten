@@ -6,13 +6,15 @@ Download and install (ready-for-review)
 
 .. note:: The *Emscripten SDK* provides the whole Emscripten toolchain (*Clang*, *Python*, *Node.js* and *Visual Studio* integration) in a single easy-to-install package, with integrated support for :ref:`updating to newer SDKs <updating-the-emscripten-sdk>` as they are released.
 
-.. tip:: If you are :doc:`contributing <../contributing/contributing>` to Emscripten you should :ref:`set up Emscripten from source <installing-from-source>`.
+.. tip:: If you are :ref:`contributing <contributing>` to Emscripten you should first install the SDK, and then use it to :ref:`build Emscripten from source <sdk-building-emscripten-from-source>`.
 
 
 SDK Downloads
 ==================
 
 Download one of the SDK installers below to get started with Emscripten development. The Windows NSIS installers are the easiest to set up, while the portable SDKs can be moved between computers and do not require administration privileges. 
+
+.. emscripten-sdk-windows-installers:
 
 Windows
 -------
@@ -101,8 +103,9 @@ Mac OS X
 	Java is not installed. To open Java, you need a Java SE 6 runtime. 
 	Would you like to install one now?
 	
-- The *python2* command line tool is not present on OSX by default. To manually work around this issue, follow step 10 in :ref:`Getting started on Mac OS X <getting-started-on-osx-install-python2>`.
+- The *python2* command line tool is not present on OSX by default. To manually work around this issue, follow the linked step in :ref:`Getting started on Mac OS X <getting-started-on-osx-install-python2>`.
 
+.. **HamishW**: I think that Mac OS X has the same issues as Linux - ie you don't get ANYTHING much in the SDK. YOu will need the command line tools, but mostly for GCC - need to confirm this with Jukka
 
 Linux
 ++++++++
@@ -123,6 +126,58 @@ The easiest way to verify the installation is to compile some code using Emscrip
 
 You can jump ahead to the :ref:`Tutorial`, but if you have any problems building you should run through the basic tests and troubleshooting instructions in :ref:`verifying-the-emscripten-environment`.
 
+
+.. _sdk-building-emscripten-from-source:
+
+Building Emscripten from source
+======================================================
+
+The SDK can be used to fetch and build the latest version of Emscripten from source. This allows you to obtain new features and the latest fixes as soon as they are pushed to Github (without having to wait for release to be tagged). **No Github account or fork of Emscripten is required!**
+
+.. note:: The SDK is the recommended method of building Emscripten from source because it makes the process very easy, and allows you to treat the build as "just another SDK". Using the SDK allows you to easily toggle between the current SDK, older SDKs, and source-built environments, and to update to new SDKs and source updates as they become available. 
+	
+	It is also possible to :ref:`manually build from sources <installing-from-source>`, but this approach is more difficult, incompatible with the :ref:`SDK manager <emsdk>`, and not really needed!
+	
+You will also need a compiler toolchain to build from source:
+
+	- On Windows install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_
+	- On Linux install *gcc* from the **build-essential** package:
+	
+		::
+		
+			sudo apt-get install build-essential
+	
+	- On Mac OS X install the *XCode Command Line Tools*:
+
+		-  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+		-  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
+
+To switch to using the latest upstream git development branch (``incoming``), run the following commands:
+
+::
+
+	# Install latest git client. Skip if the system already has it.
+	./emsdk install git-1.8.3 
+	
+	# Clone+pull the latest kripken/emscripten/incoming.
+	./emsdk install sdk-incoming-64bit
+	
+	# Set the "incoming SDK" as the active version.
+	./emsdk activate sdk-incoming-64bit 	
+
+If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` in the commands above.
+
+.. note:: On Windows, *git* may fail with the error message: 
+
+	::
+
+		Unable to find remote helper for 'https' when cloning a repository with https:// url. 
+		
+	The workaround is to uninstall git from *emsdk* (``emsdk uninstall git-1.8.3``)  and install `Git for Windows <http://msysgit.github.io>`_. This issue is reported `here <https://github.com/juj/emsdk/issues/13>`_.
+	
+.. todo:: **HamishW** Check whether the bug (https://github.com/juj/emsdk/issues/13) is fixed and remove the above note if it is.
+
+It is also possible to build your :ref:`own fork of the Emscripten using the SDK <emsdk-howto-use-own-fork>`. 
 
 .. _updating-the-emscripten-sdk:
 

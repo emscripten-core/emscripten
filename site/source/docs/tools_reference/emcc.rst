@@ -1,5 +1,4 @@
-
-.. _emcc:
+.. _emccdoc:
 
 =========================================================
 Emscripten Compiler Frontend (emcc) (under-construction)

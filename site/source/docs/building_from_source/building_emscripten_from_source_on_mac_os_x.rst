@@ -1,135 +1,89 @@
-.. _Getting-started-on-Mac-OS-X:
+.. _building-emscripten-on-mac-osx-from-source:
 
-================================================
-Building Emscripten on Mac OS X (wiki-import)
-================================================
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
+==================================================
+Building Emscripten on Mac OS X (ready-for-review)
+==================================================
 
-This guide instructs step-by-step on how to setup emscripten on a clean Mac OS X box. The steps have been tested against OS X version 10.8.2.
+.. tip:: The :ref:`Portable SDK for Linux <portable-emscripten-sdk-linux-osx>` (and Mac OS X) provides the **easiest** and **most reliable** method for **building from source**. Just :ref:`download and install the SDK <sdk-download-and-install>` and follow the brief instructions :ref:`here <emsdk-master-or-incoming-sdk>`.
 
-Note for `homebrew <https://github.com/Homebrew/homebrew>`__ users:
-``brew install emscripten`` does all the steps below for you (including installation of the llvm fastcomp compiler and patching the python interpreter).
+	These instructions are provided for developers who, for whatever reason, prefer a manual approach.
 
-1. Install svn if you do not have it yet. It is distributed with XCode    Command Line Tools in OSX App Store. See http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion
+This page contains basic instructions on how to manually build and configure Emscripten from source on a clean (OS X version 10.8.2) clean Mac OS X box.
 
-	-  Install XCode from OSX App Store.
-	-  In XCode->Preferences->Downloads, install Command Line Tools.
-	-  Test that svn works from command line: type 'svn --version' in terminal.
+What you'll need
+=================
 
-2. Install git if you do not have it yet:
+The topic :ref:`Emscripten Toolchain <toolchain-what-you-need>` lists the specific versions of tools that are needed.
 
-	-  Allow installation of unsigned packages, or installing git package won't succeed: https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html
-	-  Download and install git from http://git-scm.com/
-	-  Test that git works from command line: type 'git --version' in terminal.
 
-3. Install cmake if you do not have it yet:
+Installing required tools
+==========================
 
-	-  Download and install cmake-2.8.10.2-Darwin64-universal.dmg or newer from http://www.cmake.org/cmake/resources/software.html
-	-  Test that cmake works from command line: type 'cmake --version' in terminal.
+These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
-4. Build LLVM+Clang 3.2 from SVN repository: 
+#. Install the *XCode Command Line Tools*. These include the toolchain to build :term:`Fastcomp`, and also are a precondition for *git*.
 
-	::
+	-  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+	-  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
 
-		cd ~
-		svn co http://llvm.org/svn/llvm-project/llvm/tags/RELEASE\_32/final llvm32
-		cd llvm32/tools
-		svn co http://llvm.org/svn/llvm-project/cfe/tags/RELEASE\_32/final clang
-		cd ../..
-		mkdir llvm32build
-		cd llvm32build
-		cmake -DCMAKE\_BUILD\_TYPE=Release -G "Unix Makefiles" ../llvm32
-		make
+#. Install *git*:
 
-	After these steps, Clang 3.2 will be built into ~/llvm32build/bin. The source tree ~/llvm32 is not needed anymore, if you want to conserve disk space.
+	- Allow installation of unsigned packages, or installing git package `won't succeed <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_.
+	- Install XCode and the XCode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
+	- Download and install git directly from http://git-scm.com/.	
 
-	Note that XCode ships with a custom version of Clang (3.1svn or 3.2svn depending on XCode version). It may be possible to omit this step and just use the version provided by XCode, but the LLVM 3.2 RELEASE version is preferred, since that is the "officially supported version" the Emscripten OSX unit tests are run against.
+#. Install *cmake* if you do not have it yet:
 
-5. Set up Clang 3.2 in PATH: 
+	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_ (or newer)
 
-	::
+	
+#. Install *node.js* from http://nodejs.org/ 
 
-		cd ~
-		echo "export PATH=~/llvm32build/bin:$PATH" >> .profile
 
-	The above change is permanent and it persists between system restarts. It only affects the current user.
+	.. _getting-started-on-osx-install-python2:
 
-6. Close all terminal windows, and open a new one. Check that clang works ok in path: 
+#. Setup *python2* (this step is needed to workaround a bug reported in `#763 <https://github.com/kripken/emscripten/issues/763>`_):
 
-	::
-
-		cd ~
-		clang --version
-
-	The command should output: clang version 3.2 (tags/RELEASE\_32/final 176107) Target: x86\_64-apple-darwin12.2.1 Thread model: posix
-
-7. Delete old .emscripten file if it happened to exist: 
-
-	::
-
-		rm ~/.emscripten
-		rm -rf ~/.emscripten\_cache
-
-8. Set up node:
-
-	-  Download and install node from http://nodejs.org/
-	-  Test that node works from command line: type 'node --version' in terminal.
-
-9. Obtain Emscripten: 
-
-	::
-
-		cd ~
-		git clone https://github.com/kripken/emscripten.git
-
-	By default, git will clone the emscripten 'incoming' branch, which is the branch where the newest developments of Emscripten occur. If you want to use a more stable branch, switch to the 'master' branch: - cd ~/emscripten - git checkout master
-
-.. _getting-started-on-osx-install-python2:
-
-10. Setup 'python2': (this step is needed to workaround a bug reported in `#763 <https://github.com/kripken/emscripten/issues/763>`__)
-
-	-  In terminal, type 'python2 --version'. If you get a "command not found", type the following: ::
+	-  In terminal, type ``python2 --version``. If you get a "command not found", type the following: ::
 	
 		cd /usr/bin
 		sudo ln python python2
 		sudo ln ../../System/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7 python22.7
 		
-	-  Issue 'python2 --version' again. It should now print Python 2.7.2
+	-  Enter ``python2 --version`` again. It should now print Python 2.7.2
 
-11. Perform emscripten "first run": 
-
-	::
-
-		cd ~/emscripten
-		/emcc --help
+#. Build :term:`Fastcomp` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
 	
-	-  edit the file ~/.emscripten in a text editor to set up any required paths.
+#. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 
-12. (Optional) Compile a simple test program to check that everything works: 
-
-	::
-
-		cd ~/emscripten
-		./em++ tests/hello\_world.cpp
-		node a.out.js
-
-	The first run will most likely pop up an automatic prompt that asks to install java. Proceed, and after installation finishes, rerun the above commands. Running node should output: hello, world!
-
-13. (Optional) Compile a simple WebGL program to check that .html output and GLES2/WebGL works: 
-
-	::
-
-		cd ~/emscripten
-		./emcc tests/hello\_world\_gles.c -o hello\_world\_gles.html
-		open hello\_world\_gles.html
-		
-	.. note:: If the Safari 6 browser pops up with a message "Could not create canvas :(", follow `these instructions <http://support.apple.com/kb/PH11926>`_ to enable WebGL support in Safari
+	-  Create a directory (with no spaces in the name) to contain the clone. 
+	-  Enter the following command into the terminal: ::
+	
+		git clone https://github.com/kripken/emscripten.git
+	
+	
 
 
-14. (Optional) Run the full battery of tests to check that Emscripten is perfectly operational on the current platform: ::
+Configuring Emscripten settings
+===============================
 
-	cd ~/emscripten
-	python tests/runner.py
-	python tests/runner.py benchmark
+Almost all the compiler settings used by Emscripten are defined in the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`, a user-specific file located in the user's home directory.
 
-	Note that some tests will likely fail. Cross-reference the results with https://github.com/kripken/emscripten/issues?labels=tests to see if you are receiving currently unknown issues.
+Instructions for creating and manually configuring up this file are given in :ref:`configuring-emscripten-settings`. 
+   
+
+Validating the environment
+===============================
+
+The best way to validate the environment is to build some code. Open the terminal in your *Emscripten* directory (where *emcc* is located) and enter: ::
+
+	./emcc tests/hello_world.cpp
+
+If this builds **a.out.js** in the current directory, and you don't see any build errors in the terminal, Emscripten is good to go! 
+
+There are additional validation and troubleshooting instructions in the topic: :ref:`verifying-the-emscripten-environment`.
+
+
+
+
+

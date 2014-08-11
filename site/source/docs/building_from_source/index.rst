@@ -1,12 +1,18 @@
 .. _installing-from-source:
 
-======================================================================================
-Building Emscripten from Source (under-construction) 
-======================================================================================
+==================================================
+Building Emscripten from Source (ready-for-review) 
+==================================================
 
-Instead of using the SDK, you can grab the code and dependencies yourself. This is a little more technical but lets you use the very latest development code. 
+.. tip:: The *SDK* provides the **easiest** and **most reliable** method for **building from source**. Just :ref:`download the SDK <sdk-download-and-install>` and follow the brief instructions :ref:`here <emsdk-master-or-incoming-sdk>`.
 
-The instructions for setting up Emscripten on each platform are given below, followed by guidance on how to validate your environment once it is complete:
+	This section is provided for developers who, for whatever reason, prefer a manual approach.
+	
+.. note:: A user can't "manually " build from sources and use the SDK at the same time, because the SDK overwrites manual changes made to the user's :ref:`compiler configuration file <configuring-emscripten-settings>`.
+
+This section shows how to get the source and dependencies and build Emscripten from sources.
+
+The instructions for building Emscripten on the different platforms are given below, followed by guidance on how to update the configuration file and validate your environment once it is complete:
 
 .. toctree::
    :maxdepth: 1
@@ -14,8 +20,9 @@ The instructions for setting up Emscripten on each platform are given below, fol
    toolchain_what_is_needed
    building_emscripten_from_source_on_linux
    building_emscripten_from_source_on_windows
+   manually_integrating_emscripten_with_vs2010
    building_emscripten_from_source_on_mac_os_x
    LLVM-Backend
+   configuring_emscripten_settings
    verify_emscripten_environment
-
 

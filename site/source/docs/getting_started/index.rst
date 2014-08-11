@@ -8,3 +8,4 @@ Getting Started (under-construction)
    
    downloads
    Tutorial
+   getting_started_with_emscripten_and_vs2010

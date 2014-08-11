@@ -1,0 +1,72 @@
+.. _emscripten-and-vs2010-manual-integration-on-windows:
+
+==========================================================================
+Manually Integrating Emscripten into Visual Studio 2010 (ready-for-review)
+==========================================================================
+
+.. tip:: The :term:`vs-tool` plugin is installed automatically by the :term:`Windows NSIS Installer Emscripten SDK` if *Visual Studio 2010* is present on the target system at install time. These instructions are only needed if you're :ref:`manually building from source <installing-from-source>`, or for some other reason cannot use the SDK.
+
+*vs-tool* is a *MSBuild* plugin that tells *Visual Studio* how to use the *Fastcomp* (LVVM + Clang) and Emscripten toolchain. The plugin allows existing Visual Studio **.sln** files to be directly built through the IDE using :ref:`emcc <emccdoc>`. The Microsoft compiler property pages are replaced by *Fastcomp*- and *emcc*- specific options. 
+
+The following instructions explain how to manually set up *vs-tool*.
+
+.. note:: `At time of writing <https://github.com/juj/vs-tool/issues/5>`_ *vs-tool* only supports Visual Studio 2010.
+
+Install the vs-tool plugin
+============================
+
+1. Install Visual Studio 2010
+
+	.. note:: The Express version has not been tested, but should be work. :ref:`contact` if you have any problems integrating with VS2010 Express!
+
+#. Clone the juj/vs-tool repository from github:
+
+	::
+	
+		git clone https://github.com/juj/vs-tool
+
+#.  Install vs-tool itself:
+
+	#. Navigate to folder **vs-tool** in the repository clone.
+	#. Copy the folders **Clang** and **Emscripten** to **C:/Program Files (x86)/MSBuild/Microsoft.Cpp/v4.0/Platforms/**.
+	
+#.  Set up the required environment variables for *vs-tool*.
+
+	#. Windows 7: Open **Control Panel | System | Advanced System Settings | Environment Variables**.
+	#. Create a new environment variable ``CLANG_BIN`` and set it to point to the folder where you built *Fastcomp* (path to **clang.exe**) E.g.:
+	
+		:: 
+		
+			SETX CLANG_BIN C:/Projects/llvm-build/bin/Release
+		
+		This variable is how *vs-tool* locates the folder to your *Fastcomp* compiler. Alternatively, this path can be set on a per-project basis in the *Visual Studio project property* pages.
+
+	#. Create a new environment variable ``EMSCRIPTEN`` and set it to point to the Emscripten git repository root folder (the path where you copied **emcc.exe** and the other exes). E.g.:
+	
+		::
+
+			SETX EMSCRIPTEN C:/Projects/emscripten
+			
+		This variable is how *vs-tool* locates the Emscripten compiler. This path can also be overridden on a per-project basis in the Visual Studio property pages.
+
+	#. Create a new environment variable ``EMCC_WEBBROWSER_EXE`` and set it to point to an executable you want to use to browse in Emscripten-generated web pages from Visual Studio. This process is spawned when you tap **Start** (**Ctrl-F5**) in Visual Studio for an Emscripten-targeted project:
+	
+		::
+
+			SETX EMCC_WEBBROWSER_EXE C:/Program Files (x86)/Mozilla Firefox/firefox.exe
+
+#. Now you are all set to start developing Emscripten-based projects from *Visual Studio*. 
+
+Test the installation
+======================
+
+To test the installation, open and build the Visual Studio solution file **/emscripten/tests/msvc10/tests_msvc10.sln**. 
+
+That project builds a few select samples from inside the Emscripten **tests/** folder (for example "hello world", "hello gles", etc.), and is a good verification of the integration.
+
+
+Learn more
+==========
+
+There is a basic guide to using Emscripten from within Visual Studio in the :ref:`Getting Started <getting-started-emscripten-from-vs2010>` section.
+ 

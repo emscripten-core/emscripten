@@ -11,14 +11,14 @@ This document provides the command syntax, and a :ref:`set of guides <emsdk_howt
 Purpose
 ============================================
 
-With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk*, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``emsdk command``.
+With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk*, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
 
 
 
 Command line syntax
 ============================================
 
-**emsdk** [**help** [**--old**] | **list** | **update** | **install** *<tool/sdk>* | **uninstall** *<tool/sdk>* | **activate** *<tool/sdk>*]
+**./emsdk** [**help** [**--old**] | **list** | **update** | **install** *<tool/sdk>* | **uninstall** *<tool/sdk>* | **activate** *<tool/sdk>*]
 
 
 Arguments
@@ -41,13 +41,13 @@ Arguments
    * - ``uninstall <tool/sdk>``
      - Removes the :ref:`specified tool or SDK <emsdk-specified-tool-sdk>` from the disk.
    * - ``activate <tool/sdk>``
-     - Sets the :ref:`specified tool or SDK <emsdk-specified-tool-sdk>` as the default tool in the system environment.
+     - Sets the :ref:`specified tool or SDK <emsdk-specified-tool-sdk>` as the default tool in the system environment. On Linux you additionally have to enable the environment settings using ``source ./emsdk_env.sh``, as described in ":ref:`emsdk-set-active-tools`".
    * - ``help``
      - Lists all supported commands. The same list is output if no command is specified.	 
 
 .. note:: 
 
-	- For Mac OSX the commands are called with  **./emsdk**.
+	- For Mac OSX the commands are called with  **./emsdk**. On Windows use **emsdk**.
 	- **emcmdprompt.bat** is also displayed as an option in the ``emsdk help``. This is :ref:`not intended <emcmdprompt-command-line-syntax>` to be called through the command line.
 
 
@@ -82,11 +82,11 @@ The *Compiler Configuration File* stores the :term:`active <Active Tool/SDK>` co
 
 The configuration file is named **.emscripten**. It is user-specific, and is located in the user's home directory (**~/.emscripten** on Linux).
 
-The file should not be updated directly. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
+The file should generally not be updated directly unless you're :ref:`building Emscripten from source <installing-from-source>`. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
 
-Below is a typical **.emscripten** file, taken from a user's root directory on Windows:
+Below is a typical **.emscripten** file (created by *emsdk*), taken from a user's root directory on Windows. Note the variable names used to point to the different tools:
 
-.. todo:: **HamishW** When I've fully tested on ubuntu perhaps include the file from there (since Linux is the most used platform.
+.. todo:: **HamishW** When I've fully tested on ubuntu perhaps include the file from there (since Linux is the most used platform).
 
 ::
 
@@ -122,20 +122,20 @@ How do I just get the latest SDK?
 Use the ``update`` argument to fetch the current registry of available tools, and then specify the ``latest`` install target to get the most recent SDK: ::
 
 	# Fetch the latest registry of available tools.
-	emsdk update
+	./emsdk update
 
 	# Download and install the latest SDK tools.
-	emsdk install latest
+	./emsdk install latest
 	
 	# Set up the compiler configuration to point to the "latest" SDK.
-	emsdk activate latest	
+	./emsdk activate latest	
 
 
 
 How do I use emsdk?
 --------------------------------
 
-Use ``emsdk help`` or just ``emsdk`` to get information about all available commands.
+Use ``./emsdk help`` or just ``./emsdk`` to get information about all available commands.
 
 	
 How do I check which versions of the SDK and tools are installed?
@@ -143,7 +143,7 @@ How do I check which versions of the SDK and tools are installed?
 
 To get a list of all currently installed tools and SDK versions (and all available tools) run: ::
 
-	emsdk list
+	./emsdk list
 
 A line will be printed for each tool and SDK that is available for installation. The text ``INSTALLED`` will be shown for each tool that has already been installed. If a tool/SDK is currently active, a star (\*) will be shown next to it. 
 
@@ -153,7 +153,9 @@ How do I install a tool/SDK version?
 
 Use the ``install`` argument to download and install a new tool or SDK version: ::
 
-	emsdk install <tool/sdk name>
+	./emsdk install <tool/sdk name>
+
+.. note:: An installed tool is present on the local machine, but not necessarily the active environment. To make an installed SDK active, use the ``activate`` command.
 
 	
 .. _emsdk-remove-tool-sdk:
@@ -163,7 +165,7 @@ How do I remove a tool or an SDK?
 
 Use the ``uninstall`` argument to delete a given tool or SDK from the local computer: ::
 
-	emsdk uninstall <tool/sdk name>
+	./emsdk uninstall <tool/sdk name>
 	
 
 If you want to completely remove Emscripten from your system, follow the guide at :ref:`downloads-uninstall-the-sdk`.
@@ -175,18 +177,27 @@ How do I check for updates to the Emscripten SDK?
 First use the ``update`` command to fetch package information for all new tools and SDK versions. Then use ``install <tool/sdk name>`` to install a new version: ::
 
 	# Fetch the latest registry of available tools.
-	emsdk update
+	./emsdk update
 	
 	# Download and install the specified new version.
-	emsdk install <tool/sdk name> 	
+	./emsdk install <tool/sdk name> 	
 
+
+.. _emsdk-set-active-tools:
 
 How do I change the currently active SDK version?
 ----------------------------------------------------------------
 
 Toggle between different tools and SDK versions using the :term:`activate <Active Tool/SDK>` command. This will set up ``~/.emscripten`` to point to that particular tool: ::
 
-	emsdk activate <tool/sdk name>
+	./emsdk activate <tool/sdk name>
+	
+	# On Linux and OSX, also set the environment variables.
+	source ./emsdk_env.sh
+	
+.. note:: On Linux and Mac OS X, ``activate`` writes the required information to the configuration file, but cannot automatically set up the environment variables in the current terminal. To do this you need to call **/emsdk_env.sh** with the source prefix after calling ``activate``. The use of ``source`` is a security feature of Unix shells. 
+
+	On Windows, calling ``activate`` automatically sets up the required paths and environment variables. 
 	
 	
 How do I install an old Emscripten compiler version?
@@ -194,8 +205,8 @@ How do I install an old Emscripten compiler version?
 
 *Emsdk* contains a history of old compiler versions that you can use to maintain your migration path. Use the ``list --old`` argument to get a list of archived tool and SDK versions, and ``install <name_of_tool>`` to install it: ::
 
-	emsdk list --old
-	emsdk install <name_of_tool>
+	./emsdk list --old
+	./emsdk install <name_of_tool>
 	
 On Windows, you can directly install an old SDK version by using one of :ref:`these archived NSIS installers <archived-nsis-windows-sdk-releases>`. 
 
@@ -213,13 +224,13 @@ To switch to using the latest upstream git development branch (``incoming``), ru
 ::
 
 	# Install git. Skip if the system already has it.
-	emsdk install git-1.8.3 
+	./emsdk install git-1.8.3 
 	
 	# Clone+pull the latest kripken/emscripten/incoming.
-	emsdk install sdk-incoming-64bit
+	./emsdk install sdk-incoming-64bit
 	
 	# Set the "incoming SDK" as the active version.
-	emsdk activate sdk-incoming-64bit 	
+	./emsdk activate sdk-incoming-64bit 	
 
 If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` in the commands above.
 
@@ -233,6 +244,7 @@ If you want to use the upstream stable branch ``master``, then replace ``-incomi
 	
 .. todo:: **HamishW** Check whether the bug (https://github.com/juj/emsdk/issues/13) is fixed and remove the above note if it is.
 
+.. _emsdk-howto-use-own-fork:
 	
 How do I use my own Emscripten Github fork with the SDK?
 ----------------------------------------------------------------
