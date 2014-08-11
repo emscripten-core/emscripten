@@ -287,7 +287,7 @@ var LibraryOpenAL = {
         AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
         return 0;
       }
-      {{{ makeSetValue('data', '0', '4', 'i32') }}};
+      {{{ makeSetValue('data', '0', '1', 'i32') }}};
     default:
 #if OPENAL_DEBUG
       console.log("alcGetIntegerv with param " + param + " not implemented yet");
@@ -1381,6 +1381,7 @@ var LibraryOpenAL = {
   },
 
   alGetEnumValue: function(name) {
+    AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
     return 0;
   },
 
