@@ -948,7 +948,11 @@ try:
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
-      newargs[i] = '-g' # we'll need this to get LLVM debug info
+      if newargs[i] != '-g':
+        if debug_level >= 4:
+          newargs[i] = '-g' # we'll need this to get LLVM debug info
+        else:
+          newargs[i] = ''
     elif newargs[i] == '-profiling':
       debug_level = 2
       profiling = True

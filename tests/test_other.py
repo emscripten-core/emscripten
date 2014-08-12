@@ -3928,3 +3928,18 @@ main(const int argc, const char * const * const argv)
     test(['-o', 'c.html'], True)
     test(['-c'], False)
 
+  def dash_g_bc(self):
+    def get_size(name):
+      return len(open(name).read())
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc']).communicate()
+    sizes = { '_': get_size('a_.bc') }
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc']).communicate()
+    sizes['g'] = get_size('ag.bc')
+    for i in range(0, 5):
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc']).communicate()
+      sizes[i] = get_size('a' + str(i) + '.bc')
+    print sizes
+    assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info'
+    assert sizes['g'] == sizes[4], '-g or -g4 means llvm debug info'
+    assert sizes['_'] < sizes['g'], 'llvm debug info has positive size'
+
