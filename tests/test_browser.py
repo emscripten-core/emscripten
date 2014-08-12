@@ -756,16 +756,21 @@ window.close = function() {
     # run with noProxy
     self.run_browser('test.html?noProxy', None, ['/report_result?0'])
 
-    # run with noProxy, but make main thread fail
     original = open('test.js').read()
-    open('test.js', 'w').write(original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
-    self.run_browser('test.html?noProxy', None, ['/report_result?999'])
-    self.run_browser('test.html', None, ['/report_result?0']) # this is still cool
+
+    def copy(to, js_mod):
+      open(to + '.html', 'w').write(open('test.html').read().replace('test.js', to + '.js'))
+      open(to + '.js', 'w').write(js_mod(open('test.js').read()))
+
+    # run with noProxy, but make main thread fail
+    copy('two', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('two.html?noProxy', None, ['/report_result?999'])
+    self.run_browser('two.html', None, ['/report_result?0']) # this is still cool
 
     # run without noProxy, so proxy, but make worker fail
-    open('test.js', 'w').write(original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
-    self.run_browser('test.html', None, ['/report_result?999'])
-    self.run_browser('test.html?noProxy', None, ['/report_result?0']) # this is still cool
+    copy('three', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('three.html', None, ['/report_result?999'])
+    self.run_browser('three.html?noProxy', None, ['/report_result?0']) # this is still cool
 
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
