@@ -12,6 +12,7 @@ public:
   void mulVal(int mul);
   void parentFunc() {}
   const Parent *getAsConst() { return NULL; }
+  void *voidStar(void *something) { return something; }
 };
 
 class Child1 : public Parent {

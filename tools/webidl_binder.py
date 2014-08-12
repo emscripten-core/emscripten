@@ -29,7 +29,10 @@ shared.try_delete(output_base + '.cpp')
 shared.try_delete(output_base + '.js')
 
 p = WebIDL.Parser()
-p.parse(open(input_file).read())
+p.parse(r'''
+interface VoidPtr {
+};
+''' + open(input_file).read())
 data = p.finish()
 
 interfaces = {}
@@ -159,7 +162,7 @@ def type_to_c(t, non_pointing=False):
     return 'double'
   elif t == 'Boolean':
     return 'bool'
-  elif t == 'Any':
+  elif t == 'Any' or t == 'VoidPtr':
     return 'void*'
   elif t in interfaces:
     return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')

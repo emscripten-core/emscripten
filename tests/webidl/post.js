@@ -7,6 +7,7 @@ TheModule.print('*')
 TheModule.print(sme.getVal());
 sme.parentFunc(90);
 TheModule.print(typeof sme.getAsConst());
+TheModule.print(typeof sme.voidStar(sme));
 
 TheModule.print('c1');
 
