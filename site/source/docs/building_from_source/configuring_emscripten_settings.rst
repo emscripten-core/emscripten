@@ -65,11 +65,11 @@ Editing the compiler configuration file
 The compiler configuration file can be edited with the text-editor of your choice. As stated above, most default settings are likely to be correct. If you're building manually from source, you are most likely to have to update the variable ``LLVM_ROOT`` (for :term:`Fastcomp`).
 
 		
-#. Edit the variable ``LLVM_ROOT`` to point directly to the path where you :ref:`built Fastcomp <llvm-update-compiler-configuration-file>`. This path is likely to be something like **<LVVM root>/build/Release/bin** or <LVVM root>/build/bin**, where ``<LVVM root>`` is wherever you cloned LVVM:
+#. Edit the variable ``LLVM_ROOT`` to point directly to the path where you :ref:`built Fastcomp <llvm-update-compiler-configuration-file>`. This path is likely to be something like **<LLVM root>/build/Release/bin** or <LLVM root>/build/bin**, where ``<LLVM root>`` is wherever you cloned LLVM:
    
 	::
    
-		LLVM_ROOT = 'os.path.expanduser(os.getenv('LVVM') or '/home/ubuntu/a-path/emscripten-fastcomp/build/bin')'
+		LLVM_ROOT = 'os.path.expanduser(os.getenv('LLVM') or '/home/ubuntu/a-path/emscripten-fastcomp/build/bin')'
 
 	.. note:: Use forward slashes!
 

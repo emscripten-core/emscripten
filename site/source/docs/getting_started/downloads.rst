@@ -130,29 +130,17 @@ You can jump ahead to the :ref:`Tutorial`, but if you have any problems building
 .. _sdk-building-emscripten-from-source:
 
 Building Emscripten from source
-======================================================
+===============================
 
 The SDK can be used to fetch and build the latest version of Emscripten from source. This allows you to obtain new features and the latest fixes as soon as they are pushed to Github (without having to wait for release to be tagged). **No Github account or fork of Emscripten is required!**
 
-.. note:: The SDK is the recommended method of building Emscripten from source because it makes the process very easy, and allows you to treat the build as "just another SDK". Using the SDK allows you to easily toggle between the current SDK, older SDKs, and source-built environments, and to update to new SDKs and source updates as they become available. 
+.. tip:: The SDK is the recommended method of building Emscripten from source because it makes the process very easy, and allows you to treat the build as "just another SDK". Using the SDK allows you to easily toggle between the current SDK, older SDKs, and source-built environments, and to update to new SDKs and source updates as they become available. 
 	
 	It is also possible to :ref:`manually build from source <installing-from-source>`, but this approach is more difficult, incompatible with the :ref:`SDK manager <emsdk>`, and in general not really needed, unless you are contributing to Emscripten development itself (as opposed to just using it).
 	
-You will also need a compiler toolchain to build from source:
+.. note:: You will need a :ref:`compiler-toolchain` to build the code (the link explains where you get the toolchain for each of the platforms). 
 
-	- On Windows install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_
-	- On Linux install *gcc* from the **build-essential** package:
-	
-		::
-		
-			sudo apt-get install build-essential
-	
-	- On Mac OS X install the *XCode Command Line Tools*:
-
-		-  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
-		-  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
-
-To switch to using the latest upstream git development branch (``incoming``), run the following commands:
+To start using the latest upstream git development branch (``incoming``), run the following commands:
 
 ::
 

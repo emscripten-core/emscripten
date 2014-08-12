@@ -1,12 +1,12 @@
 .. _building-emscripten-on-linux:
 
-================================================
-Building Emscripten on Linux (ready-for-review)
-================================================
+============================
+Building Emscripten on Linux
+============================
 
 .. tip:: The :ref:`Portable SDK for Linux <portable-emscripten-sdk-linux-osx>` (and Mac OS X) provides the **easiest** and **most reliable** method for **building from source**. Just :ref:`download and install the SDK <sdk-download-and-install>` and follow the brief instructions :ref:`here <emsdk-master-or-incoming-sdk>`.
 
-	These instructions are provided for developers who, for whatever reason, prefer a manual approach.
+	The instructions below are provided for developers who, for whatever reason, prefer a manual approach.
 	
 This page contains basic instructions on how to manually build and configure Emscripten from source on a clean (Ubuntu 14.04.1 LTS 64bit) Linux box.
 
