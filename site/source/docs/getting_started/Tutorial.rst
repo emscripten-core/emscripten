@@ -56,7 +56,7 @@ To build the JavaScript version of this code we simply specify the C++ file afte
 	emcc tests/hello_world.cpp
 
 
-There should now be an **a.out.js** file in the current directory. Run it using :term:`node`:
+There should now be an **a.out.js** file in the current directory. Run it using :term:`node.js`:
 
 ::
 
@@ -149,7 +149,7 @@ The optimizations provided by ``-O2`` are much more aggressive. If you run the f
 
     emcc -O2 tests/hello_world.cpp
 
-For more information about compiler optimization options see :ref:`Optimizing-Code` and the :ref:`emcc tool reference<emcc-compiler-optimization-options>`.
+For more information about compiler optimization options see :ref:`Optimizing-Code` and the :ref:`emcc tool reference <emcc-compiler-optimization-options>`.
 
 
 .. _running-emscripten-tests:
@@ -179,7 +179,7 @@ To view the generated code from that individual test, you can first set ``EMCC_D
 	
 The generated code is copied into the the temp directory (**TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is defined in :ref:`~/.emscripten <compiler-configuration-file>`. By default the temporary directory location is **/tmp**). 
 
-.. note:: You can use ``EMCC_DEBUG`` with :ref:`emcc <emcc>` as well (not just with the test runner). This tells *emcc* to save the internal code generation stages (much like ``emcc -v``).
+.. note:: You can use ``EMCC_DEBUG`` with :ref:`emcc <emccdoc>` as well (not just with the test runner). This tells *emcc* to save the internal code generation stages (much like ``emcc -v``).
 
 You can also specify ``EM_SAVE_DIR=1`` in the environment (this is a test suite specific feature) to save the temporary directory that the test runner users to the same place as mentioned in the previous paragraph. This is useful if the test being run creates temporary files.
 
@@ -203,5 +203,5 @@ This tutorial walked you through your first steps in calling Emscripten from the
 
 -  This site has lots more information about :ref:`compiling and building projects <compiling-and-running-projects-index>`, :ref:`integrating your native code with the web environment <integrating-porting-index>`, :ref:`packaging your code <packaging-code-index>` and publishing.
 -  The Emscripten test suite is a great place to look for examples of how to use Emscripten. For example, if you want to better understand how the *emcc* ``--pre-js`` option works, search for ``--pre-js`` in the test suite: the test suite is extensive and there are likely to be at least some examples.
--  To learn how to use Emscripten in advanced ways, read :ref:`src/settings.js <settings-js>` and :ref:`emcc <emcc>` which describe the compiler options, and :ref:`emscripten-h` which describes JavaScript-specific C APIs that your C/C++ programs can use when compiled with Emscripten.
+-  To learn how to use Emscripten in advanced ways, read :ref:`src/settings.js <settings-js>` and :ref:`emcc <emccdoc>` which describe the compiler options, and :ref:`emscripten-h` which describes JavaScript-specific C APIs that your C/C++ programs can use when compiled with Emscripten.
 -  When in doubt, :ref:`get in touch <contact>`!

@@ -4,7 +4,7 @@
 Verifying the Emscripten Development Environment (ready-for-review) 
 =======================================================================
 
-**After you've** :ref:`installed the SDK <sdk-download-and-install>` **or** :ref:`manually built an Emscripten development environment from sources <installing-from-source>` **, the compiler should just work! This section shows how to verify that the environment has been set up correctly, and how to troubleshoot installation problems when they do occur.**
+**After you've** :ref:`installed the SDK <sdk-download-and-install>` **or** :ref:`built an Emscripten development environment from sources <installing-from-source>` **, the compiler should just work! This section shows how to verify that the environment has been set up correctly, and how to troubleshoot installation problems when they do occur.**
 
 
 Testing the environment
@@ -21,7 +21,7 @@ Open a terminal in the directory in which you installed Emscripten (on Windows o
 
 	./emcc -v
 
-.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**: 
+.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**.
 	
 For example, the following output reports an installation where Java is missing: 
 

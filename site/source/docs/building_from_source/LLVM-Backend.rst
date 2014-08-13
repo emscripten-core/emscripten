@@ -1,182 +1,111 @@
 .. _LLVM-Backend:
 
-==========================
-LLVM Backend (wiki-import)
-==========================
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
+====================================================
+LLVM Backend ("Fastcomp") (ready-for-review)
+====================================================
 
-LLVM Backend, aka "fastcomp"
-============================
+This article introduces *Fastcomp*, Emscripten's LLVM + Clang implementation. It explains how you can obtain the tool, why it replaced the :ref:`original compiler core <original-compiler-core>`, and how you can turn off *Fastcomp* if needed. There is also a :ref:`fastcomp-faq` at the very end for troubleshooting *Fastcomp* problems.
 
-*Fastcomp* is a new compiler core for emscripten, replacing much of the original compiler core in ``src/*.js``. This replaces **only** the JS compiler itself, not the toolchain code nor library code (``src/library*.js``) nor JS optimizer code. (For context, the core compiler is a few thousand lines of code, to be replaced with a few other thousand lines of code, whereas all the other stuff not being replaced is far larger.)
+.. todo:: Emscripten tool (emcc) links to original wiki page when you use the wrong clang. Should point to here instead.
 
-**Fastcomp was turned on by default in version 1.12.1.** If you are using that version or later, you are using fastcomp unless you manually disable it (which is highly unrecommended).
+Fastcomp overview
+================
 
-See the FAQ at the bottom of this page if you are having problems.
+*Fastcomp* is the default compiler core for Emscripten. Implemented as an :term:`LLVM backend`, its role is to convert the LLVM Intermediate Representation (IR) created by :term:`Clang` (from C/C++) into JavaScript.
 
-Overview of Fastcomp
---------------------
+*Fastcomp* has the following features:
 
-Fastcomp is an **LLVM backend**. It is **not** in upstream LLVM yet, it is far too new for that (but hopefully eventually will be). So you need to use the emscripten fork of LLVM. You can either build it from source, or get it as part of the emscripten SDK.
+- It is tightly integrated with LLVM (as an LLVM-backend)
+- It has a core focus on **asm.js** code generation, which has been shown to give the best results.
+- When compared to the previous compiler it is much faster (often 4x faster or more), uses less memory, and produces better code.
 
-This means that if you use another build of LLVM - like an older one you built yourself, or one from your linux distro's repos, etc. - it will **not** contain fastcomp. Emscripten will give an error about this (you can manually run those checks with ``emcc -v``), and briefly explain the issue and link to this page (where, later down, you can see how to disable fastcomp).
+Fastcomp is maintained in two repositories:
 
-
+- https://github.com/kripken/emscripten-fastcomp (LLVM)
+- https://github.com/kripken/emscripten-fastcomp-clang (Clang)
 
 Getting Fastcomp
-----------------
+================
+
+*Fastcomp* (Clang) is part of the :ref:`Emscripten SDK <sdk-download-and-install>`, and the binaries are automatically provided during installation (except on Linux, where pre-built binaries are not supplied so the SDK builds them for you). 
+
+If you need to build from source you can:
+
+- :ref:`Use the SDK <building-emscripten-from-source-using-the-sdk>` (these instructions show how to build the whole of Emscripten, including *Fastcomp*).
+- :ref:`Build using a fully manual process <building-fastcomp-from-source>`.
+
+.. warning:: The backend is still too new to be in the upstream LLVM repository. As such, builds from Linux distributions will **not** contain *Fastcomp*, and Emscripten will report an error if you try to use them.
 
 
-.. _building-fastcomp-from-source:
+.. _original-compiler-core:
 
-Building fastcomp from source
---------------------------------
+Original compiler core (deprecated)
+===================================
 
-To use fastcomp, you need both Emscripten (see the :ref:`Tutorial`) and the Emscripten LLVM code, either from the SDK or from source. Instructions from source are as follows:
+The original compiler supported dozens of different code generation modes (no-typed arrays, typed arrays in various modes, **asm.js** vs. **non-asm.js**, etc.), many of which were not very efficient. Over time, the compiler became harder to maintain and was susceptible to unpredictable compiler slow-downs. 
 
--  Clone the fastcomp `LLVM repository <https://github.com/kripken/emscripten-fastcomp>`_: 
+*Fastcomp* was turned on by default in version 1.12.1. The original compiler is now "deprecated". 
 
-	::
-	
-		git clone https://github.com/kripken/emscripten-fastcomp
+.. note:: While it is possible to manually disable Fastcomp and build the original compiler from source, this is discouraged.
 
-	.. note:: It doesn't matter where you clone *fastcomp* because Emscripten gets the information from the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. We show how to update this file later in these instructions:
-	
-		
-- Navigate to the **tools** directory (**emscripten-fastcomp/tools**) and clone the `kripken/emscripten-fastcomp-clang <https://github.com/kripken/emscripten-fastcomp-clang>`_ repository into a *clang* subdirectory: 
-
-	::
-	
-		cd tools
-		git clone https://github.com/kripken/emscripten-fastcomp-clang clang
-
-	.. warning:: You **must** clone it into a dir named "clang" (as is done by that command), so that clang is present in **tools/clang**! 
-	
-	.. note:: This repo has changed. Early in fastcomp development we used a different directory.
-	
--  Build fastcomp
-
-	-  Navigate back to the root of the llvm clone (**/emscripten-fastcomp**), then create and navigate into a new directory "**build**" (we highly recommend creating a separate build directory):
-	
-		::
-		
-			cd ..
-			mkdir build
-			cd build
-	
-	-  Configure the build using *either* the *configure* script or *cmake* (configure is located in the parent directory):
-	
-		- Using *configure*: 
-		
-		::
-		
-			../configure --enable-optimized --disable-assertions --enable-targets=host,js
-			
-		-  Using *CMake*: 
-
-			::
-			
-				cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF -DCLANG_INCLUDE_TESTS=OFF
-				
-			.. note:: replace X86 if you are on something else..
-	   
-	-  Call *make* to build the sources, specifying the number of available cores:
-
-		::
-		
-			make -j 4
-
-.. _llvm-update-compiler-configuration-file:
-			
--  Update the :ref:`~/.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in using the ``LLVM_ROOT`` variable. The path should be set to the location of the *clang* binary under the **build** directory. This will be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**: 
-
-	::
-	
-		LLVM_ROOT='' **HamishW**
-		
-	.. note:: If **~/.emscripten** does not yet exist, you can create it by running ``./emcc --help`` in your **emscripten** directory (assuming Emscripten has already been downloaded).
-
-Branches
-~~~~~~~~
-
-You should use the **same** branch in all 3 repos: emscripten, emscripten-fastcomp and emscripten-fastcomp-clang (that is, in emscripten, in emscripten's LLVM fork and in emscripten's clang fork). That is, you can either use the master branch in all 3, or the incoming branch in all 3. If you don't use the same branch in all 3, you may run into errors (changes might land in emscripten incoming for example that will not work on the master branches of the other two).
-
-Run ``emcc -v`` to check if the branches are synchronized. Note that this checks the code in the repos, not the build - make sure you rebuilt LLVM+clang on the latest code you checked out.
-
-Version numbers
-^^^^^^^^^^^^^^^
-
-Bisecting across multiple git trees can be hard. We use version numbers
-to synchronize points between them, which helps.
-
--  tools/shared.py in emscripten
--  emscripten-version.txt in fastcomp (llvm)
--  emscripten-version.txt in fastcomp-clang (clang)
-
-Version numbers are typically X.Y.Z where
-
-- X is a major number (changes very rarely)
-- Y is a release number (changes each time we merge incoming to master, so these numbers indicate points where all tests passed), and
-- Z is minor update that is just a sync point between the repos, or is needed when libc changes in emscripten (version changes clear the cache).
-
-Compilation Notes
-~~~~~~~~~~~~~~~~~
-
--  If you are building a large project, you will need a 64-bit build of llvm+clang, as compiling and optimizing can take more memory than a 32-bit build can use.
-
--  To build 64 bit using cmake and visual studio, use the -G "Visual Studio 10 Win64" directive. Note: VS 11/12 don't work yet.
-
--  If you want to build with MinGW instead and have that in path, replace -G directive in above with "-G MinGW Makefiles", and run mingw32-make to build (not tested yet).
-
-Backend code structure
-----------------------
-
-The backend is in the repo linked to above, and code is in ``lib/Target/JSBackend/``. The main file is ``JSBackend.cpp`` but the the other files in that directory are important too.
 
 Why did this change happen?
 ---------------------------
 
-Fastcomp is much more streamlined than the original compiler - the original compiler supports dozens of various code generation modes (no typed arrays, typed arrays in various modes, asm.js vs non-asm.js, etc.). Fastcomp on the other hand is directly focused on asm.js code generation, which has proven to give the best results.
+As a result of the problems with the original compiler, we developed *Fastcomp*, which is a much better compiler:
 
-Fastcomp, as a C++ LLVM backend, is much faster than the original JS compiler, often 4x faster or more. It also requires much less memory and avoids unpredictable pathological compiler slowdowns that the old compiler had.
+- It is much more streamlined than the original compiler. It focusses on **asm.js** code generation, which has been shown to give the best results.
+- It is much faster and has more predictable performance (often 4x faster or more).
+- It requires much less memory.
+- It generates better code because an LLVM backend it integrates more tightly with LLVM. 
 
-Fastcomp also generates better code - by being an LLVM backend, it can integrate more tightly with LLVM.
 
 Are there downsides?
-~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
-The main downside is that Emscripten can no longer use a stock build of LLVM, because we have changes that must be built with LLVM.
+The main downside is that Emscripten can no longer use a stock build of LLVM — because we have made changes that must be built with LLVM. 
 
-Note that you actually **can** still use a stock build, but only because you can make emscripten use the original compiler (see next section) - but this is not good, because you miss out on the benefits of the backend (see above), and also you are running a code path that is not recommended and less tested.
+There are also a few features that were present in the original compiler that are not present in *Fastcomp* (see the next section).
 
-This will hopefully be a temporary issue because the new Emscripten backend might get upstreamed to LLVM eventually, in which case a stock build would contain it.
+.. note:: We hope that the new Emscripten backend will eventually become part of the upstream LLVM, and hence become available in stock builds.
 
-Status of Original Compiler (and how to disable fastcomp)
----------------------------------------------------------
+Features not present in Fastcomp
+----------------------------------------
 
-You should **NOT** disable fastcomp. But, if you really, really must, you should know that you will have the following downsides:
+Some features that were present in the original compiler that are not present in *Fastcomp* include:
 
--  Not taking advantage of the benefits of fastcomp (much faster compilation, better generated code).
--  Using the old compiler which is deprecated and consequently less tested.
+-  Various deprecated **settings.js** options (e.g. ``FORCE_ALIGNMENT``, ``HEAP_INIT``, etc.) have no effect. You should receive a compile-time error if you use a setting which is not yet supported.
+-  Linking of **asm.js** shared modules has not yet been ported. This is not deprecated, but may need to be reconsidered.
 
-The original compiler is still present, and you may want to use it if you need a feature not present in fastcomp. There should be very few such features, as everything not deprecated or planned to be rewritten has already been ported. However, if you do need one of those features, you can use the old compiler, by building with
+	.. note:: Normal static linking as used by almost all projects works fine, it is just specifically the options ``MAIN_MODULE`` and ``SIDE_MODULE`` that do not work. 
 
+	
+How to disable Fastcomp
+---------------------------
+
+.. warning:: You should **NOT** disable Fastcomp. If you "really must", then:
+
+	-  The build will be slower, consume more memory, and result in sub-optimal code.
+	-  There are more likely to be bugs, because the old compiler is less tested.
+
+The original compiler is still present, and you may want to use it if you need a feature that is not yet present in *Fastcomp*. There should be very few such features, as almost everything that is not deprecated or planned to be rewritten has already been ported. 
+
+However, if you do need to, you can use the old compiler by turning off *Fastcomp*. Specifically, by setting ``EMCC_FAST_COMPILER=0`` when you build:
 ::
 
     EMCC_FAST_COMPILER=0 emcc [..]
 
-so that ``EMCC_FAST_COMPILER`` is set in the environment to ``0``. This will turn off fastcomp.
 
-When you want to use fastcomp, you must be using a build from the fastcomp repos (see below), so that the backend is present. When you disable fastcomp on the other hand, you can use **either** a build from the fastcomp repos, **or** a stock LLVM build. The latter is less tested, but should work in principle: Disabling fastcomp does not use anything new in the fastcomp repo (neither the new backend, nor the new target triple).
+When you disable *Fastcomp* you can use **either** a build from the *Fastcomp* repositories, **or** a stock LLVM build. The latter is less tested, but should work in principle: Disabling *Fastcomp* does not use anything new in the *Fastcomp* repo (neither the new backend, nor the new target triple).
 
-You can check if fastcomp is on or off by looking at debug output. For example, run ``EMCC_DEBUG=1 emcc tests/hello_world.c`` and if fastcomp is on, then among the output will be
+You can check whether *Fastcomp* is enabled by looking at debug output. For example, run ``EMCC_DEBUG=1 emcc tests/hello_world.c`` — if *Fastcomp* is on, then among the output will be:
 
 ::
 
     DEBUG    root: emscript: llvm backend: ...
     DEBUG    root:   emscript: llvm backend took
 
-That shows both the command used to run the backend, and how much time it took. If fastcomp is off on the other hand, the old compiler is used, and you will instead
+That shows both the command used to run the backend, and how much time it took. If *Fastcomp* is off on the other hand, the old compiler is used, and you will instead see:
 
 ::
 
@@ -185,16 +114,15 @@ That shows both the command used to run the backend, and how much time it took. 
     ...
     DEBUG    root: emcc step "emscript (llvm=>js)" took ...
 
-This shows that the old compiler (``ll=>js``) is called, as well as how much time each step takes, and the total time. Again, this is the output for the **old** compiler, so hopefully you will never see it :)
+This shows that the old compiler (``ll=>js``) is called, as well as how much time each step takes, and the total time. Again, this is the output for the **old** compiler, so hopefully you will never see it!
 
-Some features not present in fastcomp are:
 
--  Various deprecated settings.js options (e.g. FORCE\_ALIGNMENT, HEAP\_INIT, etc.) have no effect. You should receive a compile-time error if you use a setting which is not yet supported, if it has not been missed.
--  :ref:`Linking` of asm.js shared modules (note that normal static linking as used by almost all projects works fine, it is just specifically the options MAIN\_MODULE and SIDE\_MODULE that do not work). This is not deprecated, but may need to be partially reconsidered, so it has not been ported to fastcomp.
+
+.. _fastcomp-faq:
 
 FAQ
 ===
 
 -  I see ``WARNING: Linking two modules of different target triples`` [..] ``'asmjs-unknown-emscripten' and 'le32-unknown-nacl'``..?
--  You are linking together bitcode files compiled with the old compiler (or older versions of fastcomp) with bitcode files from the new one. This may work in some cases but is dangerous and should be avoided. To fix it, just recompile all your bitcode with the new compiler.
+-  You are linking together bitcode files compiled with the old compiler (or older versions of *Fastcomp*) with bitcode files from the new one. This may work in some cases but is dangerous and should be avoided. To fix it, just recompile all your bitcode with the new compiler.
 

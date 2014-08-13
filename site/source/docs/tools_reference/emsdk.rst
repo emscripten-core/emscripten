@@ -56,7 +56,7 @@ Arguments
 Tools and SDK targets
 ------------------------
 	 
-The ``<tool/sdk>`` given above as a command argument is one of the targets listed using ``emsdk list`` (or ``emsdk list --old``). 
+The ``<tool/sdk>`` given above as a command argument is one of the targets listed using ``./emsdk list`` (or ``./emsdk list --old``). 
 
 Note that some of the tools and SDK names include  *master* or *incoming*: these targets are used to clone and pull the very latest versions from the Emscripten incoming and master branches.
 
@@ -65,11 +65,15 @@ You can also specify a target of ``latest`` to grab the most current SDK.
 
 
 SDK manager concepts
-==============================
+====================
 
-The Emscripten toolchain includes a number of different :term:`tools <Tool>`, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. The :term:`SDK` delivers a full set of these tools for a particular Emscripten release, in a convenient installer package.
+The Emscripten toolchain includes a number of different tools, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. *Emsdk* is a small package manager for controlling which tools are installed, and from the set of installed tools, which are active.
 
-The *emsdk* can be used to fetch and install both current and legacy versions of individual tools and SDKs. A particular SDK (or tool) can then be set as :term:`active <Active Tool/SDK>`, meaning that it will be used when Emscripten is run. The active "compiler configuration" is stored in a user-specific file (*~/.emscripten*), which is discussed in the next section.
+The current set of available :term:`tools <Tool>` and :term:`SDKs <SDK>` are listed using ``./emsdk list``. These can be installed individually (``./emsdk install node-0.10.17-64bit``) or as a group (``./emsdk install node-0.10.17-64bit java-7.45-64bit``).
+
+The :term:`SDK` targets are a convenience mechanism for specifying the full set of tools used by a particular Emscripten release. For example, ``./emsdk install sdk-incoming-64bit`` is equivalent to typing ``./emsdk install git-1.8.3 clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-incoming``.
+
+A particular installed SDK (or tool) can then be set as :term:`active <Active Tool/SDK>`, meaning that it will be used when Emscripten is run. The active "compiler configuration" is stored in a user-specific file (*~/.emscripten*), which is discussed in the next section.
 
 .. note:: The different tools and SDKs managed by *emsdk* are stored in different directories under the root folder you specified when you first installed an SDK, grouped by tool and version. 
 
@@ -228,6 +232,8 @@ To switch to using the latest upstream git development branch (``incoming``), ru
 	
 	# Clone+pull the latest kripken/emscripten/incoming.
 	./emsdk install sdk-incoming-64bit
+	
+	
 	
 	# Set the "incoming SDK" as the active version.
 	./emsdk activate sdk-incoming-64bit 	

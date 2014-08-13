@@ -1,19 +1,19 @@
 .. _building-emscripten-on-linux:
 
-================================================
-Building Emscripten on Linux (ready-for-review)
-================================================
+=====================================
+Manually Building Emscripten on Linux
+=====================================
 
-.. tip:: The :ref:`Portable SDK for Linux <portable-emscripten-sdk-linux-osx>` (and Mac OS X) provides the **easiest** and **most reliable** method for **building from source**. Just :ref:`download and install the SDK <sdk-download-and-install>` and follow the brief instructions :ref:`here <emsdk-master-or-incoming-sdk>`.
-
-	These instructions are provided for developers who, for whatever reason, prefer a manual approach.
-	
 This page contains basic instructions on how to manually build and configure Emscripten from source on a clean (Ubuntu 14.04.1 LTS 64bit) Linux box.
+
+.. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors` should instead clone from their own Emscripten fork, and submit changes as pull requests.
+
+.. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need easily switch between SDK and source builds.
 
 What you'll need
 =================
 
-The previous topic (:ref:`Emscripten Toolchain <toolchain-what-you-need>`) lists the specific versions of tools that are needed.
+The specific versions of tools that are needed are listed in the :ref:`Emscripten Toolchain Requirements <toolchain-what-you-need>`.
 
 
 Installing required tools
@@ -61,7 +61,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 	
 		sudo apt-get install default-jre
 
-#. Build :term:`Fastcomp` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
+#. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
 	
 #. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 

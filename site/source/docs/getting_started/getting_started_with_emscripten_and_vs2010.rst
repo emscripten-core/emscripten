@@ -1,4 +1,4 @@
-.. getting-started-emscripten-from-vs2010:
+.. _getting-started-emscripten-from-vs2010:
 
 ===========================================================================================
 Getting started using Emscripten from the Visual Studio 2010 IDE (under-construction)

@@ -1,19 +1,19 @@
 .. _building-emscripten-on-mac-osx-from-source:
 
-==================================================
-Building Emscripten on Mac OS X (ready-for-review)
-==================================================
+===========================================================
+Manually Building Emscripten on Mac OS X (ready-for-review)
+===========================================================
 
-.. tip:: The :ref:`Portable SDK for Linux <portable-emscripten-sdk-linux-osx>` (and Mac OS X) provides the **easiest** and **most reliable** method for **building from source**. Just :ref:`download and install the SDK <sdk-download-and-install>` and follow the brief instructions :ref:`here <emsdk-master-or-incoming-sdk>`.
+This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Mac OS X box (OS X version 10.8.2).
 
-	These instructions are provided for developers who, for whatever reason, prefer a manual approach.
+.. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
-This page contains basic instructions on how to manually build and configure Emscripten from source on a clean (OS X version 10.8.2) clean Mac OS X box.
+.. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need easily switch between SDK and source builds.
 
 What you'll need
 =================
 
-The topic :ref:`Emscripten Toolchain <toolchain-what-you-need>` lists the specific versions of tools that are needed.
+The specific versions of tools that are needed are listed in the :ref:`Emscripten Toolchain Requirements <toolchain-what-you-need>`.
 
 
 Installing required tools
@@ -21,20 +21,20 @@ Installing required tools
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
-#. Install the *XCode Command Line Tools*. These include the toolchain to build :term:`Fastcomp`, and also are a precondition for *git*.
+#. Install the *XCode Command Line Tools*. These include the toolchain to build :term:`Fastcomp`, and are a precondition for *git*.
 
 	-  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
 	-  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
 
 #. Install *git*:
 
-	- Allow installation of unsigned packages, or installing git package `won't succeed <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_.
+	- `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
 	- Install XCode and the XCode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
 	- Download and install git directly from http://git-scm.com/.	
 
 #. Install *cmake* if you do not have it yet:
 
-	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_ (or newer)
+	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_ (or newer).
 
 	
 #. Install *node.js* from http://nodejs.org/ 
@@ -52,7 +52,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 		
 	-  Enter ``python2 --version`` again. It should now print Python 2.7.2
 
-#. Build :term:`Fastcomp` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
+#. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
 	
 #. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 

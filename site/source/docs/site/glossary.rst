@@ -3,6 +3,14 @@ Glossary (under-construction)
 ===============================
 
 
+.. glossary::
+	:sorted:
+
+	xhr
+		**HamishW**
+		
+	LLVM backend
+		A (*Clang*) compiler backend that convert the LLVM Intermediate Representation (IR) to code for a specified machine or other languages. In the case of Emscripten, the specified target is JavaScript.
 
 Emscripten tools and dependencies
 =======================================
