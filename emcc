@@ -1473,15 +1473,11 @@ try:
         sys.exit(1)
     else: # bitcode
       if file_ending.endswith(BITCODE_ENDINGS):
-        logging.debug('copying bitcode file: ' + input_file)
-        temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using bitcode file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
-        logging.debug('copying library file: ' + input_file)
-        temp_file = in_temp(uniquename(input_file))
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using library file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
           logging.debug('assembling assembly file: ' + input_file)
@@ -1502,10 +1498,12 @@ try:
       for pos, (_, input_file) in enumerate(input_files):
         file_ending = filename_type_ending(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
-          (_, temp_file) = temp_files[pos]
+          temp_file = temp_files[pos][1]
           logging.debug('optimizing %s', input_file)
           #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
-          shared.Building.llvm_opt(temp_file, llvm_opts)
+          new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
+          shared.Building.llvm_opt(temp_file, llvm_opts, new_temp_file)
+          temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
   # Decide what we will link
   linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
@@ -1519,7 +1517,11 @@ try:
       if len(input_files) == 1:
         _, input_file = input_files[0]
         _, temp_file = temp_files[0]
-        safe_move(temp_file, specified_target if specified_target else unsuffixed_basename(input_file) + final_ending)
+        bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_ending
+        if temp_file != input_file:
+          safe_move(temp_file, bitcode_target)
+        else:
+          shutil.copyfile(temp_file, bitcode_target)
         temp_output_base = unsuffixed(temp_file)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
@@ -1564,8 +1566,12 @@ try:
   else:
     if not LEAVE_INPUTS_RAW:
       _, temp_file = temp_files[0]
-      shutil.move(temp_file, in_temp(target_basename + '.bc'))
+      _, input_file = input_files[0]
       final = in_temp(target_basename + '.bc')
+      if temp_file != input_file:
+        shutil.move(temp_file, final)
+      else:
+        shutil.copyfile(temp_file, final)
     else:
       _, input_file = input_files[0]
       final = in_temp(input_file)
