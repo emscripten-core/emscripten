@@ -6474,38 +6474,6 @@ def process(filename):
         # This test *should* fail, by throwing this exception
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
-  def test_debug(self):
-    if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-    if self.emcc_args is not None:
-      if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args: return self.skip('optimizations remove LLVM debug info')
-
-    src = '''
-      #include <stdio.h>
-      #include <assert.h>
-
-      void checker(int x) {
-        x += 20;
-        assert(x < 15); // this is line 7!
-      }
-
-      int main() {
-        checker(10);
-        return 0;
-      }
-    '''
-    try:
-      self.do_run(src, '*nothingatall*', assert_returncode=None)
-    except Exception, e:
-      # This test *should* fail
-      assert 'Assertion failed: x < 15' in str(e), str(e)
-
-    lines = open('src.cpp.o.js', 'r').readlines()
-    lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
-    found_line_num = any(('//@line 7 "' in line) for line in lines)
-    found_filename = any(('src.cpp"\n' in line) for line in lines)
-    assert found_line_num, 'Must have debug info with the line number'
-    assert found_filename, 'Must have debug info with the filename'
-
   def test_source_map(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')

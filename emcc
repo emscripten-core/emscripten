@@ -819,6 +819,7 @@ try:
 
   opt_level = 0
   debug_level = 0
+  requested_debug = ''
   profiling = False
   emit_symbol_map = False
   js_opts = None
@@ -948,11 +949,8 @@ try:
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
-      if newargs[i] != '-g':
-        if debug_level >= 4:
-          newargs[i] = '-g' # we'll need this to get LLVM debug info
-        else:
-          newargs[i] = ''
+      requested_debug = newargs[i]
+      newargs[i] = ''
     elif newargs[i] == '-profiling':
       debug_level = 2
       profiling = True
@@ -1091,7 +1089,7 @@ try:
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if opt_level == 0: debug_level = 4
+  if opt_level == 0: debug_level = max(3, debug_level)
   if memory_init_file is None: memory_init_file = opt_level >= 2
 
   if llvm_lto is None and bind:
@@ -1455,6 +1453,11 @@ try:
       else:
         if has_dash_c: return unsuffixed(input_file) + default_object_extension
     return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
+
+  # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
+  if debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and requested_debug == '-g'):
+    newargs.append('-g') # preserve LLVM debug info
+    debug_level = 4
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:

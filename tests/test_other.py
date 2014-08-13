@@ -3928,18 +3928,47 @@ main(const int argc, const char * const * const argv)
     test(['-o', 'c.html'], True)
     test(['-c'], False)
 
-  def dash_g_bc(self):
-    def get_size(name):
-      return len(open(name).read())
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc']).communicate()
-    sizes = { '_': get_size('a_.bc') }
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc']).communicate()
-    sizes['g'] = get_size('ag.bc')
-    for i in range(0, 5):
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc']).communicate()
-      sizes[i] = get_size('a' + str(i) + '.bc')
-    print sizes
-    assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info'
-    assert sizes['g'] == sizes[4], '-g or -g4 means llvm debug info'
-    assert sizes['_'] < sizes['g'], 'llvm debug info has positive size'
+  def test_dash_g(self):
+    open('src.c', 'w').write('''
+      #include <stdio.h>
+      #include <assert.h>
+
+      void checker(int x) {
+        x += 20;
+        assert(x < 15); // this is line 7!
+      }
+
+      int main() {
+        checker(10);
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, 'src.c', '-g']).communicate()
+
+    lines = open('a.out.js', 'r').readlines()
+    lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
+    found_line_num = any(('//@line 7 "' in line) for line in lines)
+    found_filename = any(('src.c"\n' in line) for line in lines)
+    assert found_line_num, 'Must have debug info with the line number'
+    assert found_filename, 'Must have debug info with the filename'
+
+  def test_dash_g_bc(self):
+    def test(opts):
+      print opts
+      def get_size(name):
+        return len(open(name).read())
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts).communicate()
+      sizes = { '_': get_size('a_.bc') }
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts).communicate()
+      sizes['g'] = get_size('ag.bc')
+      for i in range(0, 5):
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts).communicate()
+        sizes[i] = get_size('a' + str(i) + '.bc')
+      print '  ', sizes
+      assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info'
+      assert sizes['g'] == sizes[4], '-g or -g4 means llvm debug info'
+      assert sizes['_'] < sizes['g'], 'llvm debug info has positive size'
+    test([])
+    test(['-O1'])
 
