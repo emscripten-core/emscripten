@@ -298,7 +298,8 @@ var ASYNCIFY = 0; // Whether to enable asyncify transformation
                   // This allows to inject some async functions to the C code that appear to be sync
                   // e.g. emscripten_sleep
 var ASYNCIFY_FUNCTIONS = ['emscripten_sleep', // Functions that call any funcion in the list, directly or indirectly
-                          'emscripten_wget']; // will be transfromed
+                          'emscripten_wget',  // will be transformed
+                          'emscripten_yield'];
 var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
                           'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async 
                           '__toread', // This whitelist is useful when a function is known to be sync
