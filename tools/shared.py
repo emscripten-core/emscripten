@@ -614,7 +614,7 @@ def apply_configuration():
   TEMP_DIR = configuration.TEMP_DIR
 apply_configuration()
 
-logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s')
+logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s') # can add  %(asctime)s  to see timestamps
 def set_logging():
   logger = logging.getLogger()
   logger.setLevel(logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
