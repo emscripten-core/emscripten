@@ -323,6 +323,8 @@ void*
 ~~~~~
 
 The ``void*`` type is supported through a ``VoidPtr`` type which you can use
-in IDL files.
-
+in IDL files. You can also use the ``any`` type. The difference between
+them is that ``VoidPtr`` behaves like a pointer type in that you get
+a wrapper object, while ``any`` behaves like a 32-bit integer (which is
+what raw pointers are, in Emscripten-compiled code).
 
