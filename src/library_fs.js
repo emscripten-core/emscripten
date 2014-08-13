@@ -1250,7 +1250,7 @@ mergeInto(LibraryManager.library, {
         random_device = function() { return require('crypto').randomBytes(1)[0]; };
       } else {
         // default for ES5 platforms
-        random_device = function() { return Math.floor(Math.random()*256); };
+        random_device = function() { return (Math.random()*256)|0; };
       }
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
@@ -1551,7 +1551,7 @@ mergeInto(LibraryManager.library, {
           return undefined;
         }
         var chunkOffset = idx % this.chunkSize;
-        var chunkNum = Math.floor(idx / this.chunkSize);
+        var chunkNum = (idx / this.chunkSize)|0;
         return this.getter(chunkNum)[chunkOffset];
       }
       LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {

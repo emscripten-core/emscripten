@@ -274,11 +274,11 @@ LibraryManager.library = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(stat.atime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(stat.mtime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(stat.ctime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
       return 0;
@@ -2555,7 +2555,7 @@ LibraryManager.library = {
     }
     bytesRead += err;
     if (bytesRead < bytesToRead) streamObj.eof = true;
-    return Math.floor(bytesRead / size);
+    return (bytesRead / size)|0;
   },
   freopen__deps: ['$FS', 'fclose', 'fopen', '__setErrNo', '$ERRNO_CODES'],
   freopen: function(filename, mode, stream) {
@@ -2637,7 +2637,7 @@ LibraryManager.library = {
       if (streamObj) streamObj.error = true;
       return 0;
     } else {
-      return Math.floor(bytesWritten / size);
+      return (bytesWritten / size)|0;
     }
   },
   popen__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -2725,7 +2725,7 @@ LibraryManager.library = {
     }
     var name = prefix || 'file';
     do {
-      name += String.fromCharCode(65 + Math.floor(Math.random() * 25));
+      name += String.fromCharCode(65 + (Math.random() * 25)|0);
     } while (name in folder.contents);
     var result = dir + '/' + name;
     if (!_tmpnam.buffer) _tmpnam.buffer = _malloc(256);
@@ -4364,11 +4364,11 @@ LibraryManager.library = {
   cbrtl: 'cbrt',
 
   modf: function(x, intpart) {
-    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}};
+    {{{ makeSetValue('intpart', 0, '(x < 0) ? Math.ceil(x) : Math.floor(x)', 'double') }}};
     return x - {{{ makeGetValue('intpart', 0, 'double') }}};
   },
   modff: function(x, intpart) {
-    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'float') }}};
+    {{{ makeSetValue('intpart', 0, '(x < 0) ? Math.ceil(x) : Math.floor(x)', 'float') }}};
     return x - {{{ makeGetValue('intpart', 0, 'float') }}};
   },
   finite: function(x) {
@@ -4554,7 +4554,7 @@ LibraryManager.library = {
   },
 
   div: function(divt, numer, denom) {
-    var quot = Math.floor(numer / denom);
+    var quot = (numer / denom) | 0;
     var rem = numer - quot * denom;
     {{{ makeSetValue('divt', C_STRUCTS.div_t.quot, 'quot', 'i32') }}};
     {{{ makeSetValue('divt', C_STRUCTS.div_t.rem, 'rem', 'i32') }}};
@@ -4869,11 +4869,11 @@ LibraryManager.library = {
 
   clock: function() {
     if (_clock.start === undefined) _clock.start = Date.now();
-    return Math.floor((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}}/1000));
+    return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
   },
 
   time: function(ptr) {
-    var ret = Math.floor(Date.now()/1000);
+    var ret = (Date.now()/1000)|0;
     if (ptr) {
       {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
     }
@@ -4933,7 +4933,7 @@ LibraryManager.library = {
     start.setUTCMinutes(0);
     start.setUTCSeconds(0);
     start.setUTCMilliseconds(0);
-    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
 
@@ -4967,7 +4967,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
 
     var start = new Date(date.getFullYear(), 0, 1);
-    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, 'start.getTimezoneOffset() * 60', 'i32') }}};
 
@@ -5204,7 +5204,7 @@ LibraryManager.library = {
       },
       '%C': function(date) {
         var year = date.tm_year+1900;
-        return leadingNulls(Math.floor(year/100),2);
+        return leadingNulls((year/100)|0,2);
       },
       '%d': function(date) {
         return leadingNulls(date.tm_mday, 2);
@@ -5678,8 +5678,8 @@ LibraryManager.library = {
     } else {
       now = _emscripten_get_now();
     }
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, 'Math.floor(now/1000)', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, 'Math.floor((now % 1000)*1000*1000)', 'i32') }}}; // nanoseconds
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
   clock_settime: function(clk_id, tp) {
@@ -5704,8 +5704,8 @@ LibraryManager.library = {
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, 'Math.floor(now/1000)', 'i32') }}}; // seconds
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}}; // microseconds
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i32') }}}; // microseconds
     return 0;
   },
 
@@ -5715,7 +5715,7 @@ LibraryManager.library = {
   
   ftime: function(p) {
     var millis = Date.now();
-    {{{ makeSetValue('p', C_STRUCTS.timeb.time, 'Math.floor(millis/1000)', 'i32') }}};
+    {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // TODO
     {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // TODO

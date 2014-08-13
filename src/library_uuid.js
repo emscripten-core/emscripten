@@ -48,8 +48,8 @@ mergeInto(LibraryManager.library, {
       uuid = new Array(16);
       var d = new Date().getTime();
       for (var i = 0; i < 16; i++) {
-        var r = (d + Math.random()*256)%256 | 0;
-        d = Math.floor(d/256);
+        var r = ((d + Math.random() * 256) % 256)|0;
+        d = (d / 256)|0;
         uuid[i] = r;
       }
     }
