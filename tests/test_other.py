@@ -3944,14 +3944,25 @@ main(const int argc, const char * const * const argv)
       }
     ''')
 
-    Popen([PYTHON, EMCC, 'src.c', '-g']).communicate()
+    def check(has):
+      print has
+      lines = open('a.out.js', 'r').readlines()
+      lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
+      found_line_num = any(('//@line 7 "' in line) for line in lines)
+      found_filename = any(('src.c"\n' in line) for line in lines)
+      assert found_line_num == has, 'Must have debug info with the line number'
+      assert found_filename == has, 'Must have debug info with the filename'
 
-    lines = open('a.out.js', 'r').readlines()
-    lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
-    found_line_num = any(('//@line 7 "' in line) for line in lines)
-    found_filename = any(('src.c"\n' in line) for line in lines)
-    assert found_line_num, 'Must have debug info with the line number'
-    assert found_filename, 'Must have debug info with the filename'
+    Popen([PYTHON, EMCC, 'src.c', '-g']).communicate()
+    check(True)
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    check(False)
+    Popen([PYTHON, EMCC, 'src.c', '-g0']).communicate()
+    check(False)
+    Popen([PYTHON, EMCC, 'src.c', '-g0', '-g']).communicate() # later one overrides
+    check(True)
+    Popen([PYTHON, EMCC, 'src.c', '-g', '-g0']).communicate() # later one overrides
+    check(False)
 
   def test_dash_g_bc(self):
     def test(opts):
