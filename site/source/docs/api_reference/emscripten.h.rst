@@ -202,8 +202,8 @@ Functions
 	.. todo:: **HamishW** link to "Emscripten Browser Environment" doc when imported. 
 
 	
-.. c:function:: void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name)
-	void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name)
+.. c:function:: void emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name)
+	void emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name)
 	
 	Add a function that **blocks** the main loop.
 
