@@ -3983,3 +3983,79 @@ main(const int argc, const char * const * const argv)
     test([])
     test(['-O1'])
 
+  def test_stat_fail_alongtheway(self):
+    open('src.cpp', 'w').write(r'''
+#include <errno.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+
+#define CHECK(expression) \
+  if(!(expression)) {                            \
+    error = errno;                               \
+    printf("FAIL: %s\n", #expression); fail = 1; \
+  } else {                                       \
+    error = errno;                               \
+    printf("pass: %s\n", #expression);           \
+  }                                              \
+
+int
+main()
+{
+  int error;
+  int fail = 0;
+  CHECK(mkdir("path", 0777) == 0);
+  CHECK(close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0);
+  {
+    struct stat st;
+    CHECK(stat("path", &st) == 0);
+    CHECK(st.st_mode = 0777);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/nosuchfile", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOENT);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/file", &st) == 0);
+    CHECK(st.st_mode = 0666);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/file/impossible", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOTDIR);
+  }
+  {
+    struct stat st;
+    CHECK(lstat("path/file/impossible", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOTDIR);
+  }
+  return fail;
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''pass: mkdir("path", 0777) == 0
+pass: close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0
+pass: stat("path", &st) == 0
+pass: st.st_mode = 0777
+pass: stat("path/nosuchfile", &st) == -1
+info: errno=2 No such file or directory
+pass: error == ENOENT
+pass: stat("path/file", &st) == 0
+pass: st.st_mode = 0666
+pass: stat("path/file/impossible", &st) == -1
+info: errno=20 Not a directory
+pass: error == ENOTDIR
+pass: lstat("path/file/impossible", &st) == -1
+info: errno=20 Not a directory
+pass: error == ENOTDIR
+''', run_js('a.out.js'))
+

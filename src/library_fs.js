@@ -161,7 +161,7 @@ mergeInto(LibraryManager.library, {
     lookupNode: function(parent, name) {
       var err = FS.mayLookup(parent);
       if (err) {
-        throw new FS.ErrnoError(err);
+        throw new FS.ErrnoError(err, parent);
       }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
@@ -1299,14 +1299,18 @@ mergeInto(LibraryManager.library, {
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
-      FS.ErrnoError = function ErrnoError(errno) {
-        this.errno = errno;
-        for (var key in ERRNO_CODES) {
-          if (ERRNO_CODES[key] === errno) {
-            this.code = key;
-            break;
+      FS.ErrnoError = function ErrnoError(errno, node) {
+        this.node = node;
+        this.setErrno = function(errno) {
+          this.errno = errno;
+          for (var key in ERRNO_CODES) {
+            if (ERRNO_CODES[key] === errno) {
+              this.code = key;
+              break;
+            }
           }
-        }
+        };
+        this.setErrno(errno);
         this.message = ERRNO_MESSAGES[errno];
 #if ASSERTIONS
         if (this.stack) this.stack = demangleAll(this.stack);

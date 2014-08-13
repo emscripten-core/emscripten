@@ -283,6 +283,10 @@ LibraryManager.library = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
       return 0;
     } catch (e) {
+      if (e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
+        // an error occurred while trying to look up the path; we should just report ENOTDIR
+        e.setErrno(ERRNO_CODES.ENOTDIR);
+      }
       FS.handleFSError(e);
       return -1;
     }
