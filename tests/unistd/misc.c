@@ -111,13 +111,6 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("alarm: %d", alarm(42));
-  printf(", errno: %d\n", errno);
-  errno = 0;
-  printf("ualarm: %ld", ualarm(123, 456));
-  printf(", errno: %d\n", errno);
-  errno = 0;
-
   printf("fork: %d", fork());
   printf(", errno: %d\n", errno);
   errno = 0;

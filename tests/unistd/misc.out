@@ -25,8 +25,6 @@ lchown(good): 0, errno: 0
 lchown(bad): -1, errno: 2
 fchown(good): 0, errno: 0
 fchown(bad): -1, errno: 9
-alarm: 0, errno: 0
-ualarm: 0, errno: 0
 fork: -1, errno: 11
 vfork: -1, errno: 11
 crypt: (null), errno: 38
