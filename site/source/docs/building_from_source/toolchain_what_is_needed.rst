@@ -6,7 +6,7 @@ Emscripten Toolchain Requirements
 
 The instructions below list the main tools and dependencies in an Emscripten environment, along with instructions on how to test which dependencies are installed.
 
-.. tip:: The :ref:`SDK <sdk-download-and-install>` provides the **easiest** and **most reliable** method for getting, using, updating and managing Emscripten environments, including **building from source**. If you're using the SDK you won't *need* these instructions — they are provided for information only.
+.. tip:: The :ref:`SDK <sdk-download-and-install>` provides the **easiest** and **most reliable** method for getting, using, updating and managing Emscripten environments. If you're using the SDK you won't *need* these instructions — they are provided for information only.
 
 	The instructions below are useful if you're :ref:`manually <installing-from-source>` building from source.
 
@@ -14,6 +14,8 @@ The instructions below list the main tools and dependencies in an Emscripten env
 
 What you'll need
 ================
+
+.. _central-list-of-emscripten-tools-and-dependencies:
 
 Emscripten tools and dependencies
 ---------------------------------
@@ -36,16 +38,16 @@ A complete Emscripten environment requires the following tools. First test to se
 Compiler toolchain
 ------------------
 
-When building Emscripten from source code, whether "manually" or using the SDK, you will also need a compiler toolchain:
+When building Emscripten from source code, whether "manually" or using the SDK, you will also need a *compiler toolchain* (including *gcc*, *g++*, *cmake*, etc.):
 
-- On Windows install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_
-- On Linux install *gcc* from the **build-essential** package:
+- Windows: Install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_
+- Linux: Install *gcc* from the **build-essential** package:
 	
 	::
 		
 		sudo apt-get install build-essential
 	
-- On Mac OS X install the *XCode Command Line Tools*:
+- Mac OS X: Install the *XCode Command Line Tools*:
 
 	-  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
 	-  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
