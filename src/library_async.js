@@ -125,7 +125,7 @@ mergeInto(LibraryManager.library, {
     stack_size = stack_size|0;
     var coroutine = 0;
 
-    if(stack_size <= 0) stack_size = 4096;
+    if (stack_size <= 0) stack_size = 4096;
 
     coroutine = _malloc(stack_size)|0;
     {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}}; 
