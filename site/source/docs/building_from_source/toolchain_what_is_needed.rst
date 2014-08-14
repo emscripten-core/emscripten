@@ -40,12 +40,16 @@ Compiler toolchain
 
 When building Emscripten from source code, whether "manually" or using the SDK, you will also need a *compiler toolchain* (including *gcc*, *g++*, *cmake*, etc.):
 
-- Windows: Install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_
-- Linux: Install *gcc* from the **build-essential** package:
+- Windows: Install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_ and  `cmake <http://www.cmake.org/cmake/resources/software.html>`_ (cmake-3.0.1-win32-x86.exe)
+
+- Linux: Install *gcc* and *cmake*:
 	
 	::
 		
+		#Install gcc
 		sudo apt-get install build-essential
+		# Install cmake
+		sudo apt-get install cmake
 	
 - Mac OS X: Install the *XCode Command Line Tools*:
 

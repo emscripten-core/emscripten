@@ -42,11 +42,12 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 		sudo apt-get install nodejs
 
 
-#. Install *gcc* (and related dependencies) using the *system package manager*: 
+#. Install *gcc* and *cmake* using the *system package manager*: 
 
 	::
 	
 		sudo apt-get install build-essential
+		sudo apt-get install cmake
 
 
 #. Install *git* using the *system package manager*: 
