@@ -1456,7 +1456,7 @@ try:
 
   # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
   if debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and requested_debug == '-g'):
-    if not (final_suffix in JS_CONTAINING_SUFFIXES and js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow
+    if debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
       newargs.append('-g') # preserve LLVM debug info
       debug_level = 4
 
