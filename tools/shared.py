@@ -444,7 +444,7 @@ def check_sanity(force=False):
     try:
       subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
     except:
-      logging.warning('java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten')
+      logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ~/.emscripten if you want it)')
 
     if not os.path.exists(CLOSURE_COMPILER):
      logging.warning('Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG))
