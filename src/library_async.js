@@ -147,7 +147,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValueAsm('coroutine', 8, 'STACK_MAX', 'i32') }}};
     ___async_cur_frame = {{{ makeGetValueAsm('coroutine', 12, 'i32') }}};
     stackRestore({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
-    STACK_MAX = (coroutine|0) + 32 + {{{ makeGetValueAsm('coroutine', 20, 'i32') }}};
+    STACK_MAX = coroutine + 32 + {{{ makeGetValueAsm('coroutine', 20, 'i32') }}} | 0;
 
     if (!___async_cur_frame) {
       // first run
