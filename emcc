@@ -1340,7 +1340,7 @@ try:
       logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
       shared.Settings.ASM_JS = 2
 
-  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
+  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2 or shared.Settings.SAFE_HEAP >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
 
   if debug_level > 1 and closure:
