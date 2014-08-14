@@ -1398,8 +1398,8 @@ int main(int argc, char **argv)
       disabled_size = len(open('src.cpp.o.js').read())
       shutil.copyfile('src.cpp.o.js', 'disabled.js')
 
-      assert size - empty_size > 2000, [empty_size, size] # big change when we disable entirely
-      assert size - fake_size > 2000, [fake_size, size]
+      assert size - empty_size > 1000, [empty_size, size] # big change when we disable entirely
+      assert size - fake_size > 1000, [fake_size, size]
       assert abs(empty_size - fake_size) < 100, [empty_size, fake_size]
       assert empty_size - disabled_size < 100, [empty_size, disabled_size] # full disable removes a tiny bit more
       assert fake_size - disabled_size < 100, [disabled_size, fake_size]
@@ -1513,6 +1513,14 @@ int main(int argc, char **argv)
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_rethrow')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.do_run_from_file(src, output)
+
+  def test_exceptions_resume(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    Settings.EXCEPTION_DEBUG = 1
+    test_path = path_from_root('tests', 'core', 'test_exceptions_resume')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
