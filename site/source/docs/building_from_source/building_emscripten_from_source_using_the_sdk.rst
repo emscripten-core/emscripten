@@ -34,9 +34,6 @@ The :ref:`emsdk` controls which tool and SDK "targets" are installed and activat
 	
 	# Clone, pull, and build the latest "sdk" Emscripten environment
 	./emsdk install sdk-incoming-64bit
-	
-	#On Windows, instead do the following: 
-	emsdk install clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-incoming
 		
 	# Set the "incoming SDK" as the active version.
 	./emsdk activate sdk-incoming-64bit	
@@ -45,13 +42,25 @@ The :ref:`emsdk` controls which tool and SDK "targets" are installed and activat
 
 If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` in the commands above.
 
-.. note:: The SDK supplies a number of "repository" targets. These targets are viewed by entering ``./emsdk list`` on the command prompt:
+.. warning:: On Windows there is `currently a bug <https://github.com/juj/emsdk/issues/13>`_ with the git package. Instead of using ``sdk-incoming-64bit``, you may need to enter: 
 
-	- ``sdk-incoming-64bit`` is the target for a complete 64bit Emscripten environment build from the incoming branch of the Emscripten and *Fastcomp* repositories. Other ``sdk-``targets are provided for the master branch and 32bit builds.
-	- ``emscripten-incoming`` and ``emscripten-master`` are targets for the Emscripten repository (only)
-	- ``clang-incoming-64bit`` is the target for getting and building Fastcomp (only) from its repositories. Other ``clang-``targets are provided for the master branch and 32bit builds.
+	::
 	
-	Typically contributors use the *sdk-incoming-64bit* target as shown.
+		emsdk install clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-incoming
+
+.. note:: The SDK supplies a number of other "repository" targets. These targets are viewed by entering ``./emsdk list`` on the command prompt:
+
+	- ``sdk-incoming-64bit`` is the target for a complete 64-bit Emscripten environment build from the incoming branch of the Emscripten and *Fastcomp* repositories. This is equivalent to:
+		
+		::
+			
+			emsdk install clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-incoming git-1.8.3
+		
+		Other ``sdk-`` targets are provided for the master branch and 32bit builds.
+	
+	- ``emscripten-incoming`` and ``emscripten-master`` are targets for the Emscripten repository (only)
+	- ``clang-incoming-64bit`` is the target for getting and building Fastcomp (only) from its repositories. Other ``clang-`` targets are provided for the master branch and 32bit builds.
+
 
 
 Building Emscripten using your own fork

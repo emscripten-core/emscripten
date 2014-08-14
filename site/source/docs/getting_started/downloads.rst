@@ -43,14 +43,14 @@ Linux and Mac OS X
 Installation instructions
 =========================
 
-Check the relevant section below for instructions on installing your selected package. Then check the :ref:`Platform-specific notes <platform-notes-installation_instructions-portable-SDK>` at the end of the section to address any further prerequisites that exist for your system.
+Check the relevant section below for instructions on installing your selected package. 
 
 .. _windows-installation_instructions-NSIS:
 
 Windows: Installing using an NSIS installer
 --------------------------------------------
 
-The NSIS installers register the Emscripten SDK as a 'standard' Windows application. To install the SDK, download an NSIS .exe file, double-click on it, and run through the installer to perform the installation. 
+The NSIS installers register the Emscripten SDK as a *standard* Windows application. To install the SDK, download an NSIS **.exe** file, double-click on it, and run through the installer to perform the installation. 
 
 After the installer finishes, the full Emscripten toolchain will be available in the directory that was chosen during the installation, and no other steps are necessary. If your system has *Visual Studio 2010* installed, the :term:`vs-tool` MSBuild plugin will be automatically installed as well.
 
@@ -62,7 +62,9 @@ Windows, OSX and Linux: Installing the Portable SDK
 
 The *Portable Emscripten SDK* is a no-installer version of the SDK package. It is identical to the NSIS installer, except that it does not interact with the Windows registry. This allows Emscripten to be used on a computer without administrative privileges, and means that the installation can be migrated from one location (directory or computer) to another by simply copying the directory contents to the new location.
 
-If you want to use the *Portable Emscripten SDK*, the initial setup process is as follows:
+First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-portable-SDK>` below and install any prerequisites.
+
+Install the SDK using the following steps:
 
 1. Download and unzip the portable SDK package to a directory of your choice. This directory will contain the Emscripten SDK.
 #. Open a command prompt inside the SDK directory and run the following :ref:`emsdk <emsdk>` commands to get the latest SDK tools and set them as :term:`active <Active Tool/SDK>`. 
@@ -95,7 +97,7 @@ Mac OS X
 
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches: **emscripten-incoming** or **emscripten-master** directly. To install *git* on OSX:
    
-	1. Install XCode and the XCode Command Line Tools. This will provide *git* to the system PATH. For more help on this step, see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_.
+	1. Install *XCode* and the *XCode Command Line Tools*. This will provide *git* to the system PATH. For more help on this step, see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_.
 	2. Install git directly from http://git-scm.com/.
 
 - *Java* is not bundled with the Emscripten SDK. After installing Emscripten via :ref:`emsdk <emsdk>`, typing ``./emcc --help`` should pop up a dialog that will automatically download a Java Runtime to the system: ::
@@ -112,11 +114,38 @@ Linux
 
 .. note:: Pre-built binaries of tools are not available on Linux. Installing a tool will automatically clone and build that tool from the sources inside the **emsdk** directory. *Emsdk* does not interact with Linux package managers on the behalf of the user, nor does it install any tools to the system. All file changes are done inside the **emsdk/** directory.
 
-- The system must have a working compiler environment available (because *emsdk* builds software from the source). 
-- *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*.
-- *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**. 
+- The system must have a working :ref:`compiler-toolchain` (because *emsdk* builds software from the source): 
 
-.. todo:: **HamishW** Add instructions for installing Git on Linux.
+	::	
+	
+		#Update the package lists
+		sudo apt-get update
+		
+		# Install *gcc* (and related dependencies)
+		sudo apt-get install build-essential		
+		# Install cmake
+		sudo apt-get install cmake
+		
+		
+- *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+
+	::
+	
+		# Install Python 
+		sudo apt-get install python2.7
+		# Install node.js
+		sudo apt-get install nodejs
+		# Install Java
+		sudo apt-get install default-jre
+		
+- *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**: 
+
+	::
+	
+		# Install git
+		sudo apt-get install git-core
+
+More detailed instructions on the toolchain are provided in: :ref:`building-emscripten-on-linux`.
 
 
 Verifying the installation
