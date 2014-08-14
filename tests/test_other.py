@@ -1940,14 +1940,15 @@ int f() {
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      # llvm debug info is kept only when we can see it, which is without the js optimize, -O0. js debug info is lost by registerize in -O2, so - g disables it
       for args, expect_llvm, expect_js in [
-          (['-O0'], True, True),
+          (['-O0'], False, True),
           (['-O0', '-g'], True, True),
+          (['-O0', '-g4'], True, True),
           (['-O1'], False, True),
-          (['-O1', '-g'], False, True),
+          (['-O1', '-g'], True, True),
           (['-O2'], False, False),
-          (['-O2', '-g'], False, True),
+          (['-O2', '-g'], False, True), # drop llvm debug info as js opts kill it anyway
+          (['-O2', '-g4'], True, True), # drop llvm debug info as js opts kill it anyway
         ]:
         print args, expect_llvm, expect_js
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
