@@ -537,7 +537,8 @@ var LibraryManager = {
 
 // Safe way to access a C define. We check that we don't add library functions with missing defines.
 function cDefine(key) {
-  return key in C_DEFINES ? C_DEFINES[key] : ('0 /* XXX missing C define ' + key + ' */');
+	if (key in C_DEFINES) return C_DEFINES[key];
+	throw 'XXX missing C define ' + key + '!';
 }
 
 var PassManager = {
