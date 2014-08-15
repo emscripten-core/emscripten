@@ -25,5 +25,5 @@ function emrun_file_dump(filename, data) {
   var http = new XMLHttpRequest();
   Module['print']('Dumping out file "' + filename + '" with ' + data.length + ' bytes of data.');
   http.open("POST", "stdio.html?file=" + filename, true);
-  http.send(data);
+  http.send(data); // XXX  this does not work in workers, for some odd reason (issue #2681)
 }
