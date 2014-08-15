@@ -271,6 +271,8 @@ document.styleSheets = [{
   }
 }];
 
+document.URL = 'http://worker.not.yet.ready.wait.for.window.onload?fake';
+
 function Audio() {
   Runtime.warnOnce('faking Audio elements, no actual sound will play');
 }
@@ -393,6 +395,8 @@ onmessage = function onmessage(message) {
       Module.canvas = document.createElement('canvas');
       Module.canvas.width_ = message.data.width;
       Module.canvas.height_ = message.data.height;
+      document.URL = message.data.URL;
+      window.fireEvent({ type: 'load' });
       removeRunDependency('worker-init');
       break;
     }
