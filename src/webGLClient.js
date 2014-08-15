@@ -150,6 +150,10 @@ function WebGLClient() {
     ctx.uniform1f(objects[buffer[i]], buffer[i+1]);
     i += 2;
   }
+  function uniform3f() {
+    ctx.uniform3f(objects[buffer[i]], buffer[i+1], buffer[i+2], buffer[i+3]);
+    i += 4;
+  }
   function uniform3fv() {
     ctx.uniform3fv(objects[buffer[i]], buffer[i+1]);
     i += 2;
@@ -233,6 +237,11 @@ function WebGLClient() {
     66: { name: 'blendEquation', func: func1 },
     67: { name: 'generateMipmap', func: func1 },
     68: { name: 'uniformMatrix3fv', func: func3L0 },
+    69: { name: 'stencilMask', func: func1 },
+    70: { name: 'clearStencil', func: func1 },
+    71: { name: 'texSubImage2D', func: func9 },
+    72: { name: 'uniform3f', func: uniform3f },
+    73: { name: 'blendFuncSeparate', func: func4 },
   };
 
   function renderCommands(buf) {

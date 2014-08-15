@@ -936,6 +936,36 @@ function WebGLWorker() {
     if (!location) return;
     commandBuffer.push(68, location.id, transpose, new Float32Array(data));
   };
+  this.stencilMask = function(mask) {
+    commandBuffer.push(69, mask);
+  };
+  this.clearStencil = function(s) {
+    commandBuffer.push(70, s);
+  };
+  this.texSubImage2D = function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
+    if (pixels === undefined) {
+      // shorter overload:      target, level, xoffset, yoffset, format,  type, pixels
+      var formatTemp = format;
+      format = width;
+      type = height;
+      pixels = formatTemp;
+      assert(pixels instanceof Image);
+      assert(format === this.RGBA); // HTML Images are RGBA, 8-bit
+      assert(type === this.UNSIGNED_BYTE);
+      var data = pixels.data;
+      width = data.width;
+      height = data.height;
+      pixels = new Uint8Array(data.data); // XXX transform from clamped to normal, could have been done in duplicate
+    }
+    commandBuffer.push(71, target, level, xoffset, yoffset, width, height, format, type, duplicate(pixels));
+  };
+  this.uniform3f = function(location, x, y, z) {
+    if (!location) return;
+    commandBuffer.push(72, location.id, x, y, z);
+  };
+  this.blendFuncSeparate = function(srcRGB, dstRGB, srcAlpha, dstAlpha) {
+    commandBuffer.push(73, srcRGB, dstRGB, srcAlpha, dstAlpha);
+  }
 
   // Setup
 
