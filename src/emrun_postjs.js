@@ -17,7 +17,7 @@ function emrun_register_handlers() {
   // Notify emrun web server that this browser has successfully launched the page.
   post('^pageload^');
 }
-emrun_register_handlers();
+window.addEventListener('load', emrun_register_handlers);
 
 // POSTs the given binary data represented as a (typed) array data back to the emrun-based web server.
 // To use from C code, call e.g. EM_ASM_({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
