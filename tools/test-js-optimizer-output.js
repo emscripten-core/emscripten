@@ -284,14 +284,18 @@ function tricky() {
 function asmy() {
  f(HEAPU8[_buf + i6 & 16777215]);
  f(HEAPU8[_buf + i6 & 16777215]);
- f(HEAP8[_buf + i6 & 16777215] & 1);
+ f(HEAPU8[_buf + i6 & 16777215] & 1);
  f(HEAPU8[_buf + i6 & 16777215] & 1);
  f(HEAP8[_buf + i6 & 16777215] & 1);
  f(HEAPU8[_buf + i6 & 16777215] & 1);
- f((HEAP8[_buf + i6 & 16777215] & 1) + i5 | 0);
+ f((HEAPU8[_buf + i6 & 16777215] & 1) + i5 | 0);
  f((HEAPU8[_buf + i6 & 16777215] & 1) + i5 | 0);
  f((HEAP8[_buf + i6 & 16777215] & 1) + i5 | 0);
  f((HEAPU8[_buf + i6 & 16777215] & 1) + i5 | 0);
+ f(HEAP32[12]);
+ f(HEAPU32[12]);
+ f(HEAP32[5]);
+ f(HEAPU32[5]);
  if ((_sbrk($419 | 0) | 0) == -1) {
   print("fleefl");
  }
