@@ -673,6 +673,15 @@ mergeInto(LibraryManager.library, {
           }
         }
       }
+    },
+
+    wgetRequests: {},
+    nextWgetRequestHandle: 0,
+
+    getNextWgetRequestHandle: function() {
+      var handle = Browser.nextWgetRequestHandle;
+      Browser.nextWgetRequestHandle++;
+      return handle;
     }
   },
 
@@ -742,31 +751,41 @@ mergeInto(LibraryManager.library, {
     http.open(_request, _url, true);
     http.responseType = 'arraybuffer';
 
+    var handle = Browser.getNextWgetRequestHandle();
+
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200) {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
         if (onload) {
           var stack = Runtime.stackSave();
-          Runtime.dynCall('vii', onload, [arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
+          Runtime.dynCall('viii', onload, [handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
           Runtime.stackRestore(stack);
         }
       } else {
-        if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
+        if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
       }
+
+      delete Browser.wgetRequests[handle];
     };
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
+      if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
+      delete Browser.wgetRequests[handle];
     };
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
       if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
         var percentComplete = (e.loaded / e.total)*100;
-        if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
+        if (onprogress) Runtime.dynCall('viii', onprogress, [handle, arg, percentComplete]);
       }
+    };
+
+    // ABORT
+    http.onabort = function http_onabort(e) {
+      delete Browser.wgetRequests[handle];
     };
 
     // Useful because the browser can limit the number of redirection
@@ -784,6 +803,10 @@ mergeInto(LibraryManager.library, {
     } else {
       http.send(null);
     }
+
+    Browser.wgetRequests[handle] = http;
+
+    return handle;
   },
 
   emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
@@ -795,27 +818,38 @@ mergeInto(LibraryManager.library, {
     http.open(_request, _url, true);
     http.responseType = 'arraybuffer';
 
+    var handle = Browser.getNextWgetRequestHandle();
+
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200 || _url.substr(0,4).toLowerCase() != "http") {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
-        if (onload) Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
+        if (onload) Runtime.dynCall('viiii', onload, [handle, arg, buffer, byteArray.length]);
         if (free) _free(buffer);
       } else {
-        if (onerror) Runtime.dynCall('viii', onerror, [arg, http.status, http.statusText]);
+        if (onerror) Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
       }
+      delete Browser.wgetRequests[handle];
     };
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) Runtime.dynCall('viii', onerror, [arg, http.status, http.statusText]);
+      if (onerror) {
+        Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
+      }
+      delete Browser.wgetRequests[handle];
     };
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
-      if (onprogress) Runtime.dynCall('viii', onprogress, [arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0]);
+      if (onprogress) Runtime.dynCall('viiii', onprogress, [handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0]);
+    };
+
+    // ABORT
+    http.onabort = function http_onabort(e) {
+      delete Browser.wgetRequests[handle];
     };
 
     // Useful because the browser can limit the number of redirection
@@ -832,6 +866,17 @@ mergeInto(LibraryManager.library, {
       http.send(_param);
     } else {
       http.send(null);
+    }
+
+    Browser.wgetRequests[handle] = http;
+
+    return handle;
+  },
+
+  emscripten_async_wget2_abort: function(handle) {
+    var http = Browser.wgetRequests[handle];
+    if (http) {
+      http.abort();
     }
   },
 
@@ -1087,6 +1132,7 @@ mergeInto(LibraryManager.library, {
       bufferSize: 0
     };
     info.worker.onmessage = function info_worker_onmessage(msg) {
+      if (ABORT) return;
       var info = Browser.workers[id];
       if (!info) return; // worker was destroyed meanwhile
       var callbackId = msg.data['callbackId'];

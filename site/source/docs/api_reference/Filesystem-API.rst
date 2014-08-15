@@ -1,15 +1,14 @@
 .. _Filesystem-API:
 
-============================
-Filesystem API (wiki-import)
-============================
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
+=====================================
+Filesystem API (under-construction)
+=====================================
 
-File I/O in Emscripten is provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. This same library is used internally for all of emscripten's libc and libcxx file I/O.
+File I/O in Emscripten is provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. This same library is used internally for all of Emscripten's libc and libcxx file I/O.
 
 Emscripten deals predominantly with synchronous file I/O, so the majority of the FS member functions offer a synchronous interface, with errors being reported by raising exceptions of type ``FS.ErrnorError``.
 
-The file data in emscription is partioned by mounted filesystems, of which several are provided to work with. By default, an instance of `MEMFS` is mounted to ``/`` and instances of `NODEFS` and `IDBFS` can be mounted to other directories if your application needs to `persist data <Files#persistence>`__.
+The file data in Emscripten is partitioned by mounted filesystems, of which several are provided to work with. By default, an instance of `MEMFS` is mounted to ``/`` and instances of `NODEFS` and `IDBFS` can be mounted to other directories if your application needs to `persist data <Files#persistence>`__.
 
 
 Persistence
@@ -44,7 +43,7 @@ This filesystem is only for use when running inside of the browser. Due to the b
 Devices
 ===========
 
-Emscripten supports registering arbitrary device drivers composed of a device id and a set of unique stream callbacks. Once a driver has been registered with :js:func:`FS.registerDevice`, a device node (acting as an interface between the device and the filesystem) can be created to reference it with :js:func`FS.mkdev`. Any stream referencing the new node will inherit the stream callbacks registered for the device, making all of the high-level FS operations transparently interact with the device.
+Emscripten supports registering arbitrary device drivers composed of a device id and a set of unique stream callbacks. Once a driver has been registered with :js:func:`FS.registerDevice`, a device node (acting as an interface between the device and the filesystem) can be created to reference it with :js:func:`FS.mkdev`. Any stream referencing the new node will inherit the stream callbacks registered for the device, making all of the high-level FS operations transparently interact with the device.
 
 
 
@@ -299,7 +298,7 @@ Filesystem
 
 .. js:function:: FS.lstat(path)
 
-	Identical to :ref:`FS.stat`, However, if ``path`` is a symbolic link then the returned stats will be for the link itself, not the file that it links to.
+	Identical to :js:func:`FS.stat`, However, if ``path`` is a symbolic link then the returned stats will be for the link itself, not the file that it links to.
 
 	:param string path: Path of the target file.
 	:throws **HamishW**:
@@ -322,7 +321,7 @@ Filesystem
 
 .. js:function:: FS.lchmod(path, mode)
 
-	Identical to :ref:`FS.chmod`. However, if ``path`` is a symbolic link then the mode will be set on the link itself, not the file that it links to.
+	Identical to :js:func:`FS.chmod`. However, if ``path`` is a symbolic link then the mode will be set on the link itself, not the file that it links to.
 
 	:param string path: Path of the target file.
 	:param int mode: **HamishW**.
@@ -331,7 +330,7 @@ Filesystem
 
 .. js:function:: FS.fchmod(fd, mode)
 
-	Identical to :ref:`FS.chmod`. However, a raw file descriptor is supplied as ``fd``.
+	Identical to :js:func:`FS.chmod`. However, a raw file descriptor is supplied as ``fd``.
 
 	:param int fd: Descriptor of target file.
 	:param int mode: **HamishW**.
@@ -354,7 +353,7 @@ Filesystem
 
 .. js:function:: FS.lchown(path, uid, gid)
 
-	Identical to Identical to :ref:`FS.chown`. However, if path is a symbolic link then the properties will be set on the link itself, not the file that it links to.
+	Identical to Identical to :js:func:`FS.chown`. However, if path is a symbolic link then the properties will be set on the link itself, not the file that it links to.
 
 	:param string path: Path of the target file.
 	:param int uid: **HamishW**.
@@ -365,7 +364,7 @@ Filesystem
 
 .. js:function:: FS.fchown(fd, uid, gid)
 
-	Identical to :ref:`FS.chown`. However, a raw file descriptor is supplied as ``fd``.
+	Identical to :js:func:`FS.chown`. However, a raw file descriptor is supplied as ``fd``.
 
 	:param int fd: Descriptor of target file.
 	:param int uid: **HamishW**.
@@ -532,7 +531,7 @@ Filesystem
 	
 .. js:function:: FS.readFile(path, opts)
 
-	Reads the entire file at ``path`` and returns it as a ``string`` (encoding is 'utf8'), or as a new ``Uint8Array`` buffer (encoding is `binary').
+	Reads the entire file at ``path`` and returns it as a ``string`` (encoding is 'utf8'), or as a new ``Uint8Array`` buffer (encoding is 'binary').
 
 	:param string path: The file to read.
 	:param object opts:
@@ -700,7 +699,7 @@ Paths
 
 	:returns: an object with the the format:
 	
-		.. code-block:: JavaScript
+		.. code-block:: javascript
 
 			{
 			  path: resolved_path,

@@ -483,4 +483,23 @@ Using Emscripten
    you will lose the advantages of le32 which includes better alignment
    of doubles).
 
+-  **Q.** I am building a library, and sometimes I get an error when
+   I call a compiled function before the page fully loaded. How can
+   I tell when is safe to call it?
+
+   **A.** The easiest way to find out when loading is complete (which
+   is asynchronous, as it often requires loading files, such as the
+   .mem file or preloade files), is to just add a ``main()`` function. It
+   will be called when it is safe to do so, after startup is complete,
+   so that is a signal that it is safe to call any compiled method.
+   You can make ``main()`` call your JS to notify it, for example if
+   ``allReady()`` is a JS function you want called when everything is
+   ready, you can do
+
+   ::
+
+       #include <emscripten.h>
+       int main() {
+         EM_ASM( allReady() );
+       }
 

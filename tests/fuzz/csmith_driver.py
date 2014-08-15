@@ -99,6 +99,7 @@ while 1:
     assert os.path.exists(filename + '.js')
     print '(run)'
     js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None, cwd='/tmp/emscripten_temp')
+    js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     assert correct1 == js or correct2 == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
   # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment

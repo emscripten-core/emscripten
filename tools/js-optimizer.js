@@ -4104,11 +4104,12 @@ function eliminate(ast, memSafe) {
               // if a loop variable is used after we assigned to the helper, we must save its value and use that.
               // (note that this can happen due to elimination, if we eliminate an expression containing the
               // loop var far down, past the assignment!)
-              // first, see if the looper and helper overlap
+              // first, see if the looper and helpers overlap. Note that we check for this looper, compared to
+              // *ALL* the helpers. Helpers will be replaced by loopers as we eliminate them, potentially
+              // causing conflicts, so any helper is a concern.
               var firstLooperUsage = -1;
               var lastLooperUsage = -1;
               var firstHelperUsage = -1;
-              var lastHelperUsage = -1;
               for (var i = found+1; i < stats.length; i++) {
                 var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                 traverse(curr, function(node, type) {
@@ -4116,9 +4117,8 @@ function eliminate(ast, memSafe) {
                     if (node[1] === looper) {
                       if (firstLooperUsage < 0) firstLooperUsage = i;
                       lastLooperUsage = i;
-                    } else if (node[1] === helper) {
+                    } else if (helpers.indexOf(node[1]) >= 0) {
                       if (firstHelperUsage < 0) firstHelperUsage = i;
-                      lastHelperUsage = i;
                     }
                   }
                 });

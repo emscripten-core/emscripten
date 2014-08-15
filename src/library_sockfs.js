@@ -180,7 +180,8 @@ mergeInto(LibraryManager.library, {
             }
 
             if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
-              url = url + addr + ':' + port;
+              var parts = addr.split('/');
+              url = url + parts[0] + ":" + port + "/" + parts.slice(1).join('/');
             }
 
             // Make the WebSocket subprotocol (Sec-WebSocket-Protocol) default to binary if no configuration is set.

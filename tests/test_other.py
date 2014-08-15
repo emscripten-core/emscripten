@@ -1,4 +1,5 @@
 import multiprocessing, os, re, shutil, subprocess, sys
+import glob
 import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_bullet_library, nonfastcomp
@@ -115,15 +116,6 @@ Options that are modified or new in %s include:
         os.chdir(self.get_dir())
       self.clear()
 
-      for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
-        print source, has_malloc
-        self.clear()
-        output = Popen([PYTHON, compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
-        assert os.path.exists('a.out.js'), '\n'.join(output)
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        generated = open('a.out.js').read()
-        assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
-
       # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
       for params, opt_level, bc_params, closure, has_malloc in [ # bc params are used after compiling to bitcode
         (['-o', 'something.js'],                          0, None, 0, 1),
@@ -171,7 +163,7 @@ Options that are modified or new in %s include:
           # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
           assert '._main = ' not in generated, 'closure compiler should not have been run'
           if keep_debug:
-            assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
+            assert ('switch (label)' in generated or 'switch (label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert '$i' in generated or '$storemerge' in generated or '$original' in generated, 'micro opts should always be on'
           if opt_level >= 2 and '-g' in params:
@@ -1101,12 +1093,6 @@ int f() {
     Popen([PYTHON, EMCC, 'out.bc']).communicate()
     self.assertContained('Hello', run_js('a.out.js'))
 
-    # link using -l syntax, ensure ordering works (group-related, but not exactly testing of groups; ordering was introduced for groups, and broke this)
-    Popen([PYTHON, EMCC, '-o', 'out.bc', '-L.', '-l2', '1.o']).communicate()
-    Popen([PYTHON, EMCC, 'out.bc']).communicate()
-    self.assertContained('Hello', run_js('a.out.js'))
-
-
   def test_circular_libs(self):
     def tmp_source(name, code):
       file_name = os.path.join(self.get_dir(), name)
@@ -1954,14 +1940,15 @@ int f() {
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      # llvm debug info is kept only when we can see it, which is without the js optimize, -O0. js debug info is lost by registerize in -O2, so - g disables it
       for args, expect_llvm, expect_js in [
-          (['-O0'], True, True),
+          (['-O0'], False, True),
           (['-O0', '-g'], True, True),
+          (['-O0', '-g4'], True, True),
           (['-O1'], False, True),
-          (['-O1', '-g'], False, True),
+          (['-O1', '-g'], True, True),
           (['-O2'], False, False),
-          (['-O2', '-g'], False, True),
+          (['-O2', '-g'], False, True), # drop llvm debug info as js opts kill it anyway
+          (['-O2', '-g4'], True, True), # drop llvm debug info as js opts kill it anyway
         ]:
         print args, expect_llvm, expect_js
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
@@ -3813,4 +3800,263 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
       if engine == V8_ENGINE: continue # ooms
       print engine
       self.assertContained('4\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
+
+  def test_force_exit(self):
+    open('src.cpp', 'w').write(r'''
+#include <emscripten/emscripten.h>
+
+namespace
+{
+  extern "C"
+  EMSCRIPTEN_KEEPALIVE
+  void callback()
+  {
+    EM_ASM({ Module.print('callback pre()') });
+    ::emscripten_force_exit(42);
+    EM_ASM({ Module.print('callback post()') });
+    }
+}
+
+int
+main()
+{
+  EM_ASM({ setTimeout(function() { Module.print("calling callback()"); _callback() }, 100) });
+  ::emscripten_exit_with_live_runtime();
+  return 123;
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    output = run_js('a.out.js', engine=NODE_JS, assert_returncode=42)
+    assert 'callback pre()' in output
+    assert 'callback post()' not in output
+
+  def test_bad_locale(self):
+    open('src.cpp', 'w').write(r'''
+
+#include <locale.h>
+#include <stdio.h>
+#include <wctype.h>
+
+int
+main(const int argc, const char * const * const argv)
+{
+  const char * const locale = (argc > 1 ? argv[1] : "C");
+  const char * const actual = setlocale(LC_ALL, locale);
+  if(actual == NULL) {
+    printf("%s locale not supported\n",
+           locale);
+    return 0;
+  }
+  printf("locale set to %s: %s\n", locale, actual);
+}
+
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
+    self.assertContained('waka locale not supported', run_js('a.out.js', args=['waka']))
+
+  def test_js_malloc(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <emscripten.h>
+
+int main() {
+  EM_ASM({
+    for (var i = 0; i < 1000; i++) {
+      var ptr = Module._malloc(1024*1024); // only done in JS, but still must not leak
+      Module._free(ptr);
+    }
+  });
+  printf("ok.\n");
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok.', run_js('a.out.js', args=['C']))
+
+  def test_locale_wrong(self):
+    open('src.cpp', 'w').write(r'''
+#include <locale>
+#include <iostream>
+#include <stdexcept>
+
+int
+main(const int argc, const char * const * const argv)
+{
+  const char * const name = argc > 1 ? argv[1] : "C";
+
+  try {
+    const std::locale locale(name);
+    std::cout
+      << "Constructed locale \"" << name << "\"\n"
+      << "This locale is "
+      << (locale == std::locale::global(locale) ? "" : "not ")
+      << "the global locale.\n"
+      << "This locale is " << (locale == std::locale::classic() ? "" : "not ")
+      << "the C locale." << std::endl;
+
+  } catch(const std::runtime_error &ex) {
+    std::cout
+      << "Can't construct locale \"" << name << "\": " << ex.what()
+      << std::endl;
+    return 1;
+
+  } catch(...) {
+    std::cout
+      << "FAIL: Unexpected exception constructing locale \"" << name << '\"'
+      << std::endl;
+    return 127;
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
+    self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
+
+  def test_cleanup_os(self):
+    # issue 2644
+    def test(args, be_clean):
+      print args
+      self.clear()
+      shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
+      open('b.c', 'w').write(' ')
+      Popen([PYTHON, EMCC, 'a.c', 'b.c'] + args).communicate()
+      clutter = glob.glob('*.o')
+      if be_clean: assert len(clutter) == 0, 'should not leave clutter ' + str(clutter)
+      else: assert len(clutter) == 2, 'should leave .o files'
+    test(['-o', 'c.bc'], True)
+    test(['-o', 'c.js'], True)
+    test(['-o', 'c.html'], True)
+    test(['-c'], False)
+
+  def test_dash_g(self):
+    open('src.c', 'w').write('''
+      #include <stdio.h>
+      #include <assert.h>
+
+      void checker(int x) {
+        x += 20;
+        assert(x < 15); // this is line 7!
+      }
+
+      int main() {
+        checker(10);
+        return 0;
+      }
+    ''')
+
+    def check(has):
+      print has
+      lines = open('a.out.js', 'r').readlines()
+      lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
+      found_line_num = any(('//@line 7 "' in line) for line in lines)
+      found_filename = any(('src.c"\n' in line) for line in lines)
+      assert found_line_num == has, 'Must have debug info with the line number'
+      assert found_filename == has, 'Must have debug info with the filename'
+
+    Popen([PYTHON, EMCC, 'src.c', '-g']).communicate()
+    check(True)
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    check(False)
+    Popen([PYTHON, EMCC, 'src.c', '-g0']).communicate()
+    check(False)
+    Popen([PYTHON, EMCC, 'src.c', '-g0', '-g']).communicate() # later one overrides
+    check(True)
+    Popen([PYTHON, EMCC, 'src.c', '-g', '-g0']).communicate() # later one overrides
+    check(False)
+
+  def test_dash_g_bc(self):
+    def test(opts):
+      print opts
+      def get_size(name):
+        return len(open(name).read())
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts).communicate()
+      sizes = { '_': get_size('a_.bc') }
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts).communicate()
+      sizes['g'] = get_size('ag.bc')
+      for i in range(0, 5):
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts).communicate()
+        sizes[i] = get_size('a' + str(i) + '.bc')
+      print '  ', sizes
+      assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info'
+      assert sizes['g'] == sizes[4], '-g or -g4 means llvm debug info'
+      assert sizes['_'] < sizes['g'], 'llvm debug info has positive size'
+    test([])
+    test(['-O1'])
+
+  def test_stat_fail_alongtheway(self):
+    open('src.cpp', 'w').write(r'''
+#include <errno.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+
+#define CHECK(expression) \
+  if(!(expression)) {                            \
+    error = errno;                               \
+    printf("FAIL: %s\n", #expression); fail = 1; \
+  } else {                                       \
+    error = errno;                               \
+    printf("pass: %s\n", #expression);           \
+  }                                              \
+
+int
+main()
+{
+  int error;
+  int fail = 0;
+  CHECK(mkdir("path", 0777) == 0);
+  CHECK(close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0);
+  {
+    struct stat st;
+    CHECK(stat("path", &st) == 0);
+    CHECK(st.st_mode = 0777);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/nosuchfile", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOENT);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/file", &st) == 0);
+    CHECK(st.st_mode = 0666);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/file/impossible", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOTDIR);
+  }
+  {
+    struct stat st;
+    CHECK(lstat("path/file/impossible", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOTDIR);
+  }
+  return fail;
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''pass: mkdir("path", 0777) == 0
+pass: close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0
+pass: stat("path", &st) == 0
+pass: st.st_mode = 0777
+pass: stat("path/nosuchfile", &st) == -1
+info: errno=2 No such file or directory
+pass: error == ENOENT
+pass: stat("path/file", &st) == 0
+pass: st.st_mode = 0666
+pass: stat("path/file/impossible", &st) == -1
+info: errno=20 Not a directory
+pass: error == ENOTDIR
+pass: lstat("path/file/impossible", &st) == -1
+info: errno=20 Not a directory
+pass: error == ENOTDIR
+''', run_js('a.out.js'))
 

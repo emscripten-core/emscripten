@@ -819,6 +819,7 @@ try:
 
   opt_level = 0
   debug_level = 0
+  requested_debug = ''
   profiling = False
   emit_symbol_map = False
   js_opts = None
@@ -948,7 +949,8 @@ try:
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
-      newargs[i] = '-g' # we'll need this to get LLVM debug info
+      requested_debug = newargs[i]
+      newargs[i] = ''
     elif newargs[i] == '-profiling':
       debug_level = 2
       profiling = True
@@ -959,6 +961,8 @@ try:
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
+      js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
+      js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
       if default_cxx_std:
         default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
     elif newargs[i].startswith('-std='):
@@ -1011,6 +1015,7 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
+      #shared.LINK_CMD += ['-v'] # Enable verbose output from llvm-link, since it can take a long time and this gives some indication of progress.
       shared.check_sanity(force=True)
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
@@ -1084,7 +1089,7 @@ try:
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if opt_level == 0: debug_level = 4
+  if opt_level == 0: debug_level = max(3, debug_level)
   if memory_init_file is None: memory_init_file = opt_level >= 2
 
   if llvm_lto is None and bind:
@@ -1186,7 +1191,7 @@ try:
       lib_dirs.append(arg[2:])
       newargs[i] = ''
     elif arg.startswith('-l'):
-      libs.append((next_arg_index + 1 + i, arg[2:])) # -l libraries must be linked in last
+      libs.append((i, arg[2:]))
       newargs[i] = ''
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake
@@ -1335,7 +1340,7 @@ try:
       logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
       shared.Settings.ASM_JS = 2
 
-  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
+  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2 or shared.Settings.SAFE_HEAP >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
 
   if debug_level > 1 and closure:
@@ -1445,8 +1450,15 @@ try:
             return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + default_object_extension
           return specified_target
         return unsuffixed(input_file) + final_ending
-      return unsuffixed(input_file) + default_object_extension
+      else:
+        if has_dash_c: return unsuffixed(input_file) + default_object_extension
     return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
+
+  # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
+  if debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and requested_debug == '-g'):
+    if debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
+      newargs.append('-g') # preserve LLVM debug info
+      debug_level = 4
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
@@ -1465,15 +1477,11 @@ try:
         sys.exit(1)
     else: # bitcode
       if file_ending.endswith(BITCODE_ENDINGS):
-        logging.debug('copying bitcode file: ' + input_file)
-        temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using bitcode file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
-        logging.debug('copying library file: ' + input_file)
-        temp_file = in_temp(uniquename(input_file))
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using library file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
           logging.debug('assembling assembly file: ' + input_file)
@@ -1494,10 +1502,12 @@ try:
       for pos, (_, input_file) in enumerate(input_files):
         file_ending = filename_type_ending(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
-          (_, temp_file) = temp_files[pos]
+          temp_file = temp_files[pos][1]
           logging.debug('optimizing %s', input_file)
           #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
-          shared.Building.llvm_opt(temp_file, llvm_opts)
+          new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
+          shared.Building.llvm_opt(temp_file, llvm_opts, new_temp_file)
+          temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
   # Decide what we will link
   linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
@@ -1511,7 +1521,11 @@ try:
       if len(input_files) == 1:
         _, input_file = input_files[0]
         _, temp_file = temp_files[0]
-        safe_move(temp_file, specified_target if specified_target else unsuffixed_basename(input_file) + final_ending)
+        bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_ending
+        if temp_file != input_file:
+          safe_move(temp_file, bitcode_target)
+        else:
+          shutil.copyfile(temp_file, bitcode_target)
         temp_output_base = unsuffixed(temp_file)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
@@ -1556,8 +1570,12 @@ try:
   else:
     if not LEAVE_INPUTS_RAW:
       _, temp_file = temp_files[0]
-      shutil.move(temp_file, in_temp(target_basename + '.bc'))
+      _, input_file = input_files[0]
       final = in_temp(target_basename + '.bc')
+      if temp_file != input_file:
+        shutil.move(temp_file, final)
+      else:
+        shutil.copyfile(temp_file, final)
     else:
       _, input_file = input_files[0]
       final = in_temp(input_file)
@@ -1676,17 +1694,6 @@ try:
       if post_js: post_js = post_js.replace('\r\n', '\n')
     open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
-
-  # Add bindings glue if used
-  if bind:
-    logging.debug('adding embind glue')
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' +
-            open(shared.path_from_root('src', 'embind', 'embind.js')).read() +
-            open(shared.path_from_root('src', 'embind', 'emval.js')).read()
-          )
-    final += '.bd.js'
-    open(final, 'w').write(src)
-    if DEBUG: save_intermediate('bind')
 
   # Apply a source code transformation, if requested
   if js_transform:
@@ -1867,7 +1874,20 @@ try:
     js_target = unsuffixed(target) + '.js'
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '</script>'))
+      child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+      html.write(shell.replace('{{{ SCRIPT }}}', '''
+<script>
+  if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
+    console.log('running code in a web worker');
+''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', child_js) + '''
+  } else {
+    // note: no support for code mods (PRECISE_F32==2)
+    console.log('running code on the main thread');
+    var script = document.createElement('script');
+    script.src = "%s.js";
+    document.body.appendChild(script);
+  }
+</script>''' % child_js))
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path

@@ -13,6 +13,6 @@ There is little, if any, practical difference between the licenses. They are bot
 
 The license for Emscripten |release| (|today|) is reproduced below. The `current full licence <https://github.com/kripken/emscripten/blob/master/LICENSE>`_ can be found on Github (and is also present in the root of the SDK).
 
-.. include:: ..\..\..\..\LICENSE
+.. include:: ../../../../LICENSE
    :literal:
-   
+

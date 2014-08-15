@@ -36,6 +36,7 @@ void c3(char *data, int size, void *arg) { // tests calls different in different
     emscripten_destroy_worker(w1);
     int result = 11;
     REPORT_RESULT();
+    emscripten_force_exit(0);
   }
 }
 

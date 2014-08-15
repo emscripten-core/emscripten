@@ -59,10 +59,11 @@ namespace emscripten {
                 const char* methodName,
                 EM_DESTRUCTORS* destructors,
                 EM_VAR_ARGS argv);
-            bool _emval_has_function(
-                EM_VAL value,
+            void _emval_call_void_method(
+                EM_METHOD_CALLER caller,
+                EM_VAL handle,
                 const char* methodName,
-                const TYPEID filter);
+                EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
         }
 
@@ -172,11 +173,11 @@ namespace emscripten {
             ++cursor;
         }
 
-        inline void writeGenericWireType(GenericWireType*& cursor, const memory_view& wt) {
-            cursor[0].w[0].u = static_cast<unsigned>(wt.type);
-            cursor[0].w[1].u = wt.size;
-            cursor[1].w[0].p = wt.data;
-            cursor += 2;
+        template<typename ElementType>
+        inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<ElementType>& wt) {
+            cursor->w[0].u = wt.size;
+            cursor->w[1].p = wt.data;
+            ++cursor;
         }
 
         template<typename T>
@@ -233,15 +234,11 @@ namespace emscripten {
                 auto caller = Signature<void, Args...>::get_method_caller();
 
                 WireTypePack<Args...> argv(std::forward<Args>(args)...);
-                EM_DESTRUCTORS destructors;
-                _emval_call_method(
+                _emval_call_void_method(
                     caller,
                     handle,
                     methodName,
-                    &destructors,
                     argv);
-                DestructorsRunner rd(destructors);
-                // void requires no translation
             }
         };
     }
@@ -367,9 +364,14 @@ namespace emscripten {
             return val(internal::_emval_get_property(handle, val(key).handle));
         }
 
-        template<typename T>
-        void set(const T& key, val v) {
+        template<typename K>
+        void set(const K& key, const val& v) {
             internal::_emval_set_property(handle, val(key).handle, v.handle);
+        }
+
+        template<typename K, typename V>
+        void set(const K& key, const V& value) {
+            internal::_emval_set_property(handle, val(key).handle, val(value).handle);
         }
 
         template<typename... Args>
@@ -391,12 +393,6 @@ namespace emscripten {
             using namespace internal;
 
             return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
-        }
-
-        template<typename ClassType>
-        bool has_implementation_defined_function(const char* name) const {
-            using namespace internal;
-            return _emval_has_function(handle, name, TypeID<ClassType>::get());
         }
 
         template<typename T>

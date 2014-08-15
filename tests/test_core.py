@@ -718,12 +718,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       # Now let's see some code that should just work in USE_TYPED_ARRAYS == 2, but requires
       # corrections otherwise
+      Settings.CHECK_SIGNS = 0
       if Settings.USE_TYPED_ARRAYS == 2:
         Settings.CORRECT_SIGNS = 0
-        Settings.CHECK_SIGNS = 1 if not Settings.ASM_JS else 0
       else:
         Settings.CORRECT_SIGNS = 1
-        Settings.CHECK_SIGNS = 0
 
       src = '''
         #include <stdio.h>
@@ -1399,8 +1398,8 @@ int main(int argc, char **argv)
       disabled_size = len(open('src.cpp.o.js').read())
       shutil.copyfile('src.cpp.o.js', 'disabled.js')
 
-      assert size - empty_size > 2000, [empty_size, size] # big change when we disable entirely
-      assert size - fake_size > 2000, [fake_size, size]
+      assert size - empty_size > 1000, [empty_size, size] # big change when we disable entirely
+      assert size - fake_size > 1000, [fake_size, size]
       assert abs(empty_size - fake_size) < 100, [empty_size, fake_size]
       assert empty_size - disabled_size < 100, [empty_size, disabled_size] # full disable removes a tiny bit more
       assert fake_size - disabled_size < 100, [disabled_size, fake_size]
@@ -1508,6 +1507,21 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_alias')
     src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
+  def test_exceptions_rethrow(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    test_path = path_from_root('tests', 'core', 'test_exceptions_rethrow')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.do_run_from_file(src, output)
+
+  def test_exceptions_resume(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    Settings.EXCEPTION_DEBUG = 1
+    test_path = path_from_root('tests', 'core', 'test_exceptions_resume')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
   def test_bad_typeid(self):
@@ -1787,7 +1801,7 @@ int main () {
 
   def test_stack_varargs2(self):
     if self.emcc_args is None: return # too slow in other modes
-    Settings.TOTAL_STACK = 1024
+    Settings.TOTAL_STACK = 1536
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -2819,6 +2833,11 @@ The current type of b is: 9
 
     self.do_run_from_file(src, output)
 
+  def test_stack_overflow(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    Settings.ASSERTIONS = 1
+    self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'abort()')
+
   def test_nestedstructs(self):
       src = '''
         #include <stdio.h>
@@ -3133,6 +3152,7 @@ def process(filename):
 
   def test_dlfcn_data_and_fptr(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if not self.can_dlfcn(): return
 
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
@@ -3229,6 +3249,7 @@ def process(filename):
                  post_build=self.dlfcn_post_build)
 
   def test_dlfcn_alias(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
 
     Settings.LINKABLE = 1
@@ -3279,6 +3300,7 @@ def process(filename):
 
   def test_dlfcn_varargs(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
 
     if not self.can_dlfcn(): return
 
@@ -3335,7 +3357,7 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_self(self):
-    if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
     Settings.DLOPEN_SUPPORT = 1
 
@@ -3349,7 +3371,7 @@ def process(filename):
           raise Exception('Could not find symbol table!')
       table = table[table.find('{'):table.find('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') <= 4
+      assert table.count(',') <= 8
 
     test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5472,7 +5494,6 @@ def process(filename):
           '2xi40', # pnacl limitations in ExpandGetElementPtr
           'quoted', # current fastcomp limitations FIXME
           'atomicrmw_unaligned', # TODO XXX
-          'emptyasm_aue' # we don't support inline asm
         ]: continue
 
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
@@ -5722,7 +5743,7 @@ def process(filename):
 
       # Run with PGO, see that unused is true to its name
       Settings.PGO = 1
-      test("*9*\n-s DEAD_FUNCTIONS='[\"_unused\"]'")
+      test("*9*\n-s DEAD_FUNCTIONS='[\"_free\",\"_unused\"]'")
       Settings.PGO = 0
 
       # Kill off the dead function, still works and it is not emitted
@@ -6271,18 +6292,30 @@ def process(filename):
   def test_webidl(self):
     if self.emcc_args is None: return self.skip('requires emcc')
 
+    if self.run_name == 'asm2': self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+
     output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
                             path_from_root('tests', 'webidl', 'test.idl'),
                             'glue']).communicate()[0]
     assert os.path.exists('glue.cpp')
     assert os.path.exists('glue.js')
 
-    self.emcc_args += ['--post-js', 'glue.js',
-                       '--post-js', path_from_root('tests', 'webidl', 'post.js')]
+    # Export things on "TheModule". This matches the typical use pattern of the bound library
+    # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
+    open('export.js', 'w').write('''this['TheModule'] = Module;\n''')
+    self.emcc_args += ['--post-js', 'glue.js', '--post-js', 'export.js']
     shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
     shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
     src = open('test.cpp').read()
-    self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read())
+    def post(filename):
+      src = open(filename, 'a')
+      src.write('\n\n')
+      src.write('var TheModule = this.TheModule;\n')
+      src.write('\n\n')
+      src.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
+      src.write('\n\n')
+      src.close()
+    self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read(), post_build=(None, post))
 
   def test_typeinfo(self):
     if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp does not support RUNTIME_TYPE_INFO')
@@ -6449,38 +6482,6 @@ def process(filename):
         # This test *should* fail, by throwing this exception
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
-  def test_debug(self):
-    if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-    if self.emcc_args is not None:
-      if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args: return self.skip('optimizations remove LLVM debug info')
-
-    src = '''
-      #include <stdio.h>
-      #include <assert.h>
-
-      void checker(int x) {
-        x += 20;
-        assert(x < 15); // this is line 7!
-      }
-
-      int main() {
-        checker(10);
-        return 0;
-      }
-    '''
-    try:
-      self.do_run(src, '*nothingatall*', assert_returncode=None)
-    except Exception, e:
-      # This test *should* fail
-      assert 'Assertion failed: x < 15' in str(e), str(e)
-
-    lines = open('src.cpp.o.js', 'r').readlines()
-    lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
-    found_line_num = any(('//@line 7 "' in line) for line in lines)
-    found_filename = any(('src.cpp"\n' in line) for line in lines)
-    assert found_line_num, 'Must have debug info with the line number'
-    assert found_filename, 'Must have debug info with the filename'
-
   def test_source_map(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
@@ -6531,7 +6532,9 @@ def process(filename):
       def clean(code):
         code = re.sub(r'\n+[ \n]*\n+', '\n', code)
         code = code.replace('{\n}', '{}')
-        return '\n'.join(sorted(code.split('\n')))
+        lines = code.split('\n')
+        lines = filter(lambda line: ': do {' not in line and ' break L' not in line, lines) # ignore labels; they can change in each compile
+        return '\n'.join(sorted(lines))
       self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
@@ -6642,10 +6645,10 @@ def process(filename):
     Settings.CORRECT_SIGNS = 1
     self.do_run(src, '*0*') # Now it will work properly
 
-    # And now let's fix just that one line
-    Settings.CORRECT_SIGNS = 2
-    Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
-    self.do_run(src, '*0*')
+    ## And now let's fix just that one line
+    #Settings.CORRECT_SIGNS = 2
+    #Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
+    #self.do_run(src, '*0*')
 
     # Fixing the wrong line should not work
     Settings.CORRECT_SIGNS = 2
@@ -6867,6 +6870,55 @@ int main() {
 '''
     Settings.ASYNCIFY = 1;
     self.do_run(src, 'HelloWorld!99');
+
+  def test_coroutine(self):
+    if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
+
+    src = r'''
+#include <stdio.h>
+#include <emscripten.h>
+void fib(void * arg) {
+    int * p = (int*)arg;
+    int cur = 1;
+    int next = 1;
+    for(int i = 0; i < 9; ++i) {
+        *p = cur;
+        emscripten_yield();
+        int next2 = cur + next;
+        cur = next;
+        next = next2;
+    }
+}
+void f(void * arg) {
+    int * p = (int*)arg;
+    *p = 0;
+    emscripten_yield();
+    fib(arg); // emscripten_yield in fib() can `pass through` f() back to main(), and then we can assume inside fib()
+}
+void g(void * arg) {
+    int * p = (int*)arg;
+    for(int i = 0; i < 10; ++i) {
+        *p = 100+i;
+        emscripten_yield();
+    }
+}
+int main(int argc, char **argv) {
+    int i;
+    emscripten_coroutine co = emscripten_coroutine_create(f, (void*)&i, 0);
+    emscripten_coroutine co2 = emscripten_coroutine_create(g, (void*)&i, 0);
+    printf("*");
+    while(emscripten_coroutine_next(co)) {
+        printf("%d-", i);
+        emscripten_coroutine_next(co2);
+        printf("%d-", i);
+    }
+    printf("*");
+    return 0;
+}
+'''
+    Settings.ASYNCIFY = 1;
+    self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*');
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,

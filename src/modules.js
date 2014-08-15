@@ -425,7 +425,32 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_idbfs.js', 'library_memfs.js', 'library_nodefs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js', 'library_uuid.js', 'library_glew.js', 'library_html5.js', 'library_async.js'].concat(additionalLibraries);
+    var libraries = [
+      'library.js',
+      'library_path.js',
+      'library_fs.js',
+      'library_idbfs.js',
+      'library_memfs.js',
+      'library_nodefs.js',
+      'library_sockfs.js',
+      'library_tty.js',
+      'library_browser.js',
+      'library_sdl.js',
+      'library_gl.js',
+      'library_glut.js',
+      'library_xlib.js',
+      'library_egl.js',
+      'library_gc.js',
+      'library_jansson.js',
+      'library_openal.js',
+      'library_glfw.js',
+      'library_uuid.js',
+      'library_glew.js',
+      'library_html5.js',
+      'library_signals.js',
+      'library_async.js'
+    ].concat(additionalLibraries);
+
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];
       var src = read(filename);
@@ -512,7 +537,8 @@ var LibraryManager = {
 
 // Safe way to access a C define. We check that we don't add library functions with missing defines.
 function cDefine(key) {
-  return key in C_DEFINES ? C_DEFINES[key] : ('0 /* XXX missing C define ' + key + ' */');
+	if (key in C_DEFINES) return C_DEFINES[key];
+	throw 'XXX missing C define ' + key + '!';
 }
 
 var PassManager = {

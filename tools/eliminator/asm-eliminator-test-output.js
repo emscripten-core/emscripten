@@ -968,4 +968,49 @@ function helperExtraUse() {
  }
  return i;
 }
+function mixed_up_loop_helpers() {
+ var $iterations$0 = 0, $iterations$0$ph = 0, $p$sroa$0$0$ph = +0, $p$sroa$1$0$ph = +0, $p$sroa$1$0$ph$phi = +0, $vararg_buffer = 0, $vararg_ptr1 = 0, sp = 0, $iterations$0$looptemp = 0, $p$sroa$0$0$ph$looptemp = +0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 16 | 0;
+ $vararg_buffer = sp;
+ $iterations$0$ph = 0;
+ $p$sroa$0$0$ph = +0;
+ $p$sroa$1$0$ph = +1;
+ L1 : while (1) {
+  $iterations$0 = $iterations$0$ph;
+  while (1) {
+   $iterations$0$looptemp = $iterations$0;
+   $iterations$0 = $iterations$0 + 1 | 0;
+   if (!(($iterations$0 | 0) < 10)) {
+    break L1;
+   }
+   HEAPF64[tempDoublePtr >> 3] = $p$sroa$0$0$ph;
+   HEAP32[$vararg_buffer >> 2] = HEAP32[tempDoublePtr >> 2];
+   HEAP32[$vararg_buffer + 4 >> 2] = HEAP32[tempDoublePtr + 4 >> 2];
+   $vararg_ptr1 = $vararg_buffer + 8 | 0;
+   HEAPF64[tempDoublePtr >> 3] = $p$sroa$1$0$ph;
+   HEAP32[$vararg_ptr1 >> 2] = HEAP32[tempDoublePtr >> 2];
+   HEAP32[$vararg_ptr1 + 4 >> 2] = HEAP32[tempDoublePtr + 4 >> 2];
+   _printf(8 | 0, $vararg_buffer | 0) | 0;
+   if (($iterations$0$looptemp | 0) > 0) {
+    break;
+   }
+  }
+  if (!((($iterations$0 | 0) % 3 & -1 | 0) == 0)) {
+   $p$sroa$1$0$ph$phi = $p$sroa$0$0$ph;
+   $iterations$0$ph = $iterations$0;
+   $p$sroa$0$0$ph = -$p$sroa$1$0$ph;
+   $p$sroa$1$0$ph = $p$sroa$1$0$ph$phi;
+   continue;
+  }
+  $p$sroa$0$0$ph$looptemp = $p$sroa$0$0$ph;
+  $p$sroa$0$0$ph = $p$sroa$1$0$ph * +-.5;
+  $p$sroa$1$0$ph = $p$sroa$0$0$ph$looptemp * +.5;
+  if ($p$sroa$0$0$ph == +0 & $p$sroa$1$0$ph == +0) {
+   break;
+  } else {
+   $iterations$0$ph = $iterations$0;
+  }
+ }
+}
 

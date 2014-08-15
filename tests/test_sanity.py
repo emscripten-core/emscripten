@@ -417,8 +417,8 @@ fi
 
         # Building a file that doesn't need cached stuff should not trigger cache generation
         output = self.do([compiler, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
-        assert BUILDING_MESSAGE.replace('X', 'libc') not in output
+        assert INCLUDING_MESSAGE.replace('X', 'libcextra') not in output
+        assert BUILDING_MESSAGE.replace('X', 'libcextra') not in output
         self.assertContained('hello, world!', run_js('a.out.js'))
         try_delete('a.out.js')
 
@@ -426,8 +426,8 @@ fi
         dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
         ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
 
-        # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
-        for filename, libname in [('hello_malloc.cpp', 'libc'), ('hello_libcxx.cpp', 'libcxx')]:
+        # Building a file that *does* need something *should* trigger cache generation, but only the first time
+        for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
             print filename, libname, i
             self.clear()
@@ -526,25 +526,18 @@ fi
     restore()
     Cache.erase()
 
-    try:
-      old = os.environ.get('EMCC_LLVM_TARGET') or ''
-      for compiler in [EMCC, EMXX]:
-        for target in ['i386-pc-linux-gnu', 'asmjs-unknown-emscripten']:
-          print compiler, target
-          os.environ['EMCC_LLVM_TARGET'] = target
-          out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
-          out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
-          assert out == out2
-          def focus(e):
-            assert 'search starts here:' in e, e
-            assert e.count('End of search list.') == 1, e
-            return e[e.index('search starts here:'):e.index('End of search list.')+20]
-          err = focus(err)
-          err2 = focus(err2)
-          assert err == err2, err + '\n\n\n\n' + err2
-    finally:
-      if old:
-        os.environ['EMCC_LLVM_TARGET'] = old
+    for compiler in [EMCC, EMXX]:
+      print compiler
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
+      out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
+      assert out == out2
+      def focus(e):
+        assert 'search starts here:' in e, e
+        assert e.count('End of search list.') == 1, e
+        return e[e.index('search starts here:'):e.index('End of search list.')+20]
+      err = focus(err)
+      err2 = focus(err2)
+      assert err == err2, err + '\n\n\n\n' + err2
 
   def test_emconfig(self):
     restore()

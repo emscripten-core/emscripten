@@ -1,3 +1,5 @@
+.. _api-reference-advanced-apis:
+
 =============
 Advanced APIs
 =============
@@ -9,6 +11,7 @@ This section lists APIs that are not suitable for general use, but which may be 
     :depth: 1
 
 
+.. _settings-js:
 
 settings.js
 ============

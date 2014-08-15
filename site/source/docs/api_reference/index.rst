@@ -18,6 +18,10 @@ This section lists Emscripten's public API, organised by header file. At very hi
 	
 - **Filesystem-API (library_fs.js)**: *APIs for (primarily) synchronous File I/O.*
 
+- **val.h**: *Embind APIs for* **HamishW** - add description
+
+- **bind.h**: *Embind APIs for* **HamishW**  - add description
+
 - **Advanced APIs**: *APIs for advanced users/core developers*
 
 	In addition to the public APIs listed above, there are additional APIs which are intended only when developing Emscripten itself, or which are complicated to use and hence considered suitable for "advanced users". At time of writing are not documented individually, but are mentioned at high level in :doc:`advanced-apis`.
@@ -30,6 +34,8 @@ This section lists Emscripten's public API, organised by header file. At very hi
    html5.h
    preamble.js
    Filesystem-API
+   val.h
+   bind.h
    advanced-apis
 
 

@@ -66,6 +66,7 @@ namespace emscripten {
 
             void _embind_register_memory_view(
                 TYPEID memoryViewType,
+                unsigned typedArrayIndex,
                 const char* name);
 
             void _embind_register_function(

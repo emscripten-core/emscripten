@@ -283,6 +283,10 @@ LibraryManager.library = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
       return 0;
     } catch (e) {
+      if (e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
+        // an error occurred while trying to look up the path; we should just report ENOTDIR
+        e.setErrno(ERRNO_CODES.ENOTDIR);
+      }
       FS.handleFSError(e);
       return -1;
     }
@@ -1148,14 +1152,6 @@ LibraryManager.library = {
       return -1;
     }
   },
-  alarm: function(seconds) {
-    // unsigned alarm(unsigned seconds);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
-    // We don't support signals, and there's no way to indicate failure, so just
-    // fail silently.
-    return 0;
-  },
-  ualarm: 'alarm',
   confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
   confstr: function(name, buf, len) {
     // size_t confstr(int name, char *buf, size_t len);
@@ -1353,14 +1349,6 @@ LibraryManager.library = {
     // Niceness makes no sense in a single-process environment.
     ___setErrNo(ERRNO_CODES.EPERM);
     return 0;
-  },
-  pause__deps: ['__setErrNo', '$ERRNO_CODES'],
-  pause: function() {
-    // int pause(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/pause.html
-    // We don't support signals, so we return immediately.
-    ___setErrNo(ERRNO_CODES.EINTR);
-    return -1;
   },
   setgid__deps: ['__setErrNo', '$ERRNO_CODES'],
   setgid: function(gid) {
@@ -3879,6 +3867,7 @@ LibraryManager.library = {
   __cxa_throw__sig: 'viii',
   __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '__cxa_exception_header_size', '__cxa_last_thrown_exception'],
   __cxa_throw: function(ptr, type, destructor) {
+#if USE_TYPED_ARRAYS != 2
     if (!___cxa_throw.initialized) {
       try {
         {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv119__pointer_type_infoE'), '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
@@ -3891,8 +3880,9 @@ LibraryManager.library = {
       } catch(e){}
       ___cxa_throw.initialized = true;
     }
+#endif
 #if EXCEPTION_DEBUG
-    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + stackTrace());
+    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif
     var header = ptr - ___cxa_exception_header_size;
     {{{ makeSetValue('header', 0, 'type', 'void*') }}};
@@ -3912,6 +3902,10 @@ LibraryManager.library = {
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
     var ptr = ___cxa_caught_exceptions.pop();
+#if EXCEPTION_DEBUG
+    Module.printErr('Compiled code RE-throwing an exception, popped ' + [ptr,___cxa_last_thrown_exception, 'stack', ___cxa_caught_exceptions]);
+#endif
+    ___cxa_last_thrown_exception = ptr;
     {{{ makeThrow('ptr') }}}
   },
   llvm_eh_exception__deps: ['__cxa_last_thrown_exception'],
@@ -3930,15 +3924,13 @@ LibraryManager.library = {
   llvm_eh_typeid_for: function(type) {
     return type;
   },
-  // Note that we push the last thrown exception here rather than the ptr.
-  // This is because if the exception is a pointer (as in test 3 of test_exceptions_typed),
-  // we don't actually get the value that we allocated, but something else. Easiest
-  // to remember that the last exception thrown is going to be the first to be caught,
-  // so just use that value instead as it is what we're really looking for.
   __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions', '__cxa_last_thrown_exception'],
   __cxa_begin_catch: function(ptr) {
     __ZSt18uncaught_exceptionv.uncaught_exception--;
-    ___cxa_caught_exceptions.push(___cxa_last_thrown_exception);
+    ___cxa_caught_exceptions.push(ptr);
+#if EXCEPTION_DEBUG
+		Module.printErr('cxa_begin_catch ' + [ptr, 'stack', ___cxa_caught_exceptions]);
+#endif
     return ptr;
   },
   // We're done with a catch. Now, we can run the destructor if there is one
@@ -3959,6 +3951,9 @@ LibraryManager.library = {
 #endif
     // Call destructor if one is registered then clear it.
     var ptr = ___cxa_caught_exceptions.pop();
+#if EXCEPTION_DEBUG
+    Module.printErr('cxa_end_catch popped ' + [ptr,___cxa_last_thrown_exception, 'stack', ___cxa_caught_exceptions]);
+#endif
     if (ptr) {
       var header = ptr - ___cxa_exception_header_size;
       var destructor = {{{ makeGetValue('header', 4, 'void*') }}};
@@ -3968,6 +3963,9 @@ LibraryManager.library = {
       }
       ___cxa_free_exception(ptr);
       ___cxa_last_thrown_exception = 0;
+#if EXCEPTION_DEBUG
+      Module.printErr('  cxa_end_catch also freeing exception ' + [ptr,___cxa_last_thrown_exception, 'stack', ___cxa_caught_exceptions]);
+#endif
     }
   },
   __cxa_get_exception_ptr: function(ptr) {
@@ -4040,10 +4038,10 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
-  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
+  __resumeException__deps: [function() { Functions.libraryFunctions['___resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
-    Module.print("Resuming exception");
+    Module.print("Resuming exception " + [ptr, ___cxa_last_thrown_exception]);
 #endif
     if (!___cxa_last_thrown_exception) { ___cxa_last_thrown_exception = ptr; }
     {{{ makeThrow('ptr') }}}
@@ -5667,9 +5665,6 @@ LibraryManager.library = {
     return 0;
   },
 
-  setitimer: function() { throw 'setitimer not implemented yet' },
-  getitimer: function() { throw 'getitimer not implemented yet' },
-
   // ==========================================================================
   // sys/time.h
   // ==========================================================================
@@ -5859,66 +5854,6 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // signal.h
-  // ==========================================================================
-
-  signal: function(sig, func) {
-    // TODO
-    return 0;
-  },
-  sigemptyset: function(set) {
-    // int sigemptyset(sigset_t *set);
-    {{{ makeSetValue('set', '0', '0', 'i32') }}};
-    return 0;
-  },
-  sigfillset: function(set) {
-    {{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
-    return 0;
-  },
-  sigaddset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
-    return 0;
-  },
-  sigdelset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
-    return 0;
-  },
-  sigismember: function(set, signum) {
-    return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
-  },
-  sigaction: function(set) {
-    // TODO:
-    return 0;
-  },
-  sigprocmask: 'sigaction',
-  __libc_current_sigrtmin: function() {
-    return 0;
-  },
-  __libc_current_sigrtmax: function() {
-    return 0;
-  },
-  kill__deps: ['$ERRNO_CODES', '__setErrNo'],
-  kill: function(pid, sig) {
-    // int kill(pid_t pid, int sig);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
-    // Makes no sense in a single-process environment.
-    ___setErrNo(ERRNO_CODES.EPERM);
-    return -1;
-  },
-  killpg: 'kill',
-
-  siginterrupt: function() { throw 'siginterrupt not implemented' },
-
-  raise__deps: ['$ERRNO_CODES', '__setErrNo'],
-  raise: function(sig) {
-    ___setErrNo(ERRNO_CODES.ENOSYS);
-#if ASSERTIONS
-    Runtime.warnOnce('raise() returning an error as we do not support it');
-#endif
-    return -1;
-  },
-
-  // ==========================================================================
   // sys/wait.h
   // ==========================================================================
 
@@ -5940,22 +5875,43 @@ LibraryManager.library = {
   // locale.h
   // ==========================================================================
 
-  newlocale: function(mask, locale, base) {
-    return _malloc({{{ QUANTUM_SIZE}}});
+  $LOCALE: {
+    curr: 0,
+    check: function(locale) {
+      if (locale) locale = Pointer_stringify(locale);
+      return locale === 'C' || locale === 'POSIX' || !locale;
+    },
   },
 
-  freelocale__deps: ['free'],
+  newlocale__deps: ['$LOCALE', 'calloc'],
+  newlocale: function(mask, locale, base) {
+    if (!LOCALE.check(locale)) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return 0;
+    }
+    if (!base) base = _calloc(1, 4);
+    return base;
+  },
+
+  freelocale__deps: ['$LOCALE', 'free'],
   freelocale: function(locale) {
     _free(locale);
   },
 
+  uselocale__deps: ['$LOCALE'],
   uselocale: function(locale) {
-    return 0;
+    var old = LOCALE.curr;
+    if (locale) LOCALE.curr = locale;
+    return old;
   },
 
+  setlocale__deps: ['$LOCALE'],
   setlocale: function(category, locale) {
-    if (!_setlocale.ret) _setlocale.ret = allocate([0], 'i8', ALLOC_NORMAL);
-    return _setlocale.ret;
+    if (LOCALE.check(locale)) {
+      if (!_setlocale.ret) _setlocale.ret = allocate(intArrayFromString('C'), 'i8', ALLOC_NORMAL);
+      return _setlocale.ret;
+    }
+    return 0;
   },
 
   localeconv: function() {

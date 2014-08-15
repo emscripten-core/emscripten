@@ -10,9 +10,166 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.1...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.1...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.21.1...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.1...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.22.1...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.22.1...incoming
+
+v1.22.1: 8/7/2014
+------------------
+ - Added support for prefixing functions with '$' in JS libraries, in order to cause them not be prefixed with '_' when compiling.
+ - Improved WebIDL compiler to support enums.
+ - Fixed a bug with emscripten_force_exit() that would throw an exception (#2629).
+ - Fixed setlocale() when setting a bad locale. (#2630)
+ - Fixed a compiler miscompilation bug when optimizing loops. (#2626)
+ - Fixed an issue with rethrowing an exception (#2627)
+ - Fixed a bug where malloc()ing from JS code would leak memory if the C/C++ side does not use malloc() (#2621)
+ - Removed an unnecessary assert() in glReadPixels, and improved it to support more texture pixel types.
+ - Fixed a bug with std::locale accepting unknown locale names (#2636)
+ - Added support for WebIDL binder to work with Closure (#2620)
+ - Added no-op SDL IMG_Quit() and TTF_Quit() symbols.
+ - Migrated to building libcxx and libcxxapi with -Oz optimization flags.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.0...1.22.1
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.22.0: 8/5/2014
+------------------
+ - Added support to emrun to dump files to the local filesystem for debugging purposes.
+ - Implemented emscripten_wget in ASYNCIFY mode.
+ - Improved extension catching support (#2616)
+ - Fixed .a link groups to also work when linking to bitcode. (#2568)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.10...1.22.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.10...1.22.0
+    - Emscripten-Clang: no changes.
+
+v1.21.10: 7/29/2014
+-------------------
+ - Fixed a Windows-specific issue where the generated output files might contain line endings of form \r\r\n. This caused browser debuggers to get confused with line numbers. (#2133)
+ - Improved the node.js workaround introduced in v1.21.8.
+ - Implemented new HTML5 API for direct WebGL context creation, emscripten_webgl_*().
+ - Fixed a bug when loading in node.js and loaded by another module (#2586)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.9...1.21.10
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.21.9: 7/28/2014
+------------------
+ - Fixed issues with exception catching. (#2531)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.8...1.21.9
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.21.8: 7/28/2014
+------------------
+ - Fixed an issue when using --embed-file to embed very large files.
+ - Worked around a Windows node.js bug where the compiler output might get cut off when the compilation ends in an error. (https://github.com/joyent/node/issues/1669)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.7...1.21.8
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.7...1.21.8
+    - Emscripten-Clang: no changes.
+
+v1.21.7: 7/25/2014
+------------------
+ - Added new link option -s EMCC_ONLY_FORCED_STDLIBS which can be used to restrict to only linking to the chosen set of Emscripten-provided libraries. (See also -s EMCC_FORCE_STDLIBS)
+ - Adjusted argv[0] and environment variables USER, HOME, LANG and _ to report a more convenient set of default values. (#2565)
+ - Fixed an issue where the application could not use environ without also referring to getenv() (#2557)
+ - Fixed an issue with IDBFS running in web workers.
+ - Print out an error if IDBFS is used without IDB support.
+ - Fixed calling Runtime.getFuncWrapper() when -s ALIASING_FUNCTION_POINTERS=1 (#2010)
+ - Fixed an issue where deleting files during directory iteration would produce incorrect iteration results (#2528)
+ - Fixed support for strftime with %z and %Z (#2570)
+ - Fixed a bug with truncate() throwing an exception (#2572)
+ - Improved the linker to generate warning messages if user specifies -s X=Y linker flags that do not exist (#2579)
+ - Fixed an issue with creating read-only files (#2573)
+ - Added first implementation for the ASYNCIFY option, which splits up synchronous blocking loops to asynchronous execution. For more information on this approach, see https://github.com/kripken/emscripten/wiki/Asyncify
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.6...1.21.7
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.6...1.21.7
+    - Emscripten-Clang: no changes.
+
+v1.21.6: 7/22/2014
+------------------
+ - Separated OpenAL AL and ALC errors to properly separate fields.
+ - When using EGL to initialize a GL context, initialize a stencil buffer to the context as well, since proper EGL context choosing is not yet implemented.
+ - Added new linker flag -s DEMANGLE_SUPPORT to choose whether to compile the application with libcxxabi-provided demangling support ___cxa_demangle().
+ - Fixed a problem where calling stat() on a nonexisting file in the runtime VFS would result in an exception being thrown. (#2552)
+ - When using the -v flag, no longer retain intermediate compilation files. To preserve the intermediate files, set the EMCC_DEBUG=1 environment variable. (#2538)
+ - Added a new HTML setting Module.memoryInitializerPrefixURL which specifies a prefix for where the memory initializer file .mem.js should be loaded from (#2542)
+ - Implemented eglReleaseThread to work according to spec.
+ - Implemented a new function emscripten_force_exit() which immediately shuts down the C runtime.
+ - Fixed a bug with exception handling that resulted in an error unresolved symbol: _ZTISt13bad_exception (#2560)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.5...1.21.6
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.21.5: 7/21/2014
+------------------
+ - Added support for glDrawBuffers with the WEBGL_draw_buffers extension.
+ - Added stub implementation for eglReleaseThread.
+ - Fixed a bug where passing -E to emcc used the system include headers instead of the built-in ones. (#2534)
+ - Fixed the stacktrace() function to work on MSIE as well.
+ - Removed the zlib.h header file from system include directory, since Emscripten does not provide an implementation of zlib built-in.
+ - Added support for __cxa_bad_typeid (#2547)
+ - Fixed an internal compiler crash with a certain pattern involving optimized builds and int64_t (#2539)
+ - Fixed an issue with -s EXCEPTION_CATCHING_WHITELIST handling where an extension that was a substring of another might get erroneously handled.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.4...1.21.5
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.4...1.21.5
+    - Emscripten-Clang: no changes.
+
+v1.21.4: 7/17/2014
+------------------
+ - Implemented the getsockopt() function.
+ - Added new event callback functions emscripten_set_socket_xx_callback() that allow listening to WebSocket events in an asynchronous manner.
+ - Greatly improved CMake support, now various forms of configure-time test builds are supported, and the default extension is set to ".js"
+ - Prohibit the virtual filesystem from creating files with name '.' or '..' at runtime.
+ - Have runtime mkdir() function call normalize the path to be created before creation.
+ - Fixed an issue with omitting the third paramter in cwrap() call (#2511).
+ - Fixed an issue where mouse event handling would throw an exception if the page did not contain a canvas object.
+ - Fixed a GL initialization problem when user has extended Array with custom functions (#2514)
+ - Added new compiler defines __EMSCRIPTEN_major__, __EMSCRIPTEN_minor__ and __EMSCRIPTEN_tiny__ which communicate the compiler version major.minor.tiny to compiled applications (#2343)
+ - Fixed a bug where emrun did not properly capture the exit code when exit runtime via not calling exit().
+ - Fixed an error message when symlinkin invalid filenams at runtime.
+ - Fixed a bug in EGL context creation that parsed the input context creation parameters with wrong terminator.
+ - Improved ffdb.py to be smarter when to attempt port forwarding to connect to a FFOS device DevTools port.
+ - Implemented strsignal() function (#2532)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.3...1.21.4
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.21.3: 7/10/2014
+------------------
+ - Added implementations for SDL function SDL_AudioQuit and SDL_VideoQuit.
+ - Fix an issue with the optimizeShifts optimization enabled in previous version.
+ - Fixed the -s RELOOPER command line parameter to work.
+ - Fixed a bug where building the system libc migt result in a compiler deadlock on Windows.
+ - Removed emcc from trying to link in .dll files as static libraries on Windows.
+ - Added support for GL_HALF_FLOAT_OES.
+ - Fixed a bug where emcmake did not work on Windows.
+ - Use multithreaded compilation to build libc.
+ - Fixed an issue where the GL interop library could throw an exception in an error condition, instead of raising a GL error.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.2...1.21.3
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.21.2: 7/5/2014
+------------------
+ - Improved the checks that detect that code is run only while the runtime is initialized.
+ - The memory initializer file (.mem.js) is now emitted by default when compiling with at least -O2 optimization level.
+ - Fixed a performance issue where built-in math functions (Math.sqrt, etc.) took a slightly slower path (#2484).
+ - Added support for the ffs libc function.
+ - Re-enabled optimizeShifts optimization when not compiling for asm.js (#2481)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.1...1.21.2
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
 
 v1.21.1: 7/3/2014
 ------------------

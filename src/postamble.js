@@ -244,10 +244,34 @@ run();
 
 #if BUILD_AS_WORKER
 
+var messageBuffer = null;
+
+function messageResender() {
+  if (runtimeInitialized) {
+    assert(messageBuffer && messageBuffer.length > 0);
+    messageBuffer.forEach(function(message) {
+      onmessage(message);
+    });
+    messageBuffer = null;
+  } else {
+    setTimeout(messageResender, 100);
+  }
+}
+
 var buffer = 0, bufferSize = 0;
 var inWorkerCall = false, workerResponded = false, workerCallbackId = -1;
 
-onmessage = function(msg) {
+onmessage = function onmessage(msg) {
+  // if main has not yet been called (mem init file, other async things), buffer messages
+  if (!runtimeInitialized) {
+    if (!messageBuffer) {
+      messageBuffer = [];
+      setTimeout(messageResender, 100);
+    }
+    messageBuffer.push(msg);
+    return;
+  }
+
   var func = Module['_' + msg.data['funcName']];
   if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
   var data = msg.data['data'];

@@ -1,3 +1,5 @@
+mergeInto(LibraryManager.library, {
+#if ASYNCIFY
 /*
  * The layout of normal and async stack frames
  *
@@ -13,15 +15,14 @@
  * --------------------- <-- STACKTOP
  *
  */
-
-mergeInto(LibraryManager.library, {
-#if ASYNCIFY
   __async: 0, // whether a truly async function has been called
   __async_unwind: 1, // whether to unwind the async stack frame
   __async_retval: 'allocate(2, "i32", ALLOC_STATIC)', // store the return value for async functions
   __async_cur_frame: 0, // address to the current frame, which stores previous frame, stack pointer and async context
 
-  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_cur_frame'],
+  // __async_retval is not actually required in emscripten_async_resume
+  // but we want it included when ASYNCIFY is enabled
+  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame'],
   emscripten_async_resume__sig: 'v',
   emscripten_async_resume__asm: true,
   emscripten_async_resume: function() {
@@ -99,10 +100,102 @@ mergeInto(LibraryManager.library, {
   emscripten_do_not_unwind_async: true,
 
   emscripten_get_async_return_value_addr__deps: ['__async_retval'],
-  emscripten_get_async_return_value_addr: true
+  emscripten_get_async_return_value_addr: true,
+
+/*
+ * Layout of a coroutine structure
+ *
+ *  0 callee's async ctx
+ *  4 callee's STACKTOP
+ *  8 callee's STACK_MAX
+ * 12 my async ctx
+ * 16 my STACKTOP
+ * 20 my stack size
+ * 24 coroutine function
+ * 28 coroutine arg
+ * 32 my stack:
+ *    ...
+ */
+  emscripten_coroutine_create__sig: 'iii',
+  emscripten_coroutine_create__asm: true,
+  emscripten_coroutine_create__deps: ['malloc'],
+  emscripten_coroutine_create: function(f, arg, stack_size) {
+    f = f|0;
+    arg = arg|0;
+    stack_size = stack_size|0;
+    var coroutine = 0;
+
+    if ((stack_size|0) <= 0) stack_size = 4096;
+
+    coroutine = _malloc(stack_size)|0;
+    {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}}; 
+    {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 20, 'stack_size', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 24, 'f', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 28, 'arg', 'i32') }}};
+    return coroutine|0;
+  },
+  emscripten_coroutine_next__sig: 'ii',
+  emscripten_coroutine_next__asm: true,
+  emscripten_coroutine_next__deps: ['__async_cur_frame', '__async', 'emscripten_async_resume', 'free'],
+  emscripten_coroutine_next: function(coroutine) {
+    coroutine = coroutine|0;
+    var coroutine_not_finished = 0;
+    // switch context
+    {{{ makeSetValueAsm('coroutine', 0, '___async_cur_frame', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 4, 'stackSave()|0', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 8, 'STACK_MAX', 'i32') }}};
+    ___async_cur_frame = {{{ makeGetValueAsm('coroutine', 12, 'i32') }}};
+    stackRestore({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
+    STACK_MAX = coroutine + 32 + {{{ makeGetValueAsm('coroutine', 20, 'i32') }}} | 0;
+
+    if (!___async_cur_frame) {
+      // first run
+      dynCall_vi(
+        {{{ makeGetValueAsm('coroutine', 24, 'i32') }}},
+        {{{ makeGetValueAsm('coroutine', 28, 'i32') }}}
+      );
+    } else {
+      _emscripten_async_resume();
+    }
+
+    // switch context
+    {{{ makeSetValueAsm('coroutine', 12, '___async_cur_frame', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 16, 'stackSave()|0', 'i32') }}};
+    ___async_cur_frame = {{{ makeGetValueAsm('coroutine', 0, 'i32') }}};
+    stackRestore({{{ makeGetValueAsm('coroutine', 4, 'i32') }}});
+    STACK_MAX = {{{ makeGetValueAsm('coroutine', 8, 'i32') }}};
+
+    coroutine_not_finished = ___async;
+    if (!coroutine_not_finished) {
+      // coroutine has finished
+      _free(coroutine);
+    }
+    // coroutine may be created during an async function
+    // we do not want to affect the original async ctx
+    // strictly we should backup and restore ___async, ___async_retval and ___async_unwind
+    // but ___async=0 seems enough
+    ___async = 0;
+
+    return coroutine_not_finished|0;
+  },
+  emscripten_yield__sig: 'v',
+  emscripten_yield__asm: true,
+  emscripten_yield: function() {
+    ___async = 1;
+  }
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_sleep';
+  },
+  emscripten_coroutine_create: function() {
+    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_coroutine_create';
+  },
+  emscripten_coroutine_next: function() {
+    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_coroutine_next';
+  },
+  emscripten_yield: function() {
+    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_yield';
   }
 #endif
 });

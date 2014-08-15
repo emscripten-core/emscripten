@@ -29,17 +29,23 @@ shared.try_delete(output_base + '.cpp')
 shared.try_delete(output_base + '.js')
 
 p = WebIDL.Parser()
-p.parse(open(input_file).read())
+p.parse(r'''
+interface VoidPtr {
+};
+''' + open(input_file).read())
 data = p.finish()
 
 interfaces = {}
 implements = {}
+enums = {}
 
 for thing in data:
   if isinstance(thing, WebIDL.IDLInterface):
     interfaces[thing.identifier.name] = thing
   elif isinstance(thing, WebIDL.IDLImplementsStatement):
     implements.setdefault(thing.implementor.identifier.name, []).append(thing.implementee.identifier.name)
+  elif isinstance(thing, WebIDL.IDLEnum):
+    enums[thing.identifier.name] = thing
 
 #print interfaces
 #print implements
@@ -136,8 +142,16 @@ def type_to_c(t, non_pointing=False):
   t = t.replace(' (Wrapper)', '')
   if t == 'Long':
     return 'int'
+  elif t == 'UnsignedLong':
+    return 'unsigned int'
   elif t == 'Short':
     return 'short'
+  elif t == 'UnsignedShort':
+    return 'unsigned short'
+  elif t == 'Byte':
+    return 'char'
+  elif t == 'Octet':
+    return 'unsigned char'
   elif t == 'Void':
     return 'void'
   elif t == 'String':
@@ -148,6 +162,8 @@ def type_to_c(t, non_pointing=False):
     return 'double'
   elif t == 'Boolean':
     return 'bool'
+  elif t == 'Any' or t == 'VoidPtr':
+    return 'void*'
   elif t in interfaces:
     return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
   else:
@@ -287,7 +303,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
           func_name, class_name, func_name,
           return_prefix,
           func_name,
-          ','.join(['$%d' % i for i in range(1, max_args)]),
+          ','.join(['$%d' % i for i in range(1, max_args + 1)]),
           return_postfix,
           (', ' if js_call_args else '') + js_call_args)]
 
@@ -341,7 +357,7 @@ for name in names:
         continue
     if not constructor:
       mid_js += [r'''
-%s.prototype.%s = ''' % (name, m.identifier.name)]
+%s.prototype['%s'] = ''' % (name, m.identifier.name)]
     sigs = {}
     return_type = None
     for ret, args in m.signatures():
@@ -371,7 +387,7 @@ for name in names:
 
     get_name = 'get_' + attr
     mid_js += [r'''
-  %s.prototype.%s= ''' % (name, get_name)]
+  %s.prototype['%s']= ''' % (name, get_name)]
     render_function(name,
                     get_name, { 0: [] }, m.type.name,
                     None,
@@ -384,7 +400,7 @@ for name in names:
 
     set_name = 'set_' + attr
     mid_js += [r'''
-  %s.prototype.%s= ''' % (name, set_name)]
+  %s.prototype['%s']= ''' % (name, set_name)]
     render_function(name,
                     set_name, { 1: [Dummy({ 'type': m.type })] }, 'Void',
                     None,
@@ -397,7 +413,7 @@ for name in names:
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''
-  %s.prototype.__destroy__ = ''' % name]
+  %s.prototype['__destroy__'] = ''' % name]
     render_function(name,
                     '__destroy__', { 0: [] }, 'Void',
                     None,
@@ -416,6 +432,31 @@ public:
 %s
 };
 ''' % (name, type_to_c(js_impl, non_pointing=True), '\n'.join(js_impl_methods))]
+
+for name, enum in enums.iteritems():
+  mid_c += ['\n// ' + name + '\n']
+  mid_js += ['\n// ' + name + '\n']
+  for value in enum.values():
+    function_id = "%s_%s" % (name, value.split('::')[-1])
+    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE emscripten_enum_%s() {
+  return %s;
+}
+''' % (name, function_id, value)]
+    symbols = value.split('::')
+    if len(symbols) == 1:
+      identifier = symbols[0]
+      mid_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+    elif len(symbols) == 2:
+      [namespace, identifier] = symbols
+      if namespace in interfaces:
+        # namespace is a class
+        mid_js += ["Module['%s']['%s'] = _emscripten_enum_%s();\n" % \
+                  (namespace, identifier, function_id)]
+      else:
+        # namespace is a namespace, so the enums get collapsed into the top level namespace.
+        mid_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+    else:
+      throw ("Illegal enum value %s" % value)
 
 mid_c += ['\n}\n\n']
 mid_js += ['\n']

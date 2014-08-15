@@ -54,9 +54,6 @@
          T strtol
          T strtoimax
          T strtoumax
-         T strcoll
-         T __strcoll_l
-         W strcoll_l
          T strcmp
          T strncmp
          T strcasecmp
