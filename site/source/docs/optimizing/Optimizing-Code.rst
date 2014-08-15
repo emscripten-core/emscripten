@@ -103,7 +103,7 @@ emscripten can emit a binary file on the side by running emcc with
 ``--memory-init-file 1``
 
 This is the default in ``-O2`` and above in emscripten 1.21.1 and above;
-in earlier verisons, you can enable it manually. When utilized, a file
+in earlier versions, you can enable it manually. When utilized, a file
 with suffix ``.mem`` should appear, and it will be loaded by the JS. See
 ``emcc --help`` for more details.
 
