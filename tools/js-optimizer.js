@@ -406,7 +406,7 @@ function simplifyExpressions(ast) {
   // Likewise, if we have |0 inside a block that will be >>'d, then the |0 is unnecessary because some
   // 'useful' mathops already |0 anyhow.
 
-  function simplifyBitops(ast) {
+  function simplifyOps(ast) {
     var SAFE_BINARY_OPS;
     if (asm) {
       SAFE_BINARY_OPS = set('+', '-'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's; mul does not nest with +,- in asm
@@ -495,7 +495,9 @@ function simplifyExpressions(ast) {
 
     var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
-    traverse(ast, function(node, type) {
+    // Use a "post" visitor so that we simplify a node's operands before the
+    // node itself. This allows optimizations to cascade.
+    traverse(ast, function(node, type) { }, function(node, type) {
       if (type === 'name') {
         if (node[1] === 'tempDoublePtr') hasTempDoublePtr = true;
       } else if (type === 'binary' && node[1] === '&' && node[3][0] === 'num') {
@@ -587,6 +589,28 @@ function simplifyExpressions(ast) {
         }
       } else if (type == 'sub' && node[1][0] == 'name' && /^FUNCTION_TABLE.*/.exec(node[1][1])) {
         return null; // do not traverse subchildren here, we should not collapse 55 & 126. TODO: optimize this into a nonvirtual call (also because we lose some other opts here)!
+      } else if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num') {
+        // optimize num >> num, in asm we need this since we do not run optimizeShifts
+        node[0] = 'num';
+        node[1] = node[2][1] >> node[3][1];
+        node.length = 2;
+        return node;
+      } else if (type === 'binary' && node[1] === '+') {
+        // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
+        // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
+        if (node[2][0] === 'num' && node[3][0] === 'num') {
+          node[2][1] += node[3][1];
+          return node[2];
+        }
+        for (var i = 2; i <= 3; i++) {
+          var ii = 5-i;
+          for (var j = 2; j <= 3; j++) {
+            if (node[i][0] === 'num' && node[ii][0] === 'binary' && node[ii][1] === '+' && node[ii][j][0] === 'num') {
+              node[ii][j][1] += node[i][1];
+              return node[ii];
+            }
+          }
+        }
       }
     });
 
@@ -693,43 +717,6 @@ function simplifyExpressions(ast) {
         }
         denormalizeAsm(ast, asmData);
       }
-
-      // optimize num >> num, in asm we need this here since we do not run optimizeShifts
-      traverse(ast, function(node, type) {
-        if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num') {
-          node[0] = 'num';
-          node[1] = node[2][1] >> node[3][1];
-          node.length = 2;
-        }
-      });
-    }
-  }
-
-  // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
-  // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
-  function joinAdditions(ast) {
-    var rerun = true;
-    while (rerun) {
-      rerun = false;
-      traverse(ast, function(node, type) {
-        if (type === 'binary' && node[1] === '+') {
-          if (node[2][0] === 'num' && node[3][0] === 'num') {
-            rerun = true;
-            node[2][1] += node[3][1];
-            return node[2];
-          }
-          for (var i = 2; i <= 3; i++) {
-            var ii = 5-i;
-            for (var j = 2; j <= 3; j++) {
-              if (node[i][0] === 'num' && node[ii][0] === 'binary' && node[ii][1] === '+' && node[ii][j][0] === 'num') {
-                rerun = true;
-                node[ii][j][1] += node[i][1];
-                return node[ii];
-              }
-            }
-          }
-        }
-      });
     }
   }
 
@@ -813,8 +800,7 @@ function simplifyExpressions(ast) {
 
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
-    simplifyBitops(func);
-    joinAdditions(func);
+    simplifyOps(func);
     simplifyNotComps(func);
     conditionalize(func);
     // simplifyZeroComp(func); TODO: investigate performance
