@@ -17,6 +17,25 @@ performance tools).
 Usage
 =====
 
+Compiler Interaction
+--------------------
+
+When using the tracing API, you should pass ``--tracing`` to ``emcc``. This
+will automatically include the ``library_trace.js`` library file as well as
+set the preprocessor flag ``__EMSCRIPTEN_TRACING__``. If you are invoking
+``clang`` directly to build your C / C++ code, then you will want to pass
+``-D__EMSCRIPTEN_TRACING__`` when building code. When the preprocessor
+flag ``__EMSCRIPTEN_TRACING__`` is not defined, the tracing API implementation
+will be provided by inlined empty stubs.
+
+Also, since enabling tracing modifies the implementation of ``dlmalloc.c``
+in the ``libc`` implementation, it is advised that you manually clear your
+cache before switching to using the tracing API. If you do not do this, then
+you will not get full allocation details recorded.  You can clear the cache
+with this ``emcc`` command::
+
+    emcc --clear-cache
+
 Initialization and Teardown
 ---------------------------
 
@@ -97,10 +116,12 @@ Annotating Allocations
 ----------------------
 
 Each allocation and free operation should be recorded. Ideally,
-the data type name will also be recorded.
+the data type name will also be recorded, but this must currently
+be done manually.
 
-The easiest route to recording all allocation and free operations
-will be to modify ``dlmalloc``.
+When building with ``--tracing`` and a cleared cache, the ``libc``
+that Emscripten builds will automatically record all calls to
+``malloc``, ``realloc`` and ``free``.
 
 As for recording the data type name, after you've allocated the
 memory, you can annotate the address:

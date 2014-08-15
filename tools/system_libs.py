@@ -27,6 +27,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       symbols = filter(lambda symbol: symbol not in exclude, symbols)
     return set(symbols)
 
+  default_opts = []
+  # If we're building tracing, we should build the system libraries that way too.
+  if shared.Settings.EMSCRIPTEN_TRACING:
+    default_opts.append('--tracing')
+
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
   libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
@@ -55,7 +60,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts)
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
@@ -68,7 +73,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + default_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
     shared.Building.link(o_s, in_temp(lib_filename))

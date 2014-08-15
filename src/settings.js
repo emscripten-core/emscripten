@@ -562,6 +562,8 @@ var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend
 var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
 var COMPILER_FASTPATHS = 1; // use fast-paths to speed up compilation
 
+var EMSCRIPTEN_TRACING = 0; // Add some calls to emscripten tracing APIs
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:
