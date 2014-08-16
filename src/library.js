@@ -3836,26 +3836,21 @@ LibraryManager.library = {
   _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
 #endif
 
-  // We store an extra header in front of the exception data provided
-  // by the user.
-  // This header is:
-  // * type
-  // * destructor function pointer
-  // This is then followed by the actual exception data.
-  __cxa_exception_header_size: 8,
-  __cxa_last_thrown_exception: 0,
-  __cxa_caught_exceptions: [],
+  $EXCEPTIONS: {
+    last: 0,
+    caught: [],
+    infos: {}
+  },
 
   // Exceptions
-  __cxa_allocate_exception__deps: ['__cxa_exception_header_size', 'malloc'],
+  __cxa_allocate_exception__deps: ['malloc'],
   __cxa_allocate_exception: function(size) {
-    var ptr = _malloc(size + ___cxa_exception_header_size);
-    return ptr + ___cxa_exception_header_size;
+    return _malloc(size);
   },
-  __cxa_free_exception__deps: ['__cxa_exception_header_size', 'free'],
+  __cxa_free_exception__deps: ['free'],
   __cxa_free_exception: function(ptr) {
     try {
-      return _free(ptr - ___cxa_exception_header_size);
+      return _free(ptr);
     } catch(e) { // XXX FIXME
 #if ASSERTIONS
       Module.printErr('exception during cxa_free_exception: ' + e);
@@ -3865,7 +3860,7 @@ LibraryManager.library = {
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '__cxa_exception_header_size', '__cxa_last_thrown_exception'],
+  __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '$EXCEPTIONS'],
   __cxa_throw: function(ptr, type, destructor) {
 #if USE_TYPED_ARRAYS != 2
     if (!___cxa_throw.initialized) {
@@ -3884,10 +3879,13 @@ LibraryManager.library = {
 #if EXCEPTION_DEBUG
     Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif
-    var header = ptr - ___cxa_exception_header_size;
-    {{{ makeSetValue('header', 0, 'type', 'void*') }}};
-    {{{ makeSetValue('header', 4, 'destructor', 'void*') }}};
-    ___cxa_last_thrown_exception = ptr;
+    EXCEPTIONS.infos[ptr] = {
+      ptr: ptr,
+      adjusted: ptr,
+      type: type,
+      destructor: destructor
+    };
+    EXCEPTIONS.last = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
       __ZSt18uncaught_exceptionv.uncaught_exception = 1;
     } else {
@@ -3898,24 +3896,24 @@ LibraryManager.library = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['__cxa_end_catch', '__cxa_caught_exceptions'],
+  __cxa_rethrow__deps: ['__cxa_end_catch', '$EXCEPTIONS'],
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
-    var ptr = ___cxa_caught_exceptions.pop();
+    var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
-    Module.printErr('Compiled code RE-throwing an exception, popped ' + [ptr,___cxa_last_thrown_exception, 'stack', ___cxa_caught_exceptions]);
+    Module.printErr('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
-    ___cxa_last_thrown_exception = ptr;
+    EXCEPTIONS.last = ptr;
     {{{ makeThrow('ptr') }}}
   },
-  llvm_eh_exception__deps: ['__cxa_last_thrown_exception'],
+  llvm_eh_exception__deps: ['$EXCEPTIONS'],
   llvm_eh_exception: function() {
-    return ___cxa_last_thrown_exception;
+    return EXCEPTIONS.last;
   },
   llvm_eh_selector__jsargs: true,
-  llvm_eh_selector__deps: ['__cxa_last_thrown_exception'],
+  llvm_eh_selector__deps: ['$EXCEPTIONS'],
   llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = ___cxa_last_thrown_exception;
+    var type = EXCEPTIONS.last;
     for (var i = 2; i < arguments.length; i++) {
       if (arguments[i] ==  type) return type;
     }
@@ -3924,12 +3922,12 @@ LibraryManager.library = {
   llvm_eh_typeid_for: function(type) {
     return type;
   },
-  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions', '__cxa_last_thrown_exception'],
+  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '$EXCEPTIONS'],
   __cxa_begin_catch: function(ptr) {
     __ZSt18uncaught_exceptionv.uncaught_exception--;
-    ___cxa_caught_exceptions.push(ptr);
+    EXCEPTIONS.caught.push(ptr);
 #if EXCEPTION_DEBUG
-		Module.printErr('cxa_begin_catch ' + [ptr, 'stack', ___cxa_caught_exceptions]);
+		Module.printErr('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
 #endif
     return ptr;
   },
@@ -3937,7 +3935,7 @@ LibraryManager.library = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__cxa_free_exception', '__cxa_last_thrown_exception', '__cxa_exception_header_size', '__cxa_caught_exceptions'],
+  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
   __cxa_end_catch: function() {
     if (___cxa_end_catch.rethrown) {
       ___cxa_end_catch.rethrown = false;
@@ -3950,21 +3948,20 @@ LibraryManager.library = {
     __THREW__ = 0;
 #endif
     // Call destructor if one is registered then clear it.
-    var ptr = ___cxa_caught_exceptions.pop();
+    var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
-    Module.printErr('cxa_end_catch popped ' + [ptr,___cxa_last_thrown_exception, 'stack', ___cxa_caught_exceptions]);
+    Module.printErr('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     if (ptr) {
-      var header = ptr - ___cxa_exception_header_size;
-      var destructor = {{{ makeGetValue('header', 4, 'void*') }}};
-      if (destructor) {
-        Runtime.dynCall('vi', destructor, [ptr]);
-        {{{ makeSetValue('header', 4, '0', 'i32') }}};
+      var info = EXCEPTIONS.infos[ptr];
+      if (info && info.destructor) {
+        Runtime.dynCall('vi', info.destructor, [ptr]);
+        info.destructor = 0;
       }
       ___cxa_free_exception(ptr);
-      ___cxa_last_thrown_exception = 0;
+      EXCEPTIONS.last = 0;
 #if EXCEPTION_DEBUG
-      Module.printErr('  cxa_end_catch also freeing exception ' + [ptr,___cxa_last_thrown_exception, 'stack', ___cxa_caught_exceptions]);
+      Module.printErr('  cxa_end_catch also freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     }
   },
@@ -3972,6 +3969,7 @@ LibraryManager.library = {
 #if EXCEPTION_DEBUG
     Module.printErr('cxa_get_exception_ptr ' + ptr);
 #endif
+    // TODO: use info.adjusted?
     return ptr;
   },
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
@@ -4004,15 +4002,15 @@ LibraryManager.library = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__resumeException', '__cxa_last_thrown_exception', '__cxa_exception_header_size'],
+  __cxa_find_matching_catch__deps: ['__resumeException', '$EXCEPTIONS'],
   __cxa_find_matching_catch: function() {
-    var thrown = ___cxa_last_thrown_exception;
+    var thrown = EXCEPTIONS.last;
     if (!thrown) {
       // just pass through the null ptr
       {{{ makeStructuralReturn([0, 0]) }}};
     }
-    var header = thrown - ___cxa_exception_header_size;
-    var throwntype = {{{ makeGetValue('header', 0, 'void*') }}};
+    var info = EXCEPTIONS.infos[thrown];
+    var throwntype = info.type;
     if (!throwntype) {
       // just pass through the thrown ptr
       {{{ makeStructuralReturn(['thrown', 0]) }}};
@@ -4047,12 +4045,12 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
-  __resumeException__deps: [function() { Functions.libraryFunctions['___resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
+  __resumeException__deps: ['$EXCEPTIONS', function() { Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
-    Module.print("Resuming exception " + [ptr, ___cxa_last_thrown_exception]);
+    Module.print("Resuming exception " + [ptr, EXCEPTIONS.last]);
 #endif
-    if (!___cxa_last_thrown_exception) { ___cxa_last_thrown_exception = ptr; }
+    if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
     {{{ makeThrow('ptr') }}}
   },
 
