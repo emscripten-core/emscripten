@@ -495,9 +495,16 @@ function simplifyExpressions(ast) {
 
     var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
-    // Use a "post" visitor so that we simplify a node's operands before the
-    // node itself. This allows optimizations to cascade.
-    traverse(ast, function(node, type) { }, function(node, type) {
+    traverse(ast, function(node, type) {
+      // The "pre" visitor. Useful for detecting trees which should not
+      // be simplified.
+      if (type == 'sub' && node[1][0] == 'name' && /^FUNCTION_TABLE.*/.exec(node[1][1])) {
+        return null; // do not traverse subchildren here, we should not collapse 55 & 126.
+      }
+    }, function(node, type) {
+      // The "post" visitor. The simplifications are done in this visitor so
+      // that we simplify a node's operands before the node itself. This allows
+      // optimizations to cascade.
       if (type === 'name') {
         if (node[1] === 'tempDoublePtr') hasTempDoublePtr = true;
       } else if (type === 'binary' && node[1] === '&' && node[3][0] === 'num') {
@@ -587,8 +594,6 @@ function simplifyExpressions(ast) {
             node[3] = value[2];
           }
         }
-      } else if (type == 'sub' && node[1][0] == 'name' && /^FUNCTION_TABLE.*/.exec(node[1][1])) {
-        return null; // do not traverse subchildren here, we should not collapse 55 & 126. TODO: optimize this into a nonvirtual call (also because we lose some other opts here)!
       } else if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num') {
         // optimize num >> num, in asm we need this since we do not run optimizeShifts
         node[0] = 'num';
