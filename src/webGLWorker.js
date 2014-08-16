@@ -10,6 +10,8 @@ function WebGLProgram(id) {
   this.shaders = [];
   this.attributes = {};
   this.attributeVec = [];
+  this.nextAttributes = {};
+  this.nextAttributeVec = [];
 }
 function WebGLFramebuffer(id) {
   this.what = 'frameBuffer';
@@ -584,8 +586,8 @@ function WebGLWorker() {
     commandBuffer.push(12, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
-    program.attributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
-    program.attributeVec[index] = name;
+    program.nextAttributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
+    program.nextAttributeVec[index] = name;
     commandBuffer.push(13, program.id, index, name);
   };
   this.getAttribLocation = function(program, name) {
@@ -647,6 +649,11 @@ function WebGLWorker() {
     program.uniforms = {};
     program.uniformVec = [];
 
+    program.attributes = program.nextAttributes;
+    program.attributeVec = program.nextAttributeVec;
+    program.nextAttributes = {};
+    program.nextAttributeVec = [];
+
     var existingAttributes = {};
 
     program.shaders.forEach(function(shader) {
@@ -658,7 +665,9 @@ function WebGLWorker() {
     for (var attr in existingAttributes) {
       if (!(attr in program.attributes)) {
         var index = program.attributeVec.length;
-        this.bindAttribLocation(program, index, attr);
+        program.attributes[attr] = { what: 'attribute', name: attr, size: -1, location: index, type: '?' }; // fill in size, type later
+        program.attributeVec[index] = attr;
+        commandBuffer.push(13, program.id, index, attr); // do a bindAttribLocation as well, so this takes effect in the link we are about to do
       }
       program.attributes[attr].size = existingAttributes[attr].size;
       program.attributes[attr].type = existingAttributes[attr].type;
