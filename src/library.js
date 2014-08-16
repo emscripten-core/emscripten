@@ -3954,9 +3954,11 @@ LibraryManager.library = {
 #endif
     if (ptr) {
       var info = EXCEPTIONS.infos[ptr];
-      if (info && info.destructor) {
-        Runtime.dynCall('vi', info.destructor, [ptr]);
-        info.destructor = 0;
+      if (info) {
+        if (info.destructor) {
+          Runtime.dynCall('vi', info.destructor, [ptr]);
+        }
+        delete EXCEPTIONS.infos[ptr];
       }
       ___cxa_free_exception(ptr);
       EXCEPTIONS.last = 0;
