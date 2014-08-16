@@ -3969,6 +3969,9 @@ LibraryManager.library = {
     }
   },
   __cxa_get_exception_ptr: function(ptr) {
+#if EXCEPTION_DEBUG
+    Module.printErr('cxa_get_exception_ptr ' + ptr);
+#endif
     return ptr;
   },
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
@@ -4019,6 +4022,9 @@ LibraryManager.library = {
     var pointer = Module['___cxa_is_pointer_type'](throwntype);
     // can_catch receives a **, add indirection
     if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
+#if EXCEPTION_DEBUG
+    Module.print("can_catch on " + [thrown]);
+#endif
     {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
     thrown = ___cxa_find_matching_catch.buffer;
     // The different catch blocks are denoted by different types.
@@ -4028,6 +4034,9 @@ LibraryManager.library = {
     for (var i = 0; i < typeArray.length; i++) {
       if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
         thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
+#if EXCEPTION_DEBUG
+        Module.print("  can_catch found " + [thrown, typeArray[i]]);
+#endif
         {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
       }
     }
