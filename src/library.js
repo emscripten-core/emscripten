@@ -3839,7 +3839,23 @@ LibraryManager.library = {
   $EXCEPTIONS: {
     last: 0,
     caught: [],
-    infos: {}
+    infos: {},
+    deAdjust: function(adjusted) {
+      if (!adjusted || EXCEPTIONS.infos[adjusted]) return adjusted;
+      for (var ptr in EXCEPTIONS.infos) {
+        var info = EXCEPTIONS.infos[ptr];
+        if (info.adjusted === adjusted) {
+#if EXCEPTION_DEBUG
+          Module.printErr('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
+#endif
+          return ptr;
+        }
+      }
+#if EXCEPTION_DEBUG
+      Module.printErr('no de-adjustment for unknown exception ptr ' + adjusted);
+#endif
+      return adjusted;
+    },
   },
 
   // Exceptions
@@ -3953,13 +3969,15 @@ LibraryManager.library = {
     Module.printErr('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     if (ptr) {
+      ptr = EXCEPTIONS.deAdjust(ptr);
       var info = EXCEPTIONS.infos[ptr];
-      if (info) {
-        if (info.destructor) {
-          Runtime.dynCall('vi', info.destructor, [ptr]);
-        }
-        delete EXCEPTIONS.infos[ptr];
+      if (!info) {
+        abort('cannot find exception info for ' + ptr + ' in ' + JSON.stringify(EXCEPTIONS.infos));
       }
+      if (info.destructor) {
+        Runtime.dynCall('vi', info.destructor, [ptr]);
+      }
+      delete EXCEPTIONS.infos[ptr];
       ___cxa_free_exception(ptr);
       EXCEPTIONS.last = 0;
 #if EXCEPTION_DEBUG
@@ -4034,6 +4052,7 @@ LibraryManager.library = {
     for (var i = 0; i < typeArray.length; i++) {
       if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
         thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
+        info.adjusted = thrown;
 #if EXCEPTION_DEBUG
         Module.print("  can_catch found " + [thrown, typeArray[i]]);
 #endif

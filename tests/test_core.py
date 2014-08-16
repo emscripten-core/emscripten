@@ -1307,8 +1307,6 @@ too many setjmps in a function call, build with a higher value for MAX_SETJMPS''
       '''
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if '-O2' in self.emcc_args:
-        self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
       self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
   def test_exceptions_2(self):
@@ -1521,6 +1519,13 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.EXCEPTION_DEBUG = 1
     test_path = path_from_root('tests', 'core', 'test_exceptions_resume')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.do_run_from_file(src, output)
+
+  def test_exceptions_destroy_virtual(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    test_path = path_from_root('tests', 'core', 'test_exceptions_destroy_virtual')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
