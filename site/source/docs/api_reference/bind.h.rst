@@ -6,8 +6,6 @@ bind.h (under-construction)
 
 The C++ APIs in `bind.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/bind.h>`_ define (**HamishW**-Replace with description.)
 
-**HamishW** Typenames etc.
-
 .. contents:: Table of Contents
     :local:
     :depth: 1
@@ -100,7 +98,7 @@ select_overload and select_const
 	:returns: **HamishW** Add description.
 
 
-.. cpp:function:: typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn))
+.. cpp:function:: typename internal::MemberFunctionType<ClassType, Signature>::type select_overload( Signature (ClassType::*fn) )
 
 	**HamishW** Add description.
 
@@ -353,484 +351,361 @@ Smart pointers
 		:returns: **HamishW** Add description.  		
 
 
-**HamishW** Note, did not include private class val_deleter. I am assuming all private classes are internal.
+**HamishW** Note, did not include private class val_deleter. I am assuming all private classes are internal. Delete this Chad when read!
 
 
 Classes
 ======================================
 
-
-    // abstract classes
-    template<typename T>
-    class wrapper : public T, public internal::WrapperBase {
-    public:
-        typedef T class_type;
-
-        template<typename... Args>
-        explicit wrapper(val&& wrapped, Args&&... args)
-            : T(std::forward<Args>(args)...)
-            , wrapped(std::forward<val>(wrapped))
-        {}
-
-        ~wrapper() {
-            if (notifyJSOnDestruction) {
-                call<void>("__destruct");
-            }
-        }
-
-        template<typename ReturnType, typename... Args>
-        ReturnType call(const char* name, Args&&... args) const {
-            return wrapped.call<ReturnType>(name, std::forward<Args>(args)...);
-        }
+**HamishW** Add description if needed. Note from source "// abstract classes"
 
 
+.. cpp:class:: class wrapper : public T, public internal::WrapperBase
 
-#define EMSCRIPTEN_WRAPPER(T)                                           \
-    template<typename... Args>                                          \
-    T(::emscripten::val&& v, Args&&... args)                            \
-        : wrapper(std::forward<::emscripten::val>(v), std::forward<Args>(args)...) \
-    {}
+	**HamishW** Add description. 
+	
+	This is a templated class: ``template<typename T>``. 
+
+	.. cpp:type:: class_type
+	
+		**HamishW** Add description. A typedef of ``T``, the typename of the templated type for the class.
+    
+
+	.. cpp:function:: explicit wrapper(val&& wrapped, Args&&... args)
+	
+		Constructor. **HamishW** Add description.
+		
+		:param val&& wrapped: **HamishW** Add description. 
+		:param Args&&... args: **HamishW** Add description. Note that ``Args`` is a typename (templated type).
+		:returns: **HamishW** Add description.  
+		
+		
+	.. cpp:function:: ~wrapper()
+	
+		Destructor. **HamishW** Add description.
+		
+
+	.. cpp:function:: ReturnType call(const char* name, Args&&... args) const
+	
+		Constructor. **HamishW** Add description.
+		
+		:param const char* name: **HamishW** Add description. 
+		:param Args&&... args: **HamishW** Add description. Note that ``Args`` is a typename (templated type).
+		:returns: **HamishW** Add description. Note that ``ReturnType`` is a typename (templated type). 
 
 
+.. cpp:function:: EMSCRIPTEN_WRAPPER(T)   
 
-    template<typename BaseClass>
-    struct base {
-        typedef BaseClass class_type;
+	**HamishW** Add description. Note that this is actually a define, but I've implemented it as a function, because that is how it behaves, and it allows me to have the T as shown, which isn't possible on Sphinx type declaration.
+	
+	:param T: **HamishW** Add description. 
 
-        template<typename ClassType>
-        static void verify() {
-            static_assert(!std::is_same<ClassType, BaseClass>::value, "Base must not have same type as class");
-            static_assert(std::is_base_of<BaseClass, ClassType>::value, "Derived class must derive from base");
-        }
 
-        static internal::TYPEID get() {
-            return internal::TypeID<BaseClass>::get();
-        }
-        
-        template<typename ClassType>
+.. cpp:type:: base
+
+	**HamishW** Add description.
+	
+	.. cpp:type:: class_type
+	
+		**HamishW** Add description. A typedef of ``BaseClass``, the typename of the templated type for the class.
+		
+		
+	.. cpp:function:: static void verify()
+	
+		**HamishW** Add description. Note, is templated function which takes typename ``ClassType``.
+		
+		
+	.. cpp:function:: static internal::TYPEID get()
+	
+		**HamishW** Add description. 
+		
+		:returns: **HamishW** Add description. 
+		
+
+		
+	.. cpp:function:: HAMISHW_ HELP_Needed
+	
+		**HamishW** I don't understand this C++, so not sure how to document. Putting code here for Chad to advise on how to document :: 
+		
+		template<typename ClassType>
         using Upcaster = BaseClass* (*)(ClassType*);
-
-        template<typename ClassType>
+		
+		template<typename ClassType>
         using Downcaster = ClassType* (*)(BaseClass*);
-        
-        template<typename ClassType>
-        static Upcaster<ClassType> getUpcaster() {
-            return &convertPointer<ClassType, BaseClass>;
-        }
-        
-        template<typename ClassType>
-        static Downcaster<ClassType> getDowncaster() {
-            return &convertPointer<BaseClass, ClassType>;
-        }
 
-        template<typename From, typename To>
-        static To* convertPointer(From* ptr) {
-            return static_cast<To*>(ptr);
-        }
-    };
+		
+	.. cpp:function:: static Upcaster<ClassType> getUpcaster()
+	
+		**HamishW** Add description. Note that ``ClassType`` is a typename (template parameter).
+		
+		:returns: **HamishW** Add description. 
+		
+		
+	.. cpp:function:: static Downcaster<ClassType> getDowncaster() 
+	
+		**HamishW** Add description. Note that ``ClassType`` is a typename (template parameter).
+		
+		:returns: **HamishW** Add description. 		
+		
+
+	.. cpp:function:: static To* convertPointer(From* ptr)
+	
+		**HamishW** Add description. Note that ``ClassType`` is a typename (template parameter).
+		
+		:param From* ptr: **HamishW** Add description. 	Note that ``From`` is a typename (template parameter).
+		:returns: **HamishW** Add description. Note that ``To`` is a typename (template parameter).
+
+		
+
+.. cpp:type:: pure_virtual
+
+	**HamishW** Add description. 
+	
+	.. cpp:type:: Transform
+	
+		**HamishW** Add description. Note that this is a templated struct taking typename parameter ``InputType`` and integer ``Index``.
+		
+		.. cpp:type:: type
+		
+			**HamishW** Add description. This is a typdef to the parent struct typename parameter ``InputType``.	
 
 
+.. cpp:type:: constructor
 
-    struct pure_virtual {
-        template<typename InputType, int Index>
-        struct Transform {
-            typedef InputType type;
-        };
-    };
+	**HamishW** Add description. Note that this is a template struct taking typename ``... ConstructorArgs``. 
 
 
+	
+.. cpp:class:: class_
 
-    template<typename... ConstructorArgs>
-    struct constructor {
-    };
+	**HamishW** Add description. Note that this is a templated class with typename parameters ``ClassType`` and ``BaseSpecifier``.
 
-    template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
-    class class_ {
-    public:
-        typedef ClassType class_type;
-        typedef BaseSpecifier base_specifier;
+	.. cpp:type:: class_type
+	
+		**HamishW** Add description. A typedef of ``ClassType`` (a typename for the class).
 
-        class_() = delete;
 
-        EMSCRIPTEN_ALWAYS_INLINE explicit class_(const char* name) {
-            using namespace internal;
+	.. cpp:type:: base_specifier
+	
+		**HamishW** Add description. A typedef of ``BaseSpecifier`` (a typename for the class).
 
-            BaseSpecifier::template verify<ClassType>();
+		
+	.. cpp:type:: HELPNEEDEDHERE
+	
+		**HamishW** Don't know what do do with this: ::
+		
+			class_() = delete;
 
-            auto _getActualType = &getActualType<ClassType>;
-            auto upcast = BaseSpecifier::template getUpcaster<ClassType>();
-            auto downcast = BaseSpecifier::template getDowncaster<ClassType>();
-            auto destructor = &raw_destructor<ClassType>;
 
-            _embind_register_class(
-                TypeID<ClassType>::get(),
-                TypeID<AllowedRawPointer<ClassType>>::get(),
-                TypeID<AllowedRawPointer<const ClassType>>::get(),
-                BaseSpecifier::get(),
-                getSignature(_getActualType),
-                reinterpret_cast<GenericFunction>(_getActualType),
-                getSignature(upcast),
-                reinterpret_cast<GenericFunction>(upcast),
-                getSignature(downcast),
-                reinterpret_cast<GenericFunction>(downcast),
-                name,
-                getSignature(destructor),
-                reinterpret_cast<GenericFunction>(destructor));
-        }
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE explicit class_(const char* name)
+	
+		Constructor. **HamishW** Add description.
+		
+		:param const char* name: **HamishW** Add description. 
+		:returns: **HamishW** Add description.  
 
-        template<typename PointerType>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr(const char* name) const {
-            using namespace internal;
 
-            typedef smart_ptr_trait<PointerType> PointerTrait;
-            typedef typename PointerTrait::element_type PointeeType;
-            
-            static_assert(std::is_same<ClassType, typename std::remove_cv<PointeeType>::type>::value, "smart pointer must point to this class");
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr(const char* name) const
+	
+		**HamishW** Add description. Note that this is a function template taking a typename ``PointerType``.
+		
+		:param const char* name: **HamishW** Add description. 
+		:returns: **HamishW** Add description.  
 
-            auto get = &PointerTrait::get;
-            auto construct_null = &PointerTrait::construct_null;
-            auto share = &PointerTrait::share;
-            auto destructor = &raw_destructor<PointerType>;
+		
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(Policies... policies) const
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``... ConstructorArgs`` and ``... Policies``. 
+		
+		:param Policies... policies: **HamishW** Add description. Note that ``... Policies`` is a template typename for this function. 
+		:returns: **HamishW** Add description.  
 
-            _embind_register_smart_ptr(
-                TypeID<PointerType>::get(),
-                TypeID<PointeeType>::get(),
-                name,
-                PointerTrait::get_sharing_policy(),
-                getSignature(get),
-                reinterpret_cast<GenericFunction>(get),
-                getSignature(construct_null),
-                reinterpret_cast<GenericFunction>(construct_null),
-                getSignature(share),
-                reinterpret_cast<GenericFunction>(share),
-                getSignature(destructor),
-                reinterpret_cast<GenericFunction>(destructor));
-            return *this;
-        };
 
-        template<typename... ConstructorArgs, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(Policies... policies) const {
-            return constructor(
-                &internal::operator_new<ClassType, ConstructorArgs...>,
-                policies...);
-        }
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``... Args``, ``ReturnType`` and ``... Policies``. 
+		
+		:param ReturnType (*factory)(Args...): **HamishW** Add description. Note that ``Args`` and ``ReturnType`` are template typenames for this function. 
+		:param Policies... policies: **HamishW** Add description. Note that ``Policies`` is a template typename for this function. 
+		:returns: **HamishW** Add description.
+		
+		
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const 
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``SmartPtr``, ``... Args``, and ``... Policies``.
+		
+		:param const char* smartPtrName: **HamishW** Add description. 
+		:param SmartPtr (*factory)(Args...): **HamishW** Add description. Note that ``Args`` and ``SmartPtr`` are template typenames for this function. 
+		:param Policies... policies: **HamishW** Add description. Note that ``Policies`` is a template typename for this function. 
+		:returns: **HamishW** Add description.		
+		
 
-        template<typename... Args, typename ReturnType, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
-            using namespace internal;
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(const char* wrapperClassName, const char* pointerName = "<UnknownPointerName>", ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>() ) const 
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``WrapperType``, ``PointerType``, and ``... ConstructorArgs``.
+		
+		:param const char* wrapperClassName: **HamishW** Add description. 
+		:param const char* pointerName: **HamishW** Add description. Note that this has a default value which is dependent on the template typename parameters.
+		:returns: **HamishW** Add description.
 
-            // TODO: allows all raw pointers... policies need a rethink
-            typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            auto invoke = &Invoker<ReturnType, Args...>::invoke;
-            _embind_register_class_constructor(
-                TypeID<ClassType>::get(),
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoke),
-                reinterpret_cast<GenericFunction>(invoke),
-                reinterpret_cast<GenericFunction>(factory));
-            return *this;
-        }
 
-        template<typename SmartPtr, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
-            using namespace internal;
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(const char* wrapperClassName, ::emscripten::constructor<ConstructorArgs...> constructor) ) const 
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``WrapperType`` and ``... ConstructorArgs``: ``template<typename WrapperType, typename... ConstructorArgs>``
+		
+		:param const char* wrapperClassName: **HamishW** Add description. 
+		:param ::emscripten::constructor<ConstructorArgs...> constructor): **HamishW** Add description. Note that ``ConstructorArgs`` is a template typename for this function. 
+		:returns: **HamishW** Add description.
 
-            smart_ptr<SmartPtr>(smartPtrName);
 
-            typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
-            auto invoke = &Invoker<SmartPtr, Args...>::invoke;
-            _embind_register_class_constructor(
-                TypeID<ClassType>::get(),
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoke),
-                reinterpret_cast<GenericFunction>(invoke),
-                reinterpret_cast<GenericFunction>(factory));
-            return *this;
-        }
+		
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const 
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``ReturnType``,, ``... Args`` and ``... Policies``: ``template<typename ReturnType, typename... Args, typename... Policies>``
+		
+		:param const char* methodName: **HamishW** Add description. 
+		:param ReturnType (ClassType::*memberFunction)(Args...): **HamishW** Add description. Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
+		:param typename... Policies: **HamishW** Add description. Note that ``Policies`` is a template typename for this function. 
+		:returns: **HamishW** Add description.
 
-        template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
-            const char* wrapperClassName,
-            const char* pointerName = "<UnknownPointerName>",
-            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
-        ) const {
-            using namespace internal;
 
-            auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
-                .function("notifyOnDestruction", select_overload<void(WrapperType&)>([](WrapperType& wrapper) {
-                    wrapper.setNotifyJSOnDestruction(true);
-                }))
-                ;
-            SmartPtrIfNeeded<PointerType> _(cls, pointerName);
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& function( const char* methodName, ReturnType (*function)(ThisType, Args...), Policies... ) const
+	
+		**HamishW** Add description. Note that this is a function template taking typename ``FieldType``, **Not sure how to document the section parameter**: ``template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>``
+		
+		:param const char* methodName: **HamishW** Add description. 
+		:param ReturnType (*function)(ThisType, Args...): **HamishW** Add description. Note that ``ReturnType``, ``ThisType`` and ``Args`` are template typenames for this function.
+		:param typename... Policies: **HamishW** Add description. Note that ``Policies`` is a template typename for this function. 
+		:returns: **HamishW** Add description.
 
-            return
-                class_function(
-                    "implement",
-                    &wrapped_new<PointerType, WrapperType, val, ConstructorArgs...>,
-                    allow_raw_pointer<ret_val>())
-                .class_function(
-                    "extend",
-                    &wrapped_extend<WrapperType>)
-                ;
-        }
+		
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``ReturnType``, ``ThisType``, ``Args`` and ``... Policies``: ``template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>``
+		
+		:param const char* fieldName: **HamishW** Add description. 
+		:param const FieldType ClassType::*field: **HamishW** Add description. Note that ``FieldType`` is a function template typename, and ``ClassType`` is a class template typename.
+		:returns: **HamishW** Add description.
 
-        template<typename WrapperType, typename... ConstructorArgs>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
-            const char* wrapperClassName,
-            ::emscripten::constructor<ConstructorArgs...> constructor
-        ) const {
-            return allow_subclass<WrapperType, WrapperType*>(wrapperClassName, "<UnknownPointerName>", constructor);
-        }
 
-        template<typename ReturnType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const {
-            using namespace internal;
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const 
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``FieldType`` - **Not sure how to document/describe second typename parameter** : ``template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>``
+		
+		:param const char* fieldName: **HamishW** Add description. 
+		:param FieldType ClassType::*field: **HamishW** Add description. Note that ``FieldType`` is a function template typename, and ``ClassType`` is a class template typename.
+		:returns: **HamishW** Add description.
 
-            auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
+		
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const
+	
+		**HamishW** Add description. Note that this is a function template taking typename ``Getter``: ``template<typename Getter>``
+		
+		:param const char* fieldName: **HamishW** Add description. 
+		:param Getter getter: **HamishW** Add description. Note that ``Getter`` is a function template typename.
+		:returns: **HamishW** Add description.
+		
+		
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter) const
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``Setter`` and ``Getter``: ``template<typename Getter, typename Setter>``
+		
+		:param const char* fieldName: **HamishW** Add description. 
+		:param Getter getter: **HamishW** Add description. Note that ``Getter`` is a function template typename.
+		:param Setter setter: **HamishW** Add description. Note that ``Setter`` is a function template typename.
+		:returns: **HamishW** Add description.
+		
+	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) const 
+	
+		**HamishW** Add description. Note that this is a function template taking typenames ``Setter`` and ``Getter``: ``template<typename ReturnType, typename... Args, typename... Policies>``
+		
+		:param const char* methodName: **HamishW** Add description. 
+		:param ReturnType (*classMethod)(Args...): **HamishW** Add description. Note that ``ReturnType`` and ``Args`` are function template typenames.
+		:param Policies...: **HamishW** Add description. Note that ``Policies`` is a function template typename.
+		:returns: **HamishW** Add description.
 
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
-            _embind_register_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoker),
-                reinterpret_cast<GenericFunction>(invoker),
-                getContext(memberFunction),
-                isPureVirtual<Policies...>::value);
-            return *this;
-        }
-
-        template<typename ReturnType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const {
-            using namespace internal;
-
-            auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
-            _embind_register_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoker),
-                reinterpret_cast<GenericFunction>(invoker),
-                getContext(memberFunction),
-                isPureVirtual<Policies...>::value);
-            return *this;
-        }
-
-        template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const {
-            using namespace internal;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-            auto invoke = &FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
-            _embind_register_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoke),
-                reinterpret_cast<GenericFunction>(invoke),
-                getContext(function),
-                false);
-            return *this;
-        }
-
-        template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const {
-            using namespace internal;
-            
-            auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
-            _embind_register_class_property(
-                TypeID<ClassType>::get(),
-                fieldName,
-                TypeID<FieldType>::get(),
-                getSignature(getter),
-                reinterpret_cast<GenericFunction>(getter),
-                getContext(field),
-                0,
-                0,
-                0,
-                0);
-            return *this;
-        }
-
-        template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const {
-            using namespace internal;
-
-            auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
-            auto setter = &MemberAccess<ClassType, FieldType>::template setWire<ClassType>;
-            _embind_register_class_property(
-                TypeID<ClassType>::get(),
-                fieldName,
-                TypeID<FieldType>::get(),
-                getSignature(getter),
-                reinterpret_cast<GenericFunction>(getter),
-                getContext(field),
-                TypeID<FieldType>::get(),
-                getSignature(setter),
-                reinterpret_cast<GenericFunction>(setter),
-                getContext(field));
-            return *this;
-        }
-
-        template<typename Getter>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const {
-            using namespace internal;
-            typedef GetterPolicy<Getter> GP;
-            auto gter = &GP::template get<ClassType>;
-            _embind_register_class_property(
-                TypeID<ClassType>::get(),
-                fieldName,
-                TypeID<typename GP::ReturnType>::get(),
-                getSignature(gter),
-                reinterpret_cast<GenericFunction>(gter),
-                GP::getContext(getter),
-                0,
-                0,
-                0,
-                0);
-            return *this;
-        }
-
-        template<typename Getter, typename Setter>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter) const {
-            using namespace internal;
-            typedef GetterPolicy<Getter> GP;
-            typedef SetterPolicy<Setter> SP;
-
-            auto gter = &GP::template get<ClassType>;
-            auto ster = &SP::template set<ClassType>;
-
-            _embind_register_class_property(
-                TypeID<ClassType>::get(),
-                fieldName,
-                TypeID<typename GP::ReturnType>::get(),
-                getSignature(gter),
-                reinterpret_cast<GenericFunction>(gter),
-                GP::getContext(getter),
-                TypeID<typename SP::ArgumentType>::get(),
-                getSignature(ster),
-                reinterpret_cast<GenericFunction>(ster),
-                SP::getContext(setter));
-            return *this;
-        }
-
-        template<typename ReturnType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) const {
-            using namespace internal;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            auto invoke = &internal::Invoker<ReturnType, Args...>::invoke;
-            _embind_register_class_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoke),
-                reinterpret_cast<internal::GenericFunction>(invoke),
-                reinterpret_cast<GenericFunction>(classMethod));
-            return *this;
-        }
-    };
 
 
 	
 Vectors
-======================================
+=======
+
+.. cpp:function:: class_<std::vector<T>> register_vector(const char* name)
+
+	**HamishW** Add description. 
+	
+	Note that this is a templated function: ``template<typename T>``
+
+	:param const char* name: **HamishW** Add description. 
+	:returns: **HamishW** Add description.
 
 
-    template<typename T>
-    class_<std::vector<T>> register_vector(const char* name) {
-        typedef std::vector<T> VecType;
 
-        void (VecType::*push_back)(const T&) = &VecType::push_back;
-        return class_<std::vector<T>>(name)
-            .template constructor<>()
-            .function("push_back", push_back)
-            .function("size", &VecType::size)
-            .function("get", &internal::VectorAccess<VecType>::get)
-            .function("set", &internal::VectorAccess<VecType>::set)
-            ;
-    }
 
 
 Maps
-======================================
+====
 
+.. cpp:function::  class_<std::map<K, V>> register_map(const char* name)
 
+	**HamishW** Add description. Note that this is a templated function: ``template<typename K, typename V>``
 
-    template<typename K, typename V>
-    class_<std::map<K, V>> register_map(const char* name) {
-        typedef std::map<K,V> MapType;
-
-        return class_<MapType>(name)
-            .template constructor<>()
-            .function("size", &MapType::size)
-            .function("get", internal::MapAccess<MapType>::get)
-            .function("set", internal::MapAccess<MapType>::set)
-            ;
-    }
+	:param const char* name: **HamishW** Add description. 
+	:returns: **HamishW** Add description.
 
 
 
 Enums
-======================================
+=====
 
-    template<typename EnumType>
-    class enum_ {
-    public:
-        typedef EnumType enum_type;
 
-        enum_(const char* name) {
-            using namespace internal;
-            _embind_register_enum(
-                internal::TypeID<EnumType>::get(),
-                name,
-                sizeof(EnumType),
-                std::is_signed<typename std::underlying_type<EnumType>::type>::value);
-        }
+.. cpp:class:: enum_
 
-        enum_& value(const char* name, EnumType value) {
-            using namespace internal;
-            // TODO: there's still an issue here.
-            // if EnumType is an unsigned long, then JS may receive it as a signed long
-            static_assert(sizeof(value) <= sizeof(internal::GenericEnumValue), "enum type must fit in a GenericEnumValue");
+	**HamishW** Add description. Note that this is a templated class: ``template<typename EnumType>``
 
-            _embind_register_enum_value(
-                internal::TypeID<EnumType>::get(),
-                name,
-                static_cast<internal::GenericEnumValue>(value));
-            return *this;
-        }
-    };
+	.. cpp:type:: enum_type
+	
+		**HamishW** Add description. A typedef of ``EnumType`` (a typename for the class).
+
+
+	.. cpp:function::  enum_(const char* name)
+
+		Constructor. **HamishW** Add description. 
+
+		:param const char* name: **HamishW** Add description. 
+		:returns: **HamishW** Add description.
+		
+		
+	.. cpp:function::  enum_& value(const char* name, EnumType value)
+
+		Constructor. **HamishW** Add description. 
+
+		:param const char* name: **HamishW** Add description. 
+		:param EnumType value: **HamishW** Add description. Note that ``EnumType`` is a class template typename.
+		:returns: **HamishW** Add description.		
+
 
 
 Constants
-======================================
+=========
+
+.. cpp:function:: void constant(const char* name, const ConstantType& v)
+
+	**HamishW** Add description. Note that this is a templated function: ``template<typename ConstantType>``
+
+	:param const char* name: **HamishW** Add description.
+	:param const ConstantType& v: **HamishW** Add description. Note that ``ConstantType`` is a template typename for the function.
+
+	
+.. cpp:function:: EMSCRIPTEN_BINDINGS(name)
+
+	**HamishW** Add description.  Note that this is actually a define, but I've implemented it as a function, because that is how it behaves, and it allows me to have the name parameter as shown, which isn't possible on Sphinx type declaration.
+
+	:param name: **HamishW** Add description.
 
 
+	
+.. COMMENT (not rendered): Following values are common to many functions, and currently only updated in one place (here).
+.. COMMENT (not rendered): These can be properly replaced if required either wholesale or on an individual basis.
 
-    template<typename ConstantType>
-    void constant(const char* name, const ConstantType& v) {
-        using namespace internal;
-        typedef BindingType<const ConstantType&> BT;
-        _embind_register_constant(
-            name,
-            TypeID<const ConstantType&>::get(),
-            asGenericValue(BT::toWireType(v)));
-    }
-}
-
-#define EMSCRIPTEN_BINDINGS(name)                                       \
-    static struct EmscriptenBindingInitializer_##name {                 \
-        EmscriptenBindingInitializer_##name();                          \
-    } EmscriptenBindingInitializer_##name##_instance;                   \
-    EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
-
-
+.. |policies-argument| replace:: Some boilerplate, this is an example only and can be removed.
