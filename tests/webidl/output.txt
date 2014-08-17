@@ -69,5 +69,19 @@ unsigned short int: 65535
 return unsigned long -1
 unsigned long int: 4294967295
 void * 3
+array[0] == 0
+array[7] == 7
+array[0] == 42
+array[7] == 43
+struct_array[0].attr1 == 0
+struct_array[0].attr2 == 0
+struct_array[7].attr1 == 7
+struct_array[7].attr2 == -7
+struct_array[0].attr1 == 13
+struct_array[0].attr2 == 17
+struct_array[7].attr1 == 14
+struct_array[7].attr2 == 18
+struct_ptr_array[0]->attr1 == 100
+struct_ptr_array[0]->attr2 == 101
 
 done.

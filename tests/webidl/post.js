@@ -151,6 +151,36 @@ var voidPointerUser = new TheModule.VoidPointerUser();
 voidPointerUser.SetVoidPointer(3);
 TheModule.print('void * ' + voidPointerUser.GetVoidPointer());
 
+// Array tests
+
+var arrayClass = new TheModule.ArrayClass();
+TheModule.print('array[0] == ' + arrayClass.get_int_array(0));
+TheModule.print('array[7] == ' + arrayClass.get_int_array(7));
+arrayClass.set_int_array(0, 42);
+arrayClass.set_int_array(7, 43);
+TheModule.print('array[0] == ' + arrayClass.get_int_array(0));
+TheModule.print('array[7] == ' + arrayClass.get_int_array(7));
+
+TheModule.print('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
+TheModule.print('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
+TheModule.print('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
+TheModule.print('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
+
+var struct = new TheModule.StructInArray(13, 17);
+arrayClass.set_struct_array(0, struct);
+struct = new TheModule.StructInArray(14, 18);
+arrayClass.set_struct_array(7, struct);
+
+TheModule.print('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
+TheModule.print('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
+TheModule.print('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
+TheModule.print('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
+
+struct = new TheModule.StructInArray(100, 101);
+arrayClass.set_struct_ptr_array(0, struct);
+TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
+TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
+
 //
 
 TheModule.print('\ndone.')

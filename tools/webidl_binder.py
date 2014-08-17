@@ -382,30 +382,42 @@ for name in names:
     if not m.isAttr(): continue
     attr = m.identifier.name
 
+    if m.type.isArray():
+      get_sigs = { 1: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] })] }
+      set_sigs = { 2: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] }),
+                       Dummy({ 'type': m.type })] }
+      get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr + '[arg0]'
+      set_call_content = 'self->' + attr + '[arg0] = ' + deref_if_nonpointer(m) + 'arg1'
+    else:
+      get_sigs = { 0: [] }
+      set_sigs = { 1: [Dummy({ 'type': m.type })] }
+      get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr
+      set_call_content = 'self->' + attr + ' = ' + deref_if_nonpointer(m) + 'arg0'
+
     get_name = 'get_' + attr
     mid_js += [r'''
   %s.prototype['%s']= ''' % (name, get_name)]
     render_function(name,
-                    get_name, { 0: [] }, m.type.name,
+                    get_name, get_sigs, m.type.name,
                     None,
                     None,
                     None,
                     False,
                     func_scope=interface,
-                    call_content=take_addr_if_nonpointer(m) + 'self->' + attr,
+                    call_content=get_call_content,
                     const=m.getExtendedAttribute('Const'))
 
     set_name = 'set_' + attr
     mid_js += [r'''
   %s.prototype['%s']= ''' % (name, set_name)]
     render_function(name,
-                    set_name, { 1: [Dummy({ 'type': m.type })] }, 'Void',
+                    set_name, set_sigs, 'Void',
                     None,
                     None,
                     None,
                     False,
                     func_scope=interface,
-                    call_content='self->' + attr + ' = ' + deref_if_nonpointer(m) + 'arg0',
+                    call_content=set_call_content,
                     const=m.getExtendedAttribute('Const'))
 
   if not interface.getExtendedAttribute('NoDelete'):
