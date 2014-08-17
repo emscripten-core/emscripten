@@ -39,7 +39,7 @@ Get the latest official Emscripten news on the blogs: `Developer blog (azakai) <
 
 In addition, other interesting blogs and demos are regularly shared on Twitter by the development team `(@kripken) <https://twitter.com/kripken>`_ and the broader community `(#emscripten) <https://twitter.com/hashtag/emscripten>`_. 
 
-.. todo :: **HamishW** At some point in future would be nice to actually display RSS feeds from above links here. Perhaps including @kripen in feed. In this case would need a dedicated blogs link as well.
+.. todo :: **HamishW** At some point in future would be nice to actually display RSS feeds from above links here. Perhaps including @kripken in feed. In this case would need a dedicated blogs link as well.
 
 
 Contribute

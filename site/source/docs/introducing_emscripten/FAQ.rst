@@ -485,7 +485,7 @@ Using Emscripten
 
    **A.** The easiest way to find out when loading is complete (which
    is asynchronous, as it often requires loading files, such as the
-   .mem file or preloade files), is to just add a ``main()`` function. It
+   .mem file or preloaded files), is to just add a ``main()`` function. It
    will be called when it is safe to do so, after startup is complete,
    so that is a signal that it is safe to call any compiled method.
    You can make ``main()`` call your JS to notify it, for example if
