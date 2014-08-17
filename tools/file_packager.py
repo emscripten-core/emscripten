@@ -485,7 +485,10 @@ if has_preloaded:
       PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
     }
     var PACKAGE_NAME = '%s';
-    var REMOTE_PACKAGE_NAME = (Module['filePackagePrefixURL'] || '') + '%s';
+    var REMOTE_PACKAGE_BASE = '%s';
+    var REMOTE_PACKAGE_NAME = typeof Module['locateFilePackage'] === 'function' ?
+                              Module['locateFilePackage'](REMOTE_PACKAGE_BASE) :
+                              ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
     var REMOTE_PACKAGE_SIZE = %d;
     var PACKAGE_UUID = '%s';
   ''' % (data_target, remote_package_name, remote_package_size, package_uuid)
