@@ -2855,6 +2855,7 @@ class IDLAttribute(IDLInterfaceMember):
               identifier == "AvailableIn" or
               identifier == "Const" or
               identifier == "Value" or
+              identifier == "BoundsChecked" or
               identifier == "NewObject"):
             # Known attributes that we don't need to do anything with here
             pass

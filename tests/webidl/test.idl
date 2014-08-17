@@ -118,7 +118,7 @@ interface StructInArray {
 
 interface ArrayClass {
   void ArrayClass();
-  attribute long[] int_array;
+  [BoundsChecked] attribute long[] int_array;
   [Value] attribute StructInArray[] struct_array;
   attribute StructInArray[] struct_ptr_array;
 };

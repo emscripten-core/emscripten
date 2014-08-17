@@ -132,6 +132,17 @@ function ensureString(value) {
 
 ''']
 
+mid_c += ['''
+// Not using size_t for array indices as the values used by the javascript code are signed.
+void array_bounds_check(const int array_size, const int array_idx) {
+  if (array_idx < 0 || array_idx >= array_size) {
+    EM_ASM_INT({
+      throw 'Array index ' + $0 + ' out of bounds: [0,' + $1 + ')';
+    }, array_idx, array_size);
+  }
+}
+''']
+
 C_FLOATS = ['float', 'double']
 
 def type_to_c(t, non_pointing=False):
@@ -388,6 +399,10 @@ for name in names:
                        Dummy({ 'type': m.type })] }
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr + '[arg0]'
       set_call_content = 'self->' + attr + '[arg0] = ' + deref_if_nonpointer(m) + 'arg1'
+      if m.getExtendedAttribute('BoundsChecked'):
+        bounds_check = "array_bounds_check(sizeof(self->%s) / sizeof(self->%s[0]), arg0)" % (attr, attr)
+        get_call_content = "(%s, %s)" % (bounds_check, get_call_content)
+        set_call_content = "(%s, %s)" % (bounds_check, set_call_content)
     else:
       get_sigs = { 0: [] }
       set_sigs = { 1: [Dummy({ 'type': m.type })] }

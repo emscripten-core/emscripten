@@ -69,10 +69,12 @@ unsigned short int: 65535
 return unsigned long -1
 unsigned long int: 4294967295
 void * 3
-array[0] == 0
-array[7] == 7
-array[0] == 42
-array[7] == 43
+int_array[0] == 0
+int_array[7] == 7
+int_array[0] == 42
+int_array[7] == 43
+idx -1: Array index -1 out of bounds: [0,8)
+idx 8: Array index 8 out of bounds: [0,8)
 struct_array[0].attr1 == 0
 struct_array[0].attr2 == 0
 struct_array[7].attr1 == 7
