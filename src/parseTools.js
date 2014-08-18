@@ -2387,11 +2387,11 @@ function processMathop(item) {
         var outType = item.type;
         if (inType === '<4 x float>') {
           assert(outType === '<4 x i32>');
-          return 'SIMD.float32x4.bitsToInt32x4(' + idents[0] + ')';
+          return 'SIMD.int32x4.fromFloat32x4Bits(' + idents[0] + ')';
         } else {
           assert(inType === '<4 x i32>');
           assert(outType === '<4 x float>');
-          return 'SIMD.int32x4.bitsToFloat32x4(' + idents[0] + ')';
+          return 'SIMD.float32x4.fromInt32x4Bits(' + idents[0] + ')';
         }
       }
       case 'and': return 'SIMD.int32x4.and(' + idents[0] + ',' + idents[1] + ')';
