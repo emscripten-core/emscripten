@@ -3969,7 +3969,7 @@ main(const int argc, const char * const * const argv)
     def test(opts):
       print opts
       def get_size(name):
-        return len(open(name).read())
+        return os.stat(name).st_size
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts).communicate()
       sizes = { '_': get_size('a_.bc') }
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts).communicate()
