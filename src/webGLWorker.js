@@ -975,6 +975,18 @@ function WebGLWorker() {
   this.blendFuncSeparate = function(srcRGB, dstRGB, srcAlpha, dstAlpha) {
     commandBuffer.push(73, srcRGB, dstRGB, srcAlpha, dstAlpha);
   }
+  this.uniform2fv = function(location, data) {
+    if (!location) return;
+    commandBuffer.push(74, location.id, new Float32Array(data));
+  };
+  this.texParameterf = function(target, pname, param) {
+    commandBuffer.push(75, target, pname, param);
+  };
+  this.isContextLost = function() {
+    // optimisticaly return that everything is ok; client will abort on an actual context loss. we assume an error-free async workflow
+    commandBuffer.push(76);
+    return false;
+  };
 
   // Setup
 
