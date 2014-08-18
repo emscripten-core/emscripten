@@ -38,9 +38,11 @@ A complete Emscripten environment requires the following tools. First test to se
 Compiler toolchain
 ------------------
 
-When building Emscripten from source code, whether "manually" or using the SDK, you will also need a *compiler toolchain* (including *gcc*, *g++*, *cmake*, etc.):
+When building Emscripten from source code, whether "manually" or using the SDK, you will need a *compiler toolchain* (including *gcc*, *g++*, *cmake*, etc.):
 
 - Windows: Install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_ and  `cmake <http://www.cmake.org/cmake/resources/software.html>`_ (cmake-3.0.1-win32-x86.exe)
+
+	.. note:: To use an IDE, or if you want to :ref:`build from source using the SDK <building-emscripten-from-source-using-the-sdk>` on **Windows**, you will also need `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (and possibly `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
 
 - Linux: Install *gcc* and *cmake*:
 	
