@@ -22,6 +22,8 @@ First :ref:`download and install the SDK <sdk-download-and-install>`. The SDK au
 
 Then :ref:`download and install the compiler toolchain <compiler-toolchain>` for your platform.
 
+.. note:: **Windows**: You will need `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (and `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
+
 
 .. _building-emscripten-from-the-main-repositories-using-the-sdk:
 

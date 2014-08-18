@@ -4,12 +4,13 @@
 Filesystem API (under-construction)
 =====================================
 
-File I/O in Emscripten is provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. This same library is used internally for all of Emscripten's libc and libcxx file I/O.
+File I/O in Emscripten is provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. This library is *inspired* by the Linux/POSIX file system API. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
 
-Emscripten deals predominantly with synchronous file I/O, so the majority of the FS member functions offer a synchronous interface, with errors being reported by raising exceptions of type ``FS.ErrnorError``.
+Emscripten deals predominantly with synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface, with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/kripken/emscripten/blob/master/system/include/libc/bits/errno.h>`_
 
-The file data in Emscripten is partitioned by mounted filesystems, of which several are provided to work with. By default, an instance of `MEMFS` is mounted to ``/`` and instances of `NODEFS` and `IDBFS` can be mounted to other directories if your application needs to `persist data <Files#persistence>`__.
+The file data in Emscripten is partitioned by mounted filesystems, of which several are provided to work with. By default, an instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` and instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
 
+.. _filesystem-api-persist-data:
 
 Persistence
 ===========
@@ -18,22 +19,29 @@ Applications being compiled with Emscripten expect synchronous I/O, therefore, E
 
 Because of this, Emscripten offers multiple filesystems that can be mounted with :js:func:`FS.mount` to help deal with persistence depending on the execution context.
 
+.. _filesystem-api-memfs:
+
 MEMFS
 ===========
 
 This is the default filesystem mounted at ``/`` when the runtime is initialized. All files exist strictly in-memory, and any data written to it is lost when the page is reloaded.
 
+.. _filesystem-api-nodefs:
+
 NODEFS
 ===========
 
-NODEFS lets a program in node directly access files on the local filesystem, as if the problem were running normally. See `this test <https://github.com/kripken/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`__ for an example.
+NODEFS lets a program in node directly access files on the local filesystem, as if the problem were running normally. See `this test <https://github.com/kripken/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`_ for an example.
 
 Mount options
 -------------
 
 -  root ``string`` Path to persist the data to on the local filesystem.
 
-This filesystem is only for use when running inside of node. It uses node's synchronous fs API to immediately persist any data written to emscripten's filesystem to your local disk.
+This filesystem is only for use when running inside of *node*. It uses node's synchronous FS API to immediately persist any data written to the Emscripten filesystem to your local disk.
+
+
+.. _filesystem-api-idbfs:
 
 IDBFS
 =====
@@ -52,8 +60,7 @@ Emscripten supports registering arbitrary device drivers composed of a device id
 	Converts a major and minor number into a single unique integer.
 	
 	:param ma: **HamishW**
-	:param mi: **HamishW**
-	:throws **HamishW**:		
+	:param mi: **HamishW**		
 
 
 
@@ -63,7 +70,7 @@ Emscripten supports registering arbitrary device drivers composed of a device id
 	
 	:param dev: ``MEMFS`` ``NODEFS`` ``IDBFS``
 	:param object ops: **HamishW**
-	:throws **HamishW**:		
+
 	
 
 Setting up standard I/O devices
@@ -95,9 +102,14 @@ Filesystem
 	:param type: ``MEMFS`` ``NODEFS`` ``IDBFS``
 	:param object opts: **HamishW**
 	:param string mountpoint: **HamishW**	
-	:throws **HamishW**:	
 
 
+.. js:function:: FS.unmount(mountpoint)
+
+	Unmounts the specified ``mountpoint``. 
+
+	:param string mountpoint: **HamishW**	
+	
 
 .. js:function:: FS.syncfs(populate, callback)
 
@@ -128,9 +140,8 @@ Filesystem
 
 	.. note:: Currently, only the `IDBFS`_ filesystem implements the interfaces needed by this. All other filesystems are completely synchronous and don't require synchronization.
 
-	:param bool populate: ``true`` to initialize Emscripten's filesystem data with the data from the filesystem's persistent source, and ``false`` to save emscripten's filesystem data to the filesystem's persistent source.
+	:param bool populate: ``true`` to initialize Emscripten's filesystem data with the data from the filesystem's persistent source, and ``false`` to save Emscripten`s filesystem data to the filesystem's persistent source.
 	:param callback: **HamishW**
-	:throws **HamishW**:
 
 
 .. js:function:: FS.mkdir(path, mode)
@@ -143,7 +154,6 @@ Filesystem
 	
 	:param string path: The path name for the new directory node.
 	:param int mode: **HamishW** Link to mode values. The default is 0777.
-	:throws **HamishW**:
 
 
 .. js:function:: FS.mkdev(path, mode, dev)
@@ -159,7 +169,6 @@ Filesystem
 	:param string path: The path name for the new device node.
 	:param int mode: **HamishW** Link to mode values. The default is 0777.
 	:param int dev: **HamishW**.
-	:throws **HamishW**:
 
 
 .. js:function:: FS.symlink(oldpath, newpath)
@@ -173,7 +182,6 @@ Filesystem
 
 	:param string oldpath: The path name of the file to link to.
 	:param string newpath: The path to the new symlink node to ``oldpath``.
-	:throws **HamishW**:
 
 
 
@@ -188,7 +196,6 @@ Filesystem
 
 	:param string oldpath: The old path name.
 	:param string newpath: The new path name
-	:throws **HamishW**:
 	
 
 .. js:function:: FS.rmdir(path)
@@ -203,13 +210,11 @@ Filesystem
 		FS.rmdir('data');
 
 	:param string path: Path of the directory to be removed.
-	:throws **HamishW**:	
 
 
 .. js:function:: FS.unlink(path)
 
-	Unlinks the node at ``path`` (this was previously called
-	``deleteFile``).
+	Unlinks the node at ``path``.
 	
 	.. COMMENT :: **HamishW** What does unlinking actually mean?
 	
@@ -221,7 +226,6 @@ Filesystem
 		FS.unlink('/foobar.txt');
 
 	:param string path: Path of the target node.
-	:throws **HamishW**:
 	
 
 	
@@ -251,7 +255,6 @@ Filesystem
 	
 	:param string path: Path of the target file.
 	:returns: The string value stored in the symbolic link at ``path``.
-	:throws **HamishW**:	
 	
 
 
@@ -293,7 +296,6 @@ Filesystem
 		}
 
 	:param string path: Path of the target file.
-	:throws **HamishW**:	
 
 
 .. js:function:: FS.lstat(path)
@@ -301,7 +303,6 @@ Filesystem
 	Identical to :js:func:`FS.stat`, However, if ``path`` is a symbolic link then the returned stats will be for the link itself, not the file that it links to.
 
 	:param string path: Path of the target file.
-	:throws **HamishW**:
 
 
 .. js:function:: FS.chmod(path, mode)
@@ -315,7 +316,6 @@ Filesystem
 
 	:param string path: Path of the target file.
 	:param int mode: **HamishW**.
-	:throws **HamishW**:
 
 
 
@@ -325,7 +325,6 @@ Filesystem
 
 	:param string path: Path of the target file.
 	:param int mode: **HamishW**.
-	:throws **HamishW**:
 
 
 .. js:function:: FS.fchmod(fd, mode)
@@ -334,8 +333,6 @@ Filesystem
 
 	:param int fd: Descriptor of target file.
 	:param int mode: **HamishW**.
-	:throws **HamishW**:
-
 
 
 
@@ -346,8 +343,6 @@ Filesystem
 	:param string path: Path of the target file.
 	:param int uid: **HamishW**.
 	:param int gid: **HamishW**.
-	:throws **HamishW**:
-
 
 
 
@@ -358,7 +353,6 @@ Filesystem
 	:param string path: Path of the target file.
 	:param int uid: **HamishW**.
 	:param int gid: **HamishW**.
-	:throws **HamishW**:
 
 
 
@@ -369,7 +363,6 @@ Filesystem
 	:param int fd: Descriptor of target file.
 	:param int uid: **HamishW**.
 	:param int gid: **HamishW**.
-	:throws **HamishW**:
 
 	
 
@@ -400,9 +393,6 @@ Filesystem
 	
 	:param string path: Path of the file to be truncated.
 	:param int len: The truncation length for the file.
-	:throws ERRNO_CODES.EINVAL:
-	:throws ERRNO_CODES.EPERM:
-	:throws ERRNO_CODES.EISDIR:
 	
 	
 	
@@ -412,10 +402,6 @@ Filesystem
 
 	:param int fd: Descriptor of file to be truncated.
 	:param int len: The truncation length for the file.
-	:throws ERRNO_CODES.EBADF:
-	:throws ERRNO_CODES.EINVAL:
-	:throws ERRNO_CODES.EPERM:
-	:throws ERRNO_CODES.EISDIR:
 
 
 .. js:function:: FS.utime(path, atime, mtime)
@@ -470,7 +456,7 @@ Filesystem
 
 	:param object stream: The stream for which the offset is to be repositioned.
 	:param int offset: The offset (in bytes) relative to ``whence``.
-	:param int whence: SEEK\_SET (0), SEEK\_CUR(1) or SEEK\_END(2);
+	:param int whence: SEEK_SET (0), SEEK_CUR(1) or SEEK_END(2);
 
 	.. COMMENT :: **HamishW** I don't understand the whence parameter. Need to follow up and check test code.
 	
@@ -493,11 +479,6 @@ Filesystem
 	:param int offset: The offset within ``buffer`` to store the data.
 	:param int length: The length of data to write in ``buffer``.
 	:param int position: The offset within the stream to read. By default this is the stream's current offset.
-	:throws ERRNO_CODES.EINVAL: Reading from an invalid position or length
-	:throws ERRNO_CODES.EBADF:
-	:throws ERRNO_CODES.ESPIPE:
-	:throws ERRNO_CODES.EISDIR:
-	:throws ERRNO_CODES.EINVAL:
 	
 	
 	
@@ -519,13 +500,7 @@ Filesystem
 	:param int offset: The offset within ``buffer`` to write.
 	:param int length: The length of data to write.
 	:param int position: The offset within the stream to write. By default this is the stream's current offset.
-	:throws ERRNO_CODES.EINVAL: Reading from an invalid position or length
-	:throws ERRNO_CODES.EBADF:
-	:throws ERRNO_CODES.ESPIPE:
-	:throws ERRNO_CODES.EISDIR:
-	:throws ERRNO_CODES.EINVAL:
-	
-	.. COMMENT:: Need to check if Throws should be recorded, and if so, what should be said. **HamishW**
+
 
 
 	
@@ -588,8 +563,6 @@ Filesystem
 	:param bool canRead: Whether the file should have read permissions set from the program's point of view.
 	:param bool canWrite: Whether the file should have write permissions set from the program's point of view.
 	:returns: A reference to the new file.
-	:throws ERRNO_CODES.EIO:
-	:throws: if there is an invalid range or URL, or if synchronous binary XHRs have been disabled.
 	
 
 

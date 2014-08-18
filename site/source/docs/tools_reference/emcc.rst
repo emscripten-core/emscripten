@@ -28,7 +28,7 @@ Supported targets include: llvm bitcode, javascript, NOT elf (autoconf likes to 
 Arguments
 ---------
  
-Most normal gcc/g++ options will work, for example:
+Most `normal gcc/g++ options <https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html#Option-Summary>`_ will work, for example:
 
   --help                   Display this information
   --version                Display compiler version information
