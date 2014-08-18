@@ -28,10 +28,12 @@ Supported targets include: llvm bitcode, javascript, NOT elf (autoconf likes to 
 Arguments
 ---------
  
-Most `normal gcc/g++ options <https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html#Option-Summary>`_ will work, for example:
+Most `clang options <http://linux.die.net/man/1/clang>`_ will work, as will `gcc options <https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html#Option-Summary>`_, for example:
 
   --help                   Display this information
   --version                Display compiler version information
+
+To see the full list of clang options supported on the version of clang used by Emscripten, run ``clang --help``.
 
 Options that are modified or new in *emcc* are listed below:
 
