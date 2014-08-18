@@ -16,7 +16,8 @@ var LibraryOpenAL = {
 
     updateSources: function updateSources(context) {
       for (var i = 0; i < context.src.length; i++) {
-        AL.updateSource(context.src[i]);
+        var src = context.src[i];
+        if (src) AL.updateSource(src);
       }
     },
 
