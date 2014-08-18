@@ -3978,9 +3978,9 @@ main(const int argc, const char * const * const argv)
         Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts).communicate()
         sizes[i] = get_size('a' + str(i) + '.bc')
       print '  ', sizes
-      assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info'
-      assert sizes['g'] == sizes[4], '-g or -g4 means llvm debug info'
-      assert sizes['_'] < sizes['g'], 'llvm debug info has positive size'
+      assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info ' + str(sizes)
+      assert sizes['g'] == sizes[4], '-g or -g4 means llvm debug info ' + str(sizes)
+      assert sizes['_'] < sizes['g'], 'llvm debug info has positive size ' + str(sizes)
     test([])
     test(['-O1'])
 
