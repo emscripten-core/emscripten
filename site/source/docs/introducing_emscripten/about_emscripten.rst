@@ -1,8 +1,8 @@
 .. _about-emscripten:
 
-==========================
-About Emscripten
-==========================
+======================================
+About Emscripten (ready-for-review)
+======================================
 
 Emscripten is an :ref:`Open Source <emscripten-license>` LLVM to JavaScript compiler. Using Emscripten you can:
 

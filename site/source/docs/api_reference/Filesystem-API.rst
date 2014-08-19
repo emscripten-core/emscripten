@@ -62,11 +62,11 @@ This is provided to overcome the limitation that Browsers do not offer synchrono
 Devices
 =======
 
-Emscripten supports registering arbitrary device drivers composed of a device id and a set of unique stream callbacks. Once a driver has been registered with :js:func:`FS.registerDevice`, a device node (acting as an interface between the device and the file system) can be created to reference it with :js:func:`FS.mkdev`. 
+Emscripten supports registering arbitrary device drivers composed of a device id and a set of device-specific stream callbacks. Once a driver has been registered with :js:func:`FS.registerDevice`, a device node can be created to reference it (using :js:func:`FS.mkdev`).
 
-Any stream referencing the new node will inherit the stream callbacks registered for the device, making all of the high-level FS operations transparently interact with the device.
+The device node acts as an interface between the device and the file system. Any stream referencing the new node will inherit the stream callbacks registered for the device, making all of the high-level FS operations transparently interact with the device.
 
-
+.. note:: Every devices is different and unique. While common file operations like ``open``, ``close``, ``read``, ``write``, are typically supported (and inherited by file streams to provide a layer of abstraction for the equivalent *libc* functions to call), each device should implement whatever callbacks it needs based on its unique characteristics.
 
 .. js:function:: FS.makedev(ma, mi)
 
@@ -79,12 +79,12 @@ Any stream referencing the new node will inherit the stream callbacks registered
 
 .. js:function:: FS.registerDevice(dev, ops)
 
-	Registers a device driver for the specified id / callbacks.
+	Registers the specified device driver with a set of callbacks.
 	
-	:param dev: The specific device, created using :js:func:`makedev`.
-	:param object ops: **HamishW** What values can these take. I believe from above "a set of unique stream callbacks. What does that mean?
+	:param dev: The specific device driver id, created using :js:func:`makedev`.
+	:param object ops: The set of callbacks required by the device. For an example, see the `NODEFS default callbacks <https://github.com/kripken/emscripten/blob/master/src/library_nodefs.js#L213)>`_.
 
-	
+
 
 Setting up standard I/O devices
 ================================
@@ -120,9 +120,17 @@ File system API
 	Mounts the FS object specified by ``type`` to the directory specified by ``mountpoint``. The ``opts`` objects is specific to each file system type.
 
 	:param type: The :ref:`file system type <filesystem-api-filesystems>`: ``MEMFS``, ``NODEFS``, or ``IDBFS``.
-	:param object opts: **HamishW** What are the options. I can see { root: '.' } in the source. 
-	:param string mountpoint: The directory where the file system is to be mounted. **HamishW** What is this relative to? I guess on MEMFS this is virtual file system with root at your current directory at build time? I guess on other systems it is the full path with drive on the local file system?
+	:param object opts: A generic settings object used by the underlying file system. 
+	
+		``NODFES`` uses the `root` parameter to map the Emscripten directory to physical directory. For example, to mount the current folder as a NODEFS instance: 
+	
+			::
+		
+				FS.mkdir('/working');
+				FS.mount(NODEFS, { root: '.' }, '/working');
 
+	:param string mountpoint: A path to an existing local Emscripten directory where the file system is to be mounted. It can be either an absolute path, or something relative to the current directory.
+	
 
 .. js:function:: FS.unmount(mountpoint)
 
@@ -161,7 +169,7 @@ File system API
 	A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/kripken/emscripten/blob/master/tests/fs/test_idbfs_sync.c>`_.
 
 	:param bool populate: ``true`` to initialize Emscripten's file system data with the data from the file system's persistent source, and ``false`` to save Emscripten`s file system data to the file system's persistent source.
-	:param callback: **HamishW** When is this called - on completion? Is there anything specific the callback needs to do?
+	:param callback: A notification callback function that is invoked on completion of the synchronization.
 
 
 .. js:function:: FS.mkdir(path, mode)
@@ -366,7 +374,7 @@ File system API
 
 	Change the ownership of the specified file to the given user or group id.
 	
-	**HamishW** Should we have note here saying that on broweser ownership is automatically granted to the caller, so that this command is ignored?
+	.. note:: |note-completeness|
 
 	:param string path: Path of the target file.
 	:param int uid: The id of the user to take ownership of the file.
@@ -377,6 +385,8 @@ File system API
 .. js:function:: FS.lchown(path, uid, gid)
 
 	Identical to Identical to :js:func:`FS.chown`. However, if path is a symbolic link then the properties will be set on the link itself, not the file that it links to.
+	
+	.. note:: |note-completeness|
 
 	:param string path: Path of the target file.
 	:param int uid: The id of the user to take ownership of the file.
@@ -387,6 +397,8 @@ File system API
 .. js:function:: FS.fchown(fd, uid, gid)
 
 	Identical to :js:func:`FS.chown`. However, a raw file descriptor is supplied as ``fd``.
+	
+	.. note:: |note-completeness|
 
 	:param int fd: Descriptor of target file.
 	:param int uid: The id of the user to take ownership of the file.
@@ -397,7 +409,6 @@ File system API
 .. js:function:: FS.truncate(path, len)
 
 	Truncates a file to the specified length. For example:
-
 
 	.. code:: c
 
@@ -716,3 +727,9 @@ Paths
 	
 	:param node: The current node.
 	:returns: The absolute path to ``node``.
+
+
+
+.. COMMENT (not rendered): Section below is automated copy and replace text. This is useful where we have boilerplate text.
+	
+.. |note-completeness| replace:: This call exists to provide a more "complete" API mapping for ported code. Values set are effectively ignored.
