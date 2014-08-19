@@ -269,6 +269,8 @@ SIMD.float32x4.shuffleMix = function(t1, t2, mask) {
   * x replaced with {x}.
   */
 SIMD.float32x4.withX = function(t, x) {
+  if (! (t instanceof SIMD.float32x4))
+    throw ("t is not an instance of float32x4.");
   return SIMD.float32x4(x, t.y, t.z, t.w);
 }
 
@@ -278,6 +280,8 @@ SIMD.float32x4.withX = function(t, x) {
   * y replaced with {y}.
   */
 SIMD.float32x4.withY = function(t, y) {
+  if (! (t instanceof SIMD.float32x4))
+    throw ("t is not an instance of float32x4.");
   return SIMD.float32x4(t.x, y, t.z, t.w);
 }
 
@@ -287,6 +291,8 @@ SIMD.float32x4.withY = function(t, y) {
   * z replaced with {z}.
   */
 SIMD.float32x4.withZ = function(t, z) {
+  if (! (t instanceof SIMD.float32x4))
+    throw ("t is not an instance of float32x4.");
   return SIMD.float32x4(t.x, t.y, z, t.w);
 }
 
@@ -296,6 +302,8 @@ SIMD.float32x4.withZ = function(t, z) {
   * w replaced with {w}.
   */
 SIMD.float32x4.withW = function(t, w) {
+  if (! (t instanceof SIMD.float32x4))
+    throw ("t is not an instance of float32x4.");
   return SIMD.float32x4(t.x, t.y, t.z, w);
 }
 
@@ -562,6 +570,8 @@ SIMD.int32x4.select = function(t, trueValue, falseValue) {
   * x lane replaced with {x}.
   */
 SIMD.int32x4.withX = function(t, x) {
+  if (! (t instanceof SIMD.int32x4))
+    throw ("t is not an instance of int32x4.");
   return SIMD.int32x4(x, t.y, t.z, t.w);
 }
 
@@ -572,6 +582,8 @@ SIMD.int32x4.withX = function(t, x) {
   * y lane replaced with {y}.
   */
 SIMD.int32x4.withY = function(t, y) {
+  if (! (t instanceof SIMD.int32x4))
+    throw ("t is not an instance of int32x4.");
   return SIMD.int32x4(t.x, y, t.z, t.w);
 }
 
@@ -582,6 +594,8 @@ SIMD.int32x4.withY = function(t, y) {
   * z lane replaced with {z}.
   */
 SIMD.int32x4.withZ = function(t, z) {
+  if (! (t instanceof SIMD.int32x4))
+    throw ("t is not an instance of int32x4.");
   return SIMD.int32x4(t.x, t.y, z, t.w);
 }
 
@@ -591,6 +605,8 @@ SIMD.int32x4.withZ = function(t, z) {
   * w lane replaced with {w}.
   */
 SIMD.int32x4.withW = function(t, w) {
+  if (! (t instanceof SIMD.int32x4))
+    throw ("t is not an instance of int32x4.");
   return SIMD.int32x4(t.x, t.y, t.z, w);
 }
 
