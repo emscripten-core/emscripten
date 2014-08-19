@@ -4287,6 +4287,7 @@ def process(filename):
     self.do_run(src, '4\n3\n-1\n')
 
   def test_readdir(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
     self.do_run(src, 'SIGILL: Illegal instruction\nsuccess', force_c=True)
 
