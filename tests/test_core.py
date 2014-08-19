@@ -6925,6 +6925,25 @@ int main(int argc, char **argv) {
     Settings.ASYNCIFY = 1;
     self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*');
 
+  def test_cxx_self_assign(self):
+    # See https://github.com/kripken/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
+    open('src.cpp', 'w').write(r'''
+      #include <map>
+      #include <stdio.h>
+
+      int main() {
+        std::map<int, int> m;
+        m[0] = 1;
+        m = m;
+        // size should still be one after self assignment
+        if (m.size() == 1) {
+          printf("ok.\n");
+        }
+      }
+      ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok.', run_js('a.out.js', args=['C']))
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
