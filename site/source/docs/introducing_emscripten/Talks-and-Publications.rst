@@ -1,29 +1,23 @@
 .. _Talks-and-Publications:
 
-===========================================
-Talks and Publications (ready-for-review)
-===========================================
+======================
+Talks and Publications
+======================
 
 Presentations
 =============
 
 - Slides from GDC 2014: `Getting started with asm.js and Emscripten <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/>`_ (`kripken <https://github.com/kripken>`_, `lwagner <https://blog.mozilla.org/luke/>`_)
-	
-- Slides from Strange Loop 2013: `Native speed on the web, JavaScript and asm.js <http://kripken.github.io/mloc_emscripten_talk/sloop.html#/>`_ (`kripken <https://github.com/kripken>`_)
-	
-- Slides from GDC Europe 2013: `C++ on the Web <http://www.slideshare.net/andreweissflog3/gdce2013-cpp-ontheweb>`_ (`floh <https://github.com/floooh>`_)
-	
+- Slides from Strange Loop 2013: `Native speed on the web, JavaScript and asm.js <http://kripken.github.io/mloc_emscripten_talk/sloop.html#/>`_ (`kripken <https://github.com/kripken>`_)	
+- Slides from GDC Europe 2013: `C++ on the Web <http://www.slideshare.net/andreweissflog3/gdce2013-cpp-ontheweb>`_ (`floh <https://github.com/floooh>`_)	
 - Slides from QCon 2013: `Connecting languages together <http://kripken.github.io/mloc_emscripten_talk/qcon.html>`_ (`kripken <https://github.com/kripken>`_)
-	
-- Slides from Quo Vadis 2013: `C++ on the Web: Run your big 3D game in the browser! <http://de.slideshare.net/andreweissflog3/quovadis2013-cpp-ontheweb>`_ (`floh <https://github.com/floooh>`_)
-	
+- Slides from Quo Vadis 2013: `C++ on the Web: Run your big 3D game in the browser! <http://de.slideshare.net/andreweissflog3/quovadis2013-cpp-ontheweb>`_ (`floh <https://github.com/floooh>`_)	
 - Slides from GDC 2013:
 
 	- `Compiling C/C++ to JavaScript <http://kripken.github.io/mloc_emscripten_talk/gindex.html#/>`_ (`kripken <https://github.com/kripken>`_)
 	- `Multiplatform C++ on the Web with Emscripten <http://www.slideshare.net/chadaustin/multiplatform-c-on-the-web-with-emscripten-18258801>`_ (`chadaustin <https://github.com/chadaustin>`_)	
 
 - Slides from mloc.js: `Big Web App? Compile it! <http://kripken.github.io/mloc_emscripten_talk/index#/>`_ (`kripken <https://github.com/kripken>`_) 
-
 - JSConf.eu 2011: `Emscripten <http://www.youtube.com/watch?v=mB3xPqF8VnQ>`_ (`kripken <https://github.com/kripken>`_)
 
 
