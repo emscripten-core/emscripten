@@ -311,17 +311,8 @@ Using Emscripten
 -  **Q.** How can my compiled program access files?
 
    **A.** Emscripten uses a virtual file system that may be preloaded
-   with data or linked to URLs for lazy loading. See the [[Filesystem
-   Guide]] for more details.
-
--  **Q.** I get an error trying to access ``__tm_struct_layout`` (or
-   another C structure used in libc).
-
-   **A.** You may need to compile the source code with ``emcc -g``.
-   ``-g`` tells the compiler to include debug info, which includes
-   metadata about structures which is used to access those structures
-   from Emscripten's JS libc implementation. (Adding ``-g`` is a
-   workaround until we have a proper fix for this.)
+   with data or linked to URLs for lazy loading. See the
+   :ref:`Filesystem-Guide` for more details.
 
 -  **Q.** Functions in my C/C++ source code vanish when I compile to
    JavaScript, and/or I get ``No functions to process``..?

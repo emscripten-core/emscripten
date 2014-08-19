@@ -56,7 +56,7 @@ Options that are modified or new in *emcc* are listed below:
 		- For details on the affects of different opt levels, see apply_opt_level() in **tools/shared.py** and also **src/settings.js**.
 		- (to re-enable C++ exception catching, use ``-s DISABLE_EXCEPTION_CATCHING=0`` )
 		
-   * - ``O2``
+   * - ``-O2``
      - As -O1, plus various js-level optimizations and LLVM -O3 optimizations. This is the recommended setting for a release build: slower compilation time in return for the smallest and fastest output.
    * - ``-Os``
      - Like -O2 with extra optimizations for size.                   
