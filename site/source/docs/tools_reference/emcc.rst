@@ -61,7 +61,7 @@ Options that are modified or new in *emcc* are listed below:
    * - ``-Oz``
      - Like -Os but reduces code size further.
    * - ``-O3``
-     - Like -O2 plus additional JS optimizations that can take a significant amount of compilation time and/or are relatively new. Note that differs from -O2 only during the bitcode to JS (final link + JS generation) stage, as it is JS-specific, so you can run -Os on your source files for example, and -O3 during JS generation if you want. For tips on optimizing your code, see https://github.com/kripken/emscripten/wiki/Optimizing-Code 
+     - Like -O2 plus additional JS optimizations that can take a significant amount of compilation time and/or are relatively new. Note that differs from -O2 only during the bitcode to JS (final link + JS generation) stage, as it is JS-specific, so you can run -Os on your source files for example, and -O3 during JS generation if you want. For tips on optimizing your code, see :ref:`Optimizing-Code`.
    * - ``-s OPTION=VALUE``
      - JavaScript code generation option passed into the Emscripten compiler. For the available options, see **src/settings.js**. Note that for options that are lists, you need quotation marks in most shells, for example 
 	 

@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. warning:: This site is still under construction. We've imported many of the topics from the `wiki <https://github.com/kripken/emscripten/wiki>`_, but many have still not been checked and are subject to change. What is great though, is that we've already create a lot of :doc:`/docs/api_reference/index` and cross-linked it in the imported pages. Over the next few days wiki pages that have been imported will be deleted from the wiki, and this document will become the "master copy".
+.. warning:: This site is still under construction. 
    
 .. raw:: html
    :file: home_page_layout.html

@@ -188,6 +188,8 @@ Note that **Node.js** cannot run all of the tests in the suite; if you care abou
 
 ----
 
+.. _running-emscripten-benchmarks:
+
 To run the Emscripten benchmark tests, enter the following command: ::
 
     python tests/runner.py benchmark
