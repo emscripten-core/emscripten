@@ -667,6 +667,13 @@ module({
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
         });
 
+        test("throws appropriate type error when attempting to coerce null to int", function() {
+            var e = assert.throws(TypeError, function() {
+                cm.int_to_string(null);
+            });
+            assert.equal('Cannot convert "null" to int', e.message);
+        });
+
         test("access multiple class ctors", function() {
             var a = new cm.MultipleCtors(10);
             assert.equal(a.WhichCtorCalled(), 1);
