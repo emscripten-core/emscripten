@@ -73,6 +73,11 @@ General
    can run gzip on your webserver, so the amount actually transferred
    over the network is much smaller than even that.
 
+   Note also that Emscripten must ship all the necessary library code
+   together with your application (like the parts of libc that your
+   program uses). This can increase code size, but it is mostly noticeable
+   only on small programs.
+
 -  **Q.** Where does Emscripten itself run?
 
    **A.** Emscripten is known to work on Windows, OS X and Linux. (There
@@ -84,24 +89,10 @@ General
 
 -  **Q.** What APIs/libraries does Emscripten support?
 
-   **A.** libc and stdlibc++ support is very good. SDL support is
+   **A.** The C and C++ standard libraries are supported. SDL support is
    sufficient to run quite a lot of code. OpenGL support is in very good
    shape for OpenGL ES 2.0-type code, and even some other types, see
    :ref:`OpenGL-support`.
-
--  **Q.** Is this really a compiler? Isn't it better described as a
-   translator?
-
-   **A.** Well, a *compiler* is usually defined as a program that
-   transforms source code written in one programming language into
-   another, which is what Emscripten does. A *translator* is a more
-   specific term that is usually used for compilation between high-level
-   languages, which isn't exactly applicable. On the other hand a
-   *decompiler* is something that translates a low-level language to a
-   higher-level one, so that might technically be a valid description,
-   but it sounds odd since we aren't going back to the original language
-   we compiled from (C/C++, most likely) but into something else
-   (JavaScript).
 
 -  **Q.** The name of the project sounds weird to me.
 
