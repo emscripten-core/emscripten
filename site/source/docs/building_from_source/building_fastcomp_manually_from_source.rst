@@ -58,20 +58,22 @@ To build the Fastcomp code from source:
 		mkdir build
 		cd build
 	
--  Configure the build using *either* the *configure* script or *cmake* (configure is located in the parent directory):
-	
-	- Using *configure*: 
-		
-	::
-	
-		../configure --enable-optimized --disable-assertions --enable-targets=host,js
+-  Configure the build using *either* *cmake* or the *configure* script:
 			
-	-  Using *CMake*: 
+	-  Using *cmake*: 
 
-	::
+		::
+				
+			cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF -DCLANG_INCLUDE_TESTS=OFF
 			
-		cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF -DCLANG_INCLUDE_TESTS=OFF
-	   
+		.. note:: On Windows add the ``-G "Visual Studio 10 Win64"`` directive to build using Visual Studio (Visual Studio 2011 and 2012 do NOT work).
+
+	- Using *configure* (Linux/Mac only): 
+		
+		::
+		
+			../configure --enable-optimized --disable-assertions --enable-targets=host,js
+			
 -  Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
 
 	- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
@@ -127,14 +129,6 @@ Version numbers are typically ``X.Y.Z`` where
 - ``Y`` is a release number (changes each time we merge incoming to master, so these numbers indicate points where all tests passed), and
 - ``Z`` is minor update that is just a sync point between the repos, or is needed when libc changes in emscripten (version changes clear the cache).
 
-Additional compilation notes
-----------------------------
-
--  Windows: To build 64 bit using *CMmake* and *Visual Studio*, use the ``-G "Visual Studio 10 Win64"`` directive. 
-
-	.. note:: Visual Studio 2011 and 2012 don't work yet.
-	
--  Windows: To build using *MinGW* replace the ``-G`` directive above with ``-G "MinGW Makefiles"``, and run *mingw32-make* to build (not tested yet).
 
 
 Backend code structure

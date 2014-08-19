@@ -38,7 +38,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 	- For example `node-v0.10.17-x64.msi <http://nodejs.org/dist/v0.10.17/x64/node-v0.10.17-x64.msi>`_ (64-bit version) or `node-v0.10.17-x86.msi <http://nodejs.org/dist/v0.10.17/node-v0.10.17-x86.msi>`_ (32-bit version).
 
 
-#. Install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_.
+#. Install `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (and possibly `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
 
 #. Install `cmake <http://www.cmake.org/cmake/resources/software.html>`_.
 

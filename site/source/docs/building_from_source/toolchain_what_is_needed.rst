@@ -38,12 +38,24 @@ A complete Emscripten environment requires the following tools. First test to se
 Compiler toolchain
 ------------------
 
-When building Emscripten from source code, whether "manually" or using the SDK, you will need a *compiler toolchain* (including *gcc*, *g++*, *cmake*, etc.):
+When building Emscripten from source code, whether "manually" or using the SDK, you will need a *compiler toolchain*:
 
-- Windows: Install `gcc 4.6 <http://sourceforge.net/projects/mingw-w64/files/>`_ and  `cmake <http://www.cmake.org/cmake/resources/software.html>`_ (cmake-3.0.1-win32-x86.exe)
+- Windows: Install `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ and `cmake <http://www.cmake.org/cmake/resources/software.html>`_. You may also need `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
 
-	.. note:: To use an IDE, or if you want to :ref:`build from source using the SDK <building-emscripten-from-source-using-the-sdk>` on **Windows**, you will also need `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (and possibly `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
+	.. note:: 
+	
+		- Visual Studio 2010 is required! Visual Studio 2012 and Visual Studio 2013 do not correctly compile :ref:`Fastcomp <LLVM-Backend>`. This issue will be fixed (eventually) when *Fastcomp* is migrated to use a LLVM 3.4 or later.
+		- SDK users can also install and activate the MinGW compiler toolchain in order to build their own projects:
 
+			::
+			
+				emsdk install mingw-4.6.2-32bit
+				emsdk activate mingw-4.6.2-32bit
+				
+			While this toolchain can in theory also be used to build :ref:`Fastcomp <LLVM-Backend>`, Visual Studio 2010 is recommended (by the LLVM development team).
+
+	.. todo:: Just keeping link here to see if needed. Delete if follow up indicates cmake not needed: 
+		
 - Linux: Install *gcc* and *cmake*:
 	
 	::

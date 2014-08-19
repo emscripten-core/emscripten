@@ -22,8 +22,6 @@ First :ref:`download and install the SDK <sdk-download-and-install>`. The SDK au
 
 Then :ref:`download and install the compiler toolchain <compiler-toolchain>` for your platform.
 
-.. note:: **Windows**: You will need `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (and `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
-
 
 .. _building-emscripten-from-the-main-repositories-using-the-sdk:
 
@@ -125,6 +123,8 @@ After installing the main repositories:
 		::
 				
 			cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF -DCLANG_INCLUDE_TESTS=OFF
+			
+		.. note:: On Windows add the ``-G "Visual Studio 10 Win64"`` directive to build using Visual Studio (Visual Studio 2011 and 2012 do NOT work).
 	   
 	#. Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
 
