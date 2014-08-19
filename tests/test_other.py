@@ -31,15 +31,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
-      self.assertContained('''%s [options] file...
-
-Most normal gcc/g++ options will work, for example:
-  --help                   Display this information
-  --version                Display compiler version information
-
-Options that are modified or new in %s include:
-
-  -O0                      No optimizations (default)''' % (shortcompiler, shortcompiler), output[0].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('''  --help                   Display this information
+  --version                Display compiler version information''', output[0])
 
       # emcc src.cpp ==> writes a.out.js
       self.clear()
