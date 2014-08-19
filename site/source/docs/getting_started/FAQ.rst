@@ -99,7 +99,7 @@ FAQ (wiki-import)
 
 -  **Q.** How do I link against system libraries like SDL, boost, etc.?
 
-   **A.** System libraries that are included with emscripten - libc, libc++ (C++ STL) and SDL - are automatically included when you compile (and just the necessary parts of them). You don't even need ``-lSDL``, unlike other compilers (but ``-lSDL`` won't hurt either).
+   **A.** System libraries that are included with emscripten - libc, libc++ (C++ standard library) and SDL - are automatically included when you compile (and just the necessary parts of them). You don't even need ``-lSDL``, unlike other compilers (but ``-lSDL`` won't hurt either).
 
    Other libraries not included with emscripten, like boost, you would need to compile yourself and link with your program, just as if they were a module in your project. For example, see how `BananaBread links in libz <https://github.com/kripken/BananaBread/blob/master/cube2/src/web/Makefile>`_.
    (Note that in the specific case of boost, if you only need the boost headers, you don't need to compile anything.)
@@ -109,10 +109,6 @@ FAQ (wiki-import)
 -  **Q.** How can my compiled program access files?
 
    **A.** Emscripten uses a virtual file system that may be preloaded with data or linked to URLs for lazy loading. See the :ref:`Filesystem-Guide` for more details.
-
--  **Q.** I get an error trying to access ``__tm_struct_layout`` (or another C structure used in libc).
-
-   **A.** You may need to compile the source code with ``emcc -g``. ``-g`` tells the compiler to include debug info, which includes metadata about structures which is used to access those structures from Emscripten's JS libc implementation. (Adding ``-g`` is a workaround until we have a proper fix for this.)
 
 -  **Q.** Functions in my C/C++ source code vanish when I compile to JavaScript, and/or I get ``No functions to process``..?
 
