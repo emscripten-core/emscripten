@@ -11,7 +11,7 @@ Emscripten Compiler Frontend (emcc) (under-construction)
 Purpose
 ============================================
 
-The Emscripten Compiler Frontend (``emcc``) is used to call the Emscripten compiler from the command line. It is effectively a drop-in replacement for a standard compiler like *gcc*.
+The Emscripten Compiler Frontend (``emcc``) is used to call the Emscripten compiler from the command line. It is effectively a drop-in replacement for a standard compiler like *gcc* or *clang*.
 
 
 Command line syntax

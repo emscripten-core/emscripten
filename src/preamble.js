@@ -1,11 +1,12 @@
-// === Auto-generated preamble library stuff ===
+// === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in: 
-//    /emscripten/site/source/docs/api_reference/preamble.js.rst
-// A prebuilt version of the documentation is available at: 
-//    /emscripten/site/build/html/docs/api_reference/preamble.js.html 
-//  
-// The code can be used permissively under the MIT license.
+//    site/source/docs/api_reference/preamble.js.rst
+// A prebuilt local version of the documentation is available at: 
+//    site/build/text/docs/api_reference/preamble.js.txt
+// You can also build docs locally as HTML or other formats in site/
+// An online HTML version (which may be of a different version of Emscripten)
+//    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
 //========================================
 // Runtime code shared with compiler
