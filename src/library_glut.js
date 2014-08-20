@@ -483,7 +483,7 @@ var LibraryGLUT = {
         break;
       case 0x0065: /* GLUT_CURSOR_NONE */
         cursorStyle = 'none';
-	break;
+        break;
       default:
         break;
     }
