@@ -63,7 +63,7 @@ Emscripten has a comprehensive test suite which may be used to further validate 
 Troubleshooting
 ===============
 
-First run ``./emcc -v`` and examine the output to find missing components. You can also try ``./emcc --clear-cache`` to empty the compiler's internal cache and reset it to a known good state. 
+First run ``./emcc -v`` and examine the output to find missing components. You can also try ``./emcc --clear-cache`` to empty the :ref:`compiler's internal cache <emcc-clear-cache>` and reset it to a known good state. 
 
 .. _fixing-missing-components-emcc:
 
