@@ -152,6 +152,53 @@ var voidPointerUser = new TheModule.VoidPointerUser();
 voidPointerUser.SetVoidPointer(3);
 TheModule.print('void * ' + voidPointerUser.GetVoidPointer());
 
+// Array tests
+
+var arrayClass = new TheModule.ArrayClass();
+TheModule.print('int_array[0] == ' + arrayClass.get_int_array(0));
+TheModule.print('int_array[7] == ' + arrayClass.get_int_array(7));
+arrayClass.set_int_array(0, 42);
+arrayClass.set_int_array(7, 43);
+TheModule.print('int_array[0] == ' + arrayClass.get_int_array(0));
+TheModule.print('int_array[7] == ' + arrayClass.get_int_array(7));
+
+try {
+  arrayClass.set_int_array(-1, struct);
+} catch (e) {
+  TheModule.print('idx -1: ' + e);
+}
+
+try {
+  arrayClass.set_int_array(8, struct);
+} catch (e) {
+  TheModule.print('idx 8: ' + e);
+}
+
+TheModule.print('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
+TheModule.print('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
+TheModule.print('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
+TheModule.print('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
+
+// Verify that bounds checking is *not* enabled when not asked for.
+// This actually causes an illegal memory access, but as it's only a read, and the return
+// value is not used, it shouldn't cause any problems in practice.
+arrayClass.get_struct_array(8);
+
+var struct = new TheModule.StructInArray(13, 17);
+arrayClass.set_struct_array(0, struct);
+struct = new TheModule.StructInArray(14, 18);
+arrayClass.set_struct_array(7, struct);
+
+TheModule.print('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
+TheModule.print('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
+TheModule.print('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
+TheModule.print('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
+
+struct = new TheModule.StructInArray(100, 101);
+arrayClass.set_struct_ptr_array(0, struct);
+TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
+TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
+
 //
 
 TheModule.print('\ndone.')

@@ -117,3 +117,24 @@ class TypeTestClass {
   unsigned long ReturnUnsignedLongMethod() { return (2<<31)-1; }
   void AcceptUnsignedLongMethod(unsigned long x) { printf("unsigned long int: %u\n", x); }
 };
+
+struct StructInArray {
+  StructInArray() : attr1(0), attr2(0) {}
+  StructInArray(int _attr1, int _attr2) : attr1(_attr1), attr2(_attr2) {}
+  int attr1;
+  int attr2;
+};
+
+class ArrayClass {
+ public:
+  ArrayClass() {
+    for (int i = 0; i < 8; i++) {
+      int_array[i] = i;
+      struct_array[i] = StructInArray(i, -i);
+      struct_ptr_array[i] = NULL;
+    }
+  }
+  int int_array[8];
+  StructInArray struct_array[8];
+  StructInArray* struct_ptr_array[8];
+};
