@@ -375,27 +375,10 @@ namespace emscripten {
             }
         };
 
-        template<typename... T>
-        struct SignatureString;
-
-        template<>
-        struct SignatureString<> {
-            char c = 0;
-        };
-
-        template<typename First, typename... Rest>
-        struct SignatureString<First, Rest...> {
-            constexpr SignatureString()
-                : c(SignatureCode<First>::get())
-            {}
-            char c;
-            SignatureString<Rest...> rest;
-        };
-
         template<typename Return, typename... Args>
         const char* getSignature(Return (*)(Args...)) {
-            static constexpr SignatureString<Return, Args...> sig;
-            return &sig.c;
+            static constexpr char str[] = { SignatureCode<Return>::get(), SignatureCode<Args>::get()..., 0 };
+            return str;
         }
     }
 
