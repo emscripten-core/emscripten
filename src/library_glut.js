@@ -435,11 +435,26 @@ var LibraryGLUT = {
   glutSetCursor: function(cursor) {
     var cursorStyle = 'auto';
     switch(cursor) {
+      case 0x0000: /* GLUT_CURSOR_RIGHT_ARROW */
+        // No equivalent css cursor style, fallback to 'auto'
+        break;
+      case 0x0001: /* GLUT_CURSOR_LEFT_ARROW */
+        // No equivalent css cursor style, fallback to 'auto'
+        break;
       case 0x0002: /* GLUT_CURSOR_INFO */
         cursorStyle = 'pointer';
         break;
+      case 0x0003: /* GLUT_CURSOR_DESTROY */
+        // No equivalent css cursor style, fallback to 'auto'
+        break;
       case 0x0004: /* GLUT_CURSOR_HELP */
         cursorStyle = 'help';
+        break;
+      case 0x0005: /* GLUT_CURSOR_CYCLE */
+        // No equivalent css cursor style, fallback to 'auto'
+        break;
+      case 0x0006: /* GLUT_CURSOR_SPRAY */
+        // No equivalent css cursor style, fallback to 'auto'
         break;
       case 0x0007: /* GLUT_CURSOR_WAIT */
         cursorStyle = 'wait';
@@ -481,11 +496,13 @@ var LibraryGLUT = {
       case 0x0013: /* GLUT_CURSOR_BOTTOM_LEFT_CORNER */
         cursorStyle = 'sw-resize';
         break;
+      case 0x0064: /* GLUT_CURSOR_INHERIT */
+        break;
       case 0x0065: /* GLUT_CURSOR_NONE */
         cursorStyle = 'none';
         break;
       default:
-        break;
+        throw "glutSetCursor: Unknown cursor type: " + cursor;
     }
     Module['canvas'].style.cursor = cursorStyle;
   },
