@@ -31,8 +31,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
-      self.assertContained('''  --help                   Display this information
-  --version                Display compiler version information''', output[0])
+      self.assertContained('Display this information', output[0])
 
       # emcc src.cpp ==> writes a.out.js
       self.clear()
