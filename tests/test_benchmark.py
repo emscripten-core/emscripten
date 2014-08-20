@@ -125,7 +125,8 @@ try:
   default_native = LLVM_3_2
   default_native_name = 'clang-3.2'
 except:
-  print 'LLVM_3_2 not defined, using our LLVM instead (%s)' % LLVM_ROOT
+  if 'benchmark' in str(sys.argv):
+    print 'LLVM_3_2 not defined, using our LLVM instead (%s)' % LLVM_ROOT
   default_native = LLVM_ROOT
   default_native_name = 'clang'
 
