@@ -4,7 +4,7 @@
 Download and install (ready-for-review) 
 ======================================================
 
-.. note:: The *Emscripten SDK* provides the whole Emscripten toolchain (*Clang*, *Python*, *Node.js* and *Visual Studio* integration) in a single easy-to-install package, with integrated support for :ref:`updating to newer SDKs <updating-the-emscripten-sdk>` as they are released.
+**The Emscripten SDK provides the whole Emscripten toolchain (Clang, Python, Node.js and Visual Studio integration) in a single easy-to-install package, with integrated support for** :ref:`updating to newer SDKs <updating-the-emscripten-sdk>` **as they are released.**
 
 .. tip:: If you are :ref:`contributing <contributing>` to Emscripten you should first install the SDK, and then use it to :ref:`build Emscripten from source <building-emscripten-from-source-using-the-sdk>`.
 
