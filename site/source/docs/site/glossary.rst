@@ -11,6 +11,11 @@ Glossary (under-construction)
 		
 	LLVM backend
 		A (*Clang*) compiler backend that convert the LLVM Intermediate Representation (IR) to code for a specified machine or other languages. In the case of Emscripten, the specified target is JavaScript.
+		
+	Minifying
+		**HamishW**
+		
+		
 
 Emscripten tools and dependencies
 =======================================

@@ -10,6 +10,8 @@ Code Generation Modes
 
 One of the reasons for writing Emscripten itself in JavaScript was to be able to easily test different methods of generating code. As a consequence, Emscripten currently supports various code generation modes, each with different features.
 
+.. _typed-arrays:
+
 Typed Arrays
 ------------
 
@@ -20,7 +22,7 @@ There are two modes for typed arrays in Emscripten, 1 and 2. To explain them, fi
 Disabling typed arrays can be done with ``USE_TYPED_ARRAYS=0``. This is safer in the sense that not all browsers support typed arrays. However, typed arrays can be optimized very well in some cases, and can support code that does not have load-store consistency.
 
 Typed Arrays Mode 1
-~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++
 
 With ``USE_TYPED_ARRAYS=1``, two typed arrays will represent memory. One will contain integer values, the other float values. When we write an integer to memory, we write to the first, and when we write a float, we write to the second. (LLVM is typed, so we always know what values we are writing/reading.) Otherwise, this mode is identical to without typed arrays: We still require load-store consistency and so forth.
 
@@ -36,7 +38,7 @@ This mode is generally much faster than mode 0, but often slower then mode 2.
 .. _typed-arrays-mode-2:
 
 Typed Arrays Mode 2
-~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++
 
 This is the default mode.
 

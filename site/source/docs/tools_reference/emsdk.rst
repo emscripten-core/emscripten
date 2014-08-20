@@ -1,22 +1,22 @@
 .. _emsdk:
 
-=====================================================
-Emscripten SDK Manager (emsdk) (ready-for-review)
-=====================================================
+==============================
+Emscripten SDK Manager (emsdk)
+==============================
 
 **The Emscripten SDK management script (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
 
 This document provides the command syntax, and a :ref:`set of guides <emsdk_howto>` explaining how to perform both common and advanced maintenance operations.
 
 Purpose
-============================================
+=======
 
 With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk*, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
 
 
 
 Command line syntax
-============================================
+===================
 
 **./emsdk** [**help** [**--old**] | **list** | **update** | **install** *<tool/sdk>* | **uninstall** *<tool/sdk>* | **activate** *<tool/sdk>*]
 
@@ -47,14 +47,12 @@ Arguments
 
 .. note:: 
 
-	- For Mac OSX the commands are called with  **./emsdk**. On Windows use **emsdk**.
-	- **emcmdprompt.bat** is also displayed as an option in the ``emsdk help``. This is :ref:`not intended <emcmdprompt-command-line-syntax>` to be called through the command line.
-
+	- For Linux and Mac OSX the commands are called with **./emsdk**. On Windows use **emsdk**.
 
 .. _emsdk-specified-tool-sdk:
 
 Tools and SDK targets
-------------------------
+---------------------
 	 
 The ``<tool/sdk>`` given above as a command argument is one of the targets listed using ``./emsdk list`` (or ``./emsdk list --old``). 
 
@@ -119,7 +117,7 @@ Below is a typical **.emscripten** file (created by *emsdk*), taken from a user'
 
 The following topics explain how to perform both common and advanced maintenance operations, ranging from installing the latest SDK through to installing your own fork from Github. 
 
-.. note:: The examples below show the commands for Windows and Linux. The commands are the same on Mac OSX, but you need to replace **emsdk** with **./emsdk**.
+.. note:: The examples below show the commands for Linux and Mac OS X. The commands are the same on Windows, but you need to replace **./emsdk** with **emsdk**.
 
 .. _emsdk-get-latest-sdk:
 
