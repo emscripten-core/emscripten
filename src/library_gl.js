@@ -281,6 +281,7 @@ var LibraryGL = {
     },
 
     computeImageSize: function(width, height, sizePerPixel, alignment) {
+      // FIXME: possible bug with negative x
       function roundedToNextMultipleOf(x, y) {
         return Math.floor((x + y - 1) / y) * y
       }

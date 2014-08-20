@@ -1780,7 +1780,7 @@ var LibrarySDL = {
   },
 
   SDL_GetTicks: function() {
-    return Math.floor(Date.now() - SDL.startTime);
+    return (Date.now() - SDL.startTime)|0;
   },
 
   SDL_PollEvent: function(ptr) {
@@ -2824,12 +2824,12 @@ var LibrarySDL = {
 
   TTF_FontAscent: function(font) {
     var fontData = SDL.fonts[font];
-    return Math.floor(fontData.size*0.98); // XXX
+    return (fontData.size*0.98)|0; // XXX
   },
 
   TTF_FontDescent: function(font) {
     var fontData = SDL.fonts[font];
-    return Math.floor(fontData.size*0.02); // XXX
+    return (fontData.size*0.02)|0; // XXX
   },
 
   TTF_FontHeight: function(font) {

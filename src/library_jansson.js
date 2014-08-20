@@ -278,12 +278,7 @@ var LibraryJansson = {
       if (!node)
         return null;
 
-      // Convert JSON number to an integer
-      // c.f. http://stackoverflow.com/questions/596467/how-do-i-convert-a-float-to-an-int-in-javascript
-      if (node['node']<0)
-        return Math.ceil(node['node']);
-      else
-        return Math.floor(node['node']);
+      return node['node']|0;
     },
 
     json_real_value: function(nodePtr) {
