@@ -189,9 +189,9 @@ var Runtime = {
     return Math.max(Runtime.getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
   },
 
+#if RUNNING_FASTCOMP == 0
   dedup: dedup,
-
-  set: set,
+#endif
 
   STACK_ALIGN: {{{ STACK_ALIGN }}},
 
