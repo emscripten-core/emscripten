@@ -262,19 +262,12 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename Signature>
-    typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn) {
+    Signature* select_overload(Signature* fn) {
         return fn;
     }
 
-    namespace internal {
-        template<typename ClassType, typename Signature>
-        struct MemberFunctionType {
-            typedef Signature (ClassType::*type);
-        };
-    }
-
     template<typename Signature, typename ClassType>
-    typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn)) {
+    auto select_overload(Signature (ClassType::*fn)) -> decltype(fn) {
         return fn;
     }
 
