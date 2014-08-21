@@ -135,6 +135,7 @@ var Runtime = {
     STACKTOP = stackTop;
   },
 
+#if RUNNING_FASTCOMP == 0
   // Imprecise bitops utilities
   or64: function(x, y) {
     var l = (x | 0) | (y | 0);
@@ -151,6 +152,7 @@ var Runtime = {
     var h = (Math.round(x / 4294967296) ^ Math.round(y / 4294967296)) * 4294967296;
     return l + h;
   },
+#endif
 
   //! Returns the size of a type, as C/C++ would have it (in 32-bit), in bytes.
   //! @param type The type, by name.
