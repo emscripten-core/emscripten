@@ -65,23 +65,23 @@ _mm_sub_epi32(__m128i a, __m128i b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_castsi128_ps(__m128i a)
 {
-  return emscripten_int32x4_bitsToFloat32x4(a);
+  return emscripten_float32x4_fromInt32x4Bits(a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cvtepi32_ps(__m128i a)
 {
-  return emscripten_int32x4_toFloat32x4(a);
+  return emscripten_float32x4_fromInt32x4(a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__))
 _mm_castps_si128(__m128 a)
 {
-  return emscripten_float32x4_bitsToInt32x4(a);
+  return emscripten_int32x4_fromFloat32x4Bits(a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__))
 _mm_cvtps_epi32(__m128 a)
 {
-  return emscripten_float32x4_toInt32x4(a);
+  return emscripten_int32x4_fromFloat32x4(a);
 }
