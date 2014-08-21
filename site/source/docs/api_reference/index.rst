@@ -18,6 +18,8 @@ This section lists Emscripten's public API, organised by header file. At very hi
 	
 - **Filesystem-API (library_fs.js)**: *APIs for (primarily) synchronous File I/O.*
 
+- **Module**: **User-populated global JavaScript object, with attributes that Emscripten-generated code calls at various points in its execution.**
+
 - **val.h**: *Embind APIs for* **HamishW** - add description
 
 - **bind.h**: *Embind APIs for* **HamishW**  - add description
@@ -34,6 +36,7 @@ This section lists Emscripten's public API, organised by header file. At very hi
    html5.h
    preamble.js
    Filesystem-API
+   module
    val.h
    bind.h
    advanced-apis
