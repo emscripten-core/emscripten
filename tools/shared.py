@@ -273,7 +273,8 @@ actual_clang_version = None
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    actual_clang_version = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0].split(' ')[2]
+    ver = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0].split(' ')
+    actual_clang_version = ver[ver.index('version')+1]
   return actual_clang_version
 
 def check_clang_version():
