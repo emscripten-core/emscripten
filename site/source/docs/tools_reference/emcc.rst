@@ -277,7 +277,7 @@ Options that are modified or new in *emcc* are listed below:
 		- ``0``: Do not emit a separate memory initialization file (default). Instead keep the static initialization inside the generated JavaScript as text.
 		- ``1``: Emit a separate memory initialization file in binary format. This is more efficient than storing it as text inside JavaScript, but does mean you have another file to publish. The binary file will also be loaded asynchronously, which means ``main()`` will not be called until the file is downloaded and applied; you cannot call any C functions until it arrives. 
 		
-			.. note:: The :ref:`safest way <faq-when-safe-to-call-compiled-functions>` to ensure that it is safe to call C functions (the initialisation file has loaded) is to call a notifier function from ``main()``. You might also call ``addOnPreMain`` from a :js:attr:`Module.preRun`.
+			.. note:: The :ref:`safest way <faq-when-safe-to-call-compiled-functions>` to ensure that it is safe to call C functions (the initialisation file has loaded) is to call a notifier function from ``main()``. 
 	
 ``-Wno-warn-absolute-paths``
 	Suppress warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to hide the warnings and acknowledge that the explicit use of absolute paths is intentional.
@@ -304,6 +304,7 @@ Options that are modified or new in *emcc* are listed below:
 ``--valid_abspath path``
 	Whitelist an absolute path to prevent warnings about absolute include paths.
 	 
+.. _emcc-o-target:
 
 ``-o <target>``
 	The ``target`` file name extension defines what type of output be generated:

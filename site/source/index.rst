@@ -35,15 +35,3 @@ News
 	docs/site/about
 
    
- 
-
-
-.. COMMENTS Scratchpad
-	This DOC Contents
-	.. contents:: Table of Contents
-	:ref:`genindex` **HamishW** This needs to be added to the sidebar
-	This page not yet designed. Thought is to include:
-		* Introduction
-		* Quickstart Signpost - with prominent link to "Getting Started" Tutorial
-		* Signposts for: News, Top Demos, Contributing, Github Project
-		* (Possibly) Signposts to: Twitter feed, Github issues (new, resolved)
