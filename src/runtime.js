@@ -208,6 +208,7 @@ var Runtime = {
     return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
   },
 
+#if RUNNING_FASTCOMP == 0
   // Calculate aligned size, just like C structs should be. TODO: Consider
   // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
   // which would remove much of the complexity here.
@@ -340,6 +341,7 @@ var Runtime = {
     }
     return ret;
   },
+#endif
 
   dynCall: function(sig, ptr, args) {
     if (args && args.length) {
