@@ -539,6 +539,7 @@ var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Fun
                               // privileged firefox app, etc.)
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
+var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend
 
 var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
 var COMPILER_FASTPATHS = 1; // use fast-paths to speed up compilation
