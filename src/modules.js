@@ -279,7 +279,7 @@ var Functions = {
     for (var i = 0; i < argTypes.length; i++) {
       var type = argTypes[i];
       if (!type) break; // varargs
-      if (type in Runtime.FLOAT_TYPES) {
+      if (type in Compiletime.FLOAT_TYPES) {
         sig += Functions.getSignatureLetter(type);
       } else {
         var chunks = getNumIntChunks(type);

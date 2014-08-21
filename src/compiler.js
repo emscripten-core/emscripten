@@ -308,7 +308,7 @@ function compile(raw) {
 
 B = new Benchmarker();
 
-try {
+//try {
   if (ll_file) {
     if (phase === 'glue') {
       compile(';');
@@ -318,6 +318,7 @@ try {
       compile(ll_file); // we are given raw .ll
     }
   }
+/*
 } catch(err) {
   if (err.indexOf('Aborting compilation due to previous errors') != -1) {
     // Compiler failed on user error, print out the error message.
@@ -343,6 +344,7 @@ try {
     }, 500);
   } else throw err;
 }
+*/
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });
 //printErr(dump(M.slice(M.length-10)));
