@@ -2521,6 +2521,7 @@ LibraryManager.library = {
   },
   puts__deps: ['fputs', 'fputc', 'stdout'],
   puts: function(s) {
+#if NO_FILESYSTEM == 0
     // int puts(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/puts.html
     // NOTE: puts() always writes an extra newline.
@@ -2532,6 +2533,14 @@ LibraryManager.library = {
       var newlineRet = _fputc({{{ charCode('\n') }}}, stdout);
       return (newlineRet < 0) ? -1 : ret + 1;
     }
+#else
+    // extra effort to support puts, even without a filesystem. very partial, very hackish
+    var result = Pointer_stringify(s);
+    var string = result.substr(0);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    Module.print(string);
+    return result.length;
+#endif
   },
   fread__deps: ['$FS', 'read'],
   fread: function(ptr, size, nitems, stream) {
@@ -2818,8 +2827,17 @@ LibraryManager.library = {
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
+#if NO_FILESYSTEM == 0
     var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     return _fprintf(stdout, format, varargs);
+#else
+    // extra effort to support printf, even without a filesystem. very partial, very hackish
+    var result = __formatString(format, varargs);
+    var string = intArrayToString(result);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    Module.print(string);
+    return result.length;
+#endif
   },
   dprintf__deps: ['_formatString', 'write'],
   dprintf: function(fd, format, varargs) {

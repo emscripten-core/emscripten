@@ -427,14 +427,24 @@ var LibraryManager = {
 
     var libraries = [
       'library.js',
-      'library_path.js',
-      'library_fs.js',
-      'library_idbfs.js',
-      'library_memfs.js',
-      'library_nodefs.js',
-      'library_sockfs.js',
-      'library_tty.js',
-      'library_browser.js',
+    ];
+    if (!NO_FILESYSTEM) {
+      libraries = libraries.concat([
+        'library_path.js',
+        'library_fs.js',
+        'library_idbfs.js',
+        'library_memfs.js',
+        'library_nodefs.js',
+        'library_sockfs.js',
+        'library_tty.js',
+      ]);
+    }
+    if (!NO_BROWSER) {
+      libraries = libraries.concat([
+        'library_browser.js',
+      ]);
+    }
+    libraries = libraries.concat([
       'library_sdl.js',
       'library_gl.js',
       'library_glut.js',
@@ -449,7 +459,7 @@ var LibraryManager = {
       'library_html5.js',
       'library_signals.js',
       'library_async.js'
-    ].concat(additionalLibraries);
+    ]).concat(additionalLibraries);
 
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];
