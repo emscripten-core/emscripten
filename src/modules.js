@@ -436,12 +436,12 @@ var LibraryManager = {
         'library_memfs.js',
         'library_nodefs.js',
         'library_sockfs.js',
-        'library_tty.js',
+        'library_tty.js'
       ]);
     }
     if (!NO_BROWSER) {
       libraries = libraries.concat([
-        'library_browser.js',
+        'library_browser.js'
       ]);
     }
     libraries = libraries.concat([
