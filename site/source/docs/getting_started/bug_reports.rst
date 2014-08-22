@@ -9,12 +9,12 @@ All bugs should be filed in the GitHub `main <https://github.com/kripken/emscrip
 Please supply as much relevant information as possible, including:
 
 - Original source code.
-- Generated **.ll** and **.js** files (in a gist, pastebin, or any other suitable method). 
+- Generated bitcode (**.bc**, **.o** or **.ll**)
 - Environment information — including *emcc* and *clang* versions (as reported by ``emcc -v``).
 - Error symptoms.
 - Proposed solutions, ideally with a pull request.
 
-.. Tip:: Compile with ``EMCC_DEBUG=1`` and grab the **/tmp/emscripten_temp/emcc-\*** files (these include the bytecode, ll, and JavaScript in several stages). Note that the **emscripten_temp** directory should be emptied manually first, so it only contains new content!
+.. Tip:: Compile with ``EMCC_DEBUG=1`` and grab the **/tmp/emscripten_temp/emcc-\*** files (these include the bytecode and JavaScript in several stages). Note that the **emscripten_temp** directory should be emptied manually first, so it only contains new content!
 
 
 Fastcomp LLVM-Backend and Clang bugs
