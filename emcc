@@ -920,8 +920,11 @@ try:
   assert not (shared.Settings.NO_DYNAMIC_EXECUTION and closure), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
   if closure:
-    shared.Settings.CLOSURE_COMPILER = 1
+    shared.Settings.CLOSURE_COMPILER = closure
     assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
+    if closure == 2 and shared.Settings.ASM_JS == 1:
+      logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those')
+      shared.Settings.ASM_JS = 2
 
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
@@ -1352,7 +1355,7 @@ try:
     js_optimizer_extra_info = {}
 
   if opt_level >= 1 and js_opts:
-    logging.debug('running pre-closure post-opts')
+    logging.debug('running js post-opts')
 
     if DEBUG == '2':
       # Clean up the syntax a bit
@@ -1399,27 +1402,36 @@ try:
       js_optimizer_queue += ['outline']
       js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
-    if opt_level >= 2 and (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
+    if opt_level >= 2 and (not closure or shared.Settings.ASM_JS or closure == 2) and shared.Settings.RELOOP and debug_level < 3:
       if shared.Settings.ASM_JS and opt_level >= 3:
         js_optimizer_queue += ['registerizeHarder']
       else:
         js_optimizer_queue += ['registerize']
 
     if opt_level >= 2:
-      if debug_level < 2 and shared.Settings.ASM_JS:
+      if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:
         js_optimizer_queue += ['minifyNames']
         if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
       if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
     if shared.Settings.ASM_JS:
-      if closure:
+      if closure == 1:
         js_optimizer_queue += ['closure']
-      elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE:
+      elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not closure:
         js_optimizer_queue += ['cleanup']
 
     if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
 
     flush_js_optimizer_queue()
+
+  if shared.Settings.ASM_JS and closure == 2:
+    flush_js_optimizer_queue()
+
+    logging.debug('running closure')
+    # no need to add this to js_transform_tempfiles, because closure and
+    # debug_level > 0 are never simultaneously true
+    final = shared.Building.closure_compiler(final, pretty=debug_level >= 1)
+    if DEBUG: save_intermediate('closure')
 
   log_time('js opts')
 
