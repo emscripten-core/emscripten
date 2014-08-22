@@ -32,8 +32,11 @@ Install the vs-tool plugin
 	
 #.  Set up the required environment variables for *vs-tool*.
 
-	#. Windows 7: Open **Control Panel | System | Advanced System Settings | Environment Variables**.
-	#. Windows 8: Right click on the **Windows menu icon | System | Advanced System Settings | Environment Variables**.
+	#. Open the Environment Variables setting:
+	
+		- Windows 7: Open **Control Panel | System | Advanced System Settings | Environment Variables**.
+		- Windows 8: Right click on the **Windows menu icon | System | Advanced System Settings | Environment Variables**.
+		
 	#. Create a new environment variable ``CLANG_BIN`` and set it to point to the folder where you built *Fastcomp* (path to **clang.exe**) E.g.:
 	
 		:: 
