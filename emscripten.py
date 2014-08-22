@@ -1023,7 +1023,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
       if settings['PRECISE_F32']: maths += ['Math.fround']
 
-      basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
+      basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
       if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
       if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
       if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
@@ -1188,12 +1188,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
       funcs_js = ['''
   %s
-  function asmPrintInt(x, y) {
-    Module.print('int ' + x + ',' + y);// + ' ' + new Error().stack);
-  }
-  function asmPrintFloat(x, y) {
-    Module.print('float ' + x + ',' + y);// + ' ' + new Error().stack);
-  }
   // EMSCRIPTEN_START_ASM
   var asm = (function(global, env, buffer) {
     %s
