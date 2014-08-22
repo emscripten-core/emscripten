@@ -1,7 +1,9 @@
 *{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}article,aside,details,figcaption,figure,footer,header,hgroup,nav,section{display:block}audio,canvas,video{display:inline-block;*display:inline;*zoom:1}audio:not([controls]){display:none}[hidden]{display:none}*{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}html{font-size:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
 
 body{margin:0}a:hover,a:active{outline:0}abbr[title]{border-bottom:1px dotted}b,strong{font-weight:bold}blockquote{margin:0}dfn{font-style:italic}hr{display:block;height:1px;border:0;border-top:1px solid #ccc;margin:20px 0;padding:0}ins{background:#ff9;color:#000;text-decoration:none}mark{background:#ff0;color:#000;font-style:italic;font-weight:bold}pre,code,.rst-content tt,kbd,samp{font-family:monospace,serif;_font-family:"courier new",monospace;font-size:1em}pre{white-space:pre}q{quotes:none}q:before,q:after{content:"";content:none}small{font-size:85%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sup{top:-0.5em}sub{bottom:-0.25em}ul,ol,dl{margin:0;padding:0;list-style:none;list-style-image:none}li{list-style:none}dd{margin:0}img{border:0;-ms-interpolation-mode:bicubic;vertical-align:middle;max-width:100%}svg:not(:root){overflow:hidden}figure{margin:0}form{margin:0}fieldset{border:0;margin:0;padding:0}label{cursor:pointer}legend{border:0;*margin-left:-7px;padding:0;white-space:normal}button,input,select,textarea{font-size:100%;margin:0;vertical-align:baseline;*vertical-align:middle}button,input{line-height:normal}button,input[type="button"],input[type="reset"],input[type="submit"]{cursor:pointer;-webkit-appearance:button;*overflow:visible}button[disabled],input[disabled]{cursor:default}input[type="checkbox"],input[type="radio"]{box-sizing:border-box;padding:0;*width:13px;*height:13px}input[type="search"]{-webkit-appearance:textfield;-moz-box-sizing:content-box;-webkit-box-sizing:content-box;box-sizing:content-box}input[type="search"]::-webkit-search-decoration,input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none}button::-moz-focus-inner,input::-moz-focus-inner{border:0;padding:0}textarea{overflow:auto;vertical-align:top;resize:vertical}
-table{border-collapse:collapse;border-spacing:0}td{vertical-align:top}.chromeframe{margin:0.2em 0;background:#ccc;color:#000;padding:0.2em 0}.ir{display:block;border:0;text-indent:-999em;overflow:hidden;background-color:transparent;background-repeat:no-repeat;text-align:left;direction:ltr;*line-height:0}.ir br{display:none}.hidden{display:none !important;visibility:hidden}.visuallyhidden{border:0;clip:rect(0 0 0 0);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px}.visuallyhidden.focusable:active,.visuallyhidden.focusable:focus{clip:auto;height:auto;margin:0;overflow:visible;position:static;width:auto}.invisible{visibility:hidden}.relative{position:relative}big,small{font-size:100%}@media print{html,body,section{background:none !important}*{box-shadow:none !important;text-shadow:none !important;filter:none !important;-ms-filter:none !important}a,a:visited{text-decoration:underline}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h2,h3{page-break-after:avoid}}
+table{border-collapse:collapse;border-spacing:0}td{vertical-align:top}.chromeframe{margin:0.2em 0;background:#ccc;color:#000;padding:0.2em 0}.ir{display:block;border:0;text-indent:-999em;overflow:hidden;background-color:transparent;background-repeat:no-repeat;text-align:left;direction:ltr;*line-height:0}.ir br{display:none}.hidden{display:none !important;visibility:hidden}.visuallyhidden{border:0;clip:rect(0 0 0 0);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px}.visuallyhidden.focusable:active,.visuallyhidden.focusable:focus{clip:auto;height:auto;margin:0;overflow:visible;position:static;width:auto}.invisible{visibility:hidden}.relative{position:relative}big,small{font-size:100%}@media print{html,body,section{background:none !important}*{box-shadow:none !important;text-shadow:none !important;filter:none !important;-ms-filter:none !important}a,a:visited{text-decoration:underline}
+.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}
+pre,blockquote{page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h2,h3{page-break-after:avoid}}
 .fa:before,.rst-content .admonition-title:before,.rst-content h1 .headerlink:before,.rst-content h2 .headerlink:before,.rst-content h3 .headerlink:before,.rst-content h4 .headerlink:before,.rst-content h5 .headerlink:before,.rst-content h6 .headerlink:before,.rst-content dl dt .headerlink:before,.icon:before,.wy-dropdown .caret:before,.wy-inline-validate.wy-inline-validate-success .wy-input-context:before,.wy-inline-validate.wy-inline-validate-danger .wy-input-context:before,.wy-inline-validate.wy-inline-validate-warning .wy-input-context:before,.wy-inline-validate.wy-inline-validate-info .wy-input-context:before,.wy-alert,.rst-content .note,.rst-content .attention,.rst-content .caution,.rst-content .danger,.rst-content .error,.rst-content .hint,.rst-content .important,.rst-content .tip,.rst-content .warning,.rst-content .seealso,.btn,input[type="text"],input[type="password"],input[type="email"],input[type="url"],input[type="date"],input[type="month"],input[type="time"],input[type="datetime"],input[type="datetime-local"],input[type="week"],input[type="number"],input[type="search"],input[type="tel"],input[type="color"],select,textarea,.wy-menu-vertical li.on a,.wy-menu-vertical li.current>a,.wy-side-nav-search>a,.wy-side-nav-search .wy-dropdown>a,.wy-nav-top a{-webkit-font-smoothing:antialiased}.clearfix{*zoom:1}
 .clearfix:before,.clearfix:after{display:table;content:""}.clearfix:after{clear:both}/*!
  *  Font Awesome 4.0.3 by @davegandy - http://fontawesome.io - @fontawesome
@@ -378,13 +380,19 @@ table.wrap-table-content  td, table.wrap-table-content  th {
 
 
 	
-/* HamishW - fix bullet lists inside arabic decimal lists not rendering properly */	
-/* .wy-plain-list-decimal li, .rst-content .section ol li, .rst-content ol.arabic li, article ol li
-.wy-plain-list-decimal ul .simple li {
-	list-style:disc;
-	margin-left:24px
-	}
-	*/
+/* HamishW - add clear markup for external links */	
+
+a.external:after {
+    content: "";
+    display: inline-block;
+	background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAV0lEQVR4Xq2QwQ2AAAwC3cmd2Kk7sRP64CEJ9qOX8OPatMc/QKppnEPhTmJh23CLiwAqIw21CybKQ28qQi37WGFYBJcwfJQpP8LlEHKyZMF0IdmF13zlAjZ/6H4wb+mUAAAAAElFTkSuQmCC);
+    background-repeat: no-repeat;
+    background-position: right top;
+    background-origin: border-box;
+    width: 12px;
+    height: 16px;
+}
+
 	
 /* HamishW - some CSS for the breadcrumb (make elements inline blocks) */
 

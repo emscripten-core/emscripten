@@ -37,3 +37,4 @@ Empty. After this, you can switch between building the solution for Win32 and Em
 When you want to create a new Visual Studio project for Emscripten, we recommend you start with a Visual C++ Empty Project. This will create a new project for the Win32 platform. Then convert that project for Emscripten as outlined in the previous paragraph.
 
 
+             

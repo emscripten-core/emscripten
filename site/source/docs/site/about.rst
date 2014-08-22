@@ -60,14 +60,7 @@ The site sources are stored on Github `here <https://github.com/kripken/emscript
 
 The site is published to the **kripken/emscripten-site** *gh-pages* branch (Github pages).
 
-
-make html
----------
-
-The site can be built from source on Ubuntu and Windows by navigating to the */emscripten/site* directory and using the command: ::
-
-	make clean
-	make html
+.. note:: Remember to update the :ref:`about-build-versions` for *public* builds.
 
 Installing Sphinx
 -----------------
@@ -83,8 +76,54 @@ The workaround is to use the Python package installer "pip" to get version 1.2.2
 
 	pip install sphinx
 	pip install sphinx --upgrade
+	
+
+.. _about-site-builds:
+
+Site builds
+-----------
+
+The site can be built from source on Ubuntu and Windows by navigating to the */emscripten/site* directory and using the command: ::
+
+	make clean
+	make html
+	
+
+.. _about-sdk-builds:
+
+SDK Builds
+------------------
+
+SDK builds are virtually identical to :ref:`about-site-builds`. The main difference is that on SDK builds the :ref:`home page <home-page>` has a clear notification that it is an SDK build.
+
+SDK builds are enabled by adding the ``sdkbuild`` tag in `conf.py <https://github.com/kripken/emscripten/blob/incoming/site/source/conf.py#L400>`_: ::
+
+	#The line below must be uncommented for SDK builds. 
+	tags.add('sdkbuild')
 
 
+.. note:: In theory it should be possible to supply the ``sdkbuild`` tag as a command line option as shown below. However this is not working: 
+
+	::
+
+		make html SPHINXOPTS="-t sdkbuild"
+
+	
+.. _about-build-versions:
+
+Build version
+-------------
+
+The documentation version should match the Emscripten version for the current build. For a general site build this will be the latest tagged release as defined in `Emscripten version <https://github.com/kripken/emscripten/blob/incoming/emscripten-version.txt>`_. For an SDK build it will be the Emscripten version for the SDK.
+
+The version and release information is used in a few places in the documentation, for example :ref:`emscripten-authors`.
+
+The version is set in `conf.py <https://github.com/kripken/emscripten/blob/incoming/site/source/conf.py#L88>`_ in the ``version`` and ``release`` values. For example: ::
+
+	# The short X.Y version.
+	version = '1.23'
+	# The full version, including alpha/beta/rc tags.
+	release = '1.23.0'
 
 .. _writing-and-updating-articles:
 
