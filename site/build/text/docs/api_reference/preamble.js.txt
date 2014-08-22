@@ -8,7 +8,7 @@ functions, accessing memory, converting pointers to JavaScript
 "Strings" and "Strings" to pointers (with different
 encodings/formats), and other convenience functions.
 
-Note: All functions should be called though the "Module" object (for
+Note: All functions should be called though the *Module* object (for
   example: "Module.functionName"). At optimisation "-O2" (and higher)
   function names are minified by the closure compiler, and calling
   them directly will fail.
@@ -76,10 +76,13 @@ ccall(ident, returnType, argTypes, args)
    Arguments:
       * **ident** -- The name of the C function to be called.
 
-      * **returnType** -- The return type of the function. This will
-        be one of the JavaScript types "number", "string" or "array"
-        (use "number" for any C pointer, and "array" for JavaScript
-        arrays and typed arrays; note that arrays are 8-bit).
+      * **returnType** -- The return type of the function. This can
+        be ""number"", ""string"" or ""array"", which correspond to
+        the appropriate JavaScript types (use ""number"" for any C
+        pointer, and ""array"" for JavaScript arrays and typed arrays;
+        note that arrays are 8-bit), or for a void function it can be
+        "null" (note: the JavaScript "null" value, not a string
+        containing the word "null").
 
       * **argTypes** -- An array of the types of arguments for the
         function (if there are no arguments, this can be omitted).
