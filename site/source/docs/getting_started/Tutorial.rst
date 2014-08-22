@@ -13,7 +13,7 @@ First things first
 
 Make sure you have :ref:`downloaded and installed <sdk-download-and-install>` Emscripten (the exact approach for doing this will depend your operating system: Linux, Windows, or Mac).
 
-Emscripten is accessed using the :ref:`emccdoc`. This script invokes all the other tools needed to build your code, and can act as a drop-in replacement for a standard compiler like *gcc*. It is called on the command line using ``./emcc`` or ``./em++``.
+Emscripten is accessed using the :ref:`emccdoc`. This script invokes all the other tools needed to build your code, and can act as a drop-in replacement for a standard compiler like *gcc* or *clang*. It is called on the command line using ``./emcc`` or ``./em++``.
 
 .. note:: On Windows the tool is called using the slightly different syntax: ``emcc`` or ``em++``. The remainder of this tutorial uses the Linux approach (``./emcc``).
 
@@ -42,15 +42,15 @@ Running Emscripten
 
 You can now compile your first C++ file to JavaScript.
 
-First, lets have a look at the file to be compiled: **hello_world.cpp**. This is the simplest test code in the SDK, and as you can see, all it does is print "hello, world!" to the console and then exit.
+First, lets have a look at the file to be compiled: **hello_world.c**. This is the simplest test code in the SDK, and as you can see, all it does is print "hello, world!" to the console and then exit.
 
-.. include:: ../../../../tests/hello_world.cpp
+.. include:: ../../../../tests/hello_world.c
    :literal:
 
 
 To build the JavaScript version of this code, simply specify the C++ file after *emcc*: ::
 
-	./emcc tests/hello_world.cpp
+	./emcc tests/hello_world.c
 
 
 There should now be an **a.out.js** file in the current directory. Run it using :term:`node.js`:
@@ -70,7 +70,7 @@ Generating HTML
 
 Emscripten can also generate HTML for testing embedded JavaScript. To generate HTML, use the ``-o`` (:ref:`output <emcc-o-target>`) command and specify an html file as the target file: ::
 
-    ./emcc tests/hello_world.cpp -o hello.html
+    ./emcc tests/hello_world.c -o hello.html
 
 Open the web page in a web browser. As you can see, the framework defines a text area for displaying the output of the ``printf()`` calls in the native code.
 
@@ -116,7 +116,7 @@ The following command is used to preload the data file. The ``--preload-file`` o
 
 Open ``hello.html`` in the *Firefox web browser* to see the data from **hello_world_file.txt** being displayed. 
 
-.. note:: Unfortunately *Chrome* and *Internet Explorer* do not support ``file://`` :term:`XHR` requests, and can't directly load the local file in which preloaded data is stored. For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``localhost:8080/hello.html``).
+.. note:: Unfortunately *Chrome* and *Internet Explorer* do not support ``file://`` :term:`XHR` requests, and can't directly load the local file in which preloaded data is stored. For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``http://localhost:8080/hello.html``).
 
 For more information about working with the file system see the :ref:`Filesystem-Guide`, :ref:`Filesystem-API` and :ref:`Synchronous-virtual-XHR-backed-file-system-usage`.
 
@@ -124,7 +124,7 @@ For more information about working with the file system see the :ref:`Filesystem
 Optimizing code
 ===============
 
-Emscripten, like *gcc*, generates unoptimized code by default. You can generate :ref:`slightly-optimized <emcc-O1>` code with the ``-O1`` command line argument (run the test code from the :term:`SDK root directory`): ::
+Emscripten, like *gcc* and *clang*, generates unoptimized code by default. You can generate :ref:`slightly-optimized <emcc-O1>` code with the ``-O1`` command line argument (run the test code from the :term:`SDK root directory`): ::
 
     ./emcc -O1 tests/hello_world.cpp
 
