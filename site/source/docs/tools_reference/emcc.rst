@@ -317,7 +317,7 @@ Options that are modified or new in *emcc* are listed below:
 	.. note:: If ``--memory-init-file`` is used, then in addition to the **.js** or **.html** file which is generated, a **.mem** file will also be created.
 
 ``-c``
-	Tells *gcc* to generate LLVM bitcode (only). The linker is not run, and the final JavaScript executable is not produced.  
+	Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.
 
 	
 
