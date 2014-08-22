@@ -2521,6 +2521,7 @@ LibraryManager.library = {
   },
   puts__deps: ['fputs', 'fputc', 'stdout'],
   puts: function(s) {
+#if NO_FILESYSTEM == 0
     // int puts(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/puts.html
     // NOTE: puts() always writes an extra newline.
@@ -2532,6 +2533,14 @@ LibraryManager.library = {
       var newlineRet = _fputc({{{ charCode('\n') }}}, stdout);
       return (newlineRet < 0) ? -1 : ret + 1;
     }
+#else
+    // extra effort to support puts, even without a filesystem. very partial, very hackish
+    var result = Pointer_stringify(s);
+    var string = result.substr(0);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    Module.print(string);
+    return result.length;
+#endif
   },
   fread__deps: ['$FS', 'read'],
   fread: function(ptr, size, nitems, stream) {
@@ -2818,8 +2827,17 @@ LibraryManager.library = {
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
+#if NO_FILESYSTEM == 0
     var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     return _fprintf(stdout, format, varargs);
+#else
+    // extra effort to support printf, even without a filesystem. very partial, very hackish
+    var result = __formatString(format, varargs);
+    var string = intArrayToString(result);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    Module.print(string);
+    return result.length;
+#endif
   },
   dprintf__deps: ['_formatString', 'write'],
   dprintf: function(fd, format, varargs) {
@@ -8654,7 +8672,7 @@ LibraryManager.library = {
   //============================
 
   emscripten_float32x4_signmask__inline: function(a) {
-    return 'SIMD.float32x4.bitsToInt32x4(' + a + ').signMask';
+    return  a + '.signMask';
   },
   
   emscripten_float32x4_min__inline: function(a, b) {
@@ -8670,55 +8688,55 @@ LibraryManager.library = {
   },
   
   emscripten_float32x4_lessThan__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.lessThan(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.lessThan(' + a + ', ' + b + '))';
   },
   
   emscripten_float32x4_lessThanOrEqual__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.lessThanOrEqual(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.lessThanOrEqual(' + a + ', ' + b + '))';
   },
   
   emscripten_float32x4_equal__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.equal(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.equal(' + a + ', ' + b + '))';
   },
   
   emscripten_float32x4_greaterThanOrEqual__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.greaterThanOrEqual(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.greaterThanOrEqual(' + a + ', ' + b + '))';
   },
   
   emscripten_float32x4_greaterThan__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.float32x4.greaterThan(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.greaterThan(' + a + ', ' + b + '))';
   },
   
   emscripten_float32x4_and__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.and(SIMD.float32x4.bitsToInt32x4(' + a + '), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.and(' + a + ', ' + b + '))';
   },
   
   emscripten_float32x4_andNot__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.and(SIMD.int32x4.not(SIMD.float32x4.bitsToInt32x4(' + a + ')), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.and(SIMD.float32x4.not(' + a + '), ' + b + '))';
   },
   
   emscripten_float32x4_or__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.or(SIMD.float32x4.bitsToInt32x4(' + a + '), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.or(' + a + ', ' + b + '))';
   },
   
   emscripten_float32x4_xor__inline: function(a, b) {
-    return 'SIMD.int32x4.bitsToFloat32x4(SIMD.int32x4.xor(SIMD.float32x4.bitsToInt32x4(' + a + '), SIMD.float32x4.bitsToInt32x4(' + b + ')))';
+    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.xor(' + a + ', ' + b + '))';
   },
   
-  emscripten_int32x4_bitsToFloat32x4__inline: function(a) {
-      return 'SIMD.int32x4.bitsToFloat32x4(' + a + ')';
+  emscripten_float32x4_fromInt32x4Bits__inline: function(a) {
+      return 'SIMD.float32x4.fromInt32x4Bits(' + a + ')';
   },
   
-  emscripten_int32x4_toFloat32x4__inline: function(a) {
-      return 'SIMD.int32x4.toFloat32x4(' + a + ')';
+  emscripten_float32x4_fromInt32x4__inline: function(a) {
+      return 'SIMD.float32x4.fromInt32x4(' + a + ')';
   },
   
-  emscripten_float32x4_bitsToInt32x4__inline: function(a) {
-      return 'SIMD.float32x4.bitsToInt32x4(' + a + ')';
+  emscripten_int32x4_fromFloat32x4Bits__inline: function(a) {
+      return 'SIMD.int32x4.fromFloat32x4Bits(' + a + ')';
   },
   
-  emscripten_float32x4_toInt32x4__inline: function(a) {
-      return 'SIMD.float32x4.toInt32x4(' + a + ')';
+  emscripten_int32x4_fromFloat32x4__inline: function(a) {
+      return 'SIMD.int32x4.fromFloat32x4(' + a + ')';
   },
 
   //============================

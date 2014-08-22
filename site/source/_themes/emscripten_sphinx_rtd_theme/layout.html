@@ -98,6 +98,7 @@
 		{% set toctree = toctree(maxdepth=4, collapse=False, includehidden=True) %} 
         {% if toctree %}
             {{ toctree }}
+			<a class="toctree-l1" title="Index" href="{{ pathto('genindex') }}">Index</a>
         {% else %}
             <!-- Local TOC -->
             <div class="local-toc">{{ toc }}</div>
@@ -144,7 +145,7 @@
             {%- if hasdoc(document) %}
               <li{%- if loop.first %} style="text-align:left;" {%- endif %}{%- if loop.last %} style="text-align:right;" {%- endif %}><a class="navlink-short" title="{{ shorttext }}" href="{{ pathto(document) }}">{{ shorttext }}</a><a class="navlink-long" title="{{ longtext }}" href="{{ pathto(document) }}">{{ longtext }}</a></li>
 	        {%- elif document | truncate(4, True, end='') == 'http' %} 
-		      <li{%- if loop.first %} style="text-align:left;" {%- endif %}{%- if loop.last %} style="text-align:right;" {%- endif %}><a class="navlink-short" href="{{ document }}">{{ shorttext }}</a><a class="navlink-long" href="{{ document }}">{{ longtext }}</a></li>
+		      <li{%- if loop.first %} style="text-align:left;" {%- endif %}{%- if loop.last %} style="text-align:right;" {%- endif %}><a class="navlink-short external" href="{{ document }}">{{ shorttext }}</a><a class="navlink-long external" href="{{ document }}">{{ longtext }}</a></li>
             {%- endif %}
         {% endfor %}   	
      </ul>

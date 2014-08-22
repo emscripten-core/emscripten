@@ -1,7 +1,7 @@
 .. _Filesystem-API:
 
 =====================================
-Filesystem API (under-construction)
+File System API (under-construction)
 =====================================
 
 File I/O in Emscripten is provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
@@ -97,7 +97,7 @@ By default:
 -  ``stdout`` will use a ``print`` function if one such is defined, printing to the terminal in command line engines and to the browser console in browsers that have a console (again, line-buffered).
 -  ``stderr`` will use the same output function as ``stdout``.
 
-.. note:: All the configuration should be done before the main ``run()`` method is executed, typically by implementing ``Module.preRun``, see :ref:`Interacting-with-code`.
+.. note:: All the configuration should be done before the main ``run()`` method is executed, typically by implementing :js:attr:`Module.preRun`, see :ref:`Interacting-with-code`.
 
 
 .. js:function:: FS.init(input, output, error)

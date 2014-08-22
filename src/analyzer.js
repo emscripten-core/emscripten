@@ -189,7 +189,7 @@ function analyzer(data, sidePass) {
     if (USE_TYPED_ARRAYS == 2) {
       function getLegalVars(base, bits, allowLegal) {
         bits = bits || 32; // things like pointers are all i32, but show up as 0 bits from getBits
-        if (allowLegal && bits <= 32) return [{ intertype: 'value', ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits, type: 'i' + bits }];
+        if (allowLegal && bits <= 32) return [{ intertype: 'value', ident: base + ('i' + bits in Compiletime.INT_TYPES ? '' : '$0'), bits: bits, type: 'i' + bits }];
         if (isNumber(base)) return getLegalLiterals(base, bits);
         if (base[0] == '{') {
           warnOnce('seeing source of illegal data ' + base + ', likely an inline struct - assuming zeroinit');
@@ -641,8 +641,8 @@ function analyzer(data, sidePass) {
               case 'bitcast': {
                 var inType = item.type2;
                 var outType = item.type;
-                if ((inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) ||
-                    (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
+                if ((inType in Compiletime.INT_TYPES && outType in Compiletime.FLOAT_TYPES) ||
+                    (inType in Compiletime.FLOAT_TYPES && outType in Compiletime.INT_TYPES)) {
                   i++;
                   continue; // special case, handled in processMathop
                 }
@@ -948,7 +948,7 @@ function analyzer(data, sidePass) {
     if (type.length == 1) return;
     if (Types.types[type]) return;
     if (['internal', 'hidden', 'inbounds', 'void'].indexOf(type) != -1) return;
-    if (Runtime.isNumberType(type)) return;
+    if (Compiletime.isNumberType(type)) return;
     dprint('types', 'Adding type: ' + type);
 
     // 'blocks': [14 x %struct.X] etc. If this is a pointer, we need
@@ -1264,7 +1264,7 @@ function analyzer(data, sidePass) {
           variable.impl = VAR_NATIVE;
         } else if (MICRO_OPTS && variable.origin === 'alloca' && !variable.hasValueTaken &&
                    variable.allocatedNum === 1 &&
-                   (Runtime.isNumberType(pointedType) || Runtime.isPointerType(pointedType))) {
+                   (Compiletime.isNumberType(pointedType) || isPointerType(pointedType))) {
           // A pointer to a value which is only accessible through this pointer. Basically
           // a local value on the stack, which nothing fancy is done on. So we can
           // optimize away the pointing altogether, and just have a native variable
@@ -1311,7 +1311,7 @@ function analyzer(data, sidePass) {
       func.lines.forEach(function(line, i) {
         if (line.intertype === 'load') {
           // Floats have no concept of signedness. Mark them as 'signed', which is the default, for which we do nothing
-          if (line.type in Runtime.FLOAT_TYPES) {
+          if (line.type in Compiletime.FLOAT_TYPES) {
             line.unsigned = false;
             return;
           }
@@ -1681,7 +1681,7 @@ function analyzer(data, sidePass) {
         hasAlloca = true;
         if (USE_TYPED_ARRAYS === 2) {
           // We need to keep the stack aligned
-          item.allocatedSize = Runtime.forceAlign(item.allocatedSize, Runtime.STACK_ALIGN);
+          item.allocatedSize = RuntimeGenerator.forceAlign(item.allocatedSize, Runtime.STACK_ALIGN);
         }
       }
       var index = 0;

@@ -1,12 +1,10 @@
 .. _emccdoc:
 
-=========================================================
-Emscripten Compiler Frontend (emcc) (under-construction)
-=========================================================
+======================================================
+Emscripten Compiler Frontend (emcc) (ready-for-review)
+======================================================
 
 **This document provides the command syntax for the Emscription Compiler Frontend.**
-
-.. comment - The information in this page was output by running ``emcc --help`` on the version of *emcc* in the Emscripten 1.20.0 SDK. The most recent version is `emcc (master) <https://github.com/kripken/emscripten/blob/master/emcc>`_ 
 
 Purpose
 ============================================
@@ -22,10 +20,6 @@ Command line syntax
 	emcc [options] file...
 
 The input file(s) can be either source code files that *Clang* can handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable form.
-
-Supported targets include: llvm bitcode, JavaScript, NOT elf (autoconf likes to see elf above to enable shared object support).
-
-.. todo:: **HamishW** The line above makes no sense. Checking with Alon.
 
 
 Arguments
@@ -49,6 +43,7 @@ Options that are modified or new in *emcc* are listed below:
 ``-O0``
 	No optimizations (default). This is the recommended setting for starting to port a project, as it includes various assertions.
 	
+.. _emcc-O1:
 
 ``-O1``
 	Simple optimizations. These include using **asm.js**, LLVM ``-O1`` optimizations, relooping, removing runtime assertions and C++ exception catching, and enabling ``-s ALIASING_FUNCTION_POINTERS=1``.  This is the recommended setting when you want a reasonably optimized build that is generated as quickly as possible (it builds much faster than ``-O2``). 
@@ -57,6 +52,8 @@ Options that are modified or new in *emcc* are listed below:
 	
 		- For details on the affects of different opt levels, see ``apply_opt_level()`` in `tools/shared.py <https://github.com/kripken/emscripten/blob/master/tools/shared.py>`_ and also `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
 		- To re-enable C++ exception catching, use ``-s DISABLE_EXCEPTION_CATCHING=0``.
+
+.. _emcc-O2: 
 		
 ``-O2``
 	Like ``-O1``, but with various JavaScript-level optimizations and LLVM ``-O3`` optimizations. 
@@ -68,6 +65,8 @@ Options that are modified or new in *emcc* are listed below:
 	
 ``-Oz``
 	Like ``-Os``, but reduces code size even further.
+
+.. _emcc-O3:
 
 ``-O3``
 	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time and/or are relatively new. 
@@ -167,7 +166,9 @@ Options that are modified or new in *emcc* are listed below:
 	
 		- If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
 		- Closure is only run if JavaScript opts are being done (``-O2`` or above, or ``--js-opts 1``).
-	 
+
+.. _emcc-pre-js:
+		
 ``--pre-js <file>``
 	Specify a file whose contents are added before the generated code. This is done *before* optimization, so it will be minified properly if the *Closure Compiler* is run.
 	 
@@ -197,7 +198,7 @@ Options that are modified or new in *emcc* are listed below:
 	For more information about the ``--preload-file`` options, see :ref:`Filesystem-Guide`.
 	
 ``--exclude-file <name>``
-	Files and directories to be excluded from :ref:`--embed-file <emcc-embed-file>` and :ref:`--preload-file <emcc-preload-file>`. Wildcard is supported.
+	Files and directories to be excluded from :ref:`--embed-file <emcc-embed-file>` and :ref:`--preload-file <emcc-preload-file>`. Wildcards (*) are supported.
 	 
 ``--shell-file <path>``
 	The path name to a skeleton HTML file used when generating HTML output. The shell file used needs to have this token inside it: ``{{{ SCRIPT }}}``.
@@ -276,8 +277,8 @@ Options that are modified or new in *emcc* are listed below:
 		- ``0``: Do not emit a separate memory initialization file (default). Instead keep the static initialization inside the generated JavaScript as text.
 		- ``1``: Emit a separate memory initialization file in binary format. This is more efficient than storing it as text inside JavaScript, but does mean you have another file to publish. The binary file will also be loaded asynchronously, which means ``main()`` will not be called until the file is downloaded and applied; you cannot call any C functions until it arrives. 
 		
-	.. note:: Call yourself from ``main()`` to know when all asynchronous processing has completed and it is safe to call library functions, as ``main()`` will only be called at that time. You can also call ``addOnPreMain`` from a ``preRun``.
-	 
+			.. note:: The :ref:`safest way <faq-when-safe-to-call-compiled-functions>` to ensure that it is safe to call C functions (the initialisation file has loaded) is to call a notifier function from ``main()``. 
+	
 ``-Wno-warn-absolute-paths``
 	Suppress warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to hide the warnings and acknowledge that the explicit use of absolute paths is intentional.
 	 
@@ -303,6 +304,7 @@ Options that are modified or new in *emcc* are listed below:
 ``--valid_abspath path``
 	Whitelist an absolute path to prevent warnings about absolute include paths.
 	 
+.. _emcc-o-target:
 
 ``-o <target>``
 	The ``target`` file name extension defines what type of output be generated:
@@ -315,7 +317,9 @@ Options that are modified or new in *emcc* are listed below:
 	.. note:: If ``--memory-init-file`` is used, then in addition to the **.js** or **.html** file which is generated, a **.mem** file will also be created.
 
 ``-c``
-	Tells *gcc* not to run the linker and causes LLVM bitcode to be generated, as *emcc* only generates JavaScript in the final linking stage of building.   
+	Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.
+
+	
 
 Environment variables
 =====================

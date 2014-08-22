@@ -71,11 +71,22 @@ var RuntimeGenerator = {
     return ret;
   },
 
+  forceAlign: function(target, quantum) {
+    quantum = quantum || {{{ QUANTUM_SIZE }}};
+    if (quantum == 1) return target;
+    if (isNumber(target) && isNumber(quantum)) {
+      return Math.ceil(target/quantum)*quantum;
+    } else if (isNumber(quantum) && isPowerOfTwo(quantum)) {
+      return '(((' +target + ')+' + (quantum-1) + ')&' + -quantum + ')';
+    }
+    return 'Math.ceil((' + target + ')/' + quantum + ')*' + quantum;
+  },
+
   alignMemory: function(target, quantum) {
     if (typeof quantum !== 'number') {
       quantum = '(quantum ? quantum : {{{ STACK_ALIGN }}})';
     }
-    return target + ' = ' + Runtime.forceAlign(target, quantum);
+    return target + ' = ' + RuntimeGenerator.forceAlign(target, quantum);
   },
 
   // Given two 32-bit unsigned parts of an emulated 64-bit number, combine them into a JS number (double).
@@ -95,6 +106,18 @@ function unInline(name_, params) {
   return ret;
 }
 
+var Compiletime = {
+  isPointerType: isPointerType,
+  isStructType: isStructType,
+
+  isNumberType: function(type) {
+    return type in Compiletime.INT_TYPES || type in Compiletime.FLOAT_TYPES;
+  },
+
+  INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
+  FLOAT_TYPES: set('float', 'double'),
+};
+
 var Runtime = {
   // When a 64 bit long is returned from a compiled function the least significant
   // 32 bit word is passed in the return value, but the most significant 32 bit
@@ -112,27 +135,7 @@ var Runtime = {
     STACKTOP = stackTop;
   },
 
-  forceAlign: function(target, quantum) {
-    quantum = quantum || {{{ QUANTUM_SIZE }}};
-    if (quantum == 1) return target;
-    if (isNumber(target) && isNumber(quantum)) {
-      return Math.ceil(target/quantum)*quantum;
-    } else if (isNumber(quantum) && isPowerOfTwo(quantum)) {
-      return '(((' +target + ')+' + (quantum-1) + ')&' + -quantum + ')';
-    }
-    return 'Math.ceil((' + target + ')/' + quantum + ')*' + quantum;
-  },
-
-  isNumberType: function(type) {
-    return type in Runtime.INT_TYPES || type in Runtime.FLOAT_TYPES;
-  },
-
-  isPointerType: isPointerType,
-  isStructType: isStructType,
-
-  INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
-  FLOAT_TYPES: set('float', 'double'),
-
+#if RUNNING_FASTCOMP == 0
   // Imprecise bitops utilities
   or64: function(x, y) {
     var l = (x | 0) | (y | 0);
@@ -149,6 +152,7 @@ var Runtime = {
     var h = (Math.round(x / 4294967296) ^ Math.round(y / 4294967296)) * 4294967296;
     return l + h;
   },
+#endif
 
   //! Returns the size of a type, as C/C++ would have it (in 32-bit), in bytes.
   //! @param type The type, by name.
@@ -185,9 +189,9 @@ var Runtime = {
     return Math.max(Runtime.getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
   },
 
+#if RUNNING_FASTCOMP == 0
   dedup: dedup,
-
-  set: set,
+#endif
 
   STACK_ALIGN: {{{ STACK_ALIGN }}},
 
@@ -204,6 +208,7 @@ var Runtime = {
     return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
   },
 
+#if RUNNING_FASTCOMP == 0
   // Calculate aligned size, just like C structs should be. TODO: Consider
   // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
   // which would remove much of the complexity here.
@@ -216,10 +221,10 @@ var Runtime = {
     type.flatIndexes = type.fields.map(function(field) {
       index++;
       var size, alignSize;
-      if (Runtime.isNumberType(field) || Runtime.isPointerType(field)) {
+      if (Compiletime.isNumberType(field) || Compiletime.isPointerType(field)) {
         size = Runtime.getNativeTypeSize(field); // pack char; char; in structs, also char[X]s.
         alignSize = Runtime.getAlignSize(field, size);
-      } else if (Runtime.isStructType(field)) {
+      } else if (Compiletime.isStructType(field)) {
         if (field[1] === '0') {
           // this is [0 x something]. When inside another structure like here, it must be at the end,
           // and it adds no size
@@ -336,6 +341,7 @@ var Runtime = {
     }
     return ret;
   },
+#endif
 
   dynCall: function(sig, ptr, args) {
     if (args && args.length) {

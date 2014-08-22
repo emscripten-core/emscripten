@@ -148,7 +148,7 @@ function isStructPointerType(type) {
   // we must check later on, in call(), where we have more
   // context, to differentiate such cases.
   // A similar thing happens in isStructType()
-  return !Runtime.isNumberType(type) && type[0] == '%';
+  return !Compiletime.isNumberType(type) && type[0] == '%';
 }
 
 function isPointerType(type) {
@@ -222,7 +222,7 @@ function getNumIntChunks(type) {
 }
 
 function isIdenticallyImplemented(type1, type2) {
-  var floats = +(type1 in Runtime.FLOAT_TYPES) + +(type2 in Runtime.FLOAT_TYPES);
+  var floats = +(type1 in Compiletime.FLOAT_TYPES) + +(type2 in Compiletime.FLOAT_TYPES);
   if (floats == 2) return true;
   if (floats == 1) return false;
   return getNumIntChunks(type1) == getNumIntChunks(type2);
@@ -326,7 +326,7 @@ function getReturnType(type) {
 var isTypeCache = {}; // quite hot, optimize as much as possible
 function isType(type) {
   if (type in isTypeCache) return isTypeCache[type];
-  var ret = isPointerType(type) || isVoidType(type) || Runtime.isNumberType(type) || isStructType(type) || isFunctionType(type);
+  var ret = isPointerType(type) || isVoidType(type) || Compiletime.isNumberType(type) || isStructType(type) || isFunctionType(type);
   isTypeCache[type] = ret;
   return ret;
 }
@@ -338,7 +338,7 @@ function isVarArgsFunctionType(type) {
 }
 
 function getNumLegalizedVars(type) { // how many legalized variables are needed to represent this type
-  if (type in Runtime.FLOAT_TYPES) return 1;
+  if (type in Compiletime.FLOAT_TYPES) return 1;
   return Math.max(getNumIntChunks(type), 1);
 }
 
@@ -1032,7 +1032,7 @@ function calcAllocatedSize(type) {
 // i32, 0, 0, 0 - for example, an int32 is here, then nothing to do for the 3 next bytes, naturally
 function generateStructTypes(type) {
   if (isArray(type)) return type; // already in the form of [type, type,...]
-  if (Runtime.isNumberType(type) || isPointerType(type)) {
+  if (Compiletime.isNumberType(type) || isPointerType(type)) {
     if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
       return ['i64', 0, 0, 0, 'i32', 0, 0, 0];
     }
@@ -1051,7 +1051,7 @@ function generateStructTypes(type) {
     for (var i = 0; i < num; i++) {
       var type = array ? typeData.fields[0] : typeData.fields[i];
       if (!SAFE_HEAP && isPointerType(type)) type = '*'; // do not include unneeded type names without safe heap
-      if (Runtime.isNumberType(type) || isPointerType(type)) {
+      if (Compiletime.isNumberType(type) || isPointerType(type)) {
         if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
           ret[index++] = 'i64';
           ret[index++] = 0;
@@ -1065,7 +1065,7 @@ function generateStructTypes(type) {
         }
         ret[index++] = type;
       } else {
-        if (Runtime.isStructType(type) && type[1] === '0') {
+        if (isStructType(type) && type[1] === '0') {
           // this is [0 x something], which does nothing
           // XXX this happens in java_nbody... assert(i === typeData.fields.length-1);
           continue;
@@ -1200,7 +1200,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
     value = ensureDot(value);
     return 'Math_fround(' + value + ')';
   }
-  if (type in Runtime.FLOAT_TYPES) {
+  if (type in Compiletime.FLOAT_TYPES) {
     return ensureDot(value);
   } else {
     return value;
@@ -1208,7 +1208,7 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 }
 
 function asmInitializer(type) {
-  if (type in Runtime.FLOAT_TYPES) {
+  if (type in Compiletime.FLOAT_TYPES) {
     if (PRECISE_F32 && type === 'float') return 'Math_fround(0)';
     return RUNNING_JS_OPTS ? '+0' : '.0';
   } else {
@@ -1220,7 +1220,7 @@ function asmCoercion(value, type, signedness) {
   if (!ASM_JS) return value;
   if (type == 'void') {
     return value;
-  } else if (type in Runtime.FLOAT_TYPES) {
+  } else if (type in Compiletime.FLOAT_TYPES) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
     } else {
@@ -1327,7 +1327,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (ASM_JS) {
-      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Runtime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
+      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
       // else fall through
     } else {
       return asmCoercion('SAFE_HEAP_LOAD(' + offset + ', ' + (ASM_JS ? 0 : printType) + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')', type);
@@ -1338,8 +1338,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     ret = asmCoercion(ret, type);
   }
   if (ASM_HEAP_LOG) {
-    ret = makeInlineCalculation('(asmPrint' + (type in Runtime.FLOAT_TYPES ? 'Float' : 'Int') + '(' + (asmPrintCounter++) + ',' + asmCoercion('VALUE', type) + '), VALUE)', ret,
-                                'temp' + (type in Runtime.FLOAT_TYPES ? 'Double' : 'Int'));
+    ret = makeInlineCalculation('(asmPrint' + (type in Compiletime.FLOAT_TYPES ? 'Float' : 'Int') + '(' + (asmPrintCounter++) + ',' + asmCoercion('VALUE', type) + '), VALUE)', ret,
+                                'temp' + (type in Compiletime.FLOAT_TYPES ? 'Double' : 'Int'));
   }
   return ret;
 }
@@ -1439,7 +1439,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (ASM_JS) {
-      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Runtime.FLOAT_TYPES)|0) + ')', type);
+      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ')', type);
       // else fall through
     } else {
       return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + (ASM_JS ? 0 : printType) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
@@ -1610,7 +1610,7 @@ function getFastValue(a, op, b, type) {
   if (op === '*') {
     // We can't eliminate where a or b are 0 as that would break things for creating
     // a negative 0.
-    if ((aNumber === 0 || bNumber === 0) && !(type in Runtime.FLOAT_TYPES)) {
+    if ((aNumber === 0 || bNumber === 0) && !(type in Compiletime.FLOAT_TYPES)) {
       return '0';
     } else if (aNumber === 1) {
       return b;
@@ -1622,7 +1622,7 @@ function getFastValue(a, op, b, type) {
         return '(' + a + '<<' + shifts + ')';
       }
     }
-    if (!(type in Runtime.FLOAT_TYPES)) {
+    if (!(type in Compiletime.FLOAT_TYPES)) {
       // if guaranteed small enough to not overflow into a double, do a normal multiply
       var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
       // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
@@ -1632,7 +1632,7 @@ function getFastValue(a, op, b, type) {
       return '(Math_imul(' + a + ',' + b + ')|0)';
     }
   } else if (op === '/') {
-    if (a === '0' && !(type in Runtime.FLOAT_TYPES)) { // careful on floats, since 0*NaN is not 0
+    if (a === '0' && !(type in Compiletime.FLOAT_TYPES)) { // careful on floats, since 0*NaN is not 0
       return '0';
     } else if (b === 1) {
       return a;
@@ -1801,9 +1801,9 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   if (!USE_TYPED_ARRAYS) {
     return ['HEAP'];
   } else if (USE_TYPED_ARRAYS == 1) {
-    if (type in Runtime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
+    if (type in Compiletime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
       return ['FHEAP']; // If USE_FHEAP is false, will fail at runtime. At compiletime we do need it for library stuff.
-    } else if (type in Runtime.INT_TYPES || isPointerType(type)) {
+    } else if (type in Compiletime.INT_TYPES || isPointerType(type)) {
       return [unsigned ? 'IHEAPU' : 'IHEAP'];
     } else {
       assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
@@ -2351,13 +2351,13 @@ function processMathop(item) {
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
         var inType = item.params[0].type;
         var outType = item.type;
-        if (inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) {
+        if (inType in Compiletime.INT_TYPES && outType in Compiletime.FLOAT_TYPES) {
           if (legalizedI64s) {
             return '(' + makeSetTempDouble(0, 'i32', idents[0] + '$0') + ', ' + makeSetTempDouble(1, 'i32', idents[0] + '$1') + ', ' + makeGetTempDouble(0, 'double') + ')';
           } else {
             return makeInlineCalculation(makeSetTempDouble(0, 'i32', 'VALUE[0]') + ',' + makeSetTempDouble(1, 'i32', 'VALUE[1]') + ',' + makeGetTempDouble(0, 'double'), idents[0], 'tempI64');
           }
-        } else if (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES) {
+        } else if (inType in Compiletime.FLOAT_TYPES && outType in Compiletime.INT_TYPES) {
           if (legalizedI64s) {
             return makeSetTempDouble(0, 'double', idents[0]) + '; ' + finish([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]);
           } else {
@@ -2387,11 +2387,11 @@ function processMathop(item) {
         var outType = item.type;
         if (inType === '<4 x float>') {
           assert(outType === '<4 x i32>');
-          return 'SIMD.float32x4.bitsToInt32x4(' + idents[0] + ')';
+          return 'SIMD.int32x4.fromFloat32x4Bits(' + idents[0] + ')';
         } else {
           assert(inType === '<4 x i32>');
           assert(outType === '<4 x float>');
-          return 'SIMD.int32x4.bitsToFloat32x4(' + idents[0] + ')';
+          return 'SIMD.float32x4.fromInt32x4Bits(' + idents[0] + ')';
         }
       }
       case 'and': return 'SIMD.int32x4.and(' + idents[0] + ',' + idents[1] + ')';
@@ -2537,10 +2537,10 @@ function processMathop(item) {
       // Most bitcasts are no-ops for us. However, the exception is int to float and float to int
       var inType = item.params[0].type;
       var outType = item.type;
-      if ((inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) ||
-          (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
+      if ((inType in Compiletime.INT_TYPES && outType in Compiletime.FLOAT_TYPES) ||
+          (inType in Compiletime.FLOAT_TYPES && outType in Compiletime.INT_TYPES)) {
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
-        if (inType in Runtime.INT_TYPES) {
+        if (inType in Compiletime.INT_TYPES) {
           return '(' + makeSetTempDouble(0, 'i32', idents[0]) + ',' + makeGetTempDouble(0, 'float') + ')';
         } else {
           return '(' + makeSetTempDouble(0, 'float', idents[0]) + ',' + makeGetTempDouble(0, 'i32') + ')';

@@ -1,0 +1,79 @@
+.. _module:
+
+====================================
+Module object (ready-for-review)
+====================================
+
+``Module`` is a global JavaScript object, with attributes that Emscripten-generated code calls at various points in its execution. 
+
+Developers provide an implementation of ``Module`` to control the execution of code. For example, to define how notification messages from Emscripten are displayed, developers implement the :js:attr:`Module.print` attribute.
+
+.. note:: ``Module`` is also used to provide access functions (see :js:func:`ccall`) in a way that avoids issues with function name minification at higher optimisation levels. These functions are documented as part of their own APIs.
+
+.. contents:: Table of Contents
+	:local:
+	:depth: 1
+
+
+.. _module-creating:
+
+Creating Module
+================
+
+Use :ref:`emcc's <emcc-pre-js>` ``--pre-js`` option to add JavaScript code that defines (or extends) the ``Module`` object with the behaviour you need. 
+
+When generating only JavaScript, no ``Module`` object is created by default, and the behaviour is entirely defined by the developer. For example, creating a ``Module`` object with the following code will cause all notifications from the program to be calls to ``alert()``.
+
+	::
+
+		var Module = {
+		  'print': function(text) { alert(text) }
+		};
+
+.. important:: If you run closure compiler on your code (which is done by default in optimisation level :ref:`-02 <emcc-O2>` and higher), you will need quotation marks around the properties of ``Module`` as in the example above (and you need to run closure on the compiled code together with the declaration of ``Module``).	
+
+When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/kripken/emscripten/blob/master/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time to add properties to the existing ``Module`` object.
+
+
+
+Affecting execution
+===================
+
+The following ``Module`` attributes affect code execution. 
+
+
+.. js:attribute:: Module.print
+
+	Called when something is printed to standard output.
+	
+
+
+.. js:attribute:: Module.arguments
+
+	The commandline arguments. The value of ``arguments`` is what is returned if compiled code checks ``argc`` and ``argv``.
+
+
+.. js:attribute:: Module.preInit
+
+	A function (or array of functions) that must be called before global initializers run, but after basic initialization of the JavaScript runtime. This is typically used for :ref:`File System operations <Filesystem-API>` and is called befroe C++ initializers have been run.
+	
+	
+.. js:attribute:: Module.preRun
+
+	A function (or array of functions) to call right before calling ``run()``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the :ref:`Filesystem-API` (since that needs the FileSystem API to be defined, but also needs to be done before the program starts to run.
+
+	.. note:: If code needs to affect global initializers, it should instead be run using :js:attr:`preInit`.
+
+
+.. js:attribute:: Module.noInitialRun
+
+	If set to ``true``, ``main()`` will not be automatically called (you can do so yourself later). The program will still call global initializers, set up memory initialization, and so forth.
+
+
+.. js:attribute:: Module.noExitRuntime
+
+	If set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to be able to continue to use the code after ``run()`` finishes, it is safer to set this.
+
+
+
+

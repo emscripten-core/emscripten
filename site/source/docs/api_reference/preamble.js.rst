@@ -4,7 +4,7 @@ preamble.js
 
 The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
-.. note:: All functions should be called though the ``Module`` object (for example: ``Module.functionName``). At optimisation ``-O2`` (and higher) function names are minified by the closure compiler, and calling them directly will fail.
+.. note:: All functions should be called though the :ref:`Module <module>` object (for example: ``Module.functionName``). At optimisation ``-O2`` (and higher) function names are minified by the closure compiler, and calling them directly will fail.
 
 
 .. contents:: Table of Contents

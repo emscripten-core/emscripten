@@ -23,10 +23,10 @@ float32x4 emscripten_float32x4_andNot(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_or(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_xor(float32x4 a, float32x4 b);
 
-float32x4 emscripten_int32x4_bitsToFloat32x4(int32x4 a);
-float32x4 emscripten_int32x4_toFloat32x4(int32x4 a);
-int32x4 emscripten_float32x4_bitsToInt32x4(float32x4 a);
-int32x4 emscripten_float32x4_toInt32x4(float32x4 a);
+float32x4 emscripten_float32x4_fromInt32x4Bits(int32x4 a);
+float32x4 emscripten_float32x4_fromInt32x4(int32x4 a);
+int32x4 emscripten_int32x4_fromFloat32x4Bits(float32x4 a);
+int32x4 emscripten_int32x4_fromFloat32x4(float32x4 a);
 
 #ifdef __cplusplus
 }

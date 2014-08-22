@@ -1,9 +1,18 @@
+.. _home-page:
+
 .. Emscripten documentation master file, created by
    sphinx-quickstart on Tue Jul 01 09:20:29 2014.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. only:: sdkbuild
+
+	.. admonition:: Welcome to Emscripten SDK |release|
+
+		This documentation contains everything you need to :ref:`start developing <Tutorial>` with the Emscripten SDK.
+
 .. warning:: This site is still under construction. 
+
    
 .. raw:: html
    :file: home_page_layout.html
@@ -34,16 +43,3 @@ News
 	docs/tools_reference/index
 	docs/site/about
 
-   
- 
-
-
-.. COMMENTS Scratchpad
-	This DOC Contents
-	.. contents:: Table of Contents
-	:ref:`genindex` **HamishW** This needs to be added to the sidebar
-	This page not yet designed. Thought is to include:
-		* Introduction
-		* Quickstart Signpost - with prominent link to "Getting Started" Tutorial
-		* Signposts for: News, Top Demos, Contributing, Github Project
-		* (Possibly) Signposts to: Twitter feed, Github issues (new, resolved)

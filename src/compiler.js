@@ -180,6 +180,10 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
 if (SAFE_HEAP) USE_BSS = 0; // must initialize heap for safe heap
 
+if (NO_BROWSER) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.filter(function(func) { return func !== '$Browser' });
+}
+
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
@@ -308,7 +312,7 @@ function compile(raw) {
 
 B = new Benchmarker();
 
-try {
+//try {
   if (ll_file) {
     if (phase === 'glue') {
       compile(';');
@@ -318,6 +322,7 @@ try {
       compile(ll_file); // we are given raw .ll
     }
   }
+/*
 } catch(err) {
   if (err.indexOf('Aborting compilation due to previous errors') != -1) {
     // Compiler failed on user error, print out the error message.
@@ -343,6 +348,7 @@ try {
     }, 500);
   } else throw err;
 }
+*/
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });
 //printErr(dump(M.slice(M.length-10)));

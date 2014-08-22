@@ -173,6 +173,8 @@ FAQ (wiki-import)
 
    **A.** This is a limitation of the le32 frontend in clang. You can use the x86 frontend instead by compiling with ``EMCC_LLVM_TARGET=i386-pc-linux-gnu`` in the environment (however you will lose the advantages of le32 which includes better alignment of doubles).
 
+.. _faq-when-safe-to-call-compiled-functions:
+
 -  **Q.** I am building a library, and sometimes I get an error when I call a compiled function before the page fully loaded. How can I tell when is safe to call it?
 
    **A.** The easiest way to find out when loading is complete (which is asynchronous, as it often requires loading files, such as the .mem file or preloade files), is to just add a ``main()`` function. It will be called when it is safe to do so, after startup is complete, so that is a signal that it is safe to call any compiled method.

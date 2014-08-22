@@ -417,7 +417,7 @@ function intertyper(lines, sidePass, baseLineNums) {
       }
 
       Types.needAnalysis[type] = 0;
-      if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
+      if (Compiletime.isNumberType(type) || pointingLevels(type) >= 1) {
         return { value: toNiceIdent(value.text), type: type };
       } else if (value.text in ZEROINIT_UNDEF) { // undef doesn't really need initting, but why not
         return { intertype: 'emptystruct', type: type };
@@ -464,7 +464,7 @@ function intertyper(lines, sidePass, baseLineNums) {
     if (item.tokens[0].text == 'type') {
       var fields = [];
       var packed = false;
-      if (Runtime.isNumberType(item.tokens[1].text)) {
+      if (Compiletime.isNumberType(item.tokens[1].text)) {
         // Clang sometimes has |= i32| instead of |= { i32 }|
         fields = [item.tokens[1].text];
       } else if (item.tokens[1].text != 'opaque') {
@@ -821,7 +821,7 @@ function intertyper(lines, sidePass, baseLineNums) {
   function allocaHandler(item) {
     item.intertype = 'alloca';
     item.allocatedType = item.tokens[1].text;
-    if (item.tokens.length > 3 && Runtime.isNumberType(item.tokens[3].text)) {
+    if (item.tokens.length > 3 && Compiletime.isNumberType(item.tokens[3].text)) {
       item.ident = toNiceIdent(item.tokens[4].text);
     } else {
       item.ident = 1;

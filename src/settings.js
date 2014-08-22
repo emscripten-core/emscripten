@@ -346,6 +346,13 @@ var MEMFS_APPEND_TO_TYPED_ARRAYS = 0; // If set to nonzero, MEMFS will always ut
                                       // for appending data to files. The default behavior is to use typed arrays for files
                                       // when the file size doesn't change after initial creation, and for files that do
                                       // change size, use normal JS arrays instead.
+var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Useful if you are just doing pure
+                       // computation, but not reading files or using any streams (including fprintf, and other
+                       // stdio.h things) or anything related. The one exception is there is partial support for printf,
+                       // and puts, hackishly.
+var NO_BROWSER = 0; // If set, disables building in browser support using the Browser object. Useful if you are
+                    // just doing pure computation in a library, and don't need any browser capabilities like a main loop
+                    // (emscripten_set_main_loop), or setTimeout, etc.
 
 var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
                  // When enabled, 0-initialized globals are sorted to the end of the globals list,
@@ -539,6 +546,7 @@ var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Fun
                               // privileged firefox app, etc.)
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
+var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend
 
 var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
 var COMPILER_FASTPATHS = 1; // use fast-paths to speed up compilation

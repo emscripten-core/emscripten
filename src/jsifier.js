@@ -207,7 +207,7 @@ function JSify(data, functionsOnly) {
     //dprint('jsifier const: ' + JSON.stringify(value) + ',' + type + '\n');
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
-    } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
+    } else if (Compiletime.isNumberType(type) || pointingLevels(type) >= 1) {
       return [makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type))];
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
@@ -282,7 +282,7 @@ function JSify(data, functionsOnly) {
       if (item.external) {
         if (LibraryManager.library[item.ident.slice(1)]) {
           constant = LibraryManager.library[item.ident.slice(1)];
-        } else if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+        } else if (Compiletime.isNumberType(item.type) || isPointerType(item.type)) {
           constant = zeros(Runtime.getNativeFieldSize(item.type));
         } else {
           constant = makeEmptyStruct(item.type);
@@ -1550,7 +1550,7 @@ function JSify(data, functionsOnly) {
                   } else {
                     var size = calcAllocatedSize(removeAllPointing(type));
                     ret = makeCopyValues(getFastValue('tempVarArgs', '+', offset), arg, size, null, null, varargsByVals[i], ',');
-                    offset += Runtime.forceAlign(size, Runtime.STACK_ALIGN);
+                    offset += RuntimeGenerator.forceAlign(size, Runtime.STACK_ALIGN);
                   }
                   return ret;
                 }).filter(function(arg) {

@@ -28,11 +28,6 @@ By the end of the project all articles should be published and all of this page 
 .. todo:: **HamishW** Delete this whole section at the end of the project. At that point there should only be HamishW markup for possible Todos. 
 	Note the search link immediately above too - this is to the kripken site and may need to change if the site moves.
 
-Reporting bugs
-==============
-
-Please :ref:`report documentation bugs <site-and-documentation-bug-reports>` as you would any other Emscripten bug. Help :ref:`fix them <writing-and-updating-articles>` by updating existing documents or by creating new ones.
-
 
 Searching the site
 ==================
@@ -41,7 +36,19 @@ Searching returns only topics which contain **all** the specified keywords.
 
 .. tip:: Always start by searching for *single* words like "interacting" or "compiling". Generally this will be enough to find the relevant document. If not, you can refine the search by adding additional terms. 
 
-Note that searches that include characters like "-" and "+" will not work. There is no support for logical operators.
+.. note:: Searches that include characters like "-" and "+" will not work. There is no support for logical operators.
+
+Reporting bugs
+==============
+
+Please :ref:`report documentation bugs <site-and-documentation-bug-reports>` as you would any other Emscripten bug. Help :ref:`fix them <writing-and-updating-articles>` by updating existing documents or by creating new ones.
+
+Contributing to the site
+========================
+
+:ref:`Contributions <contributing>` to this site (and indeed any part of Emscripten) are welcome! 
+
+Check out the rest of this article for instructions on how to :ref:`build the site <building-the-site>` and :ref:`write and update articles <writing-and-updating-articles>`.
 
 
 .. _building-the-site:
@@ -49,18 +56,11 @@ Note that searches that include characters like "-" and "+" will not work. There
 Building the site
 ==================
 
-The site sources are in the Emscripten *incoming* branch, `site <https://github.com/kripken/emscripten/tree/incoming/site>`_ directory. Changes should be committed to the incoming branch. 
+The site sources are stored on Github `here <https://github.com/kripken/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
 
 The site is published to the **kripken/emscripten-site** *gh-pages* branch (Github pages).
 
-
-make html
----------
-
-The site can be built from source on Ubuntu and Windows by navigating to the */emscripten/site* directory and using the command: ::
-
-	make clean
-	make html
+.. note:: Remember to update the :ref:`about-build-versions` for *public* builds.
 
 Installing Sphinx
 -----------------
@@ -76,8 +76,54 @@ The workaround is to use the Python package installer "pip" to get version 1.2.2
 
 	pip install sphinx
 	pip install sphinx --upgrade
+	
+
+.. _about-site-builds:
+
+Site builds
+-----------
+
+The site can be built from source on Ubuntu and Windows by navigating to the */emscripten/site* directory and using the command: ::
+
+	make clean
+	make html
+	
+
+.. _about-sdk-builds:
+
+SDK Builds
+------------------
+
+SDK builds are virtually identical to :ref:`about-site-builds`. The main difference is that on SDK builds the :ref:`home page <home-page>` has a clear notification that it is an SDK build.
+
+SDK builds are enabled by adding the ``sdkbuild`` tag in `conf.py <https://github.com/kripken/emscripten/blob/incoming/site/source/conf.py#L400>`_: ::
+
+	#The line below must be uncommented for SDK builds. 
+	tags.add('sdkbuild')
 
 
+.. note:: In theory it should be possible to supply the ``sdkbuild`` tag as a command line option as shown below. However this is not working: 
+
+	::
+
+		make html SPHINXOPTS="-t sdkbuild"
+
+	
+.. _about-build-versions:
+
+Build version
+-------------
+
+The documentation version should match the Emscripten version for the current build. For a general site build this will be the latest tagged release as defined in `Emscripten version <https://github.com/kripken/emscripten/blob/incoming/emscripten-version.txt>`_. For an SDK build it will be the Emscripten version for the SDK.
+
+The version and release information is used in a few places in the documentation, for example :ref:`emscripten-authors`.
+
+The version is set in `conf.py <https://github.com/kripken/emscripten/blob/incoming/site/source/conf.py#L88>`_ in the ``version`` and ``release`` values. For example: ::
+
+	# The short X.Y version.
+	version = '1.23'
+	# The full version, including alpha/beta/rc tags.
+	release = '1.23.0'
 
 .. _writing-and-updating-articles:
 

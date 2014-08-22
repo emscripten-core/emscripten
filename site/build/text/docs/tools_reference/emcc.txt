@@ -1,6 +1,6 @@
 
-Emscripten Compiler Frontend (emcc) (under-construction)
-********************************************************
+Emscripten Compiler Frontend (emcc) (ready-for-review)
+******************************************************
 
 **This document provides the command syntax for the Emscription
 Compiler Frontend.**
@@ -22,9 +22,6 @@ Command line syntax
 The input file(s) can be either source code files that *Clang* can
 handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files
 in human-readable form.
-
-Supported targets include: llvm bitcode, JavaScript, NOT elf (autoconf
-likes to see elf above to enable shared object support).
 
 
 Arguments
@@ -284,7 +281,7 @@ Options that are modified or new in *emcc* are listed below:
 
 "--exclude-file <name>"
    Files and directories to be excluded from *--embed-file* and
-   *--preload-file*. Wildcard is supported.
+   *--preload-file*. Wildcards (*) are supported.
 
 "--shell-file <path>"
    The path name to a skeleton HTML file used when generating HTML
@@ -420,10 +417,9 @@ Options that are modified or new in *emcc* are listed below:
         means "main()" will not be called until the file is downloaded
         and applied; you cannot call any C functions until it arrives.
 
-   Note: Call yourself from "main()" to know when all asynchronous
-     processing has completed and it is safe to call library
-     functions, as "main()" will only be called at that time. You can
-     also call "addOnPreMain" from a "preRun".
+           Note: The *safest way* to ensure that it is safe to call
+             C functions (the initialisation file has loaded) is to
+             call a notifier function from "main()".
 
 "-Wno-warn-absolute-paths"
    Suppress warnings about the use of absolute paths in "-I" and "-L"
@@ -482,9 +478,9 @@ Options that are modified or new in *emcc* are listed below:
      will also be created.
 
 "-c"
-   Tells *gcc* not to run the linker and causes LLVM bitcode to be
-   generated, as *emcc* only generates JavaScript in the final linking
-   stage of building.
+   Tells *emcc* to generate LLVM bitcode (which can then be linked
+   with other bitcode files), instead of compiling all the way to
+   JavaScript.
 
 
 Environment variables
