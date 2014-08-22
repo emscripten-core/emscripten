@@ -666,6 +666,11 @@ var LibrarySDL = {
             SDL.events.push(event);
           }
           break;
+
+        case 'mouseenter':
+          SDL.events.push(event);
+          event.preventDefault();
+          break;
         case 'mouseout':
           // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
           for (var i = 0; i < 3; i++) {
@@ -679,6 +684,7 @@ var LibrarySDL = {
               SDL.DOMButtons[i] = 0;
             }
           }
+          SDL.events.push(event);
           event.preventDefault();
           break;
         case 'focus':
@@ -928,6 +934,20 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.axis, 'event.axis', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyAxisEvent.value, 'SDL.joystickAxisValueConversion(event.value)', 'i32') }}};
+          break;
+        }
+        case 'mouseenter': {
+          var SDL_WINDOWEVENT_ENTER = 10 /* SDL_WINDOWEVENT_ENTER */;
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, '0', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'SDL_WINDOWEVENT_ENTER', 'i8') }}};
+          break;
+        }
+        case 'mouseout': {
+          var SDL_WINDOWEVENT_LEAVE = 11 /* SDL_WINDOWEVENT_LEAVE */;
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, '0', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'SDL_WINDOWEVENT_LEAVE', 'i8') }}};
           break;
         }
         case 'focus': {
@@ -1257,6 +1277,8 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['visibilitychange'] = 0x200 /* SDL_WINDOWEVENT */;
     SDL.DOMEventToSDLEvent['focus']      = 0x200 /* SDL_WINDOWEVENT */;
     SDL.DOMEventToSDLEvent['blur']       = 0x200 /* SDL_WINDOWEVENT */;
+    SDL.DOMEventToSDLEvent['mouseout']   = 0x200 /* SDL_WINDOWEVENT */;
+    SDL.DOMEventToSDLEvent['mouseenter']   = 0x200 /* SDL_WINDOWEVENT */;
 
     // These are not technically DOM events; the HTML gamepad API is poll-based.
     // However, we define them here, as the rest of the SDL code assumes that
@@ -1328,7 +1350,7 @@ var LibrarySDL = {
 
   SDL_SetVideoMode__deps: ['$GL'],
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
+    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout','mouseenter'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
 
