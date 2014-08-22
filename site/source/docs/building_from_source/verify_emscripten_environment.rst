@@ -43,9 +43,11 @@ At this point you need to :ref:`Install and activate <fixing-missing-components-
 Build a basic example
 ---------------------
 
-The next test is to actually build some code! On the command prompt navigate to the Emscripten directory for the current SDK and try to build the **hello_world.cpp** test code: ::
+The next test is to actually build some code! On the command prompt navigate to the Emscripten directory for the current SDK and try to build the **hello_world.cpp** test code: 
 
-		./emcc tests/hello_world.cpp
+::
+
+	./emcc tests/hello_world.cpp
 	
 This command should complete without warnings and you should find the newly-compiled JavaScript file (**a.out.js**) in the current directory.
 
