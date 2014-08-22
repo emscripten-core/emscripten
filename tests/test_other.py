@@ -3978,12 +3978,13 @@ main(const int argc, const char * const * const argv)
     test(['-O1'])
 
   def test_no_nuthin(self):
-    def test(opts, ratio):
+    def test(opts, ratio, absolute):
       print opts
       def get_size(name):
         return os.stat(name).st_size
       sizes = {}
       def do(name, moar_opts):
+        self.clear()
         Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
         sizes[name] = get_size(name + '.js')
         self.assertContained('hello, world!', run_js(name + '.js'))
@@ -3997,10 +3998,12 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < sizes['no_fs']
       assert sizes['no_nuthin'] < sizes['no_browser']
       assert sizes['no_nuthin'] < ratio*sizes['normal']
-    test([], 0.66)
-    test(['-O1'], 0.66)
-    test(['-O2'], 0.50)
-    test(['-O3', '--closure', '1'], 0.60)
+      assert sizes['no_nuthin'] < absolute
+    test([], 0.66, 250000)
+    test(['-O1'], 0.66, 225000)
+    test(['-O2'], 0.50, 75000)
+    test(['-O3', '--closure', '1'], 0.60, 60000)
+    test(['-O3', '--closure', '2'], 0.60, 40000) # might change now and then
 
   def test_stat_fail_alongtheway(self):
     open('src.cpp', 'w').write(r'''

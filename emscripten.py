@@ -1124,12 +1124,24 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
           basic_funcs.append('extCall_%s' % sig)
 
+      def quote(prop):
+        if settings['CLOSURE_COMPILER'] == 2:
+          return "'" + prop + "'"
+        else:
+          return prop
+
+      def access_quote(prop):
+        if settings['CLOSURE_COMPILER'] == 2:
+          return "['" + prop + "']"
+        else:
+          return '.' + prop
+
       # calculate exports
       exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
       exported_implemented_functions.append('runPostSets')
       exports = []
       for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
-        exports.append("%s: %s" % (export, export))
+        exports.append(quote(export) + ": " + export)
       exports = '{ ' + ', '.join(exports) + ' }'
       # calculate globals
       try:
@@ -1141,9 +1153,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
       def math_fix(g):
         return g if not g.startswith('Math_') else g.split('_')[1]
-      asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
-                         ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
-      asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
+      asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths]) + \
+                         ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
+      asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
       # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
       if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
         assert settings.get('TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
@@ -1167,6 +1179,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   return real_''' + s + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset']])
+
       receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
 
       # finalize
@@ -1184,15 +1197,23 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   // EMSCRIPTEN_START_ASM
   var asm = (function(global, env, buffer) {
     %s
-    var HEAP8 = new global.Int8Array(buffer);
-    var HEAP16 = new global.Int16Array(buffer);
-    var HEAP32 = new global.Int32Array(buffer);
-    var HEAPU8 = new global.Uint8Array(buffer);
-    var HEAPU16 = new global.Uint16Array(buffer);
-    var HEAPU32 = new global.Uint32Array(buffer);
-    var HEAPF32 = new global.Float32Array(buffer);
-    var HEAPF64 = new global.Float64Array(buffer);
-  ''' % (asm_setup, "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';") + '\n' + asm_global_vars + '''
+    var HEAP8 = new global%s(buffer);
+    var HEAP16 = new global%s(buffer);
+    var HEAP32 = new global%s(buffer);
+    var HEAPU8 = new global%s(buffer);
+    var HEAPU16 = new global%s(buffer);
+    var HEAPU32 = new global%s(buffer);
+    var HEAPF32 = new global%s(buffer);
+    var HEAPF64 = new global%s(buffer);
+  ''' % (asm_setup, "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';",
+         access_quote('Int8Array'),
+         access_quote('Int16Array'),
+         access_quote('Int32Array'),
+         access_quote('Uint8Array'),
+         access_quote('Uint16Array'),
+         access_quote('Uint32Array'),
+         access_quote('Float32Array'),
+         access_quote('Float64Array')) + '\n' + asm_global_vars + '''
     var __THREW__ = 0;
     var threwValue = 0;
     var setjmpId = 0;
