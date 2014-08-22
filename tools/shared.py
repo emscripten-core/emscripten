@@ -1947,5 +1947,14 @@ def safe_move(src, dst):
     return
   shutil.move(src, dst)
 
+def safe_copy(src, dst):
+  src = os.path.abspath(src)
+  dst = os.path.abspath(dst)
+  if os.path.isdir(dst):
+    dst = os.path.join(dst, os.path.basename(src))
+  if src == dst:
+    return
+  shutil.copyfile(src, dst)
+
 import js_optimizer
 
