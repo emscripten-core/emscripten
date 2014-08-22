@@ -28,11 +28,6 @@ By the end of the project all articles should be published and all of this page 
 .. todo:: **HamishW** Delete this whole section at the end of the project. At that point there should only be HamishW markup for possible Todos. 
 	Note the search link immediately above too - this is to the kripken site and may need to change if the site moves.
 
-Reporting bugs
-==============
-
-Please :ref:`report documentation bugs <site-and-documentation-bug-reports>` as you would any other Emscripten bug. Help :ref:`fix them <writing-and-updating-articles>` by updating existing documents or by creating new ones.
-
 
 Searching the site
 ==================
@@ -41,7 +36,19 @@ Searching returns only topics which contain **all** the specified keywords.
 
 .. tip:: Always start by searching for *single* words like "interacting" or "compiling". Generally this will be enough to find the relevant document. If not, you can refine the search by adding additional terms. 
 
-Note that searches that include characters like "-" and "+" will not work. There is no support for logical operators.
+.. note:: Searches that include characters like "-" and "+" will not work. There is no support for logical operators.
+
+Reporting bugs
+==============
+
+Please :ref:`report documentation bugs <site-and-documentation-bug-reports>` as you would any other Emscripten bug. Help :ref:`fix them <writing-and-updating-articles>` by updating existing documents or by creating new ones.
+
+Contributing to the site
+========================
+
+:ref:`Contributions <contributing>` to this site (and indeed any part of Emscripten) are welcome! 
+
+Check out the rest of this article for instructions on how to :ref:`build the site <building-the-site>` and :ref:`write and update articles <writing-and-updating-articles>`.
 
 
 .. _building-the-site:
@@ -49,7 +56,7 @@ Note that searches that include characters like "-" and "+" will not work. There
 Building the site
 ==================
 
-The site sources are in the Emscripten *incoming* branch, `site <https://github.com/kripken/emscripten/tree/incoming/site>`_ directory. Changes should be committed to the incoming branch. 
+The site sources are stored on Github `here <https://github.com/kripken/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
 
 The site is published to the **kripken/emscripten-site** *gh-pages* branch (Github pages).
 

@@ -64,10 +64,10 @@ The *Portable Emscripten SDK* is a no-installer version of the SDK package. It i
 
 First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-portable-SDK>` below and install any prerequisites.
 
-Install the SDK using the following steps:
+Install or update the SDK using the following steps:
 
 1. Download and unzip the portable SDK package to a directory of your choice. This directory will contain the Emscripten SDK.
-#. Open a command prompt inside the SDK directory and run the following :ref:`emsdk <emsdk>` commands to get the latest SDK tools and set them as :term:`active <Active Tool/SDK>`. 
+#. Open a command prompt inside the SDK directory and run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Github and set them as :term:`active <Active Tool/SDK>`. 
 
 	.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**: 
 	
@@ -80,13 +80,20 @@ Install the SDK using the following steps:
 		./emsdk install latest
 
 		# Make the "latest" SDK "active"
-		./emsdk activate latest	
+		./emsdk activate latest
 
-Whenever you change the location of the Portable SDK (e.g. take it to another computer), re-run the final command: ``./emsdk activate latest``.
+#. **Linux and Mac OS X only:** Call ``source ./emsdk_env.sh`` after ``activate`` to set the system path to the active version of Emscripten: 
 
-.. tip:: The instructions above can also be used to get new SDKs, as they are released.
-
-
+		::
+			
+			# Set the current Emscripten path on Linux/Mac OS X
+			source ./emsdk_env.sh
+			
+	This step is not required on Windows because calling the ``activate`` command also sets the correct system path (this is not possible on Linux due to security restrictions). 
+	
+Whenever you change the location of the Portable SDK (e.g. take it to another computer), re-run the ``./emsdk activate latest`` command (and ``source ./emsdk_env.sh`` for Linux). 
+		
+		
 .. _platform-notes-installation_instructions-portable-SDK:
 
 Platform-specific notes
@@ -112,7 +119,9 @@ Mac OS X
 Linux
 ++++++++
 
-.. note:: Pre-built binaries of tools are not available on Linux. Installing a tool will automatically clone and build that tool from the sources inside the **emsdk** directory. *Emsdk* does not interact with Linux package managers on the behalf of the user, nor does it install any tools to the system. All file changes are done inside the **emsdk/** directory.
+**Pre-built binaries of tools are not available on Linux.** Installing a tool will automatically clone and build that tool from the sources inside the **emsdk** directory. 
+
+.. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
 - The system must have a working :ref:`compiler-toolchain` (because *emsdk* builds software from the source): 
 
@@ -171,6 +180,9 @@ Type the following (omitting comments) on the :ref:`Emscripten Command Prompt <e
 	./emsdk install latest
 	# Set up the compiler configuration to point to the "latest" SDK.
 	./emsdk activate latest
+	
+	# Linux/Mac OS X only: Set the current Emscripten path
+	source ./emsdk_env.sh
 
 The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on Github <emsdk-master-or-incoming-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
 

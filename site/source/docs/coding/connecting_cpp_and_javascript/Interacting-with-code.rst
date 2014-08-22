@@ -6,16 +6,13 @@ Interacting with code (wiki-import)
 
 .. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
-Interacting with Compiled Code
-==============================
-
 (If you are looking for how compiled code interacts with the browser environment, see :ref:`Emscripten-Browser-Environment`.)
 
 There are various ways to connect and interact between JS and compiled C++ in JS. An overview appears in the second half of these slides:
 http://kripken.github.io/mloc\_emscripten\_talk/qcon.html
 
 Calling Compiled Functions From Normal JavaScript
--------------------------------------------------
+=================================================
 
 It's easy to call compiled code from normal JavaScript. For example, run this command in the Emscripten home directory:
 
@@ -46,7 +43,7 @@ Some things to keep in mind with :js:func:`ccall` and :js:func:`cwrap`:
    **Note:** you need ``_`` at the beginning of the functions when exporting (but not with ccall), and note also that you need to use ``Module.ccall`` and not :js:func:`ccall` by itself, since closure will minify the function name, leaving only the Module object where we export names.
 
 Accessing Memory
-----------------
+================
 
 You can access memory using :js:func:`getValue(ptr, type) <getValue>` and :js:func:`setValue(ptr, value, type) <setValue>`. The first argument is a pointer, a number representing a memory address. ``type`` must be an LLVM IR type, one of ``i8,i16,i32,i64,float,double`` or a pointer type like ``i8*`` (or just ``*``). Note that the types here are not as in :js:func:`ccall` and :js:func:`cwrap` - this is a lower-level operation, and we do need to care what specific integer etc. type is being used.
 
@@ -62,7 +59,7 @@ You can also access memory 'directly' by manipulating the arrays that represent 
 That allocates a buffer, copies in some data, then calls a C function to process the data, and finally frees the buffer. Here ``my_function`` is a C function that receives a single integer parameter (could be a pointer as well, as they are just 32-bit integers for us), and returns an integer as well, something like ``int my_function(char *buf)``.
 
 Calling JavaScript From C/C++
------------------------------
+=============================
 
 The most direct way is to just use :c:func:`emscripten_run_script`, which basically runs some JS code from C/C++ using eval. So ``emscripten_run_script("alert('hi')");`` will show an alert with 'hi' (note: this calls ``alert`` which is present in browsers, but not in node or other JS shells. You can call ``Module.print`` to print to stdout). This is not very fast though. A faster alternative is to write "inline JavaScript", basically the same as inline assembly would be used, for example
 
@@ -127,22 +124,22 @@ You can use the emcc option ``--js-library`` to add a file with such code, inste
 -  JS libraries can declare dependencies (``__deps``, see examples in ``library*.js``), however those are only for other JS libraries. If a JS library depends on a compiled C library (like most of libc), you must edit ``src/deps_info.json``, see ``tools/system_libs.py`` (search for deps\_info).
 
 Calling JS functions as function pointers from C
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------
 
 You can use ``Runtime.addFunction`` to return an integer value that represents a function pointer. Passing that integer to C code then lets it call that value as a function pointer, and the JS function you sent to ``Runtime.addFunction`` will be called. See ``test_add_function`` in ``tests/test_core.py`` for an example.
 
 WebIDL Binder
--------------
+=============
 
 The :ref:`WebIDL-Binder` is a tool to make C++ classes usable from JS as JS classes. It is used to port Bullet Physics to the web in the **ammo.js** project, and is a fairly simple lightweight approach to binding between the two languages.
 
 Embind
-------
+======
 
 Embind is a method to communicate from JS to C++ and C++ to JS, in a C++-like manner (whereas JS libraries are using C APIs, and just one direction). The only downside is that it is not as lightweight as JS libraries or the WebIDL binder. Docs: :ref:`embind`.
 
-Other Methods
--------------
+Other methods
+=============
 
 You can directly interact in various other ways with the compiled code:
 
@@ -152,44 +149,25 @@ You can directly interact in various other ways with the compiled code:
 -  There are various other convenience functions, see **preamble.js** (that file will be included with the generated code).
 -  For filesystem-related manners, see the :ref:`Filesystem-Guide`.
 
-Affecting Execution
--------------------
+Affecting execution
+===================
 
-You can affect how code runs by creating an object called ``Module`` before the compiled script. Certain properties on ``Module`` can then have various effects:
+``Module`` is a global JavaScript object, with attributes that Emscripten-generated code calls at various points in its execution. 
 
--  ``arguments``: The commandline arguments (if the compiled code checks ``argc``, ``argv``, it will be seeing ``arguments``)
--  ``print``: Called when something is printed to standard output.
--  ``preInit``: A function (or array of functions) to call before global initializers run, but after basic initialization of the JS runtime (so you can do ``FS.*`` stuff, but no C++ initializers were called yet).
--  ``preRun``: A function (or array of functions) to call right before calling ``run``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the FileSystem API (since that needs the FileSystem API to be defined, but also needs to be done before the program starts to run; if you need to affect global initializers, though, you should use preInit).
--  ``noInitialRun``: If set to true, ``main()`` will not be called. The program will still call global initializers, set up memory initialization, and so forth. You can then call ``main()`` yourself later.
--  ``noExitRuntime``: If set to true, the runtime is not shut down after ``run`` is called. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to be able to continue to use the code after ``run`` finishes, it is safer to set this.
+Developers provide an implementation of ``Module`` to control, for example, how notifications from Emscripten are displayed, which files that are loaded before the main loop is run, etc. For more information see :ref:`module`.
 
-For example,
-
-::
-
-    var Module = {
-      'print': function(text) { alert(text) }
-    };
-
-This will cause all printouts from the program to be calls to ``alert``.
-
-**Important**: If you run closure compiler on your code (which is done by default in ``-O2`` and above), you will need quotation marks around the properties of ``Module`` as in the example above (and you need to run closure on the compiled code together with the declaration of ``Module``).
-
-Setting Module
-~~~~~~~~~~~~~~
-
-When generating just JavaScript, no Module object is created. So you can use emcc's ``--pre-js`` to add some JS code that defines the Module object with the stuff you need.
-
-When generating HTML, a Module object is created for you and filled with some defaults for printing, etc. (compile a little hello world example to see, or view ``src/shell.html``). The simplest thing is to use ``--pre-js`` to add some JS code that adds properties to that existing Module object.
 
 Environment variables
-~~~~~~~~~~~~~~~~~~~~~
+==============================
 
-Sometimes, the code you are compiling will want to access environment variables (for instance, in C, by calling the ``getenv()`` function). Just as with the filesystem, emscripten generated JavaScript cannot access the computer's environment variables so a virtualised environment is provided. The JavaScript object ``ENV`` contains these virtualised environment variables, and by modifying it you can pass variables to your compiled code. Care must be taken to ensure that the ``ENV`` variable has been initialised by Emscripten before it is modified - using ``Module.preRun`` is a convenient way to do this. For example to set an environment variable ``MY_FILE_ROOT`` to be ``"/usr/lib/test/"`` you could add
+Sometimes compiled code needs to access environment variables (for instance, in C, by calling the ``getenv()`` function). Just as with the file system, Emscripten generated JavaScript cannot access the computer's environment variables directly, so a virtualised environment is provided. 
+
+The JavaScript object ``ENV`` contains these virtualised environment variables, and by modifying it you can pass variables to your compiled code. Care must be taken to ensure that the ``ENV`` variable has been initialised by Emscripten before it is modified - using :js:attr:`Module.preRun` is a convenient way to do this. 
+
+For example to set an environment variable ``MY_FILE_ROOT`` to be ``"/usr/lib/test/"`` you could add the following JavaScript to your :ref:`setup code <module-creating>`:
 
 .. code:: javascript
 
     Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
 
-to your setup code, as described above.
+

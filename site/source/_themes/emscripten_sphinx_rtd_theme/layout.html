@@ -98,6 +98,7 @@
 		{% set toctree = toctree(maxdepth=4, collapse=False, includehidden=True) %} 
         {% if toctree %}
             {{ toctree }}
+			<a class="toctree-l1" title="Index" href="{{ pathto('genindex') }}">Index</a>
         {% else %}
             <!-- Local TOC -->
             <div class="local-toc">{{ toc }}</div>
