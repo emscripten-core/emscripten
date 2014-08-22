@@ -6,7 +6,7 @@ Module object (ready-for-review)
 
 ``Module`` is a global JavaScript object, with attributes that Emscripten-generated code calls at various points in its execution. 
 
-Developers provide an implementation of ``Module`` to control the execution of code. For example, to define how notification messages from Emscripten are displayed, developers implement the :js:attr:`Module.print` attribute.
+Developers can provide an implementation of ``Module`` to control the execution of code. For example, to define how notification messages from Emscripten are displayed, developers implement the :js:attr:`Module.print` attribute.
 
 .. note:: ``Module`` is also used to provide access functions (see :js:func:`ccall`) in a way that avoids issues with function name minification at higher optimisation levels. These functions are documented as part of their own APIs.
 
@@ -22,18 +22,22 @@ Creating Module
 
 Use :ref:`emcc's <emcc-pre-js>` ``--pre-js`` option to add JavaScript code that defines (or extends) the ``Module`` object with the behaviour you need. 
 
-When generating only JavaScript, no ``Module`` object is created by default, and the behaviour is entirely defined by the developer. For example, creating a ``Module`` object with the following code will cause all notifications from the program to be calls to ``alert()``.
+When generating only JavaScript (as opposed to HTML), no ``Module`` object is created by default, and the behaviour is entirely defined by the developer. For example, creating a ``Module`` object with the following code will cause all notifications from the program to be calls to ``alert()``.
 
 	::
 
 		var Module = {
-		  'print': function(text) { alert(text) }
+		  'print': function(text) { alert('stdout: ' + text) }
+		  'printErr': function(text) { alert('stderr: ' + text) }
 		};
 
-.. important:: If you run closure compiler on your code (which is done by default in optimisation level :ref:`-02 <emcc-O2>` and higher), you will need quotation marks around the properties of ``Module`` as in the example above (and you need to run closure on the compiled code together with the declaration of ``Module``).	
+.. important:: If you run closure compiler on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above (and you need to run closure on the compiled code together with the declaration of ``Module``, which is done automatically for a ``-pre-js`` file).	
 
-When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/kripken/emscripten/blob/master/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time to add properties to the existing ``Module`` object.
+When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/kripken/emscripten/blob/master/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time to add properties to the existing ``Module`` object, for example
 
+	::
+
+		Module['print'] = function(text) { alert('stdout: ' + text) };
 
 
 Affecting execution
@@ -44,8 +48,11 @@ The following ``Module`` attributes affect code execution.
 
 .. js:attribute:: Module.print
 
-	Called when something is printed to standard output.
+	Called when something is printed to standard output (stdout)
 	
+.. js:attribute:: Module.printErr
+
+	Called when something is printed to standard error (stderr)
 
 
 .. js:attribute:: Module.arguments
@@ -72,7 +79,7 @@ The following ``Module`` attributes affect code execution.
 
 .. js:attribute:: Module.noExitRuntime
 
-	If set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to be able to continue to use the code after ``run()`` finishes, it is safer to set this.
+	If set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to be able to continue to use the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
 
 
 
