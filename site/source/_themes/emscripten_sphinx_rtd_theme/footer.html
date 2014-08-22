@@ -41,7 +41,7 @@
             {%- if hasdoc(document) %}
               <a class="footer-navlink-short" title="{{ shorttext }}" href="{{ pathto(document) }}">{{ shorttext }}</a><a class="footer-navlink-long" title="{{ longtext }}" href="{{ pathto(document) }}">{{ longtext }}</a>
 	        {%- elif document | truncate(4, True, end='') == 'http' %} 
-		      <a class="footer-navlink-short" href="{{ document }}">{{ shorttext }}</a><a class="footer-navlink-long" href="{{ document }}">{{ longtext }}</a>
+		      <a class="footer-navlink-short external" href="{{ document }}">{{ shorttext }}</a><a class="footer-navlink-long external" href="{{ document }}">{{ longtext }}</a>
 			{%- else %}  
 			  {{ shorttext }}
             {%- endif %}
