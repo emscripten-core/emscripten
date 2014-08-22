@@ -17,12 +17,11 @@ The best ways to contact us for support are the *mailing list* and the *IRC* cha
 - Mailing list: `emscripten-discuss <http://groups.google.com/group/emscripten-discuss>`_
 - IRC: **#emscripten** on `irc.mozilla.org <https://wiki.mozilla.org/IRC>`_ 
 
+Emscripten also has a presence on social media:
 
-Emscripten also has an *unofficial* presence on social media:
-
-- `Google+ page <https://plus.google.com/100622854474489221138>`_
 - `#emscripten <https://twitter.com/hashtag/emscripten>`_ (Emscripten Hashtag on Twitter)   
-- `@kripken <https://twitter.com/kripken>`_ (Emscripten Developer Account on Twitter)
+- Unofficial `Google+ page <https://plus.google.com/100622854474489221138>`_
+- `@kripken <https://twitter.com/kripken>`_ (an Emscripten developer's account on Twitter, mentions Emscripten updates)
 
 
 Report a bug
