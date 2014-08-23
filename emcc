@@ -927,7 +927,7 @@ try:
     shared.Settings.CLOSURE_COMPILER = closure
     assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
     if closure == 2 and shared.Settings.ASM_JS == 1:
-      logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those')
+      logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
       shared.Settings.ASM_JS = 2
 
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
