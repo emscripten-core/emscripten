@@ -289,17 +289,14 @@ namespace emscripten {
         struct remove_class<R(C::*)(A...) const volatile> { using type = R(A...); };
 
         template<typename LambdaType>
-        struct CalculateLambdaSignature {
-            using type = typename std::add_pointer<
-                typename remove_class<
-                    decltype(&LambdaType::operator())
-                >::type
-            >::type;
-        };
+        using LambdaSignature = typename remove_class<
+            decltype(&LambdaType::operator())
+        >::type;
     }
 
+    // requires captureless lambda because implicitly coerces to function pointer
     template<typename LambdaType>
-    typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp) {
+    internal::LambdaSignature<LambdaType>* optional_override(const LambdaType& fp) {
         return fp;
     }
 
