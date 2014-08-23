@@ -119,6 +119,11 @@ function looop() {
    break;
   }
  }
+ if (a) { waka(); }
+ if (a) { waka(); } else { wala(); }
+ if (a) { if (a) { waka(); } else { wala(); } }
+ if (a) { if (a) { waka(); } } else { other(); }
+ if (a) { if (a) { waka(); } else { wala(); } } else { other(); }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop"]
 

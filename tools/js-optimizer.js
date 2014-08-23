@@ -5626,7 +5626,7 @@ function asmLastOpts(ast) {
           node[1] = simplifyNotCompsDirect(['unary-prefix', '!', conditionToBreak]);
           return node;
         }
-      } else if (type == 'binary') {
+      } else if (type === 'binary') {
         if (node[1] === '&') {
           if (node[3][0] === 'unary-prefix' && node[3][1] === '-' && node[3][2][0] === 'num' && node[3][2][1] === 1) {
             // Change &-1 into |0, at this point the hint is no longer needed
@@ -5651,6 +5651,11 @@ function asmLastOpts(ast) {
     }, function(node, type) {
       var stats = getStatements(node);
       if (stats) statsStack.pop();
+    });
+    traverse(fun, function(node, type) {
+      if (type === 'block' && node[1] && node[1].length === 1) {
+        return node[1][0];
+      }
     });
   });
 }
