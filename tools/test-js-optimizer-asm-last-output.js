@@ -35,46 +35,28 @@ function finall(x) {
  return 12.0e10;
 }
 function looop() {
- do {
-  do_it();
- } while (!condition());
- do {
-  do_it();
- } while (!(a > b));
- do {
-  do_it();
- } while (x());
+ do do_it(); while (!condition());
+ do do_it(); while (!(a > b));
+ do do_it(); while (x());
  while (1) {
   do_it();
   if (a()) continue;
-  if (!x()) {
-   break;
-  }
+  if (!x()) break;
  }
  do {
   do_it();
-  do {
-   if (a()) continue;
-  } while (b());
+  do if (a()) continue; while (b());
  } while (x());
  do {
   do_it();
-  while (b()) {
-   if (a()) continue;
-  }
+  while (b()) if (a()) continue;
  } while (x());
  X : while (1) {
   do_it();
-  while (b()) {
-   if (a()) continue X;
-  }
-  if (!x()) {
-   break;
-  }
+  while (b()) if (a()) continue X;
+  if (!x()) break;
  }
- do {
-  blah();
- } while (!shah());
+ do blah(); while (!shah());
  a = b;
  LABELED : while (1) {
   blah();
@@ -93,10 +75,15 @@ function looop() {
  }
  do {
   blah();
-  while (1) {
-   if (check) break;
-  }
+  while (1) if (check) break;
  } while (!shah());
  g = h;
+ if (a) waka();
+ if (a) waka(); else wala();
+ if (a) if (a) waka(); else wala();
+ if (a) {
+  if (a) waka();
+ } else other();
+ if (a) if (a) waka(); else wala(); else other();
 }
 
