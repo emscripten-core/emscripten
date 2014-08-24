@@ -1267,13 +1267,19 @@ var LibraryJSEvents = {
   
   emscripten_get_num_gamepads: function() {
     if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    return navigator.getGamepads().length;
+    var gamepads = navigator.getGamepads();
+    var index, count = 0;
+    for(index=0; index < gamepads.length; ++index )
+    {
+      if(gamepads[index] !== undefined) ++count;
+    }
+    return count;
   },
   
   emscripten_get_gamepad_status: function(index, gamepadState) {
     if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     var gamepads = navigator.getGamepads();
-    if (index < 0 || index >= gamepads.length) {
+    if (index < 0 || index >= gamepads.length || gamepads[index] === null) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     }
     JSEvents.fillGamepadEventData(gamepadState, gamepads[index]);
