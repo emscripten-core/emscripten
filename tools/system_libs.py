@@ -405,7 +405,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxx(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
@@ -431,7 +431,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'private_typeinfo.cpp',
       os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxxabi(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
