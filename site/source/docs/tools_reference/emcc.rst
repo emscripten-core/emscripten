@@ -91,6 +91,8 @@ Options that are modified or new in *emcc* are listed below:
 
 	The contents of **/path/to/file** will be read, JSON.parsed and set into ``DEAD_FUNCTIONS`` (so the file could contain ["_func1", "func2"] ). Note that the path must be absolute, not relative.
 
+.. _emcc-g: 
+	
 ``-g``
 	Use debug info. 
 	
@@ -153,7 +155,9 @@ Options that are modified or new in *emcc* are listed below:
 	
 		- If LLVM optimizations are not run (see ``--llvm-opts``), this setting has no effect.
 		- LLVM LTO is not perfectly stable yet, and can can cause code to behave incorrectly.					   
-						   .	
+
+.. _emcc-closure:
+	
 ``--closure <on>``
 	Runs the :term:`Closure Compiler`. Possible ``on`` values are:
 	 
@@ -249,7 +253,9 @@ Options that are modified or new in *emcc* are listed below:
 	Tells the compiler to ignore dynamic linking (the user will need to manually link to the shared libraries later on).
 	
 	Normally *emcc* will simply link in code from the dynamic library as though it were statically linked, which will fail if the same dynamic library is linked more than once. With this option, dynamic linking is ignored, which allows the build system to proceed without errors. 
-	 
+
+.. _emcc-js-library:
+	
 ``--js-library <lib>``
 	A JavaScript library to use in addition to those in Emscripten's core libraries (src/library_*).
 	 
@@ -269,7 +275,9 @@ Options that are modified or new in *emcc* are listed below:
 	 
 ``--save-bc PATH``
 	When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
-	 
+	
+.. _emcc-memory-init-file:
+	
 ``--memory-init-file <on>``
 	Specifies whether to emit a separate memory initialization file. Possible ``on`` values are: 
 	 

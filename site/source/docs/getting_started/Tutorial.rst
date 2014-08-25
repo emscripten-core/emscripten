@@ -6,7 +6,7 @@ Emscripten Tutorial (ready-for-review)
 
 **Using Emscripten is, at a base level, fairly simple. This tutorial takes you through the steps needed to compile your first Emscripten examples from the command line. It also shows how to work with files and set the main compiler optimization flags.**
 
-.. tip:: Check out :ref:`this topic <getting-started-emscripten-from-vs2010>` if you want to use *Emscripten* with Microsoft *Visual Studio 2010*.
+.. tip:: Check out :ref:`this topic <getting-started-emscripten-from-visual-studio>` if you want to use *Emscripten* with Microsoft *Visual Studio 2010*.
 
 First things first
 ======================
@@ -57,7 +57,7 @@ There should now be an **a.out.js** file in the current directory. Run it using 
 
 ::
 
-    ./node a.out.js
+    node a.out.js
 
 This prints "hello, world!" to the console, as expected.
 

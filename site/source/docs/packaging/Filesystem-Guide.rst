@@ -19,6 +19,8 @@ For concrete examples of using the filesystem API, see the automatic tests in ``
 
 The reason for the filesystem API is that JavaScript is most often run in web browsers, which sandbox content and prevent it from accessing the local filesystem. Therefore emscripten simulates a filesystem so that C/C++ code can be written normally, as if there were direct access to files. Note: if you want to run in a shell environment using node without sandboxing, then you can let code directly access the local filesystem using NODEFS, see :ref:`Filesystem-API`.
 
+.. _packaging-files:
+
 Packaging files
 ===============
 
