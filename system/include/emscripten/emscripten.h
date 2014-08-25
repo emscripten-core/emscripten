@@ -77,7 +77,7 @@ extern void emscripten_cancel_main_loop(void);
 typedef void (*em_socket_callback)(int fd, void *userData);
 typedef void (*em_socket_error_callback)(int fd, int err, const char* msg, void *userData);
 
-extern void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback *callback);
+extern void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback);
 extern void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
 extern void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
 extern void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
