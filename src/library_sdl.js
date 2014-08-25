@@ -2142,7 +2142,7 @@ var LibrarySDL = {
       SDL.audio.bytesPerSample = (SDL.audio.format == 0x0008 /*AUDIO_U8*/ || SDL.audio.format == 0x8008 /*AUDIO_S8*/) ? 1 : 2;
       SDL.audio.bufferSize = totalSamples*SDL.audio.bytesPerSample;
       SDL.audio.bufferDurationSecs = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels / SDL.audio.freq; // Duration of a single queued buffer in seconds.
-      SDL.audio.bufferingDelay = 150 / 1000; // Audio samples are played with a constant delay of this many seconds to account for browser and jitter.
+      SDL.audio.bufferingDelay = 50 / 1000; // Audio samples are played with a constant delay of this many seconds to account for browser and jitter.
       SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
       
       // To account for jittering in frametimes, always have multiple audio buffers queued up for the audio output device.
