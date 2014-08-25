@@ -84,4 +84,5 @@ You can also look at ``FS.readFiles``, which will be an object whose keys are al
 Manually using the FS API
 =========================
 
-Checkout out the `Filesystem API docs <https://github.com/kripken/emscripten/wiki/Filesystem-API>`_.
+Check out the :ref:`Filesystem-API`.
+
