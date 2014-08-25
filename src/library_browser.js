@@ -990,10 +990,7 @@ mergeInto(LibraryManager.library, {
 
       // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
       // VBO double-buffering and reduce GPU stalls.
-#if FULL_ES2
-      GL.newRenderingFrameStarted();
-#endif
-#if LEGACY_GL_EMULATION
+#if USES_GL_EMULATION
       GL.newRenderingFrameStarted();
 #endif
 
