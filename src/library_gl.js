@@ -22,11 +22,7 @@ var LibraryGL = {
     vaos: [],
     contexts: [],
 
-#if FULL_ES2
-    currArrayBuffer: 0,
-    currElementArrayBuffer: 0,
-#endif
-#if LEGACY_GL_EMULATION
+#if USES_GL_EMULATION
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
 #endif
@@ -58,7 +54,9 @@ var LibraryGL = {
     unpackAlignment: 4, // default alignment is 4 bytes
 
     init: function() {
+#if USES_GL_EMULATION
       GL.createLog2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
+#endif
       GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
       for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
         GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
@@ -86,6 +84,7 @@ var LibraryGL = {
     miniTempBuffer: null,
     miniTempBufferViews: [0], // index i has the view of size i+1
 
+#if USES_GL_EMULATION
     // When user GL code wants to render from client-side memory, we need to upload the vertex data to a temp VBO
     // for rendering. Maintain a set of temp VBOs that are created-on-demand to appropriate sizes, and never destroyed.
     // Also, for best performance the VBOs are double-buffered, i.e. every second frame we switch the set of VBOs we
@@ -212,6 +211,7 @@ var LibraryGL = {
         GL.currentContext.tempVertexBufferCounters1[i] = 0;
       }
     },
+#endif
 
 #if LEGACY_GL_EMULATION
     // Find a token in a shader source string
@@ -1636,16 +1636,12 @@ var LibraryGL = {
 #endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
 
-#if FULL_ES2
+#if USES_GL_EMULATION
     if (target == GLctx.ARRAY_BUFFER) {
       GL.currArrayBuffer = buffer;
-    } else if (target == GLctx.ELEMENT_ARRAY_BUFFER) {
-      GL.currElementArrayBuffer = buffer;
-    }
-#endif
 #if LEGACY_GL_EMULATION
-    if (target == GLctx.ARRAY_BUFFER) {
-      GLImmediate.lastArrayBuffer = GL.currArrayBuffer = buffer;
+      GLImmediate.lastArrayBuffer = buffer;
+#endif
     } else if (target == GLctx.ELEMENT_ARRAY_BUFFER) {
       GL.currElementArrayBuffer = buffer;
     }
