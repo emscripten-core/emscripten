@@ -419,6 +419,10 @@ try:
   valid_abspaths = []
 
   def is_valid_abspath(path_name):
+    # Any path that is underneath the emscripten repository root must be ok.
+    if '/emscripten/' in path_name.replace('\\', '/'):
+      return True
+
     for valid_abspath in valid_abspaths:
       if in_directory(valid_abspath, path_name):
         return True
