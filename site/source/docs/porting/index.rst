@@ -1,8 +1,8 @@
 .. _integrating-porting-index:
 
-==================================================
-Integrating/Porting (under-construction) 
-==================================================
+================================
+Porting (under-construction) 
+================================
 
 This section is for articles explaining the integration points with Emscripten, and general coding guidelines to help you with porting.
 
@@ -11,15 +11,12 @@ This section is for articles explaining the integration points with Emscripten, 
 .. toctree::
 	:maxdepth: 1
    
-	CodeGuidelinesAndLimitations
+	guidelines/index
 	Emscripten-browser-environment
 	connecting_cpp_and_javascript/index
 	multimedia_and_graphics/index	
-	Asm-pointer-casts
 	Synchronous-Virtual-XHR-Backed-File-System-Usage
 	debugging/index
-	Browser-limitations
-	Garbage_Collection
 	
 	
    

@@ -1,7 +1,7 @@
 .. _CodeGuidelinesAndLimitations:
 
 =========================================================
-Code Guidelines and Limitations (under-construction)
+Portability Guidelines (under-construction)
 =========================================================
 
 This article describes the types of code that are more difficult to compile, code which compiles but may run more slowly, and issues and limitations with specific APIs. Developers will find it useful for evaluating the effort to port and re-write code.
@@ -50,13 +50,3 @@ Networking
 -  Emscripten supports libc networking functions, but since JavaScript networking is asynchronous, you must limit yourself to asynchronous (nonblocking) operations.
 
 
-Function pointer issues
-=======================
-
-There are three general issues with function pointers:
-
-#. clang generates different code for C and C++ calls when a structure is passed **by value**. The two formats are incompatible in how we generate code in Emscripten, but each is compatible with itself. You should see a warning during compilation about this, and the workaround is to either not mix C and C++ in that location (just renaming a **.c** file to **.cpp** for example) or to pass the structure by reference. (More specifically, one convention is ``struct byval`` and the other is ``field a, field b``.)
-
-#. In **asm.js** mode, there is an additional concern, with function tables. Without **asm.js**, all function pointers use a single table, but in **asm.js** each function pointer type has its own table (this allows the JavaScript engine to know the exact type of each function pointer call, and optimize those calls much better than normally). As a consequence though, if you have a function that is say ``int (int)`` (return int, receive int) and you cast it to ``void (int)`` (no return, receive int), then the function pointer call will fail because we are looking in the wrong table. This is undefined behavior in C in any case, so it is recommended to refactor code to avoid this type of situation. You should see compilation warnings about these things. See :ref:`Asm-pointer-casts` for more information.
-
-#. A related issue to do with function pointers is that in ``-O2`` and above we optimize the size of the separate function tables. That means that two functions can have the same function pointer so long as their type is different, and so potentially comparing function pointers of different types can give false positives. Also, it makes bugs with incorrect function pointers potentially more misleading, since there are fewer "holes" in function tables (holes would throw an error instead of running the wrong code). To check if this is causing issues, you can compile with ``-s ALIASING_FUNCTION_POINTERS=0``.
