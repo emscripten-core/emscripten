@@ -5215,6 +5215,10 @@ def process(filename):
     if self.emcc_args is not None and '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
+    assert 'asm2g' in test_modes
+    if self.run_name == 'asm2g':
+      self.emcc_args += ['-g4'] # more source maps coverage
+
     Settings.CORRECT_SIGNS = 1
 
     self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
@@ -6536,6 +6540,7 @@ def process(filename):
       # optimizer can deal with both types.
       out_file = re.sub(' *//[@#].*$', '', out_file, flags=re.MULTILINE)
       def clean(code):
+        code = re.sub(';', ';\n', code) # put statements each on a new line
         code = re.sub(r'\n+[ \n]*\n+', '\n', code)
         code = re.sub(' L\d+ ?:', '', code) # ignore labels; they can change in each compile
         code = code.replace('{\n}', '{}')
