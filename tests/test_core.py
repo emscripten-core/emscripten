@@ -6988,47 +6988,23 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = compiler
 
-    self.emcc_args = None if emcc_args is None else emcc_args[:]
-    if self.emcc_args is not None:
-      Settings.load(self.emcc_args)
-      Building.LLVM_OPTS = 0
-      if '-O2' in self.emcc_args or '-O3' in self.emcc_args:
-        Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
-      #Building.COMPILER_TEST_OPTS += self.emcc_args
-      for arg in self.emcc_args:
-        if arg.startswith('-O'):
-          Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
-        else:
-          try:
-            key, value = arg.split('=')
-            Settings[key] = value # forward  -s K=V
-          except:
-            pass
+    assert emcc_args is not None
+    self.emcc_args = emcc_args[:]
+    Settings.load(self.emcc_args)
+    Building.LLVM_OPTS = 0
+    if '-O2' in self.emcc_args or '-O3' in self.emcc_args:
+      Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
+    #Building.COMPILER_TEST_OPTS += self.emcc_args
+    for arg in self.emcc_args:
+      if arg.startswith('-O'):
+        Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+      else:
+        try:
+          key, value = arg.split('=')
+          Settings[key] = value # forward  -s K=V
+        except:
+          pass
       return
-
-    # TODO: Move much of these to a init() function in shared.py, and reuse that
-    Settings.ASM_JS = 0
-    Settings.USE_TYPED_ARRAYS = typed_arrays
-    Settings.INVOKE_RUN = 1
-    Settings.RELOOP = 0 # we only do them in the "o2" pass
-    Settings.MICRO_OPTS = embetter
-    Settings.QUANTUM_SIZE = quantum_size
-    Settings.ASSERTIONS = 1-embetter
-    Settings.SAFE_HEAP = 1-embetter
-    Settings.CHECK_OVERFLOWS = 1-embetter
-    Settings.CORRECT_OVERFLOWS = 1-embetter
-    Settings.CORRECT_SIGNS = 0
-    Settings.CORRECT_ROUNDINGS = 0
-    Settings.CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
-    Settings.CHECK_SIGNS = 0 #1-embetter
-    Settings.RUNTIME_TYPE_INFO = 0
-    Settings.DISABLE_EXCEPTION_CATCHING = 0
-    Settings.INCLUDE_FULL_LIBRARY = 0
-    Settings.BUILD_AS_SHARED_LIB = 0
-    Settings.RUNTIME_LINKED_LIBS = []
-    Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
-    Settings.PRECISE_I64_MATH = 0
-    Settings.NAMED_GLOBALS = 0 if not embetter else 1
 
   TT.setUp = setUp
 
@@ -7046,14 +7022,5 @@ asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTI
 slow2 = make_run("slow2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0"], env={"EMCC_FAST_COMPILER": "0"})
 slow2asm = make_run("slow2asm", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_FAST_COMPILER": "0"})
 
-# Legacy test modes - very old
-for compiler, quantum, embetter, typed_arrays in [
-  (CLANG, 4, 0, 0),
-  (CLANG, 4, 1, 1),
-]:
-  fullname = 's_0_%d%s%s' % (
-    embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
-  )
-  locals()[fullname] = make_run(fullname, fullname, compiler, embetter, quantum, typed_arrays, env={"EMCC_FAST_COMPILER": "0"})
-
 del T # T is just a shape for the specific subclasses, we don't test it itself
+
