@@ -1,8 +1,8 @@
 .. _integrating-porting-index:
 
-==================================================
-Integrating/Porting (under-construction) 
-==================================================
+================================
+Porting (under-construction) 
+================================
 
 This section is for articles explaining the integration points with Emscripten, and general coding guidelines to help you with porting.
 

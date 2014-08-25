@@ -8,7 +8,7 @@ Documentation Home (under-construction)
    
 	introducing_emscripten/index
 	getting_started/index
-	coding/index
+	porting/index
 	optimizing/index
 	compiling/index
 	packaging/index
