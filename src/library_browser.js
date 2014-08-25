@@ -1010,8 +1010,11 @@ mergeInto(LibraryManager.library, {
         }
       });
 
-      // Queue new audio data.
-      if (SDL && SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
+      // Queue new audio data. This is important to be right after the main loop invocation, so that we will immediately be able
+      // to queue the newest produced audio samples.
+      // TODO: Consider adding pre- and post- rAF callbacks so that GL.newRenderingFrameStarted() and SDL.audio.queueNewAudioData()
+      //       do not need to be hardcoded into this function, but can be more generic.
+      if (typeof SDL === 'object' && SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
 
       if (Browser.mainLoop.shouldPause) {
         // catch pauses from the main loop itself
