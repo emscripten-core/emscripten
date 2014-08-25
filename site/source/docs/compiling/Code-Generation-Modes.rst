@@ -72,18 +72,26 @@ Exceptions can work in code compiled by emscripten, however due to how JS engine
 
 To get full exception handling support in ``-O1`` and above, run emcc with ``-s DISABLE_EXCEPTION_CATCHING=0``. Note that enabling exceptions will make the code larger due to the additional try-catch blocks (which cannot be minified very well).
 
-Memory Compression (a.k.a QUANTUM\_SIZE == 1)
+.. _code-generation-modes-quantum-size:
+
+Memory Compression (a.k.a QUANTUM_SIZE == 1)
 ---------------------------------------------
 
-By default, Emscripten sets QUANTUM\_SIZE to 4, which means that a 'normal' element - like an int or a pointer - takes 4 'bytes'. That is the normal behavior on 32-bit systems, and allows Emscripten to properly compile a great deal of C/C++ code. However, the downside is that each int or pointer takes 4 places in the HEAP array, which is how Emscripten models the normal C/C++ memory space. This makes HEAP much bigger than it needs to be, which takes more memory, and also slows things down (for example, memset ends up clearing larger areas of memory).
+By default, Emscripten sets ``QUANTUM_SIZE`` to 4, which means that a 'normal' element - like an int or a pointer - takes 4 'bytes'. That is the normal behavior on 32-bit systems, and allows Emscripten to properly compile a great deal of C/C++ code. However, the downside is that each int or pointer takes 4 places in the HEAP array, which is how Emscripten models the normal C/C++ memory space. This makes HEAP much bigger than it needs to be, which takes more memory, and also slows things down (for example, memset ends up clearing larger areas of memory).
 
-By setting QUANTUM\_SIZE to 1, memory is 'compressed' - it is not longer isomorphic to normal C/C++ memory. So for example a structure with an int, a double, and a pointer would have a size of 3 (one for each variable), instead of the normal 16 (4 for the int and pointer, 8 for the double). This leads to significantly more optimized code, both in terms of speed and memory use.
+By setting QUANTUM_SIZE to 1, memory is 'compressed' - it is not longer isomorphic to normal C/C++ memory. So for example a structure with an int, a double, and a pointer would have a size of 3 (one for each variable), instead of the normal 16 (4 for the int and pointer, 8 for the double). This leads to significantly more optimized code, both in terms of speed and memory use.
 
-However, this is risky, since with QUANTUM\_SIZE of 1, Emscripten rewrites the .ll, trying to fix all the hardcoded places where it assumes the normal memory space. So consider this experimental for now.
+However, this is risky, since with QUANTUM\_SIZE of 1, Emscripten rewrites the .ll, trying to fix all the hard-coded places where it assumes the normal memory space. So consider this experimental for now.
 
 Notes:
 
--  With QUANTUM\_SIZE == 1, Emscripten will warn you about ptrtoint and inttoptr operations (in the generated .js file). You should make sure there are no problems in each of those cases, and perhaps modify the original C/C++ to avoid generating that kind of code (the changes are often simple).
--  You can **not** use QUANTUM\_SIZE == 1 with typed arrays mode 2. The reason is that typed arrays mode 2 is C-like memory layout, whereas in QUANTUM\_SIZE == 1 we radically change the layout (ints take 1 memory address instead of 4, etc.), and the two can't be mixed.
+-  With QUANTUM_SIZE == 1, Emscripten will warn you about ``ptrtoint`` and ``inttoptr`` operations (in the generated .js file). You should make sure there are no problems in each of those cases, and perhaps modify the original C/C++ to avoid generating that kind of code (the changes are often simple).
+-  You can **not** use ``QUANTUM_SIZE == 1`` with typed arrays mode 2. The reason is that typed arrays mode 2 is C-like memory layout, whereas in ``QUANTUM_SIZE == 1`` we radically change the layout (ints take 1 memory address instead of 4, etc.), and the two can't be mixed.
 
-The second version of the Bullet demo in Emscripten uses QUANTUM\_SIZE == 1. It appears to give a speedup of around 25%.
+The second version of the Bullet demo in Emscripten uses ``QUANTUM_SIZE == 1``. It appears to give a speedup of around 25%.
+
+
+
+.. todo:: **HamishW** In :ref:`CodeGuidelinesAndLimitations` it mentions a code generation mode UNALIGNED_MEMORY - perhaps add?
+
+.. todo:: **HamishW** SAFE_HEAP gets mentioned. Anything we can link to?

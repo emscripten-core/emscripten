@@ -78,6 +78,7 @@ A particular installed SDK (or tool) can then be set as :term:`active <Active To
 
 .. note:: The different tools and SDKs managed by *emsdk* are stored in different directories under the root folder you specified when you first installed an SDK, grouped by tool and version. 
 
+
 .. _compiler-configuration-file:
 
 Emscripten Compiler Configuration File (.emscripten) 
