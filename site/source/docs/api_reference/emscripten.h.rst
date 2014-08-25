@@ -68,7 +68,7 @@ Calling JavaScript From C/C++
 =============================
 
 Function pointer types for callbacks
--------------------------------------
+------------------------------------
 
 The following types are used to define function callback signatures used in a number of functions in this file. 
 
@@ -159,9 +159,10 @@ Functions
 	:rtype: void
 
 	
+.. _emscripten-h-browser-execution-environment:
 	
 Browser Execution Environment
-================================= 
+=============================
   
 Functions
 ---------

@@ -397,5 +397,3 @@ primary_domain = 'cpp'
 # HamishW - Specify a default project:
 #breathe_default_project = "nutshell"
 
-# Comment/uncomment the line below for normal/SDK builds. 
-#tags.add('sdkbuild')

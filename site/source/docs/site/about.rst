@@ -96,18 +96,13 @@ SDK Builds
 
 SDK builds are virtually identical to :ref:`about-site-builds`. The main difference is that on SDK builds the :ref:`home page <home-page>` has a clear notification that it is an SDK build.
 
-SDK builds are enabled by adding the ``sdkbuild`` tag in `conf.py <https://github.com/kripken/emscripten/blob/incoming/site/source/conf.py#L400>`_: ::
+SDK builds are enabled by enabling the ``sdkbuild`` tag. This is done through the ``SPHINXOPTS`` environment variable: ::
 
-	#The line below must be uncommented for SDK builds. 
-	tags.add('sdkbuild')
-
-
-.. note:: In theory it should be possible to supply the ``sdkbuild`` tag as a command line option as shown below. However this is not working: 
-
-	::
-
-		make html SPHINXOPTS="-t sdkbuild"
-
+	# Set the sdkbuild tag. 
+	set SPHINXOPTS=-t sdkbuild
+	make html
+	# Unset SPHINXOPTS
+	set SPHINXOPTS=
 	
 .. _about-build-versions:
 
@@ -118,12 +113,16 @@ The documentation version should match the Emscripten version for the current bu
 
 The version and release information is used in a few places in the documentation, for example :ref:`emscripten-authors`.
 
-The version is set in `conf.py <https://github.com/kripken/emscripten/blob/incoming/site/source/conf.py#L88>`_ in the ``version`` and ``release`` values. For example: ::
 
-	# The short X.Y version.
-	version = '1.23'
-	# The full version, including alpha/beta/rc tags.
-	release = '1.23.0'
+
+The version can be ``version`` and ``release`` variables in **conf.py**, or on the command line by setting new values for these variables in the ``SPHINXOPTS`` environment variable. For example, to update the ``release`` variable through the command line: ::
+
+	# Set SPHINXOPTS
+	set SPHINXOPTS=-D release=6.40
+	make html
+	# Unset SPHINXOPTS
+	set SPHINXOPTS=
+	
 
 .. _writing-and-updating-articles:
 
