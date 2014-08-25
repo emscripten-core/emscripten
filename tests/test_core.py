@@ -6537,6 +6537,7 @@ def process(filename):
       out_file = re.sub(' *//[@#].*$', '', out_file, flags=re.MULTILINE)
       def clean(code):
         code = re.sub(r'\n+[ \n]*\n+', '\n', code)
+        code = re.sub(' L\d+ ?:', '', code) # ignore labels; they can change in each compile
         code = code.replace('{\n}', '{}')
         lines = code.split('\n')
         lines = filter(lambda line: ': do {' not in line and ' break L' not in line, lines) # ignore labels; they can change in each compile
