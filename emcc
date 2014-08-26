@@ -420,7 +420,7 @@ try:
 
   def is_valid_abspath(path_name):
     # Any path that is underneath the emscripten repository root must be ok.
-    if '/emscripten/' in path_name.replace('\\', '/'):
+    if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
       return True
 
     for valid_abspath in valid_abspaths:
