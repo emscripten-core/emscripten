@@ -475,9 +475,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         basic_vars.append('F_BASE_%s' % sig)
         asm_setup += '  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0') + '\n'
 
-    if '_rand' in exported_implemented_functions or '_srand' in exported_implemented_functions:
-      basic_vars += ['___rand_seed']
-
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)] + ['getTempRet%d' % i for i in range(10)]
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
@@ -1077,9 +1074,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         for sig in last_forwarded_json['Functions']['tables'].iterkeys():
           basic_vars.append('F_BASE_%s' % sig)
           asm_setup += '  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0') + '\n'
-
-      if '_rand' in exported_implemented_functions or '_srand' in exported_implemented_functions:
-        basic_vars += ['___rand_seed']
 
       asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
 
