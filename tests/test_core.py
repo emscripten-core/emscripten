@@ -3767,16 +3767,23 @@ int main()
     for(int i = 0; i < 10; ++i)
         printf("%d\n", rand_r(&seed));
 
-    bool haveEven = false;
-    bool haveOdd = false;
-    for(int i = 0; i < 100; ++i)
+    bool haveEvenAndOdd = true;
+    for(int i = 1; i <= 30; ++i)
     {
-      if ((rand() & 1) == 0)
-        haveEven = true;
-      else
-        haveOdd = true;
+        int mask = 1 << i;
+        if (mask > RAND_MAX) break;
+        bool haveEven = false;
+        bool haveOdd = false;
+        for(int j = 0; j < 1000 && (!haveEven || !haveOdd); ++j)
+        {
+            if ((rand() & mask) == 0)
+                haveEven = true;
+            else
+                haveOdd = true;
+        }
+        haveEvenAndOdd = haveEvenAndOdd && haveEven && haveOdd;
     }
-    if (haveEven && haveOdd)
+    if (haveEvenAndOdd)
         printf("Have even and odd!\n");
 
     return 0;
