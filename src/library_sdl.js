@@ -1694,7 +1694,7 @@ var LibrarySDL = {
     }
     var oldAlpha = dstData.ctx.globalAlpha;
     dstData.ctx.globalAlpha = srcData.alpha/255;
-    dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, sr.w, sr.h);
+    dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, dr.w, dr.h);
     dstData.ctx.globalAlpha = oldAlpha;
     if (dst != SDL.screen) {
       // XXX As in IMG_Load, for compatibility we write out |pixels|
