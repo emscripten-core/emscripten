@@ -11,7 +11,6 @@ Documentation Home (under-construction)
 	porting/index
 	optimizing/index
 	compiling/index
-	packaging/index
 	building_from_source/index
 	contributing/index
 	api_reference/index

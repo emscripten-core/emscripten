@@ -14,8 +14,8 @@ This section is for articles explaining the integration points with Emscripten, 
 	guidelines/index
 	Emscripten-browser-environment
 	connecting_cpp_and_javascript/index
+	files/index
 	multimedia_and_graphics/index	
-	Synchronous-Virtual-XHR-Backed-File-System-Usage
 	debugging/index
 	
 	
