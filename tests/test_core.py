@@ -3767,6 +3767,18 @@ int main()
     for(int i = 0; i < 10; ++i)
         printf("%d\n", rand_r(&seed));
 
+    bool haveEven = false;
+    bool haveOdd = false;
+    for(int i = 0; i < 100; ++i)
+    {
+      if ((rand() & 1) == 0)
+        haveEven = true;
+      else
+        haveOdd = true;
+    }
+    if (haveEven && haveOdd)
+        printf("Have even and odd!\n");
+
     return 0;
 }
 '''
@@ -3790,6 +3802,7 @@ int main()
 1982845871
 1210574360
 1479617503
+Have even and odd!
 '''
     self.do_run(src, expected)
 
