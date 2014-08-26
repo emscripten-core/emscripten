@@ -56,6 +56,7 @@ A number of other tools are not shown — for example, Java can optionally be us
 
 The whole toolchain is delivered in the :ref:`Emscripten SDK <sdk-download-and-install>`, and can be used on Linux, Windows or Mac OS X.
 
+.. _about-emscripten-porting-code:
 
 Porting code to use Emscripten
 ==================================
