@@ -962,7 +962,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run(open(src).read(), ['''align 4: 0
 align 8: 0
 align 16: 0
-base align: 0, 0, 0'''])
+align 32: 0
+base align: 0, 0, 0, 0'''])
 
   def test_strings(self):
       if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
