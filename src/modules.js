@@ -2,7 +2,7 @@
 
 // Various namespace-like modules
 
-var STACK_ALIGN = TARGET_X86 ? 4 : 8;
+var STACK_ALIGN = TARGET_X86 ? 4 : 16;
 
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
