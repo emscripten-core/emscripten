@@ -24,6 +24,24 @@ LibraryManager.library = {
   stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
   __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
+  $PROCINFO: {
+    // permissions
+    /*
+    uid: 0,
+    gid: 0,
+    euid: 0,
+    egid: 0,
+    suid: 0,
+    sgid: 0,
+    fsuid: 0,
+    fsgid: 0,
+    */
+    // process identification
+    ppid: 1,
+    pid: 42,
+    sid: 42,
+    pgid: 42
+  },
 
   // ==========================================================================
   // dirent.h
@@ -1233,28 +1251,98 @@ LibraryManager.library = {
     return -1;
   },
   vfork: 'fork',
-  getgid: function() {
-    // gid_t getgid(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getgid.html
-    // We have just one process/group/user, all with ID 0.
+
+  getpid__deps: ['$PROCINFO'],
+  getpid: function() {  return PROCINFO.pid;  },
+
+  getppid__deps: ['$PROCINFO'],
+  getppid: function() { return PROCINFO.ppid; },
+
+  getpgrp__deps: ['$PROCINFO'],
+  getpgrp: function() { return PROCINFO.pgid; },
+  setpgrp: function() { return 0; },
+
+  getsid__deps: ['__setErrNo', '$ERRNO_CODES', '$PROCINFO'],
+  getsid: function(pid) {
+    if (pid && pid != PROCINFO.pid) {
+      ___setErrNo(ERRNO_CODES.ESRCH);
+      return -1;
+    }
+    return PROCINFO.sid;
+  },
+  setsid: function() { return 0; },
+
+  getpgid__deps: ['__setErrNo', '$ERRNO_CODES', '$PROCINFO'],
+  getpgid: function(pid) {
+    if (pid && pid != PROCINFO.pid) {
+      ___setErrNo(ERRNO_CODES.ESRCH);
+      return -1;
+    }
+    return PROCINFO.pgid;
+  },
+  setpgid__deps: ['__setErrNo', '$ERRNO_CODES', '$PROCINFO'],
+  setpgid: function(pid, pgid) {
+    if (pid && pid != PROCINFO.pid) {
+      ___setErrNo(ERRNO_CODES.ESRCH);
+      return -1;
+    }
+    if (pgid != PROCINFO.pgid) {
+      ___setErrNo(ERRNO_CODES.EPERM);
+      return -1;
+    }
+    return 0; // TODO: call setpgrp()
+  },
+  tcgetpgrp__deps: ['$PROCINFO'],
+  tcgetpgrp: function(fildes) {
+    // TODO: check that filedes is terminal
+    return PROCINFO.pgid;
+  },
+  tcsetpgrp__deps: ['__setErrNo', '$ERRNO_CODES', '$PROCINFO'],
+  tcsetpgrp: function(fildes, pgid_id) {
+    // TODO: check that filedes is terminal
+    if (pgid_id != PROCINFO.pgid) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    }
     return 0;
   },
+
+  getuid: function() { return 0; },
+
+  setuid__deps: ['__setErrNo', '$ERRNO_CODES'],
+  setuid: function(uid) {
+    if (uid != 0) {
+      ___setErrNo(ERRNO_CODES.EPERM);
+      return -1;
+    }
+    return 0;
+  },
+
   getegid: 'getgid',
-  getuid: 'getgid',
-  geteuid: 'getgid',
-  getpgrp: 'getgid',
-  getpid: 'getgid',
-  getppid: 'getgid',
+  setegid: 'setgid',
+
+  getgid:  'getuid',
+  setgid:  'setuid',
+
+  geteuid: 'getuid',
+  seteuid: 'setuid',
+
+  // NOTE: These do not match the signatures, but they all use the same stub.
+  setregid: 'setgid',
+  setreuid: 'setuid',
+
   getresuid: function(ruid, euid, suid) {
-    // int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
-    // http://linux.die.net/man/2/getresuid
-    // We have just one process/group/user, all with ID 0.
     {{{ makeSetValue('ruid', '0', '0', 'i32') }}};
     {{{ makeSetValue('euid', '0', '0', 'i32') }}};
     {{{ makeSetValue('suid', '0', '0', 'i32') }}};
     return 0;
   },
   getresgid: 'getresuid',
+
+  // NOTE: These do not match the signatures, but they all use the same stub.
+  setresuid: 'setuid',
+  setresgid: 'setgid',
+
   getgroups__deps: ['__setErrNo', '$ERRNO_CODES'],
   getgroups: function(gidsetsize, grouplist) {
     // int getgroups(int gidsetsize, gid_t grouplist[]);
@@ -1335,13 +1423,6 @@ LibraryManager.library = {
     // TODO: Implement (probably compile from C).
     return -1;
   },
-  getpgid: function(pid) {
-    // pid_t getpgid(pid_t pid);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getpgid.html
-    // There can only be one process, and its group ID is 0.
-    return 0;
-  },
-  getsid: 'getpgid',
   nice__deps: ['__setErrNo', '$ERRNO_CODES'],
   nice: function(incr) {
     // int nice(int incr);
@@ -1350,32 +1431,6 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.EPERM);
     return 0;
   },
-  setgid__deps: ['__setErrNo', '$ERRNO_CODES'],
-  setgid: function(gid) {
-    // int setgid(gid_t gid);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/setgid.html
-    // We have just one process/group/user, so it makes no sense to set IDs.
-    ___setErrNo(ERRNO_CODES.EPERM);
-    return -1;
-  },
-  setegid: 'setgid',
-  setuid: 'setgid',
-  seteuid: 'setgid',
-  setsid: 'setgid',
-  setpgrp: 'setgid',
-  setpgid__deps: ['__setErrNo', '$ERRNO_CODES'],
-  setpgid: function(pid, pgid) {
-    // int setpgid(pid_t pid, pid_t pgid);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getpgid.html
-    // We have just one process/group/user, so it makes no sense to set IDs.
-    ___setErrNo(ERRNO_CODES.EPERM);
-    return -1;
-  },
-  setregid: 'setpgid',
-  setreuid: 'setpgid',
-  // NOTE: These do not match the signatures, but they all use the same stub.
-  setresuid: 'setpgid',
-  setresgid: 'setpgid',
   sleep__deps: ['usleep'],
   sleep: function(seconds) {
     // unsigned sleep(unsigned seconds);
