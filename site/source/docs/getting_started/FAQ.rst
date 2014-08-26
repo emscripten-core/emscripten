@@ -1,7 +1,7 @@
 .. _FAQ:
 
 ==================================
-FAQ (under-construction)
+FAQ (ready-for-review)
 ==================================
 
 This FAQ has many frequently asked questions from IRC and the mailing list.
@@ -84,8 +84,8 @@ Compiling code that works on another machine gives me errors?
 Make sure you are using the Emscripten bundled system headers. Using :ref:`emcc <emccdoc>` will do so by default, but problems may occur if you use your local system headers with ``emcc`` or compile into LLVM bitcode yourself.
 
 
-My large codebase runs well, but startup time is significant?
-=============================================================
+How can I reduce startup time?
+==============================
 
 Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smaller builds are faster to start up). If the sheer code size is causing the slow startup, you can try `Outlining: a workaround for JITs and big functions <http://mozakai.blogspot.com/2013/08/outlining-workaround-for-jits-and-big.html>`_.
 
@@ -114,9 +114,9 @@ My HTML app hangs?
 
 The browser event model uses *co-operative multitasking* — each event has a "turn" to run, and must then return control to the browser event loop so that other events can be processed. A common cause of HTML pages hanging is JavaScript that does not complete and return control to the browser.
 
-Graphical C++ apps typically have an "infinite" main loop in which event handling, processing and rendering is done, followed by a delay to keep the frame-rate right (``SDL_DELAY`` in SDL apps). As the main loop does not complete it cannot return control to the browser, and the app will hang. 
+Graphical C++ apps typically have an infinite main loop in which event handling, processing and rendering is done, followed by a delay to keep the frame-rate right (``SDL_DELAY`` in SDL apps). As the main loop does not complete (is infinite) it cannot return control to the browser, and the app will hang. 
 
-Apps that use an infinite loop should be re-coded to put the actions for a single iteration of the main loop are put into a single "finite" function. In the native build this function can be run in an infinite loop as before. In the Emscripten build it is set as the :ref:`main loop function <faq-how-run-event-loop>` and will be called by the browser at a specified frequency.
+Apps that use an infinite main loop should be re-coded to put the actions for a single iteration of the loop into a single "finite" function. In the native build this function can be run in an infinite loop as before. In the Emscripten build it is set as the :ref:`main loop function <faq-how-run-event-loop>` and will be called by the browser at a specified frequency.
 
 There is more information on this topic in :ref:`Emscripten-Browser-Environment`.
 
@@ -195,26 +195,30 @@ For example if ``allReady()`` is a JavaScript function you want called when ever
 Functions in my C/C++ source code vanish when I compile to JavaScript, and/or I get ``No functions to process..``?
 ==================================================================================================================
 
-By default, Emscripten does dead code elimination of functions that are not called from the compiled code. While this does minimize code size, it can remove functions that you plan to call yourself (outside of the compiled code). 
+Emscripten does dead code elimination of functions that are not called from the compiled code. While this does minimize code size, it can remove functions that you plan to call yourself (outside of the compiled code). 
 
-To make sure a function is accessible to be called from normal JavaScript it must be added to the `EXPORTED_FUNCTIONS <https://github.com/kripken/emscripten/blob/master/src/settings.js#L359>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ``-s EXPORTED_FUNCTIONS="['_main', '_my_func']"``.
+To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/kripken/emscripten/blob/master/src/settings.js#L359>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-.. note::
+	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']"  ...
 
-	- Exported functions need to be C functions (to avoid C++ name mangling).
-	- Running *emcc* with ``-s LINKABLE=1`` will also disable link-time optimizations and dead code elimination. This is not recommended as it makes the code larger and less optimized. 
-
-If your function is used in other functions, LLVM may inline it and it will not show up. Prevent inlining by defining the function with :c:type:`EMSCRIPTEN_KEEPALIVE`: ::
+If your function is used in other functions, LLVM may inline it and it will not appear as a unique function in the JavaScript. Prevent inlining by defining the function with :c:type:`EMSCRIPTEN_KEEPALIVE`: ::
 
 	void EMSCRIPTEN_KEEPALIVE yourCfunc() {..}
+	
+.. note:: 
 
-Another possible issue here is linking of ``.a`` files. ``.a`` files link only the internal object files needed by previous files on the command line, so the order of files matters, and this can be surprising. If you are linking ``.a`` files, make sure they are at the end of the list of files, and in the right order amongst themselves, or just use ``.so`` files instead in your project.
+	- All functions not kept alive through ``EXPORTED_FUNCTIONS`` or :c:type:`EMSCRIPTEN_KEEPALIVE` will potentially be removed. Make sure to keep the things you need alive using one or both of those methods.
+	
+	- Exported functions need to be C functions (to avoid C++ name mangling).
 
-Note: In LLVM 3.2 dead code elimination is significantly more aggressive. All functions not kept alive through EXPORTED_FUNCTIONS will be potentially eliminated. Make sure to keep the things you need alive using one or both of those methods.
+	- Decorating your code with :c:type:`EMSCRIPTEN_KEEPALIVE` can be useful if you don't want to have to keep track of functions to export explicitly, and when these exports do not change. It is not necessarily suitable for exporting functions from other libraries - for example it is not a good idea to decorate and and recompile the source code of the C standard library. If you build the same source in multiple ways and change what is exported, then managing exports on the  command line is easier. 
 
-.. tip:: It can be useful to compile with ``EMCC_DEBUG=1`` set for the environment (``EMCC_DEBUG=1 emcc ..`` on Linux, ``set EMMCC_DEBUG=1`` on Windows) which splits up the compilation steps and saves them in ``/tmp/emscripten_temp``. You can then see at what stage the code vanishes (you will need to do ``llvm-dis`` on the bitcode  stages to read them, or ``llvm-nm``, etc.).
+	- Running *emcc* with ``-s LINKABLE=1`` will also disable link-time optimizations and dead code elimination. This is not recommended as it makes the code larger and less optimized. 	
+	
+Another possible cause of missing code is improper linking of ``.a`` files. The ``.a`` files link only the internal object files needed by previous files on the command line, so the order of files matters, and this can be surprising. If you are linking ``.a`` files, make sure they are at the end of the list of files, and in the right order amongst themselves. Alternatively, just use ``.so`` files instead in your project.
 
-**HamishW** When use KEEPALIVE, when use EXPORTED FUNCTIONS. Note about LLVM3.2 being more aggressive a bit confusing in context.
+.. tip:: It can be useful to compile with ``EMCC_DEBUG=1`` set for the environment (``EMCC_DEBUG=1 emcc ...`` on Linux, ``set EMMCC_DEBUG=1`` on Windows). This splits up the compilation steps and saves them in ``/tmp/emscripten_temp``. You can then see at what stage the code vanishes (you will need to do ``llvm-dis`` on the bitcode  stages to read them, or ``llvm-nm``, etc.).
+
 
 
 The File System API is not available when I build with closure?
@@ -230,7 +234,7 @@ The :term:`Closure Compiler` minifies variable names, which results in very shor
 
 This is likely to be the cause if you can successfully compile with ``-O2`` set but **not** ``--closure 1``.
 
-One solution is to stop using small variable names in the global scope (often this is a mistake - forgetting to use ``var`` when assigning to a variable). 
+One solution is to stop using small variable names in the global scope (often this is a mistake — forgetting to use ``var`` when assigning to a variable). 
 
 Another alternative is to wrap the generated code (or your other code) in a closure, as shown:
 
@@ -255,7 +259,7 @@ Aside from just forgetting to link in a necessary object file, one possible caus
 I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 ======================================================================
 
-A possible cause it that building *libcxx* or *libcxxabi* failed. Go to **system/lib/libcxx** (or libcxxabi) and do ``emmake make`` to see the actual error. Or, clean the Emscripten cache (``./emcc --clear-cache``) and then compile your file with ``EMCC_DEBUG=1`` in the environment. *libcxx* will then be built in **/tmp/emscripten_temp/libcxx**`, and you can see ``configure*, make*`` files that are the output of configure and make, etc.
+A possible cause it that building *libcxx* or *libcxxabi* failed. Go to **system/lib/libcxx** (or libcxxabi) and do ``emmake make`` to see the actual error. Or, clean the Emscripten cache (``./emcc --clear-cache``) and then compile your file with ``EMCC_DEBUG=1`` in the environment. *libcxx* will then be built in **/tmp/emscripten_temp/libcxx**, and you can see ``configure*, make*`` files that are the output of configure and make, etc.
 
 Another possible cause of this error is the lack of ``make``, which is necessary to build these libraries. If you are on Windows, you need *cmake*.
 
@@ -278,14 +282,14 @@ You may need to increase the stack size for :term:`node.js`.
 On Linux and Mac OS X, you can just do ``NODE_JS = ['node', '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows, you will also need ``--max-stack-size=8192``, and also to run ``editbin /stack:33554432 node.exe``.
 
 
-I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards.
-=============================================================================================================================================================================================
+I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?
+===========================================================================================================================================================
 
 This is a limitation of the le32 frontend in :term:`Clang`. You can use the x86 frontend instead by compiling with ``EMCC_LLVM_TARGET=i386-pc-linux-gnu`` in the environment (however you will lose the advantages of le32 which includes better alignment of doubles).
 
 		
-Build from source fails during linking (at 100%)
-================================================
+Build from source fails during linking (at 100%)?
+=================================================
 
 Building :ref:`Fastcomp from source <building-fastcomp-from-source>` (and hence the SDK) can fail at 100% progress. This is due to out of memory in the linking stage, and is reported as error: ``collect2: error: ld terminated with signal 9 [Killed]``.
 
@@ -293,8 +297,8 @@ The solution is to ensure the system has sufficient memory. On Ubuntu 14.04,1 LT
 
 
 		
-The name of the project sounds weird to me
-==========================================
+Why the weird name for the project?
+===================================
 
 I don't know why; it's a perfectly `cromulent <http://en.wikipedia.org/wiki/Lisa_the_Iconoclast>`_ word!
 

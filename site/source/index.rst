@@ -36,7 +36,6 @@ News
 	docs/porting/index
 	docs/optimizing/index
 	docs/compiling/index
-	docs/packaging/index
 	docs/building_from_source/index
 	docs/contributing/index
 	docs/api_reference/index

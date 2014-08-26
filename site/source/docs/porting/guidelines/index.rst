@@ -4,15 +4,16 @@
 Code Portability and Limitations (under-construction) 
 =====================================================
 
-This section is for .....
+This section is for ....
 
 
 .. toctree::
 	:maxdepth: 1
    
-	CodeGuidelinesAndLimitations
-	Asm-pointer-casts
-	Browser-limitations
+	portability_guidelines
+	api_limitations
+	function_pointer_issues
+	browser_limitations.rst
 
 	
 	
