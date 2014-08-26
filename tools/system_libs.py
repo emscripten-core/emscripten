@@ -104,6 +104,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
        'wctomb.c',
        'wcrtomb.c',
       ]],
+      ['prng', [
+       '__rand48_step.c',
+       '__seed48.c',
+       'drand48.c',
+       'lcong48.c',
+       'lrand48.c',
+       'mrand48.c',
+       'rand_r.c',
+       'rand.c',
+       'random.c',
+       'seed48.c',
+       'srand48.c'
+      ]],
       ['stdio', [
        '__overflow.c',
        '__toread.c',

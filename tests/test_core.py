@@ -3767,29 +3767,49 @@ int main()
     for(int i = 0; i < 10; ++i)
         printf("%d\n", rand_r(&seed));
 
+    bool haveEvenAndOdd = true;
+    for(int i = 1; i <= 30; ++i)
+    {
+        int mask = 1 << i;
+        if (mask > RAND_MAX) break;
+        bool haveEven = false;
+        bool haveOdd = false;
+        for(int j = 0; j < 1000 && (!haveEven || !haveOdd); ++j)
+        {
+            if ((rand() & mask) == 0)
+                haveEven = true;
+            else
+                haveOdd = true;
+        }
+        haveEvenAndOdd = haveEvenAndOdd && haveEven && haveOdd;
+    }
+    if (haveEvenAndOdd)
+        printf("Have even and odd!\n");
+
     return 0;
 }
 '''
-    expected = '''2073540312
-730128159
-1365227432
-1337224527
-792390264
-1952655743
-983994184
-1982845871
-1210574360
-1479617503
-2073540312
-730128159
-1365227432
-1337224527
-792390264
-1952655743
-983994184
-1982845871
-1210574360
-1479617503
+    expected = '''490242850
+2074599277
+1480056542
+1912638067
+931112055
+2110392489
+2053422194
+1614832492
+216117595
+174823244
+760368382
+602359081
+1121118963
+1291018924
+1608306807
+352705809
+958258461
+1182561381
+114276303
+1481323674
+Have even and odd!
 '''
     self.do_run(src, expected)
 
