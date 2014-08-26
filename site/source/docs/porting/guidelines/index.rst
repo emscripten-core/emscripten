@@ -10,9 +10,9 @@ This section is for .....
 .. toctree::
 	:maxdepth: 1
    
-	CodeGuidelinesAndLimitations
-	Asm-pointer-casts
-	Browser-limitations
+	portability_guidelines
+	function_pointer_issues
+	browser_limitations.rst
 
 	
 	
