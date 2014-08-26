@@ -9,4 +9,5 @@ Files and File Systems (under-construction)
    :maxdepth: 2
    
    Filesystem-Guide
+   packaging_files
    Synchronous-Virtual-XHR-Backed-File-System-Usage
