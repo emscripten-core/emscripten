@@ -84,8 +84,8 @@ Compiling code that works on another machine gives me errors?
 Make sure you are using the Emscripten bundled system headers. Using :ref:`emcc <emccdoc>` will do so by default, but problems may occur if you use your local system headers with ``emcc`` or compile into LLVM bitcode yourself.
 
 
-My large codebase runs well, but startup time is significant?
-=============================================================
+How can I reduce startup time?
+==============================
 
 Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smaller builds are faster to start up). If the sheer code size is causing the slow startup, you can try `Outlining: a workaround for JITs and big functions <http://mozakai.blogspot.com/2013/08/outlining-workaround-for-jits-and-big.html>`_.
 
