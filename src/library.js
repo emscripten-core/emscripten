@@ -3338,31 +3338,6 @@ LibraryManager.library = {
     return limit;
   },
 
-  __rand_seed: 'allocate([0x0273459b, 0, 0, 0], "i32", ALLOC_STATIC)',
-  srand__deps: ['__rand_seed'],
-  srand: function(seed) {
-    {{{ makeSetValue('___rand_seed', 0, 'seed', 'i32') }}}
-  },
-  rand_r__sig: 'ii',
-  rand_r__asm: true,
-  rand_r: function(seedp) {
-    seedp = seedp|0; 
-    var val = 0;
-    val = ((Math_imul({{{ makeGetValueAsm('seedp', 0, 'i32') }}}, 31010991)|0) + 0x676e6177 ) & {{{ cDefine('RAND_MAX') }}}; // assumes RAND_MAX is in bit mask form (power of 2 minus 1)
-    {{{ makeSetValueAsm('seedp', 0, 'val', 'i32') }}};
-    return val|0;
-  },
-  rand__sig: 'i',
-  rand__asm: true,
-  rand__deps: ['rand_r', '__rand_seed'],
-  rand: function() {
-    return _rand_r(___rand_seed)|0;
-  },
-
-  drand48: function() {
-    return Math.random();
-  },
-
   realpath__deps: ['$FS', '__setErrNo'],
   realpath: function(file_name, resolved_name) {
     // char *realpath(const char *restrict file_name, char *restrict resolved_name);
@@ -3382,6 +3357,8 @@ LibraryManager.library = {
     }
   },
 
+  // For compatibility, call to rand() when code requests arc4random(), although this is *not* at all
+  // as strong as rc4 is. See https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/arc4random.3.html
   arc4random: 'rand',
 
   // ==========================================================================

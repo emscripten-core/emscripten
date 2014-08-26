@@ -14,6 +14,8 @@
          T atol
          W bulk_free
          W calloc
+         T drand48
+         T erand48
          T ffs
          W free
          T frexp
@@ -21,9 +23,16 @@
          T frexpl
          W independent_calloc
          W independent_comalloc
+         T initstate
          T isdigit
          T isspace
          T isupper
+         T jrand48
+         T lcg31
+         T lcg64
+         T lcong48
+         T loadstate
+         T lrand48
          W mallinfo
          W malloc
          W malloc_footprint
@@ -36,17 +45,28 @@
          W mallopt
          W memalign
          T MUSL_vfprintf
+         T mrand48
+         T nrand48
          W posix_memalign
          W pvalloc
+         T rand
+         T rand_r
+         T random
          W realloc
          W realloc_in_place
          T scalbn
          T scalbnl
+         T srand
          T memchr
          T memcmp
          T memcpy
+         T savestate
+         T seed48
+         T setstate
          T snprintf
          T sprintf
+         T srand48
+         T srandom
          T strtod
          T strtoull
          T strtoll
@@ -63,6 +83,7 @@
          T strtof_l
          T strtold
          T strtold_l
+         T temper
          T tolower
          W valloc
          T vsnprintf
