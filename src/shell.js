@@ -95,14 +95,11 @@ else if (ENVIRONMENT_IS_SHELL) {
   }
 
   Module['readBinary'] = function readBinary(f) {
-    var data = read(f, 'binary');
-    if (typeof data === 'string') {
-      var buffer = new Uint8Array(data.length);
-      for (var i = 0; i < data.length; i++) {
-        buffer[i] = data.charCodeAt(i);
-      }
-      data = buffer;
+    if (typeof readbuffer === 'function') {
+      return new Uint8Array(readbuffer(f));
     }
+    var data = read(f, 'binary');
+    assert(typeof data === 'object');
     return data;
   };
 
