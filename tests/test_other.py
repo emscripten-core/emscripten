@@ -2724,6 +2724,18 @@ int main()
     out, err = process.communicate()
     assert(warning not in err)
 
+  def test_warn_dylibs(self):
+    shared_suffixes = ['.so', '.dylib', '.dll']
+
+    for suffix in ['.o', '.a', '.bc', '.so', '.lib', '.dylib', '.js', '.html']:
+      process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out' + suffix], stdout=PIPE, stderr=PIPE)
+      out, err = process.communicate()
+      warning = 'Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten'
+      if suffix in shared_suffixes:
+        assert(warning in err)
+      else:
+        assert(warning not in err)
+
   def test_simplify_ifs(self):
     def test(src, nums):
       open('src.c', 'w').write(src)
