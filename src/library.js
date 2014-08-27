@@ -3949,6 +3949,14 @@ LibraryManager.library = {
 #endif
     }
   },
+  __cxa_increment_exception_refcount__deps: ['$EXCEPTIONS'],
+  __cxa_increment_exception_refcount: function(ptr) {
+    EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ptr));
+  },
+  __cxa_decrement_exception_refcount__deps: ['$EXCEPTIONS'],
+  __cxa_decrement_exception_refcount: function(ptr) {
+    EXCEPTIONS.decRef(EXCEPTIONS.deAdjust(ptr));
+  },
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
