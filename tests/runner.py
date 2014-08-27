@@ -463,8 +463,6 @@ process(sys.argv[1])
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     if js_engines is None:
       js_engines = JS_ENGINES
-    if Settings.USE_TYPED_ARRAYS:
-      js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
     js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:

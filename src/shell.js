@@ -95,7 +95,15 @@ else if (ENVIRONMENT_IS_SHELL) {
   }
 
   Module['readBinary'] = function readBinary(f) {
-    return read(f, 'binary');
+    var data = read(f, 'binary');
+    if (typeof data === 'string') {
+      var buffer = new Uint8Array(data.length);
+      for (var i = 0; i < data.length; i++) {
+        buffer[i] = data.charCodeAt(i);
+      }
+      data = buffer;
+    }
+    return data;
   };
 
   if (typeof scriptArgs != 'undefined') {
