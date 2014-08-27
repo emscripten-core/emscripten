@@ -67,7 +67,7 @@ The following ``Module`` attributes affect code execution.
 	
 .. js:attribute:: Module.preRun
 
-	A function (or array of functions) to call right before calling ``run()``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the :ref:`Filesystem-API` (since that needs the FileSystem API to be defined, but also needs to be done before the program starts to run.
+	An array of functions to call right before calling ``run()``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the :ref:`Filesystem-API` (since that needs the FileSystem API to be defined and loaded, but also needs to be done before the program starts to run).
 
 	.. note:: If code needs to affect global initializers, it should instead be run using :js:attr:`preInit`.
 
