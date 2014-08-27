@@ -230,7 +230,9 @@ var LibraryGLUT = {
 
       // cross-browser wheel delta
       var e = window.event || event; // old IE support
+      // Note the minus sign that flips browser wheel direction (positive direction scrolls page down) to native wheel direction (positive direction is mouse wheel up)
       var delta = -Browser.getMouseWheelDelta(event);
+      delta = (delta == 0) ? 0 : (delta > 0 ? Math.max(delta, 1) : Math.min(delta, -1)); // Quantize to integer so that minimum scroll is at least +/- 1.
 
       var button = 3; // wheel up
       if (delta < 0) {
