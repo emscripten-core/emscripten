@@ -3906,6 +3906,32 @@ LibraryManager.library = {
 #endif
       return adjusted;
     },
+    addRef: function(ptr) {
+      if (!ptr) return;
+      var info = EXCEPTIONS.infos[ptr];
+      info.refcount++;
+    },
+    decRef: function(ptr) {
+      if (!ptr) return;
+      var info = EXCEPTIONS.infos[ptr];
+      assert(info.refcount > 0);
+      info.refcount--;
+      if (info.refcount === 0) {
+        if (info.destructor) {
+          Runtime.dynCall('vi', info.destructor, [ptr]);
+        }
+        delete EXCEPTIONS.infos[ptr];
+        ___cxa_free_exception(ptr);
+#if EXCEPTION_DEBUG
+        Module.printErr('decref freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+#endif
+      }
+    },
+    clearRef: function(ptr) {
+      if (!ptr) return;
+      var info = EXCEPTIONS.infos[ptr];
+      info.refcount = 0;
+    },
   },
 
   // Exceptions
@@ -3949,7 +3975,8 @@ LibraryManager.library = {
       ptr: ptr,
       adjusted: ptr,
       type: type,
-      destructor: destructor
+      destructor: destructor,
+      refcount: 0
     };
     EXCEPTIONS.last = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
@@ -3995,6 +4022,7 @@ LibraryManager.library = {
 #if EXCEPTION_DEBUG
 		Module.printErr('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
 #endif
+    EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ptr));
     return ptr;
   },
   // We're done with a catch. Now, we can run the destructor if there is one
@@ -4019,20 +4047,8 @@ LibraryManager.library = {
     Module.printErr('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     if (ptr) {
-      ptr = EXCEPTIONS.deAdjust(ptr);
-      var info = EXCEPTIONS.infos[ptr];
-      if (!info) {
-        abort('cannot find exception info for ' + ptr + ' in ' + JSON.stringify(EXCEPTIONS.infos));
-      }
-      if (info.destructor) {
-        Runtime.dynCall('vi', info.destructor, [ptr]);
-      }
-      delete EXCEPTIONS.infos[ptr];
-      ___cxa_free_exception(ptr);
-      EXCEPTIONS.last = 0;
-#if EXCEPTION_DEBUG
-      Module.printErr('  cxa_end_catch also freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
-#endif
+      EXCEPTIONS.decRef(EXCEPTIONS.deAdjust(ptr));
+      EXCEPTIONS.last = 0; // XXX in decRef?
     }
   },
   __cxa_get_exception_ptr: function(ptr) {
@@ -4122,6 +4138,7 @@ LibraryManager.library = {
     Module.print("Resuming exception " + [ptr, EXCEPTIONS.last]);
 #endif
     if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
+    EXCEPTIONS.clearRef(EXCEPTIONS.deAdjust(ptr)); // exception refcount should be cleared, but don't free it
     {{{ makeThrow('ptr') }}}
   },
 
