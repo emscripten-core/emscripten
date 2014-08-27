@@ -1,8 +1,8 @@
 .. _api-limitations:
 
-======================================
-API Limitations (under-construction)
-======================================
+==================================
+API Limitations (ready-for-review)
+==================================
 
 The browser environment and JavaScript are different to native environments and the standard C/C++. These differences impose some limitations on which native APIs can be called and how they are used. This section lists some of the more obvious limitations.
 

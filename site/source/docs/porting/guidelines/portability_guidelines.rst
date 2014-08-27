@@ -1,8 +1,8 @@
 .. _CodeGuidelinesAndLimitations:
 
-=========================================================
-Portability Guidelines (under-construction)
-=========================================================
+==========================================
+Portability Guidelines (ready-for-review)
+==========================================
 
 Emscripten can be used to compile almost any *portable* C++/C code to JavaScript.  
 
@@ -37,5 +37,7 @@ The following types of code will compile, but may not run as fast as expected:
 
 -  64-bit ``int`` variables. Mathematical operations (+, -, \*, /) are slow because they are emulated (bitwise operations are reasonably fast). JavaScript does not have a native 64-bit ``int`` type so this is unavoidable.
 	
--  Exceptions and ``longjmp``. In JavaScript such code generally makes the JavaScript engine turn off various optimizations. For that reason exceptions are turned off by default in ``-O1`` and above. To re-enable them, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js#L279>`_). ``setjmp`` also prevents relooping around it.
+-  Exceptions and ``longjmp``. In JavaScript such code generally makes the JavaScript engine turn off various optimizations. For that reason exceptions are turned off by default in ``-O1`` and above. To re-enable them, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js#L279>`_). 
+
+- ``setjmp`` also prevents :term:`relooping` around it, which can be much slower.
 
