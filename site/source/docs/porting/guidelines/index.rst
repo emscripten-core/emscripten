@@ -1,11 +1,10 @@
 .. _guidelines-index:
 
-=====================================================
-Code Portability and Limitations (under-construction) 
-=====================================================
+===================================================
+Code Portability and Limitations (ready-for-review) 
+===================================================
 
-This section is for ....
-
+Emscripten can be used to compile almost any *portable* C/C++ code to JavaScript. The topics in this section help identify less portable code, and code that may need to be changed because of limitations in the browser environment or Emscripten-compiled JavaScript.
 
 .. toctree::
 	:maxdepth: 1

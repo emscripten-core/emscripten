@@ -1,12 +1,10 @@
 .. _integrating-porting-index:
 
 ================================
-Porting (under-construction) 
+Porting (ready-for-review) 
 ================================
 
-This section is for articles explaining the integration points with Emscripten, and general coding guidelines to help you with porting.
-
-.. todo:: There must be a better way of putting this! See when the thing is finished. Also discuss ORDER of articles. 
+The topics in this section cover the main integration points that you need to consider when porting C/C++ code to Emscripten, along with general coding and debugging guidelines.
 
 .. toctree::
 	:maxdepth: 1

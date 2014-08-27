@@ -15,6 +15,10 @@ Glossary (under-construction)
 	Minifying
 		**HamishW**
 		
+	Relooping
+		Recreate high-level loop and ``if`` structures from the low-level labels and branches that appear in LLVM assembly (definition from `this paper <https://github.com/kripken/emscripten/blob/master/docs/paper.pdf?raw=true>`_).
+
+		
 		
 
 Emscripten tools and dependencies
