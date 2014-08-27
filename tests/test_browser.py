@@ -1939,6 +1939,11 @@ Module["preRun"].push(function () {
       print opts
       self.btest(path_from_root('tests', 'test_html5_mouse.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
 
+  def test_sdl_mousewheel(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+      print opts
+      self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
+
   def test_codemods(self):
     for opt_level in [0, 2]:
       print 'opt level', opt_level

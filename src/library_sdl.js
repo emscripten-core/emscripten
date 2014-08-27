@@ -532,6 +532,19 @@ var LibrarySDL = {
           };
           break;
         }
+        case 'DOMMouseScroll': case 'mousewheel': case 'wheel':
+          var delta = -Browser.getMouseWheelDelta(event); // Flip the wheel direction to translate from browser wheel direction (+:down) to SDL direction (+:up)
+          delta = (delta == 0) ? 0 : (delta > 0 ? Math.max(delta, 1) : Math.min(delta, -1)); // Quantize to integer so that minimum scroll is at least +/- 1.
+
+          // Simulate old-style SDL events representing mouse wheel input as buttons
+          var button = delta > 0 ? 3 /*SDL_BUTTON_WHEELUP-1*/ : 4 /*SDL_BUTTON_WHEELDOWN-1*/; // Subtract one since JS->C marshalling is defined to add one back.
+          SDL.events.push({ type: 'mousedown', button: button, pageX: event.pageX, pageY: event.pageY });
+          SDL.events.push({ type: 'mouseup', button: button, pageX: event.pageX, pageY: event.pageY });
+
+          // Pass a delta motion event.
+          SDL.events.push({ type: 'wheel', deltaX: 0, deltaY: delta });
+          event.preventDefault(); // If we don't prevent this, then 'wheel' event will be sent again by the browser as 'DOMMouseScroll' and we will receive this same event the second time.
+          break;
         case 'mousemove':
           if (SDL.DOMButtons[0] === 1) {
             SDL.events.push({
@@ -559,7 +572,7 @@ var LibrarySDL = {
             }
           }
           // fall through
-        case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel': case 'wheel':
+        case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup':
           // If we preventDefault on keydown events, the subsequent keypress events
           // won't fire. However, it's fine (and in some cases necessary) to
           // preventDefault for keys that don't generate a character. Otherwise,
@@ -568,41 +581,7 @@ var LibrarySDL = {
             event.preventDefault();
           }
 
-          if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel' || event.type == 'wheel') {
-            // Simulate old-style SDL events representing mouse wheel input as buttons
-            var button = Browser.getMouseWheelDelta(event) > 0 ? 4 : 3;
-            var event1 = {
-              type: 'mousedown',
-              button: button,
-              pageX: event.pageX,
-              pageY: event.pageY
-            };
-            SDL.events.push(event1);
-            var event2 = {
-              type: 'mouseup',
-              button: button,
-              pageX: event.pageX,
-              pageY: event.pageY
-            };
-            SDL.events.push(event2);
-
-            // Convert DOMMouseScroll events to wheel events for new style SDL events.
-            if (event.type == 'DOMMouseScroll') {
-              SDL.events.push({
-                type: 'wheel',
-                deltaX: 0,
-                deltaY: -event.detail,
-              });
-              break;
-            } else if (event.type == 'mousewheel') {
-              SDL.events.push({
-                type: 'wheel',
-                deltaX: 0,
-                deltaY: event.wheelDelta,
-              });
-              break;
-            }
-          } else if (event.type == 'mousedown') {
+          if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
             SDL.events.push({
               type: 'touchstart',

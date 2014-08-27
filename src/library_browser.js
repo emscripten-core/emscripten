@@ -454,6 +454,13 @@ mergeInto(LibraryManager.library, {
              0;
     },
 
+    // Browsers specify wheel direction according to the page CSS pixel Y direction:
+    // Scrolling mouse wheel down (==towards user/away from screen) on Windows/Linux (and OSX without 'natural scroll' enabled)
+    // is the positive wheel direction. Scrolling mouse wheel up (towards the screen) is the negative wheel direction.
+    // This function returns the wheel direction in the browser page coordinate system (+: down, -: up). Note that this is often the
+    // opposite of native code: In native APIs the positive scroll direction is to scroll up (away from the user).
+    // NOTE: The mouse wheel delta is a decimal number, and can be a fractional value within -1 and 1. If you need to represent
+    //       this as an integer, don't simply cast to int, or you may receive scroll events for wheel delta == 0.
     getMouseWheelDelta: function(event) {
       var delta = 0;
       switch (event.type) {
@@ -461,15 +468,15 @@ mergeInto(LibraryManager.library, {
           delta = event.detail;
           break;
         case 'mousewheel': 
-          delta = -event.wheelDelta;
+          delta = event.wheelDelta;
           break;
         case 'wheel': 
-          delta = event.deltaY;
+          delta = event['deltaY'];
           break;
         default:
           throw 'unrecognized mouse wheel event: ' + event.type;
       }
-      return Math.max(-1, Math.min(1, delta));
+      return delta;
     },
 
     mouseX: 0,

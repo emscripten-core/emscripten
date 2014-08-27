@@ -25,6 +25,9 @@ class interactive(BrowserCore):
   def test_html5_mouse(self):
     self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0')
 
+  def test_sdl_mousewheel(self):
+    self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), expected='0')
+
   def test_sdl_touch(self):
     self.btest(path_from_root('tests', 'sdl_touch.c'), args=['-O2', '-g1', '--closure', '1'], expected='0')
 
