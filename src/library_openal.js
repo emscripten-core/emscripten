@@ -890,7 +890,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentContext.src[source - 1];
+    var src = AL.currentContext.src[source];
     if (!src) {
 #if OPENAL_DEBUG
       console.error("alSourceRewind called with an invalid source");
