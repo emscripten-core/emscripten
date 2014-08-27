@@ -11,10 +11,13 @@ This section explains what types of code are non-portable (or more difficult to 
 Code that cannot be compiled
 ============================
 
-The following types of code would need to be avoided in order to work with Emscripten. While in theory it might be possible to workaround these issues using emulation, it would be very slow.
+The following types of code would need to be re-written in order to work with Emscripten. While in theory it might be possible to workaround these issues using emulation, it would be very slow.
 
--  Code that is multi-threaded and uses shared state. JavaScript has threads (web workers), but they cannot share state — instead they pass messages. (Note: should the JavaScript standards bodies add shared state to web workers, multithreaded code would become possible to support.)
--  Code that relies on endianness is problematic, both on native builds on different CPUs and using Emscripten, as it is not portable.
+-  Code that is multi-threaded and uses shared state. JavaScript has threads (web workers), but they cannot share state — instead they pass messages. 
+
+	.. note:: Should the JavaScript standards bodies add shared state to web workers, multithreaded code would become possible to support.
+	
+-  Code that relies on endianness is non-portable (both on native builds on different CPUs and using Emscripten).
 -  Code that relies on x86 alignment behavior. X86 allows unaligned reads and writes (so for example you can read a 16-bit value from a non-even address), but other architectures do not (ARM will raise ``SIGILL``). For Emscripten-generated JavaScript the behavior is undefined. If you build your code with ``SAFE_HEAP=1`` then you will get a clear runtime exception, see :ref:`Debugging`. 
 
 	.. note:: The `UNALIGNED_MEMORY <https://github.com/kripken/emscripten/blob/master/src/settings.js#L99>`_ code generation mode can support unaligned code like this, but it is very slow.

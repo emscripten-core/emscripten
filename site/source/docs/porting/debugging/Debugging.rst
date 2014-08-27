@@ -234,3 +234,5 @@ Additional Help
 
 Of course, you can also ask the Emscripten devs for help. :) See links
 to IRC and the Google Group on the main project page.
+
+.. todo:: **HamishW** Make sure that SAFE_HEAP is clearly documented, and ideally has a section we can link to from the rest of the document.

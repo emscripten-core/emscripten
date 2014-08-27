@@ -30,3 +30,27 @@ Manually using the FS API
 
 Check out the :ref:`Filesystem-API`.
 
+
+.. todo:: HamishW. Notes to incorporate:
+
+	> My understanding is that on the browser we are sandboxed, so we have the
+	> virtual file system. This is asynchronously preloaded, and we wait until
+	> that is complete (using main() to notify us) before we try to load from it.
+	> However at that point all our functions (which map to libc) are
+	> synchronous. I
+
+	Yes, exactly. Emscripten compiles C code, which expects synchronous operations,
+
+	  FILE *f = fopen("name.txt", "r");
+	  fread(f, ...);
+
+	but those are not *actually* doing synchronous reading from the real filesystem (which, for a website, is typically the remote server; there is also no sync access to the user's local filesystem either), they are just doing synchronous reading from the cached data in the virtual filesystem. We preload data into that virtual filesystem for exactly that reason.
+
+	>
+	> So it the first statement above is true. The second statement is not
+	> entirely true - probably they need to modify their code to ensure that
+	> synchronous reading is not done until loading of the virtual file system is
+	> complete.
+	>
+
+	Yes. --preload-file etc. will make sure the preloaded data is ready for sync reading before main() runs. Otherwise, people can use emscripten_async_wget etc. to fetch more files from the network. They arrive asynchronously, because they use async http (the only option we have on the web), and the application must wait for the async callback before trying to read them.

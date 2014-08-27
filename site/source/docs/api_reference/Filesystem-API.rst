@@ -4,15 +4,18 @@
 File System API (under-construction)
 =====================================
 
-File I/O in Emscripten is provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
+File operations in Emscripten are provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
 
 .. note:: The API is *inspired* by the Linux/POSIX `File System API <http://linux.die.net/man/2/>`_, and the APIs present a very similar interface. 
 
 	The underlying behaviour is also similar, except where differences between the native and browser environments make this unreasonable. For example, user and group permissions are defined but ignored in :js:func:`FS.open`.
 
-Emscripten deals predominantly with synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface, with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/kripken/emscripten/blob/master/system/include/libc/bits/errno.h>`_
+Emscripten predominantly compiles code that uses synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface (with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/kripken/emscripten/blob/master/system/include/libc/bits/errno.h>`_).
 
 File data in Emscripten is partitioned by mounted file systems. Several file systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` by default. Instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
+
+A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`Filesystem-Guide`. 
+
 
 .. _filesystem-api-persist-data:
 
