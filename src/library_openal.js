@@ -882,6 +882,28 @@ var LibraryOpenAL = {
     AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
   },
 
+  alSourceRewind__deps: ['setSourceState'],
+  alSourceRewind: function(source) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSourceRewind called without a valid context");
+#endif
+      return;
+    }
+    var src = AL.currentContext.src[source - 1];
+    if (!src) {
+#if OPENAL_DEBUG
+      console.error("alSourceRewind called with an invalid source");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return;
+    }
+    // Stop the source first to clear the source queue
+    AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+    // Now set the state of AL_INITIAL according to the specification
+    AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
+  },
+
   alSourcePause__deps: ['setSourceState'],
   alSourcePause: function(source) {
     if (!AL.currentContext) {
