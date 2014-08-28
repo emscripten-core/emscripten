@@ -4,13 +4,43 @@ Function Pointer Issues (under-construction)
 
 There are three general issues with function pointers:
 
-#. :term:`Clang` generates different code for C and C++ calls when a structure is passed **by value**: one convention is ``struct byval`` and the other is ``field a, field b``. The two formats are incompatible with each other, and you should see a warning during compilation about this. The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**). 
+#. 
+	:term:`Clang` generates different code for C and C++ calls when a structure is passed **by value** (for completeness, one convention is ``struct byval`` and the other is ``field a, field b``). The two formats are incompatible with each other, and you should get a warning during compilation:
+
+	:: 
+	
+		Warning: Casting potentially incompatible function pointer
+	
+	The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**). 
 
 	.. _function-pointer-issues-point-asmjs:
 	
-#. In **asm.js** mode, :ref:`function pointer casts <Asm-pointer-casts>` can cause function pointer calls to fail. Without *asm.js*, all function pointers use a single table, but in *asm.js* each function pointer type has its own table (this allows the JavaScript engine to know the exact type of each function pointer call, and optimize those calls much better than normally). As a consequence, if you have a function that is say ``int (int)`` (return int, receive int) and you cast it to ``void (int)`` (no return, receive int), then the function pointer call will fail because we are looking in the wrong table. This is undefined behavior in C in any case, so it is recommended to refactor code to avoid this type of situation. You should see compilation warnings about these things. See :ref:`Asm-pointer-casts` below for more information.
+#. 
+	:ref:`Function pointer casts <Asm-pointer-casts>` can cause function pointer calls to fail.
 
-#. A related issue to do with function pointers is that in ``-O2`` and above we optimize the size of the separate function tables. That means that two functions can have the same function pointer so long as their type is different, and so potentially comparing function pointers of different types can give false positives. Also, it makes bugs with incorrect function pointers potentially more misleading, since there are fewer "holes" in function tables (holes would throw an error instead of running the wrong code). To check if this is causing issues, you can compile with `ALIASING_FUNCTION_POINTERS <https://github.com/kripken/emscripten/blob/master/src/settings.js#L201>`_ unset: ``-s ALIASING_FUNCTION_POINTERS=0``.
+	Each function type in **asm.js** has its own table — if you change the type of the pointer the calling code will look for the function pointer in the wrong table. For example, consider a function that is say ``int (int)`` (return ``int``, receive ``int``) and that will be indexed in the table ``FUNCTION_TABLE_ii``. If you cast a function pointer to it to ``void (int)`` (no return, receive ``int``), then the code will look for the function in ``FUNCTION_TABLE_vi``.
+	
+	You should see compilation warnings for this error: 
+
+	:: 
+	
+		warning: implicit declaration of function
+
+	The recommended workaround is to refactor code to avoid this type of situation, as described in :ref:`Asm-pointer-casts` below. 
+
+
+#. 
+
+	When using optimisation :ref:`-O2 <emcc-O2>` and above, comparing function pointers of different types can give false positives, and bugs with incorrect function pointers potentially more misleading. To check if this is causing issues, you can compile with `ALIASING_FUNCTION_POINTERS <https://github.com/kripken/emscripten/blob/master/src/settings.js#L201>`_ unset (``-s ALIASING_FUNCTION_POINTERS=0``).
+
+	.. note:: In **asm.js** function pointers are stored within a function-type specific table.
+	
+		At lower levels of optimisation each function pointer has a unique index value across all the function-type tables (a function pointer will exist at a specific index in one table only, and there will be an empty slot at that index in all the other tables). As a result, comparing function pointers (indexes) gives an accurate result, and attempting to call a function pointer in the wrong table will throw an error as that index will be empty.
+		
+		A optimisation ``O2`` and above, the tables are optimised so that all the function pointers are in sequential indexes. This is a useful optimisation because the tables are much more compact without all the empty slots, but it does mean that the  function index is no longer "globally" unique. Function is now uniquely indexed using both its table and its index within that table. As a result:
+		
+			- Comparisons of the function pointers can give a false positive, because functions of different types can share the same index. 
+			- Mistakes in function pointer code can be more difficult to debug, because they result in the wrong code being called rather than an explicit error (as in the case of a "hole" in the table). 
 
 
 .. _Asm-pointer-casts:
@@ -19,6 +49,8 @@ Asm pointer casts
 =================
 
 As mentioned :ref:`above <function-pointer-issues-point-asmjs>`, in **asm.js** mode function pointers must be called using their correct type. This is because each function pointer type has its own table: casting the pointer to another type will cause code to look for the function pointer in the wrong table (and so the call will fail).
+
+.. note:: Having a separate table for each type of function pointer allows the JavaScript engine to know the exact type of each function pointer call, and optimize those calls much better than normally.
 
 Let's look at an example:
 

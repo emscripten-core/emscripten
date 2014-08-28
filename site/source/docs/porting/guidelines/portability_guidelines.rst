@@ -18,10 +18,7 @@ The following types of code would need to be re-written in order to work with Em
 	.. note:: Should the JavaScript standards bodies add shared state to web workers, multithreaded code would become possible to support.
 	
 -  Code that relies on endianness is non-portable (both on native builds on different CPUs and using Emscripten).
--  Code that relies on x86 alignment behavior. X86 allows unaligned reads and writes (so for example you can read a 16-bit value from a non-even address), but other architectures do not (ARM will raise ``SIGILL``). For Emscripten-generated JavaScript the behavior is undefined. If you build your code with ``SAFE_HEAP=1`` then you will get a clear runtime exception, see :ref:`Debugging`. 
-
-	.. note:: The `UNALIGNED_MEMORY <https://github.com/kripken/emscripten/blob/master/src/settings.js#L99>`_ code generation mode can support unaligned code like this, but it is very slow.
-	
+-  Code that relies on x86 alignment behavior. X86 allows unaligned reads and writes (so for example you can read a 16-bit value from a non-even address), but other architectures do not (ARM will raise ``SIGILL``). For Emscripten-generated JavaScript the behavior is undefined. If you build your code with ``SAFE_HEAP=1`` then you will get a clear runtime exception, see :ref:`Debugging`.
 -  Code that uses low-level features of the native environment. For example, native stack manipulation in conjunction with ``setjmp``/``longjmp`` (we support normal ``setjmp``/``longjmp``, but not with stack replacing etc.)
 -  Code that scans registers or the stack. This won't work because a variable in a register or on the stack may be held in a JavaScript local variable (which cannot be scanned).
 	
@@ -39,5 +36,5 @@ The following types of code will compile, but may not run as fast as expected:
 	
 -  C++ Exceptions. In JavaScript such code generally makes the JavaScript engine turn off various optimizations. For that reason exceptions are turned off by default in ``-O1`` and above. To re-enable them, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js#L279>`_). 
 
-- ``setjmp`` also prevents :term:`relooping` around it, which can be much slower.
+- ``setjmp`` also prevents :term:`relooping` around it, forcing us to emulate control flow using less efficient approach.
 

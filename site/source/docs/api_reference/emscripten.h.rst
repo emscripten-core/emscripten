@@ -6,7 +6,7 @@ emscripten.h
 
 This page documents the public C++ APIs provided by `emscripten.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/emscripten.h>`_. 
 
-Emscripten uses existing/familiar APIs where possible (for example: SDL). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API. 
+Emscripten uses existing/familiar APIs where possible (for example: :term:`SDL`). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API. 
 
 .. contents:: Table of Contents
 	:local:
@@ -251,7 +251,7 @@ Functions
 	:param int num: The number of blockers that are about to be pushed.
 
 	
-.. c:function:: void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
+.. c:function:: void emscripten_async_call(em_arg_callback_func func, void *arg, int millis)
 		 
 	Call a C function asynchronously, that is, after returning control to the JavaScript event loop.
 	
