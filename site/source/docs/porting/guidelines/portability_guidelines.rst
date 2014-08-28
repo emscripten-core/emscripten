@@ -11,7 +11,7 @@ This section explains what types of code are non-portable (or more difficult to 
 Code that cannot be compiled
 ============================
 
-The following types of code would need to be re-written in order to work with Emscripten. While in theory it might be possible to workaround these issues using emulation, it would be very slow.
+The following types of code would need to be re-written in order to work with Emscripten. (While in theory it might be possible for Emscripten to work around these issues using emulation, it would be very slow.)
 
 -  Code that is multi-threaded and uses shared state. JavaScript has threads (web workers), but they cannot share state — instead they pass messages. 
 
@@ -37,7 +37,7 @@ The following types of code will compile, but may not run as fast as expected:
 
 -  64-bit ``int`` variables. Mathematical operations (+, -, \*, /) are slow because they are emulated (bitwise operations are reasonably fast). JavaScript does not have a native 64-bit ``int`` type so this is unavoidable.
 	
--  Exceptions and ``longjmp``. In JavaScript such code generally makes the JavaScript engine turn off various optimizations. For that reason exceptions are turned off by default in ``-O1`` and above. To re-enable them, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js#L279>`_). 
+-  C++ Exceptions. In JavaScript such code generally makes the JavaScript engine turn off various optimizations. For that reason exceptions are turned off by default in ``-O1`` and above. To re-enable them, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js#L279>`_). 
 
 - ``setjmp`` also prevents :term:`relooping` around it, which can be much slower.
 
