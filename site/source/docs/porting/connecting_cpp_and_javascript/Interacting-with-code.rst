@@ -140,7 +140,7 @@ A faster way to call JavaScript from C is to write "inline JavaScript", using :c
 		return 0;
 	}
 
-When compiled and run, Emscripten will execute the two lines of JavaScript as if they appeared directly in the generated code. The result would be an alert, followed by an exception.
+When compiled and run, Emscripten will execute the two lines of JavaScript as if they appeared directly in the generated code. The result would be an alert, followed by an exception. (Note, however, that under the hood Emscripten still does a function call even in this case, which has some amount of overhead.)
 
 You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`, as well as receive values back (see the :c:macro:`linked macro <EM_ASM_>` for details. For example, the following example will print out ``I received: 100`` and then ``101``.
 
