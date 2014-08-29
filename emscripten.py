@@ -837,8 +837,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     ) + map(lambda x: x[1:], metadata['externs'])
     if metadata['simd']:
       settings['SIMD'] = 1
-    if not metadata['canValidate'] and settings['ASM_JS'] != 2:
-      logging.warning('disabling asm.js validation due to use of non-supported features')
+    if metadata['cantValidate'] and settings['ASM_JS'] != 2:
+      logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
       settings['ASM_JS'] = 2
 
     # Save settings to a file to work around v8 issue 1579
