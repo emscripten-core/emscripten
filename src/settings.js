@@ -363,6 +363,9 @@ var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
 
+var NODE_STDOUT_FLUSH_WORKAROUND = 1; // Whether or not to work around node issues with not flushing stdout. This
+                                      // can cause unnecessary whitespace to be printed.
+
 var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of

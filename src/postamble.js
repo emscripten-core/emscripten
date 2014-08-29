@@ -174,6 +174,7 @@ function exit(status) {
   // exit the runtime
   exitRuntime();
 
+#if NODE_STDOUT_FLUSH_WORKAROUND
   if (ENVIRONMENT_IS_NODE) {
     // Work around a node.js bug where stdout buffer is not flushed at process exit:
     // Instead of process.exit() directly, wait for stdout flush event.
@@ -188,7 +189,9 @@ function exit(status) {
     setTimeout(function() {
       process['exit'](status);
     }, 500);
-  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
+  } else
+#endif
+  if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
     quit(status);
   }
   // if we reach here, we must throw an exception to halt the current execution
