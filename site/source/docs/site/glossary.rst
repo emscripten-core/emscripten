@@ -18,6 +18,10 @@ Glossary (under-construction)
 	Relooping
 		Recreate high-level loop and ``if`` structures from the low-level labels and branches that appear in LLVM assembly (definition from `this paper <https://github.com/kripken/emscripten/blob/master/docs/paper.pdf?raw=true>`_).
 
+	SDL
+		`Simple DirectMedia Layer <https://www.libsdl.org/>`_ (SDL) is a cross-platform development library designed to provide low level access to audio, keyboard, mouse, joystick, and graphics hardware via OpenGL and Direct3D.
+	
+	
 		
 		
 

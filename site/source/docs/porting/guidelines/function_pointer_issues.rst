@@ -1,16 +1,46 @@
-=================================================
-Function Pointer Issues (under-construction)
-=================================================
+==========================================
+Function Pointer Issues (ready-for-review)
+==========================================
 
 There are three general issues with function pointers:
 
-#. :term:`Clang` generates different code for C and C++ calls when a structure is passed **by value**: one convention is ``struct byval`` and the other is ``field a, field b``. The two formats are incompatible with each other, and you should see a warning during compilation about this. The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**). 
+#. 
+	:term:`Clang` generates different code for C and C++ calls when a structure is passed **by value** (for completeness, one convention is ``struct byval`` and the other is ``field a, field b``). The two formats are incompatible with each other, and you may get a runtime warning.
+	
+	The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**). 
 
 	.. _function-pointer-issues-point-asmjs:
 	
-#. In **asm.js** mode, :ref:`function pointer casts <Asm-pointer-casts>` can cause function pointer calls to fail. Without *asm.js*, all function pointers use a single table, but in *asm.js* each function pointer type has its own table (this allows the JavaScript engine to know the exact type of each function pointer call, and optimize those calls much better than normally). As a consequence, if you have a function that is say ``int (int)`` (return int, receive int) and you cast it to ``void (int)`` (no return, receive int), then the function pointer call will fail because we are looking in the wrong table. This is undefined behavior in C in any case, so it is recommended to refactor code to avoid this type of situation. You should see compilation warnings about these things. See :ref:`Asm-pointer-casts` below for more information.
+#. 
+	:ref:`Function pointer casts <Asm-pointer-casts>` can cause function pointer calls to fail.
 
-#. A related issue to do with function pointers is that in ``-O2`` and above we optimize the size of the separate function tables. That means that two functions can have the same function pointer so long as their type is different, and so potentially comparing function pointers of different types can give false positives. Also, it makes bugs with incorrect function pointers potentially more misleading, since there are fewer "holes" in function tables (holes would throw an error instead of running the wrong code). To check if this is causing issues, you can compile with `ALIASING_FUNCTION_POINTERS <https://github.com/kripken/emscripten/blob/master/src/settings.js#L201>`_ unset: ``-s ALIASING_FUNCTION_POINTERS=0``.
+	Function pointers are stored in a specific table based on their signature when they are *declared*. When a function is called the code searches for it in the table associated with its *current* function pointer signature. If the function pointer used to call the function does not have the same signature as the original type, the calling code will look for it in the wrong table. 
+	
+	For example, consider a function declared as ``int (int)`` (return ``int``, receive ``int``) and hence added to the table ``FUNCTION_TABLE_ii``. If you cast a function pointer to it to ``void (int)`` (no return, receive ``int``), then the code will look for the function in ``FUNCTION_TABLE_vi``.
+	
+	You may see compilation warnings for this error: 
+
+	:: 
+	
+		warning: implicit declaration of function
+
+	The recommended workaround is to refactor code to avoid this type of situation, as described in :ref:`Asm-pointer-casts` below. 
+
+
+#. 
+
+	When using optimisation :ref:`-O2 <emcc-O2>` and above, comparing function pointers of different types can give false positives, and bugs with incorrect function pointers are potentially more misleading. To check if this is the cause of problems with your code, you can compile with `ALIASING_FUNCTION_POINTERS <https://github.com/kripken/emscripten/blob/master/src/settings.js#L201>`_ unset (``-s ALIASING_FUNCTION_POINTERS=0``).
+
+	.. note:: In **asm.js**, function pointers are stored within a function-type specific table.
+	
+		At lower levels of optimisation each function pointer has a unique index value across all the function-type tables (a function pointer will exist at a specific index in one table only, and there will be an empty slot at that index in all the other tables). As a result, comparing function pointers (indexes) gives an accurate result, and attempting to call a function pointer in the wrong table will throw an error as that index will be empty.
+		
+		A optimisation ``O2`` and above, the tables are optimised so that all the function pointers are in sequential indexes. This is a useful optimisation because the tables are much more compact without all the empty slots, but it does mean that the  function index is no longer "globally" unique. Each function is now uniquely indexed using both its table and its index within that table. 
+		
+		As a result, at higher optimisations:
+		
+			- Comparisons of the function pointers can give a false positive, because functions of different types can have the same index (albeit in different tables). 
+			- Mistakes in function pointer code can be more difficult to debug, because they result in the wrong code being called rather than an explicit error (as is raised in the case of a "hole" in the table). 
 
 
 .. _Asm-pointer-casts:
@@ -18,9 +48,16 @@ There are three general issues with function pointers:
 Asm pointer casts
 =================
 
-As mentioned :ref:`above <function-pointer-issues-point-asmjs>`, in **asm.js** mode function pointers must be called using their correct type. This is because each function pointer type has its own table: casting the pointer to another type will cause code to look for the function pointer in the wrong table (and so the call will fail).
+As mentioned :ref:`above <function-pointer-issues-point-asmjs>`, in **asm.js** mode function pointers must be called using their correct type or the call will fail. This is because each function pointer is stored in a specific table based on its signature when it is declared: casting the pointer to another type will cause calling code to look for the function pointer in the wrong place.
 
-Let's look at an example:
+.. note:: Having a separate table for each type of function pointer allows the JavaScript engine to know the exact type of each function pointer call, and optimize those calls much better than would otherwise be possible.
+
+There are two solutions to this problem (the second is preferred):
+
+	- Cast the function pointer back to the correct type before it is called. This is problematic because it requires that the caller knows the original type.
+	- Make an adapter function that does not need to be cast, and will hence be found in the correct function-pointer table. From the adaptor function call the original function.
+
+For a real-world example, consider the code below:
 
 .. code:: cpp
 
@@ -60,7 +97,9 @@ Let's look at an example:
 		callFunctions(functionList, 3);
 	}
 
-This code runs (and works) when compiled to machine code. You can try it by saving the code as **main.c** and executing: **cc main.c** and then **./a.out**. You'll see this output:
+The code defines three functions with different signatures: ``voidReturn`` of type ``vi`` (``void (int)``), ``intReturn`` of type ``ii``, and ``voidReturnNoParam`` of type ``v``. These function pointers are cast to type ``vi`` and added to a list. The functions are then called using the function pointers in the list.
+
+The code runs (and works) when compiled to machine code. You can try it by saving the code as **main.c** and executing: **cc main.c** and then **./a.out**. You'll see this output:
 
 ::
 
@@ -68,9 +107,15 @@ This code runs (and works) when compiled to machine code. You can try it by savi
 	intReturn: hello world
 	voidReturnNoParam:
 
-However, this code will break in Emscripten. You can compile this on your own by saving this code as ``main.c`` and executing: ``emcc -O2 -g -s ASM_JS=1  main.c -o main.html``. Then load it into your browser. 
+However, the code fails with a runtime exception in Emscripten, and displays the console output:
 
-To see why this breaks, let's look at the html source. You should be able to find this section:
+::
+
+	voidReturn: hello world
+
+.. note:: You can try this yourself. Save the code as **main.c**, compile using ``emcc -O0 main.c -o main.html``, and then load **main.html** into a browser.
+
+To see why this breaks, look at the html source. You should be able to find the section below in the code, showing the methods are stored in function tables based on their *original* function signatures.
 
 .. code:: javascript
 
@@ -79,11 +124,12 @@ To see why this breaks, let's look at the html source. You should be able to fin
 	var FUNCTION_TABLE_iii = [b2,b2,b2,b2,b2,b2,b2,b2];
 	var FUNCTION_TABLE_v = [b3,b3,b3,b3,_voidReturnNoParam,b3,b3,b3];
 
-.. note:: Because we are compiling using :ref:`-g <emcc-g>` the function names aren't mangled and we can see there are different function tables categorized by the signature of the function.
+When Emscripten-generated code executes a function, it looks up the function in the table based on its signature. In our ``callFunctions()`` method we are passed a list of functions with the signature ``vi``, so Emscripten looks for all the functions in the table ``FUNCTION_TABLE_vi``. Only the function ``voidReturn`` is found in ``FUNCTION_TABLE_vi``. The other two functions are not found, causing the exception.
 
-When Emscripten-generated code executes a function, it will look up the function in the table based on its signature and execute it. In our ``callFunctions()`` method we are passed a list of functions of the signature ``vi`` and for that reason, ``FUNCTION_TABLE_vi`` is the table used to find them. It doesn't matter that in ``main()`` we've added compatible functions to ``functionList``. They will not be found because their signature is different.
+As stated above, there are two solutions to this problem.
 
-There are two ways to fix this. The first is to cast the function pointer back to its original signature just before calling it:
+The code fragment below shows how we can cast the function pointer back to its original signature just before calling it, so that it is found in the correct table. This requires the receiver of the table to have special knowledge about what is in the list (you can see this in the special case for index ``1`` in the while loop). Additionally, :ref:`emcc <emccdoc>` will continue to complain about the original cast taking place in ``main()`` when adding the function to ``functionList[1]``.
+
 
 .. code:: cpp
 
@@ -99,9 +145,7 @@ There are two ways to fix this. The first is to cast the function pointer back t
             }
         }
 
-This requires the receiver of the table to have special knowledge about what is in the list (you can see this in the special case for index ``1`` in the while loop). Additionally, :ref:`emcc <emccdoc>` will continue to complain about the original cast taking place in ``main()`` when adding the function to ``functionList[1]``.
-
-A second (and better) solution is to make an adapter function which calls the original function and to place the *adapter* in the list.
+The code fragment below shows how to make and use an adapter function which calls the original function. The adapter is defined with the same signature as it will have when called, and is hence available in the expected function-pointer table.
 
 .. code:: cpp
 
@@ -118,5 +162,3 @@ A second (and better) solution is to make an adapter function which calls the or
 		
 		callFunctions(functionList, 3);
         }
-
-Here, we've made a function ``voidReturnNoParamAdapter()`` and added that to ``functionList[2]``.

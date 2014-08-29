@@ -114,7 +114,7 @@ My HTML app hangs?
 
 The browser event model uses *co-operative multitasking* — each event has a "turn" to run, and must then return control to the browser event loop so that other events can be processed. A common cause of HTML pages hanging is JavaScript that does not complete and return control to the browser.
 
-Graphical C++ apps typically have an infinite main loop in which event handling, processing and rendering is done, followed by a delay to keep the frame-rate right (``SDL_DELAY`` in SDL apps). As the main loop does not complete (is infinite) it cannot return control to the browser, and the app will hang. 
+Graphical C++ apps typically have an infinite main loop in which event handling, processing and rendering is done, followed by a delay to keep the frame-rate right (``SDL_DELAY`` in :term:`SDL` apps). As the main loop does not complete (is infinite) it cannot return control to the browser, and the app will hang. 
 
 Apps that use an infinite main loop should be re-coded to put the actions for a single iteration of the loop into a single "finite" function. In the native build this function can be run in an infinite loop as before. In the Emscripten build it is set as the :ref:`main loop function <faq-how-run-event-loop>` and will be called by the browser at a specified frequency.
 
@@ -137,17 +137,17 @@ See also: :ref:`faq-my-html-app-hangs`
 My SDL app doesn't work?
 ========================
 
-See the SDL automatic tests for working examples: ``python tests/runner.py browser``.
+See the :term:`SDL` automatic tests for working examples: ``python tests/runner.py browser``.
 
 
 How do I link against system libraries like SDL, boost, etc.?
 =============================================================
 
-System libraries that are included with Emscripten are automatically linked when you compile (just the necessary parts). This includes *libc*, *libc++* (C++ standard library) and SDL.
+System libraries that are included with Emscripten are automatically linked when you compile (just the necessary parts). This includes *libc*, *libc++* (C++ standard library) and :term:`SDL`.
 
 Libraries which are not included with Emscripten (like Boost) must be compiled and linked with the program just as if they were a module in the project. For example, see how `BananaBread links in libz <https://github.com/kripken/BananaBread/blob/master/cube2/src/web/Makefile>`_. 
 
-Another option is to implement needed as a JavaScript library (see ``--js-library`` in :ref:`emcc <emcc-js-library>`). Emscripten itself does this for *libc* (not including *malloc*) and SDL (but not *libc++* or *malloc*).  
+Another option is to implement needed as a JavaScript library (see ``--js-library`` in :ref:`emcc <emcc-js-library>`). Emscripten itself does this for *libc* (not including *malloc*) and :term:`SDL` (but not *libc++* or *malloc*).  
 
 .. note:: 
 
@@ -191,6 +191,7 @@ For example if ``allReady()`` is a JavaScript function you want called when ever
 		}
 
 
+.. _faq-dead-code-elimination:
 
 Functions in my C/C++ source code vanish when I compile to JavaScript, and/or I get ``No functions to process..``?
 ==================================================================================================================
