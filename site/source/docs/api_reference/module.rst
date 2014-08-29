@@ -62,7 +62,7 @@ The following ``Module`` attributes affect code execution.
 
 .. js:attribute:: Module.preInit
 
-	A function (or array of functions) that must be called before global initializers run, but after basic initialization of the JavaScript runtime. This is typically used for :ref:`File System operations <Filesystem-API>` and is called befroe C++ initializers have been run.
+	A function (or array of functions) that must be called before global initializers run, but after basic initialization of the JavaScript runtime. This is typically used for :ref:`File System operations <Filesystem-API>` and is called before C++ initializers have been run.
 	
 	
 .. js:attribute:: Module.preRun
