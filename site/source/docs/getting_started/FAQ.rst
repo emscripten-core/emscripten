@@ -191,6 +191,7 @@ For example if ``allReady()`` is a JavaScript function you want called when ever
 		}
 
 
+.. _faq-dead-code-elimination:
 
 Functions in my C/C++ source code vanish when I compile to JavaScript, and/or I get ``No functions to process..``?
 ==================================================================================================================

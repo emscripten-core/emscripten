@@ -1,3 +1,5 @@
+.. _preamble-js:
+
 ===========
 preamble.js
 ===========

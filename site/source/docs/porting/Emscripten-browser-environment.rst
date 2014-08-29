@@ -57,6 +57,9 @@ After the application runs, as mentioned above you will typically want to define
 - :c:func:`emscripten_async_call` lets you call a function after some specific interval (basically a wrapper around ``setTimout/requestAnimationFrame``).
 - :c:func:`emscripten_async_wget` asynchronously loads a file from the network. Synchronous XHRs cannot load binary data, so an asynchronous function is necessary. It will call a callback that you give it when the file arrives. You can use this to fetch the next level in your game, for example (note that it will do the same operation we do on preloaded files, setting them up as image or audio elements as necessary for execution later).
 
+
+.. todo:: HamishW :ref:`Module` has some functions which affect exectution. Remember to link it here. Some stuff on this in "interacting with code".
+
 Notes
 =====
 

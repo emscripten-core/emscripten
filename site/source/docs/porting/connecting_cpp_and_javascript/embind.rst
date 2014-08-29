@@ -1,7 +1,7 @@
 .. _embind:
 
 ====================
-embind (wiki-import)
+Embind (wiki-import)
 ====================
 .. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
@@ -33,9 +33,7 @@ Imagine we want to expose a simple C++ function to JavaScript.
     }
 
 To compile the above example, run
-``emcc --bind -o quick_example.js quick_example.cpp``. The resulting
-**quick\_example.js** file can be loaded as a script tag or a node
-module.
+``emcc --bind -o quick_example.js quick_example.cpp``. The resulting **quick\_example.js** file can be loaded as a script tag or a node module.
 
 .. code:: html
 
@@ -47,10 +45,7 @@ module.
       </script>
     </html>
 
-The code in the ``EMSCRIPTEN_BINDINGS`` block runs when the JavaScript
-file is initially loaded. Notice that lerp's parameter types and return
-type are automatically inferred by *embind*. All symbols exposed by
-*embind* are available on the Emscripten ``Module`` object.
+The code in the ``EMSCRIPTEN_BINDINGS`` block runs when the JavaScript file is initially loaded. Notice that lerp's parameter types and return type are automatically inferred by *embind*. All symbols exposed by *embind* are available on the Emscripten ``Module`` object.
 
 Classes
 =======
@@ -104,10 +99,7 @@ Exposing classes to JavaScript requires a few more steps. An example:
 Memory Management
 =================
 
-JavaScript, specifically ECMA-262 Edition 5.1, does not support
-finalizers or weak references with callbacks. Thus, JavaScript code must
-explicitly delete any C++ object handles it has received. Otherwise the
-Emscripten heap will grow indefinitely.
+JavaScript, specifically ECMA-262 Edition 5.1, does not support finalizers or weak references with callbacks. Thus, JavaScript code must explicitly delete any C++ object handles it has received. Otherwise the Emscripten heap will grow indefinitely.
 
 .. code:: javascript
 
@@ -122,10 +114,7 @@ Emscripten heap will grow indefinitely.
 Value Types
 ===========
 
-Imagine a common, small data type, like ``Point2f``. Because manual
-memory management for basic types is onerous, *embind* provides support
-for value types. Value arrays are converted to and from JavaScript
-Arrays and value objects are converted to and from JavaScript Objects.
+Imagine a common, small data type, like ``Point2f``. Because manual memory management for basic types is onerous, *embind* provides support for value types. Value arrays are converted to and from JavaScript Arrays and value objects are converted to and from JavaScript Objects.
 
 .. code:: cpp
 
@@ -168,8 +157,7 @@ Advanced Class Concepts
 Raw Pointers
 ------------
 
-Because raw pointers have unclear lifetime semantics, *embind* requires
-their use to be marked with ``allow_raw_pointers()``.
+Because raw pointers have unclear lifetime semantics, *embind* requires their use to be marked with ``allow_raw_pointers()``.
 
 .. code:: cpp
 
@@ -183,11 +171,7 @@ their use to be marked with ``allow_raw_pointers()``.
 External Constructors
 ---------------------
 
-There are two ways to specify constructors on a class. The zero-argument
-template form invokes the natural constructor with the arguments
-specified in the template. However, if you pass a function pointer as
-the constructor, then invoking ``new`` from JavaScript calls said
-function and returns its result.
+There are two ways to specify constructors on a class. The zero-argument template form invokes the natural constructor with the arguments specified in the template. However, if you pass a function pointer as the constructor, then invoking ``new`` from JavaScript calls said function and returns its result.
 
 .. code:: cpp
 
@@ -204,9 +188,7 @@ function and returns its result.
 Smart Pointers
 --------------
 
-To manage object lifetime with smart pointers, *embind* must be told
-about the smart pointer type. For example, imagine managing a class C's
-lifetime with ``std::shared_ptr<C>``.
+To manage object lifetime with smart pointers, *embind* must be told about the smart pointer type. For example, imagine managing a class C's lifetime with ``std::shared_ptr<C>``.
 
 .. code:: cpp
 
@@ -217,12 +199,9 @@ lifetime with ``std::shared_ptr<C>``.
             ;
     }
 
-At this point, functions can return ``std::shared_ptr<C>`` or take
-``std::shared_ptr<C>`` as arguments. However, ``new Module.C()`` would
-still return a raw pointer.
+At this point, functions can return ``std::shared_ptr<C>`` or take ``std::shared_ptr<C>`` as arguments. However, ``new Module.C()`` would still return a raw pointer.
 
-To return a ``shared_ptr<C>`` from the constructor, write the following
-instead:
+To return a ``shared_ptr<C>`` from the constructor, write the following instead:
 
 .. code:: cpp
 
@@ -243,17 +222,12 @@ unique\_ptr
 Custom Smart Pointers
 ~~~~~~~~~~~~~~~~~~~~~
 
-To teach *embind* about custom smart pointer templates, specialize the
-``smart_ptr_trait`` template. See **bind.h** for details and an example.
+To teach *embind* about custom smart pointer templates, specialize the ``smart_ptr_trait`` template. See **bind.h** for details and an example.
 
 Non-member-functions on the JavaScript prototype
 ------------------------------------------------
 
-Methods on the JavaScript class prototype can be non-member functions,
-as long as the instance handle can be converted to the first argument of
-the non-member function. The classic example is when the function
-exposed to JavaScript does not exactly match the behavior of a C++
-method.
+Methods on the JavaScript class prototype can be non-member functions, as long as the instance handle can be converted to the first argument of the non-member function. The classic example is when the function exposed to JavaScript does not exactly match the behavior of a C++ method.
 
 .. code:: cpp
 
@@ -278,22 +252,17 @@ method.
             ;
     }
 
-If JavaScript calls ``Array10.prototype.get`` with an invalid index, it
-will return ``undefined``.
+If JavaScript calls ``Array10.prototype.get`` with an invalid index, it will return ``undefined``.
 
 Deriving From C++ Classes in JavaScript
 ---------------------------------------
 
-If C++ classes have virtual or abstract member functions, it's possible
-to override them in JavaScript. Because JavaScript has no knowledge of
-the C++ vtable, *embind* needs a bit of glue code to convert C++ virtual
-function calls into JavaScript calls.
+If C++ classes have virtual or abstract member functions, it's possible to override them in JavaScript. Because JavaScript has no knowledge of the C++ vtable, *embind* needs a bit of glue code to convert C++ virtual function calls into JavaScript calls.
 
 Abstract Methods
 ~~~~~~~~~~~~~~~~
 
-Let's begin with a simple case: pure virtual functions that must be
-implemented in JavaScript.
+Let's begin with a simple case: pure virtual functions that must be implemented in JavaScript.
 
 .. code:: cpp
 
@@ -315,16 +284,9 @@ implemented in JavaScript.
             ;
     }
 
-``allow_subclass`` adds two special methods to the Interface binding:
-``extend`` and ``implement``. ``extend`` allows JavaScript to subclass
-in the style exemplified by **Backbone.js**. ``implement`` is used when
-you have a JavaScript object, perhaps provided by the browser or some
-other library, and you want to use it to implement a C++ interface.
+``allow_subclass`` adds two special methods to the Interface binding: ``extend`` and ``implement``. ``extend`` allows JavaScript to subclass in the style exemplified by **Backbone.js**. ``implement`` is used when you have a JavaScript object, perhaps provided by the browser or some other library, and you want to use it to implement a C++ interface.
 
-By the way, note the ``pure_virtual()`` annotation on the function
-binding. Specifying ``pure_virtual()`` allows JavaScript to throw a
-helpful error if the JavaScript class does not override invoke().
-Otherwise, you may run into confusing errors.
+By the way, note the ``pure_virtual()`` annotation on the function binding. Specifying ``pure_virtual()`` allows JavaScript to throw a helpful error if the JavaScript class does not override invoke(). Otherwise, you may run into confusing errors.
 
 ``extend`` Example
 ~~~~~~~~~~~~~~~~~~
@@ -361,15 +323,12 @@ Otherwise, you may run into confusing errors.
     };
     var interfaceObject = Module.Interface.implement(x);
 
-Now ``interfaceObject`` can be passed to any function that takes an
-``Interface`` pointer or reference.
+Now ``interfaceObject`` can be passed to any function that takes an ``Interface`` pointer or reference.
 
 Non-Abstract Virtual Methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If a C++ class has a non-pure virtual function, it can be overridden but
-does not have to be. This requires a slightly different wrapper
-implementation:
+If a C++ class has a non-pure virtual function, it can be overridden but does not have to be. This requires a slightly different wrapper implementation:
 
 .. code:: cpp
 
@@ -395,9 +354,7 @@ implementation:
             ;
     }
 
-When implementing Base with a JavaScript object, overriding ``invoke``
-is optional. The special lambda binding for invoke is necessary to avoid
-infinite mutual recursion between the wrapper and JavaScript.
+When implementing Base with a JavaScript object, overriding ``invoke`` is optional. The special lambda binding for invoke is necessary to avoid infinite mutual recursion between the wrapper and JavaScript.
 
 Base Classes
 ------------
@@ -409,15 +366,12 @@ Base Classes
         class_<DerivedClass, base<BaseClass>>("DerivedClass");
     }
 
-Any member functions defined on ``BaseClass`` are then accessible to
-instances of ``DerivedClass``. In addition, any function that accepts an
-instance of ``BaseClass`` can be given an instance of ``DerivedClass``.
+Any member functions defined on ``BaseClass`` are then accessible to instances of ``DerivedClass``. In addition, any function that accepts an instance of ``BaseClass`` can be given an instance of ``DerivedClass``.
 
 Automatic Downcasting
 ~~~~~~~~~~~~~~~~~~~~~
 
-If a C++ class is polymorphic (that is, it has a virtual method), then
-*embind* supports automatic downcasting of function return values.
+If a C++ class is polymorphic (that is, it has a virtual method), then *embind* supports automatic downcasting of function return values.
 
 .. code:: cpp
 
@@ -432,19 +386,14 @@ If a C++ class is polymorphic (that is, it has a virtual method), then
         function("getDerivedInstance", &getDerivedInstance, allow_raw_pointers());
     }
 
-Calling Module.getDerivedInstance from JavaScript will return a Derived
-instance handle from which all of Derived's methods are available.
+Calling Module.getDerivedInstance from JavaScript will return a Derived instance handle from which all of Derived's methods are available.
 
-Note that the *embind* must understand the fully-derived type for
-automatic downcasting to work.
+Note that the *embind* must understand the fully-derived type for automatic downcasting to work.
 
 Overloaded Functions
 ====================
 
-Constructors and functions can be overloaded on the number of arguments.
-*embind* does not support overloading based on type. When specifying an
-overload, use the ``select_overload`` helper function to select the
-appropriate signature.
+Constructors and functions can be overloaded on the number of arguments. *embind* does not support overloading based on type. When specifying an overload, use the ``select_overload`` helper function to select the appropriate signature.
 
 .. code:: cpp
 
@@ -492,8 +441,7 @@ classes".
             ;
     }
 
-In both cases, JavaScript accesses enumeration values as properties of
-the type.
+In both cases, JavaScript accesses enumeration values as properties of the type.
 
 .. code:: javascript
 
@@ -516,8 +464,7 @@ To expose a C++ constant to JavaScript, simply write:
 val
 ===
 
-``emscripten::val`` is a data type that represents any JavaScript
-object.
+``emscripten::val`` is a data type that represents any JavaScript object.
 
 ``val::array()`` creates a new Array.
 
@@ -589,8 +536,7 @@ types:
 | emscripten::val   | anything                                        |
 +-------------------+-------------------------------------------------+
 
-For convenience, *embind* provides factory functions to register
-``std::vector<T>`` and ``std::map<K, V>`` types:
+For convenience, *embind* provides factory functions to register ``std::vector<T>`` and ``std::map<K, V>`` types:
 
 .. code:: cpp
 
@@ -599,18 +545,20 @@ For convenience, *embind* provides factory functions to register
         register_map<int,int>("MapIntInt");
     }
 
-Performance
-===========
+.. todo:: The following text was marked up as "Todo" in the original wiki content.
 
-[TODO: Jukka, want to flesh this out?]
+	Performance
+	===========
 
-Future Work
-===========
+	[TODO: Jukka, want to flesh this out?]
 
--  global variables
--  class static variables
+	Future Work
+	===========
 
-How does it work?
-=================
+	-  global variables
+	-  class static variables
 
-[TODO]
+	How does it work?
+	=================
+
+	[TODO]
