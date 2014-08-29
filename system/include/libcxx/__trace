@@ -1,0 +1,28 @@
+// -*- C++ -*-
+//===--------------------------- __trace ----------------------------------===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is dual licensed under the MIT and the University of Illinois Open
+// Source Licenses. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef _LIBCPP_TRACE_H
+#define _LIBCPP_TRACE_H
+
+#include <__config>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
+#endif
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/trace.h>
+#define _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(address, type) \
+    emscripten_trace_annotate_address_type(address, type)
+#else
+#define _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(address, type)
+#endif
+
+#endif  // _LIBCPP_TRACE_H
