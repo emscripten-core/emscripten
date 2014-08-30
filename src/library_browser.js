@@ -277,7 +277,9 @@ mergeInto(LibraryManager.library, {
 #endif
 
         contextHandle = GL.createContext(canvas, contextAttributes);
-        ctx = GL.getContext(contextHandle).GLctx;
+        if (contextHandle) {
+          ctx = GL.getContext(contextHandle).GLctx;
+        }
         // Set the background of the WebGL canvas to black
         canvas.style.backgroundColor = "black";
       } else {
