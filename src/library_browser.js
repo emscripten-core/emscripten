@@ -1108,6 +1108,10 @@ mergeInto(LibraryManager.library, {
     Module['exit'](status);
   },
 
+  emscripten_get_device_pixel_ratio: function() {
+    return window.devicePixelRatio || 1.0;
+  },
+
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
@@ -1129,6 +1133,18 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
     {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
+  },
+
+  emscripten_set_canvas_css_size: function(width, height) {
+    var canvas = Module['canvas'];
+    canvas.style.setProperty( "width", width + "px");
+    canvas.style.setProperty("height", height + "px");
+  },
+
+  emscripten_get_canvas_css_size: function(width, height) {
+    var canvas = Module['canvas'];
+    {{{ makeSetValue('width', '0', 'canvas.clientWidth', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'canvas.clientHeight', 'i32') }}};
   },
 
   emscripten_create_worker: function(url) {
