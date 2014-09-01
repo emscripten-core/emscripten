@@ -16,7 +16,7 @@ Emscripten provides numerous methods to connect and interact between JavaScript 
 
 	- Using :c:func:`emscripten_run_script`.
 	- Using :c:type:`EM_ASM` (faster).
-	- Implement a C API in JavaScript.
+	- Using a C API implemented in JavaScript.
 	- As function pointers from **C**.
 	
 - Call compiled **C++** classes from JavaScript using bindings created with:
@@ -112,6 +112,7 @@ There are other convenience functions for converting strings and encodings in :r
 
 .. todo:: **HamishW** Might be better to show the allocate above using _malloc, as allocate is an advanced API. We also need to better explain the note about stackRestore etc, or remove it - as it doesn't mean a lot to me.
 
+
 Calling JavaScript from C/C++
 =============================
 
@@ -160,6 +161,8 @@ You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`, as we
 	- See how ``{, }`` are used here to enclose the code. This is necessary to differentiate the code from the arguments passed later which are the input values (this is how C macros work).
 	- When using the :c:macro:`EM_ASM` macro, ensure that you only use single quotes('). Double quotes(") will cause a syntax error that is not detected by the compiler and is only shown when looking at a JavaScript console while running the offending code.
 
+
+.. _implement-c-in-javascript:
 
 Implement a C API in JavaScript
 ===============================
