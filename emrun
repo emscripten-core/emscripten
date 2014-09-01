@@ -838,7 +838,7 @@ def browser_display_name(browser):
 
 def main():
   global browser_process, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed, ADB
-  usage_str = "usage: %prog [options] [optional_portnum]"
+  usage_str = "usage: emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
   parser = optparse.OptionParser(usage=usage_str)
 
   parser.add_option('--kill_start', dest='kill_on_start', action='store_true', default=False,
@@ -904,6 +904,21 @@ def main():
   parser.add_option('--log_html', dest='log_html', action='store_true',
     help='If set, information lines are printed out an HTML-friendly format.')
 
+  opts_with_param = ['--browser', '--timeout_returncode', '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout', '--port', '--serve_root']
+
+  cmdlineparams = []
+  # Split the startup arguments to two parts, delimited by the first (unbound) positional argument.
+  # The first set is args intended for emrun, and the second set is the cmdline args to program.
+  i = 1
+  while i < len(sys.argv):
+    if sys.argv[i] in opts_with_param:
+      i += 1 # Skip next one, it's the value for this opt.
+    elif not sys.argv[i].startswith('-'):
+      cmdlineparams = sys.argv[i+1:]
+      sys.argv = sys.argv[:i+1]
+      break
+    i += 1
+
   (options, args) = parser.parse_args(sys.argv)
   emrun_options = options
 
@@ -934,11 +949,12 @@ def main():
     options.no_server = options.no_browser = True # Don't run if only --system_info or --browser_info was passed.
 
   if len(args) < 2 and not (options.no_server == True and options.no_browser == True):
-    logi('Usage: emrun filename.html')
+    logi(usage_str)
+    logi('')
+    logi('Type emrun --help for a detailed list of available options.')
     return
 
   file_to_serve = args[1] if len(args) > 1 else ''
-  cmdlineparams = args[2:] if len(args) > 2 else []
   
   if options.serve_root:
     serve_dir = os.path.abspath(options.serve_root)
