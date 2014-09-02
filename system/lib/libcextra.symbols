@@ -92,6 +92,12 @@
          T iswupper_l
          T iswxdigit
          T iswxdigit_l
+         T j0
+         T j0f
+         T j1
+         T j1f
+         T jn
+         T jnf
          T ldexp
          T ldexpf
          T ldexpl
