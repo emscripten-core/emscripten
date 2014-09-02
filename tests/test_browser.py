@@ -2535,3 +2535,9 @@ window.close = function() {
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   def test_pthread_cleanup(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-lpthread'])
+
+  # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
+  # kind of scheme will work with Emscripten as well.
+  def test_pthread_volatile(self):
+    for arg in [[], ['-DUSE_C_VOLATILE']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-lpthread'] + arg)
