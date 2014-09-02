@@ -1,8 +1,8 @@
 .. _getting-started-index:
 
-=====================================
-Getting Started (ready-for-review) 
-=====================================
+===============
+Getting Started
+===============
 
 Now you know why Emscripten is :ref:`right for you <about-emscripten>`, it's time to *get started*.
 

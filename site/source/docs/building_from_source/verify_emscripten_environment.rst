@@ -1,10 +1,10 @@
 .. _verifying-the-emscripten-environment:
 
-=======================================================================
-Verifying the Emscripten Development Environment (ready-for-review) 
-=======================================================================
+================================================
+Verifying the Emscripten Development Environment
+================================================
 
-**After you've** :ref:`installed the SDK <sdk-download-and-install>` **or** :ref:`built an Emscripten development environment from sources <installing-from-source>` **, the compiler should just work! This section shows how to verify that the environment has been set up correctly, and how to troubleshoot installation problems when they do occur.**
+After you've :ref:`installed the SDK <sdk-download-and-install>` or :ref:`built an Emscripten development environment from sources <installing-from-source>`, the compiler should just work! This section shows how to verify that the environment has been set up correctly, and how to troubleshoot installation problems when they do occur.
 
 
 Testing the environment
@@ -13,7 +13,7 @@ Testing the environment
 Sanity tests
 ------------
 
-The first step in verifying the environment is to run Emscripten with the version command (``-v``). The command prints out information about the toolchain and runs some basic sanity tests to check that required tools are available. 
+The first step in verifying the environment is to run Emscripten with the version command (``-v``). The command prints out information about the toolchain and runs some basic sanity tests to check that the required tools are available. 
 
 Open a terminal in the directory in which you installed Emscripten (on Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`). Then call the :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` as shown: 
 

@@ -1,8 +1,8 @@
 .. _about-emscripten:
 
-======================================
-About Emscripten (ready-for-review)
-======================================
+================
+About Emscripten
+================
 
 Emscripten is an :ref:`Open Source <emscripten-license>` LLVM to JavaScript compiler. Using Emscripten you can:
 
@@ -10,9 +10,9 @@ Emscripten is an :ref:`Open Source <emscripten-license>` LLVM to JavaScript comp
 - Compile any other code that can be translated into LLVM bytecode into JavaScript.
 - Compile the C/C++ **runtimes** of other languages into JavaScript, and then run code in those other languages in an *indirect* way (this has been done for Python and Lua)!
 
-.. tip:: Emscripten makes native code immediately available on the web: a platform that is standards-based, has numerous independent compatible implementations, and runs everywhere from PCs to iPads. 
+.. tip:: Emscripten makes native code immediately available on the Web: a platform that is standards-based, has numerous independent compatible implementations, and runs everywhere from PCs to iPads. 
 
-	With Emscripten, developers don't have the high cost of porting code manually to JavaScript — or having to learn JavaScript at all. Web developers can use the many thousands of pre-existing native utilities and libraries in their sites.
+	With Emscripten, C/C++ developers don't have the high cost of porting code manually to JavaScript — or having to learn JavaScript at all. Web developers also benefit, as they can use the many thousands of pre-existing native utilities and libraries in their sites.
 
 Practically any **portable** C or C++ codebase can be compiled into JavaScript using Emscripten, ranging from high performance games that need to render graphics, play sounds, and load and process files, through to application frameworks like Qt. Emscripten has already been used to convert a `very long list <https://github.com/kripken/emscripten/wiki/Porting-Examples-and-Demos>`_ of real-world codebases to JavaScript, including large projects like *CPython*, `Poppler <https://github.com/coolwanglu/emscripten/tree/master/tests/poppler#readme>`_ and the `Bullet Physics Engine <http://kripken.github.io/ammo.js/examples/new/ammo.html>`_, as well as commercial projects like the `Unreal Engine 4 <https://blog.mozilla.org/blog/2014/03/12/mozilla-and-epic-preview-unreal-engine-4-running-in-firefox/>`_ and the `Nebula 3 <http://www.flohofwoe.net/demos.html>`_ engine.
 
@@ -63,7 +63,7 @@ Porting code to use Emscripten
 
 Emscripten support for **portable** C/C++ code is fairly comprehensive. Support for the C standard library, C++ standard library, C++ exceptions, etc. is very good. `SDL <https://www.libsdl.org/>`_ support is sufficient to run quite a lot of code. :ref:`OpenGL-support` support is excellent for OpenGL ES 2.0-type code, and acceptable for other types. 
 
-There are differences between the native and `browser environments <Emscripten-browser-environment>`_ which mean some changes usually need to be made to the native code. That said, many applications will only need to change the way they define their main loop, and also modify their :ref:`file handling <Filesystem-Guide>` to adapt to the limitations of the browser/JavaScript. 
+There are differences between the native and `browser environments <Emscripten-browser-environment>`_, which mean some changes usually need to be made to the native code. That said, many applications will only need to change the way they define their main loop, and also modify their :ref:`file handling <Filesystem-Guide>` to adapt to the limitations of the browser/JavaScript. 
 
 There are also limitations that can make some code easier to port — read :ref:`CodeGuidelinesAndLimitations` to determine where you may need to spend more effort.
 

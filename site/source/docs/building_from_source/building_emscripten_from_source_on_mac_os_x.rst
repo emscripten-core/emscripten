@@ -1,23 +1,23 @@
 .. _building-emscripten-on-mac-osx-from-source:
 
-===========================================================
-Manually Building Emscripten on Mac OS X (ready-for-review)
-===========================================================
+========================================
+Manually Building Emscripten on Mac OS X
+========================================
 
-This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Mac OS X box (OS X version 10.8.2).
+This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Mac OS X box (tested on OS X version 10.8.2).
 
 .. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
 .. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need easily switch between SDK and source builds.
 
 What you'll need
-=================
+================
 
 The specific versions of tools that are needed are listed in the :ref:`Emscripten Toolchain Requirements <toolchain-what-you-need>`.
 
 
 Installing required tools
-==========================
+=========================
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
@@ -34,7 +34,9 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install *cmake* if you do not have it yet:
 
-	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_ (or newer).
+	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_.
+	
+	.. tip:: This specific version (2.8.10) is recommended — it has been tested and shown to work. Other versions may not correctly set up the PATH variables, with the result that running *cmake* gives you "not found" errors.
 
 	
 #. Install *node.js* from http://nodejs.org/ 
@@ -52,7 +54,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 		
 	-  Enter ``python2 --version`` again. It should now print Python 2.7.2
 
-#. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
+#. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source-building>`. 
 	
 #. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 

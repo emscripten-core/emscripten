@@ -1,8 +1,8 @@
 .. _LLVM-Backend:
 
-====================================================
-LLVM Backend ("Fastcomp") (ready-for-review)
-====================================================
+=========================
+LLVM Backend ("Fastcomp")
+=========================
 
 This article introduces *Fastcomp*, Emscripten's LLVM + Clang implementation. It explains how you can obtain the tool, why it replaced the :ref:`original compiler core <original-compiler-core>`, and how you can turn off *Fastcomp* if needed. There is also a :ref:`fastcomp-faq` at the very end for troubleshooting *Fastcomp* problems.
 
@@ -54,34 +54,34 @@ Why did this change happen?
 
 As a result of the problems with the original compiler, we developed *Fastcomp*, which is a much better compiler:
 
-- It is much more streamlined than the original compiler. It focusses on **asm.js** code generation, which has been shown to give the best results.
+- It is much more streamlined than the original compiler. It focuses on **asm.js** code generation, which has been shown to give the best results.
 - It is much faster and has more predictable performance (often 4x faster or more).
 - It requires much less memory.
-- It generates better code because an LLVM backend it integrates more tightly with LLVM. 
+- It generates better code because, as an LLVM backend, it integrates more tightly with LLVM. 
 
 
 Are there downsides?
----------------------------
+--------------------
 
-The main downside is that Emscripten can no longer use a stock build of LLVM — because we have made changes that must be built with LLVM. 
+The main downside is that Emscripten can no longer use a stock build of LLVM, because we have made changes that must be built with LLVM. 
 
 There are also a few features that were present in the original compiler that are not present in *Fastcomp* (see the next section).
 
 .. note:: We hope that the new Emscripten backend will eventually become part of the upstream LLVM, and hence become available in stock builds.
 
 Features not present in Fastcomp
-----------------------------------------
+--------------------------------
 
 Some features that were present in the original compiler that are not present in *Fastcomp* include:
 
--  Various deprecated **settings.js** options (e.g. ``FORCE_ALIGNMENT``, ``HEAP_INIT``, etc.) have no effect. You should receive a compile-time error if you use a setting which is not yet supported.
--  Linking of **asm.js** shared modules has not yet been ported. This is not deprecated, but may need to be reconsidered.
+-  Various deprecated **settings.js** options (``FORCE_ALIGNMENT``, ``HEAP_INIT``, etc.) You should receive a compile-time error if you use a setting which is not supported.
+-  Linking of **asm.js** shared modules. This is not deprecated, but may need to be reconsidered.
 
-	.. note:: Normal static linking as used by almost all projects works fine, it is just specifically the options ``MAIN_MODULE`` and ``SIDE_MODULE`` that do not work. 
+	.. note:: Normal static linking as used by almost all projects works fine; it is just specifically the options ``MAIN_MODULE`` and ``SIDE_MODULE`` that do not work. 
 
 	
 How to disable Fastcomp
----------------------------
+-----------------------
 
 .. warning:: You should **NOT** disable Fastcomp. If you "really must", then:
 
@@ -90,7 +90,7 @@ How to disable Fastcomp
 
 The original compiler is still present, and you may want to use it if you need a feature that is not yet present in *Fastcomp*. There should be very few such features, as almost everything that is not deprecated or planned to be rewritten has already been ported. 
 
-However, if you do need to, you can use the old compiler by turning off *Fastcomp*. Specifically, by setting ``EMCC_FAST_COMPILER=0`` when you build:
+However, if you do need to, you can use the old compiler by turning off *Fastcomp*; you do this by setting ``EMCC_FAST_COMPILER=0`` when you build:
 ::
 
     EMCC_FAST_COMPILER=0 emcc [..]
@@ -98,14 +98,14 @@ However, if you do need to, you can use the old compiler by turning off *Fastcom
 
 When you disable *Fastcomp* you can use **either** a build from the *Fastcomp* repositories, **or** a stock LLVM build. The latter is less tested, but should work in principle: Disabling *Fastcomp* does not use anything new in the *Fastcomp* repo (neither the new backend, nor the new target triple).
 
-You can check whether *Fastcomp* is enabled by looking at debug output. For example, run ``EMCC_DEBUG=1 emcc tests/hello_world.c`` — if *Fastcomp* is on, then among the output will be:
+You can check whether *Fastcomp* is enabled by looking at the debug output. For example, run ``EMCC_DEBUG=1 emcc tests/hello_world.c`` — if *Fastcomp* is on, then among the output will be:
 
 ::
 
     DEBUG    root: emscript: llvm backend: ...
     DEBUG    root:   emscript: llvm backend took
 
-That shows both the command used to run the backend, and how much time it took. If *Fastcomp* is off on the other hand, the old compiler is used, and you will instead see:
+This debug output shows both the command used to run the backend, and how much time it took. If *Fastcomp* is off on the other hand, the old compiler is used, and you will instead see:
 
 ::
 
@@ -123,6 +123,8 @@ This shows that the old compiler (``ll=>js``) is called, as well as how much tim
 FAQ
 ===
 
--  I see ``WARNING: Linking two modules of different target triples`` [..] ``'asmjs-unknown-emscripten' and 'le32-unknown-nacl'``..?
--  You are linking together bitcode files compiled with the old compiler (or older versions of *Fastcomp*) with bitcode files from the new one. This may work in some cases but is dangerous and should be avoided. To fix it, just recompile all your bitcode with the new compiler.
+I see ``WARNING: Linking two modules of different target triples`` [..] ``'asmjs-unknown-emscripten' and 'le32-unknown-nacl'``..?
+---------------------------------------------------------------------------------------------------------------------------------
+
+You are linking together bitcode files compiled with the old compiler (or older versions of *Fastcomp*) with bitcode files from the new one. This may work in some cases but is dangerous and should be avoided. To fix it, just recompile all your bitcode with the new compiler.
 

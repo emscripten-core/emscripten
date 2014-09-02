@@ -1,8 +1,8 @@
 .. _configuring-emscripten-settings:
 
-=====================================================================================
-Configuring Emscripten Settings when Manually Building from Source (ready-for-review)
-=====================================================================================
+==================================================================
+Configuring Emscripten Settings when Manually Building from Source
+==================================================================
 
 .. note:: These instructions are are only useful if you are building Emscripten **manually** from source! If you're using the :ref:`SDK <building-emscripten-from-source-using-the-sdk>` you should never manually update the settings, because the :ref:`emsdk` automatically overwrites the file with the appropriate compiler settings when you :term:`activate <Active Tool/SDK>` a tool or SDK.
 
@@ -66,7 +66,7 @@ Editing the compiler configuration file
 The compiler configuration file can be edited with the text editor of your choice. As stated above, most default settings are likely to be correct. If you're building manually from source, you are most likely to have to update the variable ``LLVM_ROOT`` (for :term:`Fastcomp`).
 
 		
-#. Edit the variable ``LLVM_ROOT`` to point to the directory where you :ref:`built Fastcomp <llvm-update-compiler-configuration-file>`. This path is likely to be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**, where ``<LLVM root>`` is wherever you cloned LLVM:
+#. Edit the variable ``LLVM_ROOT`` to point to the directory where you :ref:`built Fastcomp <llvm-update-compiler-configuration-file>`. This path is likely to be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**, where ``<LLVM root>`` is the path to the directory where you cloned LLVM:
    
 	::
    
@@ -85,7 +85,7 @@ The compiler configuration file can be edited with the text editor of your choic
 
 .. comment .. The settings are now correct in the configuration file, but the paths and environment variables are not set in the command prompt/terminal. **HamishW** Follow up with Jukka on htis.
  
-After setting those paths, run ``emcc`` again. It should again perform the sanity checks to test the specified paths. There are further validation tests available at: :ref:`verifying-the-emscripten-environment`.
+After setting those paths, run ``emcc`` again. It should again perform the sanity checks to test the specified paths. There are further validation tests available at :ref:`verifying-the-emscripten-environment`.
 
 
 

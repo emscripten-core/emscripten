@@ -1,10 +1,10 @@
 .. _api-limitations:
 
-==================================
-API Limitations (ready-for-review)
-==================================
+===============
+API Limitations
+===============
 
-The browser environment and JavaScript are different from the native environments that C and C++ typically run in. These differences impose some limitations on which native APIs can be called and how they are used. This section lists some of the more obvious limitations.
+The browser environment and JavaScript are different from the native environments that C and C++ typically run in. These differences impose some limitations on how native APIs can be called and used. This section lists some of the more obvious limitations.
 
 Networking
 ==========
@@ -16,7 +16,7 @@ File Systems
 
 Emscripten supports *libc* file system functions and C/C++ code can be written in the normal way. 
 
-Code run in a :ref:`browser environment <Emscripten-Browser-Environment>` is sandboxed, and does not have direct access to the local file system. Instead, Emscripten creates a virtual file system that may be preloaded with data or linked to URLs for lazy loading. This affects when synchronous file system functions can be called and how a project is compiled. See the :ref:`Filesystem-Guide` for more more information. 
+Code run in a :ref:`browser environment <Emscripten-Browser-Environment>` is sandboxed, and does not have direct access to the local file system. Instead, Emscripten creates a virtual file system that may be preloaded with data or linked to URLs for lazy loading. This affects when synchronous file system functions can be called and how a project is compiled. See the :ref:`Filesystem-Guide` for more information. 
 
 
 Application Main Loop

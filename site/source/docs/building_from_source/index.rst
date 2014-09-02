@@ -1,17 +1,17 @@
 .. _installing-from-source:
 
-==================================================
-Building Emscripten from Source (ready-for-review) 
-==================================================
+===============================
+Building Emscripten from Source
+===============================
 
 Building from source allows you to access the very latest features and bug fixes, and is essential for developers who are :ref:`Contributing` to Emscripten.
 
-There are two approaches for building from source:
+There are two approaches to building from source:
 
 - Manually setting up the sources and dependencies.
 - Using the SDK package manager to set up the environment and get the sources.
 
-The manual approach gives you a better understanding of the toolchain and all the build steps. The SDK method is easier because it automates and tests much of the set-up process. It also enables a workflow where you can easily switch between source builds and SDK environments.
+The manual approach gives you a better understanding of the toolchain and all the build steps. The SDK method is easier because it automates and tests much of the setup process. It also enables a workflow where you can easily switch between source builds and SDK environments.
 	
 .. note:: You can't use both approaches at the same time because the SDK overwrites manual changes made to the user's :ref:`compiler configuration file <configuring-emscripten-settings>`.
 
