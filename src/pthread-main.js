@@ -35,9 +35,11 @@ this.onmessage = function(e) {
   } else if (e.data.cmd == 'run') { // This worker was idle, and now should start executing its pthread entry point.
     threadBlock = e.data.threadBlock;
     selfThreadId = e.data.selfThreadId;
-    Runtime.stackRestore(e.data.stackBase);
+    // TODO: Emscripten runtime has these variables twice(!), once outside the asm.js module, and a second time inside the asm.js module.
+    //       Review why that is? Can those get out of sync?
     STACK_BASE = STACKTOP = e.data.stackBase;
     STACK_MAX = STACK_BASE + e.data.stackSize;
+    Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
     var result = 0;
     try {
       result = asm.dynCall_ii(e.data.start_routine, e.data.arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'

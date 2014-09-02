@@ -523,7 +523,7 @@ function _emscripten_asm_const_%d(%s) {
       if not settings['SIDE_MODULE']:
         asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
-    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew']
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
     if not settings['RELOCATABLE']:
       asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
     else:
@@ -800,6 +800,12 @@ function stackRestore(top) {
   top = top|0;
   STACKTOP = top;
 }
+function establishStackSpace(stackBase, stackMax) {
+  stackBase = stackBase|0;
+  stackMax = stackMax|0;
+  STACKTOP = stackBase;
+  STACK_MAX = stackMax;
+}
 ''' + ('''
 function setAsync() {
   ___async = 1;
@@ -869,6 +875,7 @@ function getTempRet0() {
 Runtime.stackAlloc = asm['stackAlloc'];
 Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
+Runtime.establishStackSpace = asm['establishStackSpace'];
 ''')
     if not settings['RELOCATABLE']:
       funcs_js.append('''
