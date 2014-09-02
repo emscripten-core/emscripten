@@ -18,14 +18,24 @@ var STACK_MAX = 0;
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
-Module['print'] = function() {
+
+function threadPrint() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'print', text: text, threadId: selfThreadId});
 }
-Module['printErr'] = function() {
+function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'printErr', text: text, threadId: selfThreadId});
 }
+
+Module['print'] = threadPrint;
+Module['printErr'] = threadPrintErr;
+
+// Work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
+console = {
+  log: threadPrint,
+  error: threadPrintErr
+};
 
 this.onmessage = function(e) {
   if (e.data.cmd == 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
