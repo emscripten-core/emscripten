@@ -101,9 +101,13 @@ var LibraryPThread = {
     var threadId = PThread.pthreadIdCounter++;
     {{{ makeSetValue('thread', 0, 'threadId', 'i32') }}};
 
-    var stackSize = {{{ makeGetValue('attr', 0, 'i32') }}} + 81920 /*DEFAULT_STACK_SIZE*/;
-    if (!stackSize) stackSize = 1024 * 1024; // Default stack size is 1MB if not explicitly specified.
-    var stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
+    var stackSize = 0;
+    var stackBase = 0;
+    if (attr) {
+      stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
+      stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
+    }
+    stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = !stackBase;
     if (allocatedOwnStack) { 
       stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
