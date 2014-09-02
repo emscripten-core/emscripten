@@ -120,8 +120,8 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       threadBlock: _malloc(8) // Info area for this thread in Emscripten HEAP (shared)
     };
-    {{{ makeSetValue('pthread.threadBlock', 0, 0, 'i32') }}};
-    {{{ makeSetValue('pthread.threadBlock', 4, 0, 'i32') }}};
+    Atomics.store(HEAPU32, pthread.threadBlock >> 2, 0) // threadStatus <- 0, meaning not yet exited.
+    Atomics.store(HEAPU32, pthread.threadBlock + 4 >> 2, 0) // threadExitCode <- 0.
     worker.pthread = pthread;
 
     // Ask the worker to start executing its pthread entry point function.
