@@ -138,7 +138,13 @@ var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 6
                      //           all modern browsers, including Firefox, Chrome and Safari, but in IE is only
                      //           present in IE11 and above. Therefore if you need to support legacy versions of
                      //           IE, you should not enable PRECISE_F32 1 or 2.
-var SIMD = 0; // Whether to emit SIMD code ( https://github.com/johnmccutchan/ecmascript_simd )
+var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/johnmccutchan/ecmascript_simd ).
+              // SIMD intrinsics are always compiled to SIMD code, so you only need this option if you
+              // also want the autovectorizer to run.
+              // Note that SIMD support in browsers is not yet there (as of Sep 2, 2014), so you will be
+              // running in a polyfill, which is not fast.
+              // (In older versions of emscripten, in particular pre-fastcomp, SIMD=1 was needed to get
+              // any SIMD output at all.)
 
 var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
