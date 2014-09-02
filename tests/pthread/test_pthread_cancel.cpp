@@ -38,8 +38,16 @@ int main()
   s = pthread_cancel(thr);
   assert(s == 0);
 
-  int result = emscripten_atomic_load_u32(&res);
+  for(;;)
+  {
+    int result = emscripten_atomic_load_u32((const void*)&res);
+    if (result == 1)
+    {
+      EM_ASM_INT( { Module['print']('After canceling, shared variable = ' + $0 + '.'); }, result);
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+      REPORT_RESULT();
 #endif
+      return 0;
+    }
+  }
 }

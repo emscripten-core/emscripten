@@ -90,5 +90,7 @@ int main()
 #ifdef REPORT_RESULT
 	int result = 0;
 	REPORT_RESULT();
+#else
+	EM_ASM(Module['print']('Main: Test successfully finished.'));
 #endif
 }
