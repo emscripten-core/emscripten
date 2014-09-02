@@ -1,13 +1,8 @@
 .. _emccdoc:
 
-======================================================
-Emscripten Compiler Frontend (emcc) (ready-for-review)
-======================================================
-
-**This document provides the command syntax for the Emscription Compiler Frontend.**
-
-Purpose
-============================================
+===================================
+Emscripten Compiler Frontend (emcc)
+===================================
 
 The Emscripten Compiler Frontend (``emcc``) is used to call the Emscripten compiler from the command line. It is effectively a drop-in replacement for a standard compiler like *gcc* or *clang*.
 
@@ -17,7 +12,7 @@ Command line syntax
 
 ::
 
-	emcc [options] file...
+	./emcc [options] file...
 
 The input file(s) can be either source code files that *Clang* can handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable form.
 
@@ -28,10 +23,10 @@ Arguments
 Most `clang options <http://linux.die.net/man/1/clang>`_ will work, as will `gcc options <https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html#Option-Summary>`_, for example: ::
 
 	# Display this information
-	emcc --help		
+	./emcc --help		
 		
 	Display compiler version information
-	emcc --version
+	./emcc --version
                   
 
 To see the full list of *Clang* options supported on the version of *Clang* used by Emscripten, run ``clang --help``.
@@ -72,6 +67,8 @@ Options that are modified or new in *emcc* are listed below:
 	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time and/or are relatively new. 
 	
 	.. note:: This differs from ``-O2`` only during the bitcode to JavaScript (final link and JavaScript generation) stage. It is JavaScript-specific, so you can run ``-Os`` on your source files for example, and ``-O3`` during JavaScript generation if you want. For more tips on optimizing your code, see :ref:`Optimizing-Code`.
+
+.. _emcc-s-option-value:
 	
 ``-s OPTION=VALUE``
 	JavaScript code generation option passed into the Emscripten compiler. For the available options, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. 
@@ -83,13 +80,16 @@ Options that are modified or new in *emcc* are listed below:
 			-s RUNTIME_LINKED_LIBS="['liblib.so']"
 			-s "RUNTIME_LINKED_LIBS=['liblib.so']"
 	
-	You can also specify a file from which the value would be read, for example, 
+	You can also specify that the value of an option will be read from a specified JSON-formatted file. For example, the following option sets the ``DEAD_FUNCTIONS`` option with the contents of the file at **path/to/file**. 
 	
 	::
 
 		-s DEAD_FUNCTIONS=@/path/to/file
 
-	The contents of **/path/to/file** will be read, JSON.parsed and set into ``DEAD_FUNCTIONS`` (so the file could contain ["_func1", "func2"] ). Note that the path must be absolute, not relative.
+	.. note:: 
+	
+		- In this case the file might contain a JSON-formatted list of functions: ``["_func1", "func2"]``. 
+		- The specified file path must be absolute, not relative.
 
 .. _emcc-g: 
 	
@@ -126,13 +126,13 @@ Options that are modified or new in *emcc* are listed below:
 		- ``2``: Shared (C-like) typed arrays (default).
 		
 ``--js-opts <level>``
-	Possible ``level`` values are:
+	Enables JavaScript optimizations. Possible ``level`` values are:
 	 
 		- ``0``: Prevent JavaScript optimizer from running.
 		- ``1``: Use JavaScript optimizer (default).
 		
 ``--llvm-opts <level>``
-	Possible ``level`` values are:
+	Enables LLVM optimizations. Possible ``level`` values are:
 	 
 		- ``0``: No LLVM optimizations (default in -O0).
 		- ``1``: LLVM ``-O1`` optimizations (default in -O1).
@@ -144,7 +144,7 @@ Options that are modified or new in *emcc* are listed below:
 		--llvm-opts "['-O3', '-somethingelse']"
 							 
 ``--llvm-lto <level>``
-	Possible ``level`` values are: 
+	Enables LLVM link-time optimizations (LTO). Possible ``level`` values are: 
 	 
 		- ``0``: No LLVM LTO (default).
 		- ``1``: LLVM LTO is performed.
@@ -154,7 +154,7 @@ Options that are modified or new in *emcc* are listed below:
 	.. note::
 	
 		- If LLVM optimizations are not run (see ``--llvm-opts``), this setting has no effect.
-		- LLVM LTO is not perfectly stable yet, and can can cause code to behave incorrectly.					   
+		- LLVM LTO is not perfectly stable yet, and can cause code to behave incorrectly.					   
 
 .. _emcc-closure:
 	
@@ -185,7 +185,7 @@ Options that are modified or new in *emcc* are listed below:
 	
 	For example, if the command includes ``--embed-file dir/file.dat``, then ``dir/file.dat`` must exist relative to the directory where you run *emcc*. 
 
-	.. note:: Embedding files is much less efficient than :ref:`preloading <emcc-preload-file>` them. You should only use it for small amounts of small files. Instead, use ``--preload-file`` which emits efficient binary data.
+	.. note:: Embedding files is much less efficient than :ref:`preloading <emcc-preload-file>` them. You should only use it for small files, in small numbers. Instead use ``--preload-file``, which emits efficient binary data.
 	
 .. _emcc-preload-file:
 	
@@ -243,11 +243,14 @@ Options that are modified or new in *emcc* are listed below:
 	
 	This option only works if JavaScript is generated (``target -o <name>.js``). Files with function declarations must be loaded before main file upon execution.
 
-		- Without ``-g`` option this creates files with function declarations up to the given size with the suffix **_functions.partxxx.js** and a main file with the suffix ".js".
+		- Without the ``-g`` option this creates files with function declarations up to the given size with the suffix **_functions.partxxx.js** and a main file with the suffix **.js**.
 		- With the ``-g`` option this recreates the directory structure of the C source files and stores function declarations in their respective C files with the suffix ".js". If such a file exceeds the given size, files with the suffix ".partxxx.js" are created. The main file resides in the base directory and has the suffix ".js".
-	 
+
+
+.. _emcc-bind:
+
 ``--bind``
-	Compiles the source code using the :ref:`embind` bindings approach, which connects C/C++ and JavaScript.
+	Compiles the source code using the :ref:`embind` bindings to connect C/C++ and JavaScript.
 	 
 ``--ignore-dynamic-linking``
 	Tells the compiler to ignore dynamic linking (the user will need to manually link to the shared libraries later on).
@@ -262,9 +265,9 @@ Options that are modified or new in *emcc* are listed below:
 ``-v``
 	Turns on verbose output. 
 	
-	This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` (gets intermediate files for the compiler’s various stages). It will also run Emscripten's internal sanity checks on the toolchain, etc. 
+	This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` (this gets intermediate files for the compiler’s various stages). It will also run Emscripten's internal sanity checks on the toolchain, etc. 
 	
-	.. tip:: ``emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments. 
+	.. tip:: ``./emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments. 
 	
 .. _emcc-clear-cache:
 	 
@@ -290,7 +293,7 @@ Options that are modified or new in *emcc* are listed below:
 	Suppress warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to hide the warnings and acknowledge that the explicit use of absolute paths is intentional.
 	 
 ``--proxy-to-worker``
-	Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** and a **.js** file, with the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
+	Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
 	 
 ``--emrun``
 	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*.     
@@ -301,11 +304,11 @@ Options that are modified or new in *emcc* are listed below:
 ``--default-obj-ext .ext``
 	Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive. 
 	
-	For example, consider the following command which will by default generate an output name **dir/a.o**. With ``--default-obj-ext .ext`` the generated file has the custom suffix *dir/a.ext*. 
+	For example, consider the following command, which will by default generate an output name **dir/a.o**. With ``--default-obj-ext .ext`` the generated file has the custom suffix *dir/a.ext*. 
 	 
 	::
 	 
-		emcc -c a.c -o dir/
+		./emcc -c a.c -o dir/
  
        
 ``--valid_abspath path``
@@ -314,14 +317,14 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-o-target:
 
 ``-o <target>``
-	The ``target`` file name extension defines what type of output be generated:
+	The ``target`` file name extension defines the output type to be generated:
 
 		- <name> **.js** : JavaScript.
 		- <name> **.html** : HTML + separate JavaScript file (**<name>.js**). Having the separate JavaScript file improves page load time.
 		- <name> **.bc** : LLVM bitcode (default).
 		- <name> **.o** : LLVM bitcode (same as .bc).
 
-	.. note:: If ``--memory-init-file`` is used, then in addition to the **.js** or **.html** file which is generated, a **.mem** file will also be created.
+	.. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file. 
 
 ``-c``
 	Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.

@@ -1,8 +1,8 @@
 .. _emscripten-and-vs2010-manual-integration-on-windows:
 
-==========================================================================
-Manually Integrating Emscripten into Visual Studio 2010 (ready-for-review)
-==========================================================================
+=======================================================
+Manually Integrating Emscripten into Visual Studio 2010
+=======================================================
 
 .. tip:: The :term:`vs-tool` plugin is installed automatically by the :term:`Windows NSIS Installer Emscripten SDK` if *Visual Studio 2010* is present on the target system at install time. These instructions are only needed if you're :ref:`manually building from source <installing-from-source>`, or for some other reason cannot use the SDK.
 
@@ -15,7 +15,7 @@ The following instructions explain how to manually set up *vs-tool*.
 Install the vs-tool plugin
 ============================
 
-1. Install `Visual Studio 2010 <http://www.visualstudio.com/downloads/download-visual-studio-vs>`_:
+1. Install `Visual Studio 2010 <http://www.visualstudio.com/downloads/download-visual-studio-vs>`_.
 
 	.. note:: The `Express <http://go.microsoft.com/?linkid=9709949>`_ version has not been tested, but should work. :ref:`contact` if you have any problems integrating with VS2010 Express!
 
@@ -37,7 +37,7 @@ Install the vs-tool plugin
 		- Windows 7: Open **Control Panel | System | Advanced System Settings | Environment Variables**.
 		- Windows 8: Right click on the **Windows menu icon | System | Advanced System Settings | Environment Variables**.
 		
-	#. Create a new environment variable ``CLANG_BIN`` and set it to point to the folder where you built *Fastcomp* (path to **clang.exe**) E.g.:
+	#. Create a new environment variable ``CLANG_BIN`` and set it to point to the folder where you built *Fastcomp* (path to **clang.exe**) — for example:
 	
 		:: 
 		
@@ -45,7 +45,7 @@ Install the vs-tool plugin
 		
 		This variable is how *vs-tool* locates the folder containing your *Fastcomp* compiler. Alternatively, this path can be set on a per-project basis in the *Visual Studio project property* pages.
 
-	#. Create a new environment variable ``EMSCRIPTEN`` and set it to point to the Emscripten git repository root folder (the path where you copied **emcc.exe** and the other exes). E.g.:
+	#. Create a new environment variable ``EMSCRIPTEN`` and set it to point to the Emscripten git repository root folder (the path where you copied **emcc.exe** and the other exe files), for example:
 	
 		::
 
@@ -72,5 +72,5 @@ That project builds a few select samples from inside the Emscripten **tests/** f
 Learn more
 ==========
 
-There is a basic guide to using Emscripten from within Visual Studio in the :ref:`Getting Started <getting-started-emscripten-from-vs2010>` section.
+To start working with Emscripten using the IDE, see :ref:`getting-started-emscripten-from-visual-studio`.
  

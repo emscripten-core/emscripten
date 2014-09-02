@@ -1,23 +1,23 @@
-===============================
-About site (ready-for-review) 
-===============================
+===============
+About this site
+===============
 
 The site is built using `Sphinx <http://sphinx-doc.org/latest/index.html>`_ (1.2.2), the open source tool used to create the official Python documentation and many other sites. This is a very mature and stable tool, and was selected for, among other reasons, its support for defining API items and linking to them from code. 
 
 The site uses a custom theme, which is based on the :ref:`read-the-docs-theme`.
 
 Page management markup
-============================
+======================
 
 .. warning:: This site is still under construction and includes both new content and content from the wiki. 
 
-To make it easy to manage documents while the site is being created, "status" markup has been added to the document titles. You can search on this text in order to find articles which have questions or issues (e.g. on `ready for review <http://kripken.github.io/emscripten-site/search.html?q=ready+for+review>`_): 
+To make it easy to manage documents while the site is being created, "status" markup has been added to the document titles. You can search on this text in order to find articles that have questions or issues (e.g. on `ready for review <http://kripken.github.io/emscripten-site/search.html?q=ready+for+review>`_): 
 
 	- **wiki import** : The page has been imported automatically from the wiki. It has not been checked. When it is actively being worked on the article is next moved to *under construction*.
 	- **under construction** : The page is being worked on. It is still incomplete and not *ready for review*.
 	- **ready for review** : The page is ready for review. :ref:`contact` if you find any problems.
 	- **placeholder** : The page is a placeholder for a possible topic. The topic may not end up being created in the final build.
-	- If there is no header, the page is assumed to be published.
+	- If there is no header, the page is assumed to be in its final published state.
 
 In addition there is some markup in the body of the documents:
 
@@ -32,7 +32,7 @@ By the end of the project all articles should be published and all of this page 
 Searching the site
 ==================
 
-Searching returns only topics which contain **all** the specified keywords. 
+Searching returns only topics that contain **all** the specified keywords. 
 
 .. tip:: Always start by searching for *single* words like "interacting" or "compiling". Generally this will be enough to find the relevant document. If not, you can refine the search by adding additional terms. 
 
@@ -54,7 +54,7 @@ Check out the rest of this article for instructions on how to :ref:`build the si
 .. _building-the-site:
 
 Building the site
-==================
+=================
 
 The site sources are stored on Github `here <https://github.com/kripken/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
 
@@ -72,7 +72,7 @@ Ubuntu
 ++++++
 The version of Sphinx on Ubuntu package repository (apt-get) fails when building the site. This is an early version (1.1.3), which appears to be dependent on an old version of the Jinja templating library. 
 
-The workaround is to use the Python package installer "pip" to get version 1.2.2, and then run an upgrade (note, you may have to uninstall Sphinx first): ::
+The workaround is to use the *Python package installer* (pip) to get version 1.2.2, and then run an upgrade (note, you may have to uninstall Sphinx first): ::
 
 	pip install sphinx
 	pip install sphinx --upgrade
@@ -92,7 +92,7 @@ The site can be built from source on Ubuntu and Windows by navigating to the */e
 .. _about-sdk-builds:
 
 SDK Builds
-------------------
+----------
 
 SDK builds are virtually identical to :ref:`about-site-builds`. The main difference is that on SDK builds the :ref:`home page <home-page>` has a clear notification that it is an SDK build.
 
@@ -101,6 +101,7 @@ SDK builds are enabled by enabling the ``sdkbuild`` tag. This is done through th
 	# Set the sdkbuild tag. 
 	set SPHINXOPTS=-t sdkbuild
 	make html
+	
 	# Unset SPHINXOPTS
 	set SPHINXOPTS=
 	
@@ -113,13 +114,12 @@ The documentation version should match the Emscripten version for the current bu
 
 The version and release information is used in a few places in the documentation, for example :ref:`emscripten-authors`.
 
-
-
-The version can be ``version`` and ``release`` variables in **conf.py**, or on the command line by setting new values for these variables in the ``SPHINXOPTS`` environment variable. For example, to update the ``release`` variable through the command line: ::
+The version information is defined in **conf.py** — see variables ``version`` and ``release``. These variables can be overridden by setting new values in the ``SPHINXOPTS`` environment variable. For example, to update the ``release`` variable through the command line on Windows: ::
 
 	# Set SPHINXOPTS
 	set SPHINXOPTS=-D release=6.40
 	make html
+	
 	# Unset SPHINXOPTS
 	set SPHINXOPTS=
 	
@@ -136,11 +136,9 @@ Writing and updating articles
 	
 Site content is written using :term:`reStructured text`. We recommend you read the following articles to understand the syntax:
 
-* `reStructured text primer <http://sphinx-doc.org/rest.html>`_
+* `reStructured text primer <http://sphinx-doc.org/rest.html>`_.
 * `Sphinx Domains <http://sphinx-doc.org/domains.html>`_ (define and link to code items).
-* `Inline markup <http://sphinx-doc.org/markup/inline.html>`_
-
-
+* `Inline markup <http://sphinx-doc.org/markup/inline.html>`_.
 
 
 
@@ -149,25 +147,26 @@ Style guide
 
 This section has a few very brief recommendations to help authors use common style. 
 
-.. tip:: We need you coding and writing content, not stuck writing perfect prose! Just do your best, and then :ref:`ask for editorial review <contact>`.
+.. tip:: In terms of contributions, we value your coding and content writing far more than perfect prose! Just do your best, and then :ref:`ask for editorial review <contact>`.
 
 **Spelling:** Where possible use US-English spelling.
 
-**Avoid idiomatic expressions**: These can be particularly confusing to non-native speakers (for example "putting your foot in your mouth" actually means to "say something embarrassing").
+**Avoid idiomatic expressions**: These can be particularly confusing to non-native speakers (for example "putting your foot in your mouth" actually means "saying something embarrassing").
 
 **Emphasis:**
 
-	- **Bold** : use for file names, and UI/menu instructions (for example: "Press **OK** to do something")
-	- *Italic* : use for tool names - e.g. *Clang*, *emcc*, *Closure Compiler*
+	- **Bold** : use for file names, and UI/menu instructions (for example: "Press **OK** to do something").
+	- *Italic* : use for tool names - e.g. *Clang*, *emcc*, *Closure Compiler*.
 	- ``monotype`` : use for inline code (where you can't link to the API reference) and for demonstrating tool command line options.
-	- otherwise emphasis should be used sparingly
+	
+	.. note:: Other than the above rules, emphasis should be used sparingly.
 
 
-**Lists**: Use a colon on the lead-in to the list. Capitalize the first letter and use a full-stop for each item.
+**Lists**: Use a colon on the lead-in to the list where appropriate. Capitalize the first letter and use a full-stop for each item.
 	
 
 How to link to a document or heading
--------------------------------------
+------------------------------------
 
 To link to a page, first define a globally unique reference before the page title (e.g. ``_my-page-reference``) then link to it using the `ref <http://sphinx-doc.org/markup/inline.html#ref-role>`_ role as shown: ::
 
@@ -186,12 +185,12 @@ This is a better approach than linking to documents using the *:doc:* role, beca
 
 This approach is also recommended for linking to arbitrary headings in the site.
 
-Note also that there are a number of other roles that are useful for linking - including `Sphinx Domains <http://sphinx-doc.org/domains.html>`_ for linking to code items, and **term** for linking to glossary terms.
+.. note:: There are a number of other roles that are useful for linking — including `Sphinx Domains <http://sphinx-doc.org/domains.html>`_ for linking to code items, and **term** for linking to glossary terms.
 
 
 
 Recommended section/heading markup
--------------------------------------
+----------------------------------
 
 reStructured text `defines <http://sphinx-doc.org/rest.html#sections>`_ section headings using a separate line of punctuation characters after (and optionally before) the heading text. The line of characters must be at least as long as the heading. For example: ::
 

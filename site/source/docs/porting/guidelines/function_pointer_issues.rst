@@ -1,6 +1,6 @@
-==========================================
-Function Pointer Issues (ready-for-review)
-==========================================
+=======================
+Function Pointer Issues
+=======================
 
 There are three general issues with function pointers:
 
@@ -29,7 +29,7 @@ There are three general issues with function pointers:
   
     At lower levels of optimisation each function pointer has a unique index value across all the function-type tables (a function pointer will exist at a specific index in one table only, and there will be an empty slot at that index in all the other tables). As a result, comparing function pointers (indexes) gives an accurate result, and attempting to call a function pointer in the wrong table will throw an error as that index will be empty.
     
-    A optimisation ``-O2`` and above, the tables are optimised so that all the function pointers are in sequential indexes. This is a useful optimisation because the tables are much more compact without all the empty slots, but it does mean that the  function index is no longer "globally" unique. Each function is now uniquely indexed using both its table and its index within that table. 
+    At optimisation ``-O2`` and above, the tables are optimised so that all the function pointers are in sequential indexes. This is a useful optimisation because the tables are much more compact without all the empty slots, but it does mean that the  function index is no longer "globally" unique. Each function is now uniquely indexed using both its table and its index within that table. 
     
     As a result, at higher optimisations:
     
@@ -100,7 +100,7 @@ For a real-world example, consider the code below:
 
 The code defines three functions with different signatures: ``voidReturn`` of type ``vi`` (``void (int)``), ``intReturn`` of type ``ii``, and ``voidReturnNoParam`` of type ``v``. These function pointers are cast to type ``vi`` and added to a list. The functions are then called using the function pointers in the list.
 
-The code runs (and works) when compiled to machine code. You can try it by saving the code as **main.c** and executing: **cc main.c** and then **./a.out**. You'll see this output:
+The code runs (and works) when compiled to machine code. You can try it by saving the code as **main.c** and executing **cc main.c** and then **./a.out**. You'll see this output:
 
 ::
 
@@ -146,7 +146,7 @@ The code fragment below shows how we can cast the function pointer back to its o
       }
     }
 
-The code fragment below shows how to make and use an adapter function which calls the original function. The adapter is defined with the same signature as it will have when called, and is hence available in the expected function-pointer table.
+The code fragment below shows how to make and use an adapter function that calls the original function. The adapter is defined with the same signature as it will have when called, and is hence available in the expected function-pointer table.
 
 .. code:: cpp
 

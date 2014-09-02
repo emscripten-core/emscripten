@@ -1,14 +1,17 @@
-==================================================
-Connecting C++ and JavaScript (under-construction) 
-==================================================
+=============================
+Connecting C++ and JavaScript
+=============================
 
-This section is for articles about calling the (originally) C/C++ functions from JavaScript and for specifying JavaScript code to be called in the original C++/C code. 
+Emscripten provides various options for connecting "normal" JavaScript and compiled code, which range from functions to call compiled C/C++ from JavaScript (and vice versa) through to accessing environment variables from compiled code. 
+
+The topic :ref:`Interacting-with-code` provides an overview of all the methods. The other two topics provide additional detail on the :ref:`Embind` and :ref:`WebIDL-Binder` tools.
+
+.. note:: For information on how compiled code interacts with the browser environment, see :ref:`Emscripten-Browser-Environment`. For file system-related manners, see the :ref:`Filesystem-Guide`. 
 
 .. toctree::
 	:maxdepth: 1
    
 	Interacting-with-code
 	embind
-	using_the_embind_val_class_from_cpp
 	WebIDL-Binder
    

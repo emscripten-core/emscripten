@@ -1,28 +1,32 @@
 .. _WebIDL-Binder:
 
-===========================
-WebIDL Binder (wiki-import)
-===========================
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
+===================================
+WebIDL Binder (under-construction)
+===================================
 
-The WebIDL binder is the third tool providing bindings glue between C++ and JavaScript in Emscripten. The first was the "bindings generator", which was a hackish experiment (despite its hackishness, it managed to be good enough for ammo.js and box2d.js). The second was Embind, which is fairly high-level and supports mapping sophisticated C++11 constructs between C++ and JavaScript.
+The *WebIDL Binder* provides a simple and lightweight approach to binding C++ so that it can be called from JavaScript (when compiled) as if it were a normal JavaScript library. 
 
-The goals of the WebIDL binder is to be low-level, efficient, and simpler than Embind, while robust and more maintainable than the bindings generator. Like Embind, it requires explicit declarations of what to bind together, but like the bindings generator, it does so at a low-level which is simpler to optimize.
+The *WebIDL Binder* uses `WebIDL <http://heycam.github.io/webidl/>`_ to define the bindings, an interface language which was *specifically designed* for gluing together C++ and JavaScript. Not only is this a natural choice for the bindings, but because it is low-level, it is relatively easy to optimize.
 
-The level at which it works is `WebIDL <http://heycam.github.io/webidl/>`_, a language used to describe the interfaces between JavaScript and the browser's native code in C++. WebIDL was designed for the particular purpose of gluing together C++ and JavaScript, so it is a natural choice here; also, there are lots of already-written WebIDL files for browser APIs, which could eventually be reused.
+This topic shows how to define an IDL file for a C++ class (and other C++ items), generate the C++ and JavaScript wrapper/glue code, and then compile this as part of your Emscripten project. 
 
-The WebIDL binder is currently focused on wrapping C++ code so it is usable from JavaScript (write a C++ class, use it as a library in JavaScript as if it were a normal JavaScript library), which is what the bindings generator does. Embind also supports wrapping in the other direction, which the WebIDL binder might do some day. In particular, it should be easy to let C++ call web APIs in a natural way by using WebIDL files describing those APIs.
+For a complete working example, see **test_webidl** in the `test suite <https://github.com/kripken/emscripten/blob/master/tests/test_core.py>`_ (sources `here <https://github.com/kripken/emscripten/tree/master/tests/webidl>`_). The test suite code is guaranteed to work and covers more material than this article. Another good example is `ammo.js <https://github.com/kripken/ammo.js/tree/master>`_, which uses the *WebIDL Binder* to port the Bullet Physics engine to the web.
 
-For a complete working example, see ``test_webidl`` in the test suite. As always, the test suite code is guaranteed to work, so it's a good place to learn from. Another good example is `ammo.js <https://github.com/kripken/ammo.js/blob/webidl/ammo.idl>`_ which is the primary consumer of this tool.
+.. note:: An alternative to the *WebIDL Binder* is to use :ref:`Embind`. This tool supports mapping sophisticated C++11 constructs between C++ and JavaScript in both directions.
+
+	Both *Embind* and the *WebIDL Binder* require explicit declarations of what to bind together. However the *WebIDL Binder* is (arguably) easier to use, and does so at a lower-level which is simpler to optimize.
+	
+	The *WebIDL Binder* does not currently support binding in the other direction (calling Web APIs from C++).
+	
 
 Wrapping a C++ class
 ====================
 
-The first stage is to create a WebIDL file. That describes the C++ class you are going to wrap. This basically duplicates a little info from your C++ header file, in a format that is explicitly designed for easy parsing and to be able to represent things in a way that is convenient for connecting to JavaScript.
+The first step is to create a WebIDL file that describes the C++ class you are going to wrap. This file duplicates some of the information in the C++ header file, in a format that is explicitly designed both for easy parsing, and to represent code items in a way that is convenient for connecting to JavaScript.
 
-For example, let's say you have these C++ classes:
+For example, consider the following C++ classes:
 
-::
+.. code-block:: cpp
 
     class Foo {
     public:
@@ -36,9 +40,9 @@ For example, let's say you have these C++ classes:
       void doSomething();
     };
 
-You could write this IDL file to describe them:
+The following IDL file can be used to describe them:
 
-::
+.. code-block:: idl
 
     interface Foo {
       void Foo();
@@ -51,9 +55,13 @@ You could write this IDL file to describe them:
       void doSomething();
     };
 
-Note how both have a constructor (a function returning void that has the same name as the interface), which allows you to construct them from JavaScript). Otherwise the definitions are fairly straightforward.
+The definitions include a constructor that allows you to construct them from JavaScript — this is just a function returning void that has the same name as the interface. Otherwise the definitions are fairly straightforward.
 
-Note that types in WebIDL are not identically named to C++, for example IDL ``long`` is a 32-bit integer, ``short`` is a 16-bit integer, etc. There are also types like DOMString which represent a JavaScript string.
+.. note:: The type names in WebIDL are not identical to those in C++. For example IDL ``long`` is a 32-bit integer, ``short`` is a 16-bit integer, etc. There are also types like ``DOMString`` which represent a JavaScript string.
+
+
+Generating the bindings glue code
+=================================
 
 To generate bindings code, run
 

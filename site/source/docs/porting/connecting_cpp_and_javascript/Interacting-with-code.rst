@@ -1,23 +1,23 @@
 .. _Interacting-with-code:
 
-========================================
-Interacting with code (ready-for-review)
-========================================
+=====================
+Interacting with code
+=====================
 
 
 Emscripten provides numerous methods to connect and interact between JavaScript and compiled C or C++:
 
 - Call compiled **C** functions from normal JavaScript:
 
-	- Using :js:func:`ccall` or :js:func:`cwrap`.
-	- Directly from JavaScript (faster but more complicated).
+	- :ref:`Using ccall or cwrap <interacting-with-code-ccall-cwrap>`.
+	- :ref:`Using direct function calls <interacting-with-code-direct-function-calls>` (faster but more complicated).
 	
 - Call JavaScript functions from **C/C++**:
 
-	- Using :c:func:`emscripten_run_script`.
-	- Using :c:type:`EM_ASM` (faster).
-	- Implement a C API in JavaScript.
-	- As function pointers from **C**.
+	- :ref:`Using emscripten_run_script() <interacting-with-code-call-javascript-from-native>`.
+	- :ref:`Using EM_ASM() <interacting-with-code-call-javascript-from-native>` (faster).
+	- :ref:`Using a C API implemented in JavaScript <implement-c-in-javascript>`.
+	- :ref:`As function pointers from C <interacting-with-code-call-function-pointers-from-c>`.
 	
 - Call compiled **C++** classes from JavaScript using bindings created with:
 
@@ -25,19 +25,21 @@ Emscripten provides numerous methods to connect and interact between JavaScript 
 	- :ref:`WebIDL-Binder`. *Embind* also supports calling JavaScript from the C++.
 
 
-- Access compiled code memory from JavaScript.
-- Affect execution behaviour.
-- Access environment variables.
+- :ref:`Access compiled code memory from JavaScript <interacting-with-code-access-memory>`.
+- :ref:`Affect execution behaviour <interacting-with-code-execution-behaviour>`.
+- :ref:`Access environment variables <interacting-with-code-environment-variables>`.
 
-The JavaScript methods for calling compiled C functions are efficient, but cannot be used with name-mangled C++ functions. Both :ref:`embind` or :ref:`WebIDL-Binder` create bindings glue between C++ and JavaScript: *Embind* allows binding in both directions, while the more-efficient *WebIDL Binder* only supports calling compiled code from JavaScript. 
+The JavaScript methods for calling compiled C functions are efficient, but cannot be used with name-mangled C++ functions. Both :ref:`embind` or :ref:`WebIDL-Binder` create bindings between C++ and JavaScript: *Embind* allows binding in both directions, while the more-efficient *WebIDL Binder* only supports calling compiled code from JavaScript. 
 
-This article explains each of the methods, or provides links to more detailed information.
+This article explains each of the methods listed above, or provides links to more detailed information.
 
 .. note:: For information on how compiled code interacts with the browser environment, see :ref:`Emscripten-Browser-Environment`. For file system related manners, see the :ref:`Filesystem-Guide`. 
 
 
-Calling compiled C functions from JavaScript
-============================================
+.. _interacting-with-code-ccall-cwrap:
+
+Calling compiled C functions from JavaScript using ccall/cwrap
+==============================================================
 
 The easiest way to call compiled C functions from JavaScript is to use :js:func:`ccall` or :js:func:`cwrap`. 
 
@@ -62,9 +64,9 @@ After compiling, you can call this function with :js:func:`cwrap` using the foll
     int_sqrt(12)
     int_sqrt(28)
 
-The first parameter is the name of the function to be wrapped, the second is the return type of the function, then an array of parameter types (which may be omitted if there are no parameters). The types are native JavaScript types, "number" (for a C integer, float, or general pointer) or "string" (for a C ``char*`` that represents a string).
+The first parameter is the name of the function to be wrapped, the second is the return type of the function, and the third is an array of parameter types (which may be omitted if there are no parameters). The types are native JavaScript types, "number" (for a C integer, float, or general pointer) or "string" (for a C ``char*`` that represents a string).
 
-You can run this yourself by first opening the generated page **function.html** in a web browser (nothing will happen on page load because there is no ``main()``). Open a JavaScript environment (**Control-Shift-K** on Firefox, **Control-Shift-J** on Chrome), and enter the above commands as three separate commands, pressing **Enter** after each one. You should get the results ``3`` and ``5``, which are the correct output as the compiled function works on integers.
+You can run this yourself by first opening the generated page **function.html** in a web browser (nothing will happen on page load because there is no ``main()``). Open a JavaScript environment (**Control-Shift-K** on Firefox, **Control-Shift-J** on Chrome), and enter the above commands as three separate commands, pressing **Enter** after each one. You should get the results ``3`` and ``5`` — the expected output for these inputs using C++ integer mathematics.
 
 :js:func:`ccall` is similar, but receives another parameter with the parameters to pass to the function:
 
@@ -92,6 +94,7 @@ You can run this yourself by first opening the generated page **function.html** 
 		- Use ``Module.ccall`` and not ``ccall`` by itself. The former will work at all optimisation levels (even if the :term:`Closure Compiler` minifies the function names).
 		
 
+.. _interacting-with-code-direct-function-calls:
    
 Call compiled C/C++ code "directly" from JavaScript
 ===================================================
@@ -104,13 +107,16 @@ To call the method directly, you will need to use the full name as it appears in
 
 The types of the parameters you pass to functions need to make sense. Integers and floating point values can be passed as is. Pointers are simply integers in the generated code.
 
-Strings in JavaScript must be converted to pointers for compiled code — the relevant function is :js:func:`Pointer_stringify` which given a pointer returns a JavaScript string. Converting a JavaScript string ``someString`` to a pointer can be accomplished using :js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_STACK) <allocate>`.
+Strings in JavaScript must be converted to pointers for compiled code — the relevant function is :js:func:`Pointer_stringify`, which given a pointer returns a JavaScript string. Converting a JavaScript string ``someString`` to a pointer can be accomplished using :js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_STACK) <allocate>`.
 
-.. note:: The conversion to a pointer allocates memory (that's the call to :js:func:`allocate` there), and in this case we allocate it on the stack (if you are called from a compiled function, it will rewind the stack for you; otherwise, you should do ``Runtime.stackSave()`` before and ``Runtime.stackRestore(..that value..)`` afterwards).
+.. note:: The conversion to a pointer allocates memory, and in this case we allocate it on the stack (if you are calling it from a compiled function, it will rewind the stack for you; otherwise, you should do ``Runtime.stackSave()`` before and ``Runtime.stackRestore(..that value..)`` afterwards).
 
 There are other convenience functions for converting strings and encodings in :ref:`preamble-js`.
 
 .. todo:: **HamishW** Might be better to show the allocate above using _malloc, as allocate is an advanced API. We also need to better explain the note about stackRestore etc, or remove it - as it doesn't mean a lot to me.
+
+
+.. _interacting-with-code-call-javascript-from-native:
 
 Calling JavaScript from C/C++
 =============================
@@ -123,7 +129,7 @@ The most direct, but slightly slower, way is to use :c:func:`emscripten_run_scri
 
 	emscripten_run_script("alert('hi')");
 
-.. note:: The function ``alert`` is present in browsers, but not in *node* or other JavaScript shells. An more generic alternative is to call :js:func:`Module.print`. 
+.. note:: The function ``alert`` is present in browsers, but not in *node* or other JavaScript shells. A more generic alternative is to call :js:func:`Module.print`. 
 
 
 A faster way to call JavaScript from C is to write "inline JavaScript", using :c:func:`EM_ASM` (and related macros). These are used in a similar manner to inline assembly code. The "alert" example above might be written using inline JavaScript as:
@@ -142,7 +148,7 @@ A faster way to call JavaScript from C is to write "inline JavaScript", using :c
 
 When compiled and run, Emscripten will execute the two lines of JavaScript as if they appeared directly in the generated code. The result would be an alert, followed by an exception. (Note, however, that under the hood Emscripten still does a function call even in this case, which has some amount of overhead.)
 
-You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`, as well as receive values back (see the :c:macro:`linked macro <EM_ASM_>` for details. For example, the following example will print out ``I received: 100`` and then ``101``.
+You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`, as well as receive values back (see the :c:macro:`linked macro <EM_ASM_>` for details. The following example will print out ``I received: 100`` and then ``101``.
 
 .. code-block:: cpp
 
@@ -157,9 +163,11 @@ You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`, as we
 	- You need to specify if the return value is an ``int`` or a ``double`` using the appropriate macro :c:macro:`EM_ASM_INT` or :c:macro:`EM_ASM_DOUBLE`.
 	- The input values appear as ``$0``, ``$1``, etc.
 	- ``return`` is used to provide the value sent from JavaScript back to C.
-	- See how ``{, }`` are used here to enclose the code. This is necessary to differentiate the code from the arguments passed later which are the input values (this is how C macros work).
+	- See how ``{`` and ``}`` are used here to enclose the code. This is necessary to differentiate the code from the arguments passed later, which are the input values (this is how C macros work).
 	- When using the :c:macro:`EM_ASM` macro, ensure that you only use single quotes('). Double quotes(") will cause a syntax error that is not detected by the compiler and is only shown when looking at a JavaScript console while running the offending code.
 
+
+.. _implement-c-in-javascript:
 
 Implement a C API in JavaScript
 ===============================
@@ -181,7 +189,7 @@ As a simple example, consider the case where you have some C code like this:
       return 1;
     }
 
-.. note:: When using C++ you should encapsulate ``extern void my_js();`` in ``extern "C" {}`` block to prevent C++ name mangling:
+.. note:: When using C++ you should encapsulate ``extern void my_js();`` in an ``extern "C" {}`` block to prevent C++ name mangling:
 
 	.. code-block:: cpp
 
@@ -189,7 +197,7 @@ As a simple example, consider the case where you have some C code like this:
 		  extern void my_js();
 		}
 
-Then you can implement ``my_js`` in JavaScript by simply adding the implementation to **library.js** (or your own file). Like our other examples of calling JavaScript from C, the example below just launches the browser ``alert()``:
+Then you can implement ``my_js`` in JavaScript by simply adding the implementation to **library.js** (or your own file). Like our other examples of calling JavaScript from C, the example below just creates a dialog box using a simple ``alert()`` function.
 
 .. code-block:: javascript
 
@@ -202,8 +210,11 @@ See the `library_*.js <https://github.com/kripken/emscripten/tree/master/src>`_ 
 
 .. note:: 
 
-	- JavaScript libraries can declare dependencies (``__deps``), however those are only for other JavaScript libraries. See examples in **library*.js**)
+	- JavaScript libraries can declare dependencies (``__deps``), however those are only for other JavaScript libraries. See examples in `/src <https://github.com/kripken/emscripten/tree/master/src>`_ with the name format **library_*.js**
 	- If a JavaScript library depends on a compiled C library (like most of *libc*), you must edit `src/deps_info.json <https://github.com/kripken/emscripten/blob/master/src/deps_info.json>`_. Search for "deps_info" in `tools/system_libs.py <https://github.com/kripken/emscripten/blob/master/tools/system_libs.py>`_.
+
+	
+.. _interacting-with-code-call-function-pointers-from-c:
 
 Calling JavaScript functions as function pointers from C
 ========================================================
@@ -213,12 +224,14 @@ You can use ``Runtime.addFunction`` to return an integer value that represents a
 See ``test_add_function`` in `tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L5904>`_ for an example.
 
 
+.. _interacting-with-code-access-memory:
+
 Access memory from JavaScript
 =============================
 
 You can access memory using :js:func:`getValue(ptr, type) <getValue>` and :js:func:`setValue(ptr, value, type) <setValue>`. The first argument is a pointer (a number representing a memory address). ``type`` must be an LLVM IR type, one of ``i8``, ``i16``, ``i32``, ``i64``, ``float``, ``double`` or a pointer type like ``i8*`` (or just ``*``). 
 
-There are example of these functions being used in the tests `here <https://github.com/kripken/emscripten/blob/master/tests/core/test_utf.in>`_ and `here <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L5704>`_.
+There are examples of these functions being used in the tests — see `tests/core/test_utf.in <https://github.com/kripken/emscripten/blob/master/tests/core/test_utf.in>`_ and `tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L5704>`_.
 
 .. note:: This is a lower-level operation than :js:func:`ccall` and :js:func:`cwrap` — we *do* need to care what specific type (e.g. integer) is being used.
 
@@ -236,18 +249,21 @@ A case where this might be required is if you want to import a large amount of d
 Here ``my_function`` is a C function that receives a single integer parameter (or a pointer, they are both just 32-bit integers for us) and returns an integer. This could be something like ``int my_function(char *buf)``.
 
 
+.. _interacting-with-code-execution-behaviour:
+
 Affect execution behaviour
 ==========================
 
 ``Module`` is a global JavaScript object, with attributes that Emscripten-generated code calls at various points in its execution. 
 
-Developers provide an implementation of ``Module`` to control how notifications from Emscripten are displayed, which files that are loaded before the main loop is run, and a number other behaviours. For more information see :ref:`module`.
+Developers provide an implementation of ``Module`` to control how notifications from Emscripten are displayed, which files that are loaded before the main loop is run, and a number of other behaviours. For more information see :ref:`module`.
 
+.. _interacting-with-code-environment-variables:
 
 Environment variables
 =====================
 
-Sometimes compiled code needs to access environment variables (for instance, in C, by calling the ``getenv()`` function). Emscripten generated JavaScript cannot access the computer's environment variables directly, so a "virtualised" environment is provided. 
+Sometimes compiled code needs to access environment variables (for instance, in C, by calling the ``getenv()`` function). Emscripten-generated JavaScript cannot access the computer's environment variables directly, so a "virtualised" environment is provided. 
 
 The JavaScript object ``ENV`` contains the virtualised environment variables, and by modifying it you can pass variables to your compiled code. Care must be taken to ensure that the ``ENV`` variable has been initialised by Emscripten before it is modified — using :js:attr:`Module.preRun` is a convenient way to do this. 
 
@@ -263,12 +279,12 @@ WebIDL Binder
 
 The :ref:`WebIDL-Binder` is a tool to make C++ classes usable from JavaScript, as JavaScript classes.
 
-The WebIDL binder is a fairly simple and lightweight approach to binding C++ to call from JavaScript. It was used to port Bullet Physics to the web in the `ammo.js <https://github.com/kripken/ammo.js/>`_ project.
+The WebIDL binder is a fairly simple and lightweight approach to binding C++ to call from JavaScript. It was used to port Bullet Physics to the Web in the `ammo.js <https://github.com/kripken/ammo.js/>`_ project.
 
 
 
 Embind
 ======
 
-:ref:`embind` is a tool to communicate between JavaScript and C++, in a C++-like manner. It is not as lightweight or as optimizable as Emscripten JavaScript libraries or the :ref:`WebIDL-Binder`, but it does allow communication in both directions between JavaScript and the C code.
+:ref:`embind` is a tool to communicate between JavaScript and C++, in a C++-like manner. It is not as lightweight or optimizable as Emscripten JavaScript libraries or the :ref:`WebIDL-Binder`, but it does allow communication in both directions between JavaScript and the C code.
 

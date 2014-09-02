@@ -6,14 +6,9 @@ Emscripten SDK Manager (emsdk)
 
 **The Emscripten SDK management script (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
 
-This document provides the command syntax, and a :ref:`set of guides <emsdk_howto>` explaining how to perform both common and advanced maintenance operations.
-
-Purpose
-=======
-
 With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk*, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
 
-
+This document provides the command syntax, and a :ref:`set of guides <emsdk_howto>` explaining how to perform both common and advanced maintenance operations.
 
 Command line syntax
 ===================
@@ -205,14 +200,23 @@ Toggle between different tools and SDK versions using the :term:`activate <Activ
 
 	On Windows, calling ``activate`` automatically sets up the required paths and environment variables. 
 	
-	
-How do I install an old Emscripten compiler version?
-----------------------------------------------------------------
+.. _emsdk-install-old-tools:
 
-*Emsdk* contains a history of old compiler versions that you can use to maintain your migration path. Use the ``list --old`` argument to get a list of archived tool and SDK versions, and ``install <name_of_tool>`` to install it: ::
+How do I install and activate old Emscripten SDKs and tools?
+------------------------------------------------------------
 
+*Emsdk* contains a history of old tools and SDKs that you can use to maintain your migration path. Use the ``list --old`` argument to get a list of archived tool and SDK versions, and ``install <name_of_tool>`` to install a specific tool: 
+
+::
+
+	# Get list of the old versions of the tool.
 	./emsdk list --old
+	
+	# Install the required version.
 	./emsdk install <name_of_tool>
+	
+	# Activate required version.
+	./emsdk activate <name_of_tool>
 	
 On Windows, you can directly install an old SDK version by using one of :ref:`these archived NSIS installers <archived-nsis-windows-sdk-releases>`. 
 

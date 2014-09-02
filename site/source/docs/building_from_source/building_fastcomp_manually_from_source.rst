@@ -1,14 +1,14 @@
 .. _building-fastcomp-from-source:
 
-===========================================================
-Manually building Fastcomp from source (ready-for-review)
-===========================================================
+======================================
+Manually building Fastcomp from source
+======================================
 
 :ref:`Fastcomp <LLVM-Backend>` is the default compiler core for Emscripten. It is a new :term:`LLVM backend` that converts the LLVM Intermediate Representation (IR) created by *Clang* (from C/C++) into JavaScript.  
 
-This article explains how you can build the sources using a fully manual process.
+This article explains how you can build Fastcomp's sources using a fully manual process.
 
-.. tip:: *Fastcomp* is delivered pre-built as part of the SDK, and can also be :ref:`built from source from within the SDK <building-emscripten-from-source-using-the-sdk>`.
+.. tip:: *Fastcomp* is delivered pre-built as part of the SDK on most platforms, but can also be :ref:`built from source from within the SDK <building-emscripten-from-source-using-the-sdk>`.
 
 .. note:: If you are building a large project, you will need to create a 64-bit build of LLVM and Clang. Compiling and optimizing can take more memory than is available to the 32-bit build.
 
@@ -20,7 +20,8 @@ First follow the instructions for your platform showing how to :ref:`manually bu
 
 Then :ref:`download and install the compiler toolchain <compiler-toolchain>` for your platform.
 
-	
+.. _building-fastcomp-from-source-building:
+
 Building Fastcomp
 =================
 
@@ -51,14 +52,14 @@ To build the Fastcomp code from source:
 
 	.. warning:: You **must** clone it into a directory named **clang** as shown, so that :term:`Clang` is present in **tools/clang**! 
 	
--  Create a *build* directory and then navigate into it (we highly recommend creating a separate build directory):
+- Create a *build* directory (inside the **emscripten-fastcomp** directory) and then navigate into it:
 	
 	::
 		
 		mkdir build
 		cd build
 	
--  Configure the build using *either* *cmake* or the *configure* script:
+- Configure the build using *either* *cmake* or the *configure* script:
 			
 	-  Using *cmake*: 
 
@@ -74,11 +75,11 @@ To build the Fastcomp code from source:
 		
 			../configure --enable-optimized --disable-assertions --enable-targets=host,js
 			
--  Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
+- Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
 
-	- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
+	- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | More info | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
 	- On Linux you can find the number of cores by entering the following command on the terminal: ``cat /proc/cpuinfo | grep "^cpu cores" | uniq``.
-	- On Windows the number of cores is listed on the **Task Manager | Performance Tab**. YOu can open the *Task Manager* by entering **Ctrl + Shift + Esc** from the Desktop.
+	- On Windows the number of cores is listed on the **Task Manager | Performance Tab**. You can open the *Task Manager* by entering **Ctrl + Shift + Esc** from the Desktop.
 
 - Call *make* to build the sources, specifying the number of available cores:
 
@@ -91,13 +92,19 @@ To build the Fastcomp code from source:
 
 .. _llvm-update-compiler-configuration-file:
 			
--  Update the :ref:`~/.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in using the ``LLVM_ROOT`` variable. The path should be set to the location of the *clang* binary under the **build** directory. This will be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**: 
 
-	::
+- 
 	
-		LLVM_ROOT='/home/ubuntu/yourpath/emscripten-fastcomp/build/bin'
+	The final step is to update the :ref:`~/.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in the ``LLVM_ROOT`` variable. 
+	
+	.. note:: If you're building the **whole** of Emscripten from source, following the platform-specific instructions in :ref:`installing-from-source`, you won't yet have Emscripten installed. In this case, skip this step and return to those instructions.
+
+	If you already have an Emscripten environment (for example if you're building Fastcomp using the SDK), then set ``LLVM_ROOT`` to the location of the *clang* binary under the **build** directory. This will be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**: 
+
+		::
 		
-	.. note:: If **~/.emscripten** does not yet exist, you can create it by running ``./emcc --help`` in your **emscripten** directory (assuming Emscripten has already been downloaded).
+			LLVM_ROOT='/home/ubuntu/yourpath/emscripten-fastcomp/build/bin'
+
 
 Branches
 ---------
@@ -123,10 +130,10 @@ Bisecting across multiple git trees can be hard. We use version numbers to help 
 - `emscripten-version.txt <https://github.com/kripken/emscripten-fastcomp/blob/master/emscripten-version.txt>`_ in fastcomp (llvm)
 - `emscripten-version.txt <https://github.com/kripken/emscripten-fastcomp-clang/blob/master/emscripten-version.txt>`_ in fastcomp-clang (clang)
 
-Version numbers are typically ``X.Y.Z`` where
+Version numbers are typically ``X.Y.Z`` where:
 
-- ``X`` is a major number (changes very rarely)
-- ``Y`` is a release number (changes each time we merge incoming to master, so these numbers indicate points where all tests passed), and
+- ``X`` is a major number (changes very rarely).
+- ``Y`` is a release number (changes each time we merge incoming to master, so these numbers indicate points where all tests passed).
 - ``Z`` is minor update that is just a sync point between the repos, or is needed when libc changes in emscripten (version changes clear the cache).
 
 

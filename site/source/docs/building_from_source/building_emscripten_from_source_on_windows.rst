@@ -1,14 +1,14 @@
 .. _building-emscripten-on-windows-from-source:
 
-===========================================================
-Manually Building Emscripten on Windows (ready-for-review)
-===========================================================
+=======================================
+Manually Building Emscripten on Windows
+=======================================
 
 This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Windows box. 
 
 .. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
-.. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need easily switch between SDK and source builds.
+.. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need to easily switch between SDK and source builds.
 
 
 What you'll need
@@ -51,7 +51,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 #. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 
 	- Using *Github for Windows*:
-		-  Launch the *GitHub for Windows* Client. Click **Skip Setup** if you don't have a Github account.
+		-  Launch the *GitHub for Windows* client. Click **Skip Setup** if you don't have a Github account.
 		-  (optional) Select **Options** from the gear menu, and customize the default storage directory. Ensure the path has no spaces.
 		-  In your web browser, open https://github.com/kripken/emscripten and press the **Clone in Windows** button.
 	
@@ -76,13 +76,13 @@ Instructions for creating and manually configuring this file are given in :ref:`
 Validating the environment
 ===============================
 
-The best way to validate the environment is to build some code. Open the terminal in your *Emscripten* directory — the directory which contains *emcc* (if you installed using *Github for Windows* this will be **C:/Users/username/Documents/GitHub/emscripten**) and enter: ::
+The best way to validate the environment is to build some code. Open the terminal in your *Emscripten* directory — the directory that contains *emcc* (if you installed using *Github for Windows* this will be **C:/Users/username/Documents/GitHub/emscripten**) and enter: ::
 
-	emcc tests/hello_world.cpp
+	./emcc tests/hello_world.cpp
 
 If this builds **a.out.js** in the current directory, and you don't see any build errors in the terminal, Emscripten is good to go! 
 
-There are additional validation and troubleshooting instructions in the topic: :ref:`verifying-the-emscripten-environment`.
+There are additional validation and troubleshooting instructions in the topic :ref:`verifying-the-emscripten-environment`.
 
 
 

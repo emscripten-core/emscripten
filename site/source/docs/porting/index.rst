@@ -1,8 +1,8 @@
 .. _integrating-porting-index:
 
-================================
-Porting (ready-for-review) 
-================================
+=======
+Porting
+=======
 
 The topics in this section cover the main integration points that you need to consider when porting C/C++ code to Emscripten, along with general coding and debugging guidelines.
 

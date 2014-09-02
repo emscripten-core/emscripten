@@ -4,69 +4,83 @@
 val.h (under-construction)
 ================================
 
-The C++ APIs in `val.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/val.h>`_ define (**HamishW**-Replace with description.)
-
-.. contents:: Table of Contents
-    :local:
-    :depth: 1
-	
 .. COMMENT (Not rendered) : This created from val.h header file on 10 Aug 2014-03
 
-
-.. cpp:type: EMSCRIPTEN_SYMBOL(name)
-
-	**HamishW**-Replace with description.
-
+The C++ class :cpp:class:`emscripten::val` (defined in `val.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/val.h>`_) is used to *transliterate* JavaScript code to C++.
 
 
 .. cpp:namespace:: emscripten
 	
-.. cpp:class:: val
+.. cpp:class:: emscripten::val
 
-	**HamishW** Notes from source FYI: ::
+	This class is a C++ data type that can be used to represent (and provide convenient access to) any JavaScript object. You can use it to call a JavaScript object, read and write its properties, or coerce it to a C++ value like a ``bool``, ``int``, or ``std::string``.
+		
+	For example, the code below shows some simple JavaScript for making an XHR request on a URL:
 
-        // missing operators:
-        // * delete
-        // * in
-        // * instanceof
-        // * ! ~ - + ++ --
-        // * * / %
-        // * + -
-        // * << >> >>>
-        // * < <= > >=
-        // * == != === !==
-        // * & ^ | && || ?:
-        //
-        // exposing void, comma, and conditional is unnecessary
-        // same with: = += -= *= /= %= <<= >>= >>>= &= ^= |=
+	.. code:: javascript
+
+		var xhr = new XMLHttpRequest;
+		xhr.open("GET", "http://url");
+
+	
+	This same code can be written in C++, using :cpp:func:`~emscripten::val::global` to get the symbol for the global ``XMLHttpRequest`` object and then using it to open a URL.
+
+	
+	.. code:: cpp
+
+		val xhr = val::global("XMLHttpRequest").new_();
+		xhr.call("open", std::string("GET"), std::string("http://url"));
+
+		
+	See :ref:`embind-val-guide` for other examples.
+		
+
+	.. todo:: 
+	
+		**HamishW** Notes from source FYI: Can/should these be included? ::
+
+			// missing operators:
+			// * delete
+			// * in
+			// * instanceof
+			// * ! ~ - + ++ --
+			// * * / %
+			// * + -
+			// * << >> >>>
+			// * < <= > >=
+			// * == != === !==
+			// * & ^ | && || ?:
+			//
+			// exposing void, comma, and conditional is unnecessary
+			// same with: = += -= *= /= %= <<= >>= >>>= &= ^= |=
 
 
 	.. cpp:function:: static val array()
 
-		**HamishW**-Replace with description.
+		Creates and returns a new ``Array``.
 		
-		:returns: **HamishW**-Replace with description.
+		:returns: The new ``Array``.
 
 		
 	.. cpp:function:: static val object()
 
-		**HamishW**-Replace with description.
+		Creates and returns a new ``Object``.
 		
-		:returns: **HamishW**-Replace with description.
+		:returns: The new ``Object``.
 
 		
 	.. cpp:function:: static val undefined()
 
-		**HamishW**-Replace with description.
+		Creates a ``val`` that represents ``undefined``.
 		
-		:returns: **HamishW**-Replace with description.		
+		:returns: The ``val`` that represents ``undefined``.
 	
 	
 	.. cpp:function:: static val null()
 
-		**HamishW**-Replace with description.
+		Creates a ``val`` that represents ``null``. ``val::undefined()`` is the same, but for undefined.
 		
-		:returns: **HamishW**-Replace with description.		
+		:returns: A ``val`` that represents ``null``.	
 
 		
 	.. cpp:function:: static val take_ownership(internal::EM_VAL e)
@@ -78,7 +92,7 @@ The C++ APIs in `val.h <https://github.com/kripken/emscripten/blob/master/system
 
 	.. cpp:function:: static val global(const char* name)
 
-		**HamishW**-Replace with description.
+		Looks up a global symbol.
 		
 		:param const char* name: **HamishW**-Replace with description.
 		:returns: **HamishW**-Replace with description.				
@@ -87,7 +101,7 @@ The C++ APIs in `val.h <https://github.com/kripken/emscripten/blob/master/system
 
 	.. cpp:function:: static val module_property(const char* name)
 
-		**HamishW**-Replace with description.
+		Looks up a symbol on the emscripten Module object.
 		
 		:param const char* name: **HamishW**-Replace with description.
 		:returns: **HamishW**-Replace with description.				
@@ -102,14 +116,17 @@ The C++ APIs in `val.h <https://github.com/kripken/emscripten/blob/master/system
 
 	.. cpp:function:: explicit val(T&& value)
 
-		**HamishW**-Replace with description.
+		Constructor.
 		
-		:param T&& value: **HamishW**-Replace with description.
+		A ``val`` can be constructed by explicit construction from any C++ type. For example, ``val(true)`` or ``val(std::string("foo"))``.
+		
+		:param T&& value: Any C++ type.
 		
 		
-		**HamishW** Don't know how following "floating statement works". Leaving here for discussion
-        val() = delete;
+	**HamishW** Don't know how following "floating statement works". Leaving here for discussion
+	``val() = delete;``
 
+	 
 	.. cpp:function:: explicit val(const char* v)
 
 		**HamishW**-Replace with description.
@@ -161,13 +178,20 @@ The C++ APIs in `val.h <https://github.com/kripken/emscripten/blob/master/system
 		
 	.. cpp:function:: bool hasOwnProperty(const char* key) const
 
-		**HamishW**-Replace with description.
+		Test whether ... **HamishW**-Replace with description.
 		
 		:param const char* key: **HamishW**-Replace with description.
 		:returns: **HamishW**-Replace with description.				
 
 		
-	.. cpp:function:: val new_(Args&&... args) const
+	.. cpp:function:: val new_()
+	
+		prototype: 
+		
+		::
+		
+			template<typename... Args>
+			val new_(Args&&... args) const
 
 		**HamishW**-Replace with description.
 		
@@ -186,7 +210,7 @@ The C++ APIs in `val.h <https://github.com/kripken/emscripten/blob/master/system
 
 	.. cpp:function:: void set(const K& key, const val& v)
 
-		**HamishW**-Replace with description.
+		Set the specified (``key``) property of a JavaScript object (accessed through a ``val``) with the value ``v``. **HamishW**-Replace with description.
 		
 		:param const K& key: **HamishW**-Replace with description. Note that this is a templated value.
 		:param const val& v: **HamishW**-Replace with description.	 Note that this is a templated value.
@@ -231,4 +255,6 @@ The C++ APIs in `val.h <https://github.com/kripken/emscripten/blob/master/system
 		:returns: **HamishW**-Replace with description. 	
 		
 		
-		
+.. cpp:type: EMSCRIPTEN_SYMBOL(name)
+
+	**HamishW**-Replace with description.		

@@ -1,8 +1,8 @@
 .. _building-emscripten-from-source-using-the-sdk:
 
-===================================================================
-Building Emscripten from Source using the SDK (ready-for-review)
-===================================================================
+=============================================
+Building Emscripten from Source using the SDK
+=============================================
 
 The SDK can be used to fetch and build Emscripten from the latest sources in the Emscripten and :ref:`Fastcomp <LLVM-Backend>` repositories. This allows you to obtain new features and defect fixes as soon as they are pushed to Github. 
 
@@ -40,7 +40,7 @@ The :ref:`emsdk` controls which tool and SDK "targets" are installed and activat
 	
 .. todo:: **HamishW** Check whether the bug (https://github.com/juj/emsdk/issues/13) is fixed and remove the windows specific line if it is.
 
-If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` in the commands above.
+If you want to use the upstream stable branch ``master``, replace ``-incoming-`` with ``-master-`` in the commands above.
 
 .. warning:: On Windows there is `currently a bug <https://github.com/juj/emsdk/issues/13>`_ with the git package. Instead of using ``sdk-incoming-64bit``, you may need to enter: 
 
@@ -76,14 +76,14 @@ After installing the main repositories:
 
 	::
 	
-		#From your emsdk "root" (where emsdk is installed). Navigate to the LLVM clone:
+		# From your emsdk "root" (where emsdk is installed). Navigate to the LLVM clone:
 		cd clang/fastcomp/src
 		
 		# Add a git remote link to your LLVM repository fork
 		git remote add myremote https://github.com/mygituseraccount/emscripten-fastcomp.git
 		
 
-		#  Fetch the changes in the remote.
+		# Fetch the changes in the remote.
 		git fetch myremote
 		
 		# Checkout the code in your LLVM fork to replace the original repository code
@@ -101,7 +101,7 @@ After installing the main repositories:
 		git remote add myremote https://github.com/mygituseraccount/emscripten-fastcomp-clang.git
 		
 
-		#  Fetch the changes in the remote.
+		# Fetch the changes in the remote.
 		git fetch myremote
 		
 		# Checkout the code in your Clang fork to replace the original repository code
@@ -109,7 +109,7 @@ After installing the main repositories:
 
 #. Build Fastcomp:
 
-	#. The SDK builds *Fastcomp* into a branch and build specific directory — in this case **<emsdk root>/clang/fastcomp/build_incoming_64**. We need to build to the same location.
+	#. The SDK builds *Fastcomp* into a branch- and build-specific directory — in this case **<emsdk root>/clang/fastcomp/build_incoming_64**. We need to build to the same location.
 
 		::  
 		
@@ -130,7 +130,7 @@ After installing the main repositories:
 
 		- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
 		- On Linux you can find the number of cores by entering the following command on the terminal: ``cat /proc/cpuinfo | grep "^cpu cores" | uniq``.
-		- On Windows the number of cores is listed on the **Task Manager | Performance Tab**. YOu can open the *Task Manager* by entering **Ctrl + Shift + Esc** from the Desktop.
+		- On Windows the number of cores is listed on the **Task Manager | Performance Tab**. You can open the *Task Manager* by entering **Ctrl + Shift + Esc** from the Desktop.
 
 	#. Call *make* to build the sources, specifying the number of available cores:
 
@@ -145,7 +145,7 @@ After installing the main repositories:
 
 	::
 	
-		#From your emsdk "root" (where emsdk is installed). Navigate to the LLVM clone:
+		# From your emsdk "root" (where emsdk is installed). Navigate to the LLVM clone:
 		cd clang/fastcomp/src
 		
 		# Add a git remote link to your LLVM repository fork, then fetch changes
@@ -155,7 +155,7 @@ After installing the main repositories:
 		# Add a git remote link to your Clang repository fork.
 		git remote add myclangremote https://github.com/mygituseraccount/emscripten-fastcomp-clang.git
 		
-		#  the changes in the remote.
+		# Fetch the changes in the remote.
 		git fetch myllvmremote
 		
 		# Checkout the code in your LLVM fork to replace the original repository code

@@ -1,17 +1,17 @@
 .. _getting-started-emscripten-from-visual-studio:
 
-======================================================================
-Getting started using Emscripten from Visual Studio (ready-for-review)
-======================================================================
+===================================================
+Getting started using Emscripten from Visual Studio
+===================================================
 
-Windows Developers can develop, compile, and launch, their Emscripten projects from `Microsoft Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (only). This topic shows you how.
+Windows Developers can develop, compile, and launch their Emscripten projects from `Microsoft Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (only). This topic shows you how.
 
 .. warning:: Visual Studio 2011 and 2012 are not supported.
 
 Integrating Emscripten and Visual Studio
 ========================================
 
-Emscripten is integrated into Visual Studio (2010) using the :term:`vs-tool` plugin, which is is automatically deployed by the :term:`Windows NSIS Installer Emscripten SDK` if *Visual Studio 2010* is present on your system at install time (it is also possible to :ref:`manually integrate Emscripten into Visual Studio 2010 <emscripten-and-vs2010-manual-integration-on-windows>`).
+Emscripten is integrated into Visual Studio (2010) using the :term:`vs-tool` plugin, which is automatically deployed by the :term:`Windows NSIS Installer Emscripten SDK` if *Visual Studio 2010* is present on your system at install time (it is also possible to :ref:`manually integrate Emscripten into Visual Studio 2010 <emscripten-and-vs2010-manual-integration-on-windows>`).
 
 The *vs-tool* plugin adds an **Emscripten** configuration to the list of available *Solution Configurations* in Visual Studio. Activate this configuration for a solution/project to make Visual Studio run the project build through Emscripten, producing **.html** or **.js** output depending on the configured project properties.
 
@@ -38,7 +38,7 @@ To launch a project directly to a web browser from Visual Studio:
 
 This should launch the generated **.html** file to the browser you specified in ``EMCC_WEBBROWSER_EXE``.
 
-.. note:: Visual Studio occasionally opens a "Executable for Debug Session" dialog when you hit **Ctrl+F5**. This can be ignored by clicking **Yes** and then **No**, or simply by hitting **Esc** and then tapping **Ctrl+F5** again.
+.. note:: Visual Studio occasionally opens an "Executable for Debug Session" dialog when you hit **Ctrl+F5**. This can be ignored by clicking **Yes** and then **No**, or simply by hitting **Esc** and then tapping **Ctrl+F5** again.
 
 
 Specifying project compiler settings

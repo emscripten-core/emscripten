@@ -1,8 +1,8 @@
 .. _Tutorial:
 
-======================================
-Emscripten Tutorial (ready-for-review)
-======================================
+===================
+Emscripten Tutorial
+===================
 
 **Using Emscripten is, at a base level, fairly simple. This tutorial takes you through the steps needed to compile your first Emscripten examples from the command line. It also shows how to work with files and set the main compiler optimization flags.**
 
@@ -22,7 +22,7 @@ For the next section you will need to open a command prompt:
 - On Linux or Mac OS X, open a *Terminal*. 
 - On Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`, a command prompt that has been pre-configured with the correct system paths and settings to point to the :term:`active <Active Tool/SDK>` Emscripten tools. To access this prompt, type **Emscripten** in the Windows 8 start screen, and then select the **Emscripten Command Prompt** option.
 
-Navigate with the command prompt to the :term:`SDK root directory` for your target SDK. This is an SDK-version-specific folder below the :term:`emsdk root directory`: **<emsdk root directory>/emscripten/1.20.0/**.
+Navigate with the command prompt to the :term:`SDK root directory` for your target SDK. This is an SDK-version-specific folder below the :term:`emsdk root directory`, for example **<emsdk root directory>/emscripten/1.20.0/**.
 
 .. note:: The tests should be compiled from the "SDK Root" directory. This is required because some tests load files, and the locations of these files within Emscripten's virtual file system root is relative to the current directory at build time.  
 
@@ -74,7 +74,7 @@ Emscripten can also generate HTML for testing embedded JavaScript. To generate H
 
 Open the web page in a web browser. As you can see, the framework defines a text area for displaying the output of the ``printf()`` calls in the native code.
 
-The HTML output isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a Canvas element (on browsers that support it). For an example, build the `hello_world_sdl.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world_sdl.cpp>`_ test code and then refresh the browser: ::
+The HTML output isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a ``<canvas>`` element (on browsers that support it). For an example, build the `hello_world_sdl.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world_sdl.cpp>`_ test code and then refresh the browser: ::
 
     ./emcc tests/hello_world_sdl.cpp -o hello.html
 
@@ -89,7 +89,7 @@ Using files
 
 .. note:: Your C/C++ code can access files using the normal libc stdio API (``fopen``, ``fclose``, etc.) 
 
-JavaScript is usually run in the sandboxed environment of a web browser, without direct access to the local file system. Emscripten simulates a file system which you can access from your compiled C/C++ code using the normal libc stdio API.
+JavaScript is usually run in the sandboxed environment of a web browser, without direct access to the local file system. Emscripten simulates a file system that you can access from your compiled C/C++ code using the normal libc stdio API.
 
 Files that you want to access should be :ref:`preloaded <emcc-preload-file>` or :ref:`embedded <emcc-embed-file>` into the virtual file system. Preloading (or embedding) generates a virtual file system that corresponds to the file system structure at *compile* time, *relative to the current directory*. 
 	
@@ -109,12 +109,14 @@ The `hello_world_file.cpp <https://github.com/kripken/emscripten/blob/master/tes
 	
 	We compile the example from the directory "above" **tests** to ensure that virtual filesystem is created with the correct structure relative to the compile-time directory.
    
-The following command is used to preload the data file. The ``--preload-file`` option will automatically preload the file before running the compiled code. This is useful because loading data from the network cannot be done synchronously in browsers outside Web Workers. ::
+The following command is used to specify a data file to :ref:`preload <emcc-preload-file>` into Emscripten's virtual file system — before running any compiled code. This approach is useful because Browsers can only load data from the network asynchronously (except in Web Workers) while a lot of native code uses synchronous file system access. Preloading ensures that the asynchronous download of data files is complete (and the file is available) before compiled code has the opportunity to access the Emscripten file system.
 
-    emcc tests/hello_world_file.cpp -o hello.html --preload-file tests/hello_world_file.txt
+::
+
+    ./emcc tests/hello_world_file.cpp -o hello.html --preload-file tests/hello_world_file.txt
 	
 
-Open ``hello.html`` in the *Firefox web browser* to see the data from **hello_world_file.txt** being displayed. 
+Run the above command, then open **hello.html** in the *Firefox web browser* to see the data from **hello_world_file.txt** being displayed. 
 
 .. note:: Unfortunately *Chrome* and *Internet Explorer* do not support ``file://`` :term:`XHR` requests, and can't directly load the local file in which preloaded data is stored. For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``http://localhost:8080/hello.html``).
 
@@ -168,7 +170,7 @@ The generated code is copied into the the temp directory (**TEMP_DIR/emscripten_
 
 .. note:: You can use ``EMCC_DEBUG`` with :ref:`emcc <emccdoc>` as well (not just with the test runner). This tells *emcc* to save the internal code generation stages (much like ``emcc -v``).
 
-You can also specify ``EM_SAVE_DIR=1`` in the environment (this is a test suite specific feature) to save the temporary directory that the test runner users to the same place as mentioned in the previous paragraph. This is useful if the test being run creates temporary files.
+You can also specify ``EM_SAVE_DIR=1`` in the environment (this is a test suite-specific feature) to save the temporary directory that the test runner uses to the same place as mentioned in the previous paragraph. This is useful if the test being run creates temporary files.
 
 Note that **Node.js** cannot run all of the tests in the suite; if you care about running them all, you should get a recent trunk version of the `SpiderMonkey <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ shell.
 
@@ -192,6 +194,6 @@ This tutorial walked you through your first steps in calling Emscripten from the
 
 - This site has lots more information about :ref:`compiling and building projects <compiling-and-running-projects-index>`, :ref:`integrating your native code with the web environment <integrating-porting-index>`, :ref:`packaging your code <packaging-code-index>` and publishing.
 - The Emscripten test suite is a great place to look for examples of how to use Emscripten. For example, if you want to better understand how the *emcc* ``--pre-js`` option works, search for ``--pre-js`` in the test suite: the test suite is extensive and there are likely to be at least some examples.
-- To learn how to use Emscripten in advanced ways, read :ref:`src/settings.js <settings-js>` and :ref:`emcc <emccdoc>` which describe the compiler options, and :ref:`emscripten-h` which describes JavaScript-specific C APIs that your C/C++ programs can use when compiled with Emscripten.
+- To learn how to use Emscripten in advanced ways, read :ref:`src/settings.js <settings-js>` and :ref:`emcc <emccdoc>` which describe the compiler options, and :ref:`emscripten-h` for details on JavaScript-specific C APIs that your C/C++ programs can use when compiled with Emscripten.
 - Read the :ref:`FAQ`.
 - When in doubt, :ref:`get in touch <contact>`!

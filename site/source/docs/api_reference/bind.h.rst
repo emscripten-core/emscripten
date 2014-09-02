@@ -6,6 +6,8 @@ bind.h (under-construction)
 
 The C++ APIs in `bind.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/bind.h>`_ define (**HamishW**-Replace with description.)
 
+Guide documentation for this API can be found in :ref:`Embind`.
+
 .. contents:: Table of Contents
     :local:
     :depth: 1
@@ -18,8 +20,13 @@ Defines
 ------- 
 
 
-
 .. cpp:namespace: emscripten
+
+.. cpp:function:: EMSCRIPTEN_BINDINGS(name)
+
+	**HamishW** Add description.  Note that this is actually a define, but I've implemented it as a function, because that is how it behaves, and it allows me to have the name parameter as shown, which isn't possible on Sphinx type declaration.
+
+	:param name: **HamishW** Add description.
 
 
 .. cpp:type:: sharing_policy 
@@ -142,12 +149,39 @@ Functions
 	:returns: **HamishW** Add description.
 
 	
-.. cpp:function:: void function(const char* name, ReturnType (*fn)(Args...), Policies...)
+.. cpp:function:: void function()
+	
+	.. code-block:: cpp
+	
+		//prototype
+		template<typename ReturnType, typename... Args, typename... Policies>
+		void function(const char* name, ReturnType (*fn)(Args...), Policies...)
 
-	**HamishW** Add description.
+	A function to export to JavaScript, called from within an :cpp:func:`EMSCRIPTEN_BINDINGS` block.
+	
+	For example to export the function ``lerp()``
+	
+	.. code:: cpp
 
-	:param const char* name: **HamishW** Add description. 
-	:param ReturnType (*fn)(Args...): **HamishW** Add description. Note that ``ReturnType`` and ``Args`` are typenames (templated types).	
+		// quick_example.cpp
+		#include <emscripten/bind.h>
+
+		using namespace emscripten;
+
+		float lerp(float a, float b, float t) {
+			return (1 - t) * a + t * b;
+		}
+
+		EMSCRIPTEN_BINDINGS(my_module) {
+			function("lerp", &lerp);
+		}
+
+	
+	
+	**HamishW** Check description. Note that Sphinx could not cope with the prototype, so have moved it into the body above.
+
+	:param const char* name: The name of the function to export (e.g. ``"lerp"``)  **HamishW** Check description. 
+	:param ReturnType (*fn)(Args...): Function pointer address for the exported function (e.g. ``&lerp``).	
 	:param Policies...: **HamishW** Add description. Note that ``Policies`` is a typename (templated type).
 
 
@@ -266,6 +300,12 @@ Smart pointers
 
 .. cpp:type:: default_smart_ptr_trait
 
+	.. code-block:: cpp
+	
+		//prototype
+		template<typename PointerType>
+		struct default_smart_ptr_trait
+
 	**HamishW** Add description.
 	
 	.. cpp:function:: static sharing_policy get_sharing_policy()
@@ -282,23 +322,35 @@ Smart pointers
 		:param void* v: **HamishW** Add description. 
 		:returns: **HamishW** Add description.  
 
+		
 	.. cpp:function:: static PointerType* construct_null()
 	
 		**HamishW** Add description.
 		
 		:returns: **HamishW** Add description. Note that the ``PointerType`` returned is a typename (templated type).
 
-		
 
-.. cpp:type:: default_smart_ptr_trait
+
+.. cpp:type:: smart_ptr_trait
+
+	.. code-block:: cpp
+	
+		//prototype
+		template<typename PointerType>
+		struct smart_ptr_trait : public default_smart_ptr_trait<PointerType>	
 
 	**HamishW** Add description. Note from source is: // specialize if you have a different pointer type
 	
-	.. cpp:type:: element_type;
+	.. cpp:type:: PointerType::element_type element_type
+
+		.. code-block:: cpp
+		
+			//prototype
+			typedef typename PointerType::element_type element_type;
+
 	
 		**HamishW** Add description. A typedef for the PointerType::element_type, where ``PointerType`` is a typename (templated type).
 		
-
 		
 	.. cpp:function:: static element_type* get(const PointerType& ptr) 
 	
@@ -309,7 +361,13 @@ Smart pointers
 
 		
 
-.. cpp:type:: smart_ptr_trait
+.. cpp:type:: smart_ptr_trait<std::shared_ptr<PointeeType>>
+
+	.. code-block:: cpp
+	
+		//prototype
+		template<typename PointeeType>
+		struct smart_ptr_trait<std::shared_ptr<PointeeType>>
 
 	**HamishW** Add description.
 
@@ -396,7 +454,7 @@ Classes
 
 .. cpp:function:: EMSCRIPTEN_WRAPPER(T)   
 
-	**HamishW** Add description. Note that this is actually a define, but I've implemented it as a function, because that is how it behaves, and it allows me to have the T as shown, which isn't possible on Sphinx type declaration.
+	**HamishW** Add description. Note that this is actually a define, but I've implemented it as a function, because that is how it behaves, and it allows me to have the T as shown, which isn't possible on Sphinx type declaration. 
 	
 	:param T: **HamishW** Add description. 
 
@@ -530,9 +588,15 @@ Classes
 		:returns: **HamishW** Add description.
 		
 		
-	.. cpp:function:: EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const 
+	.. cpp:function:: const class_& smart_ptr_constructor() const
+		
+		.. code-block:: cpp
+
+			//prototype		
+			template<typename SmartPtr, typename... Args, typename... Policies>
+			EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const
 	
-		**HamishW** Add description. Note that this is a function template taking typenames ``SmartPtr``, ``... Args``, and ``... Policies``.
+		**HamishW** Add description. Note that Sphinx could NOT cope with the prototype, so have pulled it into the body of the text. 
 		
 		:param const char* smartPtrName: **HamishW** Add description. 
 		:param SmartPtr (*factory)(Args...): **HamishW** Add description. Note that ``Args`` and ``SmartPtr`` are template typenames for this function. 
@@ -697,11 +761,7 @@ Constants
 	:param const ConstantType& v: **HamishW** Add description. Note that ``ConstantType`` is a template typename for the function.
 
 	
-.. cpp:function:: EMSCRIPTEN_BINDINGS(name)
 
-	**HamishW** Add description.  Note that this is actually a define, but I've implemented it as a function, because that is how it behaves, and it allows me to have the name parameter as shown, which isn't possible on Sphinx type declaration.
-
-	:param name: **HamishW** Add description.
 
 
 	

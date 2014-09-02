@@ -1,12 +1,8 @@
 .. _emcmdprompt:
 
-=======================================================================
-Emscripten Windows Command Prompt (emcmdprompt.bat) (ready-for-review)
-=======================================================================
-
-
-Purpose
-============================================
+===================================================
+Emscripten Windows Command Prompt (emcmdprompt.bat)
+===================================================
 
 The *Emscripten Command Prompt* is used to call Emscripten tools from the command line on Windows.  
 
