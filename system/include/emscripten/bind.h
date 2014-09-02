@@ -262,19 +262,12 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename Signature>
-    typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn) {
+    Signature* select_overload(Signature* fn) {
         return fn;
     }
 
-    namespace internal {
-        template<typename ClassType, typename Signature>
-        struct MemberFunctionType {
-            typedef Signature (ClassType::*type);
-        };
-    }
-
     template<typename Signature, typename ClassType>
-    typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn)) {
+    auto select_overload(Signature (ClassType::*fn)) -> decltype(fn) {
         return fn;
     }
 
@@ -296,17 +289,14 @@ namespace emscripten {
         struct remove_class<R(C::*)(A...) const volatile> { using type = R(A...); };
 
         template<typename LambdaType>
-        struct CalculateLambdaSignature {
-            using type = typename std::add_pointer<
-                typename remove_class<
-                    decltype(&LambdaType::operator())
-                >::type
-            >::type;
-        };
+        using LambdaSignature = typename remove_class<
+            decltype(&LambdaType::operator())
+        >::type;
     }
 
+    // requires captureless lambda because implicitly coerces to function pointer
     template<typename LambdaType>
-    typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp) {
+    internal::LambdaSignature<LambdaType>* optional_override(const LambdaType& fp) {
         return fp;
     }
 
@@ -375,27 +365,10 @@ namespace emscripten {
             }
         };
 
-        template<typename... T>
-        struct SignatureString;
-
-        template<>
-        struct SignatureString<> {
-            char c = 0;
-        };
-
-        template<typename First, typename... Rest>
-        struct SignatureString<First, Rest...> {
-            constexpr SignatureString()
-                : c(SignatureCode<First>::get())
-            {}
-            char c;
-            SignatureString<Rest...> rest;
-        };
-
         template<typename Return, typename... Args>
         const char* getSignature(Return (*)(Args...)) {
-            static constexpr SignatureString<Return, Args...> sig;
-            return &sig.c;
+            static constexpr char str[] = { SignatureCode<Return>::get(), SignatureCode<Args>::get()..., 0 };
+            return str;
         }
     }
 
