@@ -2520,6 +2520,10 @@ window.close = function() {
   def test_pthread_create(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread'])
 
+  # Test that main thread can wait for a pthread to finish via pthread_join().
+  def test_pthread_join(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-lpthread'])
+
   # Test pthread_cancel() operation
   def test_pthread_cancel(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-lpthread'])
