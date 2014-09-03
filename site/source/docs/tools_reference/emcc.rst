@@ -8,7 +8,7 @@ The Emscripten Compiler Frontend (``emcc``) is used to call the Emscripten compi
 
 
 Command line syntax
-============================================
+===================
 
 ::
 

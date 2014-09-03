@@ -1,12 +1,10 @@
 .. _Optimizing-Code:
 
-=============================
-Optimizing Code (wiki-import)
-=============================
+============================================
+Optimizing Generated Code (wiki-import)
+============================================
 .. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
-Optimizing the Generated Code
-=============================
 
 By default Emscripten will compile code in a fairly safe way, and
 without all the possible optimizations. You should generally try this

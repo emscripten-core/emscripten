@@ -1,8 +1,12 @@
-==================================================
-Optimization (under-construction) 
-==================================================
+.. _optimizing-index:
 
-This section is for articles about optimization: both optimisations that developers can perform in their own code, and also by using the different Emscripten compiler options. 
+===============================
+Optimization (ready-for-review) 
+===============================
+
+The topics in this section explain how to optimize compiled code. 
+
+:ref:`Optimizing-Code` covers the various *compiler settings* you can use to reduce code size and get it to run faster. :ref:`Optimizing-the-source-code` describes source code changes that can improve the performance of Emscripten-compiled JavaScript.
 
 
 .. toctree::
@@ -11,6 +15,4 @@ This section is for articles about optimization: both optimisations that develop
    Optimizing-Code
    Optimizing-the-source-code
    
-
-
 

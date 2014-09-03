@@ -87,8 +87,8 @@ To build the Fastcomp code from source:
 		
 		make -j4
 	
+	.. note:: If the build completes successfully, *clang*, *clang++*, and a number of other files will be created in the release directory (**<LLVM root>/build/Release/bin**).
 
-		
 
 .. _llvm-update-compiler-configuration-file:
 			
