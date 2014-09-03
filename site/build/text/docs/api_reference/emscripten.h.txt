@@ -39,6 +39,9 @@ Table of Contents
 Inline assembly/JavaScript
 ==========================
 
+Guide material for the following APIs can be found in *Calling
+JavaScript from C/C++*.
+
 
 Defines
 -------
@@ -105,6 +108,9 @@ EM_ASM_DOUBLE_V(code)
 
 Calling JavaScript From C/C++
 =============================
+
+Guide material for the following APIs can be found in *Calling
+JavaScript from C/C++*.
 
 
 Function pointer types for callbacks
@@ -234,6 +240,9 @@ void emscripten_async_load_script(const char *script, em_callback_func onload,
 
 Browser Execution Environment
 =============================
+
+Guide material for the following APIs can be found in *Emscripten
+browser environment (wiki-import)*.
 
 
 Functions
@@ -919,7 +928,7 @@ EMSCRIPTEN_KEEPALIVE
    Forces LLVM to not dead-code-eliminate a function.
 
    This also exports the function, as if you added it to
-   "EXPORTED_FUNCTIONS".
+   *EXPORTED_FUNCTIONS*.
 
    For example:
 
@@ -1006,7 +1015,7 @@ void emscripten_call_worker(worker_handle worker, const char *funcname, char 
 
       * **funcname** (*const char**) -- The name of the function in
         the worker. The function must be a C function (so no C++ name
-        mangling), and must be exported (EXPORTED_FUNCTIONS).
+        mangling), and must be exported (*EXPORTED_FUNCTIONS*).
 
       * **data** (*char**) -- The address of a block of memory to
         copy over.
