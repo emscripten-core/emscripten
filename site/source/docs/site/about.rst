@@ -1,3 +1,5 @@
+.. _about-this-site:
+
 ===============
 About this site
 ===============
@@ -28,11 +30,12 @@ By the end of the project all articles should be published and all of this page 
 .. todo:: **HamishW** Delete this whole section at the end of the project. At that point there should only be HamishW markup for possible Todos. 
 	Note the search link immediately above too - this is to the kripken site and may need to change if the site moves.
 
+.. _about-this-site-search:
 
 Searching the site
 ==================
 
-Searching returns only topics that contain **all** the specified keywords. 
+Searching returns topics that contain **all** the specified keywords. 
 
 .. tip:: Always start by searching for *single* words like "interacting" or "compiling". Generally this will be enough to find the relevant document. If not, you can refine the search by adding additional terms. 
 

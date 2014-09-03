@@ -17,10 +17,10 @@ Emscripten uses existing/familiar APIs where possible (for example: :term:`SDL`)
 Inline assembly/JavaScript
 ==========================
 
+Guide material for the following APIs can be found in :ref:`interacting-with-code-call-javascript-from-native`.
+
 Defines
 -------
-
-.. todo:: **HamishW** This should be linked to section "Calling JavaScript From C/C++" when it exists.
 
 .. c:macro:: EM_ASM(...)
 
@@ -67,6 +67,8 @@ Defines
 Calling JavaScript From C/C++
 =============================
 
+Guide material for the following APIs can be found in :ref:`interacting-with-code-call-javascript-from-native`.
+
 Function pointer types for callbacks
 ------------------------------------
 
@@ -105,7 +107,6 @@ The following types are used to define function callback signatures used in a nu
 
 Functions
 ---------
-
 
 .. c:function:: void emscripten_run_script(const char *script)
 
@@ -163,10 +164,12 @@ Functions
 	
 Browser Execution Environment
 =============================
+
+Guide material for the following APIs can be found in :ref:`Emscripten-browser-environment`.
+
   
 Functions
 ---------
-   
    
 .. c:function:: void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop)
 
@@ -185,8 +188,6 @@ Functions
 	:param em_callback_func func: C function to set as main event loop.
 	:param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.	
 	:param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller. 
-	
-	.. todo:: **HamishW** link to "Emscripten Browser Environment" doc when imported. 
 
 
 .. c:function:: void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop)
@@ -199,8 +200,6 @@ Functions
 	:param void* arg: User-defined data passed to the main loop function, untouched by the API itself.
 	:param int fps: Number of frames per second at which the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.	
 	:param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller. 
-	
-	.. todo:: **HamishW** link to "Emscripten Browser Environment" doc when imported. 
 
 	
 .. c:function:: void emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg)
@@ -211,8 +210,7 @@ Functions
 	The function is added to the back of a queue of events to be blocked; the main loop will not run until all blockers in the queue complete.
 	
 	In the "counted" version, blockers are counted (internally) and ``Module.setStatus`` is called with some text to report progress (``setStatus`` is a general hook that a program can define in order to show processing updates).
-	
-	.. todo:: **HamishW** Remember to cross link to "browser execution environment doc or similar when it exists".
+
 	
 	.. note::
 		- Main loop blockers block the main loop from running, and can be counted to show progress. In contrast, ``emscripten_async_calls`` are not counted, do not block the main loop, and can fire at specific time in the future.
@@ -395,7 +393,6 @@ Typedefs
 		typedef void (*em_async_prepare_data_onload_func)(void*, const char*)	
 
 	
-
 
 Functions
 ---------
@@ -598,7 +595,7 @@ Compiling
 	
 	Forces LLVM to not dead-code-eliminate a function.
 	
-	This also exports the function, as if you added it to ``EXPORTED_FUNCTIONS``. 
+	This also exports the function, as if you added it to :ref:`EXPORTED_FUNCTIONS <faq-dead-code-elimination>`. 
 	
 	For example: ::
 
@@ -664,7 +661,7 @@ Functions
 	The called worker function can return data, by calling :c:func:`emscripten_worker_respond`. When the worker is called, if a callback was given it will be called with three arguments: a data pointer, a size, and an argument that was provided when calling :c:func:`emscripten_call_worker` (to more easily associate callbacks to calls). The data block defined by the data pointer and size behave like the data block in the worker function — it exists only during the callback.
 	
 	:param worker_handle worker: A handle to the worker to be called.
-	:param funcname: The name of the function in the worker. The function must be a C function (so no C++ name mangling), and must be exported (EXPORTED_FUNCTIONS). 
+	:param funcname: The name of the function in the worker. The function must be a C function (so no C++ name mangling), and must be exported (:ref:`EXPORTED_FUNCTIONS <faq-dead-code-elimination>`). 
 	:type funcname: const char*
 	:param char* data: The address of a block of memory to copy over.
 	:param int size: The size of the block of memory.
@@ -675,8 +672,6 @@ Functions
 		- *(void*)* : A pointer to ``arg`` (user defined data).
 
 	:param void* arg: An argument (user data) to be passed to the callback
-
-	.. todo:: **HamishW** — need to add link to ``EXPORTED_FUNCTIONS`` information. There are some links on this around.
 
 .. c:function:: void emscripten_worker_respond(char *data, int size)
 	void emscripten_worker_respond_provisionally(char *data, int size)

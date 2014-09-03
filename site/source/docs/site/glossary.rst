@@ -21,7 +21,10 @@ Glossary (under-construction)
 	SDL
 		`Simple DirectMedia Layer <https://www.libsdl.org/>`_ (SDL) is a cross-platform development library designed to provide low level access to audio, keyboard, mouse, joystick, and graphics hardware via OpenGL and Direct3D.
 	
-	
+	Typed Arrays Mode 2
+		*Typed Arrays Mode 2* is the name of the approach used for the current :ref:`emscripten-memory-model`. This is the only memory model supported by the (current) :ref:`Fastcomp <LLVM-Backend>` compiler and it is the default memory model for the :ref:`old compiler <original-compiler-core>`. 
+		
+		The original compiler supported a number of other memory models and compilation modes (see `wiki here <https://github.com/kripken/emscripten/wiki/Code-Generation-Modes>`_) but *Typed Arrays Mode 2* proved to have, among other benefits, the greatest support for arbitrary code.
 		
 		
 

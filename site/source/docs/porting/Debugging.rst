@@ -5,14 +5,14 @@ Debugging (wiki-import)
 =======================
 .. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
-Debugging
-=========
 
 For a quick overview of debugging Emscripten-generated code, see `these
 slides <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/20>`__
 
+.. comment:: Pulled from below, might be useful: If you think you may have hit an Emscripten codegen bug, there are a few tools to help you.
+
 Limitation or Bug?
-------------------
+==================
 
 Emscripten can compile almost but not all C/C++ code out there. Some
 limitations exist, see :ref:`CodeGuidelinesAndLimitations`.
@@ -27,7 +27,7 @@ Emscripten, such as:
 -  An actual mistake in Emscripten. Please report it!
 
 Optimizations
--------------
+=============
 
 Try to build without optimizations (no ``-O1`` etc.). If that has an
 effect, you can try to disable LLVM optimizations specifically using
@@ -38,7 +38,7 @@ various stages (output to ``/tmp/emscripten_temp``). ``EMCC_DEBUG=2``
 will emit more intermediate files (one for each JS optimizer pass).
 
 Useful Compilation Settings
----------------------------
+===========================
 
 As already mentioned, some useful settings appear in
 ``src/settings.js``. Change the settings there and then recompile the
@@ -47,6 +47,94 @@ should compile with ``ASSERTIONS``, and if that doesn't clear things up,
 then ``SAFE_HEAP``. ``ASSERTIONS`` adds various runtime checks, and
 ``SAFE_HEAP`` adds even more (slow) memory access checks like
 dereferencing 0 and memory alignment issues.
+
+Inspecting the Generated Code
+=============================
+
+See the slides linked to before for the ``-g`` options.
+
+Another thing you might find useful is to not run JS optimizations, to
+leave inline source code hints. You can try something like
+
+::
+
+    /emcc -O2 --js-opts 0 -g4 tests/hello_world_loop.cpp
+
+which applies only LLVM opts, and basic JS opts but not the JS
+optimizer, which retains debug info, giving
+
+::
+
+    function _main() {
+     var label = 0;
+     var $puts=_puts(((8)|0)); //@line 4 "tests/hello_world.c"
+     return 1; //@line 5 "tests/hello_world.c"
+    }
+
+Debug Info
+==========
+
+It can be very useful to compile the C/C++ files with ``-g`` flag to get
+debugging into - Emscripten will add source file and line number to each
+line in the generated code. Note, however, that attempting to interpret
+code compiled with ``-g`` using ``lli`` may cause crashes. So you may
+need to build once without ``-g`` for ``lli``, then build again with
+``-g``. Or, use ``tools/exec_llvm.py`` in Emscripten, which will run lli
+after cleaning out debug info.
+	
+The AutoDebugger
+===========================
+
+The 'nuclear option' when debugging is to use the **autodebugger tool**.
+The autodebugger will rewrite the LLVM bitcode so it prints out each
+store to memory. You can then run the exact same LLVM bitcode in the
+LLVM interpreter (lli) and JavaScript, and compare the output (``diff``
+is useful if the output is large). For how to use the autodebugger tool,
+see the ``autodebug`` test.
+
+The autodebugger can potentially find **any** problem in the generated
+code, so it is strictly more powerful than the ``CHECK_*`` settings and
+``SAFE_HEAP``. However, it has some limitations:
+
+-  The autodebugger generates a lot of output. Using ``diff`` can be
+   very helpful here.
+-  The autodebugger doesn't print out pointer values, just simple
+   numerical values. The reason is that pointer values change from run
+   to run, so you can't compare them. However, on the one hand this may
+   miss potential problems, and on the other, a pointer may be converted
+   into an integer and stored, in which case it would be shown but it
+   should be ignored. (You can modify this, look in
+   ``tools/autodebugger.py``.)
+
+One use of the autodebugger is to quickly emit lots of logging output.
+You can then take a look and see if something weird pops up. Another use
+is for regressions, see below.
+
+AutoDebugger Regression Workflow
+---------------------------------
+
+Fixing regressions is pretty easy with the autodebugger, using the
+following workflow:
+
+-  Compile the code using ``EMCC_AUTODEBUG=1`` in the environment.
+-  Compile the code using ``EMCC_AUTODEBUG=1`` in the environment,
+   again, but with a difference emcc setting etc., so that you now have
+   one build before the regression and one after.
+-  Run both versions, saving their output, then do a diff and
+   investigate that. Any difference is likely the bug (other false
+   positives could be things like the time, if something like
+   ``clock()`` is called, which differs slightly between runs).
+
+(You can also make the second build a native one using the llvm
+nativizer tool mentioned above - run it on the autodebugged .ll file,
+which EMCC\_DEBUG=1 will emit in ``/tmp/emscripten_temp``. This helps
+find bugs in general and not just regressions, but has the same issues
+with the nativizer tool mentioned earlier.)
+
+	
+
+Specific Issues
+=======================
 
 Memory Alignment Issues
 -----------------------
@@ -112,29 +200,6 @@ Another possible problem with function pointers is that what appears to
 be the wrong function is called. Again, ``SAFE_HEAP`` can help with this
 as it detects some possible errors with function table accesses.
 
-Inspecting the Generated Code
------------------------------
-
-See the slides linked to before for the ``-g`` options.
-
-Another thing you might find useful is to not run JS optimizations, to
-leave inline source code hints. You can try something like
-
-::
-
-    /emcc -O2 --js-opts 0 -g4 tests/hello_world_loop.cpp
-
-which applies only LLVM opts, and basic JS opts but not the JS
-optimizer, which retains debug info, giving
-
-::
-
-    function _main() {
-     var label = 0;
-     var $puts=_puts(((8)|0)); //@line 4 "tests/hello_world.c"
-     return 1; //@line 5 "tests/hello_world.c"
-    }
-
 Infinite loops
 --------------
 
@@ -145,74 +210,10 @@ infinite loop for a while (before the browser shows the slow script
 dialog and you quit it), you will see a block of code doing the same
 thing near the end of the profile.
 
-Debugging Emscripten Issues
-===========================
 
-If you think you may have hit an Emscripten codegen bug, there are a few
-tools to help you.
-
-The AutoDebugger
-----------------
-
-The 'nuclear option' when debugging is to use the **autodebugger tool**.
-The autodebugger will rewrite the LLVM bitcode so it prints out each
-store to memory. You can then run the exact same LLVM bitcode in the
-LLVM interpreter (lli) and JavaScript, and compare the output (``diff``
-is useful if the output is large). For how to use the autodebugger tool,
-see the ``autodebug`` test.
-
-The autodebugger can potentially find **any** problem in the generated
-code, so it is strictly more powerful than the ``CHECK_*`` settings and
-``SAFE_HEAP``. However, it has some limitations:
-
--  The autodebugger generates a lot of output. Using ``diff`` can be
-   very helpful here.
--  The autodebugger doesn't print out pointer values, just simple
-   numerical values. The reason is that pointer values change from run
-   to run, so you can't compare them. However, on the one hand this may
-   miss potential problems, and on the other, a pointer may be converted
-   into an integer and stored, in which case it would be shown but it
-   should be ignored. (You can modify this, look in
-   ``tools/autodebugger.py``.)
-
-One use of the autodebugger is to quickly emit lots of logging output.
-You can then take a look and see if something weird pops up. Another use
-is for regressions, see below.
-
-AutoDebugger Regression Workflow
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Fixing regressions is pretty easy with the autodebugger, using the
-following workflow:
-
--  Compile the code using ``EMCC_AUTODEBUG=1`` in the environment.
--  Compile the code using ``EMCC_AUTODEBUG=1`` in the environment,
-   again, but with a difference emcc setting etc., so that you now have
-   one build before the regression and one after.
--  Run both versions, saving their output, then do a diff and
-   investigate that. Any difference is likely the bug (other false
-   positives could be things like the time, if something like
-   ``clock()`` is called, which differs slightly between runs).
-
-(You can also make the second build a native one using the llvm
-nativizer tool mentioned above - run it on the autodebugged .ll file,
-which EMCC\_DEBUG=1 will emit in ``/tmp/emscripten_temp``. This helps
-find bugs in general and not just regressions, but has the same issues
-with the nativizer tool mentioned earlier.)
-
-Debug Info
-----------
-
-It can be very useful to compile the C/C++ files with ``-g`` flag to get
-debugging into - Emscripten will add source file and line number to each
-line in the generated code. Note, however, that attempting to interpret
-code compiled with ``-g`` using ``lli`` may cause crashes. So you may
-need to build once without ``-g`` for ``lli``, then build again with
-``-g``. Or, use ``tools/exec_llvm.py`` in Emscripten, which will run lli
-after cleaning out debug info.
 
 Additional Tips
----------------
+===========================
 
 You can also do something similar to what the autodebugger does,
 manually - modify the original source code with some ``printf()``\ s,
@@ -224,13 +225,13 @@ to get a stack trace there. There is also :js:func:`stackTrace` which emits a
 stack trace and also tries to demangle C++ function names.
 
 Useful Links
-------------
+===========================
 
 `Blogpost about reading compiler
 output <http://mozakai.blogspot.com/2014/06/looking-through-emscripten-output.html>`__
 
 Additional Help
----------------
+===========================
 
 Of course, you can also ask the Emscripten devs for help. :) See links
 to IRC and the Google Group on the main project page.

@@ -1,7 +1,7 @@
 .. _packaging-files:
 
 ==============================
-Packaging files (wiki-import)
+Packaging Files (wiki-import)
 ==============================
 
 The simplest thing to do is just tell emcc to package files for you,

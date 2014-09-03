@@ -1,11 +1,14 @@
-========================================================
-Multimedia and Graphics (under-construction) 
-========================================================
+.. _multimedia-and-graphics-index:
 
-This section is for articles about integrating graphics and audio with the Emscripten browser environment.
+=======================
+Multimedia and Graphics
+=======================
+
+This section contains articles about integrating graphics and audio with the Emscripten browser environment.
+
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    
    EGL-Support-in-Emscripten
    OpenGL-support

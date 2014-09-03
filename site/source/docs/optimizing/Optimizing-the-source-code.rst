@@ -1,12 +1,9 @@
 .. _Optimizing-the-source-code:
 
 ========================================
-Optimizing the source code (wiki-import)
+Optimizing Source Code (wiki-import)
 ========================================
 .. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
-
-Optimizing the source code
-==========================
 
 In general, normal C and C++ code will compile and run at good speeds.
 However, there are some fundamental differences between JavaScript and

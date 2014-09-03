@@ -6,7 +6,7 @@ Emscripten SDK Manager (emsdk)
 
 **The Emscripten SDK management script (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
 
-With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk*, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
+With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk* on Windows, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
 
 This document provides the command syntax, and a :ref:`set of guides <emsdk_howto>` explaining how to perform both common and advanced maintenance operations.
 
@@ -77,7 +77,7 @@ A particular installed SDK (or tool) can then be set as :term:`active <Active To
 .. _compiler-configuration-file:
 
 Emscripten Compiler Configuration File (.emscripten) 
-----------------------------------------------------
+====================================================
 
 The *Compiler Configuration File* stores the :term:`active <Active Tool/SDK>` configuration on behalf of the *emsdk*. The active configuration defines the specific set of tools that are used by default if Emscripten in called on the :ref:`Emscripten Command Prompt <emcmdprompt>`. 
 
@@ -85,12 +85,12 @@ The configuration file is named **.emscripten**. It is user-specific, and is loc
 
 The file should generally not be updated directly unless you're :ref:`building Emscripten from source <installing-from-source>`. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
 
-Below is a typical **.emscripten** file (created by *emsdk*), taken from a user's root directory on Windows. Note the variable names used to point to the different tools:
-
-.. todo:: **HamishW** When I've fully tested on ubuntu perhaps include the file from there (since Linux is the most used platform).
+Below are typical **.emscripten** files created by *emsdk*. Note the variable names used to point to the different tools:
 
 ::
 
+	# .emscripten file from Windows SDK
+	
 	import os
 	SPIDERMONKEY_ENGINE = ''
 	NODE_JS = 'node'
@@ -105,6 +105,20 @@ Below is a typical **.emscripten** file (created by *emsdk*), taken from a user'
 	JS_ENGINES = [NODE_JS]
 
 
+::
+
+	# .emscripten file from Linux SDK
+	
+	import os
+	SPIDERMONKEY_ENGINE = ''
+	NODE_JS = 'nodejs'
+	LLVM_ROOT='/home/ubuntu/emsdk_portable/clang/fastcomp/build_incoming_64/bin'
+	EMSCRIPTEN_ROOT='/home/ubuntu/emsdk_portable/emscripten/incoming'
+	V8_ENGINE = ''
+	TEMP_DIR = '/tmp'
+	COMPILER_ENGINE = NODE_JS
+	JS_ENGINES = [NODE_JS]
+	
 
 .. _emsdk_howto:
 

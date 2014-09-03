@@ -11,10 +11,11 @@ The topics in this section cover the main integration points that you need to co
    
 	guidelines/index
 	Emscripten-browser-environment
+	../compiling/Code-Generation-Modes
 	connecting_cpp_and_javascript/index
 	files/index
 	multimedia_and_graphics/index	
-	debugging/index
+	Debugging
 	
 	
    

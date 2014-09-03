@@ -38,9 +38,10 @@ Emscripten generates fast code! Its default output format is `asm.js <http://asm
 
 For a better understanding of just how how fast and fluid Emscripten-ported code can be, check out the `Dead Trigger 2 <http://beta.unity3d.com/jonas/DT2/>`_ and `Angrybots <http://beta.unity3d.com/jonas/AngryBots/>`_ demos above.
 
+.. _about-emscripten-toolchain:
 
 Emscripten Toolchain
-==================================
+====================
 
 A high level view of the Emscripten toolchain is given below. The main tool is the :ref:`emccdoc`. This is a drop-in replacement for a standard compiler like *gcc*. 
 
@@ -59,7 +60,7 @@ The whole toolchain is delivered in the :ref:`Emscripten SDK <sdk-download-and-i
 .. _about-emscripten-porting-code:
 
 Porting code to use Emscripten
-==================================
+==============================
 
 Emscripten support for **portable** C/C++ code is fairly comprehensive. Support for the C standard library, C++ standard library, C++ exceptions, etc. is very good. `SDL <https://www.libsdl.org/>`_ support is sufficient to run quite a lot of code. :ref:`OpenGL-support` support is excellent for OpenGL ES 2.0-type code, and acceptable for other types. 
 
