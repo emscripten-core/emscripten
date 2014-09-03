@@ -1137,9 +1137,9 @@ mergeInto(LibraryManager.library, {
 
   emscripten_set_element_css_size: function(target, width, height) {
     if (!target) {
-        target = Module['canvas'];
+      target = Module['canvas'];
     } else {
-        target = JSEvents.findEventTarget(target);
+      target = JSEvents.findEventTarget(target);
     }
 
     target.style.setProperty( "width", width + "px");
@@ -1148,13 +1148,19 @@ mergeInto(LibraryManager.library, {
 
   emscripten_get_element_css_size: function(target, width, height) {
     if (!target) {
-        target = Module['canvas'];
+      target = Module['canvas'];
     } else {
-        target = JSEvents.findEventTarget(target);
+      target = JSEvents.findEventTarget(target);
     }
 
-    {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
-    {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
+    if (target.getBoundingClientRect) {
+      var rect = target.getBoundingClientRect();
+      {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
+      {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
+    } else {
+      {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
+      {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
+    }
   },
 
   emscripten_create_worker: function(url) {
