@@ -16,6 +16,6 @@ Documentation Home (under-construction)
 	api_reference/index
 	tools_reference/index
 	site/index
-	temp-fragments/getting-started-emscripten-wikiEmscriptenSDK
+
 
    
