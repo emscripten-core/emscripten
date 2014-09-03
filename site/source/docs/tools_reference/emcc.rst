@@ -12,7 +12,9 @@ Command line syntax
 
 ::
 
-	./emcc [options] file...
+	emcc [options] file...
+
+(Note that you will need ``./emcc`` if you want to run emcc from your current directory.)
 
 The input file(s) can be either source code files that *Clang* can handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable form.
 
@@ -23,10 +25,10 @@ Arguments
 Most `clang options <http://linux.die.net/man/1/clang>`_ will work, as will `gcc options <https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html#Option-Summary>`_, for example: ::
 
 	# Display this information
-	./emcc --help		
+	emcc --help		
 		
 	Display compiler version information
-	./emcc --version
+	emcc --version
                   
 
 To see the full list of *Clang* options supported on the version of *Clang* used by Emscripten, run ``clang --help``.
@@ -267,7 +269,7 @@ Options that are modified or new in *emcc* are listed below:
 	
 	This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` (this gets intermediate files for the compiler’s various stages). It will also run Emscripten's internal sanity checks on the toolchain, etc. 
 	
-	.. tip:: ``./emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments. 
+	.. tip:: ``emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments. 
 	
 .. _emcc-clear-cache:
 	 
@@ -308,7 +310,7 @@ Options that are modified or new in *emcc* are listed below:
 	 
 	::
 	 
-		./emcc -c a.c -o dir/
+		emcc -c a.c -o dir/
  
        
 ``--valid_abspath path``
