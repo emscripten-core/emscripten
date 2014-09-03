@@ -1,8 +1,8 @@
-================================
-API Reference (ready-for-review) 
-================================
+=============
+API Reference
+=============
 
-This section lists Emscripten's public API, organised by header file. At very high level it consists of:
+This section lists Emscripten's public API, organised by header file. At a very high level it consists of:
 
 - :ref:`emscripten-h`: 
 	APIs for integrating with the browser environment.

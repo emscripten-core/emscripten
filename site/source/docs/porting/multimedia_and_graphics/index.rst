@@ -1,10 +1,10 @@
 .. _multimedia-and-graphics-index:
 
-==========================================
-Multimedia and Graphics (ready-for-review) 
-==========================================
+=======================
+Multimedia and Graphics
+=======================
 
-This section is for articles about integrating graphics and audio with the Emscripten browser environment.
+This section contains articles about integrating graphics and audio with the Emscripten browser environment.
 
 
 .. toctree::

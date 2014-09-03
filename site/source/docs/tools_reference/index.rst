@@ -1,10 +1,10 @@
 .. _tools-reference:
 
-==================================
-Tools Reference (ready-for-review) 
-==================================
+===============
+Tools Reference
+===============
 
-This section provides command line reference for the main tools in the :ref:`Emscripten toolchain <about-emscripten-toolchain>`:
+This section provides reference for the main tools in the :ref:`Emscripten toolchain <about-emscripten-toolchain>`:
 
 - :ref:`emccdoc` 
 	*Emcc* is used to call the Emscripten compiler from the command line. It is effectively a drop-in replacement for a standard compiler like *gcc* or *clang*.
