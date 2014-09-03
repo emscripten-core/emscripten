@@ -330,4 +330,8 @@ match_fail:
 	return matches;
 }
 
+#ifndef __EMSCRIPTEN__
+// XXX: EMSCRIPTEN: We don't need this alias.
+// Keeping it would have it aliasing to the C code when we typically use the JS version.
 weak_alias(vfscanf,__isoc99_vfscanf);
+#endif
