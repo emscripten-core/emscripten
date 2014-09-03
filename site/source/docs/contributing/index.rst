@@ -1,3 +1,5 @@
+.. _contributing-to-emscripten-index:
+
 ==========================
 Contributing to Emscripten
 ==========================
