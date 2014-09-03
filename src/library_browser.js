@@ -2,7 +2,7 @@
 
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
-  $Browser__deps: ['$PATH'],
+  $Browser__deps: ['$PATH', '$JSEvents'],
   $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
@@ -1135,16 +1135,26 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
   },
 
-  emscripten_set_canvas_css_size: function(width, height) {
-    var canvas = Module['canvas'];
-    canvas.style.setProperty( "width", width + "px");
-    canvas.style.setProperty("height", height + "px");
+  emscripten_set_element_css_size: function(target, width, height) {
+    if (!target) {
+        target = Module['canvas'];
+    } else {
+        target = JSEvents.findEventTarget(target);
+    }
+
+    target.style.setProperty( "width", width + "px");
+    target.style.setProperty("height", height + "px");
   },
 
-  emscripten_get_canvas_css_size: function(width, height) {
-    var canvas = Module['canvas'];
-    {{{ makeSetValue('width', '0', 'canvas.clientWidth', 'i32') }}};
-    {{{ makeSetValue('height', '0', 'canvas.clientHeight', 'i32') }}};
+  emscripten_get_element_css_size: function(target, width, height) {
+    if (!target) {
+        target = Module['canvas'];
+    } else {
+        target = JSEvents.findEventTarget(target);
+    }
+
+    {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
+    {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
   },
 
   emscripten_create_worker: function(url) {
