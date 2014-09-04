@@ -1,9 +1,10 @@
 .. _Emscripten-browser-environment:
 
+.. _emscripten-runtime-environment:
+
 ============================================
-Emscripten browser environment (wiki-import)
+Emscripten Runtime Environment (wiki-import)
 ============================================
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
 The browser environment is different than the environment a normal C/C++ application expects. The main differences are how input and output work, and the fact that the main loop must be asynchronous.
 
@@ -64,4 +65,25 @@ Notes
 =====
 
 - ``SDL_QUIT`` is tricky to implement in browsers. The current Emscripten implementation of it will work if you use :c:func:`emscripten_set_main_loop`: As the page is shut, it will force a final direct call to the main loop, giving it a chance to notice the ``SDL_QUIT`` event. So if you do not use a main loop, you will not notice it - your app will close before your next event handling. Note also that there are limitations on what you can do as the page shuts (in onunload), some actions like showing alerts are banned by browsers.
+
+
+.. _emscripten-memory-model:
+
+Emscripten memory model
+=======================
+
+Emscripten's memory model is known as :term:`Typed Arrays Mode 2`. It represents memory using a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.)  
+
+.. note:: *Typed Arrays Mode 2* is the *only* memory model supported by the :ref:`Fastcomp <LLVM-Backend>` compiler, and it is the *default* memory model for the :ref:`old compiler <original-compiler-core>`. 
+
+	Compared to other models tried by the project, it can be used for a broad range of arbitrary compiled code, and is relatively fast.  
+
+The model lays out items in memory in the same way as with normal C and C++, and as a result it uses the same amount of memory. 
+
+We currently align the stack to 4-byte boundaries (this means that reading 8-byte values is slower as they must be read in two parts and then combined).
+
+This model allows you to use code that violates the load-store consistency assumption. Since the different views show the same data, you can (say) write a 32-bit integer, then read a byte from the middle, and it will work just like in C or C++.
+
+
+.. note:: ``SAFE_HEAP`` ignores load-store consistency violations, since they don't matter. Alignment of reads and writes will be checked, which is important since reading unaligned values can fail.
 
