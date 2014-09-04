@@ -219,9 +219,9 @@ void emscripten_async_load_script(const char *script, em_callback_func onload,
    This integrates with the run dependencies system, so your script
    can call "addRunDependency" multiple times, prepare various
    asynchronous tasks, and call "removeRunDependency" on them; when
-   all are complete (or there were no run dependencies to begin with),
-   "onload" is called. An example use for this is to load an asset
-   module, that is, the output of the file packager.
+   all are complete (or if there were no run dependencies to begin
+   with), "onload" is called. An example use for this is to load an
+   asset module, that is, the output of the file packager.
 
    Parameters:
       * **script** (*const char**) -- The script to evaluate.
@@ -242,7 +242,7 @@ Browser Execution Environment
 =============================
 
 Guide material for the following APIs can be found in *Emscripten
-browser environment (wiki-import)*.
+Runtime Environment (wiki-import)*.
 
 
 Functions
@@ -261,17 +261,16 @@ void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_in
    mechanism to call the main loop function. This is **HIGHLY**
    recommended if you are doing rendering, as the browser’s
    "requestAnimationFrame" will make sure you render at a proper
-   smooth rate that lines up with the the browser and monitor in a
-   proper way. (If you do not render at all in your application, then
-   you should pick a specific frame rate that makes sense for your
-   code.)
+   smooth rate that lines up properly with the the browser and
+   monitor. If you do not render at all in your application, then you
+   should pick a specific frame rate that makes sense for your code.
 
    If "simulate_infinite_loop" is true, the function will throw an
    exception in order to stop execution of the caller. This will lead
    to the main loop being entered instead of code after the call to
    "emscripten_set_main_loop()" being run, which is the closest we can
    get to simulating an infinite loop (we do something similar in
-   "glutMainLoop" in GLUT). If this parameter is "false", then the
+   glutMainLoop in GLUT). If this parameter is "false", then the
    behavior is the same as it was before this parameter was added to
    the API, which is that execution continues normally. Note that in
    both cases we do not run global destructors, "atexit", etc., since
