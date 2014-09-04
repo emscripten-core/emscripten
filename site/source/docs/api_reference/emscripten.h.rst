@@ -165,7 +165,7 @@ Functions
 Browser Execution Environment
 =============================
 
-Guide material for the following APIs can be found in :ref:`Emscripten-browser-environment`.
+Guide material for the following APIs can be found in :ref:`emscripten-runtime-environment`.
 
   
 Functions

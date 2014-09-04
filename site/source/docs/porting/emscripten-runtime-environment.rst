@@ -1,5 +1,3 @@
-.. _Emscripten-browser-environment:
-
 .. _emscripten-runtime-environment:
 
 ============================================

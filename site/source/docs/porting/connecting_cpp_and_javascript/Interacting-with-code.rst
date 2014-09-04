@@ -33,7 +33,7 @@ The JavaScript methods for calling compiled C functions are efficient, but canno
 
 This article explains each of the methods listed above, or provides links to more detailed information.
 
-.. note:: For information on how compiled code interacts with the browser environment, see :ref:`Emscripten-Browser-Environment`. For file system related manners, see the :ref:`Filesystem-Guide`. 
+.. note:: For information on how compiled code interacts with the browser environment, see :ref:`emscripten-runtime-environment`. For file system related manners, see the :ref:`Filesystem-Guide`. 
 
 
 .. _interacting-with-code-ccall-cwrap:

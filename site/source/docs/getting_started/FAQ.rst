@@ -119,7 +119,7 @@ Graphical C++ apps typically have an infinite main loop in which event handling,
 
 Apps that use an infinite main loop should be re-coded to put the actions for a single iteration of the loop into a single "finite" function. In the native build this function can be run in an infinite loop as before. In the Emscripten build it is set as the :ref:`main loop function <faq-how-run-event-loop>` and will be called by the browser at a specified frequency.
 
-There is more information on this topic in :ref:`Emscripten-Browser-Environment`.
+There is more information on this topic in :ref:`emscripten-runtime-environment`.
 
 
 .. _faq-how-run-event-loop:
@@ -127,7 +127,7 @@ There is more information on this topic in :ref:`Emscripten-Browser-Environment`
 How do I run an event loop?
 ===========================
 
-To run a C function repeatedly, use :c:func:`emscripten_set_main_loop` (this is discussed in :ref:`Emscripten-browser-environment`). The related functions in :ref:`emscripten.h <emscripten-h-browser-execution-environment>` are also useful, allowing you to add events that block the main loop, etc. 
+To run a C function repeatedly, use :c:func:`emscripten_set_main_loop` (this is discussed in :ref:`emscripten-runtime-environment`). The related functions in :ref:`emscripten.h <emscripten-h-browser-execution-environment>` are also useful, allowing you to add events that block the main loop, etc. 
 
 To respond to browser events use the SDL API in the normal way. There are examples in the SDL tests (search for SDL in **tests/runner.py**).
 
