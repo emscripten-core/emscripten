@@ -312,10 +312,10 @@ Stack trace
 
 
 
-Type accessors for Typed Arrays Mode 2
-==========================================
+Type accessors for the memory model
+===================================
 
-When using :ref:`typed-arrays-mode-2` a typed array buffer (``ArrayBuffer``) is used to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.
+The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.
 
 
 .. js:data:: HEAP8

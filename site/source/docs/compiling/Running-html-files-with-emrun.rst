@@ -4,12 +4,10 @@
 Running html files with emrun (wiki-import)
 ===========================================
 
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
-
-When you target the web with emscripten via the ``-o out.html`` directive to emcc, emscripten will generate one or more outfiles with suffixes ``.html, .js, and .data``. Not all web browsers can run the .html file via a ``file://`` URL by double-clicking the html file because of default browser CORS rules (in Chrome, Opera and IE), but you need to deploy the files to a web server first. To solve this, you can use the ``emrun`` command line tool to run your page in a locally launched web server.
+When you target the web with Emscripten via the ``-o out.html`` directive to emcc, Emscripten will generate one or more outfiles with suffixes ``.html, .js, and .data``. Not all web browsers can run the .html file via a ``file://`` URL by double-clicking the html file because of default browser CORS rules (in Chrome, Opera and IE), but you need to deploy the files to a web server first. To solve this, you can use the ``emrun`` command line tool to run your page in a locally launched web server.
 
 Features
---------
+========
 
 ``emrun`` enables the following uses:
 
@@ -22,18 +20,18 @@ Features
 To summarize, ``emrun`` is the tool to use for all kinds of command-line automation needs, for example when integrating your unit tests to run in an Emscripten environment in your project build farm.
 
 Quick how-to
-------------
+============
 
 Using ``emrun`` is simple. Here is how:
 
-1. Rebuild your emscripten application and add the ``--emrun`` linker flag. This flag injects a piece of code in the generated ``Module`` that is needed to enable the ``stdout``, ``stderr`` and ``exit()`` capture to work. If you skip this step, you can still run any .html file with ``emrun``, but then the capture will just not work.
+1. Rebuild your Emscripten application and add the ``--emrun`` linker flag. This flag injects a piece of code in the generated ``Module`` that is needed to enable the ``stdout``, ``stderr`` and ``exit()`` capture to work. If you skip this step, you can still run any .html file with ``emrun``, but then the capture will just not work.
 
 2. Open a terminal, navigate to the build output directory, and run ``emrun page.html``. This will spawn a new web server to host the page and launch your default system browser to visit that page. ``emrun`` will block until the page calls ``exit(returncode);``, after which it will quit back to shell with the provided process exit code.
 
 That's all!
 
 Choosing the browser to run
----------------------------
+===========================
 
 ``emrun`` provides the ``--browser <filename-or-browser-alias>`` command line option that allows specifying which browser to run. If that flag is not specified, the default system browser is launched. If the parameter to ``--browser`` points to an existing file, then that file is spawned
 as the browser process to run. Additionally, to simplify setup, one can pass predefined alias names of known browsers to ``--browser`` to launch a specific browser. To enumerate the list of detected browser aliases on your system, run the ``--list_browsers`` command, like follows:
@@ -62,7 +60,7 @@ Then for example to run Firefox Nightly, you would launch ``emrun --browser fire
 If you just want to launch a web server, similar to how ``python -m SimpleHTTPServer`` operates, you can pass the ``--no_browser`` command line flag, in which case ``emrun`` will not spawn a browser at all, but simply runs a web server.
 
 Controlling web server operation
---------------------------------
+================================
 
 ``emrun`` spawns its own web server to host the target html file. You should note the following security implications:
 
@@ -81,7 +79,7 @@ The following command line flags control how ``emrun`` spawns the web server:
 - ``--timeout_returncode <code>``: Specifies the process return code that ``emrun`` quits with if a page run timeout occurs. By default ``99999``.
 
 Controlling log output
-----------------------
+======================
 
 The following command line flags affect messaging to logs:
 
@@ -94,7 +92,7 @@ The following command line flags affect messaging to logs:
 -  ``--no_emrun_detect``: Hides the friendly reminder message that warns if target .html file is detected to not have been built with ``--emrun``.
 
 Cleaning up after the run
--------------------------
+=========================
 
 Especially when automating operation for build servers, it is important to be able to clean up properly after each run. The following command line flags enable this:
 
@@ -104,7 +102,7 @@ Especially when automating operation for build servers, it is important to be ab
 It is important to understand that these operations can cause data loss, since these actions cause processes to be forcibly terminated. Do not pass these flags when running a browser that could have multiple tabs or windows open that you do other work in, since they will all be wiped out. You were warned.
 
 Running web pages on an Android device
---------------------------------------
+======================================
 
 It is also possible to use ``emrun`` to automate web browser runs on Android. For that to work, you need 
 

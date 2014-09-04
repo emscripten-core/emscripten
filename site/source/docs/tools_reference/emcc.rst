@@ -120,13 +120,7 @@ Options that are modified or new in *emcc* are listed below:
 	
 	.. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
 	
-``--typed-arrays <mode>``
-	Set the :ref:`typed array mode <typed-arrays>`. Possible values are:
-	 
-		- ``0``: No typed arrays.
-		- ``1``: Parallel typed arrays.
-		- ``2``: Shared (C-like) typed arrays (default).
-		
+	
 ``--js-opts <level>``
 	Enables JavaScript optimizations. Possible ``level`` values are:
 	 

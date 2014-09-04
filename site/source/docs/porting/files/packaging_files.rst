@@ -4,13 +4,13 @@
 Packaging Files (wiki-import)
 ==============================
 
-The simplest thing to do is just tell emcc to package files for you,
+The simplest thing to do is just tell :ref:`emcc <emccdoc>` to package files for you,
 
 ::
 
     emcc file.cpp -o file.html --preload-file asset_dir
 
-That command will generate file.html, and alongside it file.data which will contain all the files in ``asset_dir/``. You can then distribute your application with just those two files.
+That command will generate file.html, and alongside it file.data which will contain all the files in **asset_dir/**. You can then distribute your application with just those two files.
 
 Assets can also be embedded directly into the html file:
 
@@ -57,7 +57,7 @@ This will make **../res/gen123.png** available as **/main.png** in Javascript.
 Monitoring Read Files
 =====================
 
-It is important to only preload the files your app actually needs, to reduce download size and improve startup speed. There is an option to log all the actually used files during runtime, which you can use to figure out which files your app actually needs. To use it, define ``logReadFiles`` on the Module object. ``Module.printErr`` will then be called on each file that is read from, so you can define that function to log to a convenient place.
+It is important to only preload the files your app actually needs, to reduce download size and improve startup speed. There is an option to log all the actually used files during runtime, which you can use to figure out which files your app actually needs. To use it, define ``logReadFiles`` on the ``Module`` object. ``Module.printErr`` will then be called on each file that is read from, so you can define that function to log to a convenient place.
 
 You can also look at ``FS.readFiles``, which will be an object whose keys are all the files that were read from. This might be easier to use than logging. Note that you can also modify the object, even remove it entirely. This can be useful in order to see which files are read between two points in time in your app, for example.
 
