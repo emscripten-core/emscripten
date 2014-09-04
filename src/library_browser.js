@@ -2,7 +2,7 @@
 
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
-  $Browser__deps: ['$PATH', '$JSEvents'],
+  $Browser__deps: ['$PATH'],
   $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
@@ -1135,6 +1135,8 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
   },
 
+
+  emscripten_set_element_css_size__deps: ['$JSEvents'],
   emscripten_set_element_css_size: function(target, width, height) {
     if (!target) {
       target = Module['canvas'];
@@ -1146,6 +1148,7 @@ mergeInto(LibraryManager.library, {
     target.style.setProperty("height", height + "px");
   },
 
+  emscripten_get_element_css_size__deps: ['$JSEvents'],
   emscripten_get_element_css_size: function(target, width, height) {
     if (!target) {
       target = Module['canvas'];
