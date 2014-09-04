@@ -66,6 +66,6 @@ Emscripten support for **portable** C/C++ code is fairly comprehensive. Support 
 
 There are differences between the native and `browser environments <emscripten-runtime-environment>`_, which mean some changes usually need to be made to the native code. That said, many applications will only need to change the way they define their main loop, and also modify their :ref:`file handling <Filesystem-Guide>` to adapt to the limitations of the browser/JavaScript. 
 
-There are also limitations that can make some code easier to port — read :ref:`CodeGuidelinesAndLimitations` to determine where you may need to spend more effort.
+There are also limitations that can make some code easier to port — read :ref:`code-portability-guidelines` to determine where you may need to spend more effort.
 
 

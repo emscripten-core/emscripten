@@ -3,7 +3,6 @@
 ===================================
 File System Overview (wiki-import)
 ===================================
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
 
 .. comment Perhaps integrate this: "Native code and JavaScript have significantly expectations with respect to file handling — native code expects to be able to access files on the local machine using synchronous APIs, while JavaScript provides asynchronous file system APIs (outside of web workers) and does not have direct access to the host file system when running in a browser."
 

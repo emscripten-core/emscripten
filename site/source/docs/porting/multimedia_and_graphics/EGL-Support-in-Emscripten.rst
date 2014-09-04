@@ -4,8 +4,6 @@
 EGL Support in Emscripten (wiki-import)
 =======================================
 
-.. note:: This article was migrated from the wiki (Fri, 25 Jul 2014 04:21) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!
-
 Khronos Group publishes a specification called EGL, which is an API that handles (among other tasks) graphics context creation, rendering surface management, and interop between different Khronos Group graphics APIs (OpenGL, OpenGL ES, OpenVG). For detailed information, see the `Khronos EGL webpage <http://www.khronos.org/egl>`_.
 
 Currently, EGL is not very widely used across operating systems/graphics driver vendors. The most notable adoption is in the Android architecture, where EGL is the primary method for creating rendering contexts for OpenGL ES 1&2 when using the Android NDK. Also, Mesa has an implementation of the EGL specification in its `graphics driver <http://www.mesa3d.org/egl.html>`_.
@@ -44,7 +42,7 @@ Perform the following steps to create a GLES2 context using EGL:
 After these steps, you have a set of EGL objects ``EGLDisplay``, ``EGLConfig``, ``EGLSurface`` and ``EGLContext`` that represent the main GLES2 rendering context.
 
 Cleanup
---------------
+-------
 
 The sequence to clean up at deinitialization is as follows:
 
@@ -55,7 +53,7 @@ The sequence to clean up at deinitialization is as follows:
 #. Delete the native rendering window. This step does not apply for Emscripten.
 
 Sample Code
---------------
+------------
 
 Example code for using EGL to initialize a WebGL context can be found in the sample applications in the `emscripten/test/glbook <https://github.com/kripken/emscripten/tree/master/tests/glbook>`_ directory, more specifically in the file `esUtil.c <https://github.com/kripken/emscripten/blob/master/tests/glbook/Common/esUtil.c>`_.
 
@@ -71,14 +69,14 @@ Fully Implemented
 
 - ``eglSwapBuffers``: Implemented, but this function cannot really control the swap behavior under WebGL. Calling this function is optional under Emscripten. In WebGL, the contents of the display are always presented to the screen only after the code yields its execution back to the browser, that is, when you return from the tick callback handler you passed to :c:func:`emscripten_set_main_loop`. The ``eglSwapBuffers`` function can however still be used to detect when a GL context loss event occurs.
 
-- ``eglGetDisplay``: Implemented according to the spec. Emscripten does not utilize multiple EGLNativeDisplayType objects, so pass in EGL_DEFAULT_DISPLAY here. Emscripten currently actually ignores any value passed in here for linux emulation purposes, but you should not rely on this in the future.
+- ``eglGetDisplay``: Implemented according to the spec. Emscripten does not utilize multiple EGLNativeDisplayType objects, so pass in ``EGL_DEFAULT_DISPLAY`` here. Emscripten currently actually ignores any value passed in here for Linux emulation purposes, but you should not rely on this in the future.
 
 - ``eglGetError``: Implemented according to the spec. Important! According to the spec, eglGetError only reports the single most recent error, and not list of previous errors, so don't call this function in a loop like glGetError is called!
 
 Partially Implemented
 ----------------------
 
-- ``eglChooseConfig``: Implemented as a stub, but this function does not do searching/filtering, and is at the moment identical to eglGetConfigs (`issue #643 <https://github.com/kripken/emscripten/issues/643>`_).
+- ``eglChooseConfig``: Implemented as a stub, but this function does not do searching/filtering, and is at the moment identical to ``eglGetConfigs`` (`issue #643 <https://github.com/kripken/emscripten/issues/643>`_).
 
 - ``eglGetConfigAttrib``: Implemented. Querying for the attributes ``EGL_BUFFER_SIZE``, ``EGL_ALPHA_SIZE``, ``EGL_BLUE_SIZE``, ``EGL_GREEN_SIZE``, ``EGL_RED_SIZE``, ``EGL_DEPTH_SIZE`` and ``EGL_STENCIL_SIZE`` currently return hardcoded default values (`issue #644 <https://github.com/kripken/emscripten/issues/644>`_). The attributes ``EGL_MIN_SWAP_INTERVAL`` and ``EGL_MAX_SWAP_INTERVAL`` don't currently have any function. Instead, call :c:func:`emscripten_set_main_loop` to specify the main loop update rate.
 

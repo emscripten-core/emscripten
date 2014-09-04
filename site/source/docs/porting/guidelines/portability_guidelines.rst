@@ -1,4 +1,4 @@
-.. _CodeGuidelinesAndLimitations:
+.. _code-portability-guidelines:
 
 ======================
 Portability Guidelines
