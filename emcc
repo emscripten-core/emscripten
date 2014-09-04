@@ -930,6 +930,12 @@ try:
       logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
       shared.Settings.ASM_JS = 2
 
+  if shared.Settings.POINTER_MASKING:
+    logging.warning('POINTER_MASKING is experimental')
+    size = shared.Settings.POINTER_MASKING + 1 # size plus 1 should be a power of 2
+    if size & (size-1) != 0:
+      raise Exception('POINTER_MASKING value must be a power of 2 minus 1')
+
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
     shared.Settings.TARGET_X86 = 1
@@ -1415,6 +1421,8 @@ try:
         js_optimizer_queue += ['registerizeHarder']
       else:
         js_optimizer_queue += ['registerize']
+
+    if shared.Settings.POINTER_MASKING and shared.Settings.ASM_JS: js_optimizer_queue += ['pointerMasking']
 
     if opt_level >= 2:
       if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:

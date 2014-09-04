@@ -5139,15 +5139,27 @@ return malloc(size);
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
+    if self.emcc_args: self.emcc_args = ['-g1'] + self.emcc_args
+
+    total_memory = Settings.TOTAL_MEMORY
+
     for aggro in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args else [0]):
-      print aggro
-      Settings.AGGRESSIVE_VARIABLE_ELIMINATION = aggro
-      self.do_run('',
-                  'hello lua world!\n17\n1\n2\n3\n4\n7',
-                  args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
-                  includes=[path_from_root('tests', 'lua')],
-                  output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
+      for masking in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args and os.environ.get('EMCC_FAST_COMPILER') != '0' else [0]):
+        Settings.AGGRESSIVE_VARIABLE_ELIMINATION = aggro
+        Settings.POINTER_MASKING = masking
+        Settings.TOTAL_MEMORY = total_memory
+        if masking:
+          total = 2
+          while 2*total <= total_memory:
+            total *= 2
+          Settings.TOTAL_MEMORY = total
+        print aggro, masking
+        self.do_run('',
+                    'hello lua world!\n17\n1\n2\n3\n4\n7',
+                    args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
+                    libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                    includes=[path_from_root('tests', 'lua')],
+                    output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
   def get_freetype(self):
     Settings.DEAD_FUNCTIONS += ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_']

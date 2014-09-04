@@ -1893,6 +1893,8 @@ int f() {
        ['asm', 'minifyWhitespace', 'last']),
       (path_from_root('tools', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tools', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
        ['asm', 'aggressiveVariableElimination']),
+      (path_from_root('tools', 'test-js-optimizer-pointerMask.js'), open(path_from_root('tools', 'test-js-optimizer-pointerMask-output.js')).read(),
+       ['pointerMasking']),
     ]:
       print input
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]

@@ -186,6 +186,8 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
+var POINTER_MASKING = 0; // Whether to mask pointers (experimental optimization trying to reduce VM bounds checks).
+                         // When using this option, TOTAL_MEMORY must be a power of 2.
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear

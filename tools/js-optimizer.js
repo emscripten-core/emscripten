@@ -367,7 +367,7 @@ function removeUnneededLabelSettings(ast) {
 function parseHeap(name, out) {
   if (name.substr(0, 4) != 'HEAP') return false;
   out.unsigned = name[4] === 'U';
-  out.bits = parseInt(name.substr(out.unsigned ? 5 : 4));
+  out.bits = parseInt(name.substr(out.unsigned || name[4] === 'F' ? 5 : 4));
   return true;
 }
 
@@ -5540,6 +5540,51 @@ function optimizeFrounds(ast) {
   traverseChildren(ast, fix);
 }
 
+// Optimize heap expressions into   HEAP32[(x&m)+c>>2]    where c is a small aligned constant, and m guarantees the pointer is without range+aligned
+function pointerMasking(ast) {
+  var MAX_SMALL_OFFSET = 32;
+  var parseHeapTemp = { unsigned: false, bits: 0 };
+
+  traverse(ast, function(node, type) {
+    if (type === 'sub' && node[1][0] === 'name' && node[1][1][0] === 'H' && node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
+      var addee = node[2][2];
+      if (!(addee[0] === 'binary' && addee[1] === '+')) return;
+      var shifts = node[2][3][1];
+      if (!parseHeap(node[1][1], parseHeapTemp)) return;
+      if (parseHeapTemp.bits !== 8*Math.pow(2, shifts)) return;
+      // this is an HEAP[U]N[x + y >> n] expression. gather up all the top-level added items, seek a small constant amongst them
+      var addedElements = [];
+      function addElements(node) {
+        if (node[0] === 'binary' && node[1] === '+') {
+          addElements(node[2]);
+          addElements(node[3]);
+        } else {
+          addedElements.push(node);
+        }
+      }
+      addElements(addee);
+      assert(addedElements.length >= 2);
+      for (var i = 0; i < addedElements.length; i++) {
+        var element = addedElements[i];
+        if (element[0] === 'num') {
+          var c = element[1];
+          if (c < MAX_SMALL_OFFSET && ((c >> shifts) << shifts) === c) {
+            // this is a small aligned offset, we are good to go. gather the others, and finalize
+            addedElements.splice(i, 1);
+            var others = addedElements[0];
+            for (var j = 1; j < addedElements.length; j++) {
+              others = ['binary', '+', others, addedElements[j]];
+            }
+            others = ['binary', '&', others, ['name', 'MASK' + shifts]];
+            node[2][2] = ['binary', '+', others, element];
+            return;
+          }
+        }
+      }
+    }
+  });
+}
+
 // Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
@@ -5687,6 +5732,7 @@ var passes = {
   outline: outline,
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
+  pointerMasking: pointerMasking,
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },

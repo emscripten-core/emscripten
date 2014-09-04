@@ -1159,6 +1159,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
             if settings.get('SIDE_MODULE'): init = '(H_BASE+' + str(init) + ')|0'
             asm_global_vars += '  var %s=%s;\n' % (key, str(init))
 
+      if settings['POINTER_MASKING']:
+        for i in [0, 1, 2, 3]:
+          asm_global_vars += '  var MASK%d=%d;\n' % (i, (settings['TOTAL_MEMORY']-1) & (~((2**i)-1)));
+
       # sent data
       the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
       sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
