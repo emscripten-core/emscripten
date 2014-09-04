@@ -364,6 +364,13 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Happens after elimination, which opens up many of these simplification opportunities.
 
+function parseHeap(name, out) {
+  if (name.substr(0, 4) != 'HEAP') return false;
+  out.unsigned = name[4] === 'U';
+  out.bits = parseInt(name.substr(out.unsigned ? 5 : 4));
+  return true;
+}
+
 var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
 var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=', '!==');
 
@@ -485,14 +492,7 @@ function simplifyExpressions(ast) {
 
     // & and heap-related optimizations
 
-    var heapBits, heapUnsigned;
-    function parseHeap(name) {
-      if (name.substr(0, 4) != 'HEAP') return false;
-      heapUnsigned = name[4] === 'U';
-      heapBits = parseInt(name.substr(heapUnsigned ? 5 : 4));
-      return true;
-    }
-
+    var parseHeapTemp = { unsigned: false, bits: 0 };
     var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
     traverse(ast, function(node, type) {
@@ -518,10 +518,10 @@ function simplifyExpressions(ast) {
         } else if (input[0] === 'sub' && input[1][0] === 'name') {
           // HEAP8[..] & 255 => HEAPU8[..]
           var name = input[1][1];
-          if (parseHeap(name)) {
-            if (amount === Math.pow(2, heapBits)-1) {
-              if (!heapUnsigned) {
-                input[1][1] = 'HEAPU' + heapBits; // make unsigned
+          if (parseHeap(name, parseHeapTemp)) {
+            if (amount === Math.pow(2, parseHeapTemp.bits)-1) {
+              if (!parseHeapTemp.unsigned) {
+                input[1][1] = 'HEAPU' + parseHeapTemp.bits; // make unsigned
               }
               if (asm) {
                 // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
@@ -546,9 +546,9 @@ function simplifyExpressions(ast) {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
         var amount = node[3][1];
         var name = node[2][2][1][1];
-        if (amount === node[2][3][1] && parseHeap(name)) {
-          if (heapBits === 32 - amount) {
-            node[2][2][1][1] = 'HEAP' + heapBits;
+        if (amount === node[2][3][1] && parseHeap(name, parseHeapTemp)) {
+          if (parseHeapTemp.bits === 32 - amount) {
+            node[2][2][1][1] = 'HEAP' + parseHeapTemp.bits;
             node[1] = '|';
             node[2] = node[2][2];
             node[3][1] = 0;
