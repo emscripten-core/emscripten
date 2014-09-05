@@ -5022,7 +5022,9 @@ LibraryManager.library = {
     var dst = {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'i32') }}};
     var guessedOffset = date.getTimezoneOffset();
     var start = new Date(date.getFullYear(), 0, 1);
+    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
     var winterOffset = start.getTimezoneOffset();
+    var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
     if (dst < 0) {
       {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(winterOffset != guessedOffset)', 'i32') }}};
     } else if ((dst > 0) != (winterOffset != guessedOffset)) {
@@ -5033,7 +5035,7 @@ LibraryManager.library = {
     }
 
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
-    var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
+    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
 
     return (date.getTime() / 1000)|0;
@@ -5106,7 +5108,10 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
 
-    var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
+    // DST is in December in South
+    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
+    var winterOffset = start.getTimezoneOffset();
+    var dst = (date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
     var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? Runtime.QUANTUM_SIZE : 0', 'i32') }}};
@@ -5122,26 +5127,37 @@ LibraryManager.library = {
 
   asctime_r__deps: ['__tm_formatted', 'mktime'],
   asctime_r: function(tmPtr, buf) {
-    var date = new Date(_mktime(tmPtr)*1000);
-    var formatted = date.toString();
-    var datePart = formatted.replace(/\d{4}.*/, '').replace(/ 0/, '  ');
-    var timePart = formatted.match(/\d{2}:\d{2}:\d{2}/)[0];
-    formatted = datePart + timePart + ' ' + date.getFullYear() + '\n';
-    formatted.split('').forEach(function(chr, index) {
-      {{{ makeSetValue('buf', 'index', 'chr.charCodeAt(0)', 'i8') }}};
-    });
-    {{{ makeSetValue('buf', '25', '0', 'i8') }}};
+    var date = {
+      tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
+      tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
+      tm_hour: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
+      tm_mday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
+      tm_mon: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
+      tm_year: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}},
+      tm_wday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'i32') }}}
+    };
+    var days = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ];
+    var months = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+    var s = days[date.tm_wday] + ' ' + months[date.tm_mon] +
+        (date.tm_mday < 10 ? '  ' : ' ') + date.tm_mday +
+        (date.tm_hour < 10 ? ' 0' : ' ') + date.tm_hour +
+        (date.tm_min < 10 ? ':0' : ':') + date.tm_min +
+        (date.tm_sec < 10 ? ':0' : ':') + date.tm_sec +
+        ' ' + (1900 + date.tm_year) + "\n";
+    writeStringToMemory(s, buf);
     return buf;
   },
 
-  ctime__deps: ['localtime', 'asctime'],
+  ctime__deps: ['__tm_current', 'ctime_r'],
   ctime: function(timer) {
-    return _asctime(_localtime(timer));
+    return _ctime_r(timer, ___tm_current);
   },
 
-  ctime_r__deps: ['localtime', 'asctime'],
+  ctime_r__deps: ['localtime_r', 'asctime_r'],
   ctime_r: function(timer, buf) {
-    return _asctime_r(_localtime_r(timer, ___tm_current), buf);
+    var localtimeBuf = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STACK);
+    return _asctime_r(_localtime_r(timer, localtimeBuf), buf);
   },
 
   dysize: function(year) {
@@ -5174,8 +5190,14 @@ LibraryManager.library = {
     var summerName = extractZone(summer);
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
-    {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+    if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
+      // Northern hemisphere
+      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+    } else {
+      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+    }
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],

@@ -2689,13 +2689,9 @@ The current type of b is: 9
     self.do_run(src, 'success', force_c=True)
 
   def test_time(self):
-    # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
     src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
-    expected2 = open(path_from_root('tests', 'time', 'output2.txt'), 'r').read()
-    self.do_run(src, [expected, expected2],
-                 extra_emscripten_args=['-H', 'libc/time.h'])
-                 #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
+    self.do_run(src, expected);
 
   def test_timeb(self):
     # Confirms they are called in reverse order
