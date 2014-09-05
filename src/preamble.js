@@ -1139,14 +1139,25 @@ var buffer = new SharedArrayBuffer(TOTAL_MEMORY);
 var buffer = new ArrayBuffer(TOTAL_MEMORY);
 #endif
 
-HEAP8 = new Int8Array(buffer);
-HEAP16 = new Int16Array(buffer);
-HEAP32 = new Int32Array(buffer);
-HEAPU8 = new Uint8Array(buffer);
-HEAPU16 = new Uint16Array(buffer);
-HEAPU32 = new Uint32Array(buffer);
-HEAPF32 = new Float32Array(buffer);
-HEAPF64 = new Float64Array(buffer);
+if (typeof SharedArrayBuffer != 'undefined') {
+  HEAP8 = new SharedInt8Array(buffer);
+  HEAP16 = new SharedInt16Array(buffer);
+  HEAP32 = new SharedInt32Array(buffer);
+  HEAPU8 = new SharedUint8Array(buffer);
+  HEAPU16 = new SharedUint16Array(buffer);
+  HEAPU32 = new SharedUint32Array(buffer);
+  HEAPF32 = new SharedFloat32Array(buffer);
+  HEAPF64 = new SharedFloat64Array(buffer);
+} else {
+  HEAP8 = new Int8Array(buffer);
+  HEAP16 = new Int16Array(buffer);
+  HEAP32 = new Int32Array(buffer);
+  HEAPU8 = new Uint8Array(buffer);
+  HEAPU16 = new Uint16Array(buffer);
+  HEAPU32 = new Uint32Array(buffer);
+  HEAPF32 = new Float32Array(buffer);
+  HEAPF64 = new Float64Array(buffer);
+}
 
 // Endianness check (note: assumes compiler arch was little-endian)
 HEAP32[0] = 255;

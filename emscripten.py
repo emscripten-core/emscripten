@@ -460,7 +460,7 @@ function _emscripten_asm_const_%d(%s) {
                                 'shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
-    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']
+    fundamentals = ['Math', 'SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']
     if metadata['simd']:
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
@@ -716,15 +716,34 @@ var asm = (function(global, env, buffer) {
        access_quote('asmGlobalArg'), the_global,
        access_quote('asmLibraryArg'), sending,
        "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '''
-  var HEAP8 = new global%s(buffer);
-  var HEAP16 = new global%s(buffer);
-  var HEAP32 = new global%s(buffer);
-  var HEAPU8 = new global%s(buffer);
-  var HEAPU16 = new global%s(buffer);
-  var HEAPU32 = new global%s(buffer);
-  var HEAPF32 = new global%s(buffer);
-  var HEAPF64 = new global%s(buffer);
-''' % (access_quote('Int8Array'),
+  if (typeof SharedArrayBuffer != 'undefined') {
+    var HEAP8 = new global%s(buffer);
+    var HEAP16 = new global%s(buffer);
+    var HEAP32 = new global%s(buffer);
+    var HEAPU8 = new global%s(buffer);
+    var HEAPU16 = new global%s(buffer);
+    var HEAPU32 = new global%s(buffer);
+    var HEAPF32 = new global%s(buffer);
+    var HEAPF64 = new global%s(buffer);
+  } else {
+    var HEAP8 = new global%s(buffer);
+    var HEAP16 = new global%s(buffer);
+    var HEAP32 = new global%s(buffer);
+    var HEAPU8 = new global%s(buffer);
+    var HEAPU16 = new global%s(buffer);
+    var HEAPU32 = new global%s(buffer);
+    var HEAPF32 = new global%s(buffer);
+    var HEAPF64 = new global%s(buffer);
+  }
+''' % (access_quote('SharedInt8Array'),
+     access_quote('SharedInt16Array'),
+     access_quote('SharedInt32Array'),
+     access_quote('SharedUint8Array'),
+     access_quote('SharedUint16Array'),
+     access_quote('SharedUint32Array'),
+     access_quote('SharedFloat32Array'),
+     access_quote('SharedFloat64Array'),
+     access_quote('Int8Array'),
      access_quote('Int16Array'),
      access_quote('Int32Array'),
      access_quote('Uint8Array'),
