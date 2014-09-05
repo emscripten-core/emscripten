@@ -5783,13 +5783,13 @@ LibraryManager.library = {
     }
     return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
-  clock_gettime__deps: ['emscripten_get_now','emscripten_get_now_monotonic','$ERRNO_CODES', '__setErrNo'],
+  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$ERRNO_CODES', '__setErrNo'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
     var now;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
       now = _emscripten_get_now();
     } else {
       ___setErrNo(ERRNO_CODES.EINVAL);
@@ -5803,23 +5803,24 @@ LibraryManager.library = {
   clock_settime: function(clk_id, tp) {
     // int clock_settime(clockid_t clk_id, const struct timespec *tp);
     // Nothing.
-    ___setErrNo(ERRNO_CODES.EPERM);
+    ___setErrNo(clk_id === {{{ cDefine('CLOCK_REALTIME') }}} ? ERRNO_CODES.EPERM
+                                                             : ERRNO_CODES.EINVAL);
     return -1;
   },
-  clock_getres__deps: ['emscripten_get_now_res','emscripten_get_now_monotonic','$ERRNO_CODES', '__setErrNo'],
+  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$ERRNO_CODES', '__setErrNo'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      nsec = 1000 * 1000;
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_monotonic()) {
-      now = _emscripten_get_now_res();
+      nsec = 1000 * 1000; // educated guess that it's milliseconds
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+      nsec = _emscripten_get_now_res();
     } else {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '1', 'i32') }}};
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is milliseconds
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
 
@@ -8502,11 +8503,12 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_get_now_monotonic__deps: ['emscripten_get_now'],
-  emscripten_get_now_monotonic: function() {
+  emscripten_get_now_is_monotonic__deps: ['emscripten_get_now'],
+  emscripten_get_now_is_monotonic: function() {
     // return whether emscripten_get_now is guaranteed monotonic; the Date.now
     // implementation is not :(
-    return (_emscripten_get_now() == Date.now)|0;
+    return ENVIRONMENT_IS_NODE || (typeof dateNow !== 'undefined') ||
+        (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']);
   },
 
   // Returns [parentFuncArguments, functionName, paramListName]
