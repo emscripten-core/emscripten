@@ -2540,6 +2540,10 @@ window.close = function() {
   def test_pthread_mutex(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='907640832', args=['-lpthread'])
 
+  # Test that memory allocation is thread-safe.
+  def test_pthread_malloc(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-lpthread'])
+
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
   def test_pthread_volatile(self):
