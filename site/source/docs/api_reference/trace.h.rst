@@ -179,7 +179,8 @@ of the Emscripten tracing API.
 Running the Server
 ==================
 
-...
+* Obtain a copy of the `emscripten-trace-collector`_ server.
+* Follow the directions in the `README.rst`.
 
 Design Notes
 ============
@@ -415,3 +416,6 @@ Functions
 
    This should be closed during application termination. It helps ensure
    is flushed to the server and terminates the tracing code.
+
+.. _emscripten-trace-collector: https://github.com/waywardmonkeys/emscripten-trace-collector
+.. _README.rst: https://github.com/waywardmonkeys/emscripten-trace-collector/blob/master/README.rst
