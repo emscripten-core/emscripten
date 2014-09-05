@@ -3,6 +3,7 @@
 #include <emscripten/threading.h>
 
 // Toggle to use two different methods for updating shared data (C++03 volatile vs explicit atomic ops).
+// Note that using a volatile variable explicitly depends on x86 strong memory model semantics.
 //#define USE_C_VOLATILE
 
 volatile int sharedVar = 0;
@@ -23,9 +24,8 @@ int main()
   pthread_create(&thr, NULL, thread_start, (void*)0);
 
 #ifdef USE_C_VOLATILE
-  while(sharedVar == 0) {
-    EM_ASM(Module['print']('Main: HACKHACK. Without this print, the main thread will never observe sharedVar being set by the thread and this will loop indefinitely!'););
-  }
+  while(sharedVar == 0)
+    ;
 #else
   while(emscripten_atomic_load_u32((void*)&sharedVar) == 0) {}
 #endif
