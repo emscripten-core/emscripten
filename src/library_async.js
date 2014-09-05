@@ -17,24 +17,33 @@ mergeInto(LibraryManager.library, {
  */
   __async: 0, // whether a truly async function has been called
   __async_unwind: 1, // whether to unwind the async stack frame
+  __async_active_exception: 0,
+  __async_active_exception_id: 0,
   __async_retval: 'allocate(2, "i32", ALLOC_STATIC)', // store the return value for async functions
   __async_cur_frame: 0, // address to the current frame, which stores previous frame, stack pointer and async context
 
   // __async_retval is not actually required in emscripten_async_resume
   // but we want it included when ASYNCIFY is enabled
-  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame'],
+  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame', '__async_active_exception',
+                                  'emscripten_async_rethrow', 'emscripten_async_invoke'],
   emscripten_async_resume__sig: 'v',
   emscripten_async_resume__asm: true,
   emscripten_async_resume: function() {
     var callback = 0;
     ___async = 0;
     ___async_unwind = 1;
+    ___async_active_exception = 0;
     while (1) {
-      if (!___async_cur_frame) return;
+      if (!___async_cur_frame) {
+        // print ugly integer in console, same as if an exception is thrown out of main()
+        if (___async_active_exception) _emscripten_async_rethrow();
+        return;
+      }
       callback = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i32') }}};
-      // the signature of callback is always vi
-      // the only argument is ctx
-      dynCall_vi(callback, (___async_cur_frame + 8)|0);
+      // We catch exceptions thrown through __cxa_throw and re-inject them into
+      // the next function in the fake async call stack.
+      _emscripten_async_invoke(callback);
+      ___async_active_exception = ___async_active_exception|0;
       if (___async) return; // that was an async call
       if (!___async_unwind) {
         // keep the async stack
@@ -45,6 +54,27 @@ mergeInto(LibraryManager.library, {
       stackRestore({{{ makeGetValueAsm('___async_cur_frame', 4, 'i32') }}});
       // pop the last async stack frame
       ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
+    }
+  },
+
+  emscripten_async_rethrow__deps: ['__async_active_exception'],
+  emscripten_async_rethrow: function() {
+    var e = ___async_active_exception; ___async_active_exception = null;
+    throw e;
+  },
+
+  emscripten_async_invoke__deps: ['__async_cur_frame', '__async_active_exception', '__async_active_exception_id'],
+  emscripten_async_invoke: function(ctx) {
+    asm['setThrew'](___async_active_exception, 0);
+    try {
+      // The signature of callback is always vi, the only argument is ctx.
+      dynCall_vi(ctx, (___async_cur_frame + 8)|0);
+    } catch(e) {
+      // XXX what happens with longjmp? how on earth is longjmp meant to jump up
+      //     the async call stack?
+      if (typeof e !== 'number' && e !== 'longjmp') throw e;
+      ___async_active_exception_id = e;
+      ___async_active_exception = 1;
     }
   },
 
