@@ -391,6 +391,7 @@ try:
   debug_level = 0
   requested_debug = ''
   profiling = False
+  tracing = False
   emit_symbol_map = False
   js_opts = None
   llvm_opts = None
@@ -529,6 +530,12 @@ try:
       debug_level = 2
       profiling = True
       newargs[i] = ''
+    elif newargs[i] == '--tracing':
+      tracing = True
+      newargs[i] = ''
+      newargs.append('-D__EMSCRIPTEN_TRACING__=1')
+      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       emit_symbol_map = True
       newargs[i] = ''

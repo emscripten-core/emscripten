@@ -115,6 +115,9 @@ Options that are modified or new in *emcc* are listed below:
 ``-profiling``
 	Use reasonable defaults when emitting JavaScript to make the build useful for profiling. This sets ``-g2`` (preserve function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
 
+``--tracing``
+  Enable the Emscripten Tracing API.
+
 ``--emit-symbol-map``
 	Save a map file between the minified global names and the original function names. This allows you, for example, to reconstruct meaningful stack traces. 
 	

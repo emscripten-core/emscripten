@@ -980,9 +980,22 @@ function enlargeMemory() {
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
 
+#if EMSCRIPTEN_TRACING
+  var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
+  // Report old layout one last time
+  _emscripten_trace_report_memory_layout();
+#endif
+
   while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
     TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
   }
+
+#if EMSCRIPTEN_TRACING
+  _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + OLD_TOTAL_MEMORY + " to " + TOTAL_MEMORY);
+  // And now report the new layout
+  _emscripten_trace_report_memory_layout();
+#endif
+
   assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
 #if USE_TYPED_ARRAYS == 2
   var oldHEAP8 = HEAP8;
