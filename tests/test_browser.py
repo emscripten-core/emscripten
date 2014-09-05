@@ -344,6 +344,7 @@ If manually bisecting:
     
     def make_main(path):
       print 'make main at', path
+      path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
         #include <string.h>
@@ -387,8 +388,12 @@ If manually bisecting:
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     # Test that '--no-heap-copy' works.
-    make_main('somefile.txt')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '--no-heap-copy', '-o', 'page.html']).communicate()
+    # All 7-bit special ASCII characters except '/', ':' and '\', which we don't allow.
+    tricky_filename = '!"#$%&\'()*+,-. ;<=>?@[]^_`{|}~.txt'
+    open(os.path.join(self.get_dir(), tricky_filename), 'w').write('''load me right before running the code please''')
+    make_main(tricky_filename)
+    # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', tricky_filename.replace('@', '@@'), '--no-heap-copy', '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     # By absolute path

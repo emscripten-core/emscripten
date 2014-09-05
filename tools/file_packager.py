@@ -69,17 +69,13 @@ DDS_HEADER_SIZE = 128
 
 AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to work around silly av false positives
 
-def verify_paths(file_):
-  if file_['dstpath'].find('"') >= 0 or file_['dstpath'].find("'") >= 0:
-    raise Exception('''invalid file path: %s, should not contain illegal characters ('")''' % file_['dstpath'])
-
 data_files = []
 excluded_patterns = []
 leading = ''
 has_preloaded = False
 compress_cnt = 0
 crunch = 0
-plugins = [verify_paths]
+plugins = []
 jsoutput = None
 force = True
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
@@ -127,7 +123,8 @@ for arg in sys.argv[2:]:
     leading = ''
   elif leading == 'preload' or leading == 'embed':
     mode = leading
-    uses_at_notation = '@' in arg
+    uses_at_notation = '@' in arg.replace('@@', '') # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
+    arg = arg.replace('@@', '@')
     if uses_at_notation:
       srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
     else:
@@ -195,6 +192,11 @@ def should_ignore(fullname):
     if fnmatch.fnmatch(fullname, p):
       return True
   return False
+
+# Returns the given string with escapes added so that it can safely be placed inside a string in JS code.
+def escape_for_js_string(s):
+  s = s.replace("'", "\\'").replace('"', '\\"')
+  return s
 
 # Expand directories into individual files
 def add(arg, dirname, names):
@@ -435,7 +437,7 @@ for file_ in data_files:
     counter += 1
     code += '''    new DataRequest(%(start)d, %(end)d, %(crunched)s, %(audio)s).open('GET', '%(filename)s');
 ''' % {
-      'filename': file_['dstpath'],
+      'filename': escape_for_js_string(file_['dstpath']),
       'start': file_['data_start'],
       'end': file_['data_end'],
       'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
@@ -460,7 +462,7 @@ if has_preloaded:
 '''
   for file_ in data_files:
     if file_['mode'] == 'preload':
-      use_data += '          DataRequest.prototype.requests["%s"].onload();\n' % (file_['dstpath'])
+      use_data += '          DataRequest.prototype.requests["%s"].onload();\n' % (escape_for_js_string(file_['dstpath']))
   use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
   if Compression.on:
