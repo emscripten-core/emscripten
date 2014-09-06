@@ -1144,7 +1144,7 @@ mergeInto(LibraryManager.library, {
       target = JSEvents.findEventTarget(target);
     }
 
-    target.style.setProperty( "width", width + "px");
+    target.style.setProperty("width", width + "px");
     target.style.setProperty("height", height + "px");
   },
 
