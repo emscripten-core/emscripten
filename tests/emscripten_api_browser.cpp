@@ -95,6 +95,13 @@ int main() {
   last = SDL_GetTicks();
   printf("frist! %d\n", last);
 
+  double ratio = emscripten_get_device_pixel_ratio();
+  double ratio2 = EM_ASM_DOUBLE_V({
+    return window.devicePixelRatio || 1.0;
+  });
+
+  assert(ratio == ratio2);
+
   atexit(never); // should never be called - it is wrong to exit the runtime orderly if we have async calls!
 
   emscripten_async_call(second, (void*)0, 500);
