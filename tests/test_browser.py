@@ -2538,7 +2538,7 @@ window.close = function() {
 
   # Tests the pthread mutex api.
   def test_pthread_mutex(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='907640832', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-lpthread'])
 
   # Test that memory allocation is thread-safe.
   def test_pthread_malloc(self):
