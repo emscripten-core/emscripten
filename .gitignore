@@ -1,6 +1,9 @@
+# vim/emacs temporary/backup files
+*~
+*.swp
+
 *.diff
 *.pyc
-*~
 *.bc
 src/relooper*.js
 

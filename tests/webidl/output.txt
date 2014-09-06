@@ -2,6 +2,7 @@ Parent:42
 *
 84
 object
+object
 c1
 Parent:7
 Child1:7
@@ -39,6 +40,7 @@ Child2:9
 *js virtualf2 replacement*
 *js virtualf3 replacement 123*
 caught: a JSImplementation must implement all functions, you forgot Child2JS::virtualFunc4.
+*js virtualf3 replacement 43*
 *virtualf*
 *virtualf*
 *virtualf2*
@@ -54,5 +56,35 @@ object
 11
 21.12
 198
+0
+1
+34,34
+78
+return char 127
+char: 127
+char: -1
+return unsigned char -1
+unsigned char: 255
+return unsigned short -1
+unsigned short int: 65535
+return unsigned long -1
+unsigned long int: 4294967295
+void * 3
+int_array[0] == 0
+int_array[7] == 7
+int_array[0] == 42
+int_array[7] == 43
+idx -1: Array index -1 out of bounds: [0,8)
+idx 8: Array index 8 out of bounds: [0,8)
+struct_array[0].attr1 == 0
+struct_array[0].attr2 == 0
+struct_array[7].attr1 == 7
+struct_array[7].attr2 == -7
+struct_array[0].attr1 == 13
+struct_array[0].attr2 == 17
+struct_array[7].attr1 == 14
+struct_array[7].attr2 == 18
+struct_ptr_array[0]->attr1 == 100
+struct_ptr_array[0]->attr2 == 101
 
 done.

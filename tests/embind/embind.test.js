@@ -667,6 +667,13 @@ module({
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
         });
 
+        test("throws appropriate type error when attempting to coerce null to int", function() {
+            var e = assert.throws(TypeError, function() {
+                cm.int_to_string(null);
+            });
+            assert.equal('Cannot convert "null" to int', e.message);
+        });
+
         test("access multiple class ctors", function() {
             var a = new cm.MultipleCtors(10);
             assert.equal(a.WhichCtorCalled(), 1);
@@ -1560,8 +1567,6 @@ module({
             };
 
             var impl = cm.AbstractClass.implement(new MyImplementation);
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal(expected, impl.optionalMethod(expected));
             assert.equal(expected, cm.callOptionalMethod(impl, expected));
             impl.delete();
         });
@@ -1569,8 +1574,6 @@ module({
         test("if not implemented then optional method runs default", function() {
             var impl = cm.AbstractClass.implement({});
             assert.equal("optionalfoo", impl.optionalMethod("foo"));
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
 
@@ -1739,8 +1742,6 @@ module({
             instance.delete();
             assert.equal("optionaljs_optional_123", result);
         });
-
-        // TODO: deriving from classes with constructors?
 
         test("instanceof", function() {
             var instance = new Empty;
@@ -2173,6 +2174,13 @@ module({
             assert.throws(cm.BindingError, function() {
                 v.deleteLater();
             });
+        });
+
+        test("can clone instances that have been scheduled for deletion", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            var v2 = v.clone();
+            v2.delete();
         });
 
         test("deleteLater returns the object", function() {

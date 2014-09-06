@@ -69,13 +69,17 @@ DDS_HEADER_SIZE = 128
 
 AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to work around silly av false positives
 
+def verify_paths(file_):
+  if file_['dstpath'].find('"') >= 0 or file_['dstpath'].find("'") >= 0:
+    raise Exception('''invalid file path: %s, should not contain illegal characters ('")''' % file_['dstpath'])
+
 data_files = []
 excluded_patterns = []
 leading = ''
 has_preloaded = False
 compress_cnt = 0
 crunch = 0
-plugins = []
+plugins = [verify_paths]
 jsoutput = None
 force = True
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
@@ -414,19 +418,17 @@ for file_ in data_files:
   if file_['mode'] == 'embed':
     # Embed
     data = map(ord, open(file_['srcpath'], 'rb').read())
-    if not data:
-      str_data = '[]'
-    else:
-      str_data = ''
+    code += '''fileData%d = [];\n''' % counter
+    if data:
+      parts = []
       chunk_size = 10240
-      while len(data) > 0:
-        chunk = data[:chunk_size]
-        data = data[chunk_size:]
-        if not str_data:
-          str_data = str(chunk)
-        else:
-          str_data += '.concat(' + str(chunk) + ')'
-    code += '''Module['FS_createDataFile']('%s', '%s', %s, true, true);\n''' % (dirname, basename, str_data)
+      start = 0
+      while start < len(data):
+        parts.append('''fileData%d.push.apply(fileData%d, %s);\n''' % (counter, counter, str(data[start:start+chunk_size])))
+        start += chunk_size
+      code += ''.join(parts)
+    code += '''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true);\n''' % (dirname, basename, counter)
+    counter += 1
   elif file_['mode'] == 'preload':
     # Preload
     varname = 'filePreload%d' % counter
@@ -483,7 +485,10 @@ if has_preloaded:
       PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
     }
     var PACKAGE_NAME = '%s';
-    var REMOTE_PACKAGE_NAME = (Module['filePackagePrefixURL'] || '') + '%s';
+    var REMOTE_PACKAGE_BASE = '%s';
+    var REMOTE_PACKAGE_NAME = typeof Module['locateFilePackage'] === 'function' ?
+                              Module['locateFilePackage'](REMOTE_PACKAGE_BASE) :
+                              ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
     var REMOTE_PACKAGE_SIZE = %d;
     var PACKAGE_UUID = '%s';
   ''' % (data_target, remote_package_name, remote_package_size, package_uuid)

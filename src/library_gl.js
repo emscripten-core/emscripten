@@ -20,9 +20,9 @@ var LibraryGL = {
     uniforms: [],
     shaders: [],
     vaos: [],
+    contexts: [],
 
 #if FULL_ES2
-    clientBuffers: [],
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
 #endif
@@ -59,7 +59,10 @@ var LibraryGL = {
 
     init: function() {
       GL.createLog2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
-      Browser.moduleContextCreatedCallbacks.push(GL.initExtensions);
+      GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
+      for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
+        GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
+      }
     },
 
     // Records a GL error condition that occurred, stored until user calls glGetError() to fetch it. As per GLES2 spec, only the first error 
@@ -90,15 +93,9 @@ var LibraryGL = {
     // could cause a GPU-CPU pipeline stall.
     // Note that index buffers are not double-buffered (at the moment) in this manner.
     MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
-    tempVertexBuffers1: [],
-    tempVertexBufferCounters1: [],
-    tempVertexBuffers2: [],
-    tempVertexBufferCounters2: [],
     // Maximum number of temp VBOs of one size to maintain, after that we start reusing old ones, which is safe but can give
     // a performance impact. If CPU-GPU stalls are a problem, increasing this might help.
     numTempVertexBuffersPerSize: 64, // (const)
-    tempIndexBuffers: [],
-    tempQuadIndexBuffer: null,
 
     // Precompute a lookup table for the function ceil(log2(x)), i.e. how many bits are needed to represent x, or,
     // if x was rounded up to next pow2, which index is the single '1' bit at?
@@ -118,19 +115,24 @@ var LibraryGL = {
       }
     },
 
-    generateTempBuffers: function(quads) {
+    generateTempBuffers: function(quads, context) {
       var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
-      GL.tempVertexBufferCounters1.length = GL.tempVertexBufferCounters2.length = largestIndex+1;
-      GL.tempVertexBuffers1.length = GL.tempVertexBuffers2.length = largestIndex+1;
-      GL.tempIndexBuffers.length = largestIndex+1;
+      context.tempVertexBufferCounters1 = [];
+      context.tempVertexBufferCounters2 = [];
+      context.tempVertexBufferCounters1.length = context.tempVertexBufferCounters2.length = largestIndex+1;
+      context.tempVertexBuffers1 = [];
+      context.tempVertexBuffers2 = [];
+      context.tempVertexBuffers1.length = context.tempVertexBuffers2.length = largestIndex+1;
+      context.tempIndexBuffers = [];
+      context.tempIndexBuffers.length = largestIndex+1;
       for(var i = 0; i <= largestIndex; ++i) {
-        GL.tempIndexBuffers[i] = null; // Created on-demand
-        GL.tempVertexBufferCounters1[i] = GL.tempVertexBufferCounters2[i] = 0;
+        context.tempIndexBuffers[i] = null; // Created on-demand
+        context.tempVertexBufferCounters1[i] = context.tempVertexBufferCounters2[i] = 0;
         var ringbufferLength = GL.numTempVertexBuffersPerSize;
-        GL.tempVertexBuffers1[i] = [];
-        GL.tempVertexBuffers2[i] = [];
-        var ringbuffer1 = GL.tempVertexBuffers1[i];
-        var ringbuffer2 = GL.tempVertexBuffers2[i];
+        context.tempVertexBuffers1[i] = [];
+        context.tempVertexBuffers2[i] = [];
+        var ringbuffer1 = context.tempVertexBuffers1[i];
+        var ringbuffer2 = context.tempVertexBuffers2[i];
         ringbuffer1.length = ringbuffer2.length = ringbufferLength;
         for(var j = 0; j < ringbufferLength; ++j) {
           ringbuffer1[j] = ringbuffer2[j] = null; // Created on-demand
@@ -139,8 +141,8 @@ var LibraryGL = {
 
       if (quads) {
         // GL_QUAD indexes can be precalculated
-        GL.tempQuadIndexBuffer = GLctx.createBuffer();
-        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.tempQuadIndexBuffer);
+        context.tempQuadIndexBuffer = GLctx.createBuffer();
+        context.GLctx.bindBuffer(context.GLctx.ELEMENT_ARRAY_BUFFER, context.tempQuadIndexBuffer);
         var numIndexes = GL.MAX_TEMP_BUFFER_SIZE >> 1;
         var quadIndexes = new Uint16Array(numIndexes);
         var i = 0, v = 0;
@@ -159,16 +161,16 @@ var LibraryGL = {
           if (i >= numIndexes) break;
           v += 4;
         }
-        GLctx.bufferData(GLctx.ELEMENT_ARRAY_BUFFER, quadIndexes, GLctx.STATIC_DRAW);
-        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, null);
+        context.GLctx.bufferData(context.GLctx.ELEMENT_ARRAY_BUFFER, quadIndexes, context.GLctx.STATIC_DRAW);
+        context.GLctx.bindBuffer(context.GLctx.ELEMENT_ARRAY_BUFFER, null);
       }
     },
 
     getTempVertexBuffer: function getTempVertexBuffer(sizeBytes) {
       var idx = GL.log2ceilLookup[sizeBytes];
-      var ringbuffer = GL.tempVertexBuffers1[idx];
-      var nextFreeBufferIndex = GL.tempVertexBufferCounters1[idx];
-      GL.tempVertexBufferCounters1[idx] = (GL.tempVertexBufferCounters1[idx]+1) & (GL.numTempVertexBuffersPerSize-1);
+      var ringbuffer = GL.currentContext.tempVertexBuffers1[idx];
+      var nextFreeBufferIndex = GL.currentContext.tempVertexBufferCounters1[idx];
+      GL.currentContext.tempVertexBufferCounters1[idx] = (GL.currentContext.tempVertexBufferCounters1[idx]+1) & (GL.numTempVertexBuffersPerSize-1);
       var vbo = ringbuffer[nextFreeBufferIndex];
       if (vbo) {
         return vbo;
@@ -183,31 +185,31 @@ var LibraryGL = {
 
     getTempIndexBuffer: function getTempIndexBuffer(sizeBytes) {
       var idx = GL.log2ceilLookup[sizeBytes];
-      var ibo = GL.tempIndexBuffers[idx];
+      var ibo = GL.currentContext.tempIndexBuffers[idx];
       if (ibo) {
         return ibo;
       }
       var prevIBO = GLctx.getParameter(GLctx.ELEMENT_ARRAY_BUFFER_BINDING);
-      GL.tempIndexBuffers[idx] = GLctx.createBuffer();
-      GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.tempIndexBuffers[idx]);
+      GL.currentContext.tempIndexBuffers[idx] = GLctx.createBuffer();
+      GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.currentContext.tempIndexBuffers[idx]);
       GLctx.bufferData(GLctx.ELEMENT_ARRAY_BUFFER, 1 << idx, GLctx.DYNAMIC_DRAW);
       GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, prevIBO);
-      return GL.tempIndexBuffers[idx];
+      return GL.currentContext.tempIndexBuffers[idx];
     },
 
     // Called at start of each new WebGL rendering frame. This swaps the doublebuffered temp VB memory pointers,
     // so that every second frame utilizes different set of temp buffers. The aim is to keep the set of buffers
     // being rendered, and the set of buffers being updated disjoint.
     newRenderingFrameStarted: function newRenderingFrameStarted() {
-      var vb = GL.tempVertexBuffers1;
-      GL.tempVertexBuffers1 = GL.tempVertexBuffers2;
-      GL.tempVertexBuffers2 = vb;
-      vb = GL.tempVertexBufferCounters1;
-      GL.tempVertexBufferCounters1 = GL.tempVertexBufferCounters2;
-      GL.tempVertexBufferCounters2 = vb;
+      var vb = GL.currentContext.tempVertexBuffers1;
+      GL.currentContext.tempVertexBuffers1 = GL.currentContext.tempVertexBuffers2;
+      GL.currentContext.tempVertexBuffers2 = vb;
+      vb = GL.currentContext.tempVertexBufferCounters1;
+      GL.currentContext.tempVertexBufferCounters1 = GL.currentContext.tempVertexBufferCounters2;
+      GL.currentContext.tempVertexBufferCounters2 = vb;
       var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
       for(var i = 0; i <= largestIndex; ++i) {
-        GL.tempVertexBufferCounters1[i] = 0;
+        GL.currentContext.tempVertexBufferCounters1[i] = 0;
       }
     },
 
@@ -279,6 +281,7 @@ var LibraryGL = {
     },
 
     computeImageSize: function(width, height, sizePerPixel, alignment) {
+      // FIXME: possible bug with negative x
       function roundedToNextMultipleOf(x, y) {
         return Math.floor((x + y - 1) / y) * y
       }
@@ -478,8 +481,8 @@ var LibraryGL = {
           sizePerPixel = 2;
           break;
         case 0x1406 /* GL_FLOAT */:
-#if ASSERTIONS
-          assert(GL.floatExt, 'Must have OES_texture_float to use float textures');
+#if GL_ASSERTIONS
+          if (!GL.currentContext.floatExt) Module.printErr('Must have OES_texture_float to use float textures');
 #endif
           switch (format) {
             case 0x1907 /* GL_RGB */:
@@ -499,6 +502,31 @@ var LibraryGL = {
               };
           }
           internalFormat = GLctx.RGBA;
+          break;
+        case 0x8D61 /* GL_HALF_FLOAT_OES */:
+          switch (format) {
+            case 0x1903 /* GL_RED */:
+              sizePerPixel = 2;
+              break;
+            case 0x8277 /* GL_RG */:
+              sizePerPixel = 2*2;
+              break;
+            case 0x1907 /* GL_RGB */:
+              sizePerPixel = 3*2;
+              break;
+            case 0x1908 /* GL_RGBA */:
+              sizePerPixel = 4*2;
+              break;
+            default:
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image, type: ' + type + ', format: ' + format);
+#endif
+              return {
+                pixels: null,
+                internalFormat: 0x0
+              };
+          }
           break;
         default:
           GL.recordError(0x0500); // GL_INVALID_ENUM
@@ -557,8 +585,8 @@ var LibraryGL = {
       GL.resetBufferBinding = false;
 
       // TODO: initial pass to detect ranges we need to upload, might not need an upload per attrib
-      for (var i = 0; i < GL.maxVertexAttribs; ++i) {
-        var cb = GL.clientBuffers[i];
+      for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
+        var cb = GL.currentContext.clientBuffers[i];
         if (!cb.clientside || !cb.enabled) continue;
 
         GL.resetBufferBinding = true;
@@ -632,46 +660,194 @@ var LibraryGL = {
       }
     },
 #endif
+    
+    // Returns the context handle to the new context.
+    createContext: function(canvas, webGLContextAttributes) {
+#if !USE_TYPED_ARRAYS
+      Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
+      return null;
+#endif
+      // Default to creating a WebGL 1.0 context if nothing else is specified.
+      if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
+        webGLContextAttributes.majorVersion = 1;
+        webGLContextAttributes.minorVersion = 0;
+      }
+      var ctx;
+      var errorInfo = '?';
+      function onContextCreationError(event) {
+        errorInfo = event.statusMessage || errorInfo;
+      }
+      try {
+        canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
+        try {
+          if (webGLContextAttributes.majorVersion == 1 && webGLContextAttributes.minorVersion == 0) {
+            ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
+          } else {
+            throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
+          }
+        } finally {
+          canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
+        }
+        if (!ctx) throw ':(';
+      } catch (e) {
+        Module.print('Could not create canvas: ' + [errorInfo, e]);
+        return 0;
+      }
+#if GL_DEBUG
+      function wrapDebugGL(ctx) {
+
+        var printObjectList = [];
+
+        function prettyPrint(arg) {
+          if (typeof arg == 'undefined') return '!UNDEFINED!';
+          if (typeof arg == 'boolean') arg = arg + 0;
+          if (!arg) return arg;
+          var index = printObjectList.indexOf(arg);
+          if (index >= 0) return '<' + arg + '|'; // + index + '>';
+          if (arg.toString() == '[object HTMLImageElement]') {
+            return arg + '\n\n';
+          }
+          if (arg.byteLength) {
+            return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
+            var buf = new ArrayBuffer(32);
+            var i8buf = new Int8Array(buf);
+            var i16buf = new Int16Array(buf);
+            var f32buf = new Float32Array(buf);
+            switch(arg.toString()) {
+              case '[object Uint8Array]':
+                i8buf.set(arg.subarray(0, 32));
+                break;
+              case '[object Float32Array]':
+                f32buf.set(arg.subarray(0, 5));
+                break;
+              case '[object Uint16Array]':
+                i16buf.set(arg.subarray(0, 16));
+                break;
+              default:
+                alert('unknown array for debugging: ' + arg);
+                throw 'see alert';
+            }
+            var ret = '{' + arg.byteLength + ':\n';
+            var arr = Array.prototype.slice.call(i8buf);
+            ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
+            arr = Array.prototype.slice.call(f32buf, 0, 8);
+            ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
+            return ret;
+          }
+          if (typeof arg == 'object') {
+            printObjectList.push(arg);
+            return '<' + arg + '|'; // + (printObjectList.length-1) + '>';
+          }
+          if (typeof arg == 'number') {
+            if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
+          }
+          return arg;
+        }
+
+        var wrapper = {};
+        for (var prop in ctx) {
+          (function(prop) {
+            switch (typeof ctx[prop]) {
+              case 'function': {
+                wrapper[prop] = function gl_wrapper() {
+                  var printArgs = Array.prototype.slice.call(arguments).map(prettyPrint);
+                  dump('[gl_f:' + prop + ':' + printArgs + ']\n');
+                  var ret = ctx[prop].apply(ctx, arguments);
+                  if (typeof ret != 'undefined') {
+                    dump('[     gl:' + prop + ':return:' + prettyPrint(ret) + ']\n');
+                  }
+                  return ret;
+                }
+                break;
+              }
+              case 'number': case 'string': {
+                wrapper.__defineGetter__(prop, function() {
+                  //dump('[gl_g:' + prop + ':' + ctx[prop] + ']\n');
+                  return ctx[prop];
+                });
+                wrapper.__defineSetter__(prop, function(value) {
+                  dump('[gl_s:' + prop + ':' + value + ']\n');
+                  ctx[prop] = value;
+                });
+                break;
+              }
+            }
+          })(prop);
+        }
+        return wrapper;
+      }
+#endif
+      // possible GL_DEBUG entry point: ctx = wrapDebugGL(ctx);
+
+      if (!ctx) return 0;
+      var handle = GL.getNewId(GL.contexts);
+      var context = { handle: handle };
+      context.GLctx = ctx;
+      GL.contexts[handle] = context;
+      if (typeof webGLContextAttributes['webGLContextAttributes'] === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
+        GL.initExtensions(context);
+      }
+      return handle;
+    },
+
+    makeContextCurrent: function(contextHandle) {
+      var context = GL.contexts[contextHandle];
+      if (!context) return false;
+      GLctx = Module.ctx = context.GLctx; // Active WebGL context object.
+      GL.currentContext = context; // Active Emscripten GL layer context object.
+      return true;
+    },
+
+    getContext: function(contextHandle) {
+      return GL.contexts[contextHandle];
+    },
+
+    deleteContext: function(contextHandle) {
+      if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = 0;
+      GL.contexts[contextHandle] = null;
+    },
 
     // In WebGL, extensions must be explicitly enabled to be active, see http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.14.14
     // In GLES2, all extensions are enabled by default without additional operations. Init all extensions we need to give to GLES2 user
     // code here, so that GLES2 code can operate without changing behavior.
-    initExtensions: function() {
-      if (GL.initExtensions.done) return;
-      GL.initExtensions.done = true;
+    initExtensions: function(context) {
 
-      if (!Module.useWebGL) return; // an app might link both gl and 2d backends
+      // If this function is called without a specific context object, init the extensions of the currently active context.
+      if (!context) context = GL.currentContext;
 
-      GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
-      for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
-        GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
-      }
+      if (context.initExtensionsDone) return;
+      context.initExtensionsDone = true;
 
-      GL.maxVertexAttribs = GLctx.getParameter(GLctx.MAX_VERTEX_ATTRIBS);
+      var GLctx = context.GLctx;
+
+      context.maxVertexAttribs = GLctx.getParameter(GLctx.MAX_VERTEX_ATTRIBS);
 #if FULL_ES2
-      for (var i = 0; i < GL.maxVertexAttribs; i++) {
-        GL.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
+      context.clientBuffers = [];
+      for (var i = 0; i < context.maxVertexAttribs; i++) {
+        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
       }
 
-      GL.generateTempBuffers();
+      GL.generateTempBuffers(false, context);
 #endif
 
       // Detect the presence of a few extensions manually, this GL interop layer itself will need to know if they exist. 
-      GL.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc') ||
+      context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc') ||
                           GLctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
                           GLctx.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc');
 
-      GL.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic') ||
+      context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic') ||
                           GLctx.getExtension('MOZ_EXT_texture_filter_anisotropic') ||
                           GLctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
 
-      GL.floatExt = GLctx.getExtension('OES_texture_float');
+      context.floatExt = GLctx.getExtension('OES_texture_float');
 
       // Extension available from Firefox 26 and Google Chrome 30
-      GL.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
+      context.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
       
       // Extension available from Firefox 25 and WebKit
-      GL.vaoExt = Module.ctx.getExtension('OES_vertex_array_object');
+      context.vaoExt = GLctx.getExtension('OES_vertex_array_object');
+
+      context.drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -687,22 +863,22 @@ var LibraryGL = {
                                              "EXT_shader_texture_lod" ];
 
       function shouldEnableAutomatically(extension) {
-        for(var i in automaticallyEnabledExtensions) {
-          var include = automaticallyEnabledExtensions[i];
+        var ret = false;
+        automaticallyEnabledExtensions.forEach(function(include) {
           if (ext.indexOf(include) != -1) {
-            return true;
+            ret = true;
           }
-        }
-        return false;
+        });
+        return ret;
       }
 
-      var extensions = GLctx.getSupportedExtensions();
-      for(var e in extensions) {
-        var ext = extensions[e].replace('MOZ_', '').replace('WEBKIT_', '');
+ 
+      GLctx.getSupportedExtensions().forEach(function(ext) {
+        ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
         if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
           GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
         }
-      }
+      });
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
@@ -843,7 +1019,7 @@ var LibraryGL = {
   glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
 #if ASSERTIONS
-    assert(GL.compressionExt);
+    assert(GL.currentContext.compressionExt);
 #endif
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
@@ -857,7 +1033,7 @@ var LibraryGL = {
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
 #if ASSERTIONS
-    assert(GL.compressionExt);
+    assert(GL.currentContext.compressionExt);
 #endif
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
@@ -892,9 +1068,6 @@ var LibraryGL = {
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-#if ASSERTIONS
-    assert(type == 0x1401 /* GL_UNSIGNED_BYTE */);
-#endif
     var sizePerPixel;
     switch (format) {
       case 0x1907 /* GL_RGB */:
@@ -911,7 +1084,22 @@ var LibraryGL = {
         return;
     }
     var totalSize = width*height*sizePerPixel;
-    GLctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
+    if (type == 0x1401 /* GL_UNSIGNED_BYTE */ || type == 0x1400 /* GL_BYTE */) {
+      GLctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
+    } else if (type == 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */ || type == 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */
+      || type == 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */ || type == 0x1403 /* GL_UNSIGNED_SHORT */ || type == 0x1402 /* GL_SHORT */) {
+      GLctx.readPixels(x, y, width, height, format, type, HEAPU16.subarray(pixels >> 1, pixels + totalSize >> 1));
+    } else if (type == 0x1404 /* GL_INT */ || type == 0x1405 /* GL_UNSIGNED_INT */) {
+      GLctx.readPixels(x, y, width, height, format, type, HEAPU32.subarray(pixels >> 2, pixels + totalSize >> 2));
+    } else if (type == 0x1406 /* GL_FLOAT */) {
+      GLctx.readPixels(x, y, width, height, format, type, HEAPF32.subarray(pixels >> 2, pixels + totalSize >> 2));
+    } else {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_ENUM in glReadPixels: Unrecognized type ' + type + '!');
+#endif
+      return;
+    }
   },
 
   glBindTexture__sig: 'vii',
@@ -1132,7 +1320,7 @@ var LibraryGL = {
   glGetVertexAttribfv__sig: 'viii',
   glGetVertexAttribfv: function(index, pname, params) {
 #if FULL_ES2
-    if (GL.clientBuffers[index].enabled) {
+    if (GL.currentContext.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribfv on client-side array: not supported, bad data returned");
     }
 #endif
@@ -1149,7 +1337,7 @@ var LibraryGL = {
   glGetVertexAttribiv__sig: 'viii',
   glGetVertexAttribiv: function(index, pname, params) {
 #if FULL_ES2
-    if (GL.clientBuffers[index].enabled) {
+    if (GL.currentContext.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribiv on client-side array: not supported, bad data returned");
     }
 #endif
@@ -1166,7 +1354,7 @@ var LibraryGL = {
   glGetVertexAttribPointerv__sig: 'viii',
   glGetVertexAttribPointerv: function(index, pname, pointer) {
 #if FULL_ES2
-    if (GL.clientBuffers[index].enabled) {
+    if (GL.currentContext.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribPointer on client-side array: not supported, bad data returned");
     }
 #endif
@@ -1846,12 +2034,12 @@ var LibraryGL = {
     _emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
-    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
+    assert(GL.currentContext.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif
 
     for(var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.vaos);
-      var vao = GL.vaoExt.createVertexArrayOES();
+      var vao = GL.currentContext.vaoExt.createVertexArrayOES();
       vao.name = id;
       GL.vaos[id] = vao;
       {{{ makeSetValue('arrays', 'i*4', 'id', 'i32') }}};
@@ -1868,11 +2056,11 @@ var LibraryGL = {
     _emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
-    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
+    assert(GL.currentContext.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif
     for(var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
-      GL.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
+      GL.currentContext.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
       GL.vaos[id] = null;
     }
 #endif
@@ -1887,10 +2075,10 @@ var LibraryGL = {
     _emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
-    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
+    assert(GL.currentContext.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif
 
-    GL.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
+    GL.currentContext.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
 #endif
   },
 
@@ -1903,12 +2091,12 @@ var LibraryGL = {
     return _emulGlIsVertexArray(array);
 #else
 #if GL_ASSERTIONS
-    assert(GL.vaoExt, 'Must have OES_vertex_array_object to use vao');
+    assert(GL.currentContext.vaoExt, 'Must have OES_vertex_array_object to use vao');
 #endif  
 
     var vao = GL.vaos[array];
     if (!vao) return 0;
-    return GL.vaoExt.isVertexArrayOES(vao);
+    return GL.currentContext.vaoExt.isVertexArrayOES(vao);
 #endif
   },
 
@@ -2112,8 +2300,8 @@ var LibraryGL = {
           case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
             var ret = allocate(intArrayFromString(GLctx.getSupportedExtensions().join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
-                   (GL.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
-                   (GL.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
+                   (GL.currentContext.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
+                   (GL.currentContext.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
             ), 'i8', ALLOC_NORMAL);
             GL.stringCache[name_] = ret;
             return ret;
@@ -4397,7 +4585,7 @@ var LibraryGL = {
 
       GLImmediate.vertexDataU8 = new Uint8Array(GLImmediate.tempData.buffer);
 
-      GL.generateTempBuffers(true);
+      GL.generateTempBuffers(true, GL.currentContext);
 
       GLImmediate.clientColor = new Float32Array([1, 1, 1, 1]);
     },
@@ -4575,7 +4763,7 @@ var LibraryGL = {
 #if ASSERTIONS
         assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
 #endif
-        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.tempQuadIndexBuffer);
+        GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.currentContext.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
       }
 
@@ -5247,7 +5435,7 @@ var LibraryGL = {
   glVertexAttribPointer__sig: 'viiiiii',
   glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
 #if FULL_ES2
-    var cb = GL.clientBuffers[index];
+    var cb = GL.currentContext.clientBuffers[index];
 #if ASSERTIONS
     assert(cb, index);
 #endif
@@ -5271,7 +5459,7 @@ var LibraryGL = {
   glEnableVertexAttribArray__sig: 'vi',
   glEnableVertexAttribArray: function(index) {
 #if FULL_ES2
-    var cb = GL.clientBuffers[index];
+    var cb = GL.currentContext.clientBuffers[index];
 #if ASSERTIONS
     assert(cb, index);
 #endif
@@ -5283,7 +5471,7 @@ var LibraryGL = {
   glDisableVertexAttribArray__sig: 'vi',
   glDisableVertexAttribArray: function(index) {
 #if FULL_ES2
-    var cb = GL.clientBuffers[index];
+    var cb = GL.currentContext.clientBuffers[index];
 #if ASSERTIONS
     assert(cb, index);
 #endif
@@ -5366,25 +5554,25 @@ var LibraryGL = {
   glVertexAttribDivisor__sig: 'vii',
   glVertexAttribDivisor: function(index, divisor) {
 #if GL_ASSERTIONS    
-    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+    assert(GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
 #endif
-    GL.instancedArraysExt.vertexAttribDivisorANGLE(index, divisor);    
+    GL.currentContext.instancedArraysExt.vertexAttribDivisorANGLE(index, divisor);    
   },
 
   glDrawArraysInstanced__sig: 'viiii',
   glDrawArraysInstanced: function(mode, first, count, primcount) {
 #if GL_ASSERTIONS    
-    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+    assert(GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
 #endif
-    GL.instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount);
+    GL.currentContext.instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount);
   },
   
   glDrawElementsInstanced__sig: 'viiiii',
   glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
 #if GL_ASSERTIONS    
-    assert(GL.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
+    assert(GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension to use WebGL instancing');
 #endif
-    GL.instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount);
+    GL.currentContext.instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount);
   },
   
   // OpenGL Desktop/ES 2.0 instancing extensions compatibility
@@ -5398,7 +5586,19 @@ var LibraryGL = {
   glVertexAttribDivisorARB: 'glVertexAttribDivisor',
   glDrawArraysInstancedARB: 'glDrawArraysInstanced',
   glDrawElementsInstancedARB: 'glDrawElementsInstanced',
-  
+
+
+  glDrawBuffers__sig: 'vii',
+  glDrawBuffers: function(n, bufs) {
+#if GL_ASSERTIONS
+    assert(GL.currentContext.drawBuffersExt, 'Must have WEBGL_draw_buffers extension to use drawBuffers');
+#endif
+    var bufArray = [];
+    for (var i = 0; i < n; i++)
+      bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
+
+    GL.currentContext.drawBuffersExt.drawBuffersWEBGL(bufArray);
+  },
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',

@@ -797,7 +797,7 @@ function analyzer(data, sidePass) {
                 var sign = shifts >= 0 ? 1 : -1;
                 var shiftOp = shifts >= 0 ? 'shl' : 'lshr';
                 var shiftOpReverse = shifts >= 0 ? 'lshr' : 'shl';
-                var whole = shifts >= 0 ? Math.floor(shifts/32) : Math.ceil(shifts/32);
+                var whole = (shifts/32)|0; // Remove fractional part either for positive or negative number.
                 var fraction = Math.abs(shifts % 32);
                 if (signed) {
                   var signedFill = {

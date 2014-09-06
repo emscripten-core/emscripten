@@ -3,7 +3,7 @@
 # from CMakeLists.txt that invoke emcc.
 
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters
-# cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Platform/Emscripten.cmake
+# cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Modules/Platform/Emscripten.cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
 #       -G "Unix Makefiles" (Linux and OSX)
 #       -G "MinGW Makefiles" (Windows)
@@ -12,20 +12,36 @@
 # After that, build the generated Makefile with the command 'make'. On Windows, you may download and use 'mingw32-make' instead.
 
 # The following variable describes the target OS we are building to.
-# Ideally, this could be 'Emscripten', but as Emscripten mimics the Linux platform, setting this to Linux will allow more of existing software to build.
-# Be sure to run Emscripten test_openjpeg if planning to change this.
-set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
+
+# Tell CMake how it should instruct the compiler to generate multiple versions of an outputted .so library: e.g. "libfoo.so, libfoo.so.1, libfoo.so.1.4" etc.
+# This feature is activated if a shared library project has the property SOVERSION defined.
+set(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname,")
+
+# In CMake, CMAKE_HOST_WIN32 is set when we are cross-compiling from Win32 to Emscripten: http://www.cmake.org/cmake/help/v2.8.12/cmake.html#variable:CMAKE_HOST_WIN32
+# The variable WIN32 is set only when the target arch that will run the code will be WIN32, so unset WIN32 when cross-compiling.
+set(WIN32)
+
+# The same logic as above applies for APPLE and CMAKE_HOST_APPLE, so unset APPLE.
+set(APPLE)
+
+# And for UNIX and CMAKE_HOST_UNIX. However, Emscripten is often able to mimic being a Linux/Unix system, in which case a lot of existing CMakeLists.txt files can be configured for Emscripten while assuming UNIX build, so this is left enabled.
+set(UNIX 1)
 
 # Do a no-op access on the CMAKE_TOOLCHAIN_FILE variable so that CMake will not issue a warning on it being unused.
 if (CMAKE_TOOLCHAIN_FILE)
 endif()
 
+# In order for check_function_exists() detection to work, we must signal it to pass an additional flag, which causes the compilation
+# to abort if linking results in any undefined symbols. The CMake detection mechanism depends on the undefined symbol error to be raised.
+set(CMAKE_REQUIRED_FLAGS "-s ERROR_ON_UNDEFINED_SYMBOLS=1")
+
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
 	if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
 		set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
 	endif()
@@ -92,9 +108,7 @@ set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 #SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
 #SET(CMAKE_SHARED_LIBRARY_PREFIX "")
 #SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
-#IF (NOT CMAKE_EXECUTABLE_SUFFIX)
-#	SET(CMAKE_EXECUTABLE_SUFFIX ".js")
-#endif()
+SET(CMAKE_EXECUTABLE_SUFFIX ".js")
 #SET(CMAKE_FIND_LIBRARY_PREFIXES "")
 #SET(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
 
@@ -115,13 +129,26 @@ set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECT
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
 
-# We are cross-compiling, so unset the common CMake variables that represent the target platform. Leave UNIX define enabled, since Emscripten
-# mimics a Linux environment.
-SET(WIN32)
-SET(APPLE)
-
+# Hardwire support for cmake-2.8/Modules/CMakeBackwardsCompatibilityC.cmake without having CMake to try complex things
+# to autodetect these:
+set(CMAKE_SKIP_COMPATIBILITY_TESTS 1)
+set(CMAKE_SIZEOF_CHAR 1)
+set(CMAKE_SIZEOF_UNSIGNED_SHORT 2)
+set(CMAKE_SIZEOF_SHORT 2)
+set(CMAKE_SIZEOF_INT 4)
+set(CMAKE_SIZEOF_UNSIGNED_LONG 4)
+set(CMAKE_SIZEOF_UNSIGNED_INT 4)
+set(CMAKE_SIZEOF_LONG 4)
+set(CMAKE_SIZEOF_VOID_P 4)
+set(CMAKE_SIZEOF_FLOAT 4)
+set(CMAKE_SIZEOF_DOUBLE 8)
 set(CMAKE_C_SIZEOF_DATA_PTR 4)
 set(CMAKE_CXX_SIZEOF_DATA_PTR 4)
+set(CMAKE_HAVE_LIMITS_H 1)
+set(CMAKE_HAVE_UNISTD_H 1)
+set(CMAKE_HAVE_PTHREAD_H 1)
+set(CMAKE_HAVE_SYS_PRCTL_H 1)
+set(CMAKE_WORDS_BIGENDIAN 0)
 
 set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG -O2" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELEASE")
 set(CMAKE_C_FLAGS_MINSIZEREL "-DNDEBUG -Os" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_MINSIZEREL")

@@ -16,7 +16,7 @@ extern "C" {
 #define INFINITY  __builtin_inff()
 #else
 #define NAN       (0.0f/0.0f)
-#define INFINITY  1e40f
+#define INFINITY  1e5000f
 #endif
 
 #define HUGE_VALF INFINITY
@@ -42,12 +42,14 @@ int __fpclassifyl(long double);
 
 static __inline unsigned __FLOAT_BITS(float __f)
 {
-	union {float __f; unsigned __i;} __u = {__f};
+	union {float __f; unsigned __i;} __u;
+	__u.__f = __f;
 	return __u.__i;
 }
 static __inline unsigned long long __DOUBLE_BITS(double __f)
 {
-	union {double __f; unsigned long long __i;} __u = {__f};
+	union {double __f; unsigned long long __i;} __u;
+	__u.__f = __f;
 	return __u.__i;
 }
 
@@ -91,20 +93,20 @@ int __signbitl(long double);
 static __inline int __is##rel(type __x, type __y) \
 { return !isunordered(__x,__y) && __x op __y; }
 
-__ISREL_DEF(lessf, <, float)
-__ISREL_DEF(less, <, double)
+__ISREL_DEF(lessf, <, float_t)
+__ISREL_DEF(less, <, double_t)
 __ISREL_DEF(lessl, <, long double)
-__ISREL_DEF(lessequalf, <=, float)
-__ISREL_DEF(lessequal, <=, double)
+__ISREL_DEF(lessequalf, <=, float_t)
+__ISREL_DEF(lessequal, <=, double_t)
 __ISREL_DEF(lessequall, <=, long double)
-__ISREL_DEF(lessgreaterf, !=, float)
-__ISREL_DEF(lessgreater, !=, double)
+__ISREL_DEF(lessgreaterf, !=, float_t)
+__ISREL_DEF(lessgreater, !=, double_t)
 __ISREL_DEF(lessgreaterl, !=, long double)
-__ISREL_DEF(greaterf, >, float)
-__ISREL_DEF(greater, >, double)
+__ISREL_DEF(greaterf, >, float_t)
+__ISREL_DEF(greater, >, double_t)
 __ISREL_DEF(greaterl, >, long double)
-__ISREL_DEF(greaterequalf, >=, float)
-__ISREL_DEF(greaterequal, >=, double)
+__ISREL_DEF(greaterequalf, >=, float_t)
+__ISREL_DEF(greaterequal, >=, double_t)
 __ISREL_DEF(greaterequall, >=, long double)
 
 #define __tg_pred_2(x, y, p) ( \
@@ -349,7 +351,7 @@ long double truncl(long double);
 
 #if defined(_XOPEN_SOURCE) || defined(_BSD_SOURCE)
 #undef  MAXFLOAT
-#define MAXFLOAT        3.40282347e+38F
+#define MAXFLOAT        3.40282346638528859812e+38F
 #endif
 
 #if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
@@ -379,7 +381,13 @@ double      yn(int, double);
 #endif
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-#define HUGE            3.40282347e+38F
+#define HUGE            3.40282346638528859812e+38F
+
+double      drem(double, double);
+float       dremf(float, float);
+
+int         finite(double);
+int         finitef(float);
 
 double      scalb(double, double);
 float       scalbf(float, float);

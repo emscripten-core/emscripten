@@ -14,6 +14,5 @@ int iswspace(wint_t wc)
 		0x2006, 0x2008, 0x2009, 0x200a,
 		0x2028, 0x2029, 0x205f, 0x3000, 0
 	};
-	if (wcschr(spaces, wc)) return 1;
-	return 0;
+	return wc && wcschr(spaces, wc);
 }

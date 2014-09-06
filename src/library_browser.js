@@ -256,146 +256,41 @@ mergeInto(LibraryManager.library, {
     },
 
     createContext: function(canvas, useWebGL, setInModule, webGLContextAttributes) {
-#if !USE_TYPED_ARRAYS
-      if (useWebGL) {
-        Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
-        return null;
-      }
-#endif
-      if (useWebGL && Module.ctx) return Module.ctx; // no need to recreate singleton GL context
+      if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
-      var errorInfo = '?';
-      function onContextCreationError(event) {
-        errorInfo = event.statusMessage || errorInfo;
-      }
-      try {
-        if (useWebGL) {
-          var contextAttributes = {
-            antialias: false,
-            alpha: false
-          };
-
-          if (webGLContextAttributes) {
-            for (var attribute in webGLContextAttributes) {
-              contextAttributes[attribute] = webGLContextAttributes[attribute];
-            }
-          }
-
-#if GL_TESTING
-          contextAttributes.preserveDrawingBuffer = true;
-#endif
-
-          canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
-          try {
-            ['experimental-webgl', 'webgl'].some(function(webglId) {
-              return ctx = canvas.getContext(webglId, contextAttributes);
-            });
-          } finally {
-            canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
-          }
-        } else {
-          ctx = canvas.getContext('2d');
-        }
-        if (!ctx) throw ':(';
-      } catch (e) {
-        Module.print('Could not create canvas: ' + [errorInfo, e]);
-        return null;
-      }
+      var contextHandle;
       if (useWebGL) {
-#if GL_DEBUG
-        function wrapDebugGL(ctx) {
+        // For GLES2/desktop GL compatibility, adjust a few defaults to be different to WebGL defaults, so that they align better with the desktop defaults.
+        var contextAttributes = {
+          antialias: false,
+          alpha: false
+        };
 
-          var printObjectList = [];
-
-          function prettyPrint(arg) {
-            if (typeof arg == 'undefined') return '!UNDEFINED!';
-            if (typeof arg == 'boolean') arg = arg + 0;
-            if (!arg) return arg;
-            var index = printObjectList.indexOf(arg);
-            if (index >= 0) return '<' + arg + '|'; // + index + '>';
-            if (arg.toString() == '[object HTMLImageElement]') {
-              return arg + '\n\n';
-            }
-            if (arg.byteLength) {
-              return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}'; // Useful for correct arrays, less so for compiled arrays, see the code below for that
-              var buf = new ArrayBuffer(32);
-              var i8buf = new Int8Array(buf);
-              var i16buf = new Int16Array(buf);
-              var f32buf = new Float32Array(buf);
-              switch(arg.toString()) {
-                case '[object Uint8Array]':
-                  i8buf.set(arg.subarray(0, 32));
-                  break;
-                case '[object Float32Array]':
-                  f32buf.set(arg.subarray(0, 5));
-                  break;
-                case '[object Uint16Array]':
-                  i16buf.set(arg.subarray(0, 16));
-                  break;
-                default:
-                  alert('unknown array for debugging: ' + arg);
-                  throw 'see alert';
-              }
-              var ret = '{' + arg.byteLength + ':\n';
-              var arr = Array.prototype.slice.call(i8buf);
-              ret += 'i8:' + arr.toString().replace(/,/g, ',') + '\n';
-              arr = Array.prototype.slice.call(f32buf, 0, 8);
-              ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
-              return ret;
-            }
-            if (typeof arg == 'object') {
-              printObjectList.push(arg);
-              return '<' + arg + '|'; // + (printObjectList.length-1) + '>';
-            }
-            if (typeof arg == 'number') {
-              if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
-            }
-            return arg;
+        if (webGLContextAttributes) {
+          for (var attribute in webGLContextAttributes) {
+            contextAttributes[attribute] = webGLContextAttributes[attribute];
           }
-
-          var wrapper = {};
-          for (var prop in ctx) {
-            (function(prop) {
-              switch (typeof ctx[prop]) {
-                case 'function': {
-                  wrapper[prop] = function gl_wrapper() {
-                    var printArgs = Array.prototype.slice.call(arguments).map(prettyPrint);
-                    dump('[gl_f:' + prop + ':' + printArgs + ']\n');
-                    var ret = ctx[prop].apply(ctx, arguments);
-                    if (typeof ret != 'undefined') {
-                      dump('[     gl:' + prop + ':return:' + prettyPrint(ret) + ']\n');
-                    }
-                    return ret;
-                  }
-                  break;
-                }
-                case 'number': case 'string': {
-                  wrapper.__defineGetter__(prop, function() {
-                    //dump('[gl_g:' + prop + ':' + ctx[prop] + ']\n');
-                    return ctx[prop];
-                  });
-                  wrapper.__defineSetter__(prop, function(value) {
-                    dump('[gl_s:' + prop + ':' + value + ']\n');
-                    ctx[prop] = value;
-                  });
-                  break;
-                }
-              }
-            })(prop);
-          }
-          return wrapper;
         }
+#if GL_TESTING
+        contextAttributes.preserveDrawingBuffer = true;
 #endif
-        // possible GL_DEBUG entry point: ctx = wrapDebugGL(ctx);
 
+        contextHandle = GL.createContext(canvas, contextAttributes);
+        ctx = GL.getContext(contextHandle).GLctx;
         // Set the background of the WebGL canvas to black
         canvas.style.backgroundColor = "black";
+      } else {
+        ctx = canvas.getContext('2d');
       }
+
+      if (!ctx) return null;
+
       if (setInModule) {
         if (!useWebGL) assert(typeof GLctx === 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
+
         Module.ctx = ctx;
-        if (useWebGL) GLctx = ctx;
+        if (useWebGL) GL.makeContextCurrent(contextHandle);
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
         Browser.init();
@@ -778,8 +673,38 @@ mergeInto(LibraryManager.library, {
           }
         }
       }
+    },
+
+    wgetRequests: {},
+    nextWgetRequestHandle: 0,
+
+    getNextWgetRequestHandle: function() {
+      var handle = Browser.nextWgetRequestHandle;
+      Browser.nextWgetRequestHandle++;
+      return handle;
     }
   },
+
+#if ASYNCIFY
+  emscripten_wget__deps: ['emscripten_async_resume'],
+  emscripten_wget: function(url, file) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    asm.setAsync();
+    Module['noExitRuntime'] = true;
+    FS.createPreloadedFile(
+      PATH.dirname(_file),
+      PATH.basename(_file),
+      _url, true, true,
+      _emscripten_async_resume,
+      _emscripten_async_resume
+    );
+  },
+#else
+  emscripten_wget: function(url, file) {
+    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_wget';
+  },
+#endif
 
   emscripten_async_wget: function(url, file, onload, onerror) {
     var _url = Pointer_stringify(url);
@@ -826,31 +751,41 @@ mergeInto(LibraryManager.library, {
     http.open(_request, _url, true);
     http.responseType = 'arraybuffer';
 
+    var handle = Browser.getNextWgetRequestHandle();
+
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200) {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
         if (onload) {
           var stack = Runtime.stackSave();
-          Runtime.dynCall('vii', onload, [arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
+          Runtime.dynCall('viii', onload, [handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
           Runtime.stackRestore(stack);
         }
       } else {
-        if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
+        if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
       }
+
+      delete Browser.wgetRequests[handle];
     };
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
+      if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
+      delete Browser.wgetRequests[handle];
     };
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
       if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
         var percentComplete = (e.loaded / e.total)*100;
-        if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
+        if (onprogress) Runtime.dynCall('viii', onprogress, [handle, arg, percentComplete]);
       }
+    };
+
+    // ABORT
+    http.onabort = function http_onabort(e) {
+      delete Browser.wgetRequests[handle];
     };
 
     // Useful because the browser can limit the number of redirection
@@ -868,6 +803,10 @@ mergeInto(LibraryManager.library, {
     } else {
       http.send(null);
     }
+
+    Browser.wgetRequests[handle] = http;
+
+    return handle;
   },
 
   emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
@@ -879,27 +818,38 @@ mergeInto(LibraryManager.library, {
     http.open(_request, _url, true);
     http.responseType = 'arraybuffer';
 
+    var handle = Browser.getNextWgetRequestHandle();
+
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200 || _url.substr(0,4).toLowerCase() != "http") {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
-        if (onload) Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
+        if (onload) Runtime.dynCall('viiii', onload, [handle, arg, buffer, byteArray.length]);
         if (free) _free(buffer);
       } else {
-        if (onerror) Runtime.dynCall('viii', onerror, [arg, http.status, http.statusText]);
+        if (onerror) Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
       }
+      delete Browser.wgetRequests[handle];
     };
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) Runtime.dynCall('viii', onerror, [arg, http.status, http.statusText]);
+      if (onerror) {
+        Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
+      }
+      delete Browser.wgetRequests[handle];
     };
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
-      if (onprogress) Runtime.dynCall('viii', onprogress, [arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0]);
+      if (onprogress) Runtime.dynCall('viiii', onprogress, [handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0]);
+    };
+
+    // ABORT
+    http.onabort = function http_onabort(e) {
+      delete Browser.wgetRequests[handle];
     };
 
     // Useful because the browser can limit the number of redirection
@@ -916,6 +866,17 @@ mergeInto(LibraryManager.library, {
       http.send(_param);
     } else {
       http.send(null);
+    }
+
+    Browser.wgetRequests[handle] = http;
+
+    return handle;
+  },
+
+  emscripten_async_wget2_abort: function(handle) {
+    var http = Browser.wgetRequests[handle];
+    if (http) {
+      http.abort();
     }
   },
 
@@ -1132,6 +1093,11 @@ mergeInto(LibraryManager.library, {
     throw 'SimulateInfiniteLoop';
   },
 
+  emscripten_force_exit: function(status) {
+    Module['noExitRuntime'] = false;
+    Module['exit'](status);
+  },
+
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
@@ -1166,6 +1132,7 @@ mergeInto(LibraryManager.library, {
       bufferSize: 0
     };
     info.worker.onmessage = function info_worker_onmessage(msg) {
+      if (ABORT) return;
       var info = Browser.workers[id];
       if (!info) return; // worker was destroyed meanwhile
       var callbackId = msg.data['callbackId'];

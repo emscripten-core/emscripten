@@ -118,15 +118,24 @@ process(sys.argv[1])
     self.filename = final
 
   def run(self, args):
-    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
+    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
 # Benchmarkers
+try:
+  default_native = LLVM_3_2
+  default_native_name = 'clang-3.2'
+except:
+  if 'benchmark' in str(sys.argv):
+    print 'LLVM_3_2 not defined, using our LLVM instead (%s)' % LLVM_ROOT
+  default_native = LLVM_ROOT
+  default_native_name = 'clang'
+
 try:
   benchmarkers_error = ''
   benchmarkers = [
     #NativeBenchmarker('clang', CLANG_CC, CLANG),
-    NativeBenchmarker('clang-3.2', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++')),
-    #NativeBenchmarker('clang-3.2-O3', os.path.join(LLVM_3_2, 'clang'), os.path.join(LLVM_3_2, 'clang++'), ['-O3']),
+    NativeBenchmarker(default_native_name, os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++')),
+    #NativeBenchmarker('clang-3.2-O3', os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++'), ['-O3']),
     #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),

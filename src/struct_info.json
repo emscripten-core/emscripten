@@ -441,7 +441,9 @@
             "SOCK_STREAM", 
             "AF_INET", 
             "AF_UNSPEC", 
-            "AF_INET6"
+            "AF_INET6",
+            "SOL_SOCKET", 
+            "SO_ERROR"
         ],
         "structs": {}
     }, 
@@ -871,7 +873,7 @@
     },
     {
         "file": "SDL/SDL_pixels.h",
-        "defines": [],
+        "defines": ["SDL_PIXELFORMAT_RGBA8888"], 
         "structs": {
             "SDL_Palette": [
                 "ncolors", 
@@ -1295,6 +1297,19 @@
               "dischargingTime",
               "level",
               "charging"
+            ],
+            "EmscriptenWebGLContextAttributes": [
+              "alpha",
+              "depth",
+              "stencil",
+              "antialias",
+              "premultipliedAlpha",
+              "preserveDrawingBuffer",
+              "preferLowPowerToHighPerformance",
+              "failIfMajorPerformanceCaveat",
+              "majorVersion",
+              "minorVersion",
+              "enableExtensionsByDefault"
             ]
         }
     }

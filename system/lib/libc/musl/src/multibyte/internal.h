@@ -6,6 +6,7 @@
 
 #define bittab __fsmu8
 
+#include <stdint.h>
 #include "libc.h"
 
 extern const uint32_t bittab[] ATTR_LIBC_VISIBILITY;

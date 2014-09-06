@@ -319,7 +319,29 @@ try {
     }
   }
 } catch(err) {
-  printErr('aborting from js compiler due to exception: ' + err + ' | ' + err.stack);
+  if (err.indexOf('Aborting compilation due to previous errors') != -1) {
+    // Compiler failed on user error, print out the error message.
+    printErr(err + ' | ' + err.stack);
+  } else {
+    // Compiler failed on internal compiler error!
+    printErr('Internal compiler error in src/compiler.js! Please raise a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: ' + err + ' | ' + err.stack);
+  }
+
+  if (ENVIRONMENT_IS_NODE) {
+    // Work around a node.js bug where stdout buffer is not flushed at process exit:
+    // Instead of process.exit() directly, wait for stdout flush event.
+    // See https://github.com/joyent/node/issues/1669 and https://github.com/kripken/emscripten/issues/2582
+    // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
+    process['stdout']['once']('drain', function () {
+      process['exit'](1);
+    });
+    console.log(' '); // Make sure to print something to force the drain event to occur, in case the stdout buffer was empty.
+    // Work around another node bug where sometimes 'drain' is never fired - make another effort
+    // to emit the exit status, after a significant delay (if node hasn't fired drain by then, give up)
+    setTimeout(function() {
+      process['exit'](1);
+    }, 500);
+  } else throw err;
 }
 
 //var M = keys(tokenCacheMisses).map(function(m) { return [m, misses[m]] }).sort(function(a, b) { return a[1] - b[1] });

@@ -748,6 +748,30 @@ window.close = function() {
   def test_glgears_proxy(self):
     self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=self.post_manual_reftest)
 
+    # test noProxy option applied at runtime
+
+    # run normally (duplicates above test, but verifies we can run outside of the btest harness
+    self.run_browser('test.html', None, ['/report_result?0'])
+
+    # run with noProxy
+    self.run_browser('test.html?noProxy', None, ['/report_result?0'])
+
+    original = open('test.js').read()
+
+    def copy(to, js_mod):
+      open(to + '.html', 'w').write(open('test.html').read().replace('test.js', to + '.js'))
+      open(to + '.js', 'w').write(js_mod(open('test.js').read()))
+
+    # run with noProxy, but make main thread fail
+    copy('two', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('two.html?noProxy', None, ['/report_result?999'])
+    self.run_browser('two.html', None, ['/report_result?0']) # this is still cool
+
+    # run without noProxy, so proxy, but make worker fail
+    copy('three', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('three.html', None, ['/report_result?999'])
+    self.run_browser('three.html?noProxy', None, ['/report_result?0']) # this is still cool
+
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1']).communicate()
@@ -756,7 +780,7 @@ window.close = function() {
     self.run_browser('test.html', None, '/report_result?0')
 
   def test_sdl_canvas_alpha(self):
-    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=9)
+    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=11)
 
   def test_sdl_key(self):
     for defines in [[], ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']]:
@@ -1112,6 +1136,9 @@ keydown(100);keyup(100); // trigger the end
       secret = str(time.time())
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+
+  def test_force_exit(self):
+    self.btest('force_exit.c', force_c=True, expected='17')
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -1722,46 +1749,77 @@ void *getBindBuffer() {
     # otherwise, we just overwrite
     self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
-  def test_mem_init_ccall(self):
-    open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
-      function doCcall() {
-        ccall('note', 'string', ['number'], [2]);
+  def test_runtime_misuse(self):
+    post_prep = '''
+      var expected_ok = false;
+      function doCcall(n) {
+        ccall('note', 'string', ['number'], [n]);
       }
       var wrapped = cwrap('note', 'string', ['number']); // returns a string to suppress cwrap optimization
-      function doCwrapCall() {
-        var str = wrapped(3);
+      function doCwrapCall(n) {
+        var str = wrapped(n);
         Module.print('got ' + str);
         assert(str === 'silly-string');
       }
-
-      var ok = true;
+      function doDirectCall(n) {
+        Module['_note'](n);
+      }
+    '''
+    post_test = '''
+      var ok = false;
       try {
-        doCcall();
-        ok = false; // should fail and not reach here, runtime is not ready yet so ccall will abort
+        doCcall(1);
+        ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
         Module.print('expected fail 1');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
-      assert(ok);
+      assert(ok === expected_ok);
 
-      ok = true;
+      ok = false;
       try {
-        doCwrapCall();
-        ok = false; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
+        doCwrapCall(2);
+        ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
         Module.print('expected fail 2');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
-      assert(ok);
+      assert(ok === expected_ok);
 
+      ok = false;
+      try {
+        doDirectCall(3);
+        ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
+      } catch(e) {
+        Module.print('expected fail 3');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        ABORT = false; // hackish
+      }
+      assert(ok === expected_ok);
+    '''
+
+    post_hook = r'''
       function myJSCallback() {
         // called from main, this is an ok time
-        doCcall();
-        doCwrapCall();
+        doCcall(100);
+        doCwrapCall(200);
+        doDirectCall(300);
       }
-    ''')
 
-    self.btest('mem_init.cpp', expected='3', args=['--post-js', 'post.js', '--memory-init-file', '1'])
+      setTimeout(Module['_free'], 1000); // free is valid to call even after the runtime closes
+    '''
+
+    print 'mem init, so async, call too early'
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + post_test + post_hook)
+    self.btest('runtime_misuse.cpp', expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'])
+    print 'sync startup, call too late'
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+    self.btest('runtime_misuse.cpp', expected='600', args=['--post-js', 'post.js', '--memory-init-file', '0'])
+    print 'sync, runtime still alive, so all good'
+    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+    self.btest('runtime_misuse.cpp', expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'])
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
@@ -1825,15 +1883,15 @@ void *getBindBuffer() {
 
     # First run tests in Node and/or SPIDERMONKEY using run_js. Use closure compiler so we can check that
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
-    Popen([PYTHON, EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', path_from_root('tests', 'uuid', 'test.js')], stdout=PIPE, stderr=PIPE).communicate()
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js'], stdout=PIPE, stderr=PIPE).communicate()
 
-    test_js_closure = open(path_from_root('tests', 'uuid', 'test.js')).read()
+    test_js_closure = open('test.js').read()
 
     # Check that test.js compiled with --closure 1 contains ").randomBytes" and "window.crypto.getRandomValues"
     assert ").randomBytes" in test_js_closure
     assert "window.crypto.getRandomValues" in test_js_closure
 
-    out = run_js(path_from_root('tests', 'uuid', 'test.js'), full_output=True)
+    out = run_js('test.js', full_output=True)
     print out
 
     # Tidy up files that might have been created by this test.
@@ -1865,6 +1923,11 @@ Module["preRun"].push(function () {
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print opts
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
+
+  def test_html5_webgl_create_context(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+      print opts
+      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
 
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
@@ -1908,3 +1971,7 @@ open(filename, 'w').write(replaced)
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='121378', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer, '-s', 'PRECISE_F32=1']) # proper polyfill was enstated, then it was replaced by the fix so 0 is returned all the time, hence a different result here
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer, '-s', 'PRECISE_F32=2']) # we should remove the calls to the polyfill ENTIRELY here, on the clientside, so we should NOT see any calls to fround here, and result should be like double
 
+  def test_wget(self):
+    with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
+      f.write('emscripten')
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])

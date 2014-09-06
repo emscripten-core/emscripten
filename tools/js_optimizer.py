@@ -19,7 +19,7 @@ WINDOWS = sys.platform.startswith('win')
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-func_sig = re.compile('( *)function ([_\w$]+)\(')
+func_sig = re.compile('function ([_\w$]+)\(')
 import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
 class Minifier:
@@ -43,7 +43,8 @@ class Minifier:
     shell = shell.replace('0.0', '13371337') # avoid uglify doing 0.0 => 0
 
     # Find all globals in the JS functions code
-    self.globs = [m.group(2) for m in func_sig.finditer(self.js)]
+
+    self.globs = [m.group(1) for m in func_sig.finditer(self.js)]
 
     temp_file = temp_files.get('.minifyglobals.js').name
     f = open(temp_file, 'w')
@@ -208,7 +209,7 @@ EMSCRIPTEN_FUNCS();
       if i < len(parts)-1: func += '\n}\n' # last part needs no }
       m = func_sig.search(func)
       if m:
-        ident = m.group(2)
+        ident = m.group(1)
       else:
         if know_generated: continue # ignore whitespace
         ident = 'anon_%d' % i
@@ -219,10 +220,6 @@ EMSCRIPTEN_FUNCS();
   total_size = len(js)
   funcs = split_funcs(js)
   js = None
-
-  if 'last' in passes and len(funcs) > 0:
-    if max([len(func[1]) for func in funcs]) > 200000:
-      print >> sys.stderr, 'warning: Output contains some very large functions, consider using OUTLINING_LIMIT to break them up (see settings.js)'
 
   # if we are making source maps, we want our debug numbering to start from the
   # top of the file, so avoid breaking the JS into chunks
@@ -280,7 +277,7 @@ EMSCRIPTEN_FUNCS();
         (['--debug'] if source_map else []) + passes, filenames)
     #print [' '.join(command) for command in commands]
 
-    cores = min(cores, filenames)
+    cores = min(cores, len(filenames))
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
       if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d, using %d cores  (total: %.2f MB)' % (len(chunks), chunk_size, cores, total_size/(1024*1024.))
@@ -343,6 +340,12 @@ EMSCRIPTEN_FUNCS();
     elif x[0] > y[0]: return -1
     return 0
   funcs.sort(sorter)
+
+  if 'last' in passes and len(funcs) > 0:
+    count = funcs[0][1].count('\n')
+    if count > 3000:
+      print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
+
   for func in funcs:
     f.write(func[1])
   funcs = None

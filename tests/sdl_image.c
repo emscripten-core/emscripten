@@ -52,7 +52,9 @@ int main() {
 
   SDL_Quit();
 
+#ifdef REPORT_RESULT
   REPORT_RESULT();
+#endif
 
   return 0;
 }

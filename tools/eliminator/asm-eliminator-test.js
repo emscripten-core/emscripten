@@ -1223,5 +1223,61 @@ function helperExtraUse() {
  }
  return inc;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign", "elimOneLoopVar", "elimOneLoopVar2", "elimOneLoopVar3", "elimOneLoopVar4", "elimOneLoopVarStillUsed", "elimOneLoopVarStillUsedSE", "elimOneLoopVar5", "helperExtraUse"]
+function mixed_up_loop_helpers() {
+ var $cmp = 0, $cmp13 = 0, $cmp15 = 0, $cmp2 = 0, $cmp7 = 0, $div = +0, $div11 = +0, $inc = 0, $iterations$0 = 0, $iterations$0$ph = 0, $or$cond = 0, $p$sroa$0$0$ph = +0, $p$sroa$1$0$ph = +0, $p$sroa$1$0$ph$phi = +0, $rem = 0, $sub = +0, $vararg_buffer = 0, $vararg_ptr1 = 0, label = 0, sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 16 | 0;
+ $vararg_buffer = sp;
+ $iterations$0$ph = 0;
+ $p$sroa$0$0$ph = +0;
+ $p$sroa$1$0$ph = +1;
+ L1 : while (1) {
+  $iterations$0 = $iterations$0$ph;
+  while (1) {
+   $inc = $iterations$0 + 1 | 0;
+   $cmp = ($inc | 0) < 10;
+   if (!$cmp) {
+    label = 8;
+    break L1;
+   }
+   HEAPF64[tempDoublePtr >> 3] = $p$sroa$0$0$ph;
+   HEAP32[$vararg_buffer >> 2] = HEAP32[tempDoublePtr >> 2];
+   HEAP32[$vararg_buffer + 4 >> 2] = HEAP32[tempDoublePtr + 4 >> 2];
+   $vararg_ptr1 = $vararg_buffer + 8 | 0;
+   HEAPF64[tempDoublePtr >> 3] = $p$sroa$1$0$ph;
+   HEAP32[$vararg_ptr1 >> 2] = HEAP32[tempDoublePtr >> 2];
+   HEAP32[$vararg_ptr1 + 4 >> 2] = HEAP32[tempDoublePtr + 4 >> 2];
+   _printf(8 | 0, $vararg_buffer | 0) | 0;
+   $cmp2 = ($iterations$0 | 0) > 0;
+   if ($cmp2) {
+    break;
+   } else {
+    $iterations$0 = $inc;
+   }
+  }
+  $sub = -$p$sroa$1$0$ph;
+  $rem = ($inc | 0) % 3 & -1;
+  $cmp7 = ($rem | 0) == 0;
+  if (!$cmp7) {
+   $p$sroa$1$0$ph$phi = $p$sroa$0$0$ph;
+   $iterations$0$ph = $inc;
+   $p$sroa$0$0$ph = $sub;
+   $p$sroa$1$0$ph = $p$sroa$1$0$ph$phi;
+   continue;
+  }
+  $div = $p$sroa$1$0$ph * +-.5;
+  $div11 = $p$sroa$0$0$ph * +.5;
+  $cmp13 = $div == +0;
+  $cmp15 = $div11 == +0;
+  $or$cond = $cmp13 & $cmp15;
+  if ($or$cond) {
+   break;
+  } else {
+   $iterations$0$ph = $inc;
+   $p$sroa$0$0$ph = $div;
+   $p$sroa$1$0$ph = $div11;
+  }
+ }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign", "elimOneLoopVar", "elimOneLoopVar2", "elimOneLoopVar3", "elimOneLoopVar4", "elimOneLoopVarStillUsed", "elimOneLoopVarStillUsedSE", "elimOneLoopVar5", "helperExtraUse", "mixed_up_loop_helpers"]
 

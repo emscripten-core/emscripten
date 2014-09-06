@@ -24,8 +24,10 @@ uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
 
 #if UINTPTR_MAX == UINT64_MAX
 #define __PRI64  "l"
+#define __PRIPTR "l"
 #else
 #define __PRI64  "ll"
+#define __PRIPTR ""
 #endif
 
 #define PRId8  "d"
@@ -125,12 +127,12 @@ uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
 #define PRIxMAX __PRI64 "x"
 #define PRIXMAX __PRI64 "X"
 
-#define PRIdPTR "ld"
-#define PRIiPTR "li"
-#define PRIoPTR "lo"
-#define PRIuPTR "lu"
-#define PRIxPTR "lx"
-#define PRIXPTR "lX"
+#define PRIdPTR __PRIPTR "d"
+#define PRIiPTR __PRIPTR "i"
+#define PRIoPTR __PRIPTR "o"
+#define PRIuPTR __PRIPTR "u"
+#define PRIxPTR __PRIPTR "x"
+#define PRIXPTR __PRIPTR "X"
 
 #define SCNd8   "hhd"
 #define SCNd16  "hd"
@@ -213,11 +215,11 @@ uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
 #define SCNuMAX __PRI64 "u"
 #define SCNxMAX __PRI64 "x"
 
-#define SCNdPTR "ld"
-#define SCNiPTR "li"
-#define SCNoPTR "lo"
-#define SCNuPTR "lu"
-#define SCNxPTR "lx"
+#define SCNdPTR __PRIPTR "d"
+#define SCNiPTR __PRIPTR "i"
+#define SCNoPTR __PRIPTR "o"
+#define SCNuPTR __PRIPTR "u"
+#define SCNxPTR __PRIPTR "x"
 
 #ifdef __cplusplus
 }

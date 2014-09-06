@@ -14,6 +14,7 @@ import os, sys, json, optparse, subprocess, re, time, multiprocessing, string, l
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
+from tools.shared import WINDOWS
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -465,8 +466,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     basic_float_vars = ['NaN', 'Infinity']
 
     if forwarded_json['Types']['preciseI64MathUsed'] or \
-       forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
-       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
+       forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32') or \
+       forwarded_json['Functions']['libraryFunctions'].get('_llvm_ctlz_i32'):
       basic_vars += ['cttz_i8', 'ctlz_i8']
 
     if settings.get('DLOPEN_SUPPORT'):
@@ -529,7 +530,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       pass
     # If no named globals, only need externals
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
-    global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
+    global_funcs = [key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
@@ -708,13 +709,15 @@ Runtime.getTempRet0 = asm['getTempRet0'];
     funcs_js[i] = None
     funcs_js_item = indexize(funcs_js_item)
     funcs_js_item = blockaddrsize(funcs_js_item)
+    if WINDOWS: funcs_js_item = funcs_js_item.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
     outfile.write(funcs_js_item)
   funcs_js = None
 
-  outfile.write(indexize(post))
-  if DEBUG: logging.debug('  emscript: phase 3 took %s seconds' % (time.time() - t))
-
+  indexized = indexize(post)
+  if WINDOWS: indexized = indexized.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+  outfile.write(indexized)
   outfile.close()
+  if DEBUG: logging.debug('  emscript: phase 3 took %s seconds' % (time.time() - t))
 
 # emscript_fast: emscript'en code using the 'fast' compilation path, using
 #                an LLVM backend
@@ -853,8 +856,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # Call js compiler
     if DEBUG: t = time.time()
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine, [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'))
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
@@ -907,7 +911,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     implemented_functions = set(metadata['implementedFunctions'])
     if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
       for requested in settings['ORIGINAL_EXPORTED_FUNCTIONS']:
-        if requested not in all_implemented:
+        if requested not in all_implemented and \
+           requested != '_malloc': # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     # Add named globals
@@ -930,7 +935,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
       funcs_js += ['\n// EMSCRIPTEN_END_FUNCS\n']
 
-      simple = os.environ.get('EMCC_SIMPLE_ASM')
       class Counter:
         i = 0
         j = 0
@@ -1061,10 +1065,13 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
       basic_float_vars = ['NaN', 'Infinity']
 
-      if metadata.get('preciseI64MathUsed') or \
-         forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
-         forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
+      if metadata.get('preciseI64MathUsed'):
         basic_vars += ['cttz_i8', 'ctlz_i8']
+      else:
+        if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
+          basic_vars += ['cttz_i8']
+        if forwarded_json['Functions']['libraryFunctions'].get('_llvm_ctlz_i32'):
+          basic_vars += ['ctlz_i8']
 
       if settings.get('DLOPEN_SUPPORT'):
         for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -1075,6 +1082,14 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         basic_vars += ['___rand_seed']
 
       asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
+
+      # See if we need ASYNCIFY functions
+      # We might not need them even if ASYNCIFY is enabled
+      need_asyncify = '_emscripten_alloc_async_context' in exported_implemented_functions
+      if need_asyncify:
+        basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
+        asm_runtime_funcs += ['setAsync']
+
       # function tables
       function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
       function_tables_impls = []
@@ -1113,12 +1128,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
       exported_implemented_functions.append('runPostSets')
       exports = []
-      if not simple:
-        for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
-          exports.append("%s: %s" % (export, export))
-        exports = '{ ' + ', '.join(exports) + ' }'
-      else:
-        exports = '_main'
+      for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
+        exports.append("%s: %s" % (export, export))
+      exports = '{ ' + ', '.join(exports) + ' }'
       # calculate globals
       try:
         del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -1126,7 +1138,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         pass
       # If no named globals, only need externals
       global_vars = metadata['externs'] #+ forwarded_json['Variables']['globals']
-      global_funcs = list(set(['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+      global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
       def math_fix(g):
         return g if not g.startswith('Math_') else g.split('_')[1]
       asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
@@ -1145,10 +1157,17 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
       sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
       # received
-      if not simple:
-        receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
-      else:
-        receiving = 'var _main = Module["_main"] = asm;'
+      receiving = ''
+      if settings['ASSERTIONS']:
+        # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+        # some support code like malloc TODO: verify that malloc is actually safe to use that way
+        receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real_''' + s + '''.apply(null, arguments);
+};
+''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset']])
+      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
 
       # finalize
 
@@ -1188,7 +1207,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     var ret = 0;
     ret = STACKTOP;
     STACKTOP = (STACKTOP + size)|0;
-  ''' + ('STACKTOP = (STACKTOP + 3)&-4;' if settings['TARGET_X86'] else 'STACKTOP = (STACKTOP + 7)&-8;') + '''
+  ''' + ('STACKTOP = (STACKTOP + 3)&-4;' if settings['TARGET_X86'] else 'STACKTOP = (STACKTOP + 7)&-8;\n') +
+        ('if ((STACKTOP|0) >= (STACK_MAX|0)) abort();\n' if settings['ASSERTIONS'] else '') + '''
     return ret|0;
   }
   function stackSave() {
@@ -1198,6 +1218,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     top = top|0;
     STACKTOP = top;
   }
+''' + ('''
+  function setAsync() {
+    ___async = 1;
+  }''' if need_asyncify else '') + '''
   function setThrew(threw, value) {
     threw = threw|0;
     value = value|0;
@@ -1299,9 +1323,11 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table).replace('"', ''))
 
     for i in range(len(funcs_js)): # do this loop carefully to save memory
+      if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
       outfile.write(funcs_js[i])
     funcs_js = None
 
+    if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
     outfile.write(post)
 
     outfile.close()
@@ -1331,7 +1357,9 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
   # Compile the assembly to Javascript.
   if settings.get('RELOOP'):
     if not relooper:
-      relooper = cache.get_path('relooper.js')
+      relooper = settings.get('RELOOPER')
+      if not relooper:
+        relooper = cache.get_path('relooper.js')
     settings.setdefault('RELOOPER', relooper)
     if not os.path.exists(relooper):
       shared.Building.ensure_relooper(relooper)

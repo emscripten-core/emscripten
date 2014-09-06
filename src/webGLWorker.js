@@ -10,6 +10,8 @@ function WebGLProgram(id) {
   this.shaders = [];
   this.attributes = {};
   this.attributeVec = [];
+  this.nextAttributes = {};
+  this.nextAttributeVec = [];
 }
 function WebGLFramebuffer(id) {
   this.what = 'frameBuffer';
@@ -584,8 +586,8 @@ function WebGLWorker() {
     commandBuffer.push(12, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
-    program.attributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
-    program.attributeVec[index] = name;
+    program.nextAttributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
+    program.nextAttributeVec[index] = name;
     commandBuffer.push(13, program.id, index, name);
   };
   this.getAttribLocation = function(program, name) {
@@ -647,6 +649,11 @@ function WebGLWorker() {
     program.uniforms = {};
     program.uniformVec = [];
 
+    program.attributes = program.nextAttributes;
+    program.attributeVec = program.nextAttributeVec;
+    program.nextAttributes = {};
+    program.nextAttributeVec = [];
+
     var existingAttributes = {};
 
     program.shaders.forEach(function(shader) {
@@ -658,7 +665,9 @@ function WebGLWorker() {
     for (var attr in existingAttributes) {
       if (!(attr in program.attributes)) {
         var index = program.attributeVec.length;
-        this.bindAttribLocation(program, index, attr);
+        program.attributes[attr] = { what: 'attribute', name: attr, size: -1, location: index, type: '?' }; // fill in size, type later
+        program.attributeVec[index] = attr;
+        commandBuffer.push(13, program.id, index, attr); // do a bindAttribLocation as well, so this takes effect in the link we are about to do
       }
       program.attributes[attr].size = existingAttributes[attr].size;
       program.attributes[attr].type = existingAttributes[attr].type;
@@ -935,6 +944,48 @@ function WebGLWorker() {
   this.uniformMatrix3fv = function(location, transpose, data) {
     if (!location) return;
     commandBuffer.push(68, location.id, transpose, new Float32Array(data));
+  };
+  this.stencilMask = function(mask) {
+    commandBuffer.push(69, mask);
+  };
+  this.clearStencil = function(s) {
+    commandBuffer.push(70, s);
+  };
+  this.texSubImage2D = function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
+    if (pixels === undefined) {
+      // shorter overload:      target, level, xoffset, yoffset, format,  type, pixels
+      var formatTemp = format;
+      format = width;
+      type = height;
+      pixels = formatTemp;
+      assert(pixels instanceof Image);
+      assert(format === this.RGBA); // HTML Images are RGBA, 8-bit
+      assert(type === this.UNSIGNED_BYTE);
+      var data = pixels.data;
+      width = data.width;
+      height = data.height;
+      pixels = new Uint8Array(data.data); // XXX transform from clamped to normal, could have been done in duplicate
+    }
+    commandBuffer.push(71, target, level, xoffset, yoffset, width, height, format, type, duplicate(pixels));
+  };
+  this.uniform3f = function(location, x, y, z) {
+    if (!location) return;
+    commandBuffer.push(72, location.id, x, y, z);
+  };
+  this.blendFuncSeparate = function(srcRGB, dstRGB, srcAlpha, dstAlpha) {
+    commandBuffer.push(73, srcRGB, dstRGB, srcAlpha, dstAlpha);
+  }
+  this.uniform2fv = function(location, data) {
+    if (!location) return;
+    commandBuffer.push(74, location.id, new Float32Array(data));
+  };
+  this.texParameterf = function(target, pname, param) {
+    commandBuffer.push(75, target, pname, param);
+  };
+  this.isContextLost = function() {
+    // optimisticaly return that everything is ok; client will abort on an actual context loss. we assume an error-free async workflow
+    commandBuffer.push(76);
+    return false;
   };
 
   // Setup

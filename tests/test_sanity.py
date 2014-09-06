@@ -94,12 +94,10 @@ class sanity(RunnerCore):
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
-      self.assertContained('PYTHON', output)
       if platform.system() is not 'Windows':
         # os.chmod can't make files executable on Windows
         self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
         self.assertIdentical(os.path.join(temp_bin, 'node'), re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
-        self.assertIdentical(os.path.join(temp_bin, 'python2'), re.search("^ *PYTHON *= (.*)$", output, re.M).group(1))
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
@@ -419,8 +417,8 @@ fi
 
         # Building a file that doesn't need cached stuff should not trigger cache generation
         output = self.do([compiler, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
-        assert BUILDING_MESSAGE.replace('X', 'libc') not in output
+        assert INCLUDING_MESSAGE.replace('X', 'libcextra') not in output
+        assert BUILDING_MESSAGE.replace('X', 'libcextra') not in output
         self.assertContained('hello, world!', run_js('a.out.js'))
         try_delete('a.out.js')
 
@@ -428,8 +426,8 @@ fi
         dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
         ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
 
-        # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
-        for filename, libname in [('hello_malloc.cpp', 'libc'), ('hello_libcxx.cpp', 'libcxx')]:
+        # Building a file that *does* need something *should* trigger cache generation, but only the first time
+        for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
             print filename, libname, i
             self.clear()
@@ -451,17 +449,17 @@ fi
               print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
               assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
               assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
-              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size/2, 'Dead code elimination must remove most of libc++'
+              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size*0.666, 'Dead code elimination must remove most of libc++'
             # should only have metadata in -O0, not 1 and 2
             if i > 0:
+              ll = None
               for ll_name in ll_names:
-                ll = None
-                try:
-                  ll = open(ll_name).read()
+                if os.path.exists(ll_name):
+                  check_call([LLVM_DIS, ll_name, '-o', ll_name + '.ll'])
+                  ll = open(ll_name + '.ll').read()
                   break
-                except:
-                  pass
               assert ll
+              print 'metas:', ll.count('\n!')
               assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']
@@ -528,25 +526,18 @@ fi
     restore()
     Cache.erase()
 
-    try:
-      old = os.environ.get('EMCC_LLVM_TARGET') or ''
-      for compiler in [EMCC, EMXX]:
-        for target in ['i386-pc-linux-gnu', 'asmjs-unknown-emscripten']:
-          print compiler, target
-          os.environ['EMCC_LLVM_TARGET'] = target
-          out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
-          out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
-          assert out == out2
-          def focus(e):
-            assert 'search starts here:' in e, e
-            assert e.count('End of search list.') == 1, e
-            return e[e.index('search starts here:'):e.index('End of search list.')+20]
-          err = focus(err)
-          err2 = focus(err2)
-          assert err == err2, err + '\n\n\n\n' + err2
-    finally:
-      if old:
-        os.environ['EMCC_LLVM_TARGET'] = old
+    for compiler in [EMCC, EMXX]:
+      print compiler
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
+      out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
+      assert out == out2
+      def focus(e):
+        assert 'search starts here:' in e, e
+        assert e.count('End of search list.') == 1, e
+        return e[e.index('search starts here:'):e.index('End of search list.')+20]
+      err = focus(err)
+      err2 = focus(err2)
+      assert err == err2, err + '\n\n\n\n' + err2
 
   def test_emconfig(self):
     restore()

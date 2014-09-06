@@ -60,7 +60,7 @@ OBJC_ENDINGS = ('.m',)
 OBJCXX_ENDINGS = ('.mm',)
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS
 BITCODE_ENDINGS = ('.bc', '.o', '.obj')
-DYNAMICLIB_ENDINGS = ('.dylib', '.so', '.dll')
+DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
@@ -128,435 +128,22 @@ while response_file:
 if len(sys.argv) == 1 or '--help' in sys.argv:
   this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
 
-  print '''%s [options] file...
-
-Most normal gcc/g++ options will work, for example:
-  --help                   Display this information
-  --version                Display compiler version information
-
-Options that are modified or new in %s include:
-
-  -O0                      No optimizations (default). This is the recommended
-                           setting for starting to port a project, as it
-                           includes various assertions.
-
-  -O1                      Simple optimizations, including asm.js, LLVM -O1
-                           optimizations, relooping, and no runtime assertions
-                           or C++ exception catching (to re-enable
-                           C++ exception catching, use
-                           -s DISABLE_EXCEPTION_CATCHING=0 ), and enables
-
-                              -s ALIASING_FUNCTION_POINTERS=1
-
-                           This is the recommended setting when you want a
-                           reasonably optimized build that is generated as
-                           quickly as possible (it builds much faster than -O2).
-
-                           (Note: for details on the affects of different
-                           opt levels, see apply_opt_level() in
-                           tools/shared.py and also src/settings.js.)
-
-  -O2                      As -O1, plus various js-level optimizations and
-                           LLVM -O3 optimizations. This is the recommended
-                           setting for a release build: slower compilation
-                           time in return for the smallest and fastest
-                           output.
-
-  -Os                      Like -O2 with extra optimizations for size.
-
-  -Oz                      Like -Os but reduces code size further.
-
-  -O3                      Like -O2 plus additional JS optimizations that can
-                           take a significant amount of compilation time and/or
-                           are relatively new. Note that differs from -O2 only
-                           during the bitcode to JS (final link + JS generation)
-                           stage, as it is JS-specific, so you can run -Os
-                           on your source files for example, and -O3 during
-                           JS generation if you want.
-
-                           For tips on optimizing your code, see
-                           https://github.com/kripken/emscripten/wiki/Optimizing-Code
-
-  -s OPTION=VALUE          JavaScript code generation option passed
-                           into the emscripten compiler. For the
-                           available options, see src/settings.js
-                           Note that for options that are lists, you
-                           need quotation marks in most shells, for
-                           example
-
-                            -s RUNTIME_LINKED_LIBS="['liblib.so']"
-
-                           or
-
-                            -s "RUNTIME_LINKED_LIBS=['liblib.so']"
-
-                           (without the external "s in either of those,
-                           you would get an error)
-
-                           You can also specify a file from which the
-                           value would be read, for example,
-
-                            -s DEAD_FUNCTIONS=@/path/to/file
-
-                           The contents of /path/to/file will be read,
-                           JSON.parsed and set into DEAD_FUNCTIONS (so
-                           the file could contain
-
-                            ["_func1", "func2"]
-
-                           ). Note that the path must be absolute, not
-                           relative.
-
-  -g                       Use debug info. When compiling to bitcode,
-                           this is the same as in clang and gcc, it
-                           adds debug info to the object files. When
-                           compiling from source to JS or bitcode to JS,
-                           it is equivalent to -g3 (keep code as debuggable
-                           as possible, except for discarding LLVM
-                           debug info, so no C/C++ line numbers; use
-                           -g4 to get line number debugging info in JS).
-
-  -g<level>                When compiling from bitcode to JS, we can
-                           keep the code debuggable to different
-                           degrees. Each of these levels builds on the
-                           previous:
-
-                            -g0  Make no effort to keep code debuggable.
-                                 Will discard LLVM debug info. (default
-                                 in -O1+)
-                            -g1  Preserve (do not minify) whitespace
-                            -g2  Preserve function names
-                            -g3  Preserve variable names
-                            -g4  Preserve LLVM debug info (if -g was
-                                 used when compiling the C/C++ sources),
-                                 show line number debug comments, and
-                                 generate source maps. This is the highest
-                                 level of debuggability. Note that this
-                                 may make -O1 and above significantly
-                                 slower because JS optimization will be
-                                 limited to 1 core.  (default in -O0)
-
-  -profiling               Use reasonable defaults when emitting JS to
-                           make the build useful for profiling. This
-                           sets -g2 (preserve function names) and may
-                           also enable optimizations that affect
-                           performance and otherwise might not be
-                           performed in -g2.
-
-  --emit-symbol-map        Save a map file between the minified
-                           global names and the original function names.
-                           This allows you to reconstruct meaningful
-                           stack traces, for example. (This is only
-                           relevant when minifying global names, which
-                           happens in -O2 and above, and when no -g
-                           option to prevent minification was specified.)
-
-  --typed-arrays <mode>    0: No typed arrays
-                           1: Parallel typed arrays
-                           2: Shared (C-like) typed arrays (default)
-
-  --js-opts                0: Prevent JS optimizer from running
-                           1: Use JS optimizer (default)
-
-  --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
-                           1: -O1 LLVM optimizations (default in -O1)
-                           2: -O2 LLVM optimizations
-                           3: -O3 LLVM optimizations (default in -O2+)
-
-                           You can also specify arbitrary LLVM options, e.g.
-
-                             --llvm-opts "['-O3', '-somethingelse']"
-
-  --llvm-lto <level>       0: No LLVM LTO (default)
-                           1: LLVM LTO is performed
-                           2: We combine all the bitcode and run LLVM opt -O3
-                              on that (which optimizes across modules, but is
-                              not the same as normal LTO), but do not do normal
-                              LTO
-                           3: We do both 2 and then 1
-                           Note: If LLVM optimizations are not run
-                           (see --llvm-opts), setting this has no
-                           effect.
-
-                           Note that LLVM LTO is not perfectly stable yet,
-                           and can can cause code to behave incorrectly.
-
-  --closure <on>           0: No closure compiler (default in -O2 and below)
-                           1: Run closure compiler. This greatly reduces
-                           code size and may in some cases increase
-                           runtime speed (although the opposite can also
-                           occur). Note that it takes time to run, and
-                           may require some changes to the code.
-
-                           In asm.js mode, closure will only be used on the
-                           'shell' code around the compiled code (the
-                           compiled code will be processed by the custom
-                           asm.js minifier).
-
-                           Note: If closure compiler hits an out-of-memory,
-                           try adjusting JAVA_HEAP_SIZE in the environment
-                           (for example, to 4096m for 4GB).
-
-                           Note: Closure is only run if js opts are being
-                           done (-O2 or above, or --js-opts 1).
-
-  --pre-js <file>          A file whose contents are added before the
-                           generated code. This is done *before*
-                           optimization, so it will be minified
-                           properly if closure compiler is run.
-
-  --post-js <file>         A file whose contents are added after the
-                           generated code This is done *before*
-                           optimization, so it will be minified
-                           properly if closure compiler is run.
-
-  --embed-file <file>      A file to embed inside the generated
-                           JavaScript. The compiled code will be able
-                           to access the file in the current directory
-                           with the same name as given here. So if
-                           you do --embed-file dir/file.dat, then
-                           (1) dir/file.dat must exist relative to
-                           where you run emcc, and (2) your compiled
-                           code will be able to find the file by
-                           reading that same path, dir/file.dat.
-                           If a directory is passed here, its entire
-                           contents will be embedded.
-
-                           Note: Embedding files is much less
-                                 efficient than preloading them. You
-                                 should only use it for small amounts
-                                 of small files. Instead, use
-                                 --preload-file which emits efficient
-                                 binary data.
-
-  --preload-file <name>    A file to preload before running the
-                           compiled code asynchronously. Otherwise
-                           similar to --embed-file, except that this
-                           option is only relevant when generating
-                           HTML (it uses asynchronous binary XHRs),
-                           or JS that will be used in a web page.
-                           If a directory is passed here, its entire
-                           contents will be preloaded.
-                           Preloaded files are stored in filename.data,
-                           where filename.html is the main file you
-                           are compiling to. To run your code, you
-                           will need both the .html and the .data.
-
-                           emcc runs tools/file_packager.py to do the
-                           actual packaging of embedded and preloaded
-                           files. You can run the file packager yourself
-                           if you want, see docs inside that file. You
-                           should then put the output of the file packager
-                           in an emcc --pre-js, so that it executes before
-                           your main compiled code (or run it before in
-                           some other way).
-
-                           For more docs on the options --preload-file
-                           accepts, see  https://github.com/kripken/emscripten/wiki/Filesystem-Guide
-
-  --exclude-file <name>   Files and directories to be excluded from
-                           --embed-file and --preload-file
-                           wildcard is supported
-
-  --shell-file <path>      The path name to a skeleton HTML file used
-                           when generating HTML output. The shell file
-                           used needs to have this token inside it:
-                           {{{ SCRIPT }}}
-                           (see src/shell.html and
-                                src/shell_minimal.html for examples)
-                           Note that this argument is ignored if a
-                           target other than HTML is specified using
-                           the -o option.
-
-  --compression <codec>    **THIS OPTION IS DEPRECATED**
-
-                           Compress both the compiled code and embedded/
-                           preloaded files. <codec> should be a triple,
-
-                              <native_encoder>,<js_decoder>,<js_name>
-
-                           where native_encoder is a native executable
-                           that compresses stdin to stdout (the simplest
-                           possible interface), js_decoder is a
-                           JavaScript file that implements a decoder,
-                           and js_name is the name of the function to
-                           call in the decoder file (which should
-                           receive an array/typed array and return
-                           an array/typed array.
-                           Compression only works when generating HTML.
-                           When compression is on, all filed specified
-                           to be preloaded are compressed in one big
-                           archive, which is given the same name as the
-                           output HTML but with suffix .data.compress
-
-  --minify 0               Identical to -g1
-
-  --js-transform <cmd>     <cmd> will be called on the generated code
-                           before it is optimized. This lets you modify
-                           the JavaScript, for example adding some code
-                           or removing some code, in a way that those
-                           modifications will be optimized together with
-                           the generated code properly. <cmd> will be
-                           called with the filename of the generated
-                           code as a parameter; to modify the code, you
-                           can read the original data and then append to
-                           it or overwrite it with the modified data.
-                           <cmd> is interpreted as a space-separated
-                           list of arguments, for example, <cmd> of
-                           "python processor.py" will cause a python
-                           script to be run.
-
-  --split <size>           Splits the resulting javascript file into pieces
-                           to ease debugging. This option only works if
-                           Javascript is generated (target -o <name>.js).
-                           Files with function declarations must be loaded
-                           before main file upon execution.
-
-                           Without "-g" option:
-                              Creates files with function declarations up
-                              to the given size with the suffix
-                              "_functions.partxxx.js" and a main file with
-                              the suffix ".js".
-
-                           With "-g" option:
-                              Recreates the directory structure of the C
-                              source files and stores function declarations
-                              in their respective C files with the suffix
-                              ".js". If such a file exceeds the given size,
-                              files with the suffix ".partxxx.js" are created.
-                              The main file resides in the base directory and
-                              has the suffix ".js".
-
-                           Note: this option is deprecated (modern JS debuggers
-                                 should work ok even on large files)
-
-  --bind                   Compiles the source code using the "embind"
-                           bindings approach, which connects C/C++ and JS.
-
-  --ignore-dynamic-linking Normally emcc will treat dynamic linking like
-                           static linking, by linking in the code from
-                           the dynamic library. This fails if the same
-                           dynamic library is linked more than once.
-                           With this option, dynamic linking is ignored,
-                           which allows the build system to proceed without
-                           errors. However, you will need to manually
-                           link to the shared libraries later on yourself.
-
-  --js-library <lib>       A JavaScript library to use in addition to
-                           those in Emscripten's src/library_*
-
-  -v                       Turns on verbose output. This will pass
-                           -v to Clang, and also enable EMCC_DEBUG
-                           to details emcc's operations.
-
-                           It will also run emscripten's internal sanity
-                           checks, checking that things like the LLVM directory
-                           path looks correct, etc. This works with or
-                           without other arguments, so it can be useful to run
-
-                              emcc -v
-
-                           if you see odd errors, as it can help diagnose
-                           things.
-
-  --clear-cache            Manually clears the cache of compiled
-                           emscripten system libraries (libc++,
-                           libc++abi, libc). This is normally
-                           handled automatically, but if you update
-                           llvm in-place (instead of having a different
-                           directory for a new version), the caching
-                           mechanism can get confused. Clearing the
-                           cache can fix weird problems related to
-                           cache incompatibilities, like clang failing
-                           to link with library files. This also clears
-                           other cached data like the jcache and
-                           the bootstrapped relooper. After the cache
-                           is cleared, this process will exit.
-
-  --save-bc PATH           When compiling to JavaScript or HTML, this
-                           option will save a copy of the bitcode to
-                           the specified path. The bitcode will include
-                           all files being linked, including standard
-                           libraries, and after any link-time optimizations
-                           (if any).
-
-  --memory-init-file <on>  0: Do not emit a separate memory initialization
-                              file, keep the static initialization inside
-                              the generated JavaScript as text (default)
-                           1: Emit a separate memory initialization file
-                              in binary format. This is more efficient than
-                              storing it as text inside JavaScript, but does
-                              mean you have another file to publish. The
-                              binary file will also be loaded asynchronously,
-                              which means main() will not be called until
-                              the file is downloaded and applied; you cannot
-                              call any C functions until it arrives. (Call
-                              yourself from main() to know when all async
-                              stuff has happened and it is safe to call
-                              library functions, as main() will only be
-                              called at that time. You can also call
-                              addOnPreMain from a preRun.)
-
-  -Wno-warn-absolute-paths If not specified, the compiler will warn about any
-                           uses of absolute paths in -I and -L command line
-                           directives. Pass this flag on the command line
-                           to hide these warnings and acknowledge that the
-                           explicit use of absolute paths is intentional.
-
-  --proxy-to-worker        Runs the main application code in a worker, proxying
-                           events to it and output from it.
-                           If emitting htmlL, this emits an html and a js file,
-                           with the js to be run in a worker. If emitting
-                           js, the target filename contains the part to be run
-                           on the main thread, while a second js file with
-                           suffix ".worker.js" will contain the worker portion.
-
-  --emrun                  Enables the generated output to be aware of the
-                           emrun command line tool. This allows stdout, stderr
-                           and exit(returncode) capture when running the
-                           generated application through emrun.
-
-  --em-config              Specifies the location of the .emscripten configuration
-                           file for the current compiler run. If not specified,
-                           the environment variable EM_CONFIG is read for this
-                           file, and if that is not set, the default location
-                           ~/.emscripten is assumed.
-
-  --default-obj-ext .ext   Specifies the file suffix to generate if the location
-                           of a directory name is passed to -o directive, e.g.
-                             emcc -c a.c -o dir/
-                           will by default generate an output name 'dir/a.o',
-                           but this cmdline param can be passed to generate a
-                           file with a custom suffix 'dir/a.ext'.
-  --valid_abspath path     Whitelist an absolute path to prevent warnings about
-                           absolute include paths.
-
-The target file, if specified (-o <target>), defines what will
-be generated:
-
-  <name>.js                JavaScript
-  <name>.html              HTML + side JavaScript file (<name>.js)
-                             (JS on the side improves page load time)
-  <name>.bc                LLVM bitcode (default)
-  <name>.o                 LLVM bitcode (same as .bc)
-
-(Note that if --memory-init-file is used, then in addition to a
-.js or .html file that is generated, a .mem file will also appear.)
-
-The -c option (which tells gcc not to run the linker) will
-cause LLVM bitcode to be generated, as %s only generates
-JavaScript in the final linking stage of building.
-
-The input file(s) can be either source code files that
-Clang can handle (C or C++), LLVM bitcode in binary form,
-or LLVM assembly files in human-readable form.
-
-emcc is affected by several environment variables. For details, view
-the source of emcc (search for 'os.environ').
+  # Documentation for emcc and its options must be updated in: 
+  #    site/source/docs/tools_reference/emcc.rst
+  # A prebuilt local version of the documentation is available at: 
+  #    site/build/text/docs/tools_reference/emcc.txt
+  #    (it is read from there and printed out when --help is invoked)
+  # You can also build docs locally as HTML or other formats in site/
+  # An online HTML version (which may be of a different version of Emscripten)
+  #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
+
+  print '''%s
+
+------------------------------------------------------------------
 
 emcc: supported targets: llvm bitcode, javascript, NOT elf
 (autoconf likes to see elf above to enable shared object support)
-''' % (this, this, this)
+''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read())
   exit(0)
 
 elif sys.argv[1] == '--version':
@@ -727,7 +314,7 @@ if '-M' in sys.argv or '-MM' in sys.argv:
 
 if '-E' in sys.argv:
   # Just run the preprocessor
-  cmd = [CC] + sys.argv[1:]
+  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
   logging.debug('just preprocessor ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
@@ -802,6 +389,7 @@ try:
 
   opt_level = 0
   debug_level = 0
+  requested_debug = ''
   profiling = False
   emit_symbol_map = False
   js_opts = None
@@ -823,7 +411,7 @@ try:
   emrun = False
   jcache = False
   save_bc = False
-  memory_init_file = False
+  memory_init_file = None
   use_preload_cache = False
   no_heap_copy = False
   proxy_to_worker = False
@@ -931,7 +519,8 @@ try:
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
-      newargs[i] = '-g' # we'll need this to get LLVM debug info
+      requested_debug = newargs[i]
+      newargs[i] = ''
     elif newargs[i] == '-profiling':
       debug_level = 2
       profiling = True
@@ -942,6 +531,8 @@ try:
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
+      js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
+      js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
       if default_cxx_std:
         default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
     elif newargs[i].startswith('-std='):
@@ -994,14 +585,8 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
-      os.environ['EMCC_DEBUG'] = '1' # send to child processes too
-      if DEBUG != 1:
-        # swap in debug logging
-        DEBUG = 1
-        shared.set_logging()
-        logging.debug('-v invocation: ' + ' '.join(sys.argv))
-        shared.apply_configuration() # reset config to pick up change
-        shared.check_sanity(force=True)
+      #shared.LINK_CMD += ['-v'] # Enable verbose output from llvm-link, since it can take a long time and this gives some indication of progress.
+      shared.check_sanity(force=True)
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
@@ -1074,7 +659,8 @@ try:
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if opt_level == 0: debug_level = 4
+  if opt_level == 0: debug_level = max(3, debug_level)
+  if memory_init_file is None: memory_init_file = opt_level >= 2
 
   if llvm_lto is None and bind:
     logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
@@ -1254,6 +840,8 @@ try:
     if value[0] == '@':
       value = '"@' + os.path.abspath(value[1:]) + '"'
       value = value.replace('\\\\', '/').replace('\\', '/') # Convert backslash paths to forward slashes on Windows as well, since the JS compiler otherwise needs the backslashes escaped (alternative is to escape all input paths passing to JS, which feels clumsier to read)
+    else:
+      value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)
     if key == 'EXPORTED_FUNCTIONS':
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
@@ -1296,6 +884,10 @@ try:
       fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
       if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
         fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+    if shared.Settings.ASYNCIFY:
+      fastcomp_opts += ['-emscripten-asyncify']
+      fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
+      fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
@@ -1318,7 +910,7 @@ try:
       logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
       shared.Settings.ASM_JS = 2
 
-  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
+  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2 or shared.Settings.SAFE_HEAP >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
 
   if debug_level > 1 and closure:
@@ -1357,7 +949,7 @@ try:
     assert not shared.Settings.MAIN_MODULE
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
-    assert not memory_init_file, 'memory init file is not supported with module linking'
+    memory_init_file = False # memory init file is not supported with module linking
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
@@ -1369,6 +961,11 @@ try:
     input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
     next_arg_index += 1
     shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
+
+  forced_stdlibs = []
+  if shared.Settings.DEMANGLE_SUPPORT:
+    shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
+    forced_stdlibs += ['libcxxabi']
 
   if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
     # always need malloc and free to be kept alive and exported, for internal use and other modules
@@ -1423,8 +1020,15 @@ try:
             return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + default_object_extension
           return specified_target
         return unsuffixed(input_file) + final_ending
-      return unsuffixed(input_file) + default_object_extension
+      else:
+        if has_dash_c: return unsuffixed(input_file) + default_object_extension
     return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
+
+  # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
+  if debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and requested_debug == '-g'):
+    if debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
+      newargs.append('-g') # preserve LLVM debug info
+      debug_level = 4
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
@@ -1443,15 +1047,11 @@ try:
         sys.exit(1)
     else: # bitcode
       if file_ending.endswith(BITCODE_ENDINGS):
-        logging.debug('copying bitcode file: ' + input_file)
-        temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using bitcode file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
-        logging.debug('copying library file: ' + input_file)
-        temp_file = in_temp(uniquename(input_file))
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using library file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
           logging.debug('assembling assembly file: ' + input_file)
@@ -1472,10 +1072,15 @@ try:
       for pos, (_, input_file) in enumerate(input_files):
         file_ending = filename_type_ending(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
-          (_, temp_file) = temp_files[pos]
+          temp_file = temp_files[pos][1]
           logging.debug('optimizing %s', input_file)
           #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
-          shared.Building.llvm_opt(temp_file, llvm_opts)
+          new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
+          shared.Building.llvm_opt(temp_file, llvm_opts, new_temp_file)
+          temp_files[pos] = (temp_files[pos][0], new_temp_file)
+
+  # Decide what we will link
+  linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
@@ -1486,7 +1091,11 @@ try:
       if len(input_files) == 1:
         _, input_file = input_files[0]
         _, temp_file = temp_files[0]
-        safe_move(temp_file, specified_target if specified_target else unsuffixed_basename(input_file) + final_ending)
+        bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_ending
+        if temp_file != input_file:
+          safe_move(temp_file, bitcode_target)
+        else:
+          shutil.copyfile(temp_file, bitcode_target)
         temp_output_base = unsuffixed(temp_file)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
@@ -1500,10 +1109,9 @@ try:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
-        logging.debug('link: ' + str(temp_files) + specified_target)
+        logging.debug('link: ' + str(linker_inputs) + specified_target)
         # Sort arg tuples and pass the extracted values to link.
-        link_args = [f for (i, f) in sorted(temp_files)]
-        shared.Building.link(link_args, specified_target)
+        shared.Building.link(linker_inputs, specified_target)
     logging.debug('stopping at bitcode')
     exit(0)
 
@@ -1516,7 +1124,7 @@ try:
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-    extra_files_to_link = system_libs.calculate([f for _, f in sorted(temp_files)], in_temp, stdout, stderr)
+    extra_files_to_link = system_libs.calculate([f for _, f in sorted(temp_files)], in_temp, stdout, stderr, forced=forced_stdlibs)
   else:
     extra_files_to_link = []
 
@@ -1525,15 +1133,19 @@ try:
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0][1]) in BITCODE_ENDINGS or suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0][1])):
-    linker_inputs = [val for _, val in sorted(temp_files + link_flags)] + extra_files_to_link
+    linker_inputs += extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
     shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
       _, temp_file = temp_files[0]
-      shutil.move(temp_file, in_temp(target_basename + '.bc'))
+      _, input_file = input_files[0]
       final = in_temp(target_basename + '.bc')
+      if temp_file != input_file:
+        shutil.move(temp_file, final)
+      else:
+        shutil.copyfile(temp_file, final)
     else:
       _, input_file = input_files[0]
       final = in_temp(input_file)
@@ -1647,19 +1259,11 @@ try:
     logging.debug('applying pre/postjses')
     src = open(final).read()
     final += '.pp.js'
+    if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
+      if pre_js: pre_js = pre_js.replace('\r\n', '\n')
+      if post_js: post_js = post_js.replace('\r\n', '\n')
     open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
-
-  # Add bindings glue if used
-  if bind:
-    logging.debug('adding embind glue')
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' +
-            open(shared.path_from_root('src', 'embind', 'embind.js')).read() +
-            open(shared.path_from_root('src', 'embind', 'emval.js')).read()
-          )
-    final += '.bd.js'
-    open(final, 'w').write(src)
-    if DEBUG: save_intermediate('bind')
 
   # Apply a source code transformation, if requested
   if js_transform:
@@ -1770,6 +1374,9 @@ try:
 
       js_optimizer_queue += ['simplifyExpressions']
 
+      if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
+        js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
+
       # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
       # with commaified code breaks late aggressive variable elimination)
       if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0: js_optimizer_queue += ['simplifyIfs']
@@ -1837,7 +1444,20 @@ try:
     js_target = unsuffixed(target) + '.js'
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '</script>'))
+      child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+      html.write(shell.replace('{{{ SCRIPT }}}', '''
+<script>
+  if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
+    console.log('running code in a web worker');
+''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', child_js) + '''
+  } else {
+    // note: no support for code mods (PRECISE_F32==2)
+    console.log('running code on the main thread');
+    var script = document.createElement('script');
+    script.src = "%s.js";
+    document.body.appendChild(script);
+  }
+</script>''' % child_js))
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path

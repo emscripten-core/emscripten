@@ -1,8 +1,23 @@
 import os, json, logging
 import shared
-from tools.shared import execute
+from subprocess import Popen, CalledProcessError
+import multiprocessing
+from tools.shared import check_call
 
-def calculate(temp_files, in_temp, stdout, stderr):
+stdout = None
+stderr = None
+
+def call_process(cmd):
+  proc = Popen(cmd, stdout=stdout, stderr=stderr)
+  proc.communicate()
+  if proc.returncode != 0:
+    raise CalledProcessError(proc.returncode, cmd)
+
+def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
+  global stdout, stderr
+  stdout = stdout_
+  stderr = stderr_
+
   # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
   # compile a malloc implementation and stdlibc++.)
 
@@ -11,8 +26,6 @@ def calculate(temp_files, in_temp, stdout, stderr):
     if exclude:
       symbols = filter(lambda symbol: symbol not in exclude, symbols)
     return set(symbols)
-
-  lib_opts = ['-O2']
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
@@ -24,26 +37,40 @@ def calculate(temp_files, in_temp, stdout, stderr):
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
-  def build_libc(lib_filename, files):
+  def run_commands(commands):
+    cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+    cores = min(len(commands), cores)
+    if cores <= 1:
+      for command in commands:
+        call_process(command)
+    else:
+      pool = multiprocessing.Pool(processes=cores)
+      pool.map(call_process, commands, chunksize=1)
+
+  def build_libc(lib_filename, files, lib_opts):
     o_s = []
     prev_cxx = os.environ.get('EMMAKEN_CXX')
     if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
+    commands = []
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts, stdout=stdout, stderr=stderr)
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + lib_opts)
       o_s.append(o)
+    run_commands(commands)
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
-  def build_libcxx(src_dirname, lib_filename, files):
+  def build_libcxx(src_dirname, lib_filename, files, lib_opts):
     o_s = []
+    commands = []
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts, stdout=stdout, stderr=stderr)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts)
       o_s.append(o)
+    run_commands(commands)
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
@@ -52,13 +79,13 @@ def calculate(temp_files, in_temp, stdout, stderr):
     logging.debug(' building libc for cache')
     libc_files = [
       'dlmalloc.c',
-      os.path.join('libcxx', 'new.cpp'),
     ]
     musl_files = [
       ['ctype', [
        'isdigit.c',
        'isspace.c',
        'isupper.c',
+       'isxdigit.c',
        'tolower.c',
       ]],
       ['internal', [
@@ -107,7 +134,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
     ]
     for directory, sources in musl_files:
       libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libc.bc', libc_files)
+    return build_libc('libc.bc', libc_files, ['-O2'])
 
   def apply_libc(need):
     # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
@@ -140,7 +167,6 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'islower.c',
         'isprint.c',
         'ispunct.c',
-        'isxdigit.c',
         'iswalnum.c',
         'iswalpha.c',
         'iswblank.c',
@@ -234,6 +260,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
         'tgammal.c'
        ]],
        ['misc', [
+        'ffs.c',
         'getopt.c',
         'getopt_long.c',
        ]],
@@ -310,6 +337,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
          'strpbrk.c',
          'strrchr.c',
          'strsep.c',
+         'strsignal.c',
          'strspn.c',
          'strstr.c',
          'strtok.c',
@@ -348,7 +376,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
     libcextra_files = []
     for directory, sources in musl_files:
       libcextra_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libcextra.bc', libcextra_files)
+    return build_libc('libcextra.bc', libcextra_files, ['-O2'])
 
   # libcxx
   def create_libcxx():
@@ -377,7 +405,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
       'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxx(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
@@ -390,10 +418,20 @@ def calculate(temp_files, in_temp, stdout, stderr):
   def create_libcxxabi():
     logging.debug('building libcxxabi for cache')
     libcxxabi_files = [
+      'abort_message.cpp',
+      'cxa_aux_runtime.cpp',
+      'cxa_default_handlers.cpp',
+      'cxa_demangle.cpp',
+      'cxa_exception_storage.cpp',
+      'cxa_new_delete.cpp',
+      'cxa_handlers.cpp',
+      'exception.cpp',
+      'stdexcept.cpp',
       'typeinfo.cpp',
-      'private_typeinfo.cpp'
+      'private_typeinfo.cpp',
+      os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxxabi(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
@@ -406,19 +444,25 @@ def calculate(temp_files, in_temp, stdout, stderr):
     prev_cxx = os.environ.get('EMMAKEN_CXX')
     if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     o = in_temp('gl.o')
-    execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     return o
 
-  # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
+  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   force_all = force == '1'
-  force = set((force or '').split(','))
+  force = set((force.split(',') if force else []) + forced)
+  if force: logging.debug('forcing stdlibs: ' + str(force))
 
-  # Scan symbols
-  symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
+  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
+  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
+  # the proper list of actually needed libraries, errors can occur. See below for how we must
+  # export all the symbols in deps_info when using this option.
+  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+  if only_forced:
+    temp_files = []
 
   # Add in some hacks for js libraries. If a js lib depends on a symbol provided by a C library, it must be
   # added to here, because our deps go only one way (each library here is checked, then we check the next
@@ -439,8 +483,31 @@ def calculate(temp_files, in_temp, stdout, stderr):
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     if more:
       add_back_deps(need) # recurse to get deps of deps
+
+  # Scan symbols
+  symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
+
+  if len(symbolses) == 0:
+    class Dummy:
+      defs = set()
+      undefs = set()
+    symbolses.append(Dummy())
+
+  # depend on exported functions
+  for export in shared.Settings.EXPORTED_FUNCTIONS:
+    if shared.Settings.VERBOSE: logging.debug('adding dependency on export %s' % export)
+    symbolses[0].undefs.add(export[1:])
+
   for symbols in symbolses:
     add_back_deps(symbols)
+
+  # If we are only doing forced stdlibs, then we don't know the actual symbols we need,
+  # and must assume all of deps_info must be exported. Note that this might cause
+  # warnings on exports that do not exist.
+  if only_forced:
+    for key, value in deps_info.iteritems():
+      for dep in value:
+        shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
   all_needed = set()
   for symbols in symbolses:
@@ -461,6 +528,7 @@ def calculate(temp_files, in_temp, stdout, stderr):
       need = set()
       has = set()
       for symbols in symbolses:
+        if shared.Settings.VERBOSE: logging.debug('undefs: ' + str(symbols.undefs))
         for library_symbol in library_symbols:
           if library_symbol in symbols.undefs:
             need.add(library_symbol)

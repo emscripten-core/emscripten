@@ -60,6 +60,8 @@ LibraryManager.library = {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
     var fd = _fileno(dirp);
+    var stream = FS.getStream(fd);
+    if (stream.currReading) stream.currReading = null;
     return _close(fd);
   },
   telldir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
@@ -85,6 +87,8 @@ LibraryManager.library = {
     // void rewinddir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/rewinddir.html
     _seekdir(dirp, 0);
+    var stream = FS.getStreamFromPtr(dirp);
+    if (stream.currReading) stream.currReading = null;
   },
   readdir_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   readdir_r: function(dirp, entry, result) {
@@ -94,25 +98,32 @@ LibraryManager.library = {
     if (!stream) {
       return ___setErrNo(ERRNO_CODES.EBADF);
     }
-    var entries;
-    try {
-      entries = FS.readdir(stream.path);
-    } catch (e) {
-      return FS.handleFSError(e);
+    if (!stream.currReading) {
+      try {
+        // load the list of entries now, then readdir will traverse that list, to ignore changes to files
+        stream.currReading = FS.readdir(stream.path);
+      } catch (e) {
+        return FS.handleFSError(e);
+      }
     }
-    if (stream.position < 0 || stream.position >= entries.length) {
+    if (stream.position < 0 || stream.position >= stream.currReading.length) {
       {{{ makeSetValue('result', '0', '0', 'i8*') }}};
       return 0;
     }
     var id;
     var type;
-    var name = entries[stream.position];
-    var offset = stream.position + 1;
+    var name = stream.currReading[stream.position++];
     if (!name.indexOf('.')) {
       id = 1;
       type = 4;
     } else {
-      var child = FS.lookupNode(stream.node, name);
+      try {
+        // child may have been removed since we started to read this directory
+        var child = FS.lookupNode(stream.node, name);
+      } catch (e) {
+        // skip to the next entry (not infinite since position is incremented until currReading.length)
+        return _readdir_r(dirp, entry, result);
+      }
       id = child.id;
       type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
              FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
@@ -120,7 +131,7 @@ LibraryManager.library = {
              8;                             // DT_REG, regular file.
     }
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'offset', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, 'name.length + 1', 'i32') }}};
     for (var i = 0; i < name.length; i++) {
       {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', 'name.charCodeAt(i)', 'i8') }}};
@@ -128,10 +139,9 @@ LibraryManager.library = {
     {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', '0', 'i8') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
     {{{ makeSetValue('result', '0', 'entry', 'i8*') }}};
-    stream.position++;
     return 0;
   },
-  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES', 'malloc'],
+  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
   readdir: function(dirp) {
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
@@ -264,15 +274,19 @@ LibraryManager.library = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(stat.atime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(stat.mtime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(stat.ctime.getTime() / 1000)', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
       return 0;
     } catch (e) {
+      if (e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
+        // an error occurred while trying to look up the path; we should just report ENOTDIR
+        e.setErrno(ERRNO_CODES.ENOTDIR);
+      }
       FS.handleFSError(e);
       return -1;
     }
@@ -327,6 +341,7 @@ LibraryManager.library = {
     path = Pointer_stringify(path);
     // remove a trailing slash, if one - /a/b/ has basename of '', but
     // we want to create b in the context of this function
+    path = PATH.normalize(path);
     if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
     try {
       FS.mkdir(path, mode, 0);
@@ -1033,7 +1048,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  ttyname__deps: ['ttyname_r', 'malloc'],
+  ttyname__deps: ['ttyname_r'],
   ttyname: function(fildes) {
     // char *ttyname(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
@@ -1137,14 +1152,6 @@ LibraryManager.library = {
       return -1;
     }
   },
-  alarm: function(seconds) {
-    // unsigned alarm(unsigned seconds);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
-    // We don't support signals, and there's no way to indicate failure, so just
-    // fail silently.
-    return 0;
-  },
-  ualarm: 'alarm',
   confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
   confstr: function(name, buf, len) {
     // size_t confstr(int name, char *buf, size_t len);
@@ -1299,7 +1306,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  getlogin__deps: ['getlogin_r', 'malloc'],
+  getlogin__deps: ['getlogin_r'],
   getlogin: function() {
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
@@ -1342,14 +1349,6 @@ LibraryManager.library = {
     // Niceness makes no sense in a single-process environment.
     ___setErrNo(ERRNO_CODES.EPERM);
     return 0;
-  },
-  pause__deps: ['__setErrNo', '$ERRNO_CODES'],
-  pause: function() {
-    // int pause(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/pause.html
-    // We don't support signals, so we return immediately.
-    ___setErrNo(ERRNO_CODES.EINTR);
-    return -1;
   },
   setgid__deps: ['__setErrNo', '$ERRNO_CODES'],
   setgid: function(gid) {
@@ -2560,7 +2559,7 @@ LibraryManager.library = {
     }
     bytesRead += err;
     if (bytesRead < bytesToRead) streamObj.eof = true;
-    return Math.floor(bytesRead / size);
+    return (bytesRead / size)|0;
   },
   freopen__deps: ['$FS', 'fclose', 'fopen', '__setErrNo', '$ERRNO_CODES'],
   freopen: function(filename, mode, stream) {
@@ -2642,7 +2641,7 @@ LibraryManager.library = {
       if (streamObj) streamObj.error = true;
       return 0;
     } else {
-      return Math.floor(bytesWritten / size);
+      return (bytesWritten / size)|0;
     }
   },
   popen__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -2717,7 +2716,7 @@ LibraryManager.library = {
     if (buf) _setvbuf(stream, buf, 0, 8192);  // _IOFBF, BUFSIZ.
     else _setvbuf(stream, buf, 2, 8192);  // _IONBF, BUFSIZ.
   },
-  tmpnam__deps: ['$FS', 'malloc'],
+  tmpnam__deps: ['$FS'],
   tmpnam: function(s, dir, prefix) {
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
@@ -2730,7 +2729,7 @@ LibraryManager.library = {
     }
     var name = prefix || 'file';
     do {
-      name += String.fromCharCode(65 + Math.floor(Math.random() * 25));
+      name += String.fromCharCode(65 + (Math.random() * 25)|0);
     } while (name in folder.contents);
     var result = dir + '/' + name;
     if (!_tmpnam.buffer) _tmpnam.buffer = _malloc(256);
@@ -2867,7 +2866,7 @@ LibraryManager.library = {
   // sys/mman.h
   // ==========================================================================
 
-  mmap__deps: ['$FS', 'malloc', 'memset'],
+  mmap__deps: ['$FS', 'memset'],
   mmap: function(start, num, prot, flags, fd, offset) {
     /* FIXME: Since mmap is normally implemented at the kernel level,
      * this implementation simply uses malloc underneath the call to
@@ -2957,7 +2956,6 @@ LibraryManager.library = {
 #endif
 },
 
-  calloc__deps: ['malloc'],
   calloc: function(n, s) {
     var ret = _malloc(n*s);
     _memset(ret, 0, n*s);
@@ -2997,7 +2995,7 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  realloc__deps: ['malloc', 'memcpy', 'free'],
+  realloc__deps: ['memcpy'],
   realloc: function(ptr, size) {
     // Very simple, inefficient implementation - if you use a real malloc, best to use
     // a real realloc with it
@@ -3167,6 +3165,7 @@ LibraryManager.library = {
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
 #endif
+  environ__deps: ['$ENV'],
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: 'environ',
@@ -3182,12 +3181,12 @@ LibraryManager.library = {
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = 'root';
+      ENV['USER'] = 'web_user';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
-      ENV['HOME'] = '/home/emscripten';
-      ENV['LANG'] = 'en_US.UTF-8';
-      ENV['_'] = './this.program';
+      ENV['HOME'] = '/home/web_user';
+      ENV['LANG'] = 'C';
+      ENV['_'] = Module['thisProgram'];
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
@@ -3580,7 +3579,7 @@ LibraryManager.library = {
       return ___setErrNo(ERRNO_CODES.EINVAL);
     }
   },
-  strerror__deps: ['strerror_r', 'malloc'],
+  strerror__deps: ['strerror_r'],
   strerror: function(errnum) {
     if (!_strerror.buffer) _strerror.buffer = _malloc(256);
     _strerror_r(errnum, _strerror.buffer, 256);
@@ -3592,7 +3591,6 @@ LibraryManager.library = {
   // ==========================================================================
 
   // Lookup tables for glibc ctype implementation.
-  __ctype_b_loc__deps: ['malloc'],
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
     var me = ___ctype_b_loc;
@@ -3618,7 +3616,6 @@ LibraryManager.library = {
     }
     return me.ret;
   },
-  __ctype_tolower_loc__deps: ['malloc'],
   __ctype_tolower_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-tolower-loc.html
     var me = ___ctype_tolower_loc;
@@ -3647,7 +3644,6 @@ LibraryManager.library = {
     }
     return me.ret;
   },
-  __ctype_toupper_loc__deps: ['malloc'],
   __ctype_toupper_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/libutil---ctype-toupper-loc.html
     var me = ___ctype_toupper_loc;
@@ -3848,26 +3844,37 @@ LibraryManager.library = {
   _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
 #endif
 
-  // We store an extra header in front of the exception data provided
-  // by the user.
-  // This header is:
-  // * type
-  // * destructor function pointer
-  // This is then followed by the actual exception data.
-  __cxa_exception_header_size: 8,
-  __cxa_last_thrown_exception: 0,
-  __cxa_caught_exceptions: [],
+  $EXCEPTIONS: {
+    last: 0,
+    caught: [],
+    infos: {},
+    deAdjust: function(adjusted) {
+      if (!adjusted || EXCEPTIONS.infos[adjusted]) return adjusted;
+      for (var ptr in EXCEPTIONS.infos) {
+        var info = EXCEPTIONS.infos[ptr];
+        if (info.adjusted === adjusted) {
+#if EXCEPTION_DEBUG
+          Module.printErr('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
+#endif
+          return ptr;
+        }
+      }
+#if EXCEPTION_DEBUG
+      Module.printErr('no de-adjustment for unknown exception ptr ' + adjusted);
+#endif
+      return adjusted;
+    },
+  },
 
   // Exceptions
-  __cxa_allocate_exception__deps: ['__cxa_exception_header_size', 'malloc'],
+  __cxa_allocate_exception__deps: ['malloc'],
   __cxa_allocate_exception: function(size) {
-    var ptr = _malloc(size + ___cxa_exception_header_size);
-    return ptr + ___cxa_exception_header_size;
+    return _malloc(size);
   },
-  __cxa_free_exception__deps: ['__cxa_exception_header_size', 'free'],
+  __cxa_free_exception__deps: ['free'],
   __cxa_free_exception: function(ptr) {
     try {
-      return _free(ptr - ___cxa_exception_header_size);
+      return _free(ptr);
     } catch(e) { // XXX FIXME
 #if ASSERTIONS
       Module.printErr('exception during cxa_free_exception: ' + e);
@@ -3877,8 +3884,9 @@ LibraryManager.library = {
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '__cxa_exception_header_size', '__cxa_last_thrown_exception'],
+  __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '$EXCEPTIONS'],
   __cxa_throw: function(ptr, type, destructor) {
+#if USE_TYPED_ARRAYS != 2
     if (!___cxa_throw.initialized) {
       try {
         {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv119__pointer_type_infoE'), '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
@@ -3891,13 +3899,17 @@ LibraryManager.library = {
       } catch(e){}
       ___cxa_throw.initialized = true;
     }
-#if EXCEPTION_DEBUG
-    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor] + ', at ' + stackTrace());
 #endif
-    var header = ptr - ___cxa_exception_header_size;
-    {{{ makeSetValue('header', 0, 'type', 'void*') }}};
-    {{{ makeSetValue('header', 4, 'destructor', 'void*') }}};
-    ___cxa_last_thrown_exception = ptr;
+#if EXCEPTION_DEBUG
+    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor]);
+#endif
+    EXCEPTIONS.infos[ptr] = {
+      ptr: ptr,
+      adjusted: ptr,
+      type: type,
+      destructor: destructor
+    };
+    EXCEPTIONS.last = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
       __ZSt18uncaught_exceptionv.uncaught_exception = 1;
     } else {
@@ -3908,20 +3920,24 @@ LibraryManager.library = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['__cxa_end_catch', '__cxa_caught_exceptions'],
+  __cxa_rethrow__deps: ['__cxa_end_catch', '$EXCEPTIONS'],
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
-    var ptr = ___cxa_caught_exceptions.pop();
+    var ptr = EXCEPTIONS.caught.pop();
+#if EXCEPTION_DEBUG
+    Module.printErr('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+#endif
+    EXCEPTIONS.last = ptr;
     {{{ makeThrow('ptr') }}}
   },
-  llvm_eh_exception__deps: ['__cxa_last_thrown_exception'],
+  llvm_eh_exception__deps: ['$EXCEPTIONS'],
   llvm_eh_exception: function() {
-    return ___cxa_last_thrown_exception;
+    return EXCEPTIONS.last;
   },
   llvm_eh_selector__jsargs: true,
-  llvm_eh_selector__deps: ['__cxa_last_thrown_exception'],
+  llvm_eh_selector__deps: ['$EXCEPTIONS'],
   llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = ___cxa_last_thrown_exception;
+    var type = EXCEPTIONS.last;
     for (var i = 2; i < arguments.length; i++) {
       if (arguments[i] ==  type) return type;
     }
@@ -3930,22 +3946,20 @@ LibraryManager.library = {
   llvm_eh_typeid_for: function(type) {
     return type;
   },
-  // Note that we push the last thrown exception here rather than the ptr.
-  // This is because if the exception is a pointer (as in test 3 of test_exceptions_typed),
-  // we don't actually get the value that we allocated, but something else. Easiest
-  // to remember that the last exception thrown is going to be the first to be caught,
-  // so just use that value instead as it is what we're really looking for.
-  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '__cxa_caught_exceptions', '__cxa_last_thrown_exception'],
+  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '$EXCEPTIONS'],
   __cxa_begin_catch: function(ptr) {
     __ZSt18uncaught_exceptionv.uncaught_exception--;
-    ___cxa_caught_exceptions.push(___cxa_last_thrown_exception);
+    EXCEPTIONS.caught.push(ptr);
+#if EXCEPTION_DEBUG
+		Module.printErr('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
+#endif
     return ptr;
   },
   // We're done with a catch. Now, we can run the destructor if there is one
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__cxa_free_exception', '__cxa_last_thrown_exception', '__cxa_exception_header_size', '__cxa_caught_exceptions'],
+  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
   __cxa_end_catch: function() {
     if (___cxa_end_catch.rethrown) {
       ___cxa_end_catch.rethrown = false;
@@ -3958,19 +3972,32 @@ LibraryManager.library = {
     __THREW__ = 0;
 #endif
     // Call destructor if one is registered then clear it.
-    var ptr = ___cxa_caught_exceptions.pop();
+    var ptr = EXCEPTIONS.caught.pop();
+#if EXCEPTION_DEBUG
+    Module.printErr('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+#endif
     if (ptr) {
-      header = ptr - ___cxa_exception_header_size;
-      var destructor = {{{ makeGetValue('header', 4, 'void*') }}};
-      if (destructor) {
-        Runtime.dynCall('vi', destructor, [ptr]);
-        {{{ makeSetValue('header', 4, '0', 'i32') }}};
+      ptr = EXCEPTIONS.deAdjust(ptr);
+      var info = EXCEPTIONS.infos[ptr];
+      if (!info) {
+        abort('cannot find exception info for ' + ptr + ' in ' + JSON.stringify(EXCEPTIONS.infos));
       }
+      if (info.destructor) {
+        Runtime.dynCall('vi', info.destructor, [ptr]);
+      }
+      delete EXCEPTIONS.infos[ptr];
       ___cxa_free_exception(ptr);
-      ___cxa_last_thrown_exception = 0;
+      EXCEPTIONS.last = 0;
+#if EXCEPTION_DEBUG
+      Module.printErr('  cxa_end_catch also freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+#endif
     }
   },
   __cxa_get_exception_ptr: function(ptr) {
+#if EXCEPTION_DEBUG
+    Module.printErr('cxa_get_exception_ptr ' + ptr);
+#endif
+    // TODO: use info.adjusted?
     return ptr;
   },
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
@@ -3993,25 +4020,6 @@ LibraryManager.library = {
   __gxx_personality_v0: function() {
   },
 
-  __cxa_is_number_type: function(type) {
-    var isNumber = false;
-    try { if (type == {{{ makeGlobalUse('__ZTIi') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIj') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIl') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIm') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIx') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIy') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIf') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTId') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIe') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIc') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIa') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIh') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIs') }}}) isNumber = true } catch(e){}
-    try { if (type == {{{ makeGlobalUse('__ZTIt') }}}) isNumber = true } catch(e){}
-    return isNumber;
-  },
-
   // Finds a suitable catch clause for when an exception is thrown.
   // In normal compilers, this functionality is handled by the C++
   // 'personality' routine. This is passed a fairly complex structure
@@ -4022,122 +4030,58 @@ LibraryManager.library = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type', '__resumeException', '__cxa_last_thrown_exception', '__cxa_exception_header_size'],
-  __cxa_find_matching_catch: function(thrown, throwntype) {
-    if (thrown == -1) thrown = ___cxa_last_thrown_exception;
-    header = thrown - ___cxa_exception_header_size;
-    if (throwntype == -1) throwntype = {{{ makeGetValue('header', 0, 'void*') }}};
-    var typeArray = Array.prototype.slice.call(arguments, 2);
-
-    // If throwntype is a pointer, this means a pointer has been
-    // thrown. When a pointer is thrown, actually what's thrown
-    // is a pointer to the pointer. We'll dereference it.
-    if (throwntype != 0 && !___cxa_is_number_type(throwntype)) {
-      var throwntypeInfoAddr= {{{ makeGetValue('throwntype', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var throwntypeInfo= {{{ makeGetValue('throwntypeInfoAddr', '0', '*') }}};
-      if (throwntypeInfo == 0)
-        thrown = {{{ makeGetValue('thrown', '0', '*') }}};
+  __cxa_find_matching_catch__deps: ['__resumeException', '$EXCEPTIONS'],
+  __cxa_find_matching_catch: function() {
+    var thrown = EXCEPTIONS.last;
+    if (!thrown) {
+      // just pass through the null ptr
+      {{{ makeStructuralReturn([0, 0]) }}};
     }
+    var info = EXCEPTIONS.infos[thrown];
+    var throwntype = info.type;
+    if (!throwntype) {
+      // just pass through the thrown ptr
+      {{{ makeStructuralReturn(['thrown', 0]) }}};
+    }
+    var typeArray = Array.prototype.slice.call(arguments);
+
+    var pointer = Module['___cxa_is_pointer_type'](throwntype);
+    // can_catch receives a **, add indirection
+    if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
+#if EXCEPTION_DEBUG
+    Module.print("can_catch on " + [thrown]);
+#endif
+    {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
+    thrown = ___cxa_find_matching_catch.buffer;
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
-      if (___cxa_does_inherit(typeArray[i], throwntype, thrown))
+      if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
+        thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
+        info.adjusted = thrown;
+#if EXCEPTION_DEBUG
+        Module.print("  can_catch found " + [thrown, typeArray[i]]);
+#endif
         {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
+      }
     }
     // Shouldn't happen unless we have bogus data in typeArray
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
+    thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
-  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }, '__cxa_last_thrown_exception'], // will be called directly from compiled code
+  __resumeException__deps: ['$EXCEPTIONS', function() { Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
-    Module.print("Resuming exception");
+    Module.print("Resuming exception " + [ptr, EXCEPTIONS.last]);
 #endif
-    if (!___cxa_last_thrown_exception) { ___cxa_last_thrown_exception = ptr; }
+    if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
     {{{ makeThrow('ptr') }}}
   },
-
-  // Recursively walks up the base types of 'possibilityType'
-  // to see if any of them match 'definiteType'.
-  __cxa_does_inherit__deps: ['__cxa_is_number_type'],
-  __cxa_does_inherit: function(definiteType, possibilityType, possibility) {
-    if (possibility == 0) return false;
-    if (possibilityType == 0 || possibilityType == definiteType)
-      return true;
-    var possibility_type_info;
-    if (___cxa_is_number_type(possibilityType)) {
-      possibility_type_info = possibilityType;
-    } else {
-      var possibility_type_infoAddr = {{{ makeGetValue('possibilityType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-      possibility_type_info = {{{ makeGetValue('possibility_type_infoAddr', '0', '*') }}};
-    }
-    switch (possibility_type_info) {
-    case 0: // possibility is a pointer
-      // See if definite type is a pointer
-      var definite_type_infoAddr = {{{ makeGetValue('definiteType', '0', '*') }}} - {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var definite_type_info = {{{ makeGetValue('definite_type_infoAddr', '0', '*') }}};
-      if (definite_type_info == 0) {
-        // Also a pointer; compare base types of pointers
-        var defPointerBaseAddr = definiteType+{{{ Runtime.QUANTUM_SIZE*2 }}};
-        var defPointerBaseType = {{{ makeGetValue('defPointerBaseAddr', '0', '*') }}};
-        var possPointerBaseAddr = possibilityType+{{{ Runtime.QUANTUM_SIZE*2 }}};
-        var possPointerBaseType = {{{ makeGetValue('possPointerBaseAddr', '0', '*') }}};
-        return ___cxa_does_inherit(defPointerBaseType, possPointerBaseType, possibility);
-      } else
-        return false; // one pointer and one non-pointer
-    case 1: // class with no base class
-      return false;
-    case 2: // class with base class
-      var parentTypeAddr = possibilityType + {{{ Runtime.QUANTUM_SIZE*2 }}};
-      var parentType = {{{ makeGetValue('parentTypeAddr', '0', '*') }}};
-      return ___cxa_does_inherit(definiteType, parentType, possibility);
-    default:
-      return false; // some unencountered type
-    }
-  },
-
-  // Destructors for std::exception since we don't have them implemented in libcxx as we aren't using libcxxabi.
-  // These are also needed for the dlmalloc tests.
-  _ZNSt9exceptionD0Ev: function() {},
-  _ZNSt9exceptionD1Ev: function() {},
-  _ZNSt9exceptionD2Ev: function() {},
-
-  _ZNKSt9exception4whatEv__deps: ['malloc'],
-  _ZNKSt9exception4whatEv: function() {
-    if (!__ZNKSt9exception4whatEv.buffer) {
-      var name = "std::exception";
-      __ZNKSt9exception4whatEv.buffer = _malloc(name.length + 1);
-      writeStringToMemory(name, __ZNKSt9exception4whatEv.buffer);
-    }
-    return __ZNKSt9exception4whatEv.buffer;
-  },
-
-  // RTTI hacks for exception handling, defining type_infos for common types.
-  // The values are dummies. We simply use the addresses of these statically
-  // allocated variables as unique identifiers.
-  _ZTIb: [0], // bool
-  _ZTIi: [0], // int
-  _ZTIj: [0], // unsigned int
-  _ZTIl: [0], // long
-  _ZTIm: [0], // unsigned long
-  _ZTIx: [0], // long long
-  _ZTIy: [0], // unsigned long long
-  _ZTIf: [0], // float
-  _ZTId: [0], // double
-  _ZTIe: [0], // long double
-  _ZTIc: [0], // char
-  _ZTIa: [0], // signed char
-  _ZTIh: [0], // unsigned char
-  _ZTIs: [0], // short
-  _ZTIt: [0], // unsigned short
-  _ZTIv: [0], // void
-  _ZTIPv: [0], // void*
-
-  _ZTISt9exception: 'allocate([allocate([1,0,0,0,0,0,0], "i8", ALLOC_STATIC)+8, 0], "i32", ALLOC_STATIC)', // typeinfo for std::exception
 
   llvm_uadd_with_overflow_i8: function(x, y) {
     x = x & 0xff;
@@ -4467,11 +4411,11 @@ LibraryManager.library = {
   cbrtl: 'cbrt',
 
   modf: function(x, intpart) {
-    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'double') }}};
+    {{{ makeSetValue('intpart', 0, '(x < 0) ? Math.ceil(x) : Math.floor(x)', 'double') }}};
     return x - {{{ makeGetValue('intpart', 0, 'double') }}};
   },
   modff: function(x, intpart) {
-    {{{ makeSetValue('intpart', 0, 'Math.floor(x)', 'float') }}};
+    {{{ makeSetValue('intpart', 0, '(x < 0) ? Math.ceil(x) : Math.floor(x)', 'float') }}};
     return x - {{{ makeGetValue('intpart', 0, 'float') }}};
   },
   finite: function(x) {
@@ -4657,7 +4601,7 @@ LibraryManager.library = {
   },
 
   div: function(divt, numer, denom) {
-    var quot = Math.floor(numer / denom);
+    var quot = (numer / denom) | 0;
     var rem = numer - quot * denom;
     {{{ makeSetValue('divt', C_STRUCTS.div_t.quot, 'quot', 'i32') }}};
     {{{ makeSetValue('divt', C_STRUCTS.div_t.rem, 'rem', 'i32') }}};
@@ -4917,7 +4861,7 @@ LibraryManager.library = {
 
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_NORMAL); // XXX leak
+    var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
     {{{ makeSetValue('addr', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('addr', QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('addr', QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -4972,11 +4916,11 @@ LibraryManager.library = {
 
   clock: function() {
     if (_clock.start === undefined) _clock.start = Date.now();
-    return Math.floor((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}}/1000));
+    return ((Date.now() - _clock.start) * ({{{ cDefine('CLOCKS_PER_SEC') }}} / 1000))|0;
   },
 
   time: function(ptr) {
-    var ret = Math.floor(Date.now()/1000);
+    var ret = (Date.now()/1000)|0;
     if (ptr) {
       {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
     }
@@ -5012,7 +4956,7 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-  gmtime__deps: ['malloc', '__tm_current', 'gmtime_r'],
+  gmtime__deps: ['__tm_current', 'gmtime_r'],
   gmtime: function(time) {
     return _gmtime_r(time, ___tm_current);
   },
@@ -5036,7 +4980,7 @@ LibraryManager.library = {
     start.setUTCMinutes(0);
     start.setUTCSeconds(0);
     start.setUTCMilliseconds(0);
-    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
 
@@ -5052,7 +4996,7 @@ LibraryManager.library = {
     return ret;
   },
 
-  localtime__deps: ['malloc', '__tm_current', 'localtime_r'],
+  localtime__deps: ['__tm_current', 'localtime_r'],
   localtime: function(time) {
     return _localtime_r(time, ___tm_current);
   },
@@ -5070,7 +5014,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
 
     var start = new Date(date.getFullYear(), 0, 1);
-    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, 'start.getTimezoneOffset() * 60', 'i32') }}};
 
@@ -5082,7 +5026,7 @@ LibraryManager.library = {
     return tmPtr;
   },
 
-  asctime__deps: ['malloc', '__tm_formatted', 'asctime_r'],
+  asctime__deps: ['__tm_formatted', 'asctime_r'],
   asctime: function(tmPtr) {
     return _asctime_r(tmPtr, ___tm_formatted);
   },
@@ -5307,7 +5251,7 @@ LibraryManager.library = {
       },
       '%C': function(date) {
         var year = date.tm_year+1900;
-        return leadingNulls(Math.floor(year/100),2);
+        return leadingNulls((year/100)|0,2);
       },
       '%d': function(date) {
         return leadingNulls(date.tm_mday, 2);
@@ -5457,13 +5401,30 @@ LibraryManager.library = {
         // If tm_isdst is zero, the standard time offset is used. 
         // If tm_isdst is greater than zero, the daylight savings time offset is used. 
         // If tm_isdst is negative, no characters are returned. 
-        // FIXME: we cannot determine time zone (or can we?)
-        return '';
+        var ret = new Date().getTimezoneOffset();
+        // convert from minutes into hhmm format (which means 60 minutes = 100 units)
+        var minutes = ret % 60;
+        ret = (100*(ret - minutes)/60) + minutes;
+        // add sign and adjust length to ?hhmm
+        if (ret >= 0) {
+          ret = '' + ret;
+          while (ret.length < 4) ret = '0' + ret;
+          return '+' + ret;
+        } else {
+          ret = '' + ret;
+          ret = ret.substr(1);
+          while (ret.length < 4) ret = '0' + ret;
+          return '-' + ret;
+        }
       },
       '%Z': function(date) {
         // Replaced by the timezone name or abbreviation, or by no bytes if no timezone information exists. [ tm_isdst]
-        // FIXME: we cannot determine time zone (or can we?)
-        return '';
+        try {
+          // Date strings typically end in (PDT) or such.
+          return new Date().toString().split('(').slice(-1)[0].split(')')[0];
+        } catch(e) {
+          return ''; // may not work in all browsers
+        }
       },
       '%%': function() {
         return '%';
@@ -5740,9 +5701,6 @@ LibraryManager.library = {
     return 0;
   },
 
-  setitimer: function() { throw 'setitimer not implemented yet' },
-  getitimer: function() { throw 'getitimer not implemented yet' },
-
   // ==========================================================================
   // sys/time.h
   // ==========================================================================
@@ -5767,8 +5725,8 @@ LibraryManager.library = {
     } else {
       now = _emscripten_get_now();
     }
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, 'Math.floor(now/1000)', 'i32') }}}; // seconds
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, 'Math.floor((now % 1000)*1000*1000)', 'i32') }}}; // nanoseconds
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
   clock_settime: function(clk_id, tp) {
@@ -5793,8 +5751,8 @@ LibraryManager.library = {
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, 'Math.floor(now/1000)', 'i32') }}}; // seconds
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}}; // microseconds
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i32') }}}; // microseconds
     return 0;
   },
 
@@ -5804,7 +5762,7 @@ LibraryManager.library = {
   
   ftime: function(p) {
     var millis = Date.now();
-    {{{ makeSetValue('p', C_STRUCTS.timeb.time, 'Math.floor(millis/1000)', 'i32') }}};
+    {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // TODO
     {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // TODO
@@ -5932,66 +5890,6 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // signal.h
-  // ==========================================================================
-
-  signal: function(sig, func) {
-    // TODO
-    return 0;
-  },
-  sigemptyset: function(set) {
-    // int sigemptyset(sigset_t *set);
-    {{{ makeSetValue('set', '0', '0', 'i32') }}};
-    return 0;
-  },
-  sigfillset: function(set) {
-    {{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
-    return 0;
-  },
-  sigaddset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
-    return 0;
-  },
-  sigdelset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
-    return 0;
-  },
-  sigismember: function(set, signum) {
-    return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
-  },
-  sigaction: function(set) {
-    // TODO:
-    return 0;
-  },
-  sigprocmask: 'sigaction',
-  __libc_current_sigrtmin: function() {
-    return 0;
-  },
-  __libc_current_sigrtmax: function() {
-    return 0;
-  },
-  kill__deps: ['$ERRNO_CODES', '__setErrNo'],
-  kill: function(pid, sig) {
-    // int kill(pid_t pid, int sig);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
-    // Makes no sense in a single-process environment.
-    ___setErrNo(ERRNO_CODES.EPERM);
-    return -1;
-  },
-  killpg: 'kill',
-
-  siginterrupt: function() { throw 'siginterrupt not implemented' },
-
-  raise__deps: ['$ERRNO_CODES', '__setErrNo'],
-  raise: function(sig) {
-    ___setErrNo(ERRNO_CODES.ENOSYS);
-#if ASSERTIONS
-    Runtime.warnOnce('raise() returning an error as we do not support it');
-#endif
-    return -1;
-  },
-
-  // ==========================================================================
   // sys/wait.h
   // ==========================================================================
 
@@ -6013,23 +5911,43 @@ LibraryManager.library = {
   // locale.h
   // ==========================================================================
 
-  newlocale__deps: ['malloc'],
-  newlocale: function(mask, locale, base) {
-    return _malloc({{{ QUANTUM_SIZE}}});
+  $LOCALE: {
+    curr: 0,
+    check: function(locale) {
+      if (locale) locale = Pointer_stringify(locale);
+      return locale === 'C' || locale === 'POSIX' || !locale;
+    },
   },
 
-  freelocale__deps: ['free'],
+  newlocale__deps: ['$LOCALE', 'calloc'],
+  newlocale: function(mask, locale, base) {
+    if (!LOCALE.check(locale)) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return 0;
+    }
+    if (!base) base = _calloc(1, 4);
+    return base;
+  },
+
+  freelocale__deps: ['$LOCALE', 'free'],
   freelocale: function(locale) {
     _free(locale);
   },
 
+  uselocale__deps: ['$LOCALE'],
   uselocale: function(locale) {
-    return 0;
+    var old = LOCALE.curr;
+    if (locale) LOCALE.curr = locale;
+    return old;
   },
 
+  setlocale__deps: ['$LOCALE'],
   setlocale: function(category, locale) {
-    if (!_setlocale.ret) _setlocale.ret = allocate([0], 'i8', ALLOC_NORMAL);
-    return _setlocale.ret;
+    if (LOCALE.check(locale)) {
+      if (!_setlocale.ret) _setlocale.ret = allocate(intArrayFromString('C'), 'i8', ALLOC_NORMAL);
+      return _setlocale.ret;
+    }
+    return 0;
   },
 
   localeconv: function() {
@@ -6060,7 +5978,6 @@ LibraryManager.library = {
   // langinfo.h
   // ==========================================================================
 
-  nl_langinfo__deps: ['malloc'],
   nl_langinfo: function(item) {
     // char *nl_langinfo(nl_item item);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/nl_langinfo.html
@@ -6687,7 +6604,7 @@ LibraryManager.library = {
     }
     return addr;
   },
-  inet_ntoa__deps: ['_inet_ntop4_raw', 'malloc'],
+  inet_ntoa__deps: ['_inet_ntop4_raw'],
   inet_ntoa: function(in_addr) {
     if (!_inet_ntoa.buffer) {
       _inet_ntoa.buffer = _malloc(1024);
@@ -7049,7 +6966,7 @@ LibraryManager.library = {
     return _gethostbyname(hostp);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', 'malloc'],
+  gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
 
@@ -7082,7 +6999,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl', 'malloc'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -7299,7 +7216,7 @@ LibraryManager.library = {
   // are actually negative numbers and you can't have expressions as keys in JavaScript literals.
   $GAI_ERRNO_MESSAGES: {},
 
-  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES', 'malloc'],
+  gai_strerror__deps: ['$GAI_ERRNO_MESSAGES'],
   gai_strerror: function(val) {
     var buflen = 256;
 
@@ -7341,7 +7258,7 @@ LibraryManager.library = {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols', 'malloc'],
+  setprotoent__deps: ['$Protocols'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -8255,6 +8172,40 @@ LibraryManager.library = {
     return 0;
   },
 
+  getsockopt__deps: ['$SOCKFS', '__setErrNo', '$ERRNO_CODES'],
+  getsockopt: function(fd, level, optname, optval, optlen) {
+    // int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getsockopt.html
+    // Minimal getsockopt aimed at resolving https://github.com/kripken/emscripten/issues/2211
+    // so only supports SOL_SOCKET with SO_ERROR.
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+
+    if (level === {{{ cDefine('SOL_SOCKET') }}}) {
+      if (optname === {{{ cDefine('SO_ERROR') }}}) {
+        {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
+        {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
+        sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
+        return 0;
+      } else {
+        ___setErrNo(ERRNO_CODES.ENOPROTOOPT); // The option is unknown at the level indicated.
+#if ASSERTIONS
+        Runtime.warnOnce('getsockopt() returning an error as we currently only support optname SO_ERROR');
+#endif
+        return -1;
+      }
+    } else {
+      ___setErrNo(ERRNO_CODES.ENOPROTOOPT); //The option is unknown at the level indicated.
+#if ASSERTIONS
+      Runtime.warnOnce('getsockopt() returning an error as we only support level SOL_SOCKET');
+#endif
+      return -1;
+    }
+  },
+
   mkport: function() { throw 'TODO' },
 
   // ==========================================================================
@@ -8506,21 +8457,7 @@ LibraryManager.library = {
 
   emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
   emscripten_get_callstack_js: function(flags) {
-    var err = new Error();
-    if (!err.stack) {
-      // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
-      // so try that as a special-case.
-      try {
-        throw new Error(0);
-      } catch(e) {
-        err = e;
-      }
-      if (!err.stack) {
-        Runtime.warnOnce('emscripten_get_callstack_js is not supported on this browser!');
-        return '';
-      }
-    }
-    var callstack = err.stack.toString();
+    var callstack = jsStackTrace();
 
     // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everyhing up to these from the output.
     var iThisFunc = callstack.lastIndexOf('_emscripten_log');

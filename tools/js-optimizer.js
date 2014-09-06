@@ -406,7 +406,7 @@ function simplifyExpressions(ast) {
   // Likewise, if we have |0 inside a block that will be >>'d, then the |0 is unnecessary because some
   // 'useful' mathops already |0 anyhow.
 
-  function simplifyBitops(ast) {
+  function simplifyOps(ast) {
     var SAFE_BINARY_OPS;
     if (asm) {
       SAFE_BINARY_OPS = set('+', '-'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's; mul does not nest with +,- in asm
@@ -496,6 +496,15 @@ function simplifyExpressions(ast) {
     var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
     traverse(ast, function(node, type) {
+      // The "pre" visitor. Useful for detecting trees which should not
+      // be simplified.
+      if (type == 'sub' && node[1][0] == 'name' && /^FUNCTION_TABLE.*/.exec(node[1][1])) {
+        return null; // do not traverse subchildren here, we should not collapse 55 & 126.
+      }
+    }, function(node, type) {
+      // The "post" visitor. The simplifications are done in this visitor so
+      // that we simplify a node's operands before the node itself. This allows
+      // optimizations to cascade.
       if (type === 'name') {
         if (node[1] === 'tempDoublePtr') hasTempDoublePtr = true;
       } else if (type === 'binary' && node[1] === '&' && node[3][0] === 'num') {
@@ -585,8 +594,28 @@ function simplifyExpressions(ast) {
             node[3] = value[2];
           }
         }
-      } else if (type == 'sub' && node[1][0] == 'name' && /^FUNCTION_TABLE.*/.exec(node[1][1])) {
-        return null; // do not traverse subchildren here, we should not collapse 55 & 126. TODO: optimize this into a nonvirtual call (also because we lose some other opts here)!
+      } else if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num') {
+        // optimize num >> num, in asm we need this since we do not run optimizeShifts
+        node[0] = 'num';
+        node[1] = node[2][1] >> node[3][1];
+        node.length = 2;
+        return node;
+      } else if (type === 'binary' && node[1] === '+') {
+        // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
+        // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
+        if (node[2][0] === 'num' && node[3][0] === 'num') {
+          node[2][1] += node[3][1];
+          return node[2];
+        }
+        for (var i = 2; i <= 3; i++) {
+          var ii = 5-i;
+          for (var j = 2; j <= 3; j++) {
+            if (node[i][0] === 'num' && node[ii][0] === 'binary' && node[ii][1] === '+' && node[ii][j][0] === 'num') {
+              node[ii][j][1] += node[i][1];
+              return node[ii];
+            }
+          }
+        }
       }
     });
 
@@ -693,43 +722,6 @@ function simplifyExpressions(ast) {
         }
         denormalizeAsm(ast, asmData);
       }
-
-      // optimize num >> num, in asm we need this here since we do not run optimizeShifts
-      traverse(ast, function(node, type) {
-        if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num') {
-          node[0] = 'num';
-          node[1] = node[2][1] >> node[3][1];
-          node.length = 2;
-        }
-      });
-    }
-  }
-
-  // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
-  // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
-  function joinAdditions(ast) {
-    var rerun = true;
-    while (rerun) {
-      rerun = false;
-      traverse(ast, function(node, type) {
-        if (type === 'binary' && node[1] === '+') {
-          if (node[2][0] === 'num' && node[3][0] === 'num') {
-            rerun = true;
-            node[2][1] += node[3][1];
-            return node[2];
-          }
-          for (var i = 2; i <= 3; i++) {
-            var ii = 5-i;
-            for (var j = 2; j <= 3; j++) {
-              if (node[i][0] === 'num' && node[ii][0] === 'binary' && node[ii][1] === '+' && node[ii][j][0] === 'num') {
-                rerun = true;
-                node[ii][j][1] += node[i][1];
-                return node[ii];
-              }
-            }
-          }
-        }
-      });
     }
   }
 
@@ -813,8 +805,7 @@ function simplifyExpressions(ast) {
 
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
-    simplifyBitops(func);
-    joinAdditions(func);
+    simplifyOps(func);
     simplifyNotComps(func);
     conditionalize(func);
     // simplifyZeroComp(func); TODO: investigate performance
@@ -973,6 +964,405 @@ function simplifyIfs(ast) {
       });
     }
   });
+}
+
+// In typed arrays mode 2, we can have
+//  HEAP[x >> 2]
+// very often. We can in some cases do the shift on the variable itself when it is set,
+// to greatly reduce the number of shift operations.
+function optimizeShiftsInternal(ast, conservative) {
+  assert(!asm);
+  var MAX_SHIFTS = 3;
+  traverseGeneratedFunctions(ast, function(fun) {
+    var funMore = true;
+    var funFinished = {};
+    while (funMore) {
+      funMore = false;
+      // Recognize variables and parameters
+      var vars = {};
+      function newVar(name, param, addUse) {
+        if (!vars[name]) {
+          vars[name] = {
+            param: param,
+            defs: addUse ? 1 : 0,
+            uses: 0,
+            timesShifted: [0, 0, 0, 0], // zero shifts of size 0, 1, 2, 3
+            benefit: 0,
+            primaryShift: -1
+          };
+        }
+      }
+      // params
+      if (fun[2]) {
+        fun[2].forEach(function(arg) {
+          newVar(arg, true, true);
+        });
+      }
+      // vars
+      // XXX if var has >>=, ignore it here? That means a previous pass already optimized it
+      var hasSwitch = traverse(fun, function(node, type) {
+        if (type === 'var') {
+          node[1].forEach(function(arg) {
+            newVar(arg[0], false, arg[1]);
+          });
+        } else if (type === 'switch') {
+          // The relooper can't always optimize functions, and we currently don't work with
+          // switch statements when optimizing shifts. Bail.
+          return true;
+        }
+      });
+      if (hasSwitch) {
+        break;
+      }
+      // uses and defs TODO: weight uses by being inside a loop (powers). without that, we
+      // optimize for code size, not speed.
+      var stack = [];
+      traverse(fun, function(node, type) {
+        stack.push(node);
+        if (type === 'name' && vars[node[1]] && stack[stack.length-2][0] != 'assign') {
+          vars[node[1]].uses++;
+        } else if (type === 'assign' && node[2][0] === 'name' && vars[node[2][1]]) {
+          vars[node[2][1]].defs++;
+        }
+      }, function() {
+        stack.pop();
+      });
+      // First, break up elements inside a shift. This lets us see clearly what to do next.
+      traverse(fun, function(node, type) {
+        if (type === 'binary' && node[1] === '>>' && node[3][0] === 'num') {
+          var shifts = node[3][1];
+          if (shifts <= MAX_SHIFTS) {
+            // Check for validity. It is ok to have a single element that might have non-zeroed lower bits, but no more.
+            // x + 4 >> 2 === (x >> 2) + (4 >> 2), but not x + 3 >> 2 === (x >> 2) + (3 >> 2) (c.f. x=1, we get 1 !== 0)
+            var seen = '', ok = true;
+            function checkShift(subNode) {
+              if (subNode[0] === 'binary') {
+                switch (subNode[1]) {
+                  case '+': case '|': case '&': { // this could be more comprehensive, but likely not needed
+                    checkShift(subNode[2]);
+                    checkShift(subNode[3]);
+                    break;
+                  }
+                  case '>>': case '>>>': {
+                    checkShift(subNode[2]);
+                    break;
+                  }
+                  case '<<': {
+                    if (subNode[3][0] === 'num' && subNode[3][1] >= shifts) break; // bits are clear, all good
+                    checkShift(subNode[2]);
+                    break;
+                  }
+                  case '*': {
+                    if (subNode[3][0] === 'num') {
+                      var value = subNode[3][1];
+                      if (((value >> shifts) << shifts) === value) return; // bits are clear, all good
+                    }
+                    checkShift(subNode[2]);
+                    checkShift(subNode[3]);
+                    break;
+                  }
+                  default: ok = false;
+                }
+                return;
+              }
+              if (subNode[0] === 'name') {
+                var name = subNode[1];
+                if (!seen) {
+                  seen = name;
+                } else if (name !== seen) {
+                  ok = false;
+                }
+                return;
+              }
+              if (subNode[0] === 'num') {
+                var value = subNode[1];
+                if (((value >> shifts) << shifts) !== value) ok = false;
+                return;
+              }
+              if (subNode[0] === 'sub') {
+                if (seen) ok = false;
+                seen = 'heap access';
+                return;
+              }
+              ok = false; // anything else is bad
+            }
+            checkShift(node[2]);
+            if (!ok) return;
+
+            // Push the >> inside the value elements
+            function addShift(subNode) {
+              if (subNode[0] === 'binary' && subNode[1] === '+') {
+                subNode[2] = addShift(subNode[2]);
+                subNode[3] = addShift(subNode[3]);
+                return subNode;
+              }
+              if (subNode[0] === 'name' && !subNode[2]) { // names are returned with a shift, but we also note their being shifted
+                var name = subNode[1];
+                if (vars[name]) {
+                  vars[name].timesShifted[shifts]++;
+                  subNode[2] = true;
+                }
+              }
+              return ['binary', '>>', subNode, ['num', shifts]];
+            }
+            return addShift(node[2]);
+          }
+        }
+      });
+      traverse(fun, function(node, type) {
+        if (node[0] === 'name' && node[2]) {
+          return node.slice(0, 2); // clean up our notes
+        }
+      });
+      // At this point, shifted expressions are split up, and we know who the vars are and their info, so we can decide
+      // TODO: vars that depend on other vars
+      for (var name in vars) {
+        var data = vars[name];
+        var totalTimesShifted = sum(data.timesShifted);
+        if (totalTimesShifted === 0) {
+          continue;
+        }
+        if (totalTimesShifted != Math.max.apply(null, data.timesShifted)) {
+          // TODO: Handle multiple different shifts
+          continue;
+        }
+        if (funFinished[name]) continue;
+        // We have one shift size (and possible unshifted uses). Consider replacing this variable with a shifted clone. If
+        // the estimated benefit is >0, we will do it
+        if (data.defs === 1) {
+          data.benefit = totalTimesShifted - 2*(data.defs + (data.param ? 1 : 0));
+        }
+        if (conservative) data.benefit = 0;
+        if (data.benefit > 0) {
+          funMore = true; // We will reprocess this function
+          for (var i = 0; i < 4; i++) {
+            if (data.timesShifted[i]) {
+              data.primaryShift = i;
+            }
+          }
+        }
+      }
+      //printErr(JSON.stringify(vars));
+      function cleanNotes() { // We need to mark 'name' nodes as 'processed' in some passes here; this cleans the notes up
+        traverse(fun, function(node, type) {
+          if (node[0] === 'name' && node[2]) {
+            return node.slice(0, 2);
+          }
+        });
+      }
+      cleanNotes();
+      // Apply changes
+      function needsShift(name) {
+        return vars[name] && vars[name].primaryShift >= 0;
+      }
+      for (var name in vars) { // add shifts for params and var's for all new variables
+        var data = vars[name];
+        if (needsShift(name)) {
+          if (data.param) {
+            fun[3].unshift(['var', [[name + '$s' + data.primaryShift, ['binary', '>>', ['name', name], ['num', data.primaryShift]]]]]);
+          } else {
+            fun[3].unshift(['var', [[name + '$s' + data.primaryShift]]]);
+          }
+        }
+      }
+      var stack = [];
+      traverse(fun, function(node, type) { // add shift to assignments
+        stack.push(node);
+        if (node[0] === 'assign' && node[1] === true && node[2][0] === 'name' && needsShift(node[2][1]) && !node[2][2]) {
+          var name = node[2][1];
+          var data = vars[name];
+          var parent = stack[stack.length-3];
+          var statements = getStatements(parent);
+          assert(statements, 'Invalid parent for assign-shift: ' + dump(parent));
+          var i = statements.indexOf(stack[stack.length-2]);
+          statements.splice(i+1, 0, ['stat', ['assign', true, ['name', name + '$s' + data.primaryShift], ['binary', '>>', ['name', name, true], ['num', data.primaryShift]]]]);
+        } else if (node[0] === 'var') {
+          var args = node[1];
+          for (var i = 0; i < args.length; i++) {
+            var arg = args[i];
+            var name = arg[0];
+            var data = vars[name];
+            if (arg[1] && needsShift(name)) {
+              args.splice(i+1, 0, [name + '$s' + data.primaryShift, ['binary', '>>', ['name', name, true], ['num', data.primaryShift]]]);
+            }
+          }
+          return node;
+        }
+      }, function() {
+        stack.pop();
+      });
+      cleanNotes();
+      var stack = [];
+      traverse(fun, function(node, type) { // replace shifted name with new variable
+        stack.push(node);
+        if (node[0] === 'binary' && node[1] === '>>' && node[2][0] === 'name' && needsShift(node[2][1]) && node[3][0] === 'num') {
+          var name = node[2][1];
+          var data = vars[name];
+          var parent = stack[stack.length-2];
+          // Don't modify in |x$sN = x >> 2|, in normal assigns and in var assigns
+          if (parent[0] === 'assign' && parent[2][0] === 'name' && parent[2][1] === name + '$s' + data.primaryShift) return;
+          if (parent[0] === name + '$s' + data.primaryShift) return;
+          if (node[3][1] === data.primaryShift) {
+            return ['name', name + '$s' + data.primaryShift];
+          }
+        }
+      }, function() {
+        stack.pop();
+      });
+      cleanNotes();
+      var SIMPLE_SHIFTS = set('<<', '>>');
+      var more = true;
+      while (more) { // combine shifts in the same direction as an optimization
+        more = false;
+        traverse(fun, function(node, type) {
+          if (node[0] === 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] === 'binary' && node[2][1] === node[1] &&
+              node[3][0] === 'num' && node[2][3][0] === 'num') { // do not turn a << b << c into a << b + c; while logically identical, it is slower
+            more = true;
+            return ['binary', node[1], node[2][2], ['num', node[3][1] + node[2][3][1]]];
+          }
+        });
+      }
+      // Before recombining, do some additional optimizations
+      traverse(fun, function(node, type) {
+        // Apply constant shifts onto constants
+        if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num' && node[3][1] <= MAX_SHIFTS) {
+          var subNode = node[2];
+          var shifts = node[3][1];
+          var result = subNode[1] / Math.pow(2, shifts);
+          if (result % 1 === 0) {
+            subNode[1] = result;
+            return subNode;
+          }
+        }
+        // Optimize the case of ($a*80)>>2 into ($a*20)|0
+        if (type === 'binary' && node[1] in SIMPLE_SHIFTS &&
+            node[2][0] === 'binary' && node[2][1] === '*') {
+          var mulNode = node[2];
+          if (mulNode[2][0] === 'num') {
+            var temp = mulNode[2];
+            mulNode[2] = mulNode[3];
+            mulNode[3] = temp;
+          }
+          if (mulNode[3][0] === 'num') {
+            if (node[1] === '<<') {
+              mulNode[3][1] *= Math.pow(2, node[3][1]);
+              node[1] = '|';
+              node[3][1] = 0;
+              return node;
+            } else {
+              if (mulNode[3][1] % Math.pow(2, node[3][1]) === 0) {
+                mulNode[3][1] /= Math.pow(2, node[3][1]);
+                node[1] = '|';
+                node[3][1] = 0;
+                return node;
+              }
+            }
+          }
+        }
+        /* XXX - theoretically useful optimization(s), but commented out as not helpful in practice
+        // Transform (x << 2) >> 2 into x & mask or something even simpler
+        if (type === 'binary'       && node[1]    === '>>' && node[3][0] === 'num' &&
+            node[2][0] === 'binary' && node[2][1] === '<<' && node[2][3][0] === 'num' && node[3][1] === node[2][3][1]) {
+          var subNode = node[2];
+          var shifts = node[3][1];
+          var mask = ((0xffffffff << shifts) >>> shifts) | 0;
+          return ['binary', '&', subNode[2], ['num', mask]];
+          //return ['binary', '|', subNode[2], ['num', 0]];
+          //return subNode[2];
+        }
+        */
+      });
+      // Re-combine remaining shifts, to undo the breaking up we did before. may require reordering inside +'s
+      var stack = [];
+      traverse(fun, function(node, type) {
+        stack.push(node);
+        if (type === 'binary' && node[1] === '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] !== '+')) {
+          // 'Flatten' added items
+          var addedItems = [];
+          function flatten(node) {
+            if (node[0] === 'binary' && node[1] === '+') {
+              flatten(node[2]);
+              flatten(node[3]);
+            } else {
+              addedItems.push(node);
+            }
+          }
+          flatten(node);
+          var originalOrder = addedItems.slice();
+          function key(node) { // a unique value for all relevant shifts for recombining, non-unique for stuff we don't need to bother with
+            function originalOrderKey(item) {
+              return -originalOrder.indexOf(item);
+            }
+            if (node[0] === 'binary' && node[1] in SIMPLE_SHIFTS) {
+              if (node[3][0] === 'num' && node[3][1] <= MAX_SHIFTS) return 2*node[3][1] + (node[1] === '>>' ? 100 : 0); // 0-106
+              return (node[1] === '>>' ? 20000 : 10000) + originalOrderKey(node);
+            }
+            if (node[0] === 'num') return -20000 + node[1];
+            return -10000 + originalOrderKey(node); // Don't modify the original order if we don't modify anything
+          }
+          for (var i = 0; i < addedItems.length; i++) {
+            if (addedItems[i][0] === 'string') return; // this node is not relevant for us
+          }
+          addedItems.sort(function(node1, node2) {
+            return key(node1) - key(node2);
+          });
+          // Regenerate items, now sorted
+          var i = 0;
+          while (i < addedItems.length-1) { // re-combine inside addedItems
+            var k = key(addedItems[i]), k1 = key(addedItems[i+1]);
+            if (k === k1 && k >= 0 && k1 <= 106) {
+              addedItems[i] = ['binary', addedItems[i][1], ['binary', '+', addedItems[i][2], addedItems[i+1][2]], addedItems[i][3]];
+              addedItems.splice(i+1, 1);
+            } else {
+              i++;
+            }
+          }
+          var num = 0;
+          for (i = 0; i < addedItems.length; i++) { // combine all numbers into one
+            if (addedItems[i][0] === 'num') {
+              num += addedItems[i][1];
+              addedItems.splice(i, 1);
+              i--;
+            }
+          }
+          if (num != 0) { // add the numbers into an existing shift, we 
+                          // prefer (x+5)>>7 over (x>>7)+5 , since >>'s result is known to be 32-bit and is more easily optimized.
+                          // Also, in the former we can avoid the parentheses, which saves a little space (the number will be bigger,
+                          // so it might take more space, but normally at most one more digit).
+            var added = false;
+            for (i = 0; i < addedItems.length; i++) {
+              if (addedItems[i][0] === 'binary' && addedItems[i][1] === '>>' && addedItems[i][3][0] === 'num' && addedItems[i][3][1] <= MAX_SHIFTS) {
+                addedItems[i] = ['binary', '>>', ['binary', '+', addedItems[i][2], ['num', num << addedItems[i][3][1]]], addedItems[i][3]];
+                added = true;
+              }
+            }
+            if (!added) {
+              addedItems.unshift(['num', num]);
+            }
+          }
+          var ret = addedItems.pop();
+          while (addedItems.length > 0) { // re-create AST from addedItems
+            ret = ['binary', '+', ret, addedItems.pop()];
+          }
+          return ret;
+        }
+      }, function() {
+        stack.pop();
+      });
+      // Note finished variables
+      for (var name in vars) {
+        funFinished[name] = true;
+      }
+    }
+  });
+}
+
+function optimizeShiftsConservative(ast) {
+  optimizeShiftsInternal(ast, true);
+}
+
+function optimizeShiftsAggressive(ast) {
+  optimizeShiftsInternal(ast, false);
 }
 
 // We often have branchings that are simplified so one end vanishes, and
@@ -3705,11 +4095,12 @@ function eliminate(ast, memSafe) {
               // if a loop variable is used after we assigned to the helper, we must save its value and use that.
               // (note that this can happen due to elimination, if we eliminate an expression containing the
               // loop var far down, past the assignment!)
-              // first, see if the looper and helper overlap
+              // first, see if the looper and helpers overlap. Note that we check for this looper, compared to
+              // *ALL* the helpers. Helpers will be replaced by loopers as we eliminate them, potentially
+              // causing conflicts, so any helper is a concern.
               var firstLooperUsage = -1;
               var lastLooperUsage = -1;
               var firstHelperUsage = -1;
-              var lastHelperUsage = -1;
               for (var i = found+1; i < stats.length; i++) {
                 var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                 traverse(curr, function(node, type) {
@@ -3717,9 +4108,8 @@ function eliminate(ast, memSafe) {
                     if (node[1] === looper) {
                       if (firstLooperUsage < 0) firstLooperUsage = i;
                       lastLooperUsage = i;
-                    } else if (node[1] === helper) {
+                    } else if (helpers.indexOf(node[1]) >= 0) {
                       if (firstHelperUsage < 0) firstHelperUsage = i;
-                      lastHelperUsage = i;
                     }
                   }
                 });
@@ -5276,6 +5666,8 @@ var passes = {
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressions: simplifyExpressions,
+  optimizeShiftsConservative: optimizeShiftsConservative,
+  optimizeShiftsAggressive: optimizeShiftsAggressive,
   simplifyIfs: simplifyIfs,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,

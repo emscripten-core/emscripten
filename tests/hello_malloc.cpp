@@ -13,6 +13,6 @@ int main() {
   void *another = malloc(1024);
   assert(another == allocs[0]);
   printf("hello, world!\n");
-  return 1;
+  return 0;
 }
 

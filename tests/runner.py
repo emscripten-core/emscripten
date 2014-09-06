@@ -26,6 +26,7 @@ def path_from_root(*pathelems):
 sys.path += [path_from_root(''), path_from_root('third_party/websockify')]
 import tools.shared
 from tools.shared import *
+from tools.line_endings import check_line_endings
 
 # Utils
 
@@ -240,15 +241,17 @@ process(sys.argv[1])
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
-    if self.emcc_args is not None and 'ASM_JS=1' in self.emcc_args:
+    if self.emcc_args is not None:
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
-        memory_init_file = 0
+        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args
+      src = open(filename + '.o.js').read()
       if memory_init_file:
-        assert '/* memory initializer */' not in open(filename + '.o.js').read()
+        # side memory init file, or an empty one in the js
+        assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
       else:
-        assert 'memory initializer */' in open(filename + '.o.js').read()
+        assert 'memory initializer */' in src
 
   def validate_asmjs(self, err):
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
@@ -266,6 +269,7 @@ process(sys.argv[1])
     except:
       cwd = None
     os.chdir(self.get_dir())
+    assert(check_line_endings(filename) == 0) # Make sure that we produced proper line endings to the .js file we are about to run.
     run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'), assert_returncode=assert_returncode)
     if cwd is not None:
       os.chdir(cwd)
@@ -352,7 +356,7 @@ process(sys.argv[1])
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + str(Building.COMPILER_TEST_OPTS) + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '_') + (self.env.get('EMCC_FAST_COMPILER') or '_')
+    cache_name = name + ','.join(filter(lambda opt: len(opt) < 10, Building.COMPILER_TEST_OPTS)) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '_') + (self.env.get('EMCC_FAST_COMPILER') or '_')
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -464,6 +468,7 @@ process(sys.argv[1])
     js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:
+      #print engine
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
       self.assertNotContained('ERROR', js_output)
@@ -521,6 +526,7 @@ def server_func(dir, q):
   class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
+        print '[server response:', self.path, ']'
         q.put(self.path)
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
@@ -556,6 +562,7 @@ class BrowserCore(RunnerCore):
     time.sleep(0.1)
 
   def run_browser(self, html_file, message, expectedResult=None):
+    print '[browser launch:', html_file, ']'
     if expectedResult is not None:
       try:
         queue = multiprocessing.Queue()
@@ -685,7 +692,7 @@ class BrowserCore(RunnerCore):
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-      args=[], outfile='test.html', message='.', also_proxied=False): # TODO: use in all other tests
+      args=[], outfile='test.html', message='.', also_proxied=False, url_suffix=''): # TODO: use in all other tests
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -711,7 +718,7 @@ class BrowserCore(RunnerCore):
     assert os.path.exists(outfile)
     if post_build: post_build()
     if type(expected) is str: expected = [expected]
-    self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
+    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected])
     if also_proxied:
       print 'proxied...'
       # save non-proxied
@@ -733,7 +740,7 @@ class BrowserCore(RunnerCore):
 def get_bullet_library(runner_core, use_cmake):
   if use_cmake:
     configure_commands = ['cmake', '.']
-    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF']
+    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF']
     # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
     generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
                       os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),

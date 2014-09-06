@@ -1,4 +1,5 @@
 import multiprocessing, os, re, shutil, subprocess, sys
+import glob
 import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_bullet_library, nonfastcomp
@@ -30,15 +31,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
-      self.assertContained('''%s [options] file...
-
-Most normal gcc/g++ options will work, for example:
-  --help                   Display this information
-  --version                Display compiler version information
-
-Options that are modified or new in %s include:
-
-  -O0                      No optimizations (default)''' % (shortcompiler, shortcompiler), output[0].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('Display this information', output[0])
+      self.assertContained('Most clang options will work', output[0])
 
       # emcc src.cpp ==> writes a.out.js
       self.clear()
@@ -115,15 +109,6 @@ Options that are modified or new in %s include:
         os.chdir(self.get_dir())
       self.clear()
 
-      for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
-        print source, has_malloc
-        self.clear()
-        output = Popen([PYTHON, compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
-        assert os.path.exists('a.out.js'), '\n'.join(output)
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        generated = open('a.out.js').read()
-        assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
-
       # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
       for params, opt_level, bc_params, closure, has_malloc in [ # bc params are used after compiling to bitcode
         (['-o', 'something.js'],                          0, None, 0, 1),
@@ -171,7 +156,7 @@ Options that are modified or new in %s include:
           # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
           assert '._main = ' not in generated, 'closure compiler should not have been run'
           if keep_debug:
-            assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
+            assert ('switch (label)' in generated or 'switch (label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert '$i' in generated or '$storemerge' in generated or '$original' in generated, 'micro opts should always be on'
           if opt_level >= 2 and '-g' in params:
@@ -208,7 +193,6 @@ Options that are modified or new in %s include:
         (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
         (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
         (['-O2', '-profiling'], lambda generated: '// The Module object' in generated or os.environ.get('EMCC_FAST_COMPILER') == '0', 'with -profiling, yes comments in shell code (in fastcomp)'),
-
       ]:
         print params, text
         self.clear()
@@ -277,6 +261,12 @@ f.close()
       trans_file.close()
       output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', '%s t.py' % (PYTHON)], stdout=PIPE, stderr=PIPE).communicate()
       assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
+
+      for opts in [0, 1, 2, 3]:
+        print 'mem init in', opts
+        self.clear()
+        output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+        assert os.path.exists('a.out.js.mem') == (opts >= 2), 'mem file should exist in -O2+'
 
     # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
     # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
@@ -375,7 +365,7 @@ f.close()
               # Run Cmake
               if invoke_method == 'cmake':
                 # Test invoking cmake directly.
-                cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Platform', 'Emscripten.cmake'),
+                cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
                                 '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
               else:
                 # Test invoking via 'emconfigure cmake'
@@ -393,7 +383,9 @@ f.close()
                 prebuild(configuration, tempdirname)
 
               # Build
-              cmd = make + (['VERBOSE=1'] if verbose_level >= 3 else [])
+              cmd = make
+              if verbose_level >= 3 and 'Ninja' not in generator:
+                cmd += ['VERBOSE=1']
               ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE).communicate()
               if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
                 logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
@@ -616,8 +608,7 @@ This pointer might make sense in another type signature: i: 0
           open(os.path.join(self.get_dir(), 'side.' + suffix), 'w').write(side)
           side = ['side.' + suffix]
         Popen([PYTHON, EMCC] + side + ['-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2'] + args).communicate()
-        # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
-        Popen([PYTHON, EMCC] + main + ['-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1'] + args).communicate()
+        Popen([PYTHON, EMCC] + main + ['-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=0'] + args).communicate()
         Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'], stdout=PIPE).communicate()
         assert os.path.exists('together.js')
         for engine in JS_ENGINES:
@@ -916,7 +907,9 @@ This pointer might make sense in another type signature: i: 0
           Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
           assert os.path.exists('test.js')
           shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
+          assert len(JS_ENGINES) > 1
           for engine in JS_ENGINES:
+            if engine == V8_ENGINE: continue # ban v8, weird failures
             out = run_js('test.js', engine=engine, stderr=PIPE, full_output=True)
             self.assertContained(expected, out)
             if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
@@ -1038,7 +1031,7 @@ This pointer might make sense in another type signature: i: 0
 
     self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-  def test_link_group_asserts(self):
+  def test_link_group(self):
     lib_src_name = os.path.join(self.get_dir(), 'lib.c')
     open(lib_src_name, 'w').write('int x() { return 42; }')
 
@@ -1069,6 +1062,29 @@ This pointer might make sense in another type signature: i: 0
     test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
     test(['-Wl,--end-group', lib_name, '-Wl,--start-group'], '--end-group without --start-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group'], None)
+
+  def test_link_group_bitcode(self):
+    one = open('1.c', 'w').write(r'''
+int f(void);
+int main() {
+  f();
+  return 0;
+}
+    ''')
+    two = open('2.c', 'w').write(r'''
+#include <stdio.h>
+int f() {
+  printf("Hello\n");
+  return 0;
+}
+    ''')
+
+    Popen([PYTHON, EMCC, '-o', '1.o', '1.c']).communicate()
+    Popen([PYTHON, EMCC, '-o', '2.o', '2.c']).communicate()
+    Popen([PYTHON, EMAR, 'crs', '2.a', '2.o']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group']).communicate()
+    Popen([PYTHON, EMCC, 'out.bc']).communicate()
+    self.assertContained('Hello', run_js('a.out.js'))
 
   def test_circular_libs(self):
     def tmp_source(name, code):
@@ -1509,7 +1525,7 @@ This pointer might make sense in another type signature: i: 0
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst', '--exclude-file', '*.exe']).communicate()
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'))
-    assert output == ''
+    assert output == '' or output == ' \n'
 
   def test_multidynamic_link(self):
     # Linking the same dynamic library in statically will error, normally, since we statically link it, causing dupe symbols
@@ -1589,7 +1605,7 @@ This pointer might make sense in another type signature: i: 0
       Module.print(MESSAGE);
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
     self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_sdl_endianness(self):
@@ -1733,7 +1749,7 @@ This pointer might make sense in another type signature: i: 0
       };
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     # never run, so no preRun or postRun
@@ -1744,7 +1760,7 @@ This pointer might make sense in another type signature: i: 0
     # noInitialRun prevents run
     for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
       print no_initial_run, run_dep
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'NO_EXIT_RUNTIME=1']).communicate()
       src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
       if run_dep:
         src = src.replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\naddRunDependency("test");') \
@@ -1767,7 +1783,7 @@ This pointer might make sense in another type signature: i: 0
         preInit: function() { Module.print('pre-init') }
       };
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
     self.assertContained('pre-init\npre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_prepost2(self):
@@ -1786,7 +1802,7 @@ This pointer might make sense in another type signature: i: 0
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
       Module.postRun = function() { Module.print('post-run') };
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_prepre(self):
@@ -1837,6 +1853,12 @@ This pointer might make sense in another type signature: i: 0
     for input, expected, passes in [
       (path_from_root('tools', 'test-js-optimizer.js'), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
        ['hoistMultiples', 'removeAssignsToUndefined', 'simplifyExpressions']),
+      (path_from_root('tools', 'test-js-optimizer-t2c.js'), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
+       ['simplifyExpressions', 'optimizeShiftsConservative']),
+      (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
+       ['simplifyExpressions', 'optimizeShiftsAggressive']),
+      (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3-output.js')).read(),
+       ['optimizeShiftsAggressive']),
       (path_from_root('tools', 'test-js-optimizer-si.js'), open(path_from_root('tools', 'test-js-optimizer-si-output.js')).read(),
        ['simplifyIfs']),
       (path_from_root('tools', 'test-js-optimizer-regs.js'), open(path_from_root('tools', 'test-js-optimizer-regs-output.js')).read(),
@@ -1911,14 +1933,15 @@ This pointer might make sense in another type signature: i: 0
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      # llvm debug info is kept only when we can see it, which is without the js optimize, -O0. js debug info is lost by registerize in -O2, so - g disables it
       for args, expect_llvm, expect_js in [
-          (['-O0'], True, True),
+          (['-O0'], False, True),
           (['-O0', '-g'], True, True),
+          (['-O0', '-g4'], True, True),
           (['-O1'], False, True),
-          (['-O1', '-g'], False, True),
+          (['-O1', '-g'], True, True),
           (['-O2'], False, False),
-          (['-O2', '-g'], False, True),
+          (['-O2', '-g'], False, True), # drop llvm debug info as js opts kill it anyway
+          (['-O2', '-g4'], True, True), # drop llvm debug info as js opts kill it anyway
         ]:
         print args, expect_llvm, expect_js
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
@@ -1933,7 +1956,7 @@ This pointer might make sense in another type signature: i: 0
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join(self.get_dir(), 'test', 'site_scons'))
     os.chdir(os.path.join(self.get_dir(), 'test'))
     Popen(['scons']).communicate()
-    output = run_js('scons_integration.js')
+    output = run_js('scons_integration.js', assert_returncode=5)
     assert 'If you see this - the world is all right!' in output
 
   def test_embind(self):
@@ -2176,29 +2199,55 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned in
     assert 'one(int)' in output
     assert 'two(char)' in output
 
+    # full demangle support
+
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
+    output = run_js('a.out.js')
+    self.assertContained('''operator new(unsigned int)
+main()
+f2()
+abcdabcdabcd(int)
+abcdabcdabcd(int)
+test(char, short, int, float, double, void*, int*, char*)
+test::moarr(char, short, long, float, double, void*, int*, char*)
+Waka::f::a23412341234::point()
+void Foo<int>()
+void Foo<int, double>(int)
+void Foo::Bar<5>()
+__cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_info*, void const*, int, bool) const
+parseword(char const*&, int, int&)
+multi(wchar_t, signed char, unsigned char, unsigned short, unsigned int, unsigned long, long long, unsigned long long, ...)
+a(int [32], char (*) [5])
+FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigned int, void const*, bool, unsigned int, unsigned int)
+void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::OR>(unsigned int const*, unsigned int)
+''', output)
+    # test for multiple functions in one stack trace
+    assert 'one(int)' in output
+    assert 'two(char)' in output
+
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1
     # This is important as if module.export is not present the Module object will not be visible to node.js
     # Run with ./runner.py other.test_module_exports_with_closure
 
     # First make sure test.js isn't present.
-    try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
-    assert not os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
+    self.clear()
 
     # compile with -O2 --closure 0
-    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', path_from_root('tests', 'Module-exports', 'test.js'), '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
 
     # Check that compilation was successful
-    assert os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
-    test_js_closure_0 = open(path_from_root('tests', 'Module-exports', 'test.js')).read()
+    assert os.path.exists('test.js')
+    test_js_closure_0 = open('test.js').read()
 
     # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
     assert ("module['exports'] = Module;" in test_js_closure_0) or ('module["exports"]=Module' in test_js_closure_0)
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
+    shutil.copyfile(path_from_root('tests', 'Module-exports', 'main.js'), 'main.js')
     if NODE_JS in JS_ENGINES:
-      self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js'), engine=NODE_JS))
+      self.assertContained('bufferTest finished', run_js('main.js', engine=NODE_JS))
 
     # Delete test.js again and check it's gone.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
@@ -2218,7 +2267,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned in
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
     if NODE_JS in JS_ENGINES:
-      self.assertContained('bufferTest finished', run_js(path_from_root('tests', 'Module-exports', 'main.js'), engine=NODE_JS))
+      self.assertContained('bufferTest finished', run_js('main.js', engine=NODE_JS))
 
     # Tidy up files that might have been created by this test.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
@@ -2338,6 +2387,16 @@ mergeInto(LibraryManager.library, {
 
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js']).communicate()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+  def test_EMCC_BUILD_DIR(self):
+    # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
+    # running a js library). We force the cwd to be src/ for technical reasons, so this lets you find out
+    # where you were.
+    open('lib.js', 'w').write(r'''
+printErr('dir was ' + process.env.EMCC_BUILD_DIR);
+''')
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js'], stderr=PIPE).communicate()
+    self.assertContained('dir was ' + os.path.normpath(self.get_dir()), err)
 
   def test_float_h(self):
     process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
@@ -2903,4 +2962,1094 @@ int main(int argc, char **argv) {
 
     Popen([PYTHON, EMCC, 'code.cpp']).communicate()
     self.assertContained('I am ' + self.get_dir().replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
+
+  def test_returncode(self):
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        return 123;
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    for engine in JS_ENGINES:
+      engine = listify(engine)
+      print engine
+      process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
+      output = process.communicate()
+      assert process.returncode == 123, process.returncode
+
+  def test_mkdir_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+int main(int argc, char **argv) {
+  printf("\n");
+  for (int i = 1; i < argc; i++) {
+    printf("%d:\n", i);
+    int ok = mkdir(argv[i], S_IRWXU|S_IRWXG|S_IRWXO);
+    printf("  make %s: %d\n", argv[i], ok);
+    DIR *dir = opendir(argv[i]);
+    printf("  open %s: %d\n", argv[i], dir != NULL);
+    if (dir) {
+      struct dirent *entry;
+      while ((entry = readdir(dir))) {
+        printf("  %s, %d\n", entry->d_name, entry->d_type);
+      }
+    }
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot create /, can open
+    self.assertContained(r'''
+1:
+  make /: -1
+  open /: 1
+  ., 4
+  .., 4
+  tmp, 4
+  home, 4
+  dev, 4
+''', run_js('a.out.js', args=['/']))
+    # cannot create empty name, cannot open
+    self.assertContained(r'''
+1:
+  make : -1
+  open : 0
+''', run_js('a.out.js', args=['']))
+    # can create unnormalized path, can open
+    self.assertContained(r'''
+1:
+  make /a//: 0
+  open /a//: 1
+  ., 4
+  .., 4
+''', run_js('a.out.js', args=['/a//']))
+    # can create child unnormalized
+    self.assertContained(r'''
+1:
+  make /a: 0
+  open /a: 1
+  ., 4
+  .., 4
+2:
+  make /a//b//: 0
+  open /a//b//: 1
+  ., 4
+  .., 4
+''', run_js('a.out.js', args=['/a', '/a//b//']))
+
+  def test_stat_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <errno.h>
+#include <sys/stat.h>
+
+int main(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    const char *path = argv[i];
+    struct stat path_stat;
+    if (stat(path, &path_stat) != 0) {
+      printf("Failed to stat path: %s; errno=%d\n", path, errno);
+    } else {
+      printf("ok on %s\n", path);
+    }
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot stat ""
+    self.assertContained(r'''Failed to stat path: /a; errno=2
+Failed to stat path: ; errno=2
+''', run_js('a.out.js', args=['/a', '']))
+
+  def test_symlink_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+  if (symlink(argv[1], argv[2]) != 0) {
+    printf("Failed to symlink paths: %s, %s; errno=%d\n", argv[1], argv[2], errno);
+  } else {
+    printf("ok\n");
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot symlink nonexistents
+    self.assertContained(r'''Failed to symlink paths: , abc; errno=2''', run_js('a.out.js', args=['', 'abc']))
+    self.assertContained(r'''Failed to symlink paths: , ; errno=2''', run_js('a.out.js', args=['', '']))
+    self.assertContained(r'''ok''', run_js('a.out.js', args=['123', 'abc']))
+    self.assertContained(r'''Failed to symlink paths: abc, ; errno=2''', run_js('a.out.js', args=['abc', '']))
+
+  def test_rename_silly(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <errno.h>
+
+int main(int argc, char **argv) {
+  if (rename(argv[1], argv[2]) != 0) {
+    printf("Failed to rename paths: %s, %s; errno=%d\n", argv[1], argv[2], errno);
+  } else {
+    printf("ok\n");
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot symlink nonexistents
+    self.assertContained(r'''Failed to rename paths: , abc; errno=2''', run_js('a.out.js', args=['', 'abc']))
+    self.assertContained(r'''Failed to rename paths: , ; errno=2''', run_js('a.out.js', args=['', '']))
+    self.assertContained(r'''Failed to rename paths: 123, abc; errno=2''', run_js('a.out.js', args=['123', 'abc']))
+    self.assertContained(r'''Failed to rename paths: abc, ; errno=2''', run_js('a.out.js', args=['abc', '']))
+
+  def test_readdir_r_silly(self):
+    open('src.cpp', 'w').write(r'''  
+#include <iostream>
+#include <cstring>
+#include <cerrno>
+#include <unistd.h>
+#include <fcntl.h>
+#include <cstdlib>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+using std::endl;
+namespace
+{
+  void check(const bool result)
+  {
+    if(not result) {
+      std::cout << "Check failed!" << endl;
+      throw "bad";
+    }
+  }
+  // Do a recursive directory listing of the directory whose path is specified
+  // by \a name.
+  void ls(const std::string& name, std::size_t indent = 0)
+  {
+    ::DIR *dir;
+    struct ::dirent *entry;
+    if(indent == 0) {
+      std::cout << name << endl;
+      ++indent;
+    }
+    // Make sure we can open the directory.  This should also catch cases where
+    // the empty string is passed in.
+    if (not (dir = ::opendir(name.c_str()))) {
+      const int error = errno;
+      std::cout
+        << "Failed to open directory: " << name << "; " << error << endl;
+      return;
+    }
+    // Just checking the sanity.
+    if (name.empty()) {
+      std::cout
+        << "Managed to open a directory whose name was the empty string.."
+        << endl;
+      check(::closedir(dir) != -1);
+      return;
+    }
+    // Iterate over the entries in the directory.
+    while ((entry = ::readdir(dir))) {
+      const std::string entryName(entry->d_name);
+      if (entryName == "." || entryName == "..") {
+        // Skip the dot entries.
+        continue;
+      }
+      const std::string indentStr(indent * 2, ' ');
+      if (entryName.empty()) {
+        std::cout
+          << indentStr << "\"\": Found empty string as a "
+          << (entry->d_type == DT_DIR ? "directory" : "file")
+          << " entry!" << endl;
+        continue;
+      } else {
+        std::cout << indentStr << entryName
+                  << (entry->d_type == DT_DIR ? "/" : "") << endl;
+      }
+      if (entry->d_type == DT_DIR) {
+        // We found a subdirectory; recurse.
+        ls(std::string(name + (name == "/" ? "" : "/" ) + entryName),
+           indent + 1);
+      }
+    }
+    // Close our handle.
+    check(::closedir(dir) != -1);
+  }
+  void touch(const std::string &path)
+  {
+    const int fd = ::open(path.c_str(), O_CREAT | O_TRUNC, 0644);
+    check(fd != -1);
+    check(::close(fd) != -1);
+  }
+}
+int main()
+{
+  check(::mkdir("dir", 0755) == 0);
+  touch("dir/a");
+  touch("dir/b");
+  touch("dir/c");
+  touch("dir/d");
+  touch("dir/e");
+  std::cout << "Before:" << endl;
+  ls("dir");
+  std::cout << endl;
+  // Attempt to delete entries as we walk the (single) directory.
+  ::DIR * const dir = ::opendir("dir");
+  check(dir != NULL);
+  struct ::dirent *entry;
+  while((entry = ::readdir(dir)) != NULL) {
+    const std::string name(entry->d_name);
+    // Skip "." and "..".
+    if(name == "." || name == "..") {
+      continue;
+    }
+    // Unlink it.
+    std::cout << "Unlinking " << name << endl;
+    check(::unlink(("dir/" + name).c_str()) != -1);
+  }
+  check(::closedir(dir) != -1);
+  std::cout << "After:" << endl;
+  ls("dir");
+  std::cout << endl;
+  return 0;
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    # cannot symlink nonexistents
+    self.assertContained(r'''Before:
+dir
+  a
+  b
+  c
+  d
+  e
+
+Unlinking a
+Unlinking b
+Unlinking c
+Unlinking d
+Unlinking e
+After:
+dir
+''', run_js('a.out.js', args=['', 'abc']))
+
+  def test_emversion(self):
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        printf("major: %d\n", __EMSCRIPTEN_major__);
+        printf("minor: %d\n", __EMSCRIPTEN_minor__);
+        printf("tiny: %d\n", __EMSCRIPTEN_tiny__);
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''major: %d
+minor: %d
+tiny: %d
+''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), run_js('a.out.js'))
+
+  def test_dashE(self):
+    open('src.cpp', 'w').write(r'''#include <emscripten.h>
+EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+''')
+    out = Popen([PYTHON, EMCC, 'src.cpp', '-E'], stdout=PIPE).communicate()[0]
+    self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+
+  def test_malloc_implicit(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+int main() {
+  const char *home = getenv("HOME");
+  for(unsigned int i = 0; i < 5; ++i) {
+    const char *curr = getenv("HOME");
+    assert(curr == home);
+  }
+  printf("ok\n");
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok', run_js('a.out.js'))
+
+  def test_switch64phi(self):
+    # issue 2539, fastcomp segfault on phi-i64 interaction
+    self.clear()
+    open('src.cpp', 'w').write(r'''
+#include <cstdint>
+#include <limits>
+#include <cstdio>
+
+//============================================================================
+
+namespace
+{
+  class int_adapter {
+  public:
+    typedef ::int64_t int_type;
+
+    int_adapter(int_type v = 0)
+      : value_(v)
+    {}
+    static const int_adapter pos_infinity()
+    {
+      return (::std::numeric_limits<int_type>::max)();
+    }
+    static const int_adapter neg_infinity()
+    {
+      return (::std::numeric_limits<int_type>::min)();
+    }
+    static const int_adapter not_a_number()
+    {
+      return (::std::numeric_limits<int_type>::max)()-1;
+    }
+    static bool is_neg_inf(int_type v)
+    {
+      return (v == neg_infinity().as_number());
+    }
+    static bool is_pos_inf(int_type v)
+    {
+      return (v == pos_infinity().as_number());
+    }
+    static bool is_not_a_number(int_type v)
+    {
+      return (v == not_a_number().as_number());
+    }
+
+    bool is_infinity() const
+    {
+      return (value_ == neg_infinity().as_number() ||
+              value_ == pos_infinity().as_number());
+    }
+    bool is_special() const
+    {
+      return(is_infinity() || value_ == not_a_number().as_number());
+    }
+    bool operator<(const int_adapter& rhs) const
+    {
+      if(value_ == not_a_number().as_number()
+         || rhs.value_ == not_a_number().as_number()) {
+        return false;
+      }
+      if(value_ < rhs.value_) return true;
+      return false;
+    }
+    int_type as_number() const
+    {
+      return value_;
+    }
+
+    int_adapter operator-(const int_adapter& rhs)const
+    {
+      if(is_special() || rhs.is_special())
+      {
+        if (rhs.is_pos_inf(rhs.as_number()))
+        {
+          return int_adapter(1);
+        }
+        if (rhs.is_neg_inf(rhs.as_number()))
+        {
+          return int_adapter();
+        }
+      }
+      return int_adapter();
+    }
+
+
+  private:
+    int_type value_;
+  };
+
+  class time_iterator {
+  public:
+    time_iterator(int_adapter t, int_adapter d)
+      : current_(t),
+        offset_(d)
+    {}
+
+    time_iterator& operator--()
+    {
+      current_ = int_adapter(current_ - offset_);
+      return *this;
+    }
+
+    bool operator>=(const int_adapter& t)
+    {
+      return not (current_ < t);
+    }
+
+  private:
+    int_adapter current_;
+    int_adapter offset_;
+  };
+
+  void iterate_backward(const int_adapter *answers, const int_adapter& td)
+  {
+    int_adapter end = answers[0];
+    time_iterator titr(end, td);
+
+    std::puts("");
+    for (; titr >= answers[0]; --titr) {
+    }
+  }
+}
+
+int
+main()
+{
+  const int_adapter answer1[] = {};
+  iterate_backward(NULL, int_adapter());
+  iterate_backward(answer1, int_adapter());
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1']).communicate()
+    assert os.path.exists('a.out.js') # build should succeed
+    self.assertContained('segmentation fault loading 4 bytes from address 0', run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
+
+  def test_only_force_stdlibs(self):
+    def test(name):
+      print name
+      Popen([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
+      self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
+
+    test('normal') # normally is ok
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      test('forced libs is ok, they were there anyhow')
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      test('partial list, but ok since we grab them as needed')
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+      ok = False
+      test('fail! not enough stdlibs')
+    except:
+      ok = True
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
+    assert ok
+
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+      test('force all the needed stdlibs, so this works even though we ignore the input file')
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
+
+  def test_only_force_stdlibs_2(self):
+    open('src.cpp', 'w').write(r'''
+#include <iostream>
+#include <stdexcept>
+
+int main()
+{
+  try {
+    throw std::exception();
+    std::cout << "got here" << std::endl;
+  }
+  catch (const std::exception& ex) {
+    std::cout << "Caught exception: " << ex.what() << std::endl;
+  }
+}
+''')
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+      Popen([PYTHON, EMXX, 'src.cpp']).communicate()
+      self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
+
+  def test_strftime_zZ(self):
+    open('src.cpp', 'w').write(r'''
+#include <cerrno>
+#include <cstring>
+#include <ctime>
+#include <iostream>
+
+int main()
+{
+  // Buffer to hold the current hour of the day.  Format is HH + nul
+  // character.
+  char hour[3];
+
+  // Buffer to hold our ISO 8601 formatted UTC offset for the current
+  // timezone.  Format is [+-]hhmm + nul character.
+  char utcOffset[6];
+
+  // Buffer to hold the timezone name or abbreviation.  Just make it
+  // sufficiently large to hold most timezone names.
+  char timezone[128];
+
+  std::tm tm;
+
+  // Get the current timestamp.
+  const std::time_t now = std::time(NULL);
+
+  // What time is that here?
+  if (::localtime_r(&now, &tm) == NULL) {
+    const int error = errno;
+    std::cout
+      << "Failed to get localtime for timestamp=" << now << "; errno=" << error
+      << "; " << std::strerror(error) << std::endl;
+    return 1;
+  }
+
+  size_t result = 0;
+
+  // Get the formatted hour of the day.
+  if ((result = std::strftime(hour, 3, "%H", &tm)) != 2) {
+    const int error = errno;
+    std::cout
+      << "Failed to format hour for timestamp=" << now << "; result="
+      << result << "; errno=" << error << "; " << std::strerror(error)
+      << std::endl;
+    return 1;
+  }
+  std::cout << "The current hour of the day is: " << hour << std::endl;
+
+  // Get the formatted UTC offset in ISO 8601 format.
+  if ((result = std::strftime(utcOffset, 6, "%z", &tm)) != 5) {
+    const int error = errno;
+    std::cout
+      << "Failed to format UTC offset for timestamp=" << now << "; result="
+      << result << "; errno=" << error << "; " << std::strerror(error)
+      << std::endl;
+    return 1;
+  }
+  std::cout << "The current timezone offset is: " << utcOffset << std::endl;
+
+  // Get the formatted timezone name or abbreviation.  We don't know how long
+  // this will be, so just expect some data to be written to the buffer.
+  if ((result = std::strftime(timezone, 128, "%Z", &tm)) == 0) {
+    const int error = errno;
+    std::cout
+      << "Failed to format timezone for timestamp=" << now << "; result="
+      << result << "; errno=" << error << "; " << std::strerror(error)
+      << std::endl;
+    return 1;
+  }
+  std::cout << "The current timezone is: " << timezone << std::endl;
+
+  std::cout << "ok!\n";
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok!', run_js('a.out.js'))
+
+  def test_truncate_from_0(self):
+    open('src.cpp', 'w').write(r'''
+#include <cerrno>
+#include <cstring>
+#include <iostream>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+using std::endl;
+
+//============================================================================
+// :: Helpers
+
+namespace
+{
+  // Returns the size of the regular file specified as 'path'.
+  ::off_t getSize(const char* const path)
+  {
+    // Stat the file and make sure that it's the expected size.
+    struct ::stat path_stat;
+    if (::stat(path, &path_stat) != 0) {
+      const int error = errno;
+      std::cout
+        << "Failed to lstat path: " << path << "; errno=" << error << "; "
+        << std::strerror(error) << endl;
+      return -1;
+    }
+
+    std::cout
+      << "Size of file is: " << path_stat.st_size << endl;
+    return path_stat.st_size;
+  }
+
+  // Causes the regular file specified in 'path' to have a size of 'length'
+  // bytes.
+  void resize(const char* const path,
+              const ::off_t length)
+  {
+    std::cout
+      << "Truncating file=" << path << " to length=" << length << endl;
+    if (::truncate(path, length) == -1)
+    {
+      const int error = errno;
+      std::cout
+        << "Failed to truncate file=" << path << "; errno=" << error
+        << "; " << std::strerror(error) << endl;
+    }
+
+    const ::off_t size = getSize(path);
+    if (size != length) {
+      std::cout
+        << "Failed to truncate file=" << path << " to length=" << length
+        << "; got size=" << size << endl;
+    }
+  }
+
+  // Helper to create a file with the given content.
+  void createFile(const std::string& path, const std::string& content)
+  {
+    std::cout
+      << "Creating file: " << path << " with content=" << content << endl;
+
+    const int fd = ::open(path.c_str(), O_CREAT | O_WRONLY, 0644);
+    if (fd == -1) {
+      const int error = errno;
+      std::cout
+        << "Failed to open file for writing: " << path << "; errno=" << error
+        << "; " << std::strerror(error) << endl;
+      return;
+    }
+
+    if (::write(fd, content.c_str(), content.size()) != content.size()) {
+      const int error = errno;
+      std::cout
+        << "Failed to write content=" << content << " to file=" << path
+        << "; errno=" << error << "; " << std::strerror(error) << endl;
+
+      // Fall through to close FD.
+    }
+
+    ::close(fd);
+  }
+}
+
+//============================================================================
+// :: Entry Point
+int main()
+{
+  const char* const file = "/tmp/file";
+  createFile(file, "This is some content");
+  getSize(file);
+  resize(file, 32);
+  resize(file, 17);
+  resize(file, 0);
+
+  // This throws a JS exception.
+  resize(file, 32);
+  return 0;
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''Creating file: /tmp/file with content=This is some content
+Size of file is: 20
+Truncating file=/tmp/file to length=32
+Size of file is: 32
+Truncating file=/tmp/file to length=17
+Size of file is: 17
+Truncating file=/tmp/file to length=0
+Size of file is: 0
+Truncating file=/tmp/file to length=32
+Size of file is: 32
+''', run_js('a.out.js'))
+
+  def test_emcc_s_typo(self):
+    # with suggestions
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'RELOO=1'], stderr=PIPE).communicate()
+    self.assertContained(r'''Assigning a non-existent settings attribute "RELOO"''', err)
+    self.assertContained(r'''did you mean one of RELOOP, RELOOPER?''', err)
+    # no suggestions
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'], stderr=PIPE).communicate()
+    self.assertContained(r'''perhaps a typo in emcc's  -s X=Y  notation?''', err)
+    self.assertContained(r'''(see src/settings.js for valid values)''', err)
+
+  def test_create_readonly(self):
+    open('src.cpp', 'w').write(r'''
+#include <cerrno>
+#include <cstring>
+#include <iostream>
+
+#include <fcntl.h>
+#include <unistd.h>
+
+using std::endl;
+
+//============================================================================
+// :: Helpers
+
+namespace
+{
+  // Helper to create a read-only file with content.
+  void readOnlyFile(const std::string& path, const std::string& content)
+  {
+    std::cout
+      << "Creating file: " << path << " with content of size="
+      << content.size() << endl;
+
+    const int fd = ::open(path.c_str(), O_CREAT | O_WRONLY, 0400);
+    if (fd == -1) {
+      const int error = errno;
+      std::cout
+        << "Failed to open file for writing: " << path << "; errno=" << error
+        << "; " << std::strerror(error) << endl;
+      return;
+    }
+
+    // Write the content to the file.
+    ssize_t result = 0;
+    if ((result = ::write(fd, content.data(), content.size()))
+        != ssize_t(content.size()))
+    {
+      const int error = errno;
+      std::cout
+        << "Failed to write to file=" << path << "; errno=" << error
+        << "; " << std::strerror(error) << endl;
+      // Fall through to close the file.
+    }
+    else {
+      std::cout
+        << "Data written to file=" << path << "; successfully wrote "
+        << result << " bytes" << endl;
+    }
+
+    ::close(fd);
+  }
+}
+
+//============================================================================
+// :: Entry Point
+
+int main()
+{
+  const char* const file = "/tmp/file";
+  unlink(file);
+  readOnlyFile(file, "This content should get written because the file "
+                     "does not yet exist and so, only the mode of the "
+                     "containing directory will influence my ability to "
+                     "create and open the file. The mode of the file only "
+                     "applies to opening of the stream, not subsequent stream "
+                     "operations after stream has opened.\n\n");
+  readOnlyFile(file, "This should not get written because the file already "
+                     "exists and is read-only.\n\n");
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''Creating file: /tmp/file with content of size=292
+Data written to file=/tmp/file; successfully wrote 292 bytes
+Creating file: /tmp/file with content of size=79
+Failed to open file for writing: /tmp/file; errno=13; Permission denied
+''', run_js('a.out.js'))
+
+  def test_embed_file_large(self):
+    # If such long files are encoded on one line,
+    # they overflow the interpreter's limit
+    large_size = int(40e6)
+    open('large.txt', 'w').write('x' * large_size)
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      #include <unistd.h>
+      int main()
+      {
+          FILE* fp = fopen("large.txt", "r");
+          if (fp) {
+              printf("%d\n", fp);
+              fseek(fp, 0L, SEEK_END);
+              printf("%d\n", ftell(fp));
+          } else {
+              printf("failed to open large file.txt\n");
+          }
+          return 0;
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp', '--embed-file', 'large.txt']).communicate()
+    for engine in JS_ENGINES:
+      if engine == V8_ENGINE: continue # ooms
+      print engine
+      self.assertContained('4\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
+
+  def test_force_exit(self):
+    open('src.cpp', 'w').write(r'''
+#include <emscripten/emscripten.h>
+
+namespace
+{
+  extern "C"
+  EMSCRIPTEN_KEEPALIVE
+  void callback()
+  {
+    EM_ASM({ Module.print('callback pre()') });
+    ::emscripten_force_exit(42);
+    EM_ASM({ Module.print('callback post()') });
+    }
+}
+
+int
+main()
+{
+  EM_ASM({ setTimeout(function() { Module.print("calling callback()"); _callback() }, 100) });
+  ::emscripten_exit_with_live_runtime();
+  return 123;
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    output = run_js('a.out.js', engine=NODE_JS, assert_returncode=42)
+    assert 'callback pre()' in output
+    assert 'callback post()' not in output
+
+  def test_bad_locale(self):
+    open('src.cpp', 'w').write(r'''
+
+#include <locale.h>
+#include <stdio.h>
+#include <wctype.h>
+
+int
+main(const int argc, const char * const * const argv)
+{
+  const char * const locale = (argc > 1 ? argv[1] : "C");
+  const char * const actual = setlocale(LC_ALL, locale);
+  if(actual == NULL) {
+    printf("%s locale not supported\n",
+           locale);
+    return 0;
+  }
+  printf("locale set to %s: %s\n", locale, actual);
+}
+
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+
+    self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
+    self.assertContained('waka locale not supported', run_js('a.out.js', args=['waka']))
+
+  def test_js_malloc(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+#include <emscripten.h>
+
+int main() {
+  EM_ASM({
+    for (var i = 0; i < 1000; i++) {
+      var ptr = Module._malloc(1024*1024); // only done in JS, but still must not leak
+      Module._free(ptr);
+    }
+  });
+  printf("ok.\n");
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('ok.', run_js('a.out.js', args=['C']))
+
+  def test_locale_wrong(self):
+    open('src.cpp', 'w').write(r'''
+#include <locale>
+#include <iostream>
+#include <stdexcept>
+
+int
+main(const int argc, const char * const * const argv)
+{
+  const char * const name = argc > 1 ? argv[1] : "C";
+
+  try {
+    const std::locale locale(name);
+    std::cout
+      << "Constructed locale \"" << name << "\"\n"
+      << "This locale is "
+      << (locale == std::locale::global(locale) ? "" : "not ")
+      << "the global locale.\n"
+      << "This locale is " << (locale == std::locale::classic() ? "" : "not ")
+      << "the C locale." << std::endl;
+
+  } catch(const std::runtime_error &ex) {
+    std::cout
+      << "Can't construct locale \"" << name << "\": " << ex.what()
+      << std::endl;
+    return 1;
+
+  } catch(...) {
+    std::cout
+      << "FAIL: Unexpected exception constructing locale \"" << name << '\"'
+      << std::endl;
+    return 127;
+  }
+}
+    ''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
+    self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
+
+  def test_cleanup_os(self):
+    # issue 2644
+    def test(args, be_clean):
+      print args
+      self.clear()
+      shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
+      open('b.c', 'w').write(' ')
+      Popen([PYTHON, EMCC, 'a.c', 'b.c'] + args).communicate()
+      clutter = glob.glob('*.o')
+      if be_clean: assert len(clutter) == 0, 'should not leave clutter ' + str(clutter)
+      else: assert len(clutter) == 2, 'should leave .o files'
+    test(['-o', 'c.bc'], True)
+    test(['-o', 'c.js'], True)
+    test(['-o', 'c.html'], True)
+    test(['-c'], False)
+
+  def test_dash_g(self):
+    open('src.c', 'w').write('''
+      #include <stdio.h>
+      #include <assert.h>
+
+      void checker(int x) {
+        x += 20;
+        assert(x < 15); // this is line 7!
+      }
+
+      int main() {
+        checker(10);
+        return 0;
+      }
+    ''')
+
+    def check(has):
+      print has
+      lines = open('a.out.js', 'r').readlines()
+      lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
+      found_line_num = any(('//@line 7 "' in line) for line in lines)
+      found_filename = any(('src.c"\n' in line) for line in lines)
+      assert found_line_num == has, 'Must have debug info with the line number'
+      assert found_filename == has, 'Must have debug info with the filename'
+
+    Popen([PYTHON, EMCC, 'src.c', '-g']).communicate()
+    check(True)
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    check(False)
+    Popen([PYTHON, EMCC, 'src.c', '-g0']).communicate()
+    check(False)
+    Popen([PYTHON, EMCC, 'src.c', '-g0', '-g']).communicate() # later one overrides
+    check(True)
+    Popen([PYTHON, EMCC, 'src.c', '-g', '-g0']).communicate() # later one overrides
+    check(False)
+
+  def test_dash_g_bc(self):
+    def test(opts):
+      print opts
+      def get_size(name):
+        return os.stat(name).st_size
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts).communicate()
+      sizes = { '_': get_size('a_.bc') }
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts).communicate()
+      sizes['g'] = get_size('ag.bc')
+      for i in range(0, 5):
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts).communicate()
+        sizes[i] = get_size('a' + str(i) + '.bc')
+      print '  ', sizes
+      assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info ' + str(sizes)
+      assert sizes['g'] == sizes[4], '-g or -g4 means llvm debug info ' + str(sizes)
+      assert sizes['_'] < sizes['g'], 'llvm debug info has positive size ' + str(sizes)
+    test([])
+    test(['-O1'])
+
+  def test_stat_fail_alongtheway(self):
+    open('src.cpp', 'w').write(r'''
+#include <errno.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+
+#define CHECK(expression) \
+  if(!(expression)) {                            \
+    error = errno;                               \
+    printf("FAIL: %s\n", #expression); fail = 1; \
+  } else {                                       \
+    error = errno;                               \
+    printf("pass: %s\n", #expression);           \
+  }                                              \
+
+int
+main()
+{
+  int error;
+  int fail = 0;
+  CHECK(mkdir("path", 0777) == 0);
+  CHECK(close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0);
+  {
+    struct stat st;
+    CHECK(stat("path", &st) == 0);
+    CHECK(st.st_mode = 0777);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/nosuchfile", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOENT);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/file", &st) == 0);
+    CHECK(st.st_mode = 0666);
+  }
+  {
+    struct stat st;
+    CHECK(stat("path/file/impossible", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOTDIR);
+  }
+  {
+    struct stat st;
+    CHECK(lstat("path/file/impossible", &st) == -1);
+    printf("info: errno=%d %s\n", error, strerror(error));
+    CHECK(error == ENOTDIR);
+  }
+  return fail;
+}
+''')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained(r'''pass: mkdir("path", 0777) == 0
+pass: close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0
+pass: stat("path", &st) == 0
+pass: st.st_mode = 0777
+pass: stat("path/nosuchfile", &st) == -1
+info: errno=2 No such file or directory
+pass: error == ENOENT
+pass: stat("path/file", &st) == 0
+pass: st.st_mode = 0666
+pass: stat("path/file/impossible", &st) == -1
+info: errno=20 Not a directory
+pass: error == ENOTDIR
+pass: lstat("path/file/impossible", &st) == -1
+info: errno=20 Not a directory
+pass: error == ENOTDIR
+''', run_js('a.out.js'))
 

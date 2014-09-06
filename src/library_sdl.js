@@ -260,6 +260,16 @@ var LibrarySDL = {
       };
     },
 
+    checkPixelFormat: function(fmt) {
+#if ASSERTIONS
+      // Canvas screens are always RGBA.
+      var format = {{{ makeGetValue('fmt', C_STRUCTS.SDL_PixelFormat.format, 'i32') }}};
+      if (format != {{{ cDefine('SDL_PIXELFORMAT_RGBA8888') }}}) {
+        Runtime.warnOnce('Unsupported pixel format!');
+      }
+#endif
+    },
+
     // Load SDL color into a CSS-style color specification
     loadColorToCSSRGB: function(color) {
       var rgba = {{{ makeGetValue('color', '0', 'i32') }}};
@@ -792,8 +802,9 @@ var LibrarySDL = {
     // returns false if the event was determined to be irrelevant
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
-        // This is a pointer to a native C event that was SDL_PushEvent'ed
-        _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}}); // XXX
+        // This is a pointer to a copy of a native C event that was SDL_PushEvent'ed
+        _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+        _free(event); // the copy is no longer needed
         return;
       }
 
@@ -1210,9 +1221,10 @@ var LibrarySDL = {
 
     // capture all key events. we just keep down and up, but also capture press to prevent default actions
     if (!Module['doNotCaptureKeyboard']) {
-      document.addEventListener("keydown", SDL.receiveEvent);
-      document.addEventListener("keyup", SDL.receiveEvent);
-      document.addEventListener("keypress", SDL.receiveEvent);
+      var keyboardListeningElement = Module['keyboardListeningElement'] || document;
+      keyboardListeningElement.addEventListener("keydown", SDL.receiveEvent);
+      keyboardListeningElement.addEventListener("keyup", SDL.receiveEvent);
+      keyboardListeningElement.addEventListener("keypress", SDL.receiveEvent);
       window.addEventListener("focus", SDL.receiveEvent);
       window.addEventListener("blur", SDL.receiveEvent);
       document.addEventListener("visibilitychange", SDL.receiveEvent);
@@ -1314,6 +1326,7 @@ var LibrarySDL = {
     return buf;
   },
 
+  SDL_SetVideoMode__deps: ['$GL'],
   SDL_SetVideoMode: function(width, height, depth, flags) {
     ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
@@ -1363,11 +1376,7 @@ var LibrarySDL = {
     return SDL.screen;
   },
 
-  SDL_QuitSubSystem: function(flags) {
-    Module.print('SDL_QuitSubSystem called (and ignored)');
-  },
-
-  SDL_Quit: function() {
+  SDL_AudioQuit: function() {
     for (var i = 0; i < SDL.numChannels; ++i) {
       if (SDL.channels[i].audio) {
         SDL.channels[i].audio.pause();
@@ -1376,6 +1385,19 @@ var LibrarySDL = {
     }
     if (SDL.music.audio) SDL.music.audio.pause();
     SDL.music.audio = undefined;
+  },
+
+  SDL_VideoQuit: function() {
+    Module.print('SDL_VideoQuit called (and ignored)');
+  },
+
+  SDL_QuitSubSystem: function(flags) {
+    Module.print('SDL_QuitSubSystem called (and ignored)');
+  },
+
+  SDL_Quit__deps: ['SDL_AudioQuit'],
+  SDL_Quit: function() {
+    _SDL_AudioQuit();
     Module.print('SDL_Quit called (and ignored)');
   },
 
@@ -1758,7 +1780,7 @@ var LibrarySDL = {
   },
 
   SDL_GetTicks: function() {
-    return Math.floor(Date.now() - SDL.startTime);
+    return (Date.now() - SDL.startTime)|0;
   },
 
   SDL_PollEvent: function(ptr) {
@@ -1766,7 +1788,9 @@ var LibrarySDL = {
   },
 
   SDL_PushEvent: function(ptr) {
-    SDL.events.push(ptr); // XXX Should we copy it? Not clear from API
+    var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+    _memcpy(copy, ptr, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+    SDL.events.push(copy);
     return 0;
   },
 
@@ -1840,17 +1864,20 @@ var LibrarySDL = {
   },
 
   SDL_MapRGB: function(fmt, r, g, b) {
-    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    SDL.checkPixelFormat(fmt);
+    // We assume the machine is little-endian.
     return r&0xff|(g&0xff)<<8|(b&0xff)<<16|0xff000000;
   },
 
   SDL_MapRGBA: function(fmt, r, g, b, a) {
-    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    SDL.checkPixelFormat(fmt);
+    // We assume the machine is little-endian.
     return r&0xff|(g&0xff)<<8|(b&0xff)<<16|(a&0xff)<<24;
   },
 
   SDL_GetRGB: function(pixel, fmt, r, g, b) {
-    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    SDL.checkPixelFormat(fmt);
+    // We assume the machine is little-endian.
     if (r) {
       {{{ makeSetValue('r', '0', 'pixel&0xff', 'i8') }}};
     }
@@ -1863,7 +1890,8 @@ var LibrarySDL = {
   },
 
   SDL_GetRGBA: function(pixel, fmt, r, g, b, a) {
-    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    SDL.checkPixelFormat(fmt);
+    // We assume the machine is little-endian.
     if (r) {
       {{{ makeSetValue('r', '0', 'pixel&0xff', 'i8') }}};
     }
@@ -2052,6 +2080,10 @@ var LibrarySDL = {
     var rwops = _SDL_RWFromFile(filename);
     var result = _IMG_Load_RW(rwops, 1);
     return result;
+  },
+
+  IMG_Quit: function() {
+    Module.print('IMG_Quit called (and ignored)');
   },
 
   // SDL_Audio
@@ -2792,17 +2824,21 @@ var LibrarySDL = {
 
   TTF_FontAscent: function(font) {
     var fontData = SDL.fonts[font];
-    return Math.floor(fontData.size*0.98); // XXX
+    return (fontData.size*0.98)|0; // XXX
   },
 
   TTF_FontDescent: function(font) {
     var fontData = SDL.fonts[font];
-    return Math.floor(fontData.size*0.02); // XXX
+    return (fontData.size*0.02)|0; // XXX
   },
 
   TTF_FontHeight: function(font) {
     var fontData = SDL.fonts[font];
     return fontData.size;
+  },
+
+  TTF_Quit: function() {
+    Module.print('TTF_Quit called (and ignored)');
   },
 
   // SDL gfx
