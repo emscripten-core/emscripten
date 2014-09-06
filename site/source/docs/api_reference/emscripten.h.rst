@@ -279,6 +279,12 @@ Functions
 
 	:param int status: The same as for the *libc* function `exit() <http://linux.die.net/man/3/exit>`_.
 
+.. c:function:: double emscripten_get_device_pixel_ratio(void)
+
+	Returns the value of ``window.devicePixelRatio``.
+
+	:rtype: double
+	:return: The pixel ratio or 1.0 if not supported.
 
 .. c:function::void emscripten_hide_mouse(void)
 
@@ -303,6 +309,24 @@ Functions
 	:param int* height: New pixel height of canvas element.
 	:param int* isFullscreen: If True (``*int > 0``), ``<canvas>`` is full screen.
 
+.. c:function:: void emscripten_set_element_css_size(const char * target, double width, double height)
+
+	Resizes the css width and height of the element specified by ``target`` on the Emscripten web page.
+
+	:param target: Element to resize, works the same as in the html5 api.
+	:type target: const char*
+	:param double width: New width of the element.
+	:param double height: New height of the element.
+
+
+.. c:function:: void emscripten_get_element_css_size(const char * target, double * width, double * height)
+
+	Gets the current css width and height of the element specified by ``target``.
+
+	:param target: Element to get size of, works the same as in the html5 api.
+	:type target: const char*
+	:param double* width: Width of the element.
+	:param double* height: Height of the element.
 
 .. c:function:: double emscripten_get_now(void)
 
