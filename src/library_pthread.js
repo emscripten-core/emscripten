@@ -209,7 +209,7 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return 1;
     }
-    assert(thread.threadBlock);
+    assert(pthread.threadBlock);
     Atomics.store(HEAPU32, pthread.threadBlock >> 2, 2); // Signal the thread that it needs to cancel itself.
     pthread.worker.postMessage({ cmd: 'cancel' });
     return 0;
