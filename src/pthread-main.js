@@ -44,11 +44,15 @@ this.onmessage = function(e) {
     postMessage({ cmd: 'loaded' });
   } else if (e.data.cmd == 'run') { // This worker was idle, and now should start executing its pthread entry point.
     threadBlock = e.data.threadBlock;
+    assert(threadBlock);
     selfThreadId = e.data.selfThreadId;
+    assert(selfThreadId);
     // TODO: Emscripten runtime has these variables twice(!), once outside the asm.js module, and a second time inside the asm.js module.
     //       Review why that is? Can those get out of sync?
     STACK_BASE = STACKTOP = e.data.stackBase;
     STACK_MAX = STACK_BASE + e.data.stackSize;
+    assert(STACK_BASE != 0);
+    assert(STACK_MAX > STACK_BASE);
     Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
     var result = 0;
     try {
@@ -64,11 +68,9 @@ this.onmessage = function(e) {
         throw e;
       }
     }
-    // Thread finished with exit.
-    if (Atomics.load(HEAPU32, threadBlock >> 2) != 1) { // If thread did not use pthread_exit to pass the thread return code, pass it from the return value of the thread main.
-      Atomics.store(HEAPU32, threadBlock + 4 >> 2, result); // Exit code.
-      Atomics.store(HEAPU32, threadBlock >> 2, 1); // 1 == exited.
-    }
+    // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
+    // (This is a no-op if explicit pthread_exit() had been called prior.)
+    PThread.threadExit(result);
   } else if (e.data.cmd == 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
     if (threadBlock) {
       PThread.runExitHandlers();      

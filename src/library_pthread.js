@@ -20,6 +20,25 @@ var LibraryPThread = {
       PThread.exitHandlers = null;
     },
 
+    // Called when we are performing a pthread_exit(), either explicitly called by programmer,
+    // or implicitly when leaving the thread main function.
+    threadExit: function(exitCode) {
+      PThread.runExitHandlers();
+      // No-op in the main thread. Note: Spec says we should join() all child threads, but since we don't have join,
+      // we might at least cancel all threads.
+      if (!ENVIRONMENT_IS_PTHREAD) return 0;
+
+      if (threadBlock) { // If we haven't yet exited?
+        var tb = threadBlock;
+        threadBlock = 0;
+        Atomics.store(HEAPU32, tb + 4 >> 2, exitCode);
+        // When we publish this, the main thread is free to deallocate the thread object and we are done.
+        // Therefore set threadBlock = 0; above to 'release' the object in this worker thread.
+        Atomics.store(HEAPU32, tb >> 2, 1);
+        postMessage({ cmd: 'exit' });
+      }
+    },
+
     freeThreadData: function(pthread) {
       if (pthread.threadBlock) _free(pthread.threadBlock);
       pthread.threadBlock = 0;
@@ -94,7 +113,10 @@ var LibraryPThread = {
       Module['printErr']('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return 1;
     }
-
+    if (!thread) {
+      Module['printErr']('pthread_create called with a null thread pointer!');
+      return 1;
+    }
     var worker = PThread.getNewWorker();
     if (worker.pthread !== undefined) throw 'Internal error!';
     PThread.runningWorkers.push(worker); // TODO: The list of threads is local to the parent thread, atm only the parent can access the threads it spawned!
@@ -145,10 +167,13 @@ var LibraryPThread = {
     }
     var worker = pthread.worker;
     for(;;) {
+      assert(pthread.threadBlock);
       var threadStatus = Atomics.load(HEAPU32, pthread.threadBlock >> 2);
       if (threadStatus == 1) { // Exited?
         var threadExitCode = Atomics.load(HEAPU32, pthread.threadBlock + 4 >> 2);
-        {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
+        if (status) {
+          {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
+        }
         PThread.freeThreadData(pthread);
         worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
         PThread.unusedWorkerPool.push(worker);
@@ -184,6 +209,7 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return 1;
     }
+    assert(thread.threadBlock);
     Atomics.store(HEAPU32, pthread.threadBlock >> 2, 2); // Signal the thread that it needs to cancel itself.
     pthread.worker.postMessage({ cmd: 'cancel' });
     return 0;
@@ -191,6 +217,7 @@ var LibraryPThread = {
 
   pthread_testcancel: function() {
     if (!ENVIRONMENT_IS_PTHREAD) return;
+    assert(threadBlock);
     var canceled = Atomics.load(HEAPU32, threadBlock >> 2);
     if (canceled == 2) throw 'Canceled!';
   },
@@ -216,13 +243,7 @@ var LibraryPThread = {
   },
 
   pthread_exit: function(status) {
-    PThread.runExitHandlers();
-    // No-op in the main thread. Note: Spec says we should join() all child threads, but since we don't have join,
-    // we might at least cancel all threads.
-    if (!ENVIRONMENT_IS_PTHREAD) return 0; 
-    Atomics.store(HEAPU32, threadBlock >> 2, 1);
-    Atomics.store(HEAPU32, threadBlock + 4 >> 2, status);
-    postMessage({ cmd: 'exit' });
+    PThread.threadExit(status);
   },
 
   pthread_self: function() {
@@ -336,6 +357,7 @@ var LibraryPThread = {
 
   // Futex API
   emscripten_futex_wait: function(addr, val, timeout) {
+    assert(addr);
     var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
     if (ret === Atomics.OK) return 0;
     if (ret === Atomics.TIMEDOUT) return 1;
@@ -360,11 +382,14 @@ var LibraryPThread = {
 
   // Returns the number of threads woken up.
   emscripten_futex_wake: function(addr, count) {
+    assert(addr);
     return Atomics.futexWake(HEAP32, addr >> 2, count);
   },
 
   // Returns the number of threads woken up.
   emscripten_futex_requeue: function(addr1, count, addr2, guardval) {
+    assert(addr1);
+    assert(addr2);
     return Atomics.futexRequeue(HEAP32, addr1 >> 2, count, addr2 >> 2, guardval);
   }
 };
