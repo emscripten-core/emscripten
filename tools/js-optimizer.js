@@ -5697,6 +5697,7 @@ function asmLastOpts(ast) {
       var stats = getStatements(node);
       if (stats) statsStack.pop();
     });
+    // convert  { singleton }  into  singleton
     traverse(fun, function(node, type) {
       if (type === 'block' && node[1] && node[1].length === 1) {
         return node[1][0];
