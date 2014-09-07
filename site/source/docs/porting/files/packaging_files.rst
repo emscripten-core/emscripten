@@ -50,9 +50,14 @@ In general the usage of ``@`` in a path (``preload-file`` or ``embed-file``) sig
 
 ::
 
-    emcc file.cpp -o file.html --embed-file ../res/gen123.png@main.png
+    emcc file.cpp -o file.html --embed-file ../res/gen123.png@/main.png
 
 This will make **../res/gen123.png** available as **/main.png** in Javascript.
+
+Valid Character Set
+===================
+
+The following characters may be used in filenames: ``A-Z``, ``a-z``, ``0-9``, the space character and any of the characters ``!"#$%&'()*+,-.;<=>?@[]^_`{|}~``. When specifying the character ``@`` on the command line, it must be escaped to the form ``@@`` to avoid triggering the ``src@dst`` mapping notation (see above). The characters ``/``, ``\`` and ``:`` cannot be used.
 
 Monitoring Read Files
 =====================
