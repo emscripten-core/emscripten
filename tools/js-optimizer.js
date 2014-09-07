@@ -5763,6 +5763,8 @@ if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 //printErr(JSON.stringify(extraInfo));
 
 
+var emitAst = true;
+
 arguments_.slice(1).forEach(function(arg) {
   //traverse(ast, function(node) {
   //  if (node[0] === 'defun' && node[1] === 'copyTempFloat') printErr('pre ' + JSON.stringify(node, null, ' '));
@@ -5778,17 +5780,22 @@ if (asm && last) {
   asmLastOpts(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
   prepDotZero(ast);
 }
-var js = astToSrc(ast, minifyWhitespace), old;
-if (asm && last) {
-  js = fixDotZero(js);
-}
 
-// remove unneeded newlines+spaces, and print
-do {
-  old = js;
-  js = js.replace(/\n *\n/g, '\n');
-} while (js != old);
-print(js);
-print('\n');
-print(suffix);
+if (emitAst) {
+  var js = astToSrc(ast, minifyWhitespace), old;
+  if (asm && last) {
+    js = fixDotZero(js);
+  }
+
+  // remove unneeded newlines+spaces, and print
+  do {
+    old = js;
+    js = js.replace(/\n *\n/g, '\n');
+  } while (js != old);
+  print(js);
+  print('\n');
+  print(suffix);
+} else {
+  print('/* not printing ast */');
+}
 
