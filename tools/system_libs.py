@@ -306,6 +306,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
        ]],
        ['regex', [
         'fnmatch.c',
+        'glob.c',
         'regcomp.c',
         'regerror.c',
         'regexec.c',
