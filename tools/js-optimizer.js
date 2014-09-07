@@ -5585,6 +5585,357 @@ function pointerMasking(ast) {
   });
 }
 
+// Converts functions into binary format to be run by an emterpreter
+function emterpretify(ast) {
+  emitAst = false;
+
+  function walkFunction(func) {
+    function walk(node) {
+      if (!node) return;
+      switch(node[0]) {
+        case 'var': {
+          node[1].forEach(function(varItem, i) {
+            var ident = varItem[0];
+            var value = varItem[1];
+            if (i > 0) emitIndent();
+            output += typeName(detectAsmCoercion(value));
+            output += ' ' + cName(ident) + ' = 0;';
+            if (i < node[1].length-1) output += '\n';
+          });
+          break;
+        }
+        case 'assign': {
+          // try to emit nice += etc. operators
+          if (node[2][0] === 'name' && node[3][0] === 'binary') {
+            if (node[3][1] === '|' && node[3][3][0] === 'num' && node[3][3][1] === 0) {
+              node[3] = node[3][2]; // wipe out |0 coercion
+            }
+            if (node[3][0] === 'binary' && node[3][2][0] === 'name' && node[2][1] === node[3][2][1]) {
+              switch (node[3][1]) {
+                case '+': case '-': case '|': case '&': {
+                  walk(node[2], true);
+                  if (node[3][3][0] === 'num' && node[3][3][1] === 1 && (node[3][1] === '+' || node[3][1] === '-')) {
+                    output += node[3][1] + node[3][1];
+                  } else {
+                    output += ' ' + node[3][1] + '= ';
+                    walk(node[3][3]);
+                  }
+                  return;
+                }
+              }
+            }
+          }
+          walk(node[2], true);
+          output += ' = ';
+          walk(node[3], true);
+          break;
+        }
+        case 'name': {
+          output += cName(node[1]);
+          break;
+        }
+        case 'num': {
+          output += node[1];
+          break;
+        }
+        case 'binary': {
+          if (node[1] === '>>>') {
+            if (!freeParens) output += '(';
+            // special-case the unsigned coercion
+            output += '((uint32_t)';
+            walk(node[2]);
+            output += ') >> ((uint32_t)';
+            walk(node[3]);
+            output += ')';
+            if (!freeParens) output += ')';
+            break;
+          } else if (node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
+            // no need for |0 coercions (cannot be double-to-int)
+            walk(node[2], freeParens);
+            break;
+          }
+          if (!freeParens) output += '(';
+          walk(node[2]);
+          output += ' ' + node[1] + ' ';
+          walk(node[3]);
+          if (!freeParens) output += ')';
+          break;
+        }
+        case 'unary-prefix': {
+          if (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~') {
+            // special-case the double-to-int conversion
+            output += '((int32_t)';
+            walk(node[2][2]);
+            output += ')';
+            break;
+          }
+          output += '(';
+          switch (node[1]) {
+            case '!': output += '!'; break;
+            case '~': output += '~'; break;
+            case '-': output += '-'; break;
+            case '+': output += '(double)'; break;
+            default: throw 'bad unary ' + node[1];
+          }
+          walk(node[2]);
+          output += ')';
+          break;
+        }
+        case 'return': {
+          if (HASH_MEM) {
+            output += 'hash_mem("leave ' + cName(currFunc[1]) + '");\n';
+            emitIndent();
+          }
+          output += 'return ';
+          walk(node[1], true);
+          output += ';';
+          break;
+        }
+        case 'call': {
+          var relocations = null;
+          if (node[1][0] === 'name') {
+            var name = cName(node[1][1]);
+            if (callHandlers[name]) {
+              if (callHandlers[name](node)) break;
+            }
+            relocations = relocationInfo[name];
+            if (funcIncludes[name]) includes.push(funcIncludes[name]);
+          }
+          relocations = relocations || [];
+          if (relocations[0]) output += 'derelocate((int32_t)';
+          walk(node[1]);
+          output += '(';
+          node[2].forEach(function(arg, i) {
+            if (i > 0) output += ', ';
+            if (relocations[i+1]) output += '(' + relocations[i+1] + ')relocate(';
+            walk(arg, true);
+            if (relocations[i+1]) output += ')';
+          });
+          output += ')';
+          if (relocations[0]) output += ')';
+          break;
+        }
+        case 'if': {
+          output += 'if (';
+          walk(node[1], true);
+          output += ') {\n';
+          indent++;
+          walk(blockify(node[2]));
+          indent--;
+          emitIndent();
+          output += '}';
+          if (node[3]) {
+            output += ' else {\n'
+            indent++;
+            walk(blockify(node[3]));
+            indent--;
+            emitIndent();
+            output += '}';
+          }
+          break;
+        }
+        case 'switch': {
+          output += 'switch (';
+          walk(node[1], true);
+          output += ') {\n';
+          indent++;
+          var cases = node[2];
+          for (var i = 0; i < cases.length; i++) {
+            emitIndent();
+            if (cases[i][0]) {
+              output += 'case ';
+              walk(cases[i][0]);
+            } else {
+              output += 'default';
+            }
+            output += ': {\n';
+            if (cases[i][1].length > 0) {
+              indent++;
+              assert(cases[i][1][0][0] === 'block' && cases[i][1].length === 1);
+              walk(cases[i][1][0]);
+              indent--;
+            }
+            emitIndent();
+            output += '}\n';
+          }
+          indent--;
+          emitIndent();
+          output += '}';
+          break;
+        }
+        case 'while': {
+          output += 'while (';
+          walk(node[1], true);
+          output += ') {\n';
+          indent++;
+          walk(blockify(node[2]));
+          indent--;
+          emitIndent();
+          output += '}';
+          break;
+        }
+        case 'do': {
+          output += 'do {\n';
+          indent++;
+          walk(blockify(node[2]));
+          indent--;
+          emitIndent();
+          output += '} while (';
+          walk(node[1], true);
+          output += ');';
+          break;
+        }
+        case 'block': {
+          walkStatements(getStatements(node));
+          break;
+        }
+        case 'conditional': {
+          output += '((';
+          walk(node[1]);
+          output += ') ? (';
+          walk(node[2]);
+          output += ') : (';
+          walk(node[3]);
+          output += '))';
+          break;
+        }
+        case 'label': {
+          output += node[1] + ':\n';
+          emitIndent();
+          walk(node[2]);
+          output += '\n';
+          emitIndent();
+          output += node[1] + '_post:';
+          break;
+        }
+        case 'break': {
+          if (!node[1]) {
+            output += 'break;';
+          } else {
+            output += 'goto ' + node[1] + '_post;';
+          }
+          break;
+        }
+        case 'continue': {
+          if (!node[1]) {
+            output += 'continue;';
+          } else {
+            output += 'goto ' + node[1] + ';';
+          }
+          break;
+        }
+        case 'sub': {
+          assert(node[1][0] === 'name');
+          if (node[1][1][0] === 'F') {
+            // function table access
+            walk(node[1]);
+            output += '[';
+            walk(node[2]);
+            output += ']';
+            break;
+          }
+          var stripped = stripShifts(node[2]);
+          if (stripped[0] === 'name') {
+            var name = cName(stripped[1]);
+            if (name in cExterns) {
+              output += '((int32_t)' + name + ')';
+              break;
+            }
+          }
+          if (ALIASING_MEM_VIEWS) {
+            switch (node[1][1]) {
+              case 'HEAP8':  case 'HEAPU8':  output += 'MEM8'; break;
+              case 'HEAP16': case 'HEAPU16': output += 'MEM16'; break;
+              case 'HEAP32': case 'HEAPU32': output += 'MEM32'; break;
+              case 'HEAPF32':                output += 'MEMF32'; break;
+              case 'HEAPF64':                output += 'MEMF64'; break;
+              default: throw 'bad sub ' + node[1][1];
+            }
+            output += '[';
+            walk(node[2], true);
+            output += ']';
+          } else {
+            if (!freeParens) output += '(';
+            output += '*((';
+            assert(node[1][0] === 'name');
+            var shifts;
+            switch (node[1][1]) {
+              case 'HEAP8':  case 'HEAPU8':  output += 'int8_t';  shifts = 0; break;
+              case 'HEAP16': case 'HEAPU16': output += 'int16_t'; shifts = 1; break;
+              case 'HEAP32': case 'HEAPU32': output += 'int32_t'; shifts = 2; break;
+              case 'HEAPF32':                output += 'float';   shifts = 2; break;
+              case 'HEAPF64':                output += 'double';  shifts = 3; break;
+              default: throw 'bad sub ' + node[1][1];
+            }
+            output += '*)(((int32_t)MEM) + (';
+            if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num' && node[2][3][1] === shifts) {
+              // we can eliminate out the shifts
+              walk(node[2][2], true);
+            } else {
+              if (shifts) {
+                walk(['binary', '<<', node[2], ['num', shifts]]);
+              } else {
+                walk(node[2], true);
+              }
+            }
+            output += ')';
+            if (ALIGNMENT_MASK && shifts) {
+              output += '&-';
+              switch (shifts) {
+                case 1: output += '1'; break;
+                case 2: output += '3'; break;
+                case 3: output += '7'; break;
+                default: throw 'bad shifts ' + shifts;
+              }
+            }
+            output += '))';
+            if (!freeParens) output += ')';
+          }
+          break;
+        }
+        case 'seq': {
+          output += '(';
+          walk(node[1]);
+          output += ', ';
+          walk(node[2]);
+          output += ')';
+          break;
+        }
+        case 'toplevel': break; // empty node
+        default: throw 'wha? ' + node[0];
+      }
+    }
+    function walkStatements(stats) {
+      if (!stats) return;
+      stats.forEach(function(stat) {
+        emitIndent();
+        walk(stat);
+        output += '\n';
+      });
+    }
+
+    // walkFunction main
+
+    var asmData = normalizeAsm(func);
+
+    var totalVars = 0;
+    for (var i in asmData.vars) totalVars++;
+    print('function ' + func[1] + '() {');
+    print(' ' + JSON.stringify({
+      name: func[1],
+      params: func[2].map(function(param) {
+        return asmData.params[param];
+      }),
+      stackInts: totalVars, // TODO: optimize these
+      stackDoubles: totalVars,
+      stackFloats: totalVars,
+      //blocks: walkStatements(getStatements(func))
+    }));
+    print('}\n');
+  }
+  traverseGeneratedFunctions(ast, walkFunction);
+}
+
 // Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
@@ -5734,6 +6085,7 @@ var passes = {
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
   pointerMasking: pointerMasking,
+  emterpretify: emterpretify,
   asmLastOpts: asmLastOpts,
 
   // flags
