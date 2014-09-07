@@ -436,6 +436,39 @@ var LibrarySDL = {
         SDL.screen = null;
       }
     },
+    blitSurface__deps: ["SDL_LockSurface"],
+    blitSurface: function(src, srcrect, dst, dstrect, scale) {
+      var srcData = SDL.surfaces[src];
+      var dstData = SDL.surfaces[dst];
+      var sr, dr;
+      if (srcrect) {
+        sr = SDL.loadRect(srcrect);
+      } else {
+        sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
+      }
+      if (dstrect) {
+        dr = SDL.loadRect(dstrect);
+      } else {
+        dr = { x: 0, y: 0, w: -1, h: -1 };
+      }
+      var oldAlpha = dstData.ctx.globalAlpha;
+      dstData.ctx.globalAlpha = srcData.alpha/255;
+      var blitw, blitr;
+      if (scale) {
+        blitw = dr.w; blith = dr.h;
+      } else {
+        blitw = sr.w; blith = sr.h;
+      }
+      dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, blitw, blith);
+      dstData.ctx.globalAlpha = oldAlpha;
+      if (dst != SDL.screen) {
+        // XXX As in IMG_Load, for compatibility we write out |pixels|
+        Runtime.warnOnce('WARNING: copying canvas data to memory for compatibility');
+        _SDL_LockSurface(dst);
+        dstData.locked--; // The surface is not actually locked in this hack
+      }
+      return 0;
+    },
 
     // the browser sends out touchstart events with the whole group of touches
     // even if we received a previous touchstart for a specific touch identifier.
@@ -1656,40 +1689,21 @@ var LibrarySDL = {
     if (surf) SDL.freeSurface(surf);
   },
 
-  SDL_UpperBlit__deps: ['SDL_LockSurface'],
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
-    var srcData = SDL.surfaces[src];
-    var dstData = SDL.surfaces[dst];
-    var sr, dr;
-    if (srcrect) {
-      sr = SDL.loadRect(srcrect);
-    } else {
-      sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
-    }
-    if (dstrect) {
-      dr = SDL.loadRect(dstrect);
-    } else {
-      dr = { x: 0, y: 0, w: -1, h: -1 };
-    }
-    var oldAlpha = dstData.ctx.globalAlpha;
-    dstData.ctx.globalAlpha = srcData.alpha/255;
-    dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, sr.w, sr.h);
-    dstData.ctx.globalAlpha = oldAlpha;
-    if (dst != SDL.screen) {
-      // XXX As in IMG_Load, for compatibility we write out |pixels|
-      Runtime.warnOnce('WARNING: copying canvas data to memory for compatibility');
-      _SDL_LockSurface(dst);
-      dstData.locked--; // The surface is not actually locked in this hack
-    }
-    return 0;
+    return SDL.blitSurface(src, srcrect, dst, dstrect, false);
+  },
+
+  SDL_UpperBlitScaled: function(src, srcrect, dst, dstrect) {
+    return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
 
   SDL_LowerBlit: 'SDL_UpperBlit',
+  SDL_LowerBlitScaled: 'SDL_UpperBlitScaled',
 
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    
+
     if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
       //in SDL_HWPALETTE color is index (0..255)
       //so we should translate 1 byte value to
@@ -1706,9 +1720,12 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
+    return SDL.blitSurface(src, srcrect, dst, dstrect, false);
+  },
+
+  SDL_BlitScaled: function(src, srcrect, dst, dstrect) {
+    return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
 
   zoomSurface: function(src, x, y, smooth) {
