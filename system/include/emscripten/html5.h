@@ -109,6 +109,8 @@ typedef struct EmscriptenMouseEvent {
   unsigned short buttons;
   long movementX;
   long movementY;
+  long targetX;
+  long targetY;
   long canvasX;
   long canvasY;
   long padding;
@@ -281,6 +283,8 @@ typedef struct EmscriptenTouchPoint
   long pageY;
   EM_BOOL isChanged;
   EM_BOOL onTarget;
+  long targetX;
+  long targetY;
   long canvasX;
   long canvasY;
 } EmscriptenTouchPoint;
