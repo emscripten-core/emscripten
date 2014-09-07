@@ -120,7 +120,7 @@ A few **UNSAFE** optimizations you might want to try are:
 Profiling
 =========
 
-Modern browsers have JavaScript profilers, which can help find the slower parts in your code. You should build your project with ``--profiling`` for this, that flag will leave the code in a readable-enough state for profiling purposes (``-profiling`` should be added in addition to your other optimization flags like ``-O1``, ``-O2`` or ``-O3``).
+Modern browsers have JavaScript profilers, which can help find the slower parts in your code. You should build your project with ``--profiling`` for this, that flag will leave the code in a readable-enough state for profiling purposes (``--profiling`` should be added in addition to your other optimization flags like ``-O1``, ``-O2`` or ``-O3``).
 
 As each browser's profiler has limitations, it is highly recommended to profile in multiple browsers in order to get the best information. Also, in Firefox it is a good idea to profile both with and without asm.js optimizations enabled (can remove the ``'use asm'`` string to disable).
 
