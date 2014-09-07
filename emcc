@@ -1443,6 +1443,8 @@ try:
       elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not closure:
         js_optimizer_queue += ['cleanup']
 
+      js_optimizer_queue += ['asmLastOpts']
+
     if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
 
     flush_js_optimizer_queue()

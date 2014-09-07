@@ -5734,6 +5734,7 @@ var passes = {
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
   pointerMasking: pointerMasking,
+  asmLastOpts: asmLastOpts,
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },
@@ -5778,7 +5779,6 @@ arguments_.slice(1).forEach(function(arg) {
   //});
 });
 if (asm && last) {
-  asmLastOpts(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
   prepDotZero(ast);
 }
 
