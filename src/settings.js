@@ -528,6 +528,9 @@ var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and
 
 var ASM_JS = 1; // If 1, generate code in asm.js format. If 2, emits the same code except
                 // for omitting 'use asm'
+var FINALIZE_ASM_JS = 1; // If 1, will finalize the final emitted code, including operations
+                         // that prevent later js optimizer passes from running, like
+                         // converting +5 into 5.0 (the js optimizer sees 5.0 as just 5).
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you
