@@ -379,6 +379,9 @@ extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char
 
 extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
 
+extern EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target, double width, double height);
+extern EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *width, double *height);
+
 #ifdef __cplusplus
 } // ~extern "C"
 #endif

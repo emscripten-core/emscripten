@@ -1135,45 +1135,6 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
   },
 
-
-  emscripten_set_element_css_size__deps: ['$JSEvents'],
-  emscripten_set_element_css_size: function(target, width, height) {
-    if (!target) {
-      target = Module['canvas'];
-    } else {
-      target = JSEvents.findEventTarget(target);
-    }
-
-    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
-
-    target.style.setProperty("width", width + "px");
-    target.style.setProperty("height", height + "px");
-
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-  },
-
-  emscripten_get_element_css_size__deps: ['$JSEvents'],
-  emscripten_get_element_css_size: function(target, width, height) {
-    if (!target) {
-      target = Module['canvas'];
-    } else {
-      target = JSEvents.findEventTarget(target);
-    }
-
-    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
-
-    if (target.getBoundingClientRect) {
-      var rect = target.getBoundingClientRect();
-      {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
-      {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
-    } else {
-      {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
-      {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
-    }
-
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-  },
-
   emscripten_create_worker: function(url) {
     url = Pointer_stringify(url);
     var id = Browser.workers.length;

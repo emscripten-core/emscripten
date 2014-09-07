@@ -309,28 +309,6 @@ Functions
 	:param int* height: New pixel height of canvas element.
 	:param int* isFullscreen: If True (``*int > 0``), ``<canvas>`` is full screen.
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char * target, double width, double height)
-
-	Resizes the css width and height of the element specified by ``target`` on the Emscripten web page.
-
-	:param target: Element to resize, works the same as in the html5 api.
-	:type target: const char*
-	:param double width: New width of the element.
-	:param double height: New height of the element.
-	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
-	:rtype: |EMSCRIPTEN_RESULT|
-
-
-.. c:function:: EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char * target, double * width, double * height)
-
-	Gets the current css width and height of the element specified by ``target``.
-
-	:param target: Element to get size of, works the same as in the html5 api.
-	:type target: const char*
-	:param double* width: Width of the element.
-	:param double* height: Height of the element.
-	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
-	:rtype: |EMSCRIPTEN_RESULT|
 
 .. c:function:: double emscripten_get_now(void)
 
