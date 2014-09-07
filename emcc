@@ -526,7 +526,7 @@ try:
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
       requested_debug = newargs[i]
       newargs[i] = ''
-    elif newargs[i] == '-profiling':
+    elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       debug_level = 2
       profiling = True
       newargs[i] = ''

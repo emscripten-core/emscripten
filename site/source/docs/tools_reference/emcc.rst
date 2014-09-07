@@ -112,7 +112,7 @@ Options that are modified or new in *emcc* are listed below:
 		
 			.. note:: This may make compilation at optimization level ``-O1`` and above significantly slower, because JavaScript optimization will be limited to one core (default in ``-O0``). 
 
-``-profiling``
+``--profiling``
 	Use reasonable defaults when emitting JavaScript to make the build useful for profiling. This sets ``-g2`` (preserve function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
 
 ``--tracing``
