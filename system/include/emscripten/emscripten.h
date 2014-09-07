@@ -126,8 +126,8 @@ double emscripten_get_device_pixel_ratio(void);
 void emscripten_hide_mouse(void);
 void emscripten_set_canvas_size(int width, int height);
 void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
-void emscripten_set_element_css_size(const char *target, double width, double height);
-void emscripten_get_element_css_size(const char *target, double *width, double *height);
+int emscripten_set_element_css_size(const char *target, double width, double height);
+int emscripten_get_element_css_size(const char *target, double *width, double *height);
 
 #if __EMSCRIPTEN__
 double emscripten_get_now(void);
