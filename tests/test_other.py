@@ -177,7 +177,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (['-O2', '-g1'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'compress is cancelled by -g1'),
         (['-O2', '-g2'], lambda generated: ('var b = 0' in generated or 'var i1 = 0' in generated) and 'function _main' in generated, 'minify is cancelled by -g2'),
         (['-O2', '-g3'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize is cancelled by -g3'),
-        (['-O2', '-profiling'], lambda generated: ('var b = 0' in generated or 'var i1 = 0' in generated) and 'function _main' in generated, 'similar to -g2'),
+        (['-O2', '--profiling'], lambda generated: ('var b = 0' in generated or 'var i1 = 0' in generated) and 'function _main' in generated, 'similar to -g2'),
         #(['-O2', '-g4'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'same as -g3 for now'),
         (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
         (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
@@ -192,7 +192,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (['-O2'], lambda generated: '// The Module object' not in generated, 'with opts, no comments in shell code'),
         (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
         (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
-        (['-O2', '-profiling'], lambda generated: '// The Module object' in generated or os.environ.get('EMCC_FAST_COMPILER') == '0', 'with -profiling, yes comments in shell code (in fastcomp)'),
+        (['-O2', '--profiling'], lambda generated: '// The Module object' in generated or os.environ.get('EMCC_FAST_COMPILER') == '0', 'with --profiling, yes comments in shell code (in fastcomp)'),
       ]:
         print params, text
         self.clear()
@@ -2743,8 +2743,9 @@ int main()
       open('src.c', 'w').write(src)
       for opts, ifs in [
         [['-g2'], nums[0]],
-        [['-profiling'], nums[1]],
-        [['-profiling', '-g2'], nums[2]]
+        [['-profiling'], nums[1]], # Test that for compatibility support, both forms '-profiling' and '--profiling' are accepted. (https://github.com/kripken/emscripten/issues/2679)
+        [['--profiling'], nums[1]],
+        [['--profiling', '-g2'], nums[2]]
       ]:
         print opts, ifs
         try_delete('a.out.js')
