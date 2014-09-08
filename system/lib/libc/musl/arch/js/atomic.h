@@ -82,7 +82,7 @@ static inline int a_swap(volatile int *x, int v)
 
 static inline int a_fetch_add(volatile int *x, int v)
 {
-	return emscripten_atomics_add_u32(x, v);
+	return emscripten_atomic_add_u32(x, v);
 }
 
 static inline void a_inc(volatile int *x)
