@@ -2556,6 +2556,10 @@ window.close = function() {
   def test_pthread_malloc(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-lpthread'])
 
+  # Test that the pthread_barrier API works ok.
+  def test_pthread_barrier(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-lpthread'])
+
   # Test the pthread_once() function.
   def test_pthread_once(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-lpthread'])
