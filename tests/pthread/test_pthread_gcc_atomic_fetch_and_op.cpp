@@ -11,6 +11,21 @@
 
 #define T int
 
+// TEMP to make this test pass:
+// Our Clang backend doesn't define this builtin function, so implement it ourselves.
+// The current Atomics spec doesn't have the nand atomic op either, so must use a cas loop.
+// TODO: Move this to Clang backend?
+T __sync_fetch_and_nand(T *ptr, T x)
+{
+	for(;;)
+	{
+		T old = emscripten_atomic_load_u32(ptr);
+		T newVal = ~(old & x);
+		T old2 = emscripten_atomic_cas_u32(ptr, old, newVal);
+		if (old2 == old) return old;
+	}
+}
+
 void *thread_fetch_and_add(void *arg)
 {
 	for(int i = 0; i < 10000; ++i)
