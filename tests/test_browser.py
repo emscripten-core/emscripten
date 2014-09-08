@@ -2516,6 +2516,9 @@ window.close = function() {
   def test_pthread_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-lpthread'])
 
+  def test_pthread_gcc_atomic_fetch_and_op(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=['-lpthread'])
+
   # Test that basic thread creation works.
   def test_pthread_create(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread'])
