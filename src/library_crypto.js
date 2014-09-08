@@ -27,7 +27,7 @@ mergeInto(LibraryManager.library, {
             var fn = require('crypto').createHash;
             var hashObj = {
               nodeObj: null,
-              hashFinal = self._hashFinal, hashUpdate = self._hashUpdate
+              hashFinal: self._hashFinal, hashUpdate: self._hashUpdate
             };
             switch (algo) {
             case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA1') }}}:
@@ -206,7 +206,7 @@ mergeInto(LibraryManager.library, {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
-    if (!(hashUpdate in CRYPTO._objects[descriptor])) {
+    if (typeof CRYPTO._objects[descriptor].hashUpdate !== 'function') {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     }
@@ -219,7 +219,7 @@ mergeInto(LibraryManager.library, {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
-    if (!(hashFinal in CRYPTO._objects[descriptor])) {
+    if (typeof CRYPTO._objects[descriptor].hashFinal !== 'function') {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     }
