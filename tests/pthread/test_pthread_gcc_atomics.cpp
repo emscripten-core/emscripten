@@ -11,6 +11,14 @@
 
 #define T int
 
+// TEMP: Fastcomp backend doesn't implement these as atomic, so #define these to library
+//       implementations that are properly atomic. TODO: Implement these in fastcomp.
+#define __sync_val_compare_and_swap emscripten_atomic_cas_u32
+#define __sync_bool_compare_and_swap atomic_bool_cas_u32
+#define __sync_synchronize emscripten_atomic_fence
+#define __sync_lock_test_and_set(...) emscripten_atomic_fence()
+#define __sync_lock_release(...) emscripten_atomic_fence()
+
 #define Bool int
 
 Bool atomic_bool_cas_u32(T *ptr, T oldVal, T newVal)
