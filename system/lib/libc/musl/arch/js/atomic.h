@@ -71,6 +71,20 @@ static inline void a_and(volatile void *p, int v)
 	emscripten_atomic_and_u32((void*)p, v);
 }
 
+static inline int a_swap(volatile int *x, int v)
+{
+	int old;
+	do {
+		old = emscripten_atomic_load_u32(x);
+	} while(emscripten_atomic_cas_u32(x, old, v) != old);
+	return old;
+}
+
+static inline int a_fetch_add(volatile int *x, int v)
+{
+	return emscripten_atomics_add_u32(x, v);
+}
+
 static inline void a_inc(volatile int *x)
 {
 	emscripten_atomic_add_u32((void*)x, 1);
