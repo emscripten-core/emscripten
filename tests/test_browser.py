@@ -2556,6 +2556,10 @@ window.close = function() {
   def test_pthread_malloc(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-lpthread'])
 
+  # Test the pthread_once() function.
+  def test_pthread_once(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-lpthread'])
+
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   def test_pthread_spawns(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-lpthread'])
