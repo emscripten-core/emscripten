@@ -2524,6 +2524,10 @@ window.close = function() {
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-lpthread'])
 
+  # Tests the rest of the remaining GCC atomics after the two above tests.
+  def test_pthread_gcc_atomics(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-lpthread'])
+
   # Test that basic thread creation works.
   def test_pthread_create(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread'])
