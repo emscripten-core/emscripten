@@ -8,7 +8,9 @@
 #include "libc.h"
 #include "syscall.h"
 #include "atomic.h"
-#ifndef __EMSCRIPTEN__ // XXX Not currently used for Emscripten.
+#ifdef __EMSCRIPTEN__
+#include <emscripten/threading.h>
+#else
 #include "futex.h"
 #endif
 
@@ -112,8 +114,13 @@ void __unmapself(void *, size_t);
 
 int __timedwait(volatile int *, int, clockid_t, const struct timespec *, void (*)(void *), void *, int);
 void __wait(volatile int *, volatile int *, int, int);
+
+#ifdef __EMSCRIPTEN__
+#define __wake(addr, cnt, priv) emscripten_futex_wake((void*)addr, cnt)
+#else
 #define __wake(addr, cnt, priv) \
 	__syscall(SYS_futex, addr, FUTEX_WAKE, (cnt)<0?INT_MAX:(cnt))
+#endif
 
 void __acquire_ptc();
 void __release_ptc();
