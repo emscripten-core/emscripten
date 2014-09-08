@@ -26,24 +26,24 @@ mergeInto(LibraryManager.library, {
   emscripten_async_resume__sig: 'v',
   emscripten_async_resume__asm: true,
   emscripten_async_resume: function() {
+    var activeException = 0, catchesExceptions = 0;
     ___async = 0;
     ___async_unwind = 1;
-    var activeException = 0;
     while (1) {
       if (!___async_cur_frame) {
         // print ugly integer in console, same as if an exception is thrown out of main()
         if (activeException) _emscripten_async_abort_with_exception();
         return;
       }
-      var catchesExceptions = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i8') }}};
+      catchesExceptions = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i8') }}};
       // When an async function throws an exception, it can't just bubble up as
       // normal (because there isn't a native JavaScript call stack, we're
       // manually reconstructing it here).  We keep rewinding the stack until we
       // find a function that can handle the exception.
-      if (catchesExceptions || !activeException) {
+      if (!!catchesExceptions | !activeException) {
         __THREW__ = activeException|0;
-        var callback = {{{ makeGetValue('___async_cur_frame', 12, 'i32') }}};
-        invoke_vi(callback, (___async_cur_frame + 12)|0);
+        invoke_vi({{{ makeGetValueAsm('___async_cur_frame', 12, 'i32') }}},
+                  (___async_cur_frame + 12)|0);
         activeException = __THREW__|0; __THREW__ = 0;
 
         if (___async) return; // that was an async call
@@ -75,8 +75,8 @@ mergeInto(LibraryManager.library, {
   emscripten_alloc_async_context__asm: true,
   emscripten_alloc_async_context: function(len, invoked, sp) {
     len = len|0;
-    sp = sp|0;
     invoked = invoked|0;
+    sp = sp|0;
     // len is the size of ctx
     // we also need to store prev_frame, stack pointer, and invoked before ctx
     var new_frame = 0; new_frame = stackAlloc((len + 12)|0)|0;
