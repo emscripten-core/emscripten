@@ -2,7 +2,11 @@
 
 // Utilities for crypto
 mergeInto(LibraryManager.library, {
-  $CRYPTO__deps: ['__setErrNo', '$ERRNO_CODES', 'emscripten_async_resume'],
+  $CRYPTO__deps: ['__setErrNo', '$ERRNO_CODES'
+#if ASYNCIFY
+                  , 'emscripten_async_resume'
+#endif
+                 ],
   $CRYPTO__postset: 'if (ENVIRONMENT_IS_NODE) CRYPTO.nodeInit();'+
                     'else if (ENVIRONMENT_IS_WEB) CRYPTO.browserInit();',
   $CRYPTO: {
@@ -140,7 +144,7 @@ mergeInto(LibraryManager.library, {
           });
           asm.setAsync(); // tell the scheduler that we have a callback on hold
 #else
-          throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_wget';
+          throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_crypto_hash_final';
 #endif
         } catch (err) {
           Module.printErr('Error creating WebCrypto hash of type ' + hashObject.algorithm.name + ": " + err);
