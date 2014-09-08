@@ -17,38 +17,41 @@ mergeInto(LibraryManager.library, {
  */
   __async: 0, // whether a truly async function has been called
   __async_unwind: 1, // whether to unwind the async stack frame
-  __async_active_exception: 0,
-  __async_active_exception_id: 0,
   __async_retval: 'allocate(2, "i32", ALLOC_STATIC)', // store the return value for async functions
   __async_cur_frame: 0, // address to the current frame, which stores previous frame, stack pointer and async context
 
   // __async_retval is not actually required in emscripten_async_resume
   // but we want it included when ASYNCIFY is enabled
-  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame', '__async_active_exception',
-                                  'emscripten_async_rethrow', 'emscripten_async_invoke'],
+  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame', 'emscripten_async_abort_with_exception'],
   emscripten_async_resume__sig: 'v',
   emscripten_async_resume__asm: true,
   emscripten_async_resume: function() {
-    var callback = 0;
     ___async = 0;
     ___async_unwind = 1;
-    ___async_active_exception = 0;
+    var activeException = 0;
     while (1) {
       if (!___async_cur_frame) {
         // print ugly integer in console, same as if an exception is thrown out of main()
-        if (___async_active_exception) _emscripten_async_rethrow();
+        if (activeException) _emscripten_async_abort_with_exception();
         return;
       }
-      callback = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i32') }}};
-      // We catch exceptions thrown through __cxa_throw and re-inject them into
-      // the next function in the fake async call stack.
-      _emscripten_async_invoke(callback);
-      ___async_active_exception = ___async_active_exception|0;
-      if (___async) return; // that was an async call
-      if (!___async_unwind) {
-        // keep the async stack
-        ___async_unwind = 1;
-        continue;
+      var catchesExceptions = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i8') }}};
+      // When an async function throws an exception, it can't just bubble up as
+      // normal (because there isn't a native JavaScript call stack, we're
+      // manually reconstructing it here).  We keep rewinding the stack until we
+      // find a function that can handle the exception.
+      if (catchesExceptions || !activeException) {
+        __THREW__ = activeException|0;
+        var callback = {{{ makeGetValue('___async_cur_frame', 12, 'i32') }}};
+        invoke_vi(callback, (___async_cur_frame + 12)|0);
+        activeException = __THREW__|0; __THREW__ = 0;
+
+        if (___async) return; // that was an async call
+        if (!___async_unwind) {
+          // keep the async stack
+          ___async_unwind = 1;
+          continue;
+        }
       }
       // unwind normal stack frame
       stackRestore({{{ makeGetValueAsm('___async_cur_frame', 4, 'i32') }}});
@@ -57,25 +60,8 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  emscripten_async_rethrow__deps: ['__async_active_exception'],
-  emscripten_async_rethrow: function() {
-    var e = ___async_active_exception; ___async_active_exception = null;
-    throw e;
-  },
-
-  emscripten_async_invoke__deps: ['__async_cur_frame', '__async_active_exception', '__async_active_exception_id'],
-  emscripten_async_invoke: function(ctx) {
-    asm['setThrew'](___async_active_exception, 0);
-    try {
-      // The signature of callback is always vi, the only argument is ctx.
-      dynCall_vi(ctx, (___async_cur_frame + 8)|0);
-    } catch(e) {
-      // XXX what happens with longjmp? how on earth is longjmp meant to jump up
-      //     the async call stack?
-      if (typeof e !== 'number' && e !== 'longjmp') throw e;
-      ___async_active_exception_id = e;
-      ___async_active_exception = 1;
-    }
+  emscripten_async_abort_with_exception: function() {
+    {{{ makeThrow('EXCEPTIONS.last') }}};
   },
 
   emscripten_sleep__deps: ['emscripten_async_resume'],
@@ -87,18 +73,21 @@ mergeInto(LibraryManager.library, {
   emscripten_alloc_async_context__deps: ['__async_cur_frame'],
   emscripten_alloc_async_context__sig: 'iii',
   emscripten_alloc_async_context__asm: true,
-  emscripten_alloc_async_context: function(len, sp) {
+  emscripten_alloc_async_context: function(len, invoked, sp) {
     len = len|0;
     sp = sp|0;
+    invoked = invoked|0;
     // len is the size of ctx
-    // we also need to store prev_frame, stack pointer before ctx
-    var new_frame = 0; new_frame = stackAlloc((len + 8)|0)|0;
+    // we also need to store prev_frame, stack pointer, and invoked before ctx
+    var new_frame = 0; new_frame = stackAlloc((len + 12)|0)|0;
+    // save invoked
+    {{{ makeSetValueAsm('new_frame', 8, 'invoked', 'i8') }}};
     // save sp
     {{{ makeSetValueAsm('new_frame', 4, 'sp', 'i32') }}};
     // link the frame with previous one
     {{{ makeSetValueAsm('new_frame', 0, '___async_cur_frame', 'i32') }}};
     ___async_cur_frame = new_frame;
-    return (___async_cur_frame + 8)|0;
+    return (___async_cur_frame + 12)|0;
   },
   
   emscripten_realloc_async_context__deps: ['__async_cur_frame'],
@@ -108,7 +97,7 @@ mergeInto(LibraryManager.library, {
     len = len|0;
     // assuming that we have on the stacktop
     stackRestore(___async_cur_frame);
-    return ((stackAlloc((len + 8)|0)|0) + 8)|0;
+    return ((stackAlloc((len + 12)|0)|0) + 12)|0;
   },
 
   emscripten_free_async_context__deps: ['__async_cur_frame'],
@@ -119,7 +108,7 @@ mergeInto(LibraryManager.library, {
     //  just undo a recent emscripten_alloc_async_context
     ctx = ctx|0;
 #if ASSERTIONS
-    assert((((___async_cur_frame + 8)|0) == (ctx|0))|0);
+    assert((((___async_cur_frame + 12)|0) == (ctx|0))|0);
 #endif
     stackRestore(___async_cur_frame);
     ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
