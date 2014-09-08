@@ -5839,13 +5839,6 @@ LibraryManager.library = {
     return 0;
   },
 
-  pthread_once: function(ptr, func) {
-    if (!_pthread_once.seen) _pthread_once.seen = {};
-    if (ptr in _pthread_once.seen) return;
-    Runtime.dynCall('v', func);
-    _pthread_once.seen[ptr] = 1;
-  },
-
   $PTHREAD_SPECIFIC: {},
   $PTHREAD_SPECIFIC_NEXT_KEY: 1,
   pthread_key_create__deps: ['$PTHREAD_SPECIFIC', '$PTHREAD_SPECIFIC_NEXT_KEY', '$ERRNO_CODES'],
