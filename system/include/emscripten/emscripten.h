@@ -138,6 +138,20 @@ float emscripten_random(void);
 
 
 
+#define EMSCRIPTEN_ALGORITHM_SHA1    1
+#define EMSCRIPTEN_ALGORITHM_SHA224  2
+#define EMSCRIPTEN_ALGORITHM_SHA256  3
+#define EMSCRIPTEN_ALGORITHM_SHA384  4
+#define EMSCRIPTEN_ALGORITHM_SHA512  5
+extern int emscripten_crypto_random(unsigned char* buffer, size_t buffer_len);
+extern int emscripten_crypto_open(int algorithm);
+extern int emscripten_crypto_close(int descriptor);
+extern int emscripten_crypto_hash_update(int d, const unsigned char* data, size_t len);
+extern int emscripten_crypto_hash_final(int d, unsigned char* buffer, size_t buffer_len);
+// TODO: AES and RSA functions coming soon!
+
+
+
 void emscripten_wget(const char* url, const char* file);
 void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 

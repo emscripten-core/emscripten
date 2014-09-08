@@ -843,7 +843,22 @@
         ],
         "structs": {}
     },
-    
+
+    // ===========================================
+    // emscripten library
+    // ===========================================
+    {
+        "file": "emscripten/emscripten.h",
+        "defines": [
+            "EMSCRIPTEN_ALGORITHM_SHA1",
+            "EMSCRIPTEN_ALGORITHM_SHA224",
+            "EMSCRIPTEN_ALGORITHM_SHA256",
+            "EMSCRIPTEN_ALGORITHM_SHA384",
+            "EMSCRIPTEN_ALGORITHM_SHA512"
+        ],
+        "structs": {}
+    },
+
     // ===========================================
     // SDL
     // ===========================================
