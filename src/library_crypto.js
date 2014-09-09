@@ -122,8 +122,8 @@ mergeInto(LibraryManager.library, {
         return 0;
       };
       self._hashFinal = function(data, len) {
-        try {
 #if ASYNCIFY
+        try {
           var hashObject = this;
           var promise = window.crypto.subtle.digest(this.algorithm, this.data.view.subarray(0, this.data.length));
           promise.then(function fulfill(result) {
@@ -143,15 +143,15 @@ mergeInto(LibraryManager.library, {
             _emscripten_async_resume();
           });
           asm.setAsync(); // tell the scheduler that we have a callback on hold
-#else
-          throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_crypto_hash_final';
-#endif
         } catch (err) {
           Module.printErr('Error creating WebCrypto hash of type ' + hashObject.algorithm.name + ": " + err);
           ___setErrNo(ERRNO_CODES.ENOSYS);
           return -1;
         }
         return 0;
+#else
+        throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_crypto_hash_final';
+#endif
       };
     }
   },
