@@ -166,10 +166,17 @@ mergeInto(LibraryManager.library, {
     //  this function is called when a possibly async function turned out to be sync
     //  just undo a recent emscripten_alloc_async_context
     ctx = ctx|0;
+    var ctx_len = 0;
 #if ASSERTIONS
     assert((((___async_cur_frame + 16)|0) == (ctx|0))|0);
 #endif
-    stackRestore(___async_cur_frame);
+    ctx_len = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i32') }}};
+    // We can free the context if it's still on the top of the stack, but if
+    // someone's done a stack allocation since then, we have to just leak some
+    // stack space.  Hopefully no-one's calling alloca() and some async
+    // functions in an awkward loop!
+    if ((stackSave()|0) == ((___async_cur_frame + ctx_len)|0))
+      stackRestore(___async_cur_frame);
     ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
   },
 
