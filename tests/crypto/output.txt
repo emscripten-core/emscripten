@@ -1,0 +1,6 @@
+Random tests: passed
+emscripten_crypto_open(42) failed with EINVAL (OK)
+emscripten_crypto_close(0) failed with EBADF (OK)
+SHA1 hash tests passed
+SHA256 hash tests passed
+tests done

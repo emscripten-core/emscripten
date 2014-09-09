@@ -4713,6 +4713,10 @@ PORT: 3979
     expected = open(path_from_root('tests', 'netinet', 'in.out'), 'r').read()
     self.do_run(src, expected)
 
+  def test_crypto(self):
+    self.do_run_from_file(path_from_root('tests', 'crypto', 'src.c'),
+                          path_from_root('tests', 'crypto', 'output.txt'))
+
   # libc++ tests
 
   def test_iostream(self):

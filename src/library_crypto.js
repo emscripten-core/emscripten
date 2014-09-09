@@ -51,10 +51,10 @@ mergeInto(LibraryManager.library, {
         for (var i = 0; i < addedLen; ++i) {
           buffer[i] = {{{ makeGetValue('data', 'i', 'i8') }}};
         }
-        this.update(buffer);
+        this.nodeObj.update(buffer);
       };
       self._hashFinal = function(data, len) {
-        var buffer = this.digest();
+        var buffer = this.nodeObj.digest();
         var copyLen = Math.min(buffer.length, len);
         for (var i = 0; i < copyLen; ++i) {
           {{{ makeSetValue('data', 'i', 'buffer[i]', 'i8') }}};
