@@ -319,9 +319,11 @@ Functions
 	:return: A random number.
 
 
+	
+.. _emscripten-h-asynchronous-file-system-api:
 
-Emscripten File System API
-===========================
+Emscripten Asynchronous File System API
+=========================================
 
 Typedefs
 --------

@@ -16,7 +16,7 @@ File Systems
 
 Emscripten supports *libc* file system functions and C/C++ code can be written in the normal way. 
 
-Code run in a :ref:`browser environment <emscripten-runtime-environment>` is sandboxed, and does not have direct access to the local file system. Instead, Emscripten creates a virtual file system that may be preloaded with data or linked to URLs for lazy loading. This affects when synchronous file system functions can be called and how a project is compiled. See the :ref:`Filesystem-Guide` for more information. 
+Code run in a :ref:`browser environment <emscripten-runtime-environment>` is sandboxed, and does not have direct access to the local file system. Instead, Emscripten creates a virtual file system that may be preloaded with data or linked to URLs for lazy loading. This affects when synchronous file system functions can be called and how a project is compiled. See the :ref:`file-system-overview` for more information. 
 
 
 Application Main Loop

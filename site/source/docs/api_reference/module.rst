@@ -81,3 +81,11 @@ The following ``Module`` attributes affect code execution.
 
 	If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to continue using the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
 
+.. js:attribute:: Module.filePackagePrefixURL
+
+	This is the "prefix" URL for a preloaded data file that is hosted separately from its JavaScript and HTML files (it includes the full path up to, but not including, the data file). See :ref:`packaging-files-data-file-location` for more information.
+	
+
+.. js:attribute:: Module.logReadFiles
+
+	If set, :js:attr:`Module.printErr` will log when any file is read.

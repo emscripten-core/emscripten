@@ -6,8 +6,8 @@ Glossary (under-construction)
 .. glossary::
 	:sorted:
 
-	xhr
-		**HamishW**
+	XHR
+		Contraction of ``XMLHttpRequest``. Emscripten uses XHRs for asynchronously downloading binary data. 
 		
 	LLVM backend
 		A (*Clang*) compiler backend that convert the LLVM Intermediate Representation (IR) to code for a specified machine or other languages. In the case of Emscripten, the specified target is JavaScript.
