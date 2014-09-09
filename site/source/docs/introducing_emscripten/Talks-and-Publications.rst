@@ -7,6 +7,7 @@ Talks and Publications
 Presentations
 =============
 
+- Slides from CppCon 2014: `Emscripten & asm.js: C++'s role in the modern web <http://kripken.github.io/mloc_emscripten_talk/cppcon.html>`_ (`kripken <https://github.com/kripken>`_)
 - Slides from GDC 2014: `Getting started with asm.js and Emscripten <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/>`_ (`kripken <https://github.com/kripken>`_, `lwagner <https://blog.mozilla.org/luke/>`_)
 - Slides from Strange Loop 2013: `Native speed on the web, JavaScript and asm.js <http://kripken.github.io/mloc_emscripten_talk/sloop.html#/>`_ (`kripken <https://github.com/kripken>`_)	
 - Slides from GDC Europe 2013: `C++ on the Web <http://www.slideshare.net/andreweissflog3/gdce2013-cpp-ontheweb>`_ (`floh <https://github.com/floooh>`_)	
