@@ -57,7 +57,7 @@ This will make **../res/gen123.png** available as **/main.png** in Javascript.
 Valid Character Set
 ===================
 
-The following characters may be used in filenames: ``A-Z``, ``a-z``, ``0-9``, the space character and any of the characters ``!"#$%&'()*+,-.;<=>?@[]^_`{|}~``. When specifying the character ``@`` on the command line, it must be escaped to the form ``@@`` to avoid triggering the ``src@dst`` mapping notation (see above). The characters ``/``, ``\`` and ``:`` cannot be used.
+The following characters may be used in filenames: ``A-Z``, ``a-z``, ``0-9``, the space character and any of the characters ``!#$%&'()+,-.;=@[]^_`{}~``. Additionally, the following characters may be used if your host filesystem supports them: ``"*<>?|`` (Windows does not allow using these in filenames). When specifying the character ``@`` on the command line, it must be escaped to the form ``@@`` to avoid triggering the ``src@dst`` mapping notation (see above). The characters ``/``, ``\`` and ``:`` cannot be used.
 
 Monitoring Read Files
 =====================

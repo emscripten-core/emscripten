@@ -386,10 +386,14 @@ If manually bisecting:
       make_main(dstpath)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-
     # Test that '--no-heap-copy' works.
-    # All 7-bit special ASCII characters except '/', ':' and '\', which we don't allow.
-    tricky_filename = '!"#$%&\'()*+,-. ;<=>?@[]^_`{|}~.txt'
+    if WINDOWS:
+      # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
+      # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
+      tricky_filename = '!#$%&\'()+,-. ;=@[]^_`{}~.txt'
+    else:
+      # All 7-bit non-alphanumeric non-control code ASCII characters except /, : and \ are allowed.
+      tricky_filename = '!#$%&\'()+,-. ;=@[]^_`{}~ "*<>?|.txt'
     open(os.path.join(self.get_dir(), tricky_filename), 'w').write('''load me right before running the code please''')
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
