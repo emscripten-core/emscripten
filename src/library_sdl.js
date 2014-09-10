@@ -741,6 +741,8 @@ var LibrarySDL = {
           code += 32; // make lowercase for SDL
         } else {
           code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
+          // a right key, add 4 to get the right key SDL key code.
           if (event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT && code >= 224 | 1<<10 && code <= 227 | 1<<10)
             code += 4;
         }
