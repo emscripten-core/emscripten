@@ -5589,6 +5589,13 @@ function pointerMasking(ast) {
 function emterpretify(ast) {
   emitAst = false;
 
+  var OPCODES = {
+    255: 'FUNC', // [ints, doubles, floats]
+  };
+
+  var ROPCODES = {};
+  for (var o in OPCODES) ROPCODES[OPCODES[o]] = o;
+
   function walkFunction(func) {
     function walk(node) {
       if (!node) return;
@@ -5920,18 +5927,13 @@ function emterpretify(ast) {
 
     var totalVars = 0;
     for (var i in asmData.vars) totalVars++;
+
+    var data = [ROPCODES['FUNC'], totalVars, totalVars, totalVars]; // TODO: optimize these
+
     print('function ' + func[1] + '() {');
-    print(' ' + JSON.stringify({
-      name: func[1],
-      params: func[2].map(function(param) {
-        return asmData.params[param];
-      }),
-      stackInts: totalVars, // TODO: optimize these
-      stackDoubles: totalVars,
-      stackFloats: totalVars,
-      //blocks: walkStatements(getStatements(func))
-    }));
-    print('}\n');
+    print(' [' + data + ']');
+    //blocks: walkStatements(getStatements(func))
+    print('}');
   }
   traverseGeneratedFunctions(ast, walkFunction);
 }
