@@ -89,3 +89,14 @@ The following ``Module`` attributes affect code execution.
 .. js:attribute:: Module.logReadFiles
 
 	If set, :js:attr:`Module.printErr` will log when any file is read.
+	
+	
+Other methods
+=============
+
+.. js:function:: Module.destroy(obj)
+
+	This method should be called to destroy C++ objects created in JavaScript using :ref:`WebIDL bindings <WebIDL-Binder>`. If this method is not called, an object may be garbage collected, but its destructor will not be called.
+
+	:param obj: The JavaScript-wrapped C++ object to be destroyed.
+	

@@ -101,3 +101,8 @@ An alternative approach is to look at :js:func:`FS.readFiles` in your compiled J
 
 .. note:: You can also modify the :js:func:`FS.readFiles` object or remove it entirely. This can be useful, say, in order to see which files are read between two points in time in your app.
 
+Test code
+=========
+
+The `test suite <https://github.com/kripken/emscripten/blob/master/tests/>`_ contains many file packaging examples, and is a good place to search for working code. 
+

@@ -193,7 +193,7 @@ Dynamic linking
 
 Emscripten's goal is to generate the fastest and smallest possible code, and for that reason it focuses on generating a single JavaScript file for an entire project. 
 
-Dynamic linking at runtime is not supported using :ref:`Fastcomp <LLVM-Backend>`. 
+Dynamic linking at runtime is not supported when using :ref:`Fastcomp <LLVM-Backend>` (it won't link in code from an arbitrary location when an app is loaded).
 
 .. note:: Dynamic linking would be an excellent :ref:`contribution <Contributing>` to Emscripten.
 
@@ -205,13 +205,11 @@ Dynamic linking is supported when using the :ref:`original compiler <original-co
 Pseudo-Dynamic linking
 ---------------------------
 
-.. note:: This section applies to the :ref:`current compiler <LLVM-Backend>`. It is a workaround because Emscripten currently does not perform true dynamic linking — it won't link in code from an arbitrary location when an app is loaded.
+.. note:: This section applies to the :ref:`current compiler <LLVM-Backend>` only. It is a workaround because *Fastcomp* does not support true dynamic linking.
 
 Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. 
 
 *Emcc* ignores commands to dynamically link libraries when linking together bitcode. This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages (which would result in duplicate symbol errors).
-
-.. todo:: not clear if this is only for fastcomp
 
 
 Configure may run checks that appear to fail

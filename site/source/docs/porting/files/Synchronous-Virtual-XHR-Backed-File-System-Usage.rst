@@ -1,7 +1,7 @@
 .. _Synchronous-Virtual-XHR-Backed-File-System-Usage:
 
 =====================================================================
-Synchronous Virtual XHR Backed File System Usage (under-construction)
+Synchronous Virtual XHR Backed File System Usage (ready-for-review)
 =====================================================================
 
 Emscripten supports lazy loading binary data from HTTP servers using :term:`XHR`'s (this is like AJAX, but fetches binary data rather than XML or JSON). This functionality can be used to create a backend for synchronous file access from compiled code.
