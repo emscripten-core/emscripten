@@ -486,8 +486,8 @@ if has_preloaded:
     }
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_BASE = '%s';
-    var REMOTE_PACKAGE_NAME = typeof Module['locateFilePackage'] === 'function' ?
-                              Module['locateFilePackage'](REMOTE_PACKAGE_BASE) :
+    var REMOTE_PACKAGE_NAME = typeof Module['locateFile'] === 'function' ?
+                              Module['locateFile'](REMOTE_PACKAGE_BASE) :
                               ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
     var REMOTE_PACKAGE_SIZE = %d;
     var PACKAGE_UUID = '%s';

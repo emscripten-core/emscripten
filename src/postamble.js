@@ -2,8 +2,8 @@
 // === Auto-generated postamble setup entry stuff ===
 
 if (memoryInitializer) {
-  if (typeof Module['locateFilePackage']) === 'function') {
-    memoryInitializer = Module['locateFilePackage'](memoryInitializer);
+  if (typeof Module['locateFile']) === 'function') {
+    memoryInitializer = Module['locateFile'](memoryInitializer);
   } else if (Module['memoryInitializerPrefixURL']) {
     memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
   }
