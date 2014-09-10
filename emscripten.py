@@ -1236,7 +1236,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     ___async = 1;
   }
   function getAsyncRetValAddr() {
-    return ___async_retval;
+    return ___async_retval|0;
   }''' if need_asyncify else '') + '''
   function setThrew(threw, value) {
     threw = threw|0;
