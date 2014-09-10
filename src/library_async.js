@@ -59,9 +59,7 @@ mergeInto(LibraryManager.library, {
   __async_retval: 'allocate(2, "i32", ALLOC_STATIC)', // store the return value for async functions
   __async_cur_frame: 0, // address to the current frame, which stores previous frame, stack pointer and async context
 
-  // __async_retval is not actually required in emscripten_async_resume
-  // but we want it included when ASYNCIFY is enabled
-  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame', 'emscripten_async_abort_with_exception'],
+  emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame', 'emscripten_async_abort_with_exception', 'emscripten_async_exit'],
   emscripten_async_resume__sig: 'v',
   emscripten_async_resume__asm: true,
   emscripten_async_resume: function() {
@@ -72,6 +70,7 @@ mergeInto(LibraryManager.library, {
       if (!___async_cur_frame) {
         // print ugly integer in console, same as if an exception is thrown out of main()
         if (activeException) _emscripten_async_abort_with_exception();
+        _emscripten_async_exit({{{ makeGetValueAsm('___async_retval', 0, 'i32') }}});
         return;
       }
       catchesExceptions = {{{ makeGetValueAsm('___async_cur_frame', 12, 'i8') }}};
@@ -96,6 +95,19 @@ mergeInto(LibraryManager.library, {
       stackRestore({{{ makeGetValueAsm('___async_cur_frame', 4, 'i32') }}});
       // pop the last async stack frame
       ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
+    }
+  },
+
+  emscripten_async_exit: function(status) {
+    try {
+      exit(status);
+    } catch (e) {
+      if (e instanceof ExitStatus) {
+        // exit() throws this once it's done to make sure execution
+        // has been stopped completely
+        return;
+      }
+      throw e;
     }
   },
 
