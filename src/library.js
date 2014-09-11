@@ -5155,9 +5155,11 @@ LibraryManager.library = {
   },
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
-  ctime_r: function(timer, buf) {
-    var localtimeBuf = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STACK);
-    return _asctime_r(_localtime_r(timer, localtimeBuf), buf);
+  ctime_r: function(time, buf) {
+    var stack = Runtime.stackSave();
+    var rv = _asctime_r(_localtime_r(time, Runtime.stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    Runtime.stackRestore(stack);
+    return rv;
   },
 
   dysize: function(year) {
