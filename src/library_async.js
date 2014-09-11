@@ -91,7 +91,7 @@ mergeInto(LibraryManager.library, {
       return true;
     }
     return false;
-  }
+  },
 
   emscripten_alloc_async_context__deps: ['__async_cur_frame'],
   emscripten_alloc_async_context__sig: 'iii',
