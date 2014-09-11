@@ -224,6 +224,29 @@ mergeInto(LibraryManager.library, {
       return -1;
     }
     return CRYPTO._objects[descriptor].hashFinal(buffer, buffer_len);
+  },
+
+  emscripten_crypto_rsa_generate: function(descriptor, size, exponent) {
+    // int emscripten_crypto_rsa_generate(int d, int size, int exponent)
+  },
+
+  emscripten_crypto_rsa_import: function(descriptor, jwk) {
+    // int emscripten_crypto_rsa_import(int d, const char* jwk)
+  },
+
+  emscripten_crypto_rsa_export: function(descriptor, value, buffer, buffer_len) {
+    // int emscripten_crypto_rsa_export(int d, const char* value, unsigned char* buffer, size_t buffer_len)
+  },
+
+  emscripten_crypto_rsa_get_size: function(descriptor) {
+    // int emscripten_crypto_rsa_get_size(int d)
+  },
+
+  emscripten_crypto_rsa_crypt: function(descriptor, encrypt, hashAlgorithm, data, data_len,
+                                        buffer, buffer_len) {
+    // int emscripten_crypto_rsa_crypt(int d, int encrypt, int hashAlgorithm,
+                                       const unsigned char* data, size_t data_len,
+                                       unsigned char* buffer, size_t buffer_len)
   }
 
 });

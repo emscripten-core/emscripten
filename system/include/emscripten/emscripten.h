@@ -138,17 +138,27 @@ float emscripten_random(void);
 
 
 
-#define EMSCRIPTEN_ALGORITHM_SHA1    1
-#define EMSCRIPTEN_ALGORITHM_SHA224  2
-#define EMSCRIPTEN_ALGORITHM_SHA256  3
-#define EMSCRIPTEN_ALGORITHM_SHA384  4
-#define EMSCRIPTEN_ALGORITHM_SHA512  5
+#define EMSCRIPTEN_ALGORITHM_SHA1         1
+#define EMSCRIPTEN_ALGORITHM_SHA224       2
+#define EMSCRIPTEN_ALGORITHM_SHA256       3
+#define EMSCRIPTEN_ALGORITHM_SHA384       4
+#define EMSCRIPTEN_ALGORITHM_SHA512       5
+#define EMSCRIPTEN_ALGORITHM_RSA_PKCS21  17
+#define EMSCRIPTEN_ALGORITHM_AES_GCM     33
 extern int emscripten_crypto_random(unsigned char* buffer, size_t buffer_len);
 extern int emscripten_crypto_open(int algorithm);
 extern int emscripten_crypto_close(int descriptor);
 extern int emscripten_crypto_hash_update(int d, const unsigned char* data, size_t len);
 extern int emscripten_crypto_hash_final(int d, unsigned char* buffer, size_t buffer_len);
-// TODO: AES and RSA functions coming soon!
+extern int emscripten_crypto_rsa_generate(int d, int size, int exponent);
+extern int emscripten_crypto_rsa_import(int d, const char* jwk);
+extern int emscripten_crypto_rsa_export(int d, const char* value,
+                                        unsigned char* buffer, size_t buffer_len);
+extern int emscripten_crypto_rsa_get_size(int d);
+extern int emscripten_crypto_rsa_crypt(int d, int encrypt, int hashAlgorithm,
+                                       const unsigned char* data, size_t data_len,
+                                       unsigned char* buffer, size_t buffer_len);
+// TODO: AES functions coming soon!
 
 
 
