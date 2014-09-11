@@ -1,14 +1,14 @@
 .. _packaging-files:
 
-==================================
-Packaging Files (ready-for-review)
-==================================
+===============
+Packaging Files
+===============
 
 This topic shows how to package the files that will be used to populate :ref:`Emscripten's virtual file system <file-system-overview>` when the page is loaded. 
 
 There are two alternatives for how files are packaged: *preloading* and *embedding*. Embedding puts the specified files inside the generated JavaScript, while preloading packages the files separately. Embedding files is much less efficient than preloading and should only be used when packaging small numbers of small files. Preloading also enables the option to separately host the data.
 	
-*Emcc* uses the *file packager* to package the files, and to generate the :ref:`File System API <Filesystem-API>` calls that create and load the file system at run time. While *Emcc* is the recommended tool for packaging, there are cases where it can make sense to run the *file packager* manually.
+*Emcc* uses the *file packager* to package the files and generate the :ref:`File System API <Filesystem-API>` calls that create and load the file system at run time. While *Emcc* is the recommended tool for packaging, there are cases where it can make sense to run the *file packager* manually.
 
 
 Packaging using emcc
@@ -34,13 +34,17 @@ The command for embedding is shown below. In this case *emcc* generates **file.h
     ./emcc file.cpp -o file.html --embed-file asset_dir
 
 
-By default, the run time path to files will be the same as you specify at compile time during packaging. For example, the files in **asset_dir** below will be available at runtime from **../../asset_dir**:
+By default, the files to be packaged should be nested in or below the compile-time command prompt directory. At runtime the same nested file structure is mapped to the virtual file system, with the root corresponding to the command prompt directory. 
+
+For example, consider a file structure **dir1/dir2/dir3/asset_dir/** where the project is compiled from **dir2**. When we package **asset_dir**, we specify its relative location **dir3/asset_dir/**:
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --preload-file ../../asset_dir
+    ./emcc file.cpp -o file.html --preload-file dir3/asset_dir
 
-The ``@`` symbol can be used to instead map packaged files elsewhere in the virtual file system. This is discussed below in :ref:`packaging-files-packaged-file-location`.
+The folder is available at this same location **dir3/asset_dir** in the virtual file system at runtime. Similarly, if we packaged a file in *dir2*, it would be available in the root of the virtual file system at runtime.
+
+The ``@`` symbol can be used to map packaged files from any location in the local file system to any location in the virtual file system. This is discussed below in :ref:`packaging-files-packaged-file-location`.
 
 
 .. _packaging-files-file-packager:
@@ -63,9 +67,9 @@ The file packager generates a **.data** file and **.js** file. The **.js** file 
 Changing the data file location
 ===============================
 
-By default, the **.data** file containing all the preloaded files is loaded from the same URL as your **.js** file. In some cases it may be useful to have the data file in a different location from the other files — for example if your **.html** and **.js** change a lot you may want to keep the data file is on a fast CDN somewhere else. 
+By default, the **.data** file containing all the preloaded files is loaded from the same URL as your **.js** file. In some cases it may be useful to have the data file in a different location from the other files — for example if your **.html** and **.js** change a lot you may want to keep the data file on a fast CDN somewhere else. 
 
-This model is supported by changing the :js:attr:`Module.filePackagePrefixURL` to be the URL where the data file is stored (this is a prefix, so should include the full path before the data's file name). The attribute must be specified in a script tag before the one that loads the data file.
+This model is supported by changing the :js:attr:`Module.filePackagePrefixURL` to be the URL where the data file is stored (this is a prefix, so should include the full path before the data's file name). The attribute must be specified in a ``<script>`` element before the one that loads the data file.
 
 
 .. _packaging-files-packaged-file-location:
@@ -73,7 +77,9 @@ This model is supported by changing the :js:attr:`Module.filePackagePrefixURL` t
 Modifying file locations in the virtual file system
 ===================================================
 
-Packaged files are mapped to the virtual file system, by default, at the same relative path as was specified when they were added. The ``@`` symbol can be used in a path at build time to change the location of a resource in virtual file system at runtime. 
+The default approach for packaging is to directly map the nested file structure at compile time — relative to the compile-time command prompt directory — to the root of the virtual file system. The ``@`` symbol can be used in a path at build time to *explicitly* specify where the resource will be located in the virtual file system at runtime. 
+
+.. note:: The ``@`` symbol is needed because sometimes it is useful to package files that are *not* nested below the compile-time directory, and for which there is therefore no default mapping to a location in the virtual file system.
 
 For example, we can map the preloaded folder **../../asset_dir** to the root of the virtual file system (**/**) using:
 
@@ -81,7 +87,7 @@ For example, we can map the preloaded folder **../../asset_dir** to the root of 
 
     ./emcc file.cpp -o file.html --preload-file ../../asset_dir@/
 
-We can also map a new path and filename. For example, to make embedded file **../res/gen123.png** available as **/main.png** we might do:
+We can also map a new path and filename. For example, to make the embedded file **../res/gen123.png** available as **/main.png** we might do:
 
 .. code-block:: bash
 
@@ -97,7 +103,7 @@ Monitoring file usage
 
 There is an option to log which files are actually used at runtime. To use it, define the :js:attr:`Module.logReadFiles` object. The :js:attr:`Module.printErr` function will be called on each file that is read (this function must also be defined, and should log to a convenient place).
 
-An alternative approach is to look at :js:func:`FS.readFiles` in your compiled JavaScript. This is an object with keys for all the files that were read from. It might be easier to use than logging as it records files rather than potentially multiple file accesses. 
+An alternative approach is to look at :js:func:`FS.readFiles` in your compiled JavaScript. This is an object with keys for all the files that were read from. You may find it easier to use than logging as it records files rather than potentially multiple file accesses. 
 
 .. note:: You can also modify the :js:func:`FS.readFiles` object or remove it entirely. This can be useful, say, in order to see which files are read between two points in time in your app.
 

@@ -1,14 +1,14 @@
 .. _Synchronous-Virtual-XHR-Backed-File-System-Usage:
 
-=====================================================================
-Synchronous Virtual XHR Backed File System Usage (ready-for-review)
-=====================================================================
+================================================
+Synchronous Virtual XHR Backed File System Usage
+================================================
 
-Emscripten supports lazy loading binary data from HTTP servers using :term:`XHR`'s (this is like AJAX, but fetches binary data rather than XML or JSON). This functionality can be used to create a backend for synchronous file access from compiled code.
+Emscripten supports lazy loading of binary data from HTTP servers using :term:`XHR`. This functionality can be used to create a backend for synchronous file access from compiled code.
 
-The backend can improve start up time as the whole file system does not need to be preloaded before compiled code is run. It can also be very efficient if the web server supports `byte serving <http://en.wikipedia.org/wiki/Byte_serving>`_, because Emscripten can just read the parts of files that are actually needed. 
+The backend can improve start up time as the whole file system does not need to be preloaded before compiled code is run. It can also be very efficient if the web server supports `byte serving <http://en.wikipedia.org/wiki/Byte_serving>`_ — in this case Emscripten can just read the parts of files that are actually needed. 
 
-.. warning:: This mechanism is only possible in Web Workers (due to browser limitations).
+.. warning:: This mechanism is only possible in `Web Workers <https://developer.mozilla.org/en/docs/Web/Guide/Performance/Using_web_workers>`_ (due to browser limitations).
 
 .. note:: If byte serving is not supported then Emscripten will have to load the whole file (however big) even if a single byte is read.
 
@@ -16,11 +16,11 @@ The backend can improve start up time as the whole file system does not need to 
 Test code
 =========
 
-An example of how to implement a synchronous virtual XHR backed file system is provided in the test code at `tests/test_browser.py <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L1266>`_ (see ``test_chunked_synchronous_xhr``). The test case also contains an HTTP server (see `test_chunked_synchronous_xhr_server <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L14>`_) that shows some CORS headers that might need to be set (if the resources are hosted from the same domain Emscripten runs from, there is no issue).
+An example of how to implement a synchronous virtual XHR backed file system is provided in the test code at `tests/test_browser.py <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L1266>`_ (see ``test_chunked_synchronous_xhr``). The test case also contains an HTTP server (see `test_chunked_synchronous_xhr_server <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L14>`_) showing CORS headers that might need to be set (if the resources are hosted from the same domain Emscripten runs from, there is no issue).
 
 The tests use `checksummer.c <https://github.com/kripken/emscripten/blob/master/tests/checksummer.c>`_ as the Emscripten-compiled program. This is simply a vanilla C program using synchronous *libc* file system calls like ``fopen()``, ``fread()``, ``fclose()`` etc.
 
-JavaScript code is added (using *emcc*'s :ref:`pre-js <emcc-pre-js>` option) to map the file system calls in **checksummer.c** to a file in the virtual file system. This file is *created* early in Emscripten initialisation using :js:func:`FS.createLazyFile`, but only loaded with content from the server when it is first accessed by compiled code. The added JavaScript also sets up communication between the web worker and the main thread. 
+JavaScript code is added (using *emcc*'s :ref:`pre-js <emcc-pre-js>` option) to map the file system calls in **checksummer.c** to a file in the virtual file system. This file is *created* early in Emscripten initialisation using :js:func:`FS.createLazyFile`, but only loaded with content from the server when the file is first accessed by compiled code. The added JavaScript code also sets up communication between the web worker and the main thread. 
 
 
 Instructions

@@ -1,8 +1,8 @@
 .. _Building-Projects:
 
-======================================
-Building Projects (ready-for-review)
-======================================
+=================
+Building Projects
+=================
 
 Building large projects with Emscripten is very easy. Emscripten provides two simple scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
 
@@ -38,7 +38,7 @@ To build with Emscripten, you would instead use the following commands:
 
 
 		
-*emconfigure* is called with the normal *configure* as an argument (in *configure*-based build systems), and *emmake* with the *make* as an argument. If your build system doesn't use configure, then you can omit the first step.
+*emconfigure* is called with the normal *configure* as an argument (in *configure*-based build systems), and *emmake* with *make* as an argument. If your build system doesn't use configure, then you can omit the first step.
 
 .. tip:: We recommend you call both *emconfigure* and *emmake* scripts in *configure*-based build systems. Whether you actually **need** to call both tools depends on the build system (some systems will store the environment variables in the configure step, and others will not).
 
@@ -48,7 +48,7 @@ To build with Emscripten, you would instead use the following commands:
 
 	The file output from *make* might have a different suffix: **.a** for a static library archive, **.so** for a shared library, **.o** or **.bc** for object files (these file extensions are the same as *gcc* would use for the different types). Irrespective of the file extension, these files contain linked LLVM bitcode that *emcc* can compile into JavaScript in the final step.
 
-	Where possible it is better to generate shared library files (**.so**) rather than archives (**.a**) — this is generally a simple change in your project's build system. Shared libraries are simpler, and have more predictable behaviour with respect to linking and elimination of unneeded code. 
+	Where possible it is better to generate shared library files (**.so**) rather than archives (**.a**) — this is generally a simple change in your project's build system. Shared libraries are simpler, and are more predictable with respect to linking and elimination of unneeded code. 
 
 The last step is to compile the linked bitcode into JavaScript. We do this by calling *emcc* again, specifying the linked LLVM bitcode file as an input, and a JavaScript file as the output.
 
@@ -80,7 +80,6 @@ Consider the examples below:
 	./emcc -O1 a.cpp -o a.bc
 	./emcc -O2 b.cpp -o b.bc
 	./emcc -O3 a.bc b.bc -o project.js
-
 	
 	# Correct. The SAME LLVM and JavaScript options are provided at both levels.
 	./emcc -O2 a.cpp -o a.bc
@@ -93,7 +92,7 @@ The same rule applies when :ref:`building Emscripten using a build system <build
 .. note:: Unfortunately each build-system defines its own mechanisms for setting compiler and optimization methods. **You will need to work out the correct approach to set the LLVM optimization flags for your system**.
 
 	- Some build systems have a flag like ``./configure --enable-optimize``. 
-	- You can control whether LLVM optimizations are run using ``--llvm-opts N`` where N is in 0-3. Sending ``-O2 --llvm-opts 0`` to *emcc* during all compilation stages will disable LLVM optimizations but utilize JavaScript optimizations. This can be useful when debugging a build failure.
+	- You can control whether LLVM optimizations are run using ``--llvm-opts N`` where N is an integer in the range 0-3. Sending ``-O2 --llvm-opts 0`` to *emcc* during all compilation stages will disable LLVM optimizations but utilize JavaScript optimizations. This can be useful when debugging a build failure.
 
 
 JavaScript optimizations are specified in the final step, when you compile the linked LLVM bitcode to JavaScript. For example, to compile with :ref:`-O1 <emcc-O1>`:
@@ -109,7 +108,7 @@ JavaScript optimizations are specified in the final step, when you compile the l
 Building projects with debug information
 ========================================
 
-Building a project containing debug information requires that debug flags are are specified for both LLVM and JavaScript compilation phases.
+Building a project containing debug information requires that debug flags are specified for both the LLVM and JavaScript compilation phases.
 
 To make *Clang* and LLVM emit debug information in the bitcode files you need to compile the sources with :ref:`-g <emcc-g>` (exactly the same as with :term:`clang` or *gcc* normally). To get *emcc* to include the debug information when compiling the bitcode to JavaScript, specify :ref:`-g <emcc-g>` or one of the ``-gN`` :ref:`debug level options <emcc-gN>`.
 
@@ -183,9 +182,9 @@ Build system self-execution
 
 Some large projects generate executables and run them in order to generate input for later parts of the build process (for example, a parser may be built and then run on a grammar, which then generates C/C++ code that implements that grammar). This sort of build process causes problems when using Emscripten because you cannot directly run the code you are generating.
 
-The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/kripken/emscripten/blob/master/tests/python/readme.md>`_ for more details).
+The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/kripken/emscripten/blob/master/tests/python/readme.md>`_ for more details).
 
-In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may need to work around cases where code is compiled and used both for the final result and for a generated executable.
+In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may have to work around cases where code is compiled and used both for the final result and for a generated executable.
 
 
 Dynamic linking
@@ -209,13 +208,13 @@ Pseudo-Dynamic linking
 
 Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. 
 
-*Emcc* ignores commands to dynamically link libraries when linking together bitcode. This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages (which would result in duplicate symbol errors).
+*Emcc* ignores commands to dynamically link libraries when linking together bitcode. This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
 
 
 Configure may run checks that appear to fail
 --------------------------------------------
 
-Projects that use *configure*, *cmake*, or some other portable configuration method, may run checks during the configure phase to verify that the toolchain and paths are set up properly. *Emcc* tries to get checks to pass where possible, but you may need to disable tests that fail due to a "false negative" (for example, tests that would pass in the final execution environment, but not in the shell during *configure*).
+Projects that use *configure*, *cmake*, or some other portable configuration method may run checks during the configure phase to verify that the toolchain and paths are set up properly. *Emcc* tries to get checks to pass where possible, but you may need to disable tests that fail due to a "false negative" (for example, tests that would pass in the final execution environment, but not in the shell during *configure*).
 
 .. tip:: Ensure that if a check is disabled, the tested functionality does work. This might involve manually adding commands to the make files using a build system-specific method.
 
@@ -226,7 +225,7 @@ Projects that use *configure*, *cmake*, or some other portable configuration met
 Manually using emcc
 ===================
 
-The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile single files into JavaScript. *Emcc* can be used in all the other ways you would expect of *gcc*:
+The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile single files into JavaScript. *Emcc* can also be used in all the other ways you would expect of *gcc*:
 
 ::
 
@@ -256,27 +255,15 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
 
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``./emcc --help`` on the command line).
 
-.. todo:: Not yet reviewed. Proposing to delelte. 
-
-
-.. todo:: Perhaps use the remainder ....The commmand ``./emconfigure ./configure`` is equivalent to the Linux command:
-
-	::
-	
-		EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emranlib AR=PATH/emar CXX=PATH/em++ CC=PATH/emcc ./configure [options]
-
-	``PATH`` is the path to *emcc* and ``EMMAKEN_JUST_CONFIGURE`` tells *emcc* that it is being run in ``./configure`` (and to relay everything to gcc/g++).
-	
-	You can also set the variables manually but the scripts make it easier.
 
 Alternatives to emcc
 ====================
 
 .. tip:: Do not attempt to bypass *emcc* and call the Emscripten tools directly from your build system. 
 
-You can in theory call *clang*, *llvm-ld*, and the other tools yourself. This is considered dangerous because by default:
+You can in theory call *clang*, *llvm-ld*, and the other tools yourself. This is however considered dangerous because by default:
 
-- *Clang* does not use the Emscripten bundled headers, which can lead to various errors. 
+- *Clang* does not use the Emscripten-bundled headers, which can lead to various errors. 
 - *llvm-ld* uses unsafe/unportable LLVM optimizations. 
 
 *Emcc* automatically ensures the tools are configured and used properly.
@@ -296,5 +283,12 @@ Troubleshooting
 ===============
 
 - Make sure to use bitcode-aware *llvm-ar* instead of *ar* (which may discard code). *emmake* and *emconfigure* set the AR environment variable correctly, but a build system might incorrectly hardcode *ar*.
-- If you get ``multiply defined symbol`` errors when statically linking bitcode files, use ``llvm-nm`` to see which symbols are defined in each bitcode file. You may need to change how your project links libraries to avoid linking in a library more than once. For example use the "pseudo" :ref:`dynamic linking <building-projects-dynamic-linking-workaround>` approach above to ensure that libraries are linked only once, in the final build stage.
+- 
+	The compilation error ``multiply defined symbol`` indicates that the project has linked a particular static library multiple times. The project will need to be changed so that the problem library is linked only once.
+
+	.. note:: You can use ``llvm-nm`` to see which symbols are defined in each bitcode file.
+	
+	One solution is to use the :ref:`building-projects-dynamic-linking-workaround` approach described above. This ensures that libraries are linked only once, in the final build stage. 
+
+
 
