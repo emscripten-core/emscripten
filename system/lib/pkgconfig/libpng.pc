@@ -1,3 +1,0 @@
-Name: libpng
-Description: Loads and saves PNG files
-Version: 1.6.12
