@@ -387,6 +387,11 @@ Struct
 	
 		If pointer lock is active, these two extra fields give relative mouse movement since the last event.
   
+	.. c:member:: long targetX
+		 long targetY
+	
+		These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
+
 		
 	.. c:member:: long canvasX
 		 long canvasY
@@ -1360,10 +1365,15 @@ Struct
 	
 		Specifies whether this touch point is still above the original target on which it was initially pressed.		
 		
+	.. c:member:: long targetX
+		 long targetY
+	
+		These fields give the touch coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
+
 	.. c:member:: long canvasX
 		long canvasY
 	
-		The touch coordinates mapped to the Emscripten canvas client area, in pixels.		
+		The touch coordinates mapped to the Emscripten canvas client area, in pixels (Emscripten-specific extension).
 
 
 		
