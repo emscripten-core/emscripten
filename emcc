@@ -1196,8 +1196,8 @@ try:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
 
     if llvm_lto >= 2:
-      logging.debug('running LLVM opt -O3 as pre-LTO')
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-O3'])
+      logging.debug('running LLVM opts as pre-LTO')
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
       if DEBUG: save_intermediate('opt', 'bc')
 
     # If we can LTO, do it before dce, since it opens up dce opportunities

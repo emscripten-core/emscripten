@@ -190,9 +190,9 @@ Options that are modified or new in *emcc* are listed below:
 
       * "1": LLVM LTO is performed.
 
-      * "2": Combine all the bitcode and run LLVM opt "-O3" on it.
-        This optimizes across modules, but is not the same as normal
-        LTO.
+      * "2": Combine all the bitcode and run LLVM opt on it using
+        the specified "--llvm-opts". This optimizes across modules,
+        but is not the same as normal LTO.
 
       * "3": Does level "2" and then level "1".
 
