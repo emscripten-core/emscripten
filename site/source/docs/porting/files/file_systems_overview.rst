@@ -1,56 +1,37 @@
-.. _Filesystem-Guide:
+.. _file-system-overview:
 
+====================
+File System Overview
+====================
+
+The following sections provide a brief overview of the :ref:`Emscripten file system environment <file-system-runtime-environment>` and :ref:`architecture <file-system-architectural-overview>`. In addition to discussing support for standard C/C++ synchronous file APIs, it briefly discusses the :ref:`File System API <Filesystem-API>` and Emscripten's :ref:`emscripten-h-asynchronous-file-system-api`.
+
+.. _file-system-runtime-environment:
+
+Emscripten file system runtime environment
+==========================================
+
+Native code and "normal" JavaScript use quite different file-access paradigms. Portable native code usually calls *synchronous* file APIs in **libc** and **libcxx**, while JavaScript allows only *asynchronous* file access (except in web workers). In addition, JavaScript does not have direct access to the host file system when run inside the sandbox environment provided by a web browser.
+
+Emscripten provides a virtual file system that simulates the local file system, so that native code using synchronous file APIs can be compiled and run with little or no change. 
+
+:ref:`packaging-files` explains how you can use *emcc* to specify which files you need to include in the file system. For many developers, that may be all you need to do.
+
+.. _file-system-architectural-overview:
+
+Emscripten file system architecture
 ===================================
-File System Overview (wiki-import)
-===================================
 
-.. comment Perhaps integrate this: "Native code and JavaScript have significantly expectations with respect to file handling — native code expects to be able to access files on the local machine using synchronous APIs, while JavaScript provides asynchronous file system APIs (outside of web workers) and does not have direct access to the host file system when running in a browser."
+The main elements of the Emscripten File System architecture are shown below. Most native code will call the *synchronous* file APIs in **libc** and **libcxx**. These in turn call the underlying :ref:`File System API <Filesystem-API>`, which by default uses the :ref:`MEMFS <filesystem-api-memfs>` virtual file system. 
 
-Emscripten allows you to set up a virtual filesystem that points to preloaded data, as well as virtual devices that can read and write data.
+.. figure:: FileSystemArchitecture.png
+	:alt: File System Architecture
+	:align: center
 
-There are two basic ways to use the filesystem:
+``MEMFS`` is mounted at ``/`` when the runtime is initialized. Files to be added to the MEMFS virtual file system are specified at compile time using *emcc*, as discussed in :ref:`packaging-files`. The files are loaded asynchronously by JavaScript using :ref:`Synchronous XHRs <Synchronous-Virtual-XHR-Backed-File-System-Usage>` when the page is first loaded. The compiled code is only allowed to run (and call synchronous APIs) when the asynchronous download has completed and the files are available in the virtual file system.
 
--  Package some files with your build. You can just tell emcc to package a directory or a set of files, and those files will be accessible from the compiled code normally, using ``fopen`` etc.
--  Manually use the FS API from JavaScript. This lets you create, modify etc. files in a more manual manner.
+With ``MEMFS`` all files exist strictly in-memory, and any data written to them is lost when the page is reloaded. If persistent data is required you can mount the :ref:`IDBFS <filesystem-api-idbfs>` file system in a browser or :ref:`NODEFS <filesystem-api-nodefs>` on *node.js*. :ref:`NODEFS <filesystem-api-nodefs>` provides direct access to the local file system, but only when run inside *node.js*. You can call the :ref:`File System API <Filesystem-API>` directly from your own JavaScript to mount new file systems, and to perform other synchronous file system operations that might be required. There is more information on this topic in :ref:`filesystem-api-filesystems`.
 
-For concrete examples of using the filesystem API, see the automatic tests in ``tests/runner.py``. Search for ``FS.`` for find relevant tests, for example test\_files. For specific examples of how to embed files that can be read from compiled C/C++, see for example the OpenJPEG test.
+If you need to fetch other files from the network to the file system then use :c:func:`emscripten_wget` and the other methods in the :ref:`emscripten-h-asynchronous-file-system-api`. These methods are asynchronous and the application must wait until the registered callback completes before trying to read them. 
+	
 
-The reason for the filesystem API is that JavaScript is most often run in web browsers, which sandbox content and prevent it from accessing the local filesystem. Therefore emscripten simulates a filesystem so that C/C++ code can be written normally, as if there were direct access to files. Note: if you want to run in a shell environment using node without sandboxing, then you can let code directly access the local filesystem using NODEFS, see :ref:`Filesystem-API`.
-
-.. todo:: HamishW - make sure we explain the implications of virtual file system, particularly with respect to when file ops can be called if we want to make sure that the virtual file system has completed loading. There is a faq on this.
-
-Packaging Files
-=========================
-
-Check out :ref:`packaging-files`.
-
-
-Manually using the FS API
-=========================
-
-Check out the :ref:`Filesystem-API`.
-
-
-.. todo:: HamishW. Notes to incorporate:
-
-	> My understanding is that on the browser we are sandboxed, so we have the
-	> virtual file system. This is asynchronously preloaded, and we wait until
-	> that is complete (using main() to notify us) before we try to load from it.
-	> However at that point all our functions (which map to libc) are
-	> synchronous. I
-
-	Yes, exactly. Emscripten compiles C code, which expects synchronous operations,
-
-	  FILE *f = fopen("name.txt", "r");
-	  fread(f, ...);
-
-	but those are not *actually* doing synchronous reading from the real filesystem (which, for a website, is typically the remote server; there is also no sync access to the user's local filesystem either), they are just doing synchronous reading from the cached data in the virtual filesystem. We preload data into that virtual filesystem for exactly that reason.
-
-	>
-	> So it the first statement above is true. The second statement is not
-	> entirely true - probably they need to modify their code to ensure that
-	> synchronous reading is not done until loading of the virtual file system is
-	> complete.
-	>
-
-	Yes. --preload-file etc. will make sure the preloaded data is ready for sync reading before main() runs. Otherwise, people can use emscripten_async_wget etc. to fetch more files from the network. They arrive asynchronously, because they use async http (the only option we have on the web), and the application must wait for the async callback before trying to read them.

@@ -84,6 +84,8 @@ The source code for the second example is given below:
    :literal:
    
 
+.. _tutorial-files:
+
 Using files
 ===========
 
@@ -120,7 +122,7 @@ Run the above command, then open **hello.html** in the *Firefox web browser* to 
 
 .. note:: Unfortunately *Chrome* and *Internet Explorer* do not support ``file://`` :term:`XHR` requests, and can't directly load the local file in which preloaded data is stored. For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``http://localhost:8080/hello.html``).
 
-For more information about working with the file system see the :ref:`Filesystem-Guide`, :ref:`Filesystem-API` and :ref:`Synchronous-virtual-XHR-backed-file-system-usage`.
+For more information about working with the file system see the :ref:`file-system-overview`, :ref:`Filesystem-API` and :ref:`Synchronous-virtual-XHR-backed-file-system-usage`.
 
 
 Optimizing code
