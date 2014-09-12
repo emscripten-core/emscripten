@@ -3907,11 +3907,17 @@ LibraryManager.library = {
       return adjusted;
     },
     addRef: function(ptr) {
+#if EXCEPTION_DEBUG
+      Module.printErr('addref ' + ptr);
+#endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
       info.refcount++;
     },
     decRef: function(ptr) {
+#if EXCEPTION_DEBUG
+      Module.printErr('decref ' + ptr);
+#endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
       assert(info.refcount > 0);
@@ -4078,6 +4084,19 @@ LibraryManager.library = {
     Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
     ABORT = true;
     throw exception;
+  },
+
+  __cxa_current_primary_exception: function() {
+    var ret = EXCEPTIONS.caught[EXCEPTIONS.caught.length-1] || 0;
+    if (ret) EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ret));
+    return ret;
+  },
+
+  __cxa_rethrow_primary_exception__deps: ['__cxa_rethrow'],
+  __cxa_rethrow_primary_exception: function(ptr) {
+    if (!ptr) return;
+    EXCEPTIONS.caught.push(ptr);
+    ___cxa_rethrow();
   },
 
   terminate: '__cxa_call_unexpected',
