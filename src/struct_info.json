@@ -172,7 +172,8 @@
         "file": "libc/time.h", 
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
-            "CLOCK_REALTIME"
+            "CLOCK_REALTIME",
+            "CLOCK_MONOTONIC"
         ],
         "structs": {
             "timezone": [

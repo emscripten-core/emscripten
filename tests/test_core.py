@@ -4632,6 +4632,12 @@ def process(filename):
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  def test_posixtime(self):
+    test_path = path_from_root('tests', 'core', 'test_posixtime')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_uname(self):
     test_path = path_from_root('tests', 'core', 'test_uname')
     src, output = (test_path + s for s in ('.in', '.out'))
