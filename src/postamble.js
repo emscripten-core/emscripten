@@ -88,7 +88,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 
     // if we're not running an evented main loop, it's time to exit
 #if ASYNCIFY
-    if (asm['getAsync'] === undefined || !asm['getAsync']())
+    if (!asm['getAsync']())
 #endif
       exit(ret);
   }
