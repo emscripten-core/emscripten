@@ -735,6 +735,21 @@ var LibrarySDL = {
       return;
     },
 
+    lookupKeyCodeForEvent: function(event) {
+        var code = event.keyCode;
+        if (code >= 65 && code <= 90) {
+          code += 32; // make lowercase for SDL
+        } else {
+          code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
+          // a right key, add 4 to get the right key SDL key code.
+          if (event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
+            code += 4;
+          }
+        }
+        return code;
+    },
+
     handleEvent: function(event) {
       if (event.handled) return;
       event.handled = true;
@@ -746,18 +761,15 @@ var LibrarySDL = {
         }
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          var code = event.keyCode;
-          if (code >= 65 && code <= 90) {
-            code += 32; // make lowercase for SDL
-          } else {
-            code = SDL.keyCodes[event.keyCode] || event.keyCode;
-          }
+          var code = SDL.lookupKeyCodeForEvent(event);
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
-          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
-
+          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 : 0) | // KMOD_LCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 : 0) | // KMOD_LSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 : 0) | // KMOD_LALT
+            ({{{ makeGetValue('SDL.keyboardState', '1252', 'i8') }}} ? 0x0080 : 0) | // KMOD_RCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '1253', 'i8') }}} ? 0x0002 : 0) | // KMOD_RSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '1254', 'i8') }}} ? 0x0200 : 0); //  KMOD_RALT
           if (down) {
             SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
           } else {
@@ -826,12 +838,7 @@ var LibrarySDL = {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           //Module.print('Received key event: ' + event.keyCode);
-          var key = event.keyCode;
-          if (key >= 65 && key <= 90) {
-            key += 32; // make lowercase for SDL
-          } else {
-            key = SDL.keyCodes[event.keyCode] || event.keyCode;
-          }
+          var key = SDL.lookupKeyCodeForEvent(event);
           var scan;
           if (key >= 1024) {
             scan = key - 1024;
