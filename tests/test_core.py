@@ -4634,14 +4634,19 @@ def process(filename):
 
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.banned_js_engines = [V8_ENGINE] # v8 lacks monotonic time
     self.do_run_from_file(src, output)
+
+    if V8_ENGINE in JS_ENGINES:
+      self.banned_js_engines = filter(lambda engine: engine != V8_ENGINE, JS_ENGINES)
+      self.do_run_from_file(src, test_path + '_no_monotonic.out')
+    else:
+      print '(no v8, skipping no-monotonic case)'
 
   def test_uname(self):
     test_path = path_from_root('tests', 'core', 'test_uname')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.do_run_from_file(src, output)
 
   def test_env(self):
