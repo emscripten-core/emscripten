@@ -5249,6 +5249,8 @@ def process(filename):
     if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
+    if '-O' not in str(self.emcc_args):
+      self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
 
     Settings.CORRECT_SIGNS = 1
     Settings.CORRECT_OVERFLOWS = 0
