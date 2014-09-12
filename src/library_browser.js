@@ -1112,6 +1112,10 @@ mergeInto(LibraryManager.library, {
     Module['exit'](status);
   },
 
+  emscripten_get_device_pixel_ratio: function() {
+    return window.devicePixelRatio || 1.0;
+  },
+
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;

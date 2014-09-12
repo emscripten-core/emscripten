@@ -1421,6 +1421,42 @@ var LibraryJSEvents = {
     // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
     if (!Module['ctx']) return true; // No context ~> lost context.
     return Module['ctx'].isContextLost();
+  },
+
+  emscripten_set_element_css_size: function(target, width, height) {
+    if (!target) {
+      target = Module['canvas'];
+    } else {
+      target = JSEvents.findEventTarget(target);
+    }
+
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    target.style.setProperty("width", width + "px");
+    target.style.setProperty("height", height + "px");
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_get_element_css_size: function(target, width, height) {
+    if (!target) {
+      target = Module['canvas'];
+    } else {
+      target = JSEvents.findEventTarget(target);
+    }
+
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    if (target.getBoundingClientRect) {
+      var rect = target.getBoundingClientRect();
+      {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
+      {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
+    } else {
+      {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
+      {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
+    }
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   }
 };
 

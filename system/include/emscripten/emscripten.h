@@ -121,6 +121,8 @@ inline void emscripten_async_call(em_arg_callback_func func, void *arg, int mill
 extern void emscripten_exit_with_live_runtime(void);
 extern void emscripten_force_exit(int status);
 
+double emscripten_get_device_pixel_ratio(void);
+
 void emscripten_hide_mouse(void);
 void emscripten_set_canvas_size(int width, int height);
 void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);

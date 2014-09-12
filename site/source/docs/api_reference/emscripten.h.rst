@@ -277,6 +277,12 @@ Functions
 
 	:param int status: The same as for the *libc* function `exit() <http://linux.die.net/man/3/exit>`_.
 
+.. c:function:: double emscripten_get_device_pixel_ratio(void)
+
+	Returns the value of ``window.devicePixelRatio``.
+
+	:rtype: double
+	:return: The pixel ratio or 1.0 if not supported.
 
 .. c:function::void emscripten_hide_mouse(void)
 
