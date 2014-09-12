@@ -280,11 +280,13 @@ The JavaScript methods for calling compiled C functions are efficient, but canno
 
 :ref:`WebIDL-Binder` and :ref:`embind` create bindings between C++ and JavaScript, allowing C++ code entities to be used in a natural manner from JavaScript. *Embind* additionally supports calling JavaScript code from C++.
 
-Both tools can map sophisticated C++ constructs, and allow C++ to be used from JavaScript in much the same way. However they operate at different levels, and use very different approaches for defining the binding:
+*Embind* can bind almost any C++ code, including sophisticated C++ constructs (e.g. ``shared_ptr`` and ``unique_ptr``). The *WebIDL Binder* supports C++ types that can be expressed in WebIDL. While this subset is smaller than supported by *Embind*, it is more than sufficient for most use cases — examples of projects that have been ported using the binder include the `Box2D <https://github.com/kripken/box2d.js/#box2djs>`_ and `Bullet <https://github.com/kripken/ammo.js/#ammojs>`_ physics engines.
 
-- *Embind* declares bindings within the C/C++ file
--  :ref:`WebIDL-Binder` declares the binding in a separate file. This is run through the binder tool to create "glue" code that is then compiled with the project.
+Both tools allow mapped items to be used from JavaScript in a similar way. However they operate at different levels, and use very different approaches for defining the binding:
 
-.. note:: There is no strong evidence that one tool is "better" than the other in terms of performance (no comparative benchmarks exist), and both have been used successfully in a number of projects. The selection of one tool over the other should therefore be based on which is the most natural fit for each developer, and their project build system.
+- *Embind* declares bindings within the C/C++ file.
+- *WebIDL-Binder* declares the binding in a separate file. This is run through the binder tool to create "glue" code that is then compiled with the project.
+
+.. note:: There is no strong evidence that one tool is "better" than the other in terms of performance (no comparative benchmarks exist), and both have been used successfully in a number of projects. The selection of one tool over the other will usually be based on which is the most natural fit for the project and its build system.
 
 
