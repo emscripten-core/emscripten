@@ -16,12 +16,12 @@ mergeInto(LibraryManager.library, {
         ___setErrNo(ERRNO_CODES.EBADF);
         return -1;
       }
-      var fn = this._objects[descriptor][action];
-      if (typeof fn !== 'function') {
+      var item = this._objects[descriptor];
+      if (typeof item[action] !== 'function') {
         ___setErrNo(ERRNO_CODES.EINVAL);
         return -1;
       }
-      return fn.call(args);
+      return item[action].apply(item, args);
     },
     nodeInit: function() {
       var self = CRYPTO;
@@ -76,6 +76,15 @@ mergeInto(LibraryManager.library, {
     },
     browserInit: function() {
       var self = CRYPTO;
+      function hashToString(hashId) {
+        switch (hashId) {
+        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA1') }}}:   return 'SHA-1';
+        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA256') }}}: return 'SHA-256';
+        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA384') }}}: return 'SHA-384';
+        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA512') }}}: return 'SHA-512';
+        }
+        return null;
+      }
       self.getRandom = function(length) {
         if (typeof(crypto) !== 'undefined' &&
             typeof(crypto.getRandomValues) !== 'undefined') {
@@ -105,16 +114,11 @@ mergeInto(LibraryManager.library, {
           rsaExport: self._rsaExport, rsaGetSize: self._rsaGetSize,
           rsaCrypt: self._rsaCrypt
         };
-        switch (algo) {
-        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA1') }}}:
-          hashObj.algorithm.name = 'SHA-1'; return hashObj;
-        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA256') }}}:
-          hashObj.algorithm.name = 'SHA-256'; return hashObj;
-        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA384') }}}:
-          hashObj.algorithm.name = 'SHA-384'; return hashObj;
-        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA512') }}}:
-          hashObj.algorithm.name = 'SHA-512'; return hashObj;
-        case {{{ cDefine('EMSCRIPTEN_ALGORITHM_RSA_PKCS21') }}}:
+        if (algo >= {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA1') }}} &&
+            algo <= {{{ cDefine('EMSCRIPTEN_ALGORITHM_SHA512') }}}) {
+          hashObj.algorithm.name = hashToString(algo);
+          return hashObj;
+        } else if (algo == {{{ cDefine('EMSCRIPTEN_ALGORITHM_RSA_PKCS21') }}}) {
           return rsaObj;
         }
         ___setErrNo(ERRNO_CODES.EINVAL);
@@ -179,7 +183,7 @@ mergeInto(LibraryManager.library, {
         try {
           var rsaObj = this;
           var generatePromise = crypto.subtle.generateKey({
-                { hash: rsaObj.hash },
+                hash: rsaObj.hash,
                 modulusLength:size,
                 publicExponent: new Uint8Array([(exponent>>24)&0xff,(exponent>>16)&0xff,(exponent>>8)&0xff,exponent&0xff]),
                 name:'RSA-OAEP'
@@ -221,17 +225,17 @@ mergeInto(LibraryManager.library, {
           jwk = JSON.parse(jwk);
           publicJwk = jwk;
           delete publicJwk['d'];
-          var publicPromise = crypto.subtle.importKey('jwk', publicJwk, algorithm, true, ['encrypt', 'decrypt']);
+          var publicPromise = crypto.subtle.importKey('jwk', publicJwk, algorithm, true, ['encrypt']);
           publicPromise.then(function fulfill(key) {
             rsaObj.publicKey = key;
             if ('d' in jwk)
-              return crypto.subtle.importKey('jwk', jwk, algorithm, true, ['encrypt', 'decrypt']);
+              return crypto.subtle.importKey('jwk', jwk, algorithm, true, ['decrypt']);
             return key;
           }).then(function fulfill(key) {
             if ('d' in jwk)
               rsaObj.privateKey = key;
             var addr = asm.getAsyncRetValAddr();
-            {{{ makeSetValue('addr', 0, 'copyLen', 'i32') }}};
+            {{{ makeSetValue('addr', 0, 0, 'i32') }}};
             _emscripten_async_resume();
           }, function error(err) {
             Module.printErr('Error during WebCrypto RSA import: ' + err);
@@ -275,13 +279,15 @@ mergeInto(LibraryManager.library, {
         return this.publicKey ? this.publicKey.modulusLength : 0;
       };
       self._rsaCrypt = function(encrypt, hashAlgorithm, data, buffer, buffer_len) {
-        if (parse(hashAlgorithm) != this.hash.name) {
-          // really annoying, have to export and re-import everything, not my fault...
-          // XXX
-        }
-        if ((encrypt ? this.publicKey : this.privateKey) === null) {
+        var hashName = hashToString(hashAlgorithm);
+        if (hashName === null ||
+            (encrypt ? this.publicKey : this.privateKey) === null) {
           ___setErrNo(ERRNO_CODES.EINVAL);
           return -1;
+        }
+        if (hashName != this.hash.name) {
+          // really annoying, have to export and re-import everything, not my fault...
+          // XXX
         }
 #if ASYNCIFY
         try {
@@ -290,13 +296,13 @@ mergeInto(LibraryManager.library, {
                                 : crypto.subtle.decrypt(algo, this.privateKey, data);
           promise.then(function fulfill(result) {
             var addr = asm.getAsyncRetValAddr();
-            if (result.length > buffer_len) {
+            if (result.byteLength > buffer_len) {
               {{{ makeSetValue('addr', 0, '-1', 'i32') }}};
             } else {
               var view = new Uint8Array(result);
-              for (var i = 0; i < result.length; ++i)
+              for (var i = 0; i < view.length; ++i)
                 {{{ makeSetValue('buffer', 'i', 'view[i]', 'i8') }}};
-              {{{ makeSetValue('addr', 0, 'result.length', 'i32') }}};
+              {{{ makeSetValue('addr', 0, 'result.byteLength', 'i32') }}};
             }
             _emscripten_async_resume();
           }, function error(err) {
@@ -407,7 +413,7 @@ mergeInto(LibraryManager.library, {
     for (var i = 0; i < data.length; ++i)
       dataArray[i] = {{{ makeGetValue('data', 'i', 'i8') }}};
     return CRYPTO.callOn(descriptor, 'rsaCrypt', [encrypt, hashAlgorithm,
-                                                  dataArray, buffer, buffer_len]);
+                                                  dataArray.buffer, buffer, buffer_len]);
   }
 
 });
