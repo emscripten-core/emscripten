@@ -466,10 +466,13 @@ process(sys.argv[1])
     js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:
-      #print engine
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
-      self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
-      self.assertNotContained('ERROR', js_output)
+      try:
+        self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
+        self.assertNotContained('ERROR', js_output)
+      except Exception, e:
+        print '(test did not pass in JS engine: %s)' % engine
+        raise e
 
     #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
