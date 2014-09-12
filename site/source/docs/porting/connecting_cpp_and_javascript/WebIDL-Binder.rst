@@ -1,12 +1,14 @@
 .. _WebIDL-Binder:
 
-===================================
-WebIDL Binder (under-construction)
-===================================
+================================
+WebIDL Binder (ready-for-review)
+================================
 
 The *WebIDL Binder* provides a simple and lightweight approach to binding C++, so that compiled code can be called from JavaScript as if it were a normal JavaScript library. 
 
-The *WebIDL Binder* uses `WebIDL <http://heycam.github.io/webidl/>`_ to define the bindings, an interface language which was *specifically designed* for gluing together C++ and JavaScript. Not only is this a natural choice for the bindings, but because it is low-level, it is relatively easy to optimize.
+The *WebIDL Binder* uses `WebIDL <http://www.w3.org/TR/WebIDL/>`_ to define the bindings, an interface language which was *specifically designed* for gluing together C++ and JavaScript. Not only is this a natural choice for the bindings, but because it is low-level it is relatively easy to optimize.
+
+The binder supports the subset of C++ types that can be expressed in WebIDL. This subset is more than sufficient for most use cases — examples of projects that have been ported using the binder include the `Box2D <https://github.com/kripken/box2d.js/#box2djs>`_ and `Bullet <https://github.com/kripken/ammo.js/#ammojs>`_ physics engines.
 
 This topic shows how bind and use C++ classes, functions and other types using IDL.
 
@@ -59,6 +61,7 @@ The mapping between the IDL definition and the C++ is fairly obvious. The main t
 	- The IDL class definitions include a function returning ``void`` that has the same name as the interface. This constructor allows you to create the object from JavaScript, and must be defined in IDL even if the C++ uses the default constructor (see ``Foo`` above). 
 	- The type names in WebIDL are not identical to those in C++ (for example, ``int`` maps to ``long`` above). For more information about the mappings see :ref:`webidl-binder-type-name`.
 
+.. note:: ``structs`` are defined in the same way as the classes above — using the ``interface`` keyword.
 
 Generating the bindings glue code
 ---------------------------------
@@ -79,18 +82,23 @@ Compiling the project (using the bindings glue code)
 To use the glue code files (``glue.cpp`` and ``glue.js``) in a project:
 
 #. Add ``--post-js glue.js`` in your final *emcc* command. The :ref:`post-js <emcc-post-js>` option adds the glue code at the end of the compiled output.
-#. Update **glue.cpp** with the headers for the classes you are binding (simply ``#include <>`` them at the top of the file).
+#. Create a file **my_glue_wrapper.cpp** (say) to ``#include`` the headers of the classes you are binding and *glue.cpp*. This might have the following content:
 
-	.. note:: The C++ glue code emitted by the *bindings generator* needs to be updated with headers for the classes it binds (these are not available to the generator because they are not present in the Web IDL file). 
+	.. code-block:: cpp
 
-#. Add **glue.cpp** to the final *emcc* command.
+		#include <...> // Where "..." represents the headers for the classes we are binding. 
+		#include <glue.cpp>
+
+	.. note:: The C++ glue code emitted by the *bindings generator* does not include the headers for the classes it binds because they are not present in the Web IDL file. The step above makes these available to the glue code. Another alternative would be to include the headers at the top of **glue.cpp**, but then they would be overwritten every time the IDL file is recompiled.
+	
+#. Add **my_glue_wrapper.cpp** to the final *emcc* command.
 
 
 The final *emcc* command includes both the C++ and JavaScript glue code, which are built to work together:
 
 .. code-block:: bash
 
-	./emcc my_classes.cpp glue.cpp --post-js glue.js -o output.js
+	./emcc my_classes.cpp my_glue_wrapper.cpp --post-js glue.js -o output.js
 
 The output now contains everything needed to use the C++ classes through JavaScript.
 
@@ -103,12 +111,12 @@ Once binding is complete, C++ objects can be created and used in JavaScript as t
 
 .. code-block:: javascript
 
-    var f = new Module.Foo();
-    f.setVal(200);
-    alert(f.getVal());
+	var f = new Module.Foo();
+	f.setVal(200);
+	alert(f.getVal());
 
-    var b = new Module.Bar(123);
-    b.doSomething();
+	var b = new Module.Bar(123);
+	b.doSomething();
 
 .. important:: Always access objects through the :ref:`module` object, as shown above. 
 
@@ -117,8 +125,14 @@ Once binding is complete, C++ objects can be created and used in JavaScript as t
 
 JavaScript will automatically garbage collect any of the wrapped C++ objects when there are no more references. If the C++ object doesn't require specific clean up (i.e. it doesn't have a destructor) then no other action need be taken.
 
-If a C++ object does need to be cleaned up, you must explicitly call :js:func:`Module.destroy(obj) <Module.destroy>` to invoke its destructor. Then drop all references to the object so that it can be garbage collected.
+If a C++ object does need to be cleaned up, you must explicitly call :js:func:`Module.destroy(obj) <Module.destroy>` to invoke its destructor. Then drop all references to the object so that it can be garbage collected. For example, if ``Bar`` were to allocate memory that requires cleanup:
 
+.. code-block:: javascript
+
+	var b = new Module.Bar(123);
+	b.doSomething();
+	Module.destroy(b); // If the C++ object requires clean up
+	
 .. note:: The C++ constructor is called transparently when a C++ object is created in JavaScript. However there is no way to tell if a JavaScript object is about to be garbage collected, so the binder glue code can't automatically call the destructor.
 
 
@@ -153,7 +167,7 @@ References should be decorated using ``[Ref]``:
 
 .. note:: If ``[Ref]`` is omitted on a reference, the generated glue C++ will not compile (it fails when it tries to convert the reference — which it thinks is a pointer — to an object).
 
-If the C++ returns a new object (rather than a reference or a pointer) then the return type should be decorated using ``[Value]``. This will allocate a static instance of that class and return it. 
+If the C++ returns an object (rather than a reference or a pointer) then the return type should be decorated using ``[Value]``. This will allocate a static (singleton) instance of that class and return it. You should use immediately, and drop any references to it after use.
 
 .. code-block:: cpp
 	
@@ -165,7 +179,7 @@ If the C++ returns a new object (rather than a reference or a pointer) then the 
 	// WebIDL
 	[Value] MyClass process([Ref] MyClass input);
 
-.. note:: There is a single instance of the returned object. You should use it and immediately forget about it.
+
 
 Const 
 =====
@@ -183,6 +197,8 @@ For example, the following code fragments show the C++ and IDL for a function th
 
 	// WebIDL
 	[Const] myObject getAsConst();
+
+.. tip:: It is possible for an attribute or return type to have multiple specifiers. For, an attribute that is a contant reference would be marked up in the IDL using ``[Ref, Const]``.
 
 
 Un-deletable classes (NoDelete)
@@ -322,11 +338,8 @@ When C++ code has a pointer to a ``Base`` instance and calls ``virtualFunc()``, 
 
 .. note:: 
 
-	You *must* implement all the methods you mentioned in the IDL of the ``JSImplementation`` class (``ImplJS``) or an error will be shown.
-
-	The technical reason is that C++ implements the virtual method, in a way that calls into JavaScript. If there is nothing in JavaScript to be called, it goes up through the prototype chain and calls that *same* C++ function again.
-
-
+	- You *must* implement all the methods you mentioned in the IDL of the ``JSImplementation`` class (``ImplJS``) or compilation will fail with an error.
+	- You will also need to provide an interface definition for the ``Base`` class in the IDL file.
 
 Pointers and comparisons
 =========================

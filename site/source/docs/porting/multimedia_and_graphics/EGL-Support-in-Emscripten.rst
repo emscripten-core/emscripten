@@ -15,7 +15,7 @@ What EGL is not?
 
 Somewhat disappointingly, EGL is not a self-sufficient complete solution for initializing GLES2 graphics rendering (on any platform, not just Emscripten) and overseeing various associated tasks. The specification is limited in its scope and lacks some features. In particular, EGL cannot help with the following tasks: 
 
-- Creating a render window. The EGL specification does not specify how a target window is created to which to render to. One must use platform-specific native window system functions (X11, Win32 API, ANativeWindow_..) to first create a render window. 
+- Creating a render window. The EGL specification does not specify how a target window is created to which to render to. One must use platform-specific native window system functions (X11, Win32 API, ANativeWindow) to first create a render window. 
 - Specifying render window size in arbitrary pixel increments. EGL does not have any functionality to request a desired size for the main render window, or to resize it. 
 - Specifying a fullscreen video mode/screen resolution. EGL cannot be used to control whether to render in a windowed or fullscreen mode, or to toggle between these at runtime.
 

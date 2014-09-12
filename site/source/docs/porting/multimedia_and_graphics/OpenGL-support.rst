@@ -1,46 +1,77 @@
 .. _OpenGL-support:
 
-============================
-OpenGL support (wiki-import)
-============================
+==================================================
+OpenGL support in Emscripten (under-construction)
+==================================================
 
-Emscripten supports GL in three ways:
+Emscripten provides three OpenGL modes:
 
--  The **WebGL-friendly subset of OpenGL**, basically what maps directly to WebGL, and is approximately OpenGL ES 2.0 minus client-side data and a few other things. This is stable, and recommended since it is the most efficient - each GL command basically becomes a direct WebGL command, so performance is predictable and fast. If you write new code, we recommend you write to this subset of OpenGL.
--  **OpenGL ES 2.0 emulation**. Compile with ``-s FULL_ES2=1`` to get this (there is no compile-time way for us to automatically know if you need it, sadly), and it adds client-side data. That means you can do glDrawArrays etc. without a bound buffer, and our GL bindings will set up the buffer automatically (since WebGL requires that a buffer be bound). This is not as efficient as the WebGL-friendly subset, since while we can bind buffers for you, we don't know what the optimal pattern of buffer creation/sizing/etc. is. But this option is very useful if you have a lot of code that is OpenGL ES 2.0. 
--  **OpenGL emulation of older desktop and mobile versions**. This includes support for GL 1.x features like immediate mode and various commands like ``glNormalPointer`` etc. Emscripten support for such emulation is sufficient to run Sauerbraten (BananaBread project) and several other real-world codebases, but is definitely not complete in the sense of supporting all older GL features (which would be an enormous task). It also adds significant emulation overhead, so this is not recommended (but you might want to try it if your codebase currently requires GL 1.x). To enable it, compile with ``-s LEGACY_GL_EMULATION=1``.
+- :ref:`opengl-support-webgl-subset` (default) — supports the set of OpenGL commands that map directly to WebGL.
+- :ref:`opengl-support-opengl-es2-0-emulation` — full support for Open GL ES 2.0.
+- :ref:`opengl-support-legacy_and_mobile` — support for a number of legacy GL 1.x features and commands.
 
-Emulation levels
-============================
+This topic provides information about the modes, and how they are enabled.
 
-As mentioned above, we can directly support a subset of ES2 (the "WebGL-friendly subset"), and have emulation for the rest of ES2, as well as emulation for various desktop GL features.
+.. tip:: We highly recommend using the :ref:`opengl-support-webgl-subset` for new code, and porting existing code to this subset if possible. The other two modes are much less efficient, and should only be considered for large codebases that rely heavily on those features. 
 
-By default we assume the WebGL-friendly subset. If you want ES2 emulation, use ``-s FULL_ES2=1``.
+.. _opengl-support-webgl-subset:
 
-The desktop GL emulation can be enabled with ``-s LEGACY_GL_EMULATION=1``.
+WebGL-friendly subset of OpenGL
+===============================
 
-Settings for optimizing emulation code
---------------------------------------------------------
+Emscripten supports the WebGL-friendly subset of OpenGL *by default*. This is the set of commands that map directly to WebGL, so that each GL command becomes a direct call to WebGL. It includes almost all of OpenGL ES 2.0, with the notable exception of client-side arrays.
 
-When specifying ``-s LEGACY_GL_EMULATION=1``, there are a few extra flags that can be used to tune the performance of the GL emulation layer.
+This mode is used by default because it is stable, predictable and fast. 
 
--  Setting ``-s GL_UNSAFE_OPTS=1`` tries to simplify the emulation by skipping GL work and cleanup that should be redundant. This is not guaranteed to be correct, so is not enabled by default.
--  Passing the option ``-s GL_FFP_ONLY=1`` tells the GL emulation layer that your code will not use the programmable pipeline/shaders at all. This allows the GL emulation code to perform extra optimizations when it knows that it is safe to do so.
--  You can add an int parameter ``Module.GL_MAX_TEXTURE_IMAGE_UNITS`` to your shell **.html** file to signal the GL emulation layer how many texture units your code is using at maximum. This avoids wasting clock cycles on iterating over unused texture units when examining which FFP emulation shader to run.
+The files in `tests/glbook <https://github.com/kripken/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the WebGL-friendly subset of commands.
 
-What is the "WebGL-friendly subset of OpenGL"?
-==============================================
+.. todo:: Check this. Can't find it. The Firefox ``webgl.verbose`` option is a very useful tool is the  in Firefox. If you compile code that uses client-side arrays, that option will give you a warning when there isn't a bound buffer and so forth. It will also warn you of other differences between OpenGL and WebGL.
 
-The WebGL-friendly subset of OpenGL is basically what maps directly to WebGL, call to call. That includes almost all of OpenGL ES 2.0, except for client-side arrays. The reason they are missing from WebGL is because they are less efficient than properly using GPU-side data. Similarly, if we emulated client-side arrays here, we would end up with very bad performance, since we would need to upload the data on each call to glDrawArrays etc. (Even if there are two calls one after the other, we can't know the data did not change!) So in practical terms full OpenGL ES 2.0 emulation would be convenient, but lead to bad performance so in practice you would need to properly rewrite your code to a WebGL-friendly subset anyhow.
 
-Writing for the WebGL-friendly subset of OpenGL
-===============================================
+.. _opengl-support-opengl-es2-0-emulation:
 
-See the files in tests/glbook and their git history for some simple examples ported to that subset.
+OpenGL ES 2.0 emulation
+=======================
 
-A very useful tool is the ``webgl.verbose`` option in Firefox. If you compile code that uses clientside arrays, that option will give you a warning when there isn't a bound buffer and so forth. It will also warn you of other differences between OpenGL and WebGL.
+This mode provides a full OpenGL ES 2.0 environment — specifically it emulates client-side arrays that were missing [#f1]_ from the :ref:`opengl-support-webgl-subset`.
 
-What if I need additional GL features not supported yet?
-========================================================
+This allows you use `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound). 
 
-Feel free to file issues with testcases that do not work, and we will look into them.
+This mode is not as efficient as the WebGL-friendly subset, because Emscripten cannot predict the optimal pattern for buffer creation/sizing/etc. We therefore have to upload far more data than is actually needed.
+
+To enable *OpenGL ES 2.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES2=1`` when compiling the project.
+
+
+.. _opengl-support-legacy_and_mobile:
+
+OpenGL emulation of older desktop and mobile versions
+=====================================================
+
+This OpenGL mode enables support for a number of legacy GL 1.x features and commands (for example "immediate mode" and `glNormalPointer <https://www.opengl.org/sdk/docs/man2/xhtml/glNormalPointer.xml>`_). 
+
+While the emulation is by no means "complete", it has been sufficient to port the Sauerbraten 3D game (`BananaBread <https://github.com/kripken/BananaBread>`_ project) and several other real-world codebases using Emscripten. 
+
+To enable this mode, specify the :ref:`emcc <emcc-s-option-value>` option ``-s LEGACY_GL_EMULATION=1`` when compiling the project.
+
+.. warning:: This mode adds **significant** emulation overhead. 
+
+
+Optimization settings
+----------------------
+
+In this mode (``-s LEGACY_GL_EMULATION=1``), there are a few extra flags that can be used to tune the performance of the GL emulation layer:
+
+- ``-s GL_UNSAFE_OPTS=1`` attempts to skip redundant GL work and cleanup. This optimization is unsafe, so is not enabled by default.
+- ``-s GL_FFP_ONLY=1`` tells the GL emulation layer that your code will not use the programmable pipeline/shaders at all. This allows the GL emulation code to perform extra optimizations when it knows that it is safe to do so.
+- Add the ``Module.GL_MAX_TEXTURE_IMAGE_UNITS`` integer to your shell **.html** file to signal the maximum number of texture units used by the code. This ensures that the GL emulation layer does not waste clock cycles iterating over unused texture units when examining which FFP emulation shader to run.
+
+
+What if I need unsupported GL features?
+=======================================
+
+File a :ref:`bug report <bug-reports>` (with test case) and we will review.
+
+
+**Footnotes:**
+
+.. [#f1] Client-side arrays are missing from WebGL because they are less efficient than properly using GPU-side data.
