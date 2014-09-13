@@ -262,7 +262,7 @@ int main()
 
 	// SSE1 Misc instructions:
 	// TODO: _mm_movemask_pi8
-	// TODO: _mm_movemask_ps
+	assert(_mm_movemask_ps(_mm_set_ps(-1.f, 0.f, 1.f, NAN)) == 8); assert(_mm_movemask_ps(_mm_set_ps(-INFINITY, -0.f, INFINITY, -INFINITY)) == 13); // Return int with four lowest bits set depending on the highest bits of the input channels.
 	// TODO: _m_pmovmskb
 	// TODO: _m_psadbw
 	// TODO: _mm_sad_pu8
