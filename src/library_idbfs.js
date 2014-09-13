@@ -157,6 +157,7 @@ mergeInto(LibraryManager.library, {
           return callback(new Error('node type not supported'));
         }
 
+        FS.chmod(path, entry.mode);
         FS.utime(path, entry.timestamp, entry.timestamp);
       } catch (e) {
         return callback(e);
