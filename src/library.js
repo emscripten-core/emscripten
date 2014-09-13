@@ -5273,6 +5273,8 @@ LibraryManager.library = {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
 
+    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, 'i32') }}};
+
     var date = {
       tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
       tm_min: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}},
@@ -5284,7 +5286,7 @@ LibraryManager.library = {
       tm_yday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_yday, 'i32') }}},
       tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}},
       tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'i32') }}},
-      tm_zone: Pointer_stringify( {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, 'i32') }}} )
+      tm_zone: tm_zone ? Pointer_stringify(tm_zone) : ''
     };
 
     var pattern = Pointer_stringify(format);
