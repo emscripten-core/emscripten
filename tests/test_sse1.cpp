@@ -13,7 +13,7 @@
 // The notation [a,b,c,d] refers to SIMD channels, where d is the lowest channel 0 (the scalar channel), and a is the highest channel 3.
 
 // Tests if m == [v3, v2, v1, v0]
-bool aeq(__m128 m, float v3, float v2, float v1, float v0, bool abortOnFailure = true)
+bool __attribute__((noinline)) aeq(__m128 m, float v3, float v2, float v1, float v0, bool abortOnFailure = true)
 {
 	float val[4];
 	_mm_storeu_ps(val, m);
@@ -27,7 +27,7 @@ bool aeq(__m128 m, float v3, float v2, float v1, float v0, bool abortOnFailure =
 }
 
 // Tests if m == [v3, v2, v1, v0] but where vx are integers.
-bool aeqi(__m128 m, uint32_t v3, uint32_t v2, uint32_t v1, uint32_t v0, bool abortOnFailure = true)
+bool __attribute__((noinline)) aeqi(__m128 m, uint32_t v3, uint32_t v2, uint32_t v1, uint32_t v0, bool abortOnFailure = true)
 {
 	uint32_t val[4];
 	_mm_storeu_ps((float*)val, m);
@@ -42,36 +42,46 @@ bool aeqi(__m128 m, uint32_t v3, uint32_t v2, uint32_t v1, uint32_t v0, bool abo
 
 // Recasts floating point representation of f to an integer.
 uint32_t fcastu(float f) { return *(uint32_t*)&f; }
+float ucastf(uint32_t t) { return *(float*)&t; }
 
 // Data used in test. Store them global and access via a getter to confuse optimizer to not "solve" the whole test suite at compile-time,
 // so that the operation will actually be performed at runtime, and not at compile-time. (Testing the capacity of the compiler to perform
 // SIMD ops at compile-time would be interesting as well, but that's for another test)
-float __attribute__((aligned(16))) arr_[5] = { 1.f, 2.f, 3.f, 4.f, 5.f };
+float arr_[9];
 float *uarr_ = arr_+1; // Create an unaligned address to test unaligned loads.
-float __attribute__((aligned(16))) arr2_[5] = { 1.f, 2.f, 3.f, 4.f, 5.f }; // A target for testing stores.
+float arr2_[9]; // A target for testing aligned stores.
 float *uarr2_ = arr2_+1; // An unaligned address for testing unaligned stores.
 __m128 a_ = _mm_set_ps(8.f, 6.f, 4.f, 2.f);
 __m128 b_ = _mm_set_ps(1.f, 2.f, 3.f, 4.f);
 __m128 c_ = _mm_set_ps(1.5f, 2.5f, 3.5f, 4.5f);
 __m128 d_ = _mm_set_ps(8.5f, 6.5f, 4.5f, 2.5f);
-uint32_t i1_[4] = { 0xFFEDCBA9, 0x87654321, 0x0FEDCBA9, 0x87654321 };
-uint32_t i2_[4] = { 0x13579ACE, 0xF02468BD, 0xFFEEDDCC, 0xBBAA9988 };
-__m128 nan1_ = _mm_set_ps(NAN, 0,  0, NAN);
+__m128 nan1_ = _mm_set_ps(NAN, 0,  0, NAN); // All combinations pairwise with nan1 & nan2.
 __m128 nan2_ = _mm_set_ps(NAN, NAN, 0, 0);
 
 bool always_true() { return time(NULL) != 0; } // This function always returns true, but the compiler should not know this.
 
 // Accessors to the test data in a way that the compiler can't optimize at compile-time.
-__attribute__((noinline)) float *get_arr() { return always_true() ? arr_ : 0; }
-__attribute__((noinline)) float *get_uarr() { return always_true() ? uarr_ : 0; }
-__attribute__((noinline)) float *get_arr2() { return always_true() ? arr2_ : 0; }
-__attribute__((noinline)) float *get_uarr2() { return always_true() ? uarr2_ : 0; }
+__attribute__((noinline)) float *get_arr()
+{
+	float *a = (float*)(((uintptr_t)arr_ + 0xF) & ~0xF);
+	a[0] = 1.f;
+	a[1] = 2.f;
+	a[2] = 3.f;
+	a[3] = 4.f;
+	a[4] = 5.f;
+
+	return always_true() ? a : 0;
+}
+
+__attribute__((noinline)) float *get_uarr() { return always_true() ? get_arr()+1 : 0; }
+__attribute__((noinline)) float *get_arr2() { return always_true() ? (float*)(((uintptr_t)arr2_ + 0xF) & ~0xF) : 0; }
+__attribute__((noinline)) float *get_uarr2() { return always_true() ? get_arr2()+1 : 0; }
 __attribute__((noinline)) __m128 get_a() { return always_true() ? a_ : __m128(); }
 __attribute__((noinline)) __m128 get_b() { return always_true() ? b_ : __m128(); }
 __attribute__((noinline)) __m128 get_c() { return always_true() ? c_ : __m128(); }
 __attribute__((noinline)) __m128 get_d() { return always_true() ? d_ : __m128(); }
-__attribute__((noinline)) __m128 get_i1() { return always_true() ? _mm_loadu_ps((float*)i1_) : __m128(); }
-__attribute__((noinline)) __m128 get_i2() { return always_true() ? _mm_loadu_ps((float*)i2_) : __m128(); }
+__attribute__((noinline)) __m128 get_i1() { return always_true() ? _mm_set_ps(ucastf(0x87654321), ucastf(0x0FEDCBA9), ucastf(0x87654321), ucastf(0xFFEDCBA9)) : __m128(); }
+__attribute__((noinline)) __m128 get_i2() { return always_true() ? _mm_set_ps(ucastf(0xBBAA9988), ucastf(0xFFEEDDCC), ucastf(0xF02468BD), ucastf(0x13579ACE)) : __m128(); }
 __attribute__((noinline)) __m128 get_nan1() { return always_true() ? nan1_ : __m128(); }
 __attribute__((noinline)) __m128 get_nan2() { return always_true() ? nan2_ : __m128(); }
 
@@ -90,7 +100,7 @@ int main()
 	assert(((uintptr_t)arr2 & 0xF) == 0); // arr must be aligned by 16.
 	assert(((uintptr_t)uarr2 & 0xF) != 0); // uarr must be unaligned.
 
-    // Test that aeq itself works and does not trivially return true on everything.
+	// Test that aeq itself works and does not trivially return true on everything.
 	assert(aeq(_mm_load_ps(arr), 4.f, 3.f, 2.f, 0.f, false) == false);
 
 	// SSE1 Load instructions:	
@@ -134,7 +144,7 @@ int main()
 	aeq(_mm_add_ps(a, b), 9.f, 8.f, 7.f, 6.f); // 4-wide add.
 	aeq(_mm_add_ss(a, b), 8.f, 6.f, 4.f, 6.f); // Add lowest element, preserve three highest unchanged from a.
 	aeq(_mm_div_ps(a, _mm_set_ps(2.f, 3.f, 8.f, 2.f)), 4.f, 2.f, 0.5f, 1.f); // 4-wide div.
-	aeq(_mm_div_ps(a, _mm_set_ps(2.f, 3.f, 8.f, 8.f)), 4.f, 2.f, 0.5f, 0.25f); // Div lowest element, preserve three highest unchanged from a.
+	aeq(_mm_div_ss(a, _mm_set_ps(2.f, 3.f, 8.f, 8.f)), 8.f, 6.f, 4.f, 0.25f); // Div lowest element, preserve three highest unchanged from a.
 	aeq(_mm_mul_ps(a, b), 8.f, 12.f, 12.f, 8.f); // 4-wide mul.
 	aeq(_mm_mul_ss(a, b), 8.f, 6.f, 4.f, 8.f); // Mul lowest element, preserve three highest unchanged from a.
 	// TODO: _mm_mulhi_pu16
@@ -233,7 +243,6 @@ int main()
 	// TODO: _mm_cvttps_pi32
 	// TODO: _mm_cvttss_si32
 	// TODO: _mm_cvttss_si64
-
 
 	// SSE1 General support:
 	unsigned int mask = _MM_GET_EXCEPTION_MASK();
