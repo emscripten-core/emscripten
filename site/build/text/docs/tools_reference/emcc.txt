@@ -255,6 +255,9 @@ Options that are modified or new in *emcc* are listed below:
      them. You should only use it for small files, in small numbers.
      Instead use "--preload-file", which emits efficient binary data.
 
+   For more information about the "--embed-file" options, see
+   *Packaging Files*.
+
 "--preload-file <name>"
    Specify a file to preload before running the compiled code
    asynchronously. The path is relative to the current directory at
@@ -271,12 +274,13 @@ Options that are modified or new in *emcc* are listed below:
 
    *emcc* runs tools/file_packager.py to do the actual packaging of
    embedded and preloaded files. You can run the file packager
-   yourself if you want (see the documentation inside that file). You
-   should then put the output of the file packager in an emcc "--pre-
-   js", so that it executes before your main compiled code.
+   yourself if you want (see *Packaging using the file packager
+   tool*). You should then put the output of the file packager in an
+   emcc "--pre-js", so that it executes before your main compiled
+   code.
 
-   For more information about the "--preload-file" options, see *File
-   System Overview (wiki-import)*.
+   For more information about the "--preload-file" options, see
+   *Packaging Files*.
 
 "--exclude-file <name>"
    Files and directories to be excluded from *--embed-file* and
@@ -356,7 +360,7 @@ Options that are modified or new in *emcc* are listed below:
         has the suffix ".js".
 
 "--bind"
-   Compiles the source code using the *Embind (under-construction)*
+   Compiles the source code using the *Embind (ready-for-review)*
    bindings to connect C/C++ and JavaScript.
 
 "--ignore-dynamic-linking"

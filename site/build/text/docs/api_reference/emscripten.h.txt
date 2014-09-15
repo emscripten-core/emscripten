@@ -19,7 +19,7 @@ Table of Contents
 
 * Browser Execution Environment
 
-* Emscripten File System API
+* Emscripten Asynchronous File System API
 
 * Compiling
 
@@ -446,6 +446,16 @@ void emscripten_force_exit(int status)
       * **status** (*int*) -- The same as for the *libc* function
         exit().
 
+double emscripten_get_device_pixel_ratio(void)
+
+   Returns the value of "window.devicePixelRatio".
+
+   Return type:
+      double
+
+   Returns:
+      The pixel ratio or 1.0 if not supported.
+
 void emscripten_set_canvas_size(int width, int height)
 
    Resizes the pixel width and height of the "<canvas>" element on the
@@ -496,8 +506,8 @@ float emscripten_random(void)
       A random number.
 
 
-Emscripten File System API
-==========================
+Emscripten Asynchronous File System API
+=======================================
 
 
 Typedefs
