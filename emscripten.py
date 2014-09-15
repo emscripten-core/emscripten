@@ -917,6 +917,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # Add named globals
     named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])
+    if 'objcSections' in metadata:
+      named_globals += '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['objcSections'].iteritems()])
     pre = pre.replace('// === Body ===', '// === Body ===\n' + named_globals + '\n')
 
     #if DEBUG: outfile.write('// pre\n')
