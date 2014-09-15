@@ -2785,7 +2785,8 @@ LibraryManager.library = {
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
     // NOTE: The dir and prefix arguments are for internal use only.
-    var folder = FS.findObject(dir || '/tmp');
+    dir = dir || '/tmp';
+    var folder = FS.findObject(dir);
     if (!folder || !folder.isFolder) {
       dir = '/tmp';
       folder = FS.findObject(dir);
@@ -2798,6 +2799,7 @@ LibraryManager.library = {
     var result = dir + '/' + name;
     if (!_tmpnam.buffer) _tmpnam.buffer = _malloc(256);
     if (!s) s = _tmpnam.buffer;
+    assert(result.length <= 255);
     writeAsciiToMemory(result, s);
     return s;
   },
@@ -2812,7 +2814,7 @@ LibraryManager.library = {
     // FILE *tmpfile(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpfile.html
     // TODO: Delete the created file on closing.
-    if (_tmpfile.mode) {
+    if (!_tmpfile.mode) {
       _tmpfile.mode = allocate(intArrayFromString('w+'), 'i8', ALLOC_NORMAL);
     }
     return _fopen(_tmpnam(0), _tmpfile.mode);

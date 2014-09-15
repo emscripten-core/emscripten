@@ -122,6 +122,16 @@ int main()
   assert(fopen(tname1, "r"));
   assert(fopen(tname2, "r"));
   assert(!fopen(tname2+1, "r")); // sanity check that we can't open just anything
+
+  {
+    FILE* f = tmpfile();
+    assert(f);
+    fclose(f);
+
+    char* str = tmpnam(NULL);
+    assert(strncmp("/tmp/file", str, 9) == 0);
+  }
+
   printf("ok.\n");
 
   return 0;
