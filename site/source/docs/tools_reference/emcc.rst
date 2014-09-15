@@ -100,7 +100,9 @@ Options that are modified or new in *emcc* are listed below:
 	
 	- When compiling to bitcode, this is the same as in *Clang* and *gcc* (it adds debug information to the object files). 
 	- When compiling from source to JavaScript or bitcode to JavaScript, it is equivalent to ``-g3`` (discards LLVM debug info including C/C++ line numbers, but otherwise keeps as much debug information as possible). Use ``-g4`` to get line number debugging information in JavaScript.
-	
+
+.. _emcc-gN: 
+
 ``-g<level>``
 	Controls how much debug information is kept when compiling from bitcode to JavaScript. Each of these levels builds on the previous:
 
@@ -108,24 +110,37 @@ Options that are modified or new in *emcc* are listed below:
 		- ``-g1``: Preserve (do not minify) whitespace.
 		- ``-g2``: Preserve function names.
 		- ``-g3``: Preserve variable names.
+		
+		.. _emcc-g4: 
+
 		- ``-g4``: Preserve LLVM debug information. If ``-g`` was used when compiling the C/C++ sources, show line number debug comments, and generate source maps. This is the highest level of debuggability. 
 		
 			.. note:: This may make compilation at optimization level ``-O1`` and above significantly slower, because JavaScript optimization will be limited to one core (default in ``-O0``). 
 
-``-profiling``
+.. _emcc-profiling: 
+
+``--profiling``
 	Use reasonable defaults when emitting JavaScript to make the build useful for profiling. This sets ``-g2`` (preserve function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
+
+``--tracing``
+  Enable the Emscripten Tracing API.
+
+.. _emcc-emit-symbol-map:
 
 ``--emit-symbol-map``
 	Save a map file between the minified global names and the original function names. This allows you, for example, to reconstruct meaningful stack traces. 
 	
 	.. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
 	
+.. _emcc-js-opts: 
 	
 ``--js-opts <level>``
 	Enables JavaScript optimizations. Possible ``level`` values are:
 	 
 		- ``0``: Prevent JavaScript optimizer from running.
 		- ``1``: Use JavaScript optimizer (default).
+
+.. _emcc-llvm-opts: 
 		
 ``--llvm-opts <level>``
 	Enables LLVM optimizations. Possible ``level`` values are:
@@ -138,13 +153,15 @@ Options that are modified or new in *emcc* are listed below:
 	You can also specify arbitrary LLVM options, e.g.::
 	
 		--llvm-opts "['-O3', '-somethingelse']"
-							 
+
+.. _emcc-llvm-lto: 
+		
 ``--llvm-lto <level>``
 	Enables LLVM link-time optimizations (LTO). Possible ``level`` values are: 
 	 
 		- ``0``: No LLVM LTO (default).
 		- ``1``: LLVM LTO is performed.
-		- ``2``: Combine all the bitcode and run LLVM opt ``-O3`` on it. This optimizes across modules, but is not the same as normal LTO.
+		- ``2``: Combine all the bitcode and run LLVM opt on it using the specified ``--llvm-opts``. This optimizes across modules, but is not the same as normal LTO.
 		- ``3``: Does level ``2`` and then level ``1``.
 		
 	.. note::
@@ -166,11 +183,14 @@ Options that are modified or new in *emcc* are listed below:
 		- If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
 		- Closure is only run if JavaScript opts are being done (``-O2`` or above, or ``--js-opts 1``).
 
+
 .. _emcc-pre-js:
 		
 ``--pre-js <file>``
 	Specify a file whose contents are added before the generated code. This is done *before* optimization, so it will be minified properly if the *Closure Compiler* is run.
-	 
+
+.. _emcc-post-js:
+	
 ``--post-js <file>``
 	Specify a file whose contents are added after the generated code. This is done *before* optimization, so it will be minified properly if the *Closure Compiler* is run.
 	
@@ -183,6 +203,8 @@ Options that are modified or new in *emcc* are listed below:
 
 	.. note:: Embedding files is much less efficient than :ref:`preloading <emcc-preload-file>` them. You should only use it for small files, in small numbers. Instead use ``--preload-file``, which emits efficient binary data.
 	
+	For more information about the ``--embed-file`` options, see :ref:`packaging-files`.
+	
 .. _emcc-preload-file:
 	
 ``--preload-file <name>``
@@ -192,13 +214,18 @@ Options that are modified or new in *emcc* are listed below:
 	
 	.. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page. 
 	 
-	*emcc* runs `tools/file_packager.py <https://github.com/kripken/emscripten/blob/master/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see the documentation inside that file). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
+	*emcc* runs `tools/file_packager.py <https://github.com/kripken/emscripten/blob/master/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
 	 
-	For more information about the ``--preload-file`` options, see :ref:`Filesystem-Guide`.
+	For more information about the ``--preload-file`` options, see :ref:`packaging-files`.
+
+	
+.. _emcc-exclude-file:
 	
 ``--exclude-file <name>``
 	Files and directories to be excluded from :ref:`--embed-file <emcc-embed-file>` and :ref:`--preload-file <emcc-preload-file>`. Wildcards (*) are supported.
-	 
+
+.. _emcc-shell-file:
+	
 ``--shell-file <path>``
 	The path name to a skeleton HTML file used when generating HTML output. The shell file used needs to have this token inside it: ``{{{ SCRIPT }}}``.
                            
@@ -221,6 +248,7 @@ Options that are modified or new in *emcc* are listed below:
 	Compression only works when generating HTML. When compression is on, all files specified to be preloaded are compressed in one big archive, which is given the same name as the output HTML but with suffix **.data.compress**.
 
 	
+.. _emcc-minify:
 						   
 ``--minify 0``
 	Identical to ``-g1``.
@@ -290,10 +318,14 @@ Options that are modified or new in *emcc* are listed below:
 	 
 ``--proxy-to-worker``
 	Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
-	 
+
+.. _emcc-emrun:
+	
 ``--emrun``
 	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*.     
-      
+
+.. _emcc-config:
+	
 ``--em-config``
 	Specifies the location of the **.emscripten** configuration file for the current compiler run. If not specified, the environment variable ``EM_CONFIG`` is first read for this location. If neither are specified, the default location **~/.emscripten** is used.
 	 
@@ -322,10 +354,13 @@ Options that are modified or new in *emcc* are listed below:
 
 	.. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file. 
 
+.. _emcc-c:
+
 ``-c``
 	Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.
 
 	
+.. _emcc-environment-variables:
 
 Environment variables
 =====================
@@ -346,3 +381,13 @@ Environment variables
 Search for 'os.environ' in `emcc <https://github.com/kripken/emscripten/blob/master/emcc>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 
 
+.. todo:: In case we choose to document them properly in future, below are some of the :ref:`-s <emcc-s-option-value>` options that are documented in the site are listed below. Note that this is not exhaustive by any means:
+
+	- ``-s FULL_ES2=1``
+	- ``-s LEGACY_GL_EMULATION=1``:
+	
+		- ``-s GL_UNSAFE_OPTS=1`` 
+		- ``-s GL_FFP_ONLY=1`` 
+		
+	- 
+	

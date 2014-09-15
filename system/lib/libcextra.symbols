@@ -39,6 +39,8 @@
          T getopt
          T getopt_long
          T getopt_long_only
+         T glob
+         T globfree
          T iconv
          T iconv_close
          T iconv_open

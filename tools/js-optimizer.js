@@ -5697,6 +5697,7 @@ function asmLastOpts(ast) {
       var stats = getStatements(node);
       if (stats) statsStack.pop();
     });
+    // convert  { singleton }  into  singleton
     traverse(fun, function(node, type) {
       if (type === 'block' && node[1] && node[1].length === 1) {
         return node[1][0];
@@ -5733,6 +5734,7 @@ var passes = {
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
   pointerMasking: pointerMasking,
+  asmLastOpts: asmLastOpts,
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },
@@ -5763,6 +5765,8 @@ if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 //printErr(JSON.stringify(extraInfo));
 
 
+var emitAst = true;
+
 arguments_.slice(1).forEach(function(arg) {
   //traverse(ast, function(node) {
   //  if (node[0] === 'defun' && node[1] === 'copyTempFloat') printErr('pre ' + JSON.stringify(node, null, ' '));
@@ -5775,20 +5779,24 @@ arguments_.slice(1).forEach(function(arg) {
   //});
 });
 if (asm && last) {
-  asmLastOpts(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
   prepDotZero(ast);
 }
-var js = astToSrc(ast, minifyWhitespace), old;
-if (asm && last) {
-  js = fixDotZero(js);
-}
 
-// remove unneeded newlines+spaces, and print
-do {
-  old = js;
-  js = js.replace(/\n *\n/g, '\n');
-} while (js != old);
-print(js);
-print('\n');
-print(suffix);
+if (emitAst) {
+  var js = astToSrc(ast, minifyWhitespace), old;
+  if (asm && last) {
+    js = fixDotZero(js);
+  }
+
+  // remove unneeded newlines+spaces, and print
+  do {
+    old = js;
+    js = js.replace(/\n *\n/g, '\n');
+  } while (js != old);
+  print(js);
+  print('\n');
+  print(suffix);
+} else {
+  print('/* not printing ast */');
+}
 

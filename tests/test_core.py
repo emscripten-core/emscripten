@@ -1546,6 +1546,13 @@ int main(int argc, char **argv)
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
+  def test_exceptions_primary(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    test_path = path_from_root('tests', 'core', 'test_exceptions_primary')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.do_run_from_file(src, output)
+
   def test_bad_typeid(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
@@ -2689,13 +2696,9 @@ The current type of b is: 9
     self.do_run(src, 'success', force_c=True)
 
   def test_time(self):
-    # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
     src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
-    expected2 = open(path_from_root('tests', 'time', 'output2.txt'), 'r').read()
-    self.do_run(src, [expected, expected2],
-                 extra_emscripten_args=['-H', 'libc/time.h'])
-                 #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
+    self.do_run(src, expected);
 
   def test_timeb(self):
     # Confirms they are called in reverse order
@@ -4629,10 +4632,21 @@ def process(filename):
       Building.COMPILER_TEST_OPTS += ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  def test_posixtime(self):
+    test_path = path_from_root('tests', 'core', 'test_posixtime')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.banned_js_engines = [V8_ENGINE] # v8 lacks monotonic time
+    self.do_run_from_file(src, output)
+
+    if V8_ENGINE in JS_ENGINES:
+      self.banned_js_engines = filter(lambda engine: engine != V8_ENGINE, JS_ENGINES)
+      self.do_run_from_file(src, test_path + '_no_monotonic.out')
+    else:
+      print '(no v8, skipping no-monotonic case)'
+
   def test_uname(self):
     test_path = path_from_root('tests', 'core', 'test_uname')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.do_run_from_file(src, output)
 
   def test_env(self):
@@ -5242,6 +5256,8 @@ def process(filename):
     if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
+    if '-O' not in str(self.emcc_args):
+      self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
 
     Settings.CORRECT_SIGNS = 1
     Settings.CORRECT_OVERFLOWS = 0
@@ -6019,6 +6035,15 @@ def process(filename):
     if Settings.ASM_JS: return self.skip('spidermonkey has stack trace issues')
 
     test_path = path_from_root('tests', 'core', 'test_demangle_stacks')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
+  def test_tracing(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    Building.COMPILER_TEST_OPTS += ['--tracing']
+
+    test_path = path_from_root('tests', 'core', 'test_tracing')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)

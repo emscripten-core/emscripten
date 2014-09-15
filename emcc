@@ -391,6 +391,7 @@ try:
   debug_level = 0
   requested_debug = ''
   profiling = False
+  tracing = False
   emit_symbol_map = False
   js_opts = None
   llvm_opts = None
@@ -525,10 +526,16 @@ try:
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
       requested_debug = newargs[i]
       newargs[i] = ''
-    elif newargs[i] == '-profiling':
+    elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       debug_level = 2
       profiling = True
       newargs[i] = ''
+    elif newargs[i] == '--tracing':
+      tracing = True
+      newargs[i] = ''
+      newargs.append('-D__EMSCRIPTEN_TRACING__=1')
+      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       emit_symbol_map = True
       newargs[i] = ''
@@ -960,6 +967,7 @@ try:
     shared.Settings.EXPORT_ALL = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
+    shared.Settings.FINALIZE_ASM_JS = 0 # side modules are not finalized until after relocation
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
     memory_init_file = False # memory init file is not supported with module linking
@@ -1188,8 +1196,8 @@ try:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
 
     if llvm_lto >= 2:
-      logging.debug('running LLVM opt -O3 as pre-LTO')
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-O3'])
+      logging.debug('running LLVM opts as pre-LTO')
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
       if DEBUG: save_intermediate('opt', 'bc')
 
     # If we can LTO, do it before dce, since it opens up dce opportunities
@@ -1436,7 +1444,9 @@ try:
       elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not closure:
         js_optimizer_queue += ['cleanup']
 
-    if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
+      js_optimizer_queue += ['asmLastOpts']
+
+    if shared.Settings.FINALIZE_ASM_JS: js_optimizer_queue += ['last']
 
     flush_js_optimizer_queue()
 

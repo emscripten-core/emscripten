@@ -1,12 +1,6 @@
 #include <stdio.h>
 #include <xmmintrin.h>
 
-static __inline__ __m128 __attribute__((__always_inline__))
-_mm_load_ps(const float *__p)
-{
-  return *(__m128*)__p;
-}
-
 float simdAverage(float *src, int len) {
   __m128 sumx4 = _mm_setzero_ps();
   for (int i = 0; i < len; i += 4) {

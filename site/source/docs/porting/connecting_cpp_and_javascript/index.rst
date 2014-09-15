@@ -8,7 +8,7 @@ Emscripten provides various options for connecting "normal" JavaScript and compi
 
 The topic :ref:`Interacting-with-code` provides an overview of all the methods. The other two topics provide additional detail on the :ref:`Embind` and :ref:`WebIDL-Binder` tools.
 
-.. note:: For information on how compiled code interacts with the browser environment, see :ref:`emscripten-runtime-environment`. For file system-related manners, see the :ref:`Filesystem-Guide`. 
+.. note:: For information on how compiled code interacts with the browser environment, see :ref:`emscripten-runtime-environment`. For file system-related manners, see the :ref:`file-system-overview`. 
 
 .. toctree::
 	:maxdepth: 1

@@ -436,6 +436,39 @@ var LibrarySDL = {
         SDL.screen = null;
       }
     },
+    blitSurface__deps: ["SDL_LockSurface"],
+    blitSurface: function(src, srcrect, dst, dstrect, scale) {
+      var srcData = SDL.surfaces[src];
+      var dstData = SDL.surfaces[dst];
+      var sr, dr;
+      if (srcrect) {
+        sr = SDL.loadRect(srcrect);
+      } else {
+        sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
+      }
+      if (dstrect) {
+        dr = SDL.loadRect(dstrect);
+      } else {
+        dr = { x: 0, y: 0, w: -1, h: -1 };
+      }
+      var oldAlpha = dstData.ctx.globalAlpha;
+      dstData.ctx.globalAlpha = srcData.alpha/255;
+      var blitw, blitr;
+      if (scale) {
+        blitw = dr.w; blith = dr.h;
+      } else {
+        blitw = sr.w; blith = sr.h;
+      }
+      dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, blitw, blith);
+      dstData.ctx.globalAlpha = oldAlpha;
+      if (dst != SDL.screen) {
+        // XXX As in IMG_Load, for compatibility we write out |pixels|
+        Runtime.warnOnce('WARNING: copying canvas data to memory for compatibility');
+        _SDL_LockSurface(dst);
+        dstData.locked--; // The surface is not actually locked in this hack
+      }
+      return 0;
+    },
 
     // the browser sends out touchstart events with the whole group of touches
     // even if we received a previous touchstart for a specific touch identifier.
@@ -702,6 +735,21 @@ var LibrarySDL = {
       return;
     },
 
+    lookupKeyCodeForEvent: function(event) {
+        var code = event.keyCode;
+        if (code >= 65 && code <= 90) {
+          code += 32; // make lowercase for SDL
+        } else {
+          code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
+          // a right key, add 4 to get the right key SDL key code.
+          if (event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
+            code += 4;
+          }
+        }
+        return code;
+    },
+
     handleEvent: function(event) {
       if (event.handled) return;
       event.handled = true;
@@ -713,18 +761,15 @@ var LibrarySDL = {
         }
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          var code = event.keyCode;
-          if (code >= 65 && code <= 90) {
-            code += 32; // make lowercase for SDL
-          } else {
-            code = SDL.keyCodes[event.keyCode] || event.keyCode;
-          }
+          var code = SDL.lookupKeyCodeForEvent(event);
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
-          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
-
+          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 : 0) | // KMOD_LCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 : 0) | // KMOD_LSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 : 0) | // KMOD_LALT
+            ({{{ makeGetValue('SDL.keyboardState', '1252', 'i8') }}} ? 0x0080 : 0) | // KMOD_RCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '1253', 'i8') }}} ? 0x0002 : 0) | // KMOD_RSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '1254', 'i8') }}} ? 0x0200 : 0); //  KMOD_RALT
           if (down) {
             SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
           } else {
@@ -793,12 +838,7 @@ var LibrarySDL = {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           //Module.print('Received key event: ' + event.keyCode);
-          var key = event.keyCode;
-          if (key >= 65 && key <= 90) {
-            key += 32; // make lowercase for SDL
-          } else {
-            key = SDL.keyCodes[event.keyCode] || event.keyCode;
-          }
+          var key = SDL.lookupKeyCodeForEvent(event);
           var scan;
           if (key >= 1024) {
             scan = key - 1024;
@@ -1656,40 +1696,21 @@ var LibrarySDL = {
     if (surf) SDL.freeSurface(surf);
   },
 
-  SDL_UpperBlit__deps: ['SDL_LockSurface'],
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
-    var srcData = SDL.surfaces[src];
-    var dstData = SDL.surfaces[dst];
-    var sr, dr;
-    if (srcrect) {
-      sr = SDL.loadRect(srcrect);
-    } else {
-      sr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
-    }
-    if (dstrect) {
-      dr = SDL.loadRect(dstrect);
-    } else {
-      dr = { x: 0, y: 0, w: -1, h: -1 };
-    }
-    var oldAlpha = dstData.ctx.globalAlpha;
-    dstData.ctx.globalAlpha = srcData.alpha/255;
-    dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, sr.w, sr.h);
-    dstData.ctx.globalAlpha = oldAlpha;
-    if (dst != SDL.screen) {
-      // XXX As in IMG_Load, for compatibility we write out |pixels|
-      Runtime.warnOnce('WARNING: copying canvas data to memory for compatibility');
-      _SDL_LockSurface(dst);
-      dstData.locked--; // The surface is not actually locked in this hack
-    }
-    return 0;
+    return SDL.blitSurface(src, srcrect, dst, dstrect, false);
+  },
+
+  SDL_UpperBlitScaled: function(src, srcrect, dst, dstrect) {
+    return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
 
   SDL_LowerBlit: 'SDL_UpperBlit',
+  SDL_LowerBlitScaled: 'SDL_UpperBlitScaled',
 
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    
+
     if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
       //in SDL_HWPALETTE color is index (0..255)
       //so we should translate 1 byte value to
@@ -1706,9 +1727,12 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return _SDL_UpperBlit(src, srcrect, dst, dstrect);
+    return SDL.blitSurface(src, srcrect, dst, dstrect, false);
+  },
+
+  SDL_BlitScaled: function(src, srcrect, dst, dstrect) {
+    return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
 
   zoomSurface: function(src, x, y, smooth) {

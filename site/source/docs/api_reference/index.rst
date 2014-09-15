@@ -27,6 +27,9 @@ This section lists Emscripten's public API, organised by header file. At a very 
 - :ref:`bind-h`: 
 	Embind API for binding C++ functions and classes so that they can be called from JavaScript in a natural way.
 
+- :ref:`trace-h`:
+  A tracing API for doing memory usage analysis.
+
 - :ref:`api-reference-advanced-apis`: 
 	APIs for advanced users/core developers.
 
@@ -41,6 +44,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
    module
    val.h
    bind.h
+   trace.h
    advanced-apis
 
 

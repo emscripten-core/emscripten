@@ -15,9 +15,21 @@ _mm_set1_ps(float w)
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
+_mm_set_ps1(float w)
+{
+  return _mm_set1_ps(w);
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
 _mm_setzero_ps(void)
 {
   return (__m128){ 0.0, 0.0, 0.0, 0.0 };
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_load_ps(const float *__P)
+{
+  return *(__m128 *)__P;
 }
 
 static __inline__ void __attribute__((__always_inline__))
@@ -74,7 +86,21 @@ _mm_sqrt_ps(__m128 a)
   return emscripten_float32x4_sqrt(a);
 }
 
-/* TODO: shuffles */
+/* TODO: more shuffles */
+
+// This is defined as a macro because __builtin_shufflevector requires its
+// mask argument to be a compile-time constant.
+#define _mm_shuffle_ps(a, b, mask) __extension__ ({ \
+  __m128 __a = (a); \
+  __m128 __b = (b); \
+  (__m128)__builtin_shufflevector(__a, __b, \
+                                 (((mask) >> 0) & 0x3) + 0, \
+                                 (((mask) >> 2) & 0x3) + 0, \
+                                 (((mask) >> 4) & 0x3) + 4, \
+                                 (((mask) >> 6) & 0x3) + 4); \
+})
+
+#define _MM_SHUFFLE(w, z, y, x) (((w) << 6) | ((z) << 4) | ((y) << 2) | (x))
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmplt_ps(__m128 a, __m128 b)
@@ -104,6 +130,18 @@ static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpgt_ps(__m128 a, __m128 b)
 {
   return emscripten_float32x4_greaterThan(a, b);
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnlt_ps(__m128 a, __m128 b)
+{
+  return emscripten_float32x4_not(emscripten_float32x4_lessThan(a, b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnle_ps(__m128 a, __m128 b)
+{
+  return emscripten_float32x4_not(emscripten_float32x4_lessThanOrEqual(a, b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))

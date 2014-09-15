@@ -1,0 +1,17 @@
+Tests for clockid_t=0
+-----------------
+clock_getres resolution OK
+clock_gettime OK
+clock_settime failed with EPERM (OK)
+
+Tests for clockid_t=1
+-----------------
+clock_getres failed
+clock_gettime failed
+clock_settime failed with EINVAL (OK)
+
+Tests for clockid_t=42
+-----------------
+clock_gettime failed with EINVAL (OK)
+clock_getres failed with EINVAL (OK)
+clock_settime failed with EINVAL (OK)

@@ -1,19 +1,75 @@
 .. _Synchronous-Virtual-XHR-Backed-File-System-Usage:
 
-==============================================================
-Synchronous Virtual XHR Backed File System Usage (wiki-import)
-==============================================================
+================================================
+Synchronous Virtual XHR Backed File System Usage
+================================================
 
-Emscripten supports lazily loading binary data from HTTP servers using XHR's (ala AJAX but no XML or JSON).
+Emscripten supports lazy loading of binary data from HTTP servers using :term:`XHR`. This functionality can be used to create a backend for synchronous file access from compiled code.
 
-**Restriction: only possible in Web Workers** (due to browser limitations)
+The backend can improve start up time as the whole file system does not need to be preloaded before compiled code is run. It can also be very efficient if the web server supports `byte serving <http://en.wikipedia.org/wiki/Byte_serving>`_ — in this case Emscripten can just read the parts of files that are actually needed. 
 
-It is recommended to use a web server with `byte serving <http://en.wikipedia.org/wiki/Byte_serving>`_ support. This will enable Emscripten to only load the parts of the file that are actually read. If it is not available, the runtime will of course be forced to load the whole file, even if you only read a single byte from a 100 MB file.
+.. warning:: This mechanism is only possible in `Web Workers <https://developer.mozilla.org/en/docs/Web/Guide/Performance/Using_web_workers>`_ (due to browser limitations).
 
-Instructions for use
-====================
+.. note:: If byte serving is not supported then Emscripten will have to load the whole file (however big) even if a single byte is read.
 
-#. You will need a page that spawns the web worker. See the page inlined in ``tests/runner.py/test_chunked_synchronous_xhr``. The ``prejs`` we use below will cause the program running in the Web Worker to ``postMessage`` it's stdout back. If you use that solution, the mother page should probably contain your handwritten glue code (not Emscriptened) to handle the stdout data.
-#. The tests use **checksummer.c** as the actual Emscriptened program. As you can see, it is simply a vanilla C program using ``fopen``/``fread``/``fclose`` and no Emscripten specific code at all.
-#. You will need at ``prejs`` that sets up the mapping between the file path in your equivalent of **checksummer.c** and the server to download from. Remember CORS! The test case also contains an HTTP server that shows some CORS headers that might need to be set. Of course, if the resources are hosted from the same domain Emscripten runs from, there is no issue.
 
+Test code
+=========
+
+An example of how to implement a synchronous virtual XHR backed file system is provided in the test code at `tests/test_browser.py <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L1266>`_ (see ``test_chunked_synchronous_xhr``). The test case also contains an HTTP server (see `test_chunked_synchronous_xhr_server <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L14>`_) showing CORS headers that might need to be set (if the resources are hosted from the same domain Emscripten runs from, there is no issue).
+
+The tests use `checksummer.c <https://github.com/kripken/emscripten/blob/master/tests/checksummer.c>`_ as the Emscripten-compiled program. This is simply a vanilla C program using synchronous *libc* file system calls like ``fopen()``, ``fread()``, ``fclose()`` etc.
+
+JavaScript code is added (using *emcc*'s :ref:`pre-js <emcc-pre-js>` option) to map the file system calls in **checksummer.c** to a file in the virtual file system. This file is *created* early in Emscripten initialisation using :js:func:`FS.createLazyFile`, but only loaded with content from the server when the file is first accessed by compiled code. The added JavaScript code also sets up communication between the web worker and the main thread. 
+
+
+Instructions
+============
+
+#. 
+	You will need to add JavaScript to the generated code to map the file accessed by your compiled native code and the server. 
+	
+	The test code simply creates a file in the virtual file system using :js:func:`FS.createLazyFile` and sets the compiled code to use the same file (**/bigfile**):
+
+	.. include:: ../../../../../tests/test_browser.py
+		:literal:
+		:start-after: prejs_file.write(r"""
+		:end-before: var doTrace = true;
+		:code: javascript	
+
+	.. note::
+	
+		- The compiled test code (in this case) gets the file name from command line arguments — these are set in Emscripten using :js:attr:`Module.arguments`.
+		- The call to create the file is added to :js:attr:`Module.preInit`. This ensures that it is run before any compiled code.
+		- The additional JavaScript is added using *emcc*'s :ref:`prejs <emcc-pre-js>` option.
+
+#. 
+	The added JavaScript should also include code to allow the web worker to communicate with the original thread. 
+
+	The test code adds the following JavaScript to the web worker for this purpose. It uses ``postMessage()`` to send it's ``stdout`` back to the main thread. 
+
+	.. include:: ../../../../../tests/test_browser.py
+		:literal:
+		:start-after: var doTrace = true;
+		:end-before: """)
+		:code: javascript	
+		
+	.. note:: If you use the above solution, the parent page should probably contain handwritten glue code to handle the ``stdout`` data.
+	
+#. 
+	You will need a page that spawns the web worker. 
+	
+	The `test code <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L1266>`_ that does this is shown below:
+
+	.. include:: ../../../../../tests/test_browser.py
+		:literal:
+		:start-after: html_file.write(r"""
+		:end-before: html_file.close()
+		:code: html
+
+
+
+
+
+
+    

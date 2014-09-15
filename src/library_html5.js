@@ -197,7 +197,11 @@ var LibraryJSEvents = {
       JSEvents.registerOrRemoveHandler(eventHandler);
     },
 
-    fillMouseEventData: function(eventStruct, e) {
+    // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
+    // eventStruct: the structure to populate.
+    // e: The JS mouse event to read data from.
+    // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
+    fillMouseEventData: function(eventStruct, e, target) {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
@@ -220,6 +224,14 @@ var LibraryJSEvents = {
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, '0', 'i32') }}};
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
       }
+      if (target) {
+        var rect = (target === window) ? { left: 0, top: 0 } : target.getBoundingClientRect();
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};        
+      } else { // No specific target passed, return 0.
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
+      }
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
     },
@@ -228,9 +240,10 @@ var LibraryJSEvents = {
       if (!JSEvents.mouseEvent) {
         JSEvents.mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
       }
+      target = JSEvents.findEventTarget(target);
       var handlerFunc = function(event) {
         var e = event || window.event;
-        JSEvents.fillMouseEventData(JSEvents.mouseEvent, e);
+        JSEvents.fillMouseEventData(JSEvents.mouseEvent, e, target);
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.mouseEvent, userData]);
         if (shouldCancel) {
           e.preventDefault();
@@ -238,7 +251,7 @@ var LibraryJSEvents = {
       };
 
       var eventHandler = {
-        target: JSEvents.findEventTarget(target),
+        target: target,
         allowsDeferredCalls: eventTypeString != 'mousemove', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
@@ -254,10 +267,11 @@ var LibraryJSEvents = {
       if (!JSEvents.wheelEvent) {
         JSEvents.wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
       }
+      target = JSEvents.findEventTarget(target);
       // The DOM Level 3 events spec event 'wheel'
       var wheelHandlerFunc = function(event) {
         var e = event || window.event;
-        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
+        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'e["deltaY"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
@@ -270,7 +284,7 @@ var LibraryJSEvents = {
       // The 'mousewheel' event as implemented in Safari 6.0.5
       var mouseWheelHandlerFunc = function(event) {
         var e = event || window.event;
-        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
+        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-e["wheelDeltaY"] /* Invert to unify direction with the DOM Level 3 wheel event. */', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
@@ -282,7 +296,7 @@ var LibraryJSEvents = {
       };
 
       var eventHandler = {
-        target: JSEvents.findEventTarget(target),
+        target: target,
         allowsDeferredCalls: true,
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
@@ -699,6 +713,8 @@ var LibraryJSEvents = {
         JSEvents.touchEvent = _malloc( {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}} );
       }
 
+      target = JSEvents.findEventTarget(target);
+
       var handlerFunc = function(event) {
         var e = event || window.event;
 
@@ -723,7 +739,8 @@ var LibraryJSEvents = {
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
         ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
-        var rect = Module['canvas'].getBoundingClientRect();
+        var canvasRect = Module['canvas'] ? Module['canvas'].getBoundingClientRect() : undefined;
+        var targetRect = (target === window) ? { left: 0, top: 0 } : target.getBoundingClientRect();
         var numTouches = 0;
         for(var i in touches) {
           var t = touches[i];
@@ -736,8 +753,16 @@ var LibraryJSEvents = {
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - rect.left', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - rect.top', 'i32') }}};
+          if (canvasRect) {
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - canvasRect.left', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - canvasRect.top', 'i32') }}};
+          } else {
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, '0', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};            
+          }
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetX, 't.clientX - targetRect.left', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetY, 't.clientY - targetRect.top', 'i32') }}};
+          
           ptr += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
 
           if (++numTouches >= 32) {
@@ -753,7 +778,7 @@ var LibraryJSEvents = {
       };
 
       var eventHandler = {
-        target: JSEvents.findEventTarget(target),
+        target: target,
         allowsDeferredCalls: false, // XXX Currently disabled, see bug https://bugzilla.mozilla.org/show_bug.cgi?id=966493
         // Once the above bug is resolved, enable the following condition if possible:
         // allowsDeferredCalls: eventTypeString == 'touchstart',
@@ -1396,6 +1421,42 @@ var LibraryJSEvents = {
     // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
     if (!Module['ctx']) return true; // No context ~> lost context.
     return Module['ctx'].isContextLost();
+  },
+
+  emscripten_set_element_css_size: function(target, width, height) {
+    if (!target) {
+      target = Module['canvas'];
+    } else {
+      target = JSEvents.findEventTarget(target);
+    }
+
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    target.style.setProperty("width", width + "px");
+    target.style.setProperty("height", height + "px");
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_get_element_css_size: function(target, width, height) {
+    if (!target) {
+      target = Module['canvas'];
+    } else {
+      target = JSEvents.findEventTarget(target);
+    }
+
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    if (target.getBoundingClientRect) {
+      var rect = target.getBoundingClientRect();
+      {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
+      {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
+    } else {
+      {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
+      {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
+    }
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   }
 };
 

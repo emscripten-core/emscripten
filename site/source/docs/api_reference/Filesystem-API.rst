@@ -14,7 +14,9 @@ Emscripten predominantly compiles code that uses synchronous file I/O, so the ma
 
 File data in Emscripten is partitioned by mounted file systems. Several file systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` by default. Instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
 
-A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`Filesystem-Guide`. 
+The automatic tests in `tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L4110>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
+
+A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`. 
 
 
 .. _filesystem-api-persist-data:
@@ -604,7 +606,7 @@ File system API
 	:param parent: The parent folder, either as a path (e.g. `'/usr/lib'`) or an object previously returned from a `FS.createFolder()` or `FS.createPath()` call.
 	:type parent: string/object
 	:param string name: The name of the new file.
-	:param string url: In the browser, this is the URL whose contents will be returned when this file is accessed. In a command line engine, this will be the local (real) file system path from where the contents will be loaded. Note that writes to this file are virtual.
+	:param string url: In the browser, this is the URL whose contents will be returned when this file is accessed. In a command line engine like *node.js*, this will be the local (real) file system path from where the contents will be loaded. Note that writes to this file are virtual.
 	:param bool canRead: Whether the file should have read permissions set from the program's point of view.
 	:param bool canWrite: Whether the file should have write permissions set from the program's point of view.
 	:returns: A reference to the new file.
@@ -709,10 +711,10 @@ Paths
 	
 		- **parent** (*bool*) 
 			If true, stop resolving the path once the penultimate component is reached. 
-			For example, the path ``/foo/bar`` with ``{ parent: true }`` would return return an object representing ``/foo``. The default is ``false``.
+			For example, the path ``/foo/bar`` with ``{ parent: true }`` would return an object representing ``/foo``. The default is ``false``.
 		- **follow** (*bool*)
 			If true, follow the last component if it is a symlink. 
-			For example, consider a symlink ``/foo/symlink`` that links to ``/foo/notes.txt``. if ``{ follow: true }``, an object representing ``/foo/notes.txt`` would be returned. If ``{ follow: false }``, an object representing the symlink file would be returned. The default is ``false``.
+			For example, consider a symlink ``/foo/symlink`` that links to ``/foo/notes.txt``. If ``{ follow: true }``, an object representing ``/foo/notes.txt`` would be returned. If ``{ follow: false }``, an object representing the symlink file would be returned. The default is ``false``.
 
 	:returns: an object with the format:
 	

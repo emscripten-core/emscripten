@@ -11,6 +11,10 @@ Emscripten provides numerous methods to connect and interact between JavaScript 
 
 	- :ref:`Using ccall or cwrap <interacting-with-code-ccall-cwrap>`.
 	- :ref:`Using direct function calls <interacting-with-code-direct-function-calls>` (faster but more complicated).
+
+- Call compiled **C++** classes from JavaScript using bindings created with:
+
+	- :ref:`Embind or WebIDL-Binder<interacting-with-code-binding-cpp>`
 	
 - Call JavaScript functions from **C/C++**:
 
@@ -18,22 +22,16 @@ Emscripten provides numerous methods to connect and interact between JavaScript 
 	- :ref:`Using EM_ASM() <interacting-with-code-call-javascript-from-native>` (faster).
 	- :ref:`Using a C API implemented in JavaScript <implement-c-in-javascript>`.
 	- :ref:`As function pointers from C <interacting-with-code-call-function-pointers-from-c>`.
-	
-- Call compiled **C++** classes from JavaScript using bindings created with:
-
-	- :ref:`embind`.
-	- :ref:`WebIDL-Binder`. *Embind* also supports calling JavaScript from the C++.
+	- :ref:`Using the Embind val class <embind-val-guide>`.
 
 
 - :ref:`Access compiled code memory from JavaScript <interacting-with-code-access-memory>`.
 - :ref:`Affect execution behaviour <interacting-with-code-execution-behaviour>`.
 - :ref:`Access environment variables <interacting-with-code-environment-variables>`.
 
-The JavaScript methods for calling compiled C functions are efficient, but cannot be used with name-mangled C++ functions. Both :ref:`embind` or :ref:`WebIDL-Binder` create bindings between C++ and JavaScript: *Embind* allows binding in both directions, while the more-efficient *WebIDL Binder* only supports calling compiled code from JavaScript. 
+This article explains each of the methods listed above, and provides links to more detailed information.
 
-This article explains each of the methods listed above, or provides links to more detailed information.
-
-.. note:: For information on how compiled code interacts with the browser environment, see :ref:`emscripten-runtime-environment`. For file system related manners, see the :ref:`Filesystem-Guide`. 
+.. note:: For information on how compiled code interacts with the browser environment, see :ref:`emscripten-runtime-environment`. For file system related manners, see the :ref:`file-system-overview`. 
 
 
 .. _interacting-with-code-ccall-cwrap:
@@ -273,18 +271,22 @@ For example, to set an environment variable ``MY_FILE_ROOT`` to be ``"/usr/lib/t
 
     Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
 
+.. _interacting-with-code-binding-cpp:
 	
-WebIDL Binder
-=============
+Binding C++ and JavaScript — WebIDL Binder and Embind
+======================================================
 
-The :ref:`WebIDL-Binder` is a tool to make C++ classes usable from JavaScript, as JavaScript classes.
+The JavaScript methods for calling compiled C functions are efficient, but cannot be used with name-mangled C++ functions. 
 
-The WebIDL binder is a fairly simple and lightweight approach to binding C++ to call from JavaScript. It was used to port Bullet Physics to the Web in the `ammo.js <https://github.com/kripken/ammo.js/>`_ project.
+:ref:`WebIDL-Binder` and :ref:`embind` create bindings between C++ and JavaScript, allowing C++ code entities to be used in a natural manner from JavaScript. *Embind* additionally supports calling JavaScript code from C++.
 
+*Embind* can bind almost any C++ code, including sophisticated C++ constructs (e.g. ``shared_ptr`` and ``unique_ptr``). The *WebIDL Binder* supports C++ types that can be expressed in WebIDL. While this subset is smaller than supported by *Embind*, it is more than sufficient for most use cases — examples of projects that have been ported using the binder include the `Box2D <https://github.com/kripken/box2d.js/#box2djs>`_ and `Bullet <https://github.com/kripken/ammo.js/#ammojs>`_ physics engines.
 
+Both tools allow mapped items to be used from JavaScript in a similar way. However they operate at different levels, and use very different approaches for defining the binding:
 
-Embind
-======
+- *Embind* declares bindings within the C/C++ file.
+- *WebIDL-Binder* declares the binding in a separate file. This is run through the binder tool to create "glue" code that is then compiled with the project.
 
-:ref:`embind` is a tool to communicate between JavaScript and C++, in a C++-like manner. It is not as lightweight or optimizable as Emscripten JavaScript libraries or the :ref:`WebIDL-Binder`, but it does allow communication in both directions between JavaScript and the C code.
+.. note:: There is no strong evidence that one tool is "better" than the other in terms of performance (no comparative benchmarks exist), and both have been used successfully in a number of projects. The selection of one tool over the other will usually be based on which is the most natural fit for the project and its build system.
+
 

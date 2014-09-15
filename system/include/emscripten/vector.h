@@ -22,6 +22,7 @@ float32x4 emscripten_float32x4_and(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_andNot(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_or(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_xor(float32x4 a, float32x4 b);
+float32x4 emscripten_float32x4_not(float32x4 a);
 
 float32x4 emscripten_float32x4_fromInt32x4Bits(int32x4 a);
 float32x4 emscripten_float32x4_fromInt32x4(int32x4 a);

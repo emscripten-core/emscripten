@@ -162,7 +162,7 @@ function globalEval(x) {
   throw 'NO_DYNAMIC_EXECUTION was set, cannot eval';
 #endif
 }
-if (!Module['load'] == 'undefined' && Module['read']) {
+if (!Module['load'] && Module['read']) {
   Module['load'] = function load(f) {
     globalEval(Module['read'](f));
   };

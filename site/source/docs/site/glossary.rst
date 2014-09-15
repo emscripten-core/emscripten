@@ -1,19 +1,19 @@
 ===============================
-Glossary (under-construction) 
+Glossary (ready-for-review) 
 ===============================
 
 
 .. glossary::
 	:sorted:
 
-	xhr
-		**HamishW**
+	XHR
+		Contraction of ``XMLHttpRequest``. Emscripten uses XHRs for asynchronously downloading binary data. 
 		
 	LLVM backend
-		A (*Clang*) compiler backend that convert the LLVM Intermediate Representation (IR) to code for a specified machine or other languages. In the case of Emscripten, the specified target is JavaScript.
+		A (*Clang*) compiler backend that convert the :term:`LLVM` Intermediate Representation (IR) to code for a specified machine or other languages. In the case of Emscripten, the specified target is JavaScript.
 		
 	Minifying
-		**HamishW**
+		`Minification <http://en.wikipedia.org/wiki/Minification_(programming)>`_ in JavaScript, is the process of removing all unnecessary characters from source code without changing its functionality. A higher optimisation levels Emscripten uses the :term:`Closure Compiler` to minify Emscripten code.
 		
 	Relooping
 		Recreate high-level loop and ``if`` structures from the low-level labels and branches that appear in LLVM assembly (definition from `this paper <https://github.com/kripken/emscripten/blob/master/docs/paper.pdf?raw=true>`_).
@@ -41,40 +41,40 @@ Emscripten tools and dependencies
 
 
 	Clang
-		**HamishW**
+		Clang is a compiler front end for C, C++, and other programming languages that uses :term:`LLVM` as its back end.
 		
 	emcc
-		**HamishW**
+		The :ref:`emccdoc`. Emscripten's drop in replacement for a compiler like *gcc*.
 	
 	emsdk
-		**HamishW**
+		The :ref:`emsdk` is used to perform all SDK maintenance and can install, update, add, remove and active SDKs and tools.
 		
 	Emscripten Command Prompt
-		**HamishW**
+		The :ref:`emcmdprompt` is used to call Emscripten tools from the command line on Windows.
 		
 	Compiler Configuration File
 		The :ref:`Compiler Configuration File <compiler-configuration-file>` stores the :term:`active <Active Tool/SDK>` tools and SDKs as defined using :term:`emsdk activate <emsdk>`.
 		
 	LLVM
-		**HamishW**
+		`LLVM <http://en.wikipedia.org/wiki/LLVM>`_ is a compiler infrastructure designed to allow optimization of programs written in arbitrary programming languages.
 		
 	Fastcomp
-		**HamishW**
+		:ref:`Fastcomp <LLVM-Backend>` is Emscripten's current compiler core.
 		
 	node.js
-		**HamishW**
+		**Node.js** is a cross-platform runtime environment for server-side and networking applications written in JavaScript. Essentially it allows you to run JavaScript applications outside of a browser context.
 	
 	Python
-		**HamishW**
+		Python is a scripting language used to write many of Emscripten's tools. The required version is listed in the :ref:`toolchain requirements <central-list-of-emscripten-tools-and-dependencies>`.
 	
 	Java
-		**HamishW**
+		Java is required to run the code for some advanced optimisations. The required version is listed in the :ref:`toolchain requirements <central-list-of-emscripten-tools-and-dependencies>`.
 		
 	Closure Compiler
-		**HamishW**
+		The closure compiler is used to minify Emscripten-generated code at higher optimisations.
 		
 	Git
-		**HamishW**
+		Git is a distributed revision control system. Emscripten is hosted on Github and can be updated and modified using a git client.
 
 
 SDK Terms

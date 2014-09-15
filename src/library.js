@@ -3907,11 +3907,17 @@ LibraryManager.library = {
       return adjusted;
     },
     addRef: function(ptr) {
+#if EXCEPTION_DEBUG
+      Module.printErr('addref ' + ptr);
+#endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
       info.refcount++;
     },
     decRef: function(ptr) {
+#if EXCEPTION_DEBUG
+      Module.printErr('decref ' + ptr);
+#endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
       assert(info.refcount > 0);
@@ -4078,6 +4084,19 @@ LibraryManager.library = {
     Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
     ABORT = true;
     throw exception;
+  },
+
+  __cxa_current_primary_exception: function() {
+    var ret = EXCEPTIONS.caught[EXCEPTIONS.caught.length-1] || 0;
+    if (ret) EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ret));
+    return ret;
+  },
+
+  __cxa_rethrow_primary_exception__deps: ['__cxa_rethrow'],
+  __cxa_rethrow_primary_exception: function(ptr) {
+    if (!ptr) return;
+    EXCEPTIONS.caught.push(ptr);
+    ___cxa_rethrow();
   },
 
   terminate: '__cxa_call_unexpected',
@@ -5000,7 +5019,7 @@ LibraryManager.library = {
 
   // Statically allocated time struct.
   __tm_current: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
-  // Statically allocated timezone string. We only use GMT as a timezone.
+  // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   // Statically allocated time strings.
   __tm_formatted: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
@@ -5008,18 +5027,37 @@ LibraryManager.library = {
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {
     _tzset();
-    var year = {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}};
-    var timestamp = new Date(year >= 1900 ? year : year + 1900,
-                             {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
-                             {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
-                             {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
-                             {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
-                             {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
-                             0).getTime() / 1000;
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'new Date(timestamp).getDay()', 'i32') }}};
-    var yday = Math.round((timestamp - (new Date(year, 0, 1)).getTime()) / (1000 * 60 * 60 * 24));
+    var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
+                        0);
+
+    // There's an ambiguous hour when the time goes back; the tm_isdst field is
+    // used to disambiguate it.  Date() basically guesses, so we fix it up if it
+    // guessed wrong, or fill in tm_isdst with the guess if it's -1.
+    var dst = {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'i32') }}};
+    var guessedOffset = date.getTimezoneOffset();
+    var start = new Date(date.getFullYear(), 0, 1);
+    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
+    var winterOffset = start.getTimezoneOffset();
+    var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
+    if (dst < 0) {
+      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(winterOffset != guessedOffset)', 'i32') }}};
+    } else if ((dst > 0) != (winterOffset != guessedOffset)) {
+      var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
+      var trueOffset = dst > 0 ? summerOffset : winterOffset;
+      // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
+      date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
+    }
+
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
+    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    return timestamp;
+
+    return (date.getTime() / 1000)|0;
   },
   timelocal: 'mktime',
 
@@ -5040,27 +5078,31 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
-    var start = new Date(date); // define date using UTC, start from Jan 01 00:00:00 UTC
-    start.setUTCDate(1);
-    start.setUTCMonth(0);
-    start.setUTCHours(0);
-    start.setUTCMinutes(0);
-    start.setUTCSeconds(0);
-    start.setUTCMilliseconds(0);
-    var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
+    var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
+    var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
 
     return tmPtr;
   },
-  timegm__deps: ['mktime'],
+  timegm__deps: ['tzset'],
   timegm: function(tmPtr) {
     _tzset();
-    var offset = {{{ makeGetValue(makeGlobalUse('_timezone'), 0, 'i32') }}};
-    var daylight = {{{ makeGetValue(makeGlobalUse('_daylight'), 0, 'i32') }}};
-    daylight = (daylight == 1) ? 60 * 60 : 0;
-    var ret = _mktime(tmPtr) + offset - daylight;
-    return ret;
+    var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
+                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
+                        0);
+    var date = new Date(time);
+
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
+    var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
+    var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
+
+    return (date.getTime() / 1000)|0;
   },
 
   localtime__deps: ['__tm_current', 'localtime_r'],
@@ -5083,12 +5125,16 @@ LibraryManager.library = {
     var start = new Date(date.getFullYear(), 0, 1);
     var yday = ((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, 'start.getTimezoneOffset() * 60', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
 
-    var dst = Number(start.getTimezoneOffset() != date.getTimezoneOffset());
+    // DST is in December in South
+    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
+    var winterOffset = start.getTimezoneOffset();
+    var dst = (date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '___tm_timezone', 'i32') }}};
+    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? Runtime.QUANTUM_SIZE : 0', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
   },
@@ -5100,26 +5146,39 @@ LibraryManager.library = {
 
   asctime_r__deps: ['__tm_formatted', 'mktime'],
   asctime_r: function(tmPtr, buf) {
-    var date = new Date(_mktime(tmPtr)*1000);
-    var formatted = date.toString();
-    var datePart = formatted.replace(/\d{4}.*/, '').replace(/ 0/, '  ');
-    var timePart = formatted.match(/\d{2}:\d{2}:\d{2}/)[0];
-    formatted = datePart + timePart + ' ' + date.getFullYear() + '\n';
-    formatted.split('').forEach(function(chr, index) {
-      {{{ makeSetValue('buf', 'index', 'chr.charCodeAt(0)', 'i8') }}};
-    });
-    {{{ makeSetValue('buf', '25', '0', 'i8') }}};
+    var date = {
+      tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
+      tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
+      tm_hour: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
+      tm_mday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
+      tm_mon: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
+      tm_year: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}},
+      tm_wday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'i32') }}}
+    };
+    var days = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ];
+    var months = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+    var s = days[date.tm_wday] + ' ' + months[date.tm_mon] +
+        (date.tm_mday < 10 ? '  ' : ' ') + date.tm_mday +
+        (date.tm_hour < 10 ? ' 0' : ' ') + date.tm_hour +
+        (date.tm_min < 10 ? ':0' : ':') + date.tm_min +
+        (date.tm_sec < 10 ? ':0' : ':') + date.tm_sec +
+        ' ' + (1900 + date.tm_year) + "\n";
+    writeStringToMemory(s, buf);
     return buf;
   },
 
-  ctime__deps: ['localtime', 'asctime'],
+  ctime__deps: ['__tm_current', 'ctime_r'],
   ctime: function(timer) {
-    return _asctime(_localtime(timer));
+    return _ctime_r(timer, ___tm_current);
   },
 
-  ctime_r__deps: ['localtime', 'asctime'],
-  ctime_r: function(timer, buf) {
-    return _asctime_r(_localtime_r(timer, ___tm_current), buf);
+  ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r: function(time, buf) {
+    var stack = Runtime.stackSave();
+    var rv = _asctime_r(_localtime_r(time, Runtime.stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    Runtime.stackRestore(stack);
+    return rv;
   },
 
   dysize: function(year) {
@@ -5144,12 +5203,22 @@ LibraryManager.library = {
     var summer = new Date(2000, 6, 1);
     {{{ makeSetValue(makeGlobalUse('_daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
-    var winterName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | winter.toString().match(/\(([A-Z]+)\)/)[1];
-    var summerName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | summer.toString().match(/\(([A-Z]+)\)/)[1];
+    function extractZone(date) {
+      var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
+      return match ? match[1] : "GMT";
+    };
+    var winterName = extractZone(winter);
+    var summerName = extractZone(summer);
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
-    {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+    if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
+      // Northern hemisphere
+      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+    } else {
+      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+    }
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],
@@ -5203,7 +5272,9 @@ LibraryManager.library = {
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
-    
+
+    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, 'i32') }}};
+
     var date = {
       tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
       tm_min: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}},
@@ -5213,7 +5284,9 @@ LibraryManager.library = {
       tm_year: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32') }}},
       tm_wday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_wday, 'i32') }}},
       tm_yday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_yday, 'i32') }}},
-      tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}}
+      tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}},
+      tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'i32') }}},
+      tm_zone: tm_zone ? Pointer_stringify(tm_zone) : ''
     };
 
     var pattern = Pointer_stringify(format);
@@ -5462,36 +5535,17 @@ LibraryManager.library = {
         return date.tm_year+1900;
       },
       '%z': function(date) {
-        // Replaced by the offset from UTC in the ISO 8601:2000 standard format ( +hhmm or -hhmm ),
-        // or by no characters if no timezone is determinable. 
-        // For example, "-0430" means 4 hours 30 minutes behind UTC (west of Greenwich). 
-        // If tm_isdst is zero, the standard time offset is used. 
-        // If tm_isdst is greater than zero, the daylight savings time offset is used. 
-        // If tm_isdst is negative, no characters are returned. 
-        var ret = new Date().getTimezoneOffset();
+        // Replaced by the offset from UTC in the ISO 8601:2000 standard format ( +hhmm or -hhmm ).
+        // For example, "-0430" means 4 hours 30 minutes behind UTC (west of Greenwich).
+        var off = date.tm_gmtoff;
+        var ahead = off >= 0;
+        off = Math.abs(off) / 60;
         // convert from minutes into hhmm format (which means 60 minutes = 100 units)
-        var minutes = ret % 60;
-        ret = (100*(ret - minutes)/60) + minutes;
-        // add sign and adjust length to ?hhmm
-        if (ret >= 0) {
-          ret = '' + ret;
-          while (ret.length < 4) ret = '0' + ret;
-          return '+' + ret;
-        } else {
-          ret = '' + ret;
-          ret = ret.substr(1);
-          while (ret.length < 4) ret = '0' + ret;
-          return '-' + ret;
-        }
+        off = (off / 60)*100 + (off % 60);
+        return (ahead ? '+' : '-') + String("0000" + off).slice(-4);
       },
       '%Z': function(date) {
-        // Replaced by the timezone name or abbreviation, or by no bytes if no timezone information exists. [ tm_isdst]
-        try {
-          // Date strings typically end in (PDT) or such.
-          return new Date().toString().split('(').slice(-1)[0].split(')')[0];
-        } catch(e) {
-          return ''; // may not work in all browsers
-        }
+        return date.tm_zone;
       },
       '%%': function() {
         return '%';
@@ -5783,35 +5837,44 @@ LibraryManager.library = {
     }
     return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
-  clock_gettime__deps: ['emscripten_get_now'],
+  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$ERRNO_CODES', '__setErrNo'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
     var now;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       now = Date.now();
-    } else {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
       now = _emscripten_get_now();
+    } else {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
     }
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
+  clock_settime__deps: ['$ERRNO_CODES', '__setErrNo'],
   clock_settime: function(clk_id, tp) {
     // int clock_settime(clockid_t clk_id, const struct timespec *tp);
     // Nothing.
-    return 0;
+    ___setErrNo(clk_id === {{{ cDefine('CLOCK_REALTIME') }}} ? ERRNO_CODES.EPERM
+                                                             : ERRNO_CODES.EINVAL);
+    return -1;
   },
-  clock_getres__deps: ['emscripten_get_now_res'],
+  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$ERRNO_CODES', '__setErrNo'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
-      nsec = 1000 * 1000;
-    } else {
+      nsec = 1000 * 1000; // educated guess that it's milliseconds
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
       nsec = _emscripten_get_now_res();
+    } else {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
     }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '1', 'i32') }}};
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is milliseconds
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
 
@@ -5831,8 +5894,8 @@ LibraryManager.library = {
     var millis = Date.now();
     {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
-    {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // TODO
-    {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // TODO
+    {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
+    {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
     return 0;
   },
 
@@ -8492,6 +8555,14 @@ LibraryManager.library = {
     } else {
       return 1000*1000; // milliseconds
     }
+  },
+
+  emscripten_get_now_is_monotonic__deps: ['emscripten_get_now'],
+  emscripten_get_now_is_monotonic: function() {
+    // return whether emscripten_get_now is guaranteed monotonic; the Date.now
+    // implementation is not :(
+    return ENVIRONMENT_IS_NODE || (typeof dateNow !== 'undefined') ||
+        (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']);
   },
 
   // Returns [parentFuncArguments, functionName, paramListName]

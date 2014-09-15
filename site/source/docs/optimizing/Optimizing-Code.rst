@@ -24,7 +24,7 @@ To see what the different optimizations levels do, run
       emcc --help
 
 -  The meaning of ``-O1, -O2`` etc. in *emcc* are not identical to gcc/clang/other compilers, even though they have been chosen to be as familiar. They can't be, because optimizing JavaScript is very different than optimizing native code. See the ``--help`` as mentioned before for details.
--  If you compile several files into a single JavaScript output, be sure to specify the same optimization flags during all invocations of *emcc* — both when compiling sources into objects, and objects into JavaScript or HTML. See :ref:`Building-Projects` for more details.
+-  If you compile several files into a single JavaScript output, be sure to specify the same optimization flags during all invocations of *emcc* - both when compiling sources into objects, and objects into JavaScript or HTML. See :ref:`Building-Projects` for more details.
 -  Aside from ``-Ox`` options, there are ``--llvm-lto`` options that you can read about in ``emcc --help``.
 
 How to optimize code
@@ -120,7 +120,7 @@ A few **UNSAFE** optimizations you might want to try are:
 Profiling
 =========
 
-Modern browsers have JavaScript profilers, which can help find the slower parts in your code. You should build your project with ``-profiling`` for this, that flag will leave the code in a readable-enough state for profiling purposes (``-profiling`` should be added in addition to your other optimization flags like ``-O1``, ``-O2`` or ``-O3``).
+Modern browsers have JavaScript profilers, which can help find the slower parts in your code. You should build your project with ``--profiling`` for this, that flag will leave the code in a readable-enough state for profiling purposes (``--profiling`` should be added in addition to your other optimization flags like ``-O1``, ``-O2`` or ``-O3``).
 
 As each browser's profiler has limitations, it is highly recommended to profile in multiple browsers in order to get the best information. Also, in Firefox it is a good idea to profile both with and without asm.js optimizations enabled (can remove the ``'use asm'`` string to disable).
 

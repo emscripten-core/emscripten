@@ -1,18 +1,18 @@
 .. _embind:
 
-===========================
-Embind (under-construction)
-===========================
+=========================
+Embind (ready-for-review)
+=========================
 
-*Embind* is used to bind C++ functions and classes to JavaScript, so that the compiled code can be used in a natural way by "normal" JavaScript. 
+*Embind* is used to bind C++ functions and classes to JavaScript, so that the compiled code can be used in a natural way by "normal" JavaScript. *Embind* also supports :ref:`calling JavaScript classes from C++  <embind-val-guide>`.
 
-Embind has support for binding most C++ constructs, including those introduced in C++11 and C++14. Its main limitation is that it does not currently support raw pointers with complicated lifetime semantics.
-
-.. note:: *Embind* was inspired by *Boost.Python*. Eventually we also hope to implement *Boost.Python*-like raw pointer policies.
+Embind has support for binding most C++ constructs, including those introduced in C++11 and C++14. Its only significant limitation is that it does not currently support :ref:`raw pointers with complicated lifetime semantics <embind-raw-pointers>`.
 
 This topic shows how to use :cpp:func:`EMSCRIPTEN_BINDINGS` blocks to create bindings for functions, classes, value types, pointers (including both raw and smart pointers), enums, and constants, and how to create bindings for abstract classes that can be overridden in JavaScript. It also briefly explains how to manage the memory of C++ object handles passed to the JavaScript.
 
-In addition to enabling compiled C++ from JavaScript, *Embind* provides the :ref:`emscripten::val <embind-val-guide>` class, which allows developers to call JavaScript classes from their C++.
+.. tip:: In addition to the code in this topic, there are there are many other examples of how to use *Embind* in the `Test Suite <https://github.com/kripken/emscripten/tree/master/tests/embind>`_
+
+.. note:: *Embind* was inspired by `Boost.Python <http://www.boost.org/doc/libs/1_56_0/libs/python/doc/>`_ and uses a very similar approach for defining bindings.
 
 
 A quick example
@@ -49,59 +49,71 @@ The resulting **quick_example.js** file can be loaded as a node module or a scri
       </script>
     </html>
 
-The :cpp:func:`EMSCRIPTEN_BINDINGS` are set up when the JavaScript file is initially loaded (at the same time as the global constructors). Notice that ``lerp()``'s parameter types and return type are automatically inferred by *embind*. All symbols exposed by *embind* are available on the Emscripten ``Module`` object.
+The :cpp:func:`EMSCRIPTEN_BINDINGS` are set up when the JavaScript file is initially loaded (at the same time as the global constructors). Notice that ``lerp()``'s parameter types and return type are automatically inferred by *embind*. 
 
+All symbols exposed by *embind* are available on the Emscripten ``Module`` object.
+
+.. important:: Always access objects through the :ref:`module` object, as shown above. 
+
+	While the objects are also available in the global namespace by default, there are cases where they will not be (for example, if you use the :term:`closure compiler` to minify code or wrap compiled code in a function to avoid polluting the global namespace). You can of course use whatever name you like for the module by assigning it to a new variable: ``var MyModuleName = Module;``.
+
+	
 
 Classes
 =======
 
-Exposing classes to JavaScript requires a few more steps. For example:
+Exposing classes to JavaScript requires a more complicated binding statement. For example:
 
 .. code:: cpp
 
+	class MyClass {
+	public:
+	  MyClass(int x, std::string y)
+	    : x(x)
+	    , y(y)
+	  {}
 
-    class MyClass {
-    public:
-        MyClass(int x, std::string y)
-            : x(x)
-            , y(y)
-        {}
+	  void incrementX() {
+	    ++x;
+	  }
 
-        void incrementX() {
-            ++x;
-        }
+	  int getX() const { return x; }
+	  void setX(int x_) { x = x_; }
 
-        int getX() const { return x; }
-        void setX(int x_) { x = x_; }
+	  static std::string getStringFromInstance(const MyClass& instance) {
+	    return instance.y;
+	  }
 
-        static std::string getStringFromInstance(const MyClass& instance) {
-            return instance.y;
-        }
+	private:
+	  int x;
+	  std::string y;
+	};
 
-    private:
-        int x;
-        std::string y;
-    };
+	// Binding code
+	EMSCRIPTEN_BINDINGS(my_class_example) {
+		class_<MyClass>("MyClass")
+		  .constructor<int, std::string>()
+		  .function("incrementX", &MyClass::incrementX)
+		  .property("x", &MyClass::getX, &MyClass::setX)
+		  .class_function("getStringFromInstance", &MyClass::getStringFromInstance)
+		  ;
+	}
+	
+The binding block defines a chain of member function calls on the temporary :cpp:class:`class_` object (this same style is used in *Boost.Python*). The functions register the class, its :cpp:func:`~class_::constructor`, member :cpp:func:`~class_::function`, :cpp:func:`~class_::class_function` (static) and :cpp:func:`~class_::property`.
 
-    EMSCRIPTEN_BINDINGS(my_class_example) {
-        class_<MyClass>("MyClass")
-            .constructor<int, std::string>()
-            .function("incrementX", &MyClass::incrementX)
-            .property("x", &MyClass::getX, &MyClass::setX)
-            .class_function("getStringFromInstance", &MyClass::getStringFromInstance)
-            ;
-    }
+.. note:: This binding block binds the class and all its methods. As a rule you should bind only those items that are actually needed, as each binding increases the code size. For example, it would be rare to bind private/internal methods. 
 
 An instance of ``MyClass`` can then be created and used in JavaScript as shown below:
 
 .. code:: javascript
 
-    var instance = new Module.MyClass(10, "hello");
-    instance.incrementX();
-    instance.x; // 12
-    instance.x = 20; // 20
-    Module.MyClass.getStringFromInstance(instance); // "hello"
-    instance.delete();
+	var instance = new Module.MyClass(10, "hello");
+	instance.incrementX();
+	instance.x; // 12
+	instance.x = 20; // 20
+	Module.MyClass.getStringFromInstance(instance); // "hello"
+	instance.delete();
+
 
 Memory management
 =================
@@ -166,10 +178,19 @@ The JavaScript code does not need to worry about lifetime management.
 Advanced class concepts
 =======================
 
+.. _embind-raw-pointers:
+
 Raw pointers
 ------------
 
-Because raw pointers have unclear lifetime semantics, *embind* requires their use to be marked with ``allow_raw_pointers()``.
+Because raw pointers have unclear lifetime semantics, *embind* requires their use to be marked with :cpp:type:`allow_raw_pointers`.
+
+.. note:: 
+
+	Currently the markup serves only to whitelist smart pointer use, and show that you've thought about the use of the raw pointers. Eventually we hope to implement `Boost.Python-like raw pointer policies <https://wiki.python.org/moin/boost.python/CallPolicy>`_ for managing object ownership.
+
+	
+For example:
 
 .. code:: cpp
 
@@ -180,27 +201,74 @@ Because raw pointers have unclear lifetime semantics, *embind* requires their us
         function("passThrough", &passThrough, allow_raw_pointers());
     }
 
+
+.. _embind-external-constructors:
+
 External constructors
 ---------------------
 
-There are two ways to specify constructors on a class. The zero-argument template form invokes the natural constructor with the arguments specified in the template. However, if you pass a function pointer as the constructor, then invoking ``new`` from JavaScript calls the function and returns its result.
+There are two ways to specify constructors for a class.
+
+The :ref:`zero-argument template form <embind-class-zero-argument-constructor>` invokes the natural constructor with the arguments specified in the template. For example:
 
 .. code:: cpp
 
-    class C {}; // probably want to override operator delete
-    C* getInstanceFromPool() {
-        return pool.get();
-    }
-    EMSCRIPTEN_BINDINGS(external_constructors) {
-        class_<C>("C")
-            .constructor(&getInstanceFromPool)
-            ;
-    }
+	class MyClass {
+	public:
+		MyClass(int, float);
+		void someFunction();
+	};
+
+	EMSCRIPTEN_BINDINGS(external_constructors) {
+		class_<MyClass>("MyClass")
+			.constructor<int, float>()
+			.function("someFunction", &MyClass::someFunction)
+			;
+	}
+
+
+The :ref:`second form of the constructor <embind-class-function-pointer-constructor>` takes a function pointer argument, and is used for classes that construct themselves using a factory function. For example:
+
+.. code:: cpp
+
+	class MyClass {
+		virtual void someFunction() = 0;
+	};
+	MyClass* makeMyClass(int, float); //Factory function.
+
+	EMSCRIPTEN_BINDINGS(external_constructors) {
+		class_<MyClass>("MyClass")
+			.constructor(&makeMyClass, allow_raw_pointers())
+			.function("someFunction", &MyClass::someFunction)
+			;
+	}
+
+The two constructors present *exactly the same interface* for constructing the object in JavaScript. Continuing the example above:
+
+.. code-block:: cpp
+	
+	var instance = new MyClass(10, 15.5); 
+	// instance is backed by a raw pointer to a MyClass in the Emscripten heap
+
 
 Smart pointers
 --------------
 
-To manage object lifetime with smart pointers, *embind* must be told about the smart pointer type. For example, imagine managing a class C's lifetime with ``std::shared_ptr<C>``.
+To manage object lifetime with smart pointers, *embind* must be told about the smart pointer type. 
+
+For example, consider managing a class ``C``'s lifetime with ``std::shared_ptr<C>``. The best way to do this is to use :cpp:func:`~class_::smart_ptr_constructor` to register the smart pointer type:
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(better_smart_pointers) {
+        class_<C>("C")
+            .smart_ptr_constructor(&std::make_shared<C>)
+            ;
+    }
+
+When an object of this type is constructed (e.g. using ``new Module.C()``) it returns a ``std::shared_ptr<C>``.
+
+An alternative is to use :cpp:func:`~class_::smart_ptr` in the :cpp:func:`EMSCRIPTEN_BINDINGS` block:
 
 .. code:: cpp
 
@@ -211,30 +279,20 @@ To manage object lifetime with smart pointers, *embind* must be told about the s
             ;
     }
 
-At this point, functions can return ``std::shared_ptr<C>`` or take ``std::shared_ptr<C>`` as arguments. However, ``new Module.C()`` would still return a raw pointer.
+Using this definition functions can return ``std::shared_ptr<C>`` or take ``std::shared_ptr<C>`` as arguments, but ``new Module.C()`` would still return a raw pointer.
 
-To return a ``shared_ptr<C>`` from the constructor, write the following instead:
-
-.. code:: cpp
-
-    EMSCRIPTEN_BINDINGS(better_smart_pointers) {
-        class_<C>("C")
-            .smart_ptr_constructor(&std::make_shared<C>)
-            ;
-    }
-
-:cpp:func:`~class_::smart_ptr_constructor` automatically registers the smart pointer type. 
 
 unique_ptr
 ++++++++++
 
-*embind* has built-in support for return values of type
-``std::unique_ptr``.
+*embind* has built-in support for return values of type ``std::unique_ptr``.
 
 Custom smart pointers
 +++++++++++++++++++++
 
-To teach *embind* about custom smart pointer templates, specialize the :cpp:type:`smart_ptr_trait` template.
+To teach *embind* about custom smart pointer templates, you must specialize the :cpp:type:`smart_ptr_trait` template.
+
+
 
 Non-member-functions on the JavaScript prototype
 ------------------------------------------------
@@ -296,9 +354,9 @@ Let's begin with a simple case: pure virtual functions that must be implemented 
             ;
     }
 
-``allow_subclass`` adds two special methods to the Interface binding: ``extend`` and ``implement``. ``extend`` allows JavaScript to subclass in the style exemplified by **Backbone.js**. ``implement`` is used when you have a JavaScript object, perhaps provided by the browser or some other library, and you want to use it to implement a C++ interface.
+:cpp:func:`~class_::allow_subclass` adds two special methods to the Interface binding: ``extend`` and ``implement``. ``extend`` allows JavaScript to subclass in the style exemplified by **Backbone.js**. ``implement`` is used when you have a JavaScript object, perhaps provided by the browser or some other library, and you want to use it to implement a C++ interface.
 
-.. note:: Note the ``pure_virtual()`` annotation on the function binding. Specifying ``pure_virtual()`` allows JavaScript to throw a helpful error if the JavaScript class does not override ``invoke()``. Otherwise, you may run into confusing errors.
+.. note:: The :cpp:type:`pure_virtual` annotation on the function binding allows JavaScript to throw a helpful error if the JavaScript class does not override ``invoke()``. Otherwise, you may run into confusing errors.
 
 
 ``extend`` example
@@ -401,7 +459,8 @@ If a C++ class is polymorphic (that is, it has a virtual method), then *embind* 
 
 Calling ``Module.getDerivedInstance`` from JavaScript will return a ``Derived`` instance handle from which all of ``Derived``'s methods are available.
 
-Note that the *embind* must understand the fully-derived type for automatic downcasting to work.
+.. note:: *Embind* must understand the fully-derived type for automatic downcasting to work.
+
 
 Overloaded functions
 ====================
@@ -424,14 +483,14 @@ Constructors and functions can be overloaded on the number of arguments. *embind
             ;
     }
 
+.. _embind-enums:
+	
 Enums
 =====
 
-embind's enumeration support works with both C++98 enums and C++11 "enum
-classes".
+*Embind*'s :cpp:class:`enumeration support <enum_>` works with both C++98 enums and C++11 "enum classes".
 
 .. code:: cpp
-
 
     enum OldStyle {
         OLD_STYLE_ONE,
@@ -461,10 +520,12 @@ In both cases, JavaScript accesses enumeration values as properties of the type.
     Module.OldStyle.ONE;
     Module.NewStyle.TWO;
 
+.. _embind-constants:
+
 Constants
 =========
 
-To expose a C++ constant to JavaScript, simply write:
+To expose a C++ :cpp:func:`constant` to JavaScript, simply write:
 
 .. code:: cpp
 
@@ -473,6 +534,7 @@ To expose a C++ constant to JavaScript, simply write:
     }
 
 ``SOME_CONSTANT`` can have any type known to *embind*.
+
 
 .. _embind-val-guide:
 
@@ -555,8 +617,7 @@ The example can be compiled on the Linux terminal with:
 Built-in type conversions
 =========================
 
-Out of the box, *embind* provides converters for many standard C++
-types:
+Out of the box, *embind* provides converters for many standard C++ types:
 
 +---------------------+-------------------------------------------------+
 | C++ type            | JavaScript type                                 |
@@ -594,7 +655,7 @@ types:
 | ``emscripten::val`` | anything                                        |
 +---------------------+-------------------------------------------------+
 
-For convenience, *embind* provides factory functions to register ``std::vector<T>`` and ``std::map<K, V>`` types:
+For convenience, *embind* provides factory functions to register ``std::vector<T>`` (:cpp:func:`register_vector`) and ``std::map<K, V>`` (:cpp:func:`register_map`) types:
 
 .. code:: cpp
 

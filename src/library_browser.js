@@ -968,6 +968,8 @@ mergeInto(LibraryManager.library, {
 
     assert(!Browser.mainLoop.scheduler, 'there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one, if you want to');
 
+    Browser.mainLoop.shouldPause = Browser.mainLoop.paused = false; // if we were cancelled or paused, undo that
+
     Browser.mainLoop.runner = function Browser_mainLoop_runner() {
       if (ABORT) return;
       if (Browser.mainLoop.queue.length > 0) {
@@ -1108,6 +1110,10 @@ mergeInto(LibraryManager.library, {
   emscripten_force_exit: function(status) {
     Module['noExitRuntime'] = false;
     Module['exit'](status);
+  },
+
+  emscripten_get_device_pixel_ratio: function() {
+    return window.devicePixelRatio || 1.0;
   },
 
   emscripten_hide_mouse: function() {

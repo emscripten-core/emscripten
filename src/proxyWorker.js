@@ -54,6 +54,10 @@ function Element() { throw 'TODO: Element' }
 function HTMLCanvasElement() { throw 'TODO: HTMLCanvasElement' }
 function HTMLVideoElement() { throw 'TODO: HTMLVideoElement' }
 
+var KeyboardEvent = {
+  'DOM_KEY_LOCATION_RIGHT': 2,
+};
+
 function PropertyBag() {
   this.addProperty = function(){};
   this.removeProperty = function(){};

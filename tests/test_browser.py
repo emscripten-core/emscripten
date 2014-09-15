@@ -344,6 +344,7 @@ If manually bisecting:
     
     def make_main(path):
       print 'make main at', path
+      path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
         #include <string.h>
@@ -385,10 +386,18 @@ If manually bisecting:
       make_main(dstpath)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-
     # Test that '--no-heap-copy' works.
-    make_main('somefile.txt')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '--no-heap-copy', '-o', 'page.html']).communicate()
+    if WINDOWS:
+      # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
+      # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
+      tricky_filename = '!#$%&\'()+,-. ;=@[]^_`{}~.txt'
+    else:
+      # All 7-bit non-alphanumeric non-control code ASCII characters except /, : and \ are allowed.
+      tricky_filename = '!#$%&\'()+,-. ;=@[]^_`{}~ "*<>?|.txt'
+    open(os.path.join(self.get_dir(), tricky_filename), 'w').write('''load me right before running the code please''')
+    make_main(tricky_filename)
+    # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', tricky_filename.replace('@', '@@'), '--no-heap-copy', '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     # By absolute path
@@ -1451,6 +1460,9 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png')) # preloaded *after* run
     self.btest('emscripten_fs_api_browser.cpp', '1')
 
+  def test_emscripten_main_loop(self):
+    self.btest('emscripten_main_loop.cpp', '0')
+
   def test_sdl_quit(self):
     self.btest('sdl_quit.c', '1')
 
@@ -1980,3 +1992,34 @@ open(filename, 'w').write(replaced)
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
       f.write('emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
+
+  def test_locate_file(self):
+    self.clear()
+    open('src.cpp', 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <assert.h>
+      int main() {
+        FILE *f = fopen("data.txt", "r");
+        assert(f && "could not open file");
+        char buf[100];
+        int num = fread(buf, 1, 20, f);
+        assert(num == 20 && "could not read 20 bytes");
+        buf[20] = 0;
+        fclose(f);
+        int result = !strcmp("load me right before", buf);
+        printf("|%s| : %d\n", buf, result);
+        REPORT_RESULT();
+        return 0;
+      }
+    '''))
+    open('data.txt', 'w').write('load me right before...')
+    open('pre.js', 'w').write('Module.locateFile = function(x) { return "sub/" + x };')
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w')).communicate()
+    # put pre.js first, then the file packager data, so locateFile is there for the file loading code
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html']).communicate()
+    os.mkdir('sub')
+    shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+    shutil.move('test.data', os.path.join('sub', 'test.data'))
+    self.run_browser('page.html', None, '/report_result?1')
+
