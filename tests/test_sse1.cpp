@@ -152,7 +152,7 @@ int main()
 
 	// SSE1 Store instructions:
 	/*M64*/*(uint64_t*)uarr = 0xCDCDCDCDCDCDCDCDULL; _mm_maskmove_si64(u64castm64(0x00EEDDCCBBAA9988ULL), u64castm64(0x0080FF7F01FEFF40ULL), (char*)uarr); Assert(*(uint64_t*)uarr == 0xCDEEDDCDCDAA99CDULL); // _mm_maskmove_si64: Conditionally store bytes of a 64-bit value.
-	/*M64*/*(uint64_t*)uarr = 0xABABABABABABABABULL; _m_maskmovq(u64castm64(0x00EEDDCCBBAA9988ULL), u64castm64(0x0080FF7F01FEFF40ULL), (char*)uarr); Assert(*(uint64_t*)uarr == 0xABEEDDABABAA99ABULL);
+	/*M64*/*(uint64_t*)uarr = 0xABABABABABABABABULL;       _m_maskmovq(u64castm64(0x00EEDDCCBBAA9988ULL), u64castm64(0x0080FF7F01FEFF40ULL), (char*)uarr); Assert(*(uint64_t*)uarr == 0xABEEDDABABAA99ABULL); // _m_maskmovq is an alias to _mm_maskmove_si64.
 	_mm_store_ps(arr2, a); aeq(_mm_load_ps(arr2), 8.f, 6.f, 4.f, 2.f); // _mm_store_ps: 4-wide store to aligned memory address.
 	_mm_store_ps1(arr2, a); aeq(_mm_load_ps(arr2), 2.f, 2.f, 2.f, 2.f); // _mm_store_ps1: Store lowest scalar to aligned address, duplicating the element 4 times. 
 	_mm_storeu_ps(uarr2, _mm_set1_ps(100.f)); _mm_store_ss(uarr2, b); aeq(_mm_loadu_ps(uarr2), 100.f, 100.f, 100.f, 4.f); // _mm_store_ss: Store lowest scalar to unaligned address. Don't adjust higher addresses in memory.
