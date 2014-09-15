@@ -290,8 +290,8 @@ int main()
 	_mm_sfence();
 
 	// SSE1 Misc instructions:
-	Assert(_mm_movemask_pi8(m1) == 100); // Return int with eight lowest bits set depending on the highest bits of the 8 uint8 input channels of the m64.
-	Assert(     _m_pmovmskb(m1) == 100); // _m_pmovmskb is an alias to _mm_movemask_pi8.
+	/*M64*/Assert(_mm_movemask_pi8(m1) == 100); // Return int with eight lowest bits set depending on the highest bits of the 8 uint8 input channels of the m64.
+	/*M64*/Assert(     _m_pmovmskb(m1) == 100); // _m_pmovmskb is an alias to _mm_movemask_pi8.
 	Assert(_mm_movemask_ps(_mm_set_ps(-1.f, 0.f, 1.f, NAN)) == 8); Assert(_mm_movemask_ps(_mm_set_ps(-INFINITY, -0.f, INFINITY, -INFINITY)) == 13); // Return int with four lowest bits set depending on the highest bits of the 4 m128 input channels.
 
 	// SSE1 Probability/Statistics instructions:
