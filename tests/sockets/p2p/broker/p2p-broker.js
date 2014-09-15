@@ -4,7 +4,7 @@ var https = require('https');
 
 var SSL_KEY = 'ssl/ssl.key';
 var SSL_CERT = 'ssl/ssl-unified.crt';
-var PORT = 8080;
+var PORT = 8182;
 
 var sslSupported = false;
 if(fs.existsSync(SSL_KEY) && fs.existsSync(SSL_CERT) && fs.statSync(SSL_KEY).isFile() && fs.statSync(SSL_CERT).isFile()) {
@@ -28,7 +28,7 @@ if(sslSupported) {
 	console.info('ssl mode enabled');
 } else {
 	app = require('http').createServer(handler);
-	port = 8080;
+	port = 8182;
 	console.info('ssl mode disabled');
 }
 console.info('listening on port', port);
