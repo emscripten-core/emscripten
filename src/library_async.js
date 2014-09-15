@@ -63,7 +63,7 @@ mergeInto(LibraryManager.library, {
   emscripten_async_resume__sig: 'v',
   emscripten_async_resume__asm: true,
   emscripten_async_resume: function() {
-    var activeException = 0, catchesExceptions = 0;
+    var activeException = 0, catchesExceptions = 0, currentFrame = 0;
     ___async = 0;
     ___async_unwind = 1;
     while (1) {
@@ -80,11 +80,28 @@ mergeInto(LibraryManager.library, {
       // find a function that can handle the exception.
       if (!!catchesExceptions | !activeException) {
         __THREW__ = activeException|0;
+        currentFrame = ___async_cur_frame|0;
         invoke_vi({{{ makeGetValueAsm('___async_cur_frame', 16, 'i32') }}},
                   (___async_cur_frame + 16)|0);
         activeException = __THREW__|0; __THREW__ = 0;
 
         if (___async) return; // that was an async call
+
+#if ASSERTIONS
+        // If there isn't an exception, any async contexts created during the
+        // callback function should have unwound themselves.  However, if
+        // the callback was exited due to an exception, we may need to update
+        // async_cur_frame.
+        assert(activeException | (___async_cur_frame == currentFrame));
+#endif
+        if (activeException) {
+          ___async_cur_frame = currentFrame|0;
+        }
+
+#if ASSERTIONS
+        // If there's an exception we always unwind.
+        assert(!activeException | !!___async_unwind);
+#endif
         if (!___async_unwind) {
           // keep the async stack
           ___async_unwind = 1;
@@ -174,21 +191,39 @@ mergeInto(LibraryManager.library, {
   emscripten_free_async_context__deps: ['__async_cur_frame'],
   emscripten_free_async_context__sig: 'vi',
   emscripten_free_async_context__asm: true,
-  emscripten_free_async_context: function(ctx) {
+  emscripten_free_async_context: function(ctx, st) {
     //  this function is called when a possibly async function turned out to be sync
     //  just undo a recent emscripten_alloc_async_context
     ctx = ctx|0;
+    st = st|0;
     var ctx_len = 0;
+
+    // When emscripten_free_async_context() is called after an invoke(), there
+    // may be some async contexts on the stack which weren't cleaned up, but
+    // otherwise we expect the ctx passed in to be the current one.
 #if ASSERTIONS
-    assert((((___async_cur_frame + 16)|0) == (ctx|0))|0);
+    assert(!!__THREW__ | (((___async_cur_frame + 16)|0) == (ctx|0))|0);
 #endif
+    ___async_cur_frame = (ctx - 16)|0;
+
     ctx_len = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i32') }}};
-    // We can free the context if it's still on the top of the stack, but if
-    // someone's done a stack allocation since then, we have to just leak some
-    // stack space.  Hopefully no-one's calling alloca() and some async
-    // functions in an awkward loop!
-    if ((stackSave()|0) == ((___async_cur_frame + ctx_len)|0))
-      stackRestore(___async_cur_frame);
+
+#if ASSERTIONS
+    // The only thing that can happen in between alloc_async_context and
+    // free_async_context is the call itself, and there are two cases:
+    if (st >= 0) {
+      // If the call returned via invoke then the landingpad is about to restore
+      // STACKTOP to st (if the exception's type matches a landingpad!).
+      assert(st == ___async_cur_frame);
+    } else {
+      // In the case of a normal (non-invoke) call, st = -1 and the function
+      // prologue should have restored the STACKTOP already.
+      assert((stackSave()|0) == ((___async_cur_frame + ctx_len)|0));
+    }
+#endif
+    // The above checks make sure it's safe to reset the stack globally here:
+    stackRestore(___async_cur_frame);
+
     ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
   },
 

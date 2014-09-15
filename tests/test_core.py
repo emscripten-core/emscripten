@@ -6957,24 +6957,10 @@ def process(filename):
 
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
-    src = r'''
-#include <stdio.h>
-#include <emscripten.h>
-void f(void *p) {
-  *(int*)p = 99;
-  printf("!");
-}
-int main() {
-  int i = 0;
-  printf("Hello");
-  emscripten_async_call(f, &i, 1);
-  printf("World");
-  emscripten_sleep(100);
-  printf("%d\n", i);
-}
-'''
     Settings.ASYNCIFY = 1;
-    self.do_run(src, 'HelloWorld!99');
+
+    test_path = path_from_root('tests', 'core', 'test_asyncify')
+    self.do_run_from_file(test_path+'.cpp', test_path+'.out')
 
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')

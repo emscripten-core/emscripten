@@ -1,0 +1,26 @@
+Running test_basic:
+-----
+HelloWorld!99
+-----
+
+Running test_return_value:
+-----
+Got async return 27
+-----
+
+Running test_exceptions1:
+-----
+caught exception 1, stack leaked = 0
+caught exception 2, stack leaked = 0
+-----
+
+Running test_exceptions2:
+-----
+caught exception 1, stack leaked = 0
+caught exception 2, stack leaked = 0
+-----
+
+Running test_async_free_after_invoke:
+-----
+free'd ctx after sync call and caught exception
+-----
