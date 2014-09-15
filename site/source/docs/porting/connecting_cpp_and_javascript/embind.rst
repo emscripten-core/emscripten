@@ -1,16 +1,19 @@
 .. _embind:
 
-=========================
-Embind (ready-for-review)
-=========================
+======
+Embind
+======
 
 *Embind* is used to bind C++ functions and classes to JavaScript, so that the compiled code can be used in a natural way by "normal" JavaScript. *Embind* also supports :ref:`calling JavaScript classes from C++  <embind-val-guide>`.
 
 Embind has support for binding most C++ constructs, including those introduced in C++11 and C++14. Its only significant limitation is that it does not currently support :ref:`raw pointers with complicated lifetime semantics <embind-raw-pointers>`.
 
-This topic shows how to use :cpp:func:`EMSCRIPTEN_BINDINGS` blocks to create bindings for functions, classes, value types, pointers (including both raw and smart pointers), enums, and constants, and how to create bindings for abstract classes that can be overridden in JavaScript. It also briefly explains how to manage the memory of C++ object handles passed to the JavaScript.
+This article shows how to use :cpp:func:`EMSCRIPTEN_BINDINGS` blocks to create bindings for functions, classes, value types, pointers (including both raw and smart pointers), enums, and constants, and how to create bindings for abstract classes that can be overridden in JavaScript. It also briefly explains how to manage the memory of C++ object handles passed to JavaScript.
 
-.. tip:: In addition to the code in this topic, there are there are many other examples of how to use *Embind* in the `Test Suite <https://github.com/kripken/emscripten/tree/master/tests/embind>`_
+.. tip:: In addition to the code in this article:
+
+	- There are many other examples of how to use *Embind* in the `Test Suite <https://github.com/kripken/emscripten/tree/master/tests/embind>`_.
+	- `Connecting C++ and JavaScript on the Web with Embind <http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/>`_ (slides from CppCon 2014) contains more examples and information about *Embind*'s design philosophy and implementation.
 
 .. note:: *Embind* was inspired by `Boost.Python <http://www.boost.org/doc/libs/1_56_0/libs/python/doc/>`_ and uses a very similar approach for defining bindings.
 
@@ -18,7 +21,7 @@ This topic shows how to use :cpp:func:`EMSCRIPTEN_BINDINGS` blocks to create bin
 A quick example
 ===============
 
-The following code uses :cpp:func:`EMSCRIPTEN_BINDINGS` block to expose the simple C++ ``lerp()`` :cpp:func:`function` to JavaScript.
+The following code uses an :cpp:func:`EMSCRIPTEN_BINDINGS` block to expose the simple C++ ``lerp()`` :cpp:func:`function` to JavaScript.
 
 .. code:: cpp
 
@@ -37,7 +40,7 @@ The following code uses :cpp:func:`EMSCRIPTEN_BINDINGS` block to expose the simp
 
 To compile the above example using *embind*, we invoke *emcc* with the :ref:`bind <emcc-bind>` option: ``emcc --bind -o quick_example.js quick_example.cpp``. 
 
-The resulting **quick_example.js** file can be loaded as a node module or a script tag (shown below).
+The resulting **quick_example.js** file can be loaded as a node module or via a ``<script>`` tag:
 
 .. code:: html
 
@@ -45,11 +48,11 @@ The resulting **quick_example.js** file can be loaded as a node module or a scri
     <html>
       <script src="quick_example.js"></script>
       <script>
-        document.write('lerp result: ' + Module.lerp(1, 2, 0.5));
+        console.log('lerp result: ' + Module.lerp(1, 2, 0.5));
       </script>
     </html>
 
-The :cpp:func:`EMSCRIPTEN_BINDINGS` are set up when the JavaScript file is initially loaded (at the same time as the global constructors). Notice that ``lerp()``'s parameter types and return type are automatically inferred by *embind*. 
+The code in an :cpp:func:`EMSCRIPTEN_BINDINGS` block runs when the JavaScript file is initially loaded (at the same time as the global constructors). The function ``lerp()``'s parameter types and return type are automatically inferred by *embind*. 
 
 All symbols exposed by *embind* are available on the Emscripten ``Module`` object.
 
@@ -118,7 +121,7 @@ An instance of ``MyClass`` can then be created and used in JavaScript as shown b
 Memory management
 =================
 
-JavaScript, specifically ECMA-262 Edition 5.1, does not support finalizers or weak references with callbacks. 
+JavaScript, specifically ECMA-262 Edition 5.1, does not support `finalizers <http://en.wikipedia.org/wiki/Finalizer>`_ or weak references with callbacks. Therefore there is no way for Emscripten to automatically call the destructors on C++ objects.
 
 .. warning:: JavaScript code must explicitly delete any C++ object handles it has received, or the Emscripten heap will grow indefinitely.
 
@@ -185,11 +188,6 @@ Raw pointers
 
 Because raw pointers have unclear lifetime semantics, *embind* requires their use to be marked with :cpp:type:`allow_raw_pointers`.
 
-.. note:: 
-
-	Currently the markup serves only to whitelist smart pointer use, and show that you've thought about the use of the raw pointers. Eventually we hope to implement `Boost.Python-like raw pointer policies <https://wiki.python.org/moin/boost.python/CallPolicy>`_ for managing object ownership.
-
-	
 For example:
 
 .. code:: cpp
@@ -201,6 +199,9 @@ For example:
         function("passThrough", &passThrough, allow_raw_pointers());
     }
 
+.. note:: 
+
+	Currently the markup serves only to whitelist smart pointer use, and show that you've thought about the use of the raw pointers. Eventually we hope to implement `Boost.Python-like raw pointer policies <https://wiki.python.org/moin/boost.python/CallPolicy>`_ for managing object ownership.
 
 .. _embind-external-constructors:
 
@@ -279,7 +280,7 @@ An alternative is to use :cpp:func:`~class_::smart_ptr` in the :cpp:func:`EMSCRI
             ;
     }
 
-Using this definition functions can return ``std::shared_ptr<C>`` or take ``std::shared_ptr<C>`` as arguments, but ``new Module.C()`` would still return a raw pointer.
+Using this definition, functions can return ``std::shared_ptr<C>`` or take ``std::shared_ptr<C>`` as arguments, but ``new Module.C()`` would still return a raw pointer.
 
 
 unique_ptr
@@ -354,7 +355,7 @@ Let's begin with a simple case: pure virtual functions that must be implemented 
             ;
     }
 
-:cpp:func:`~class_::allow_subclass` adds two special methods to the Interface binding: ``extend`` and ``implement``. ``extend`` allows JavaScript to subclass in the style exemplified by **Backbone.js**. ``implement`` is used when you have a JavaScript object, perhaps provided by the browser or some other library, and you want to use it to implement a C++ interface.
+:cpp:func:`~class_::allow_subclass` adds two special methods to the Interface binding: ``extend`` and ``implement``. ``extend`` allows JavaScript to subclass in the style exemplified by `Backbone.js <http://backbonejs.org/#Model-extend>`_. ``implement`` is used when you have a JavaScript object, perhaps provided by the browser or some other library, and you want to use it to implement a C++ interface.
 
 .. note:: The :cpp:type:`pure_virtual` annotation on the function binding allows JavaScript to throw a helpful error if the JavaScript class does not override ``invoke()``. Otherwise, you may run into confusing errors.
 
@@ -399,7 +400,7 @@ Now ``interfaceObject`` can be passed to any function that takes an ``Interface`
 Non-abstract virtual methods
 ++++++++++++++++++++++++++++
 
-If a C++ class has a non-pure virtual function, it can be overridden but does not have to be. This requires a slightly different wrapper implementation:
+If a C++ class has a non-pure virtual function, it can be overridden — but does not have to be. This requires a slightly different wrapper implementation:
 
 .. code:: cpp
 
@@ -429,6 +430,8 @@ When implementing ``Base`` with a JavaScript object, overriding ``invoke`` is op
 
 Base classes
 ------------
+
+Base class bindings are defined as shown:
 
 .. code:: cpp
 
@@ -465,7 +468,7 @@ Calling ``Module.getDerivedInstance`` from JavaScript will return a ``Derived`` 
 Overloaded functions
 ====================
 
-Constructors and functions can be overloaded on the number of arguments. *embind* does not support overloading based on type. When specifying an overload, use the :cpp:func:`select_overload` helper function to select the appropriate signature.
+Constructors and functions can be overloaded on the number of arguments, but *embind* does not support overloading based on type. When specifying an overload, use the :cpp:func:`select_overload` helper function to select the appropriate signature.
 
 .. code:: cpp
 
@@ -605,13 +608,11 @@ The code can be transliterated to C++ using ``val``, as shown below:
 
 First we use :cpp:func:`~emscripten::val::global` to get the symbol for the global ``AudioContext`` object (or ``webkitAudioContext`` if that does not exist). We then use :cpp:func:`~emscripten::val::new_` to create the context, and from this context we can create an ``oscillator``, :cpp:func:`~emscripten::val::set` it's properties (again using ``val``) and then play the tone.
 
-The example can be compiled on the Linux terminal with:
+The example can be compiled on the Linux/Mac OS X terminal with:
 
 ::
 
 	./emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
-
-
 
 
 Built-in type conversions
@@ -668,6 +669,7 @@ For convenience, *embind* provides factory functions to register ``std::vector<T
 Performance
 ===========
 
-At time of writing there has been no *comprehensive* testing of *embind* performance, either against standard benchmarks, or relative to :ref:`WebIDL-Binder`.
+At time of writing there has been no *comprehensive* *embind* performance testing, either against standard benchmarks, or relative to :ref:`WebIDL-Binder`.
 
 The call overhead for simple functions has been measured at about 200 ns. While there is room for further optimisation, so far its performance in real-world applications has proved to be more than acceptable.
+
