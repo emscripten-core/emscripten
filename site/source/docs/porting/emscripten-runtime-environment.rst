@@ -99,7 +99,7 @@ You can add additional operations with :js:func:`addRunDependency`, which is a c
 
 .. note:: Generally it is not necessary to add additional operations — preloading is suitable for almost all use cases.
 
-When all dependencies are met, Emscripten will call ``run()``, which proceeds to call your ``main()`` function. Often the ``main()`` function just calls :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`) and/or does some other initialization. The main loop function will be then be called at the requested frequency. 
+When all dependencies are met, Emscripten will call ``run()``, which proceeds to call your ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency. 
 
 You can affect the operation of the main loop in several ways:
 
@@ -110,7 +110,7 @@ You can affect the operation of the main loop in several ways:
 
 - :c:func:`emscripten_pause_main_loop` pauses the main loop, and :c:func:`emscripten_resume_main_loop` resumes it. These are low level (less recommended) alternatives to the blocker functions.
 
-- :c:func:`emscripten_async_call` lets you call a function after some specific interval (this is basically a wrapper around ``setTimout/requestAnimationFrame``).
+- :c:func:`emscripten_async_call` lets you call a function after some specific interval. This will use ``requestAnimationFrame`` (by default) or ``setTimeout`` if a specific interval was requested.
 
 The :ref:`browser execution environment reference (emscripten.h) <emscripten-h-browser-execution-environment>` describes a number of other methods for controlling execution.
 

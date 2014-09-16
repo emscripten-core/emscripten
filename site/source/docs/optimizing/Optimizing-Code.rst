@@ -1,8 +1,8 @@
 .. _Optimizing-Code:
 
-=======================================
-Optimizing Generated Code (wiki-import)
-=======================================
+====================================
+Optimizing Code (under-construction)
+====================================
 
 By default Emscripten will compile code in a fairly safe way, and without all the possible optimizations. You should generally try this first, to make sure things work properly (if not, see the :ref:`Debugging` page). Afterwards, you may want to compile your code so it runs faster. This page explains how.
 
