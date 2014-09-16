@@ -427,7 +427,7 @@ stackTrace()
 Type accessors for the memory model
 ===================================
 
-The *Emscripten memory model* uses a typed array buffer
+The *Emscripten memory representation* uses a typed array buffer
 ("ArrayBuffer") to represent memory, with different views into it
 giving access to the different types. The views for accessing
 different types of memory are listed below.

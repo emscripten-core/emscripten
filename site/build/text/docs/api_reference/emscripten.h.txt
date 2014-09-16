@@ -242,7 +242,7 @@ Browser Execution Environment
 =============================
 
 Guide material for the following APIs can be found in *Emscripten
-Runtime Environment (wiki-import)*.
+Runtime Environment*.
 
 
 Functions
