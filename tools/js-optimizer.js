@@ -5937,15 +5937,29 @@ function emterpretify(ast) {
 
     var asmData = normalizeAsm(func);
 
-    var totalVars = 0;
-    for (var i in asmData.vars) totalVars++;
+    var locals = 0;
+    for (var i in asmData.vars) locals++;
+    for (var i in asmData.params) locals++;
 
-    var data = [ROPCODES['FUNC'], totalVars, totalVars, totalVars]; // TODO: optimize these
+    var data = [ROPCODES['FUNC'], locals, 0, 0];
 
     var stats = getStatements(func);
-    func[3] = []; // wipe out all contents
+    // emit stack assignments, emterpreter assumes params to be in place
+    func[3] = [];
+    var bump = 0; // we will assert in the emterpreter itself that we did not overflow the emstack
+    func[2].forEach(function(arg) {
+      var code;
+      switch (asmData.params[arg]) {
+        case ASM_INT:    code = 'HEAP32[EMSTACKTOP + ' + bump + ' >> 2] = ' + arg + ';'; break;
+        case ASM_DOUBLE: code = 'HEAPF64[EMSTACKTOP + ' + bump + ' >> 3] = ' + arg + ';'; break;
+        case ASM_FLOAT:  code = 'HEAPF32[EMSTACKTOP + ' + bump + ' >> 2] = ' + arg + ';'; break;
+        default: throw 'bad';
+      }
+      func[3].push(srcToAst(code)[1][0]);
+      bump += 8; // each local is a 64-bit value
+    });
     denormalizeAsm(func, asmData);
-    var theCall = ['call', ['name', 'emterpret'], []];
+    var theCall = ['call', ['name', 'emterpret'], [['name', 'EMTERPRETER_' + func[1]]]]; // EMTERPRETER_* will be replaced with the absolute bytecode offset later
     func[3] = func[3].filter(function(node) {
       if (node[0] === 'return') {
         assert(asmData.ret !== undefined);
