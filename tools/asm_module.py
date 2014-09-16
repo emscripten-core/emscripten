@@ -63,11 +63,16 @@ class AsmModule():
       self.sendings[sending[:colon].replace('"', '')] = sending[colon+1:].strip()
     self.module_defs = set(re.findall('var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
 
+  def set_pre_js(self, staticbump=None, mem_init_js=None):
+    if staticbump is None: staticbump = self.staticbump
+    if mem_init_js is None: mem_init_js = self.mem_init_js
+    self.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (staticbump,) + mem_init_js, self.pre_js, count=1)
+
   def relocate_into(self, main):
     # heap initializer
     if self.staticbump > 0:
       new_mem_init = self.mem_init_js[:self.mem_init_js.rfind(', ')] + ', Runtime.GLOBAL_BASE+%d)' % main.staticbump
-      main.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (main.staticbump + self.staticbump) + new_mem_init, main.pre_js, count=1)
+      main.set_pre_js(main.staticbump + self.staticbump, new_mem_init)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
     replacements = {}
