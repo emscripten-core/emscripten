@@ -4105,7 +4105,7 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=1']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
     Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertContained('hello, world!', run_js('em.out.js'))

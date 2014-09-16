@@ -21,7 +21,10 @@ class AsmModule():
     # heap initializer
     self.staticbump = int(re.search(shared.JS.memory_staticbump_pattern, self.pre_js).group(1))
     if self.staticbump:
-      self.mem_init_js = re.search(shared.JS.memory_initializer_pattern, self.pre_js).group(0)
+      try:
+        self.mem_init_js = re.search(shared.JS.memory_initializer_pattern, self.pre_js).group(0)
+      except:
+        self.mem_init_js = ''
 
     # global initializers
     global_inits = re.search(shared.JS.global_initializers_pattern, self.pre_js)
@@ -62,6 +65,8 @@ class AsmModule():
       colon = sending.find(':')
       self.sendings[sending[:colon].replace('"', '')] = sending[colon+1:].strip()
     self.module_defs = set(re.findall('var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
+
+    self.extra_funcs_js = ''
 
   def set_pre_js(self, staticbump=None, mem_init_js=None):
     if staticbump is None: staticbump = self.staticbump
