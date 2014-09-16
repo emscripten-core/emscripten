@@ -1,74 +1,124 @@
 .. _emscripten-runtime-environment:
 
-============================================
-Emscripten Runtime Environment (wiki-import)
-============================================
+==============================
+Emscripten Runtime Environment
+==============================
 
-The browser environment is different than the environment a normal C/C++ application expects. The main differences are how input and output work, and the fact that the main loop must be asynchronous.
+The Emscripten runtime environment is different to that expected by most C/C++ applications. Emscripten works hard to abstract and mitigate these differences, so that in general code can be compiled with little or no change. 
 
-For input and output, if you use :term:`SDL` etc. then everything should basically be taken care of for you. Emscripten implements the familiar SDL API for the browser environment. Typically you should need to refactor nothing or a very small amount of code for this.
+This article expands on some of the differences and the resulting :ref:`api-limitations`, and outlines the few changes you may need to make to your C/C++ code.
 
-The main loop being asynchronous, however, is trickier.
+Input/output
+============
+
+Emscripten implements the Simple DirectMedia Layer API (:term:`SDL`) for the browser environment, which provides low level access to audio, keyboard, mouse, joystick, and graphics hardware. Applications that use *SDL* typically require no input/output changes to run in the browser.
+
+In addition, we have more limited support for *glut*, *glfw*, *glew* and *xlib*.
+
+Applications that do not use *SDL* or the other APIs can use the Emscripten-specific APIs for input and output:
+
+- :ref:`html5-h`, which defines the Emscripten low-level glue bindings to interact with HTML5 events from native code, including access to keys, mouse, wheel, device orientation, battery levels, vibration, etc.
+- :ref:`multimedia-and-graphics-index` APIs, including :ref:`OpenGL <OpenGL-support>` and :ref:`EGL <EGL-Support-in-Emscripten>`.
+
+
+File Systems
+============
+
+A lot of C/C++ code uses the synchronous file system APIs in *libc* and *libcxx* to access code in the local file system. This is problematic because the browser prevents code from directly accessing files on the host system, and because JavaScript only supports asynchronous file access outside of web workers.
+
+Emscripten provides an implementation of *libc* and *libcxx* and a *virtual file system* so that normal C/C++ code can be compiled and run without change. Most developers need only specify the set of files to be :ref:`packaged <packaging-files>` for preloading into the virtual file system at runtime. 
+
+.. note:: Using a virtual file system bypasses the limitations listed above. The file data is packaged at compile time and downloaded into the file system using *asynchronous* JavaScript APIs before the compiled code is allowed to run. The compiled code then makes "file" calls that are really just calls into program memory.
+
+The default file system (:ref:`MEMFS <filesystem-api-memfs>`) stores files in-memory, so that any changes are lost when the page is reloaded. If file changes need to be stored more permanently then developers can mount the :ref:`IDBFS <filesystem-api-idbfs>` file system, which allows data to be persisted in the browser. When running code in *node.js*, developers can mount :ref:`NODEFS <filesystem-api-nodefs>` to give code direct access to the local file system.
+
+Emscripten also has an API to support :ref:`asynchronous file access <emscripten-h-asynchronous-file-system-api>`.
+
+For more information and examples see :ref:`packaging-code-index`.
+
+
+.. _emscripten-runtime-environment-main-loop:
 
 Browser main loop
-============================================
+=================
 
-Graphical C++ apps typically have a main loop that is an infinite loop, in which event handling is done, processing and rendering, then a wait (``SDL_Delay``, for example) to keep the frame rate right. However, in JavaScript there is no way for something like SDL_Delay to actually return control to the browser event loop, and returning control is important because the browser event model is asynchronous — your JavaScript must finish its "turn", by completing execution and returning control to the browser itself. The browser will then asynchronously call your JavaScript later according to how you asked it to do that.
+The browser event model uses co-operative multitasking — each event has a “turn” to run, and must then return control to the browser so that other events can be processed. A common cause of HTML pages hanging is JavaScript that does not complete and return control to the browser.
 
-This is inherent in how browsers work. If you do not finish your turn, the page will 'hang' and the browser will eventually tell the user the page is stuck and offer to halt it or close it. Also, that things like WebGL will only actually render when your JavaScript "turn" is over - so while a normal C++ GL app would swap buffers manually, in JavaScript you just finish your turn and the browser renders and swaps.
+Graphical C++ apps typically run in an infinite loop. Within each iteration of the loop the app performs event handling, processing and rendering, followed by a delay ("wait") to keep the frame rate constant. This infinite loop is a problem in the browser environment because there is no way for control to return to the browser so other code can run. After a period the browser will notify the user that the page is stuck and offer to halt or close it.
+
+Similarly, JavaScript APIs like WebGL can only run when the current "turn" is over, and will automatically render and swap buffers at that point. This contrasts with OpenGL C++ apps where you would need to swap the buffers manually.
+
+.. _emscripten-runtime-environment-howto-main-loop:
 
 Implementing an asynchronous main loop in C/C++
-===============================================
+------------------------------------------------
 
-The standard way to do this is make a C function that runs one iteration of your main loop. Then call it from JavaScript at the proper frequency. This is very simple to do manually (just call it from JavaScript, all you need is an underscore at the beginning of the name), but you can also use :c:func:`emscripten_set_main_loop` for something a little more convenient. For a regular native build, you can just call that function in an infinite loop (likely with ``SDL_Delay`` etc.), so typically you will have a small section with ``#ifdef EMSCRIPTEN`` for the two cases, for example:
+The standard solution for this problem is to define a C function that performs one iteration of your main loop (not including the "delay"). For a native build this function can be called in an infinite loop, leaving the behaviour effectively unchanged.
 
-::
+Within Emscripten compiled code we use :c:func:`emscripten_set_main_loop` to get the environment to call this same function at a specified frequency. The iteration is still run "infinitely" but now other code can run between iterations and the browser does not hang. 
 
-    int main() {
-      ...
-    #ifdef EMSCRIPTEN
-      // void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
-      emscripten_set_main_loop(one_iter, 60, 1);
-    #else
-      while (1) {
-        one_iter();
-        SDL_Delay(time_to_next_frame());
-      }
-    #endif
-    }
+.. todo:: Check this statement out: (just call it from JavaScript, all you need is an underscore at the beginning of the name), 
 
-    void one_iter() {
-      // process input
-      // render to screen
-    }
+Typically you will have a small section with ``#ifdef EMSCRIPTEN`` for the two cases. For example:
 
-There are also several other useful functions in :ref:`emscripten-h`. As mentioned above, we use existing familiar APIs when present, like SDL, so the things in the additional Emscripten API are capabilities specific to the JavaScript or the browser environment, that we couldn't find an existing API for. Below is a general overview of some important parts.
+.. code-block:: cpp
+
+	int main() {
+	...
+	#ifdef EMSCRIPTEN
+	  // void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+	  emscripten_set_main_loop(one_iter, 60, 1);
+	#else
+	  while (1) {
+	    one_iter();
+	    // Delay to keep frame rate constant (using SDL)
+	    SDL_Delay(time_to_next_frame());
+	  }
+	#endif
+	}
+
+	// The "main loop" function.
+	void one_iter() {
+	  // process input
+	  // render to screen
+	}
+
+	
+.. note:: When using SDL you will probably need to set the main loop. You should also note:
+
+	- The current Emscripten implementation of ``SDL_QUIT`` will work if you use :c:func:`emscripten_set_main_loop`. As the page is shut, it will force a final direct call to the main loop, giving it a chance to notice the ``SDL_QUIT`` event. If you do not use a main loop, your app will close before you have had an opportunity to notice this event. 
+	- There are limitations to what you can do as the page shuts (in ``onunload``). Some actions like showing alerts are banned by browsers at this point.
+
 
 Execution lifecycle
 ===================
 
-When an emscripten-compiled application is loaded, it starts by with preparing data in the ``preloading`` phase. Files you marked for preloading (``emcc --preload-file``, or manually from JavaScript using createPreloadedFile) are set up at this stage. You can add additional operations with :js:func:`addRunDependency` (remember to call :js:func:`removeRunDependency`), which is a counter of all dependencies preventing run. When all dependencies are met, we will call ``run``, which proceeds to call your ``main()`` function.
+When an Emscripten-compiled application is loaded, it starts by preparing data in the ``preloading`` phase. Files you marked for :ref:`preloading <emcc-preload-file>` (using ``emcc --preload-file``, or manually from JavaScript with :js:func:`FS.createPreloadedFile`) are set up at this stage. 
 
-After the application runs, as mentioned above you will typically want to define a main loop. You can affect how the main loop works in several ways:
+You can add additional operations with :js:func:`addRunDependency`, which is a counter of all dependencies to be executed before compiled code can run. As these are completed you can call :js:func:`removeRunDependency` to remove the completed dependencies. 
 
-- :c:func:`emscripten_pause_main_loop` pauses the main loop, and :c:func:`emscripten_resume_main_loop` resumes it. This might be useful if you want to manually freeze the application for some reason. This is fairly low-level, there are more convenient alternatives below for common tasks.
-- :c:func:`emscripten_push_main_loop_blocker` adds a function that **blocks** the main loop: The main loop will not run until the blocker completes. For example, if when the user finishes a level in your game you want to load the next one, you can push blockers for each action involved in that (unpack the file, generate the data structures, etc.), and when they are done the main loop will resume (and if things are set up properly, it will run the new level). The blockers are a simple FIFO queue. Basically, blockers are a small simplification of manually pausing and resuming the main loop. They also are useful for marking progress: If you all ``emscripten_set_main_loop_expected_blockers(10)`` and then push 10 blockers, progress will be shown to the user as the blockers execute.
-- :c:func:`emscripten_async_call` lets you call a function after some specific interval (basically a wrapper around ``setTimout/requestAnimationFrame``).
-- :c:func:`emscripten_async_wget` asynchronously loads a file from the network. Synchronous XHRs cannot load binary data, so an asynchronous function is necessary. It will call a callback that you give it when the file arrives. You can use this to fetch the next level in your game, for example (note that it will do the same operation we do on preloaded files, setting them up as image or audio elements as necessary for execution later).
+.. note:: Generally it is not necessary to add additional operations — preloading is suitable for almost all use cases.
 
+When all dependencies are met, Emscripten will call ``run()``, which proceeds to call your ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency. 
 
-.. todo:: HamishW :ref:`Module` has some functions which affect exectution. Remember to link it here. Some stuff on this in "interacting with code".
+You can affect the operation of the main loop in several ways:
 
-Notes
-=====
+- 
+	:c:func:`emscripten_push_main_loop_blocker` adds a function that **blocks** the main loop until the blocker completes. 
 
-- ``SDL_QUIT`` is tricky to implement in browsers. The current Emscripten implementation of it will work if you use :c:func:`emscripten_set_main_loop`: As the page is shut, it will force a final direct call to the main loop, giving it a chance to notice the ``SDL_QUIT`` event. So if you do not use a main loop, you will not notice it - your app will close before your next event handling. Note also that there are limitations on what you can do as the page shuts (in onunload), some actions like showing alerts are banned by browsers.
+	This is useful, for example, to manage loading new game levels. After a level completes, you can push blockers for each action involved (unpacking the file, generate the data structures, etc.) When all the blockers have completed the main loop will resume and the game should run the new level. You can also use this function in conjunction with :c:func:`emscripten_set_main_loop_expected_blockers` to keep the user informed of progress.
+
+- :c:func:`emscripten_pause_main_loop` pauses the main loop, and :c:func:`emscripten_resume_main_loop` resumes it. These are low level (less recommended) alternatives to the blocker functions.
+
+- :c:func:`emscripten_async_call` lets you call a function after some specific interval. This will use ``requestAnimationFrame`` (by default) or ``setTimeout`` if a specific interval was requested.
+
+The :ref:`browser execution environment reference (emscripten.h) <emscripten-h-browser-execution-environment>` describes a number of other methods for controlling execution.
 
 
 .. _emscripten-memory-model:
 
-Emscripten memory model
-=======================
+Emscripten memory representation
+================================
 
 Emscripten's memory model is known as :term:`Typed Arrays Mode 2`. It represents memory using a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.)  
 
@@ -78,10 +128,6 @@ Emscripten's memory model is known as :term:`Typed Arrays Mode 2`. It represents
 
 The model lays out items in memory in the same way as with normal C and C++, and as a result it uses the same amount of memory. 
 
-We currently align the stack to 4-byte boundaries (this means that reading 8-byte values is slower as they must be read in two parts and then combined).
+This model allows you to use code that violates the :term:`load-store consistency` assumption. Since the different views show the same data, you can (say) write a 32-bit integer, then read a byte from the middle, and it will work just like in a native build of C or C++ on most platforms.
 
-This model allows you to use code that violates the load-store consistency assumption. Since the different views show the same data, you can (say) write a 32-bit integer, then read a byte from the middle, and it will work just like in C or C++.
-
-
-.. note:: ``SAFE_HEAP`` ignores load-store consistency violations, since they don't matter. Alignment of reads and writes will be checked, which is important since reading unaligned values can fail.
 

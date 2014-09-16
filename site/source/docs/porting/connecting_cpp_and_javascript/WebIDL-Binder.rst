@@ -1,12 +1,12 @@
 .. _WebIDL-Binder:
 
-================================
-WebIDL Binder (ready-for-review)
-================================
+=============
+WebIDL Binder
+=============
 
 The *WebIDL Binder* provides a simple and lightweight approach to binding C++, so that compiled code can be called from JavaScript as if it were a normal JavaScript library. 
 
-The *WebIDL Binder* uses `WebIDL <http://www.w3.org/TR/WebIDL/>`_ to define the bindings, an interface language which was *specifically designed* for gluing together C++ and JavaScript. Not only is this a natural choice for the bindings, but because it is low-level it is relatively easy to optimize.
+The *WebIDL Binder* uses `WebIDL <http://www.w3.org/TR/WebIDL/>`_ to define the bindings, an interface language that was *specifically designed* for gluing together C++ and JavaScript. Not only is this a natural choice for the bindings, but because it is low-level it is relatively easy to optimize.
 
 The binder supports the subset of C++ types that can be expressed in WebIDL. This subset is more than sufficient for most use cases — examples of projects that have been ported using the binder include the `Box2D <https://github.com/kripken/box2d.js/#box2djs>`_ and `Bullet <https://github.com/kripken/ammo.js/#ammojs>`_ physics engines.
 
@@ -18,12 +18,17 @@ This topic shows how bind and use C++ classes, functions and other types using I
 A quick example
 ===============	
 
-Binding using the *WebIDL Binder* is a three-stage process: create a WebIDL file that describes the C++ interface, use the binder to generate C++ and JavaScript "glue" code, and finally compile this glue code with the Emscripten project. 
+Binding using the *WebIDL Binder* is a three-stage process: 
+
+- Create a WebIDL file that describes the C++ interface.
+- Use the binder to generate C++ and JavaScript "glue" code.
+- Compile this glue code with the Emscripten project. 
+
 
 Defining the WebIDL file 
 ------------------------
 
-The first step is to create a *WebIDL file* that describes the C++ types you are going to bind. This file duplicates some of the information in the C++ header file, in a format that is explicitly designed both for easy parsing, and to represent code items in a way that is convenient for connecting to JavaScript.
+The first step is to create a *WebIDL file* that describes the C++ types you are going to bind. This file will duplicate some of the information in the C++ header file, in a format that is explicitly designed both for easy parsing, and for representing code items.
 
 For example, consider the following C++ classes:
 
@@ -82,7 +87,7 @@ Compiling the project (using the bindings glue code)
 To use the glue code files (``glue.cpp`` and ``glue.js``) in a project:
 
 #. Add ``--post-js glue.js`` in your final *emcc* command. The :ref:`post-js <emcc-post-js>` option adds the glue code at the end of the compiled output.
-#. Create a file **my_glue_wrapper.cpp** (say) to ``#include`` the headers of the classes you are binding and *glue.cpp*. This might have the following content:
+#. Create a file called something like **my_glue_wrapper.cpp** to ``#include`` the headers of the classes you are binding and *glue.cpp*. This might have the following content:
 
 	.. code-block:: cpp
 
@@ -123,9 +128,9 @@ Once binding is complete, C++ objects can be created and used in JavaScript as t
 	While the objects are also available in the global namespace by default, there are cases where they will not be (for example, if you use the :term:`closure compiler` to minify code or wrap compiled code in a function to avoid polluting the global namespace). You can of course use whatever name you like for the module by assigning it to a new variable: ``var MyModuleName = Module;``.
 
 
-JavaScript will automatically garbage collect any of the wrapped C++ objects when there are no more references. If the C++ object doesn't require specific clean up (i.e. it doesn't have a destructor) then no other action need be taken.
+JavaScript will automatically garbage collect any of the wrapped C++ objects when there are no more references. If the C++ object doesn't require specific clean up (i.e. it doesn't have a destructor) then no other action needs to be taken.
 
-If a C++ object does need to be cleaned up, you must explicitly call :js:func:`Module.destroy(obj) <Module.destroy>` to invoke its destructor. Then drop all references to the object so that it can be garbage collected. For example, if ``Bar`` were to allocate memory that requires cleanup:
+If a C++ object does need to be cleaned up, you must explicitly call :js:func:`Module.destroy(obj) <Module.destroy>` to invoke its destructor — then drop all references to the object so that it can be garbage collected. For example, if ``Bar`` were to allocate memory that requires cleanup:
 
 .. code-block:: javascript
 
@@ -133,7 +138,9 @@ If a C++ object does need to be cleaned up, you must explicitly call :js:func:`M
 	b.doSomething();
 	Module.destroy(b); // If the C++ object requires clean up
 	
-.. note:: The C++ constructor is called transparently when a C++ object is created in JavaScript. However there is no way to tell if a JavaScript object is about to be garbage collected, so the binder glue code can't automatically call the destructor.
+.. note:: The C++ constructor is called transparently when a C++ object is created in JavaScript. There is no way, however, to tell if a JavaScript object is about to be garbage collected, so the binder glue code can't automatically call the destructor.
+
+	You will usually need to destroy the objects which you create, but this depends on the library being ported. 
 
 
 Pointers, References, Value types (Ref and Value)
@@ -167,7 +174,7 @@ References should be decorated using ``[Ref]``:
 
 .. note:: If ``[Ref]`` is omitted on a reference, the generated glue C++ will not compile (it fails when it tries to convert the reference — which it thinks is a pointer — to an object).
 
-If the C++ returns an object (rather than a reference or a pointer) then the return type should be decorated using ``[Value]``. This will allocate a static (singleton) instance of that class and return it. You should use immediately, and drop any references to it after use.
+If the C++ returns an object (rather than a reference or a pointer) then the return type should be decorated using ``[Value]``. This will allocate a static (singleton) instance of that class and return it. You should use it immediately, and drop any references to it after use.
 
 .. code-block:: cpp
 	
@@ -243,7 +250,7 @@ You can bind to C++ operators using ``[Operator=]``:
 .. note:: 
 
 	- The operator name can be anything (``add`` is just an example). 
-	- Support is currently limited to operators that contain "=": ``+=``, ``*=``, ``-=`` etc.
+	- Support is currently limited to operators that contain ``=``: ``+=``, ``*=``, ``-=`` etc.
 
 
 enums
@@ -344,27 +351,28 @@ When C++ code has a pointer to a ``Base`` instance and calls ``virtualFunc()``, 
 Pointers and comparisons
 =========================
 
-All the bindings functions expect to receive wrapper objects (which contain a raw pointer) rather than a raw pointer. You should normally not need to deal with raw pointers (these are simply memory addresses/integers). If you do, the following functions in the compiled code can be useful:
+All the binding functions expect to receive wrapper objects (which contain a raw pointer) rather than a raw pointer. You shouldn't normally need to deal with raw pointers (these are simply memory addresses/integers). If you do, the following functions in the compiled code can be useful:
 
 - ``wrapPointer(ptr, Class)`` — Given a raw pointer (an integer), returns a wrapped object. 
 
-	.. note:: If you do not pass the ``Class``, it will be assumed to be the root class — this is likely not what you want!
+	.. note:: If you do not pass the ``Class``, it will be assumed to be the root class — this probably isn't what you want!
 	
 - ``getPointer(object)`` — Returns a raw pointer.
 - ``castObject(object, Class)`` — Returns a wrapping of the same pointer but to another class.
 - ``compare(object1, object2)`` — Compares two objects' pointers.
 
-.. note:: There is always a *single* wrapped object for a certain pointer for a certain class. This allows you to add data on that object and use it elsewhere using normal JavaScript syntax (``object.attribute = someData`` etc.) 
+.. note:: There is always a *single* wrapped object for a certain pointer to a certain class. This allows you to add data on that object and use it elsewhere using normal JavaScript syntax (``object.attribute = someData`` etc.) 
 
-	This *almost* means that ``compare()`` is not needed — since two objects of the same class with the same pointer must be the same object. The problem is that if one is a subclass of the other the wrapped objects are different even though the pointer is the same.
+	``compare()`` should be used instead of direct pointer comparison because it is possible to have different wrapped objects with the same pointer if one class is a subclass of the other. 
+
 
 	
 NULL
 ====
 
-All the bindings functions that return pointers, references, or objects will return wrapped pointers. The reason is that by always returning a wrapper, you can always take the output and pass it to another binding function without that function needing to check the type of the argument.
+All the binding functions that return pointers, references, or objects will return wrapped pointers. The reason is that by always returning a wrapper, you can take the output and pass it to another binding function without that function needing to check the type of the argument.
 
-One case where this can be confusing is when returning a NULL pointer. When using bindings, the returned pointer will be ``NULL`` (a global singleton with a wrapped pointer of 0) rather than ``null`` (the JavaScript builtin object) or 0. 
+One case where this can be confusing is when returning a ``NULL`` pointer. When using bindings, the returned pointer will be ``NULL`` (a global singleton with a wrapped pointer of 0) rather than ``null`` (the JavaScript built-in object) or 0. 
 
 
 .. _webidl-binder-voidstar:
@@ -382,7 +390,7 @@ The difference between them is that ``VoidPtr`` behaves like a pointer type in t
 WebIDL types
 ============
 
-The type names in WebIDL are not identical to those in C++. This section shows the mapping for some of the the different types.
+The type names in WebIDL are not identical to those in C++. This section shows the mapping for the more common types you'll encounter.
 
 .. csv-table:: 
 	:header: "C++", "IDL"
@@ -409,6 +417,6 @@ The type names in WebIDL are not identical to those in C++. This section shows t
 Test and example code
 =====================
 
-For a complete working example, see `test_webidl <https://github.com/kripken/emscripten/tree/master/tests/webidl>`_ in the `test suite <https://github.com/kripken/emscripten/blob/master/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more material than this article. 
+For a complete working example, see `test_webidl <https://github.com/kripken/emscripten/tree/master/tests/webidl>`_ in the `test suite <https://github.com/kripken/emscripten/blob/master/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone. 
 
-Another good example is `ammo.js <https://github.com/kripken/ammo.js/tree/master>`_, which uses the *WebIDL Binder* to port the Bullet Physics engine to the web.
+Another good example is `ammo.js <https://github.com/kripken/ammo.js/tree/master>`_, which uses the *WebIDL Binder* to port the `Bullet Physics engine <http://bulletphysics.org/wordpress/>`_ to the Web.

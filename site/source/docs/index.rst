@@ -36,7 +36,7 @@ The full hierarchy of articles, opened to the second level, is shown below.
 	introducing_emscripten/index
 	getting_started/index
 	porting/index
-	optimizing/index
+	optimizing/Optimizing-Code
 	compiling/index
 	building_from_source/index
 	contributing/index

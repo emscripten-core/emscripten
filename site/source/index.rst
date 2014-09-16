@@ -34,7 +34,7 @@ News
 	docs/introducing_emscripten/index
 	docs/getting_started/index
 	docs/porting/index
-	docs/optimizing/index
+	docs/optimizing/Optimizing-Code
 	docs/compiling/index
 	docs/building_from_source/index
 	docs/contributing/index
