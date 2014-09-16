@@ -104,6 +104,14 @@ void test_async_realloc_after_exception() {
   printf("realloc'd OK\n");
 }
 
+void test_aysc_realloc_after_struct() {
+  emscripten_sleep(1);
+  struct { int i; void* buf; bool j; } test = { tmp, 0, (bool)tmp2 };
+  printf("i = %d, j = %d\n", test.i, test.j);
+  async_fn_which_returns();
+  printf("realloc'd OK\n");
+}
+
 #define CALL(x) printf("Running " #x ":\n-----\n"); x(); printf("-----\n\n");
 int main() {
 CALL(test_basic)
@@ -111,5 +119,6 @@ CALL(test_return_value)
 CALL(test_exceptions1)
 CALL(test_exceptions2)
 CALL(test_async_free)
-CALL(test_async_realloc_after_exception);
+CALL(test_async_realloc_after_exception)
+CALL(test_aysc_realloc_after_struct)
 }
