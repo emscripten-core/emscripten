@@ -104,10 +104,13 @@ void test_async_realloc_after_exception() {
   printf("realloc'd OK\n");
 }
 
-void test_aysc_realloc_after_struct() {
+struct test { int i; void* buf; bool j; };
+void use_test_byval(struct test t) { printf("i = %d, j = %d\n", t.i, t.j); }
+void test_async_realloc_after_struct() {
   emscripten_sleep(1);
-  struct { int i; void* buf; bool j; } test = { tmp, 0, (bool)tmp2 };
+  struct test test = { tmp, 0, (bool)tmp2 };
   printf("i = %d, j = %d\n", test.i, test.j);
+  use_test_byval(test);
   async_fn_which_returns();
   printf("realloc'd OK\n");
 }
@@ -120,5 +123,5 @@ CALL(test_exceptions1)
 CALL(test_exceptions2)
 CALL(test_async_free)
 CALL(test_async_realloc_after_exception)
-CALL(test_aysc_realloc_after_struct)
+CALL(test_async_realloc_after_struct)
 }

@@ -30,3 +30,10 @@ Running test_async_realloc_after_exception:
 -----
 realloc'd OK
 -----
+
+Running test_async_realloc_after_struct:
+-----
+i = 17, j = 1
+i = 17, j = 1
+realloc'd OK
+-----
