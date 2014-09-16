@@ -68,7 +68,9 @@ Options that are modified or new in *emcc* are listed below:
 ``-O3``
 	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time and/or are relatively new. 
 	
-	.. note:: This differs from ``-O2`` only during the bitcode to JavaScript (final link and JavaScript generation) stage. It is JavaScript-specific, so you can run ``-Os`` on your source files for example, and ``-O3`` during JavaScript generation if you want. For more tips on optimizing your code, see :ref:`Optimizing-Code`.
+	.. note:: This differs from ``-O2`` only during the bitcode to JavaScript (final link and JavaScript generation) stage. It is JavaScript-specific, so you can run ``-Os`` on your source files for example, and ``-O3`` during JavaScript generation if you want.
+
+ 	.. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
 .. _emcc-s-option-value:
 	
