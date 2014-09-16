@@ -7,7 +7,7 @@ OpenGL support in Emscripten (ready-for-review)
 Emscripten provides three OpenGL modes:
 
 - :ref:`opengl-support-webgl-subset` (default) — supports the set of OpenGL commands that map directly to WebGL.
-- :ref:`opengl-support-opengl-es2-0-emulation` — full support for Open GL ES 2.0.
+- :ref:`opengl-support-opengl-es2-0-emulation` — full support for OpenGL ES 2.0.
 - :ref:`opengl-support-legacy_and_mobile` — support for a number of legacy GL 1.x features and commands.
 
 This topic provides information about the modes, and how they are enabled.
@@ -23,9 +23,9 @@ Emscripten supports the WebGL-friendly subset of OpenGL *by default*. This is th
 
 This mode is used by default because it is stable, predictable and fast. 
 
-The files in `tests/glbook <https://github.com/kripken/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the WebGL-friendly subset of commands.
+.. todo:: Have removed the following note because ``webgl.verbose`` is not available in the preferences in current firefox. If this becomes available, attempt to re-integrate:
 
-.. todo:: Check this. Can't find it. The Firefox ``webgl.verbose`` option is a very useful tool is the  in Firefox. If you compile code that uses client-side arrays, that option will give you a warning when there isn't a bound buffer and so forth. It will also warn you of other differences between OpenGL and WebGL.
+	The Firefox ``webgl.verbose`` option is a very useful tool is the  in Firefox. If you compile code that uses client-side arrays, that option will give you a warning when there isn't a bound buffer and so forth. It will also warn you of other differences between OpenGL and WebGL.
 
 
 .. _opengl-support-opengl-es2-0-emulation:
@@ -35,7 +35,7 @@ OpenGL ES 2.0 emulation
 
 This mode provides a full OpenGL ES 2.0 environment — specifically it emulates client-side arrays that were missing [#f1]_ from the :ref:`opengl-support-webgl-subset`.
 
-This allows you use `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound). 
+This allows you to use `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound). 
 
 This mode is not as efficient as the WebGL-friendly subset, because Emscripten cannot predict the optimal pattern for buffer creation/sizing/etc. We therefore have to make more (costly) data uploads from the CPU to the GPU than are actually needed.
 

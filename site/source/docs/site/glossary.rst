@@ -28,7 +28,12 @@ General
 		
 		The original compiler supported a number of other memory models and compilation modes (see `Code Generation Modes <https://github.com/kripken/emscripten/wiki/Code-Generation-Modes>`_) but *Typed Arrays Mode 2* proved to have, among other benefits, the greatest support for arbitrary code.
 		
+	
+	Load-store consistency
+		Load-Store Consistency (LSC), is the requirement that after a value with a specific type is written to a memory location, loads from that memory location will be of the same type. So if a variable contains a 32-bit floating point number, then both loads and stores to that variable will be of 32-bit floating point values, and not 16-bit unsigned integers or anything else. 
 		
+		.. note:: This definition is taken from `Emscripten: An LLVM-to-JavaScript Compiler <https://github.com/kripken/emscripten/blob/master/docs/paper.pdf?raw=true>`_ (section 2.1.1). There is additional detail in that paper.  
+
 
 Emscripten tools and dependencies
 =================================
