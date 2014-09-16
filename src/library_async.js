@@ -146,8 +146,14 @@ mergeInto(LibraryManager.library, {
     invoked = invoked|0;
     sp = sp|0;
     var actual_len = 0, new_frame = 0;
-    // len is the size of ctx
-    // we also need to store prev_frame, stack pointer, and invoked before ctx
+    // len is the size of the call-specific data stored in the context; we also
+    // need to store prev_frame, stack pointer, the actual length, and invoked.
+    // Normally stackAlloc() must be used with caution since STACKTOP is reset
+    // when exceptions are caught, so unless the "st" variable is also
+    // incremented the allocation is in danger of being wiped. In this case
+    // though we're OK, because the context is either free'd immediately after
+    // the call, or else execution continues in an async_cb function which has
+    // "st = STACKTOP" at the start.
     new_frame = stackAlloc((len + 16)|0)|0;
     actual_len = ((stackSave()|0) - (new_frame|0))|0;
     // save invoked
@@ -169,16 +175,23 @@ mergeInto(LibraryManager.library, {
     len = len|0;
     invoked = invoked|0;
     var new_frame = 0, actual_len = 0;
+
 #if ASSERTIONS
     var old_len = 0;
+    old_len = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i32') }}};
+
+    // Assert that we haven't wiped out the async ctx from the stack - this is
+    // the assertion we will keep if the one below is fixed.
+    //assert(stackSave() >= ((___async_cur_frame + old_len)|0));
+
     // XXX Assert that the async structure is still on the top of the stack,
     // otherwise we can't realloc! If an async_cb uses alloca() then calls
     // another async function, we're in trouble; asyncify doesn't currently
     // support this.
-    old_len = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i32') }}};
     assert(((stackSave()|0) == ((___async_cur_frame + old_len)|0))|0,
            'alloca not supported inside async callback');
 #endif
+
     stackRestore(___async_cur_frame);
     new_frame = stackAlloc((len + 16)|0)|0;
     actual_len = ((stackSave()|0) - (new_frame|0))|0;

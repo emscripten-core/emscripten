@@ -4,23 +4,6 @@
 #include <alloca.h>
 
 int get_stacktop() { return (int)alloca(10); }
-/*
-Running :
------
------
-Running :
------
------
-Running :
------
------
-Running :
------
------
-Running :
------
------
- */
 
 void f(void *p) {
   *(int*)p = 99;
@@ -97,12 +80,28 @@ void test_exceptions2() {
   }
 }
 
-void test_async_free_after_invoke() {
+void async_fn_which_returns() {
+  if (tmp2) return;
+  else emscripten_sleep(1);
+}
+void test_async_free() {
+  async_fn_which_returns();
+  printf("free'd ctx after sync call, no invoke\n");
   try {
     call_async_fn_which_throws();
   } catch (std::exception&) {
-    printf("free'd ctx after sync call and caught exception\n");
+    printf("free'd ctx after sync call, invoked and caught exception\n");
   }
+}
+
+void fn_which_throws() { throw std::exception(); }
+void test_async_realloc_after_exception() {
+  emscripten_sleep(1);
+  try {
+    fn_which_throws();
+  } catch (std::exception&) {}
+  async_fn_which_returns();
+  printf("realloc'd OK\n");
 }
 
 #define CALL(x) printf("Running " #x ":\n-----\n"); x(); printf("-----\n\n");
@@ -111,5 +110,6 @@ CALL(test_basic)
 CALL(test_return_value)
 CALL(test_exceptions1)
 CALL(test_exceptions2)
-CALL(test_async_free_after_invoke)
+CALL(test_async_free)
+CALL(test_async_realloc_after_exception);
 }

@@ -20,7 +20,13 @@ caught exception 1, stack leaked = 0
 caught exception 2, stack leaked = 0
 -----
 
-Running test_async_free_after_invoke:
+Running test_async_free:
 -----
-free'd ctx after sync call and caught exception
+free'd ctx after sync call, no invoke
+free'd ctx after sync call, invoked and caught exception
+-----
+
+Running test_async_realloc_after_exception:
+-----
+realloc'd OK
 -----
