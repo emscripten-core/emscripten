@@ -155,7 +155,7 @@ function srcToAst(src) {
 }
 
 function astToSrc(ast, minifyWhitespace) {
-    return uglify.uglify.gen_code(ast, {
+  return uglify.uglify.gen_code(ast, {
     debug: debug,
     ascii_only: true,
     beautify: !minifyWhitespace,
@@ -5585,6 +5585,18 @@ function pointerMasking(ast) {
   });
 }
 
+function getReturnType(func) {
+  var ret = ASM_NONE;
+  traverse(func, function(node, type) {
+    if (type == 'return' && node[1]) {
+      var type = detectAsmCoercion(node[1]);
+      if (ret) assert(ret === type);
+      ret = type;
+    }
+  });
+  return ret;
+}
+
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
   emitAst = false;
@@ -5930,10 +5942,26 @@ function emterpretify(ast) {
 
     var data = [ROPCODES['FUNC'], totalVars, totalVars, totalVars]; // TODO: optimize these
 
-    print('function ' + func[1] + '() {');
-    print(' [' + data + ']');
-    //blocks: walkStatements(getStatements(func))
-    print('}');
+    var stats = getStatements(func);
+    func[3] = []; // wipe out all contents
+    denormalizeAsm(func, asmData);
+    var theCall = ['call', ['name', 'emterpret'], []];
+    func[3] = func[3].filter(function(node) {
+      if (node[0] === 'return') {
+        assert(asmData.ret !== undefined);
+        node[1] = makeAsmCoercion(theCall, detectAsmCoercion(node[1]));
+      }
+      return node[0] !== 'var';
+    });
+    if (asmData.ret === undefined) {
+      func[3].push(['stat', theCall]);
+    }
+
+    print(astToSrc(func) + ' //[' + data + ']');
+
+    //getReturnType
+
+    //blocks: walkStatements(stats)
   }
   traverseGeneratedFunctions(ast, walkFunction);
 }
