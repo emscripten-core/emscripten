@@ -68,10 +68,10 @@ class AsmModule():
 
     self.extra_funcs_js = ''
 
-  def set_pre_js(self, staticbump=None, mem_init_js=None):
+  def set_pre_js(self, staticbump=None, js=None):
     if staticbump is None: staticbump = self.staticbump
-    if mem_init_js is None: mem_init_js = self.mem_init_js
-    self.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (staticbump,) + mem_init_js, self.pre_js, count=1)
+    if js is None: js = self.mem_init_js
+    self.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (staticbump,) + js, self.pre_js, count=1)
 
   def relocate_into(self, main):
     # heap initializer
