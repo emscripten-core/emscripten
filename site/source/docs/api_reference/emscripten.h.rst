@@ -992,7 +992,9 @@ Typedefs
 	emscripten_align2_double
 	emscripten_align1_double
 
-	Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where ``SAFE_HEAP`` found an unaligned operation. 
+	Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` found an unaligned operation. 
+	
+	For usage examples see `tests/core/test_set_align.c <https://github.com/kripken/emscripten/blob/master/tests/core/test_set_align.c>`_.
 	
 	.. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 

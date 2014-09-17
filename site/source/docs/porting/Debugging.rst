@@ -1,139 +1,268 @@
 .. _Debugging:
 
+============================
+Debugging (ready-for-review)
+============================
+
+One of the main advantages of debugging cross platform Emscripten code is that the same cross-platform source code can be debugged on either the native platform or using the Web browser's increasingly-powerful debugger, profiler and other tools. 
+
+Emscripten provides a lot of functionality and tools to aid debugging:
+
+- :ref:`Compiler debug information flags <debugging-debug-information-g>` that allow you to preserve debug information in compiled code and even create source maps so that you can step through the native C++ source when debugging in the browser.
+- :ref:`Debug mode <debugging-EMCC_DEBUG>` emits debug logs and stores intermediate build files for analysis.
+- :ref:`Compiler settings <debugging-compilation-settings>` that enable runtime checking of memory accesses and common allocation errors.
+- :ref:`debugging-manual-debugging` of Emscripten-generated code is also supported, and is in some ways even better than on native platforms.
+- :ref:`debugging-autodebugger` automatically instruments LLVM bitcode to write out each store to memory.
+
+This article describes the main tools and settings provided by Emscripten for debugging, along with a section explaining how to debug a number of :ref:`debugging-emscripten-specific-issues`.
+
+	
+.. _debugging-debug-information-g:
+
+Debug information
+=================
+
+:ref:`Emcc <emccdoc>` strips out most debug information from :ref:`optimized builds <Optimizing-Code>`. Optimisation level :ref:`-01 <emcc-O1>` and above remove LLVM debug information, and also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. From optimization level :ref:`-02 <emcc-O2>` the code is minified by the :term:`Closure Compiler` and becomes virtually unreadable.
+
+The *emcc* :ref:`-g flag <emcc-g>` can be used to preserve debug information in the compiled output. By default, this option preserves white-space, function names and variable names. 
+
+The flag can also be specified with one of five levels: :ref:`-g0 <emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>`, :ref:`-g3 <emcc-g3>`, :ref:`-g4 <emcc-g4>`. Each level builds on the previous level to provide progressively more debug information in the compiled output. The :ref:`-g3 flag <emcc-g3>` provides the same level of debug information as the :ref:`-g flag <emcc-g>`. 
+
+The :ref:`-g4 <emcc-g4>` option provides the most debug information — it generates source maps that allow you to view and debug the *C/C++ source code* in your browser's debugger on Firefox, Chrome or Safari! 
+ 
+.. note:: Some optimizations may be disabled when used in conjunction with the debug flags. For example, if you compile with ``-O3 -g4`` some of the normal ``-O3`` optimizations will be disabled in order to provide the requested debugging information. 
+
+.. _debugging-EMCC_DEBUG:
+
+Debug mode (EMCC_DEBUG)
 =======================
-Debugging (wiki-import)
-=======================
 
-For a quick overview of debugging Emscripten-generated code, see `these slides <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/20>`_.
+The ``EMCC_DEBUG`` environment variable can be set to enable Emscripten's debug mode:
 
-.. comment:: Pulled from below, might be useful: If you think you may have hit an Emscripten codegen bug, there are a few tools to help you.
+.. code-block:: bash
 
-Limitation or Bug?
+	# Linux or Mac OS X
+	EMCC_DEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
+
+	# Windows
+	set EMCC_DEBUG=1 
+	emcc tests/hello_world.cpp -o hello.html
+	set EMCC_DEBUG=0 
+
+With ``EMCC_DEBUG=1`` set, :ref:`emcc <emccdoc>` emits debug output and generates intermediate files for the compiler's various stages. ``EMCC_DEBUG=2`` additionally generates intermediate files for each JavaScript optimizer pass. 
+
+The debug logs and intermediate files are output to **TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is by default **/tmp** (it is defined in the :ref:`.emscripten <compiler-configuration-file>`). 
+	
+The debug logs can be analysed to profile and review the changes that were made in each step.
+
+.. note:: The debug mode can also be enabled using by specifying the :ref:`verbose output <debugging-emcc-v>` compiler flag (``emcc -v``). 
+
+
+.. _debugging-compilation-settings:
+
+Compiler settings
 ==================
 
-Emscripten can compile almost but not all C/C++ code out there. Some limitations exist, see :ref:`code-portability-guidelines`.
+Emscripten has a number of compiler settings that can be useful for debugging. These are set using the :ref:`emcc -s <emcc-s-option-value>` option, and will override any optimization flags. For example:
 
-Aside from these limitations, it's possible you ran into a bug in Emscripten, such as:
+.. code-block:: bash
 
--  Missing functionality. For example, a library function which hasn't yet been implemented in Emscripten. Possible solutions here are to implement the function (see ``library.js``) or to compile it from C++.
--  An actual mistake in Emscripten. Please report it!
+	./emcc -01 -s ASSERTIONS=1 tests/hello_world
 
-Optimizations
-=============
+The most important settings are:
 
-Try to build without optimizations (no ``-O1`` etc.). If that has an effect, you can try to disable LLVM optimizations specifically using ``--llvm-opts 0``, see ``emcc --help``.
-
-Build with ``EMCC_DEBUG=1`` to get intermediate files for the compiler's various stages (output to ``/tmp/emscripten_temp``). ``EMCC_DEBUG=2`` will emit more intermediate files (one for each JavaScript optimizer pass).
-
-Useful Compilation Settings
-===========================
-
-As already mentioned, some useful settings appear in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. Change the settings there and then recompile the code to have them take effect. When code isn't running properly, you should compile with ``ASSERTIONS``, and if that doesn't clear things up, then ``SAFE_HEAP``. ``ASSERTIONS`` adds various runtime checks, and ``SAFE_HEAP`` adds even more (slow) memory access checks like dereferencing 0 and memory alignment issues.
-
-Inspecting the Generated Code
-=============================
-
-See the slides linked to before for the ``-g`` options.
-
-Another thing you might find useful is to not run JavaScript optimizations, to leave inline source code hints. You can try something like
-
-::
-
-    /emcc -O2 --js-opts 0 -g4 tests/hello_world_loop.cpp
-
-which applies only LLVM opts, and basic JavaScript opts but not the JavaScript optimizer, which retains debug info, giving
-
-::
-
-    function _main() {
-     var label = 0;
-     var $puts=_puts(((8)|0)); //@line 4 "tests/hello_world.c"
-     return 1; //@line 5 "tests/hello_world.c"
-    }
-
-Debug Info
-==========
-
-It can be very useful to compile the C/C++ files with ``-g`` flag to get debugging into - Emscripten will add source file and line number to each line in the generated code. Note, however, that attempting to interpret code compiled with ``-g`` using ``lli`` may cause crashes. So you may need to build once without ``-g`` for ``lli``, then build again with ``-g``. Or, use ``tools/exec_llvm.py`` in Emscripten, which will run lli after cleaning out debug info.
+	- 
+		.. _debugging-ASSERTIONS:
 	
-The AutoDebugger
-===========================
+		``ASSERTIONS=1`` is used to enable runtime checks for common memory allocation errors (e.g. writing more memory than was allocated). It also defines how Emscripten should handle errors in program flow. The value can be set to ``ASSERTIONS=2`` in order to run additional tests.
+		
+		``ASSERTIONS=1`` is enabled by default. Assertions are turned off for optimized code (:ref:`-01 <emcc-O1>` and above). 
+		
+	- 
+		.. _debugging-SAFE-HEAP:
+		
+		``SAFE_HEAP=1`` adds additional memory access checks, and will give clear errors for problems like dereferencing 0 and memory alignment issues. Use  ``SAFE_HEAP=2`` in order to check only specific lines listed in ``SAFE_HEAP_LINES``, and use ``SAFE_HEAP=3`` to check all the lines except those specified. This last option is the most common operation.
+		
+		You can also set ``SAFE_HEAP_LOG`` to log ``SAFE_HEAP`` operations.
 
-The 'nuclear option' when debugging is to use the **autodebugger tool**. 
+A number of other useful debug settings are defined in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
 
-The autodebugger will rewrite the LLVM bitcode so it prints out each store to memory. You can then run the exact same LLVM bitcode in the LLVM interpreter (lli) and JavaScript, and compare the output (``diff`` is useful if the output is large). For how to use the autodebugger tool, see the ``autodebug`` test.
 
-The autodebugger can potentially find **any** problem in the generated code, so it is strictly more powerful than the ``CHECK_*`` settings and ``SAFE_HEAP``. However, it has some limitations:
+.. _debugging-emcc-v:
 
--  The autodebugger generates a lot of output. Using ``diff`` can be very helpful here.
--  The autodebugger doesn't print out pointer values, just simple numerical values. The reason is that pointer values change from run to run, so you can't compare them. However, on the one hand this may miss potential problems, and on the other, a pointer may be converted into an integer and stored, in which case it would be shown but it should be ignored. (You can modify this, look in ``tools/autodebugger.py``.)
+emcc verbose output
+===================
 
-One use of the autodebugger is to quickly emit lots of logging output. You can then take a look and see if something weird pops up. Another use is for regressions, see below.
+Compiling with the :ref:`emcc -v <emcc-verbose>` option passes ``-v`` to LLVM and runs Emscripten's internal sanity checks on the toolchain. 
 
-AutoDebugger Regression Workflow
----------------------------------
+The verbose mode also enables Emscripten's :ref:`debug mode <debugging-EMCC_DEBUG>` (with ``EMCC_DEBUG=1``) to generate intermediate files for the compiler’s various stages. 
 
-Fixing regressions is pretty easy with the autodebugger, using the following workflow:
 
-- Compile the code using ``EMCC_AUTODEBUG=1`` in the environment.
-- Compile the code using ``EMCC_AUTODEBUG=1`` in the environment, again, but with a difference emcc setting etc., so that you now have one build before the regression and one after.
-- Run both versions, saving their output, then do a diff and investigate that. Any difference is likely the bug (other false positives could be things like the time, if something like ``clock()`` is called, which differs slightly between runs).
+.. _debugging-manual-debugging:
 
-(You can also make the second build a native one using the llvm nativizer tool mentioned above - run it on the autodebugged .ll file, which EMCC_DEBUG=1 will emit in ``/tmp/emscripten_temp``. This helps find bugs in general and not just regressions, but has the same issues with the nativizer tool mentioned earlier.)
+Manual print debugging
+======================
 
-	
+You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues.
 
-Specific Issues
+If you have a good idea of the problem line you can add add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. There is also :js:func:`stackTrace` which emits a stack trace and also tries to demangle C++ function names. Debug printouts can even execute arbitrary JavaScript.
+
+For example:
+
+.. code-block:: cpp
+
+	function _addAndPrint($left, $right) {
+		$left = $left | 0;
+		$right = $right | 0;
+		//---
+		if ($left < $right) console.log('l<r at ' + stackTrace());
+		//---
+		_printAnInteger($left + $right | 0);
+	}
+
+
+Disabling optimizations
 =======================
+
+It can sometimes be useful to compile with either :ref:`LLVM <emcc-llvm-opts>` or :ref:`JavaScript <emcc-js-opts>` optimizations (only) disabled. 
+
+For example, the following command enables :ref:`-02 <emcc-O2>` optimization for both LLVM and JavaScript and :ref:`debugging-debug-information-g`, but then explicitly turns off the JavaScript optimizer.
+
+.. code-block:: bash
+
+	./emcc -O2 --js-opts 0 -g4 tests/hello_world_loop.cpp
+
+The result is code that can be more useful for debugging issues related to LLVM optimized code:
+
+.. code-block:: javascript
+
+	function _main() {
+		var label = 0;
+		var $puts=_puts(((8)|0)); //@line 4 "tests/hello_world.c"
+		return 1; //@line 5 "tests/hello_world.c"
+	}	
+
+
+	
+.. _debugging-emscripten-specific-issues:
+
+Emscripten-specific issues
+==========================
 
 Memory Alignment Issues
 -----------------------
 
-``SAFE_HEAP`` will reveal memory alignment issues - where your code is assuming a higher alignment than appears in practice. Unaligned reads and writes can lead to incorrect results, as our typed array model of memory does not support them.
+The :ref:`Emscripten memory representation <emscripten-memory-model>` assumes loads and stores are aligned. Performing a normal load or store on an unaligned address can fail. 
 
-The best solution is to avoid unaligned reads and writes. Generally they occur as the result of undefined behavior.
+.. tip:: :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` can be used to reveal memory alignment issues.
 
-In some cases, however, you may need unaligned reads and writes, for example to read an int from a packed structure in some pre-existing data format. To force an unaligned read or write (which will be slower, but work properly), you can either manually read individual bytes and reconstruct the full value, or use the ``emscripten_align*`` typedefs in ``emscripten.h``, which define unaligned versions of the basic types (short, int, float, double). All operations on those types are not fully aligned (use the ``1`` variants in most cases, which mean no alignment whatsoever). They are slower due to lack of alignment, though, so be sure to only use them when absolutely necessary.
+Generally it is best to avoid unaligned reads and writes — often they occur as the result of undefined behavior. In some cases, however, they are unavoidable. For example if the code to be ported reads an ``int`` from a packed structure in some pre-existing data format.
+
+Emscripten supports unaligned reads and writes, but they will be much slower, and should be used only when absolutely necessary.  To force an unaligned read or write you can:
+
+- Manually read individual bytes and reconstruct the full value
+- Use the :c:type:`emscripten_align* <emscripten_align1_short>` typedefs, which define unaligned versions of the basic types (``short``, ``int``, ``float``, ``double``). All operations on those types are not fully aligned (use the ``1`` variants in most cases, which mean no alignment whatsoever). 
+
 
 Function Pointer Issues
 -----------------------
 
-If you get an ``abort()`` from a function pointer call (``nullFunc`` or ``b0`` or ``b1`` or such, possibly with an error message saying "incorrect function pointer"), the issue is that a function pointer was called but it is invalid in that type.
+If you get an ``abort()`` from a function pointer call to ``nullFunc`` or ``b0`` or ``b1`` (possibly with an error message saying "incorrect function pointer"), the problem is that the function pointer was not found in the expected function pointer table when called. 
 
-It is undefined behavior to cast a function pointer to another type and call that (e.g., cast away the last parameter), but this does happen in real-world code, and is one possible cause for this error. In optimized Emscripten output, each function pointer type has a different table of entries, so you must call with the correct type to get the right behavior.
+.. note:: ``nullFunc`` is the function used to populate empty index entries in the function pointer tables (``b0``, ``b1`` are shorter names used for ``nullFunc`` in more optimized builds).  A function pointer to an invalid index will call this function, which simply calls ``abort()``. 
 
-Another possible cause is a dereference of 0, like calling a method on a NULL pointer or such. That can be a bug in the code caused by any reason, but shows itself as a function pointer error (as just reading or writing to a NULL pointer will work, unlike in native builds - it is just function pointers that will always fail when NULL).
+There are several possible causes:
 
-Building with ``-Werror`` (turn warnings into errors) can help here, as some cases of undefined behavior show warnings. If you can get your codebase to build with ``-Werror`` that might help.
+- Code is calling a function pointer that has been cast from another type (this is undefined behavior but it does happen in real-world code). In optimized Emscripten output, each function pointer type is stored in a separate table based on its original signature, so you *must* call a function pointer with that same signature to get the right behavior (see :ref:`portability-function-pointer-issues` in the code portability section for more information).
+- Code calls a method on a NULL pointer or dereferences 0. This sort of bug can be caused by any sort of coding error, but manifests as a function pointer error because the function can't be found in the expected table at runtime.
 
-Use ``-s ASSERTIONS=2`` to get some useful information about the function pointer being called, and its type. Also useful is to look at the stack trace (may want to disable asm.js optimizations in Mozilla Firefox to see the best trace information) to see where in your code the error happens, then see which function should be called but isn't.
+In order to debug these sorts of issues:
 
-SAFE_HEAP is also useful when debugging issues like this, as is disabling function pointer aliasing using ``ALIASING_FUNCTION_POINTERS=0``. When you build with ``-s SAFE_HEAP=1 -s ALIASING_FUNCTION_POINTERS=0`` then it should be impossible for a function pointer to be called with the wrong type without an error showing up.
+- Compile with ``-Werror``. This turns warnings into errors, which can be useful as some cases of undefined behavior would otherwise show warnings. 
+- Use ``-s ASSERTIONS=2`` to get some useful information about the function pointer being called, and its type. 
+- Look at the browser stack trace to see where the error occurs and which function should have been called. 
+- Build with :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>` and function pointer aliasing disabled (``ALIASING_FUNCTION_POINTERS=0``). This should make it impossible for a function pointer to be called with the wrong type without raising an error: ``-s SAFE_HEAP=1 -s ALIASING_FUNCTION_POINTERS=0``
 
-Another possible problem with function pointers is that what appears to be the wrong function is called. Again, ``SAFE_HEAP`` can help with this as it detects some possible errors with function table accesses.
+
+Another function pointer issue is when the wrong function is called. :ref:`SAFE_HEAP=1 <debugging-SAFE-HEAP>` can help with this as it detects some possible errors with function table accesses. ``ALIASING_FUNCTION_POINTERS=0`` is also useful as it ensures that every function pointer is a globally unique number (forcing a function call on the wrong table to call a missing function rather than potentially the wrong function). 
+
 
 Infinite loops
 --------------
 
-If your code hits an infinite loop, one easy way to see where that happens is to use a JavaScript profiler. In the Firefox profiler for example it is easy to see which code ran at what time, so if the code enters an infinite loop for a while (before the browser shows the slow script dialog and you quit it), you will see a block of code doing the same thing near the end of the profile.
+Infinite loops cause your page to hang. After a period the browser will notify the user that the page is stuck and offer to halt or close it.
+
+If your code hits an infinite loop, one easy way to find the problem code is to use a *JavaScript profiler*. In the Firefox profiler, if the code enters an infinite loop you will see a block of code doing the same thing near the end of the profile.
+
+.. note:: The :ref:`emscripten-runtime-environment-main-loop` may need to be re-coded if your application uses an infinite main loop.
 
 
 
-Additional Tips
-===========================
+.. _debugging-autodebugger:
 
-You can also do something similar to what the autodebugger does, manually - modify the original source code with some ``printf()``\ s, then compile and run that, to investigate issues.
+AutoDebugger
+============
 
-Another useful tip is if you have a good idea of what line is problematic in generated .js, you can add ``print(new Error().stack)`` to get a stack trace there. There is also :js:func:`stackTrace` which emits a stack trace and also tries to demangle C++ function names.
+The *AutoDebugger* is the 'nuclear option' for debugging Emscripten code.
+
+.. warning:: This option is primarily intended for Emscripten core developers.
+
+The *AutoDebugger* will rewrite the LLVM bitcode so it prints out each store to memory. You can then run the exact same LLVM bitcode compiled using `tools/nativize_llvm.py <https://github.com/kripken/emscripten/blob/master/tools/nativize_llvm.py>`_ (or in the :term:`LLVM interpreter`) and JavaScript, and compare the output.
+
+The *AutoDebugger* can potentially find **any** problem in the generated code, so it is strictly more powerful than the ``CHECK_*`` settings and ``SAFE_HEAP``. One use of the *AutoDebugger* is to quickly emit lots of logging output, which can then be reviewed for odd behavior. The *AutoDebugger* is also particularly useful for :ref:`debugging regressions <debugging-autodebugger-regressions>`.
+
+The *AutoDebugger* has some limitations:
+
+-  It generates a lot of output. Using *diff* can be very helpful for identifying changes.
+-  It prints out simple numerical values rather than pointer addresses (because pointer addresses change between runs, and hence can't be compared). This is a limitation because sometimes inspection of addresses can show errors where the pointer address is 0 or impossibly large. It is possible to modify the tool to print out addresses as integers in ``tools/autodebugger.py``.
+
+To run the *AutoDebugger*, compile with the environment variable ``EMCC_AUTODEBUG=1`` set. For example:
+
+.. code-block:: bash
+
+	# Linux or Mac OS X
+	EMCC_AUTODEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
+
+	# Windows
+	set EMCC_AUTODEBUG=1 
+	emcc tests/hello_world.cpp -o hello.html
+	set EMCC_AUTODEBUG=0 
+
+
+.. _debugging-autodebugger-regressions:
+
+AutoDebugger Regression Workflow
+---------------------------------
+
+Use the following workflow to find regressions with the *AutoDebugger*:
+
+- Compile the working code with ``EMCC_AUTODEBUG=1`` set in the environment.
+- Compile the code using ``EMCC_AUTODEBUG=1`` in the environment again, but this time with the settings that cause the regression. Following this step we have one build before the regression and one after.
+- Run both versions of the compiled code and save their output. 
+- Compare the output using a *diff* tool.
+
+Any difference between the outputs is likely to be caused by the bug. 
+
+.. note:: False positives can be caused by calls to ``clock()``, which will differ slightly between runs.
+
+You can also make native builds using the :term:`LLVM Nativizer` tool. This can be run on the autodebugged **.ll** file, which will be emitted in ``/tmp/emscripten_temp`` when ``EMCC_DEBUG=1`` is set. 
+
+.. note:: 
+
+	- The native build created using the :term:`LLVM Nativizer` will use native system libraries. Direct comparisons of output with Emscripten-compiled code can therefore be misleading.
+	- Attempting to interpret code compiled with ``-g`` using the *LLVM Nativizer* or :term:`lli` may crash. So you may need to build once without ``-g`` for these tools, then build again with ``-g``. Or, use `tools/exec_llvm.py <https://github.com/kripken/emscripten/blob/master/tools/exec_llvm.py>`_ in Emscripten, which will run *lli* after cleaning out debug info.
+
 
 Useful Links
-===========================
+============
 
-`Blogpost about reading compiler output <http://mozakai.blogspot.com/2014/06/looking-through-emscripten-output.html>`_.
+- `Blogpost about reading compiler output <http://mozakai.blogspot.com/2014/06/looking-through-emscripten-output.html>`_.
+- `GDC 2014: Getting started with asm.js and Emscripten <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/20>`_ (Debugging slides).
 
-Additional Help
-===========================
+Need help?
+==========
 
-Of course, you can also ask the Emscripten devs for help. :) See links to IRC and the Google Group on the main project page.
+The :ref:`Emscripten Test Suite <running-emscripten-tests>` contains known-good examples of almost all functionality offered by Emscripten. If you have a problem, it is therefore a good idea to search the suite to determine whether test code with similar behavior is able to run.
 
-.. todo:: **HamishW** Make sure that SAFE_HEAP is clearly documented, and ideally has a section we can link to from the rest of the document.
+If you've tried the ideas here and you need more help, then please :ref:`contact`.
+
