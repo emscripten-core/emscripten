@@ -17,6 +17,7 @@ def make_emterpreter(t):
   return r'''
 function emterpret%s%s(pc) {
  pc = pc | 0;
+ // TODO: bump and check emtstack
  %s
 }''' % (
   '_' if t != 'void' else '',
