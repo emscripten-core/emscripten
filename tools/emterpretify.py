@@ -21,23 +21,34 @@ shared.Building.js_optimizer(infile, ['emterpretify'], extra_info=None, output_f
 # load the module and modify it
 asm = asm_module.AsmModule(temp)
 
-assert '.mem' in asm.pre_js, 'we assume a mem init file for now'
-mem_file = infile + '.mem'
-assert os.path.exists(mem_file), 'need to find mem file at %s' % mem_file
-mem_init = open(mem_file, 'rb').read()
+in_mem_file = infile + '.mem'
+out_mem_file = outfile + '.mem'
+assert in_mem_file in asm.pre_js, 'we assume a mem init file for now'
+asm.pre_js = asm.pre_js.replace(in_mem_file, out_mem_file)
+assert os.path.exists(in_mem_file), 'need to find mem file at %s' % mem_file
+mem_init = map(ord, open(in_mem_file, 'rb').read())
 zero_space = asm.staticbump - len(mem_init)
 assert zero_space >= 0 # can be positive, if we add a bump of zeros
 
 # parse out bytecode and add to mem init file
 code = [] # XXX
 
-while asm.staticbump % 8 != 0: asm.staticbump += 1
-code_start = asm.staticbump
+while len(mem_init) % 8 != 0:
+  mem_init.append(0)
+  asm.staticbump += 1
+code_start = len(mem_init)
+mem_init = mem_init + code
 asm.staticbump += len(code)
-while asm.staticbump % 8 != 0: asm.staticbump += 1
-stack_start = asm.staticbump
+
+while len(mem_init) % 8 != 0:
+  mem_init.append(0)
+  asm.staticbump += 1
+stack_start = len(mem_init)
 asm.staticbump += 1024*1024 # 1MB default emterpreter stack TODO: customize
-asm.set_pre_js(js='var EMTCODE = %d, EMTSTACKTOP = %s;' % (code_start, stack_start)) # apply staticbump and do allocations
+
+open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
+
+asm.set_pre_js(js='var EMTCODE = STATIC_BASE + %d, EMTSTACKTOP = STATIC_BASE + %s;' % (code_start, stack_start)) # apply staticbump and do allocations
 
 asm.write(outfile)
 
