@@ -54,6 +54,22 @@ for i in range(len(lines)):
     func = None
     lines[i] = '}'
 
+# create new mem init, and calculate where code will start
+while len(mem_init) % 8 != 0:
+  mem_init.append(0)
+  asm.staticbump += 1
+code_start = len(mem_init) + 8 # 8 is GLOBAL_BASE
+mem_init = mem_init + code
+asm.staticbump += len(code)
+
+while len(mem_init) % 8 != 0:
+  mem_init.append(0)
+  asm.staticbump += 1
+stack_start = len(mem_init)
+asm.staticbump += 1024*1024 # 1MB default emterpreter stack TODO: customize
+
+open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
+
 # second pass, finalize trampolines
 for i in range(len(lines)):
   line = lines[i]
@@ -66,28 +82,16 @@ for i in range(len(lines)):
   elif func:
     call = 'emterpret(EMTERPRETER_' + func + ')'
     if call in line:
-      lines[i] = lines[i].replace(call, 'emterpret(%s)' % (funcs[func] + 8))
+      lines[i] = lines[i].replace(call, 'emterpret(%s)' % (funcs[func] + code_start))
 
-# finalize JS
+# finalize funcs JS
 asm.funcs_js = '\n'.join(lines)
 lines = None
 
-while len(mem_init) % 8 != 0:
-  mem_init.append(0)
-  asm.staticbump += 1
-code_start = len(mem_init)
-mem_init = mem_init + code
-asm.staticbump += len(code)
+# send EMT vars into asm
+asm.exports_js = asm.exports_js.replace('};', ', EMTSTACKTOP: EMTSTACKTOP };')
 
-while len(mem_init) % 8 != 0:
-  mem_init.append(0)
-  asm.staticbump += 1
-stack_start = len(mem_init)
-asm.staticbump += 1024*1024 # 1MB default emterpreter stack TODO: customize
-
-open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
-
-asm.set_pre_js(js='var EMTCODE = STATIC_BASE + %d, EMTSTACKTOP = STATIC_BASE + %s;' % (code_start, stack_start)) # apply staticbump and do allocations
+asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s;' % (stack_start)) # apply staticbump and do allocations
 
 asm.write(outfile)
 
