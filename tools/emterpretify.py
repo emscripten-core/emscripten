@@ -6,7 +6,7 @@ Processes asm.js code to make it run in an emterpreter.
 Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_JS=0
 '''
 
-import os, sys
+import os, sys, re, json
 import asm_module, shared
 
 infile = sys.argv[1]
@@ -31,7 +31,24 @@ zero_space = asm.staticbump - len(mem_init)
 assert zero_space >= 0 # can be positive, if we add a bump of zeros
 
 # parse out bytecode and add to mem init file
-code = [] # XXX
+code = []
+lines = asm.funcs_js.split('\n')
+asm.funcs_js = None
+func = None
+for i in range(len(lines)):
+  line = lines[i]
+  if line.startswith('function '):
+    assert not func
+    func = line.split(' ')[1].split('(')[0]
+  elif line.startswith('}'):
+    assert func
+    curr = json.loads(line[4:])
+    assert len(curr) % 4 == 0
+    code += curr
+    func = None
+    lines[i] = '}'
+asm.funcs_js = '\n'.join(lines)
+lines = None
 
 while len(mem_init) % 8 != 0:
   mem_init.append(0)
