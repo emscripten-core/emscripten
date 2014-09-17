@@ -110,8 +110,8 @@ lines = None
 asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s;' % (stack_start))
 
 # send EMT vars into asm
-brace = asm.post_js.find('{')
-asm.post_js = asm.post_js[:brace+1] + ' "EMTSTACKTOP": EMTSTACKTOP, ' + asm.post_js[brace+1:]
+brace = asm.post_js.find(', {') + 3
+asm.post_js = asm.post_js[:brace] + ' "EMTSTACKTOP": EMTSTACKTOP, ' + asm.post_js[brace:]
 asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\n'
 
 asm.write(outfile)
