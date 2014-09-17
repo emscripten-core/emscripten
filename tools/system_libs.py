@@ -58,9 +58,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
     commands = []
+    # Hide several musl warnings that produce a lot of spam to unit test build server logs.
+    # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
+    c_opts = ['-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + lib_opts)
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
     if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
