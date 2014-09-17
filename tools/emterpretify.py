@@ -18,8 +18,7 @@ def make_emterpreter(t):
 function emterpret%s%s(pc) {
  pc = pc | 0;
  %s
-}
-''' % (
+}''' % (
   '_' if t != 'void' else '',
   '' if t == 'void' else t[0],
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)

@@ -6202,6 +6202,6 @@ if (emitAst) {
   print('\n');
   print(suffix);
 } else {
-  print('/* not printing ast */');
+  //print('/* not printing ast */');
 }
 
