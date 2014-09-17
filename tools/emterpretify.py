@@ -30,11 +30,16 @@ mem_init = map(ord, open(in_mem_file, 'rb').read())
 zero_space = asm.staticbump - len(mem_init)
 assert zero_space >= 0 # can be positive, if we add a bump of zeros
 
+assert 'GLOBAL_BASE: 8,' in asm.pre_js
+
 # parse out bytecode and add to mem init file
 code = []
+funcs = {}
 lines = asm.funcs_js.split('\n')
 asm.funcs_js = None
 func = None
+
+# first pass, collect bytecode
 for i in range(len(lines)):
   line = lines[i]
   if line.startswith('function '):
@@ -44,9 +49,26 @@ for i in range(len(lines)):
     assert func
     curr = json.loads(line[4:])
     assert len(curr) % 4 == 0
+    funcs[func] = len(code)
     code += curr
     func = None
     lines[i] = '}'
+
+# second pass, finalize trampolines
+for i in range(len(lines)):
+  line = lines[i]
+  if line.startswith('function '):
+    assert not func
+    func = line.split(' ')[1].split('(')[0]
+  elif line.startswith('}'):
+    assert func
+    func = None
+  elif func:
+    call = 'emterpret(EMTERPRETER_' + func + ')'
+    if call in line:
+      lines[i] = lines[i].replace(call, 'emterpret(%s)' % (funcs[func] + 8))
+
+# finalize JS
 asm.funcs_js = '\n'.join(lines)
 lines = None
 
