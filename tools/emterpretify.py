@@ -16,7 +16,7 @@ settings = { 'PRECISE_F32': 0 } # TODO
 def make_emterpreter(t):
   return r'''
 function emterpret%s%s(pc) {
- pc = pc|0;
+ pc = pc | 0;
  %s
 }
 ''' % (

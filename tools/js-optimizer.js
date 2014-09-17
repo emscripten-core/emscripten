@@ -5949,10 +5949,11 @@ function emterpretify(ast) {
     var bump = 0; // we will assert in the emterpreter itself that we did not overflow the emtstack
     func[2].forEach(function(arg) {
       var code;
+      var bumpText = bump ? ' + ' + bump : '';
       switch (asmData.params[arg]) {
-        case ASM_INT:    code = 'HEAP32[EMTSTACKTOP + ' + bump + ' >> 2] = ' + arg + ';'; break;
-        case ASM_DOUBLE: code = 'HEAPF64[EMTSTACKTOP + ' + bump + ' >> 3] = ' + arg + ';'; break;
-        case ASM_FLOAT:  code = 'HEAPF32[EMTSTACKTOP + ' + bump + ' >> 2] = ' + arg + ';'; break;
+        case ASM_INT:    code = 'HEAP32[EMTSTACKTOP' + bumpText + ' >> 2] = ' + arg + ';'; break;
+        case ASM_DOUBLE: code = 'HEAPF64[EMTSTACKTOP' + bumpText + ' >> 3] = ' + arg + ';'; break;
+        case ASM_FLOAT:  code = 'HEAPF32[EMTSTACKTOP' + bumpText + ' >> 2] = ' + arg + ';'; break;
         default: throw 'bad';
       }
       func[3].push(srcToAst(code)[1][0]);
