@@ -9,6 +9,24 @@ Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_
 import os, sys, re, json
 import asm_module, shared
 
+# utils
+
+settings = { 'PRECISE_F32': 0 } # TODO
+
+def make_emterpreter(t):
+  return r'''
+function emterpret%s%s(pc) {
+ pc = pc|0;
+ %s
+}
+''' % (
+  '_' if t != 'void' else '',
+  '' if t == 'void' else t[0],
+  '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
+)
+
+# main
+
 infile = sys.argv[1]
 outfile = sys.argv[2]
 
@@ -80,12 +98,12 @@ for i in range(len(lines)):
     assert func
     func = None
   elif func:
-    call = 'emterpret(EMTERPRETER_' + func + ')'
+    call = '(EMTERPRETER_' + func + ')'
     if call in line:
-      lines[i] = lines[i].replace(call, 'emterpret(%s)' % (funcs[func] + code_start))
+      lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
 # finalize funcs JS
-asm.funcs_js = '\n'.join(lines)
+asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('void'), make_emterpreter('int'), make_emterpreter('double'), make_emterpreter('float')])
 lines = None
 
 # set up emterpreter stack top
@@ -93,8 +111,8 @@ asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s;' % (stack_start))
 
 # send EMT vars into asm
 brace = asm.post_js.find('{')
-asm.post_js = asm.post_js[:brace+1] + ' EMTSTACKTOP: EMTSTACKTOP, ' + asm.post_js[brace+1:]
-asm.imports_js += 'var EMTSTACKTOP = EMTSTACKTOP|0;\n'
+asm.post_js = asm.post_js[:brace+1] + ' "EMTSTACKTOP": EMTSTACKTOP, ' + asm.post_js[brace+1:]
+asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\n'
 
 asm.write(outfile)
 

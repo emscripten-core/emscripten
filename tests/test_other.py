@@ -4109,4 +4109,7 @@ pass: error == ENOTDIR
     Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertContained('hello, world!', run_js('em.out.js'))
+    out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+    self.assertContained('hello, world!', out)
+    self.validate_asmjs(out)
 

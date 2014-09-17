@@ -5959,11 +5959,19 @@ function emterpretify(ast) {
       bump += 8; // each local is a 64-bit value
     });
     denormalizeAsm(func, asmData);
-    var theCall = ['call', ['name', 'emterpret'], [['name', 'EMTERPRETER_' + func[1]]]]; // EMTERPRETER_* will be replaced with the absolute bytecode offset later
+    var theName = ['name', 'emterpret'];
+    var theCall = ['call', theName, [['name', 'EMTERPRETER_' + func[1]]]]; // EMTERPRETER_* will be replaced with the absolute bytecode offset later
     func[3] = func[3].filter(function(node) {
       if (node[0] === 'return') {
         assert(asmData.ret !== undefined);
-        node[1] = makeAsmCoercion(theCall, detectAsmCoercion(node[1]));
+        var type = detectAsmCoercion(node[1]);
+        node[1] = makeAsmCoercion(theCall, type);
+        switch (type) {
+          case ASM_INT:    theName[1] += '_i'; break;
+          case ASM_DOUBLE: theName[1] += '_d'; break;
+          case ASM_FLOAT:  theName[1] += '_f'; break;
+          default: throw 'bad';
+        }
       }
       return node[0] !== 'var';
     });
