@@ -88,10 +88,13 @@ for i in range(len(lines)):
 asm.funcs_js = '\n'.join(lines)
 lines = None
 
-# send EMT vars into asm
-asm.exports_js = asm.exports_js.replace('};', ', EMTSTACKTOP: EMTSTACKTOP };')
+# set up emterpreter stack top
+asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s;' % (stack_start))
 
-asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s;' % (stack_start)) # apply staticbump and do allocations
+# send EMT vars into asm
+brace = asm.post_js.find('{')
+asm.post_js = asm.post_js[:brace+1] + ' EMTSTACKTOP: EMTSTACKTOP, ' + asm.post_js[brace+1:]
+asm.imports_js += 'var EMTSTACKTOP = EMTSTACKTOP|0;\n'
 
 asm.write(outfile)
 
