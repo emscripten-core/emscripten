@@ -37,6 +37,8 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-compiler-optimization-options:
 
+.. _emcc-O0:
+
 ``-O0``
 	No optimizations (default). This is the recommended setting for starting to port a project, as it includes various assertions.
 	
@@ -47,8 +49,8 @@ Options that are modified or new in *emcc* are listed below:
 	
 	.. note:: 
 	
-		- For details on the affects of different opt levels, see ``apply_opt_level()`` in `tools/shared.py <https://github.com/kripken/emscripten/blob/master/tools/shared.py>`_ and also `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
-		- To re-enable C++ exception catching, use ``-s DISABLE_EXCEPTION_CATCHING=0``.
+		- For details on the effects of different optimization levels, see ``apply_opt_level()`` in `tools/shared.py <https://github.com/kripken/emscripten/blob/master/tools/shared.py>`_ and also `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
+		- To re-enable C++ exception catching, use :ref:`-s DISABLE_EXCEPTION_CATCHING=0 <optimizing-code-exception-catching>`.
 
 .. _emcc-O2: 
 		
@@ -60,12 +62,12 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-Os: 
 	
 ``-Os``
-	Like ``-O2``, but with extra optimizations for size.
+	Like ``-O2``, but with extra optimizations that reduce code size at the expense of performance. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
 
 .. _emcc-Oz: 
 	
 ``-Oz``
-	Like ``-Os``, but reduces code size even further.
+	Like ``-Os``, but reduces code size even further. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
 
 .. _emcc-O3:
 
@@ -442,4 +444,8 @@ Search for 'os.environ' in `emcc <https://github.com/kripken/emscripten/blob/mas
 		
 	- ASSERTIONS
 	- SAFE_HEAP
+	- AGGRESSIVE_VARIABLE_ELIMINATION=1
+	- -s DISABLE_EXCEPTION_CATCHING=0.
+	- INLINING_LIMIT=
+	- OUTLINING_LIMIT
 	
