@@ -6,7 +6,7 @@ Manually Building Emscripten on Linux
 
 This page contains basic instructions on how to manually build and configure Emscripten from source on a clean (Ubuntu 14.04.1 LTS 64bit) Linux box.
 
-.. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors` should instead clone from their own Emscripten fork, and submit changes as pull requests.
+.. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors <contributing>` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
 .. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need easily switch between SDK and source builds.
 

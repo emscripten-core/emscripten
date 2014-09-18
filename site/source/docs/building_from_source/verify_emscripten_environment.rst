@@ -57,7 +57,7 @@ If compiling succeeds, you're ready for the :ref:`Tutorial`. If not, check out t
 Run the full test suite
 ------------------------
 
-Emscripten has a comprehensive test suite which may be used to further validate all or parts of the toolchain. For more information, see :ref:`running-emscripten-tests`.
+Emscripten has a comprehensive test suite which may be used to further validate all or parts of the toolchain. For more information, see :ref:`emscripten-test-suite`.
 
 	
 .. _troubleshooting-emscripten-environment:

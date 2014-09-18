@@ -46,6 +46,8 @@ Reporting bugs
 
 Please :ref:`report documentation bugs <site-and-documentation-bug-reports>` as you would any other Emscripten bug. Help :ref:`fix them <writing-and-updating-articles>` by updating existing documents or by creating new ones.
 
+.. _about-this-site-contributing:
+
 Contributing to the site
 ========================
 

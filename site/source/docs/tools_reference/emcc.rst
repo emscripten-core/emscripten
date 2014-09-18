@@ -176,7 +176,7 @@ Options that are modified or new in *emcc* are listed below:
 	Use reasonable defaults when emitting JavaScript to make the build useful for profiling. This sets ``-g2`` (preserve function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
 
 ``--tracing``
-  Enable the Emscripten Tracing API.
+  Enable the :ref:`Emscripten Tracing API <trace-h>`.
 
 .. _emcc-emit-symbol-map:
 

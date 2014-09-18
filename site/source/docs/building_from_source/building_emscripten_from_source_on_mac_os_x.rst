@@ -6,7 +6,7 @@ Manually Building Emscripten on Mac OS X
 
 This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Mac OS X box (tested on OS X version 10.8.2).
 
-.. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors` should instead clone from their own Emscripten fork, and submit changes as pull requests.
+.. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors <contributing>` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
 .. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need easily switch between SDK and source builds.
 
