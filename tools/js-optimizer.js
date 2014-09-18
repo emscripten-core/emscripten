@@ -5832,7 +5832,7 @@ function emterpretify(ast) {
     var data = walkStatements(stats).concat([ROPCODES['RET'], 0, 0, 0]);
     assert(data.length % 4 === 0);
     assert(maxLocal <= 256);
-    data = [ROPCODES['FUNC'], maxLocal, 0, 0].concat(data);
+    data = [ROPCODES['FUNC'], maxLocal+1, 0, 0].concat(data);
     verifyCode(data);
     //printErr(JSON.stringify(data));
 
