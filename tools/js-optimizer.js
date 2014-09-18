@@ -5673,7 +5673,7 @@ function emterpretify(ast) {
           actuals.push(reg[0]);
           sig += ASM_SIG[detectAsmCoercion(param, asmData)];
         });
-        ret.push(GLOBAL_FUNCS[node[1][1]]);
+        ret.push(node[1][1]);
         assert(sig.indexOf('u') < 0); // no undefined
         ret.push(sig);
         ret = ret.concat(actuals);

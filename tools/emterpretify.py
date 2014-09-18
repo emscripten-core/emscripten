@@ -18,7 +18,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '1':   'GETST', # [l, 0, 0]            l = STACKTOP
   '2':   'SETST', # [l, 0, 0]            STACKTOP = l
   '3':   'SETI',  # [l, vl, vh]          l = v (16-bit)
-  '253': 'CALL',  # [target, params..]   target(params..)
+  '253': 'CALL',  # [target, sig, params..]   target(params..)
   '254': 'RET',   # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',  # [n, 0, 0]            function with n locals
 }
@@ -89,13 +89,27 @@ assert zero_space >= 0 # can be positive, if we add a bump of zeros
 assert 'GLOBAL_BASE: 8,' in asm.pre_js
 
 # parse out bytecode and add to mem init file
-code = []
+all_code = []
 funcs = {}
 lines = asm.funcs_js.split('\n')
 asm.funcs_js = None
 func = None
 
 # first pass, collect bytecode
+call_sigs = {} # signatures appearing for each call target
+def process_code(code):
+  # find CALL instructions and fix their targets and signatures
+  for i in range(len(code)/4):
+    j = i*4
+    if code[j] == ROPCODES['CALL']:
+      target = code[j+1]
+      sig = code[j+2]
+      if target not in call_sigs: call_sigs[target] = []
+      sigs = call_sigs[target]
+      if sig not in sigs: sigs.append(sig)
+      code[j+1] = global_funcs[target]
+      code[j+2] = sigs.index(sig)
+
 for i in range(len(lines)):
   line = lines[i]
   if line.startswith('function ') and '}' not in line:
@@ -110,9 +124,10 @@ for i in range(len(lines)):
       curr = None
     if curr is not None:
       assert len(curr) % 4 == 0, curr
-      funcs[func] = len(code)
+      funcs[func] = len(all_code) # no operation here should change the length
+      process_code(curr)
       print >> sys.stderr, 'bytecode for %s:' % func, curr
-      code += curr
+      all_code += curr
     func = None
     lines[i] = '}'
 
@@ -121,8 +136,8 @@ while len(mem_init) % 8 != 0:
   mem_init.append(0)
   asm.staticbump += 1
 code_start = len(mem_init) + 8 # 8 is GLOBAL_BASE
-mem_init = mem_init + code
-asm.staticbump += len(code)
+mem_init = mem_init + all_code
+asm.staticbump += len(all_code)
 
 while len(mem_init) % 8 != 0:
   mem_init.append(0)
