@@ -44,8 +44,9 @@ function emterpret%s%s(pc) {
  pc = pc | 0;
  var sp = 0, inst = 0, op = 0, lx = 0, ly = 0, lz = 0;
  sp = EMTSTACKTOP;
- assert(((HEAP8[pc>>0]|0) == %d)|0);
+ assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  EMTSTACKTOP = EMTSTACKTOP + (HEAP8[pc + 1 >> 0] << 3) | 0;
+ pc = pc + 4 | 0;
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
  while (1) {
   inst = HEAP32[pc>>2]|0;
@@ -53,7 +54,7 @@ function emterpret%s%s(pc) {
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  switch (op|0) {
+  switch (op>>>0) {
 %s
    default: assert(0);
   }
@@ -62,7 +63,7 @@ function emterpret%s%s(pc) {
 }''' % (
   '_' if t != 'void' else '',
   '' if t == 'void' else t[0],
-  ROPCODES['CALL'],
+  ROPCODES['FUNC'],
   '\n'.join(['   case %d: %s break;' % (k, v) for k, v in CASES.iteritems()]),
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 )
