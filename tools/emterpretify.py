@@ -66,10 +66,12 @@ function emterpret%s%s(pc) {
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
+  //printErr([pc, op, lx, ly, lz]);
   switch (op|0) {
 %s
    default: assert(0);
   }
+  pc = pc + 4 | 0;
  }
  %s
 }''' % (
