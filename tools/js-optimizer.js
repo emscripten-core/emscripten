@@ -5608,7 +5608,7 @@ function emterpretify(ast) {
     0:   'SET',   // [lx, ly, 0]          lx = ly
     1:   'GETST', // [l, 0, 0]            l = STACKTOP
     2:   'SETST', // [l, 0, 0]            STACKTOP = l
-    3:   'SETI',  // [l, vl, vm, vh]      l = v (24-bit)
+    3:   'SETI',  // [l, vl, vh]          l = v (16-bit)
     253: 'CALL',  // [target, params..]   target(params..)
     254: 'RET',   // [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
     255: 'FUNC',  // [n, 0, 0]            function with n locals
@@ -5654,9 +5654,9 @@ function emterpretify(ast) {
         }
         case 'num': {
           var value = node[1];
-          if (value >>> 24 === 0) {
+          if (value >>> 16 === 0) {
             var l = getFree();
-            return [l, [ROPCODES['SETI'], l, value & 255, (value >>> 8) & 255, value >>> 24]];
+            return [l, [ROPCODES['SETI'], l, value & 255, value >>> 8]];
           } else {
             throw 'todo: big nums';
           }
@@ -5817,9 +5817,12 @@ function emterpretify(ast) {
     }
 
     // walk all the function to emit bytecode, and add a final ret
+    // TODO: only add final ret if needed
     var data = walkStatements(stats).concat([ROPCODES['RET'], 0, 0, 0]);
+    assert(data.length % 4 === 0);
     assert(maxLocal <= 256);
     data = [ROPCODES['FUNC'], maxLocal, 0, 0].concat(data);
+    assert(data.length % 4 === 0);
 
     print(astToSrc(func) + ' //[' + data + ']');
   }

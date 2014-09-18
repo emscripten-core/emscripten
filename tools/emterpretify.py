@@ -60,7 +60,7 @@ func = None
 # first pass, collect bytecode
 for i in range(len(lines)):
   line = lines[i]
-  if line.startswith('function '):
+  if line.startswith('function ') and '}' not in line:
     assert not func
     func = line.split(' ')[1].split('(')[0]
   elif line.startswith('}'):
@@ -96,7 +96,7 @@ open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
 # second pass, finalize trampolines
 for i in range(len(lines)):
   line = lines[i]
-  if line.startswith('function '):
+  if line.startswith('function ') and '}' not in line:
     assert not func
     func = line.split(' ')[1].split('(')[0]
   elif line.startswith('}'):
