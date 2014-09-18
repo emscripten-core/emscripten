@@ -42,18 +42,18 @@ def make_emterpreter(t):
   return r'''
 function emterpret%s%s(pc) {
  pc = pc | 0;
- var sp = 0, inst = 0, lx = 0, ly = 0, lz = 0;
+ var sp = 0, inst = 0, op = 0, lx = 0, ly = 0, lz = 0;
  sp = EMTSTACKTOP;
- assert((HEAP8[pc>>0]|0) == %d);
+ assert(((HEAP8[pc>>0]|0) == %d)|0);
  EMTSTACKTOP = EMTSTACKTOP + (HEAP8[pc + 1 >> 0] << 3) | 0;
- assert((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0));
+ assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
  while (1) {
   inst = HEAP32[pc>>2]|0;
   op = inst & 255;
-  lx = (inst >> 8) && 255;
-  ly = (inst >> 16) && 255;
+  lx = (inst >> 8) & 255;
+  ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  switch (op) {
+  switch (op|0) {
 %s
    default: assert(0);
   }
@@ -198,7 +198,7 @@ asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s, EMT_STACK_MAX = EMTSTACKT
 # send EMT vars into asm
 brace = asm.post_js.find(', {') + 3
 asm.post_js = asm.post_js[:brace] + ' "EMTSTACKTOP": EMTSTACKTOP, "EMT_STACK_MAX": EMT_STACK_MAX, ' + asm.post_js[brace:]
-asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\n'
+asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
 
 asm.write(outfile)
 
