@@ -5605,17 +5605,41 @@ function emterpretify(ast) {
 
   // l, lx, ly etc - one of 256 locals
   var OPCODES = {
-    0:   'SET',  // [lx, ly, 0]          lx = ly
-    1:   'SETST', // [lx, 0, 0]          lx = STACKTOP
-    254: 'RET',  // [l, 0, 0]            return l
-    255: 'FUNC', // [n, 0, 0]            function with n locals
+    0:   'SET',   // [lx, ly, 0]          lx = ly
+    1:   'SETST', // [l, 0, 0]            l = STACKTOP
+    2:   'SETI',  // [l, vl, vm, vh]      l = v (24-bit)
+    253: 'CALL',  // [target, params..]   target(params..)
+    254: 'RET',   // [l, 0, 0]            return l
+    255: 'FUNC',  // [n, 0, 0]            function with n locals
   };
 
   var ROPCODES = {};
-  for (var o in OPCODES) ROPCODES[OPCODES[o]] = o;
+  for (var o in OPCODES) ROPCODES[OPCODES[o]] = +o;
+
+  var TYPE_TO_CALL = {};
+  TYPE_TO_CALL[ASM_INT] = 'CALL';
 
   function walkFunction(func) {
+
+    var freeLocals = [];
+    var maxLocal = 0;
+
+    // gets a 'free' local. this notices the maximum local used, which is then the size of out stack
+    // 'free' locals are ones above the set of actual local vars in the asm.js method.
+    // you *must* free that local by calling releaseFree on it, which implies you must call
+    // releaseIfFree on anything returned by getReg
+    function getFree() {
+      assert(freeLocals.length > 0);
+      var ret = freeLocals.pop();
+      maxLocal = Math.max(maxLocal, ret);
+      return ret;
+    }
+    function releaseFree(l) {
+      freeLocals.push(l);
+    }
+
     // returns [l, bytecode] where l is a local register, and bytecode is bytecode to generate it
+    // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it
     function getReg(node) {
       printErr('getReg ' + JSON.stringify(node));
       switch(node[0]) {
@@ -5627,9 +5651,44 @@ function emterpretify(ast) {
             default: throw 'getReg global wha? ' + name;
           }
         }
+        case 'num': {
+          var value = node[1];
+          if (value >>> 24 === 0) {
+            var l = getFree();
+            return [l, [ROPCODES['SETI'], l, value & 255, (value >>> 8) & 255, value >>> 24]];
+          } else {
+            throw 'todo: big nums';
+          }
+        }
         default: throw 'getReg wha? ' + node[0];
       }
     }
+    function releaseIfFree(l) {
+      if (l >= numLocals) releaseFree(l);
+      return l;
+    }
+
+    function makeCall(node, type) {
+      assert(node[0] === 'call');
+      assert(type === ASM_NONE);
+      if (node[1][0] === 'name') {
+        // normal direct call
+        var ret = [ROPCODES[TYPE_TO_CALL[type]]];
+        var actuals = [];
+        node[2].forEach(function(param) {
+          var reg = getReg(param);
+          ret = reg[1].concat(ret);
+          actuals.push(reg[0]);
+        });
+        ret = ret.concat(actuals);
+        actuals.forEach(releaseIfFree);
+        while (ret.length % 4 !== 0) ret.push(0);
+        return ret;
+      } else {
+        throw 'todo: function pointer call';
+      }
+    }
+
     function walk(node) {
       printErr('walk ' + JSON.stringify(node));
       if (!node) return [];
@@ -5651,7 +5710,7 @@ function emterpretify(ast) {
                 return [ROPCODES['SETST'], locals[name], 0, 0];
               }
               var reg = getReg(value);
-              return reg[1].concat([ROPCODES['SET'], locals[name], reg[0], 0]);
+              return reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0]);
             } else {
               switch(name) {
                 //case 'STACKTOP': return [ROPCODES['SET'], locals[name], reg[0]];
@@ -5662,6 +5721,20 @@ function emterpretify(ast) {
             // assign to memory
             throw 'todo';
           } else throw 'assign wha? ' + target[0];
+        }
+        case 'binary': {
+          if (node[1] === '|' && node[2][0] === 'call' && node[3][0] === 'num' && node[3][1] === 0) {
+            // function call with dropped result
+            return makeCall(node[2], ASM_NONE);
+          }
+        }
+        case 'call': {
+          throw 'todo';
+          if (node[1][0] === 'name') {
+            // normal direct call
+          } else {
+            // todo: function pointer call
+          }
         }
         default: throw 'wha? ' + node[0];
       }
@@ -5693,8 +5766,9 @@ function emterpretify(ast) {
       locals[i] = numLocals++;
     }
     assert(numLocals <= 256);
-
-    var data = [ROPCODES['FUNC'], numLocals, 0, 0];
+    for (var i = 255; i >= numLocals; i--) {
+      freeLocals.push(i);
+    }    
 
     var stats = getStatements(func);
     // emit stack assignments, emterpreter assumes params to be in place
@@ -5734,7 +5808,9 @@ function emterpretify(ast) {
     }
 
     // walk all the function to emit bytecode, and add a final ret
-    data = data.concat(walkStatements(stats)).concat([ROPCODES['RET'], 0, 0, 0]);
+    var data = walkStatements(stats).concat([ROPCODES['RET'], 0, 0, 0]);
+    assert(maxLocal <= 256);
+    data = [ROPCODES['FUNC'], maxLocal, 0, 0].concat(data);
 
     print(astToSrc(func) + ' //[' + data + ']');
   }
