@@ -32,13 +32,25 @@ for o in OPCODES:
   ROPCODES[OPCODES[o]] = int(o);
 
 CASES = {}
-CASES[ROPCODES['SET']] = 'HEAP32[sp + (lx << 3) >> 2] = HEAP32[sp + (ly << 3) >> 2];'
+CASES[ROPCODES['SET']] = 'HEAP32[sp + (lx << 3) >> 2] = HEAP32[sp + (ly << 3) >> 2]|0;'
+CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
+CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
+CASES[ROPCODES['SETI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
+CASES[ROPCODES['CALL']] = 'assert(1111);'
 
 # utils
 
 settings = { 'PRECISE_F32': 0 } # TODO
 
 def make_emterpreter(t):
+  # return is specialized per interpreter
+  if t == 'void':
+    CASES[ROPCODES['RET']] = 'return;'
+  elif t == 'int':
+    CASES[ROPCODES['RET']] = 'return HEAP32[sp + (lx << 3) >> 2]|0;'
+  elif t == 'double':
+    CASES[ROPCODES['RET']] = 'return +HEAPF64[sp + (lx << 3) >> 3];'
+
   return r'''
 function emterpret%s%s(pc) {
  pc = pc | 0;
@@ -54,7 +66,7 @@ function emterpret%s%s(pc) {
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  switch (op>>>0) {
+  switch (op|0) {
 %s
    default: assert(0);
   }
@@ -190,7 +202,7 @@ for i in range(len(lines)):
       lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
 # finalize funcs JS
-asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('void'), make_emterpreter('int'), make_emterpreter('double'), make_emterpreter('float')])
+asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('void'), make_emterpreter('int'), make_emterpreter('double')])
 lines = None
 
 # set up emterpreter stack top
