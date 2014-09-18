@@ -5601,7 +5601,8 @@ function getReturnType(func) {
 function emterpretify(ast) {
   emitAst = false;
 
-  var BLACKLIST = set('_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets');
+  var BLACKLIST = set(extraInfo.blacklist);
+  var GLOBAL_FUNCS = extraInfo.globalFuncs;
 
   // l, lx, ly etc - one of 256 locals
   var OPCODES = {
@@ -5687,6 +5688,7 @@ function emterpretify(ast) {
           ret = reg[1].concat(ret);
           actuals.push(reg[0]);
         });
+        ret.push(GLOBAL_FUNCS[node[1][1]]);
         ret = ret.concat(actuals);
         actuals.forEach(releaseIfFree);
         while (ret.length % 4 !== 0) ret.push(0);

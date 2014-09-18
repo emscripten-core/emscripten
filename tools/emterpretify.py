@@ -9,6 +9,10 @@ Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_
 import os, sys, re, json
 import asm_module, shared
 
+# settings
+
+BLACKLIST = set(['_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
+
 # utils
 
 settings = { 'PRECISE_F32': 0 } # TODO
@@ -32,9 +36,29 @@ outfile = sys.argv[2]
 
 print 'emterpretifying %s to %s' % (infile, outfile)
 
+# final global functions
+
+asm = asm_module.AsmModule(infile)
+global_funcs = {}
+global_id = 0
+for k, v in asm.imports.iteritems():
+  if '|' not in v and '+' not in v and 'new ' not in v and '.0' not in v and v != '0':
+    global_funcs[k] = global_id
+    global_id += 1
+
+lines = asm.funcs_js.split('\n')
+for i in range(len(lines)):
+  line = lines[i]
+  if line.startswith('function ') and '}' not in line:
+    func = line.split(' ')[1].split('(')[0]
+    if func not in BLACKLIST:
+      global_funcs[func] = global_id
+      global_id += 1
+assert global_id < 256
+
 # process functions, generating bytecode
 temp = infile + '.tmp.js'
-shared.Building.js_optimizer(infile, ['emterpretify'], extra_info=None, output_filename=temp)
+shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'blacklist': list(BLACKLIST), 'globalFuncs': global_funcs }, output_filename=temp)
 
 # load the module and modify it
 asm = asm_module.AsmModule(temp)
