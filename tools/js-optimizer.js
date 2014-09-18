@@ -1817,6 +1817,13 @@ var ASM_DOUBLE = 1;
 var ASM_FLOAT = 2;
 var ASM_NONE = 3;
 
+var ASM_SIG = {
+  0: 'i',
+  1: 'd',
+  2: 'f',
+  3: 'v'
+};
+
 var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
 
 function detectAsmCoercion(node, asmInfo, inVarDef) {
@@ -5585,18 +5592,6 @@ function pointerMasking(ast) {
   });
 }
 
-function getReturnType(func) {
-  var ret = ASM_NONE;
-  traverse(func, function(node, type) {
-    if (type == 'return' && node[1]) {
-      var type = detectAsmCoercion(node[1]);
-      if (ret) assert(ret === type);
-      ret = type;
-    }
-  });
-  return ret;
-}
-
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
   emitAst = false;
@@ -5683,12 +5678,16 @@ function emterpretify(ast) {
         var ret = [ROPCODES[TYPE_TO_CALL[type]]];
         assert(ret[0], type);
         var actuals = [];
+        var sig = ASM_SIG[type];
         node[2].forEach(function(param) {
           var reg = getReg(param);
           ret = reg[1].concat(ret);
           actuals.push(reg[0]);
+          sig += ASM_SIG[detectAsmCoercion(param, asmData)];
         });
         ret.push(GLOBAL_FUNCS[node[1][1]]);
+        assert(sig.indexOf('u') < 0); // no undefined
+        ret.push(sig);
         ret = ret.concat(actuals);
         actuals.forEach(releaseIfFree);
         while (ret.length % 4 !== 0) ret.push(0);
@@ -5840,7 +5839,7 @@ function emterpretify(ast) {
     verifyCode(data);
     //printErr(JSON.stringify(data));
 
-    print(astToSrc(func) + ' //[' + data + ']');
+    print(astToSrc(func) + ' //' + JSON.stringify(data) + '');
   }
   traverseGeneratedFunctions(ast, walkFunction);
 }

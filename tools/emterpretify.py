@@ -92,9 +92,10 @@ for i in range(len(lines)):
     try:
       curr = json.loads(line[4:])
     except:
+      if '[' in line: print >> sys.stderr, 'failed to parse code from', line
       curr = None
     if curr is not None:
-      assert len(curr) % 4 == 0
+      assert len(curr) % 4 == 0, curr
       funcs[func] = len(code)
       print >> sys.stderr, 'bytecode for %s:' % func, curr
       code += curr
