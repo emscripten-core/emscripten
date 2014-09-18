@@ -5830,9 +5830,11 @@ function emterpretify(ast) {
     }
 
     // walk all the function to emit bytecode, and add a final ret
-    // TODO: only add final ret if needed
-    var data = walkStatements(stats).concat([ROPCODES['RET'], 0, 0, 0]);
+    var data = walkStatements(stats);
     assert(data.length % 4 === 0);
+    if (data.length < 4 || data[data.length-4] != ROPCODES['RET']) {
+      data = data.concat([ROPCODES['RET'], 0, 0, 0]); // final ret for the function
+    }
     assert(maxLocal <= 256);
     data = [ROPCODES['FUNC'], maxLocal+1, 0, 0].concat(data);
     verifyCode(data);
