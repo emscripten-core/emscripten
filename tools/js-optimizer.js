@@ -5706,6 +5706,8 @@ function emterpretify(ast) {
                 return [ROPCODES['GETST'], locals[name], 0, 0];
               }
               var reg = getReg(value);
+              var type = asmData.vars[name];
+              assert(type !== ASM_DOUBLE); // TODO: SETD
               return reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0]);
             } else {
               switch(name) {
