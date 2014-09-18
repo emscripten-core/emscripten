@@ -5598,20 +5598,8 @@ function emterpretify(ast) {
 
   var BLACKLIST = set(extraInfo.blacklist);
   var GLOBAL_FUNCS = extraInfo.globalFuncs;
-
-  // l, lx, ly etc - one of 256 locals
-  var OPCODES = {
-    0:   'SET',   // [lx, ly, 0]          lx = ly
-    1:   'GETST', // [l, 0, 0]            l = STACKTOP
-    2:   'SETST', // [l, 0, 0]            STACKTOP = l
-    3:   'SETI',  // [l, vl, vh]          l = v (16-bit)
-    253: 'CALL',  // [target, params..]   target(params..)
-    254: 'RET',   // [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-    255: 'FUNC',  // [n, 0, 0]            function with n locals
-  };
-
-  var ROPCODES = {};
-  for (var o in OPCODES) ROPCODES[OPCODES[o]] = +o;
+  var OPCODES = extraInfo.opcodes;
+  var ROPCODES = extraInfo.ropcodes;
 
   var TYPE_TO_CALL = {};
   TYPE_TO_CALL[ASM_NONE] = 'CALL';

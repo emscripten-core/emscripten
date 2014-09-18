@@ -9,9 +9,23 @@ Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_
 import os, sys, re, json
 import asm_module, shared
 
-# settings
+# consts
 
 BLACKLIST = set(['_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
+
+OPCODES = { # l, lx, ly etc - one of 256 locals
+  '0':   'SET',   # [lx, ly, 0]          lx = ly
+  '1':   'GETST', # [l, 0, 0]            l = STACKTOP
+  '2':   'SETST', # [l, 0, 0]            STACKTOP = l
+  '3':   'SETI',  # [l, vl, vh]          l = v (16-bit)
+  '253': 'CALL',  # [target, params..]   target(params..)
+  '254': 'RET',   # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
+  '255': 'FUNC',  # [n, 0, 0]            function with n locals
+}
+
+ROPCODES = {}
+for o in OPCODES:
+  ROPCODES[OPCODES[o]] = int(o);
 
 # utils
 
@@ -58,7 +72,7 @@ assert global_id < 256
 
 # process functions, generating bytecode
 temp = infile + '.tmp.js'
-shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'blacklist': list(BLACKLIST), 'globalFuncs': global_funcs }, output_filename=temp)
+shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'blacklist': list(BLACKLIST), 'globalFuncs': global_funcs, 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp)
 
 # load the module and modify it
 asm = asm_module.AsmModule(temp)
