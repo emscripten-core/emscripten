@@ -9,7 +9,7 @@ Generally you should first compile and run your code without optimizations (the 
 How to optimize code
 ====================
 
-Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`O0 <emcc-O0>` (no optimization), :ref:`O1 <emcc-O1>`, :ref:`O2 <emcc-O2>`, :ref:`Os <emcc-Os>`, :ref:`Oz <emcc-Oz>`, and :ref:`O3 <emcc-O3>`. 
+Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`-O0 <emcc-O0>` (no optimization), :ref:`-O1 <emcc-O1>`, :ref:`-O2 <emcc-O2>`, :ref:`-Os <emcc-Os>`, :ref:`-Oz <emcc-Oz>`, and :ref:`-O3 <emcc-O3>`. 
 
 For example, to compile with optimization level ``-O2``:
 
@@ -23,7 +23,7 @@ The optimization level you should use depends mostly on the current stage of dev
 
 - When first porting code, run *emcc* on your code using the default settings (without optimization). Check that your code works and :ref:`debug <Debugging>` and fix any issues before continuing.
 - Build with lower optimization levels during development for a shorter compile/test iteration cycle (``-O0`` or ``-O1``).
-- Build with ``-O2`` when releasing your code — this is a highly optimized but still safe build. ``-O3`` provides an even more optimized build, but as it includes newer optimizations, must be more thoroughly tested.
+- Build with ``-O2`` or ``O3`` when releasing your code.  ``-O3`` builds are even more optimized than ``-O2``, but at the cost of significantly longer compilation time.
 - Other optimizations are discussed in the following sections.
 
 In addition to the ``-Ox`` options, there are separate compiler options that can be used to control the JavaScript optimizer (:ref:`js-opts <emcc-js-opts>`), LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) and LLVM link-time optimizations (:ref:`llvm-lto <emcc-llvm-lto>`).
@@ -37,7 +37,7 @@ In addition to the ``-Ox`` options, there are separate compiler options that can
 Advanced compiler settings
 ==========================
 
-There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, and which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`, :term:`RELOOP <relooping>`. These, and others, are documented in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. Some of these will also be directly affected by the optimization settings (you can find out which ones by searching for ``apply_opt_level`` in `tools/shared.py <https://github.com/kripken/emscripten/blob/master/tools/shared.py#L906>`_).
+There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, and which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. Some of these will be directly affected by the optimization settings (you can find out which ones by searching for ``apply_opt_level`` in `tools/shared.py <https://github.com/kripken/emscripten/blob/master/tools/shared.py#L906>`_).
 
 A few useful flags are:
 
@@ -64,7 +64,7 @@ Memory initialization
 
 By default Emscripten emits the static memory initialization code inside the **.js** file. This can cause the JavaScript file to be very large, which will slow down startup. It can also cause problems in JavaScript engines with limits on array sizes, resulting in errors like ``Array initializer too large`` or ``Too much recursion``. 
 
-The *emcc* :ref:`memory-init-file 1 <emcc-memory-init-file>` option causes the compiler to emit this code in a separate binary file with suffix **.mem**. The **.mem** file is loaded (asynchronously) by the main **.js** file before ``main()`` is called and compiled code is able to run. 
+The ``--memory-init-file 1`` :ref:`emcc option <emcc-memory-init-file>` causes the compiler to emit this code in a separate binary file with suffix **.mem**. The **.mem** file is loaded (asynchronously) by the main **.js** file before ``main()`` is called and compiled code is able to run. 
 
 .. note: From Emscripten 1.21.1 this setting is enabled by default for ``-O2`` builds (and above). 
 
@@ -73,7 +73,7 @@ The *emcc* :ref:`memory-init-file 1 <emcc-memory-init-file>` option causes the c
 
 Trade off code size and performance
 -------------------------------------
-You may wish to build the less performance-sensitive files in your project using :ref:`Os <emcc-Os>` or :ref:`Oz <emcc-Oz>` and the remainder using :ref:`O2 <emcc-O2>` (:ref:`Os <emcc-Os>` and :ref:`Oz <emcc-Oz>` are similar to :ref:`O2 <emcc-O2>`, but reduce code size at the expense of performance). 
+You may wish to build the less performance-sensitive source files in your project using :ref:`Os <emcc-Os>` or :ref:`Oz <emcc-Oz>` and the remainder using :ref:`O2 <emcc-O2>` (:ref:`Os <emcc-Os>` and :ref:`Oz <emcc-Oz>` are similar to :ref:`O2 <emcc-O2>`, but reduce code size at the expense of performance). 
 
 .. note:: This only matters when compiling the source to bitcode. There are currently no JavaScript specific optimization flags for ``-Os`` or ``-Oz``, and these map to ``-O2`` in the bitcode to JavaScript phase.
 
@@ -84,7 +84,7 @@ Tips for reducing code size include:
 
 - Define a separate memory initialization file (as :ref:`mentioned above <optimizing-code-memory-initialization>`).
 - Use ``-Os`` or ``-Oz``  (as :ref:`mentioned above <optimizing-code-oz-os>`).
-- Build bitcode to JavaScript with :ref:`O3 <emcc-O3>`. This runs the expensive variable reuse pass (``registerizeHarder``). It is slower to compile and uses newer (less tested) optimizations than ``-O2``.
+- Build bitcode to JavaScript with :ref:`O3 <emcc-O3>`. This runs the expensive variable reuse pass (``registerizeHarder``). It is even more effective than ``-O2`` but slower to compile.
 - Use :ref:`llvm-lto <emcc-llvm-lto>` when compiling from bitcode to JavaScript: ``--llvm-lto 1``. This can break some code as the LTO code path is less tested.
 - Disable :ref:`optimizing-code-inlining`: ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too.
 - Use :ref:`closure <emcc-closure>` on the outside non-asm.js code: ``--closure 1``. This can break some code.
@@ -123,7 +123,7 @@ C++ exceptions
 
 C++ exceptions are turned off by default in ``-O1`` (and above). This prevents the generation of ``try-catch`` blocks, which lets the code run much faster, and also makes the code smaller. 
 
-To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`).
+To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_).
 
 
 Viewing code optimization passes
@@ -152,7 +152,6 @@ Unsafe optimizations
 A few **UNSAFE** optimizations you might want to try are:
 
 - ``-s FORCE_ALIGNED_MEMORY=1``: Makes all memory accesses fully aligned. This can break on code that actually requires unaligned accesses.
-- ``-s PRECISE_I64_MATH=1``: When disabled, does shortcuts when implementing 64-bit addition etc., using doubles instead of full emulation. This will break on code that uses the full range of 64-bit numbers.
 - ``--llvm-lto 1``: This enables LLVM's link-time optimizations, which can help in some cases. However there are known issues with these optimizations, so code must need to be extensively tested. See :ref:`llvm-lto <emcc-llvm-lto>` for information about the other modes.
 - ``--closure 1``: This can help with reducing the size of the non-generated (support/glue) code, and with startup. However it can break if you do not do proper :term:`Closure Compiler` annotations and exports.
 
