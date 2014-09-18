@@ -4105,7 +4105,13 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
+    try: # avoid libc for now XXX
+      os.environ['EMCC_FORCE_STDLIBS'] = ''
+      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
     Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertContained('hello, world!', run_js('em.out.js'))
