@@ -22,7 +22,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '1':   'GETST', # [l, 0, 0]            l = STACKTOP
   '2':   'SETST', # [l, 0, 0]            STACKTOP = l
   '3':   'SETI',  # [l, vl, vh]          l = v (16-bit int)
-  '253': 'CALL',  # [target, sig, params..]   target(params..)
+  '253': 'CALL',  # [target, sig, params..]   target(params..) # TODO: assign to a var, optionally
   '254': 'RET',   # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',  # [n, 0, 0]            function with n locals (each taking 64 bits)
 }
@@ -36,11 +36,26 @@ CASES[ROPCODES['SET']] = 'HEAP32[sp + (lx << 3) >> 2] = HEAP32[sp + (ly << 3) >>
 CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
 CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
 CASES[ROPCODES['SETI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
-CASES[ROPCODES['CALL']] = 'assert(0);'
 
 # utils
 
 settings = { 'PRECISE_F32': 0 } # TODO
+
+def get_access(l, s='i'):
+  if s == 'i':
+    return 'HEAP32[sp + (' + l + ' << 3) >> 2]'
+  elif s == 'd':
+    return 'HEAPF64[sp + (' + l + ' << 3) >> 3]'
+  else:
+    assert 0
+
+def get_coerced_access(l, s='i'):
+  if s == 'i':
+    return get_access(l, s) + '|0'
+  elif s == 'd':
+    return '+' + get_access(l, s)
+  else:
+    assert 0
 
 def make_emterpreter(t):
   # return is specialized per interpreter
@@ -51,10 +66,28 @@ def make_emterpreter(t):
   elif t == 'double':
     CASES[ROPCODES['RET']] = 'return +HEAPF64[sp + (lx << 3) >> 3];'
 
+  # call is generated using information of actual call patterns
+  if ROPCODES['CALL'] not in CASES:
+    #print >> sys.stderr, call_sigs
+    def make_target_call(i):
+      name = rglobal_funcs[i]
+      if name not in call_sigs: return None
+      sigs = call_sigs[name]
+      assert len(sigs) == 1
+      sig = sigs[0]
+      ret = '     ' + name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+3)) for i in range(len(sig)-1)]) + ')'
+      assert sig[0] == 'v' # if sig[0] != 'v': ret = get_access(..
+      return ret + '; break;'
+
+    CASES[ROPCODES['CALL']] = 'switch (lx|0) {\n' + \
+      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_id-1)])) + \
+      '\n    default: assert(0);' + \
+      '\n   }'
+
   return r'''
 function emterpret%s%s(pc) {
  pc = pc | 0;
- var sp = 0, inst = 0, op = 0, lx = 0, ly = 0, lz = 0;
+ var sp = 0, inst = 0, lx = 0, ly = 0, lz = 0;
  sp = EMTSTACKTOP;
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  EMTSTACKTOP = EMTSTACKTOP + (HEAP8[pc + 1 >> 0] << 3) | 0;
@@ -62,12 +95,11 @@ function emterpret%s%s(pc) {
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
  while (1) {
   inst = HEAP32[pc>>2]|0;
-  op = inst & 255;
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
   //printErr([pc, op, lx, ly, lz]);
-  switch (op|0) {
+  switch (inst&255) {
 %s
    default: assert(0);
   }

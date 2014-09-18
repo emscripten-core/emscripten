@@ -5659,6 +5659,7 @@ function emterpretify(ast) {
     }
 
     function makeCall(node, type) {
+      // TODO: specialize calls like imul
       assert(node[0] === 'call');
       assert(type === ASM_NONE);
       if (node[1][0] === 'name') {
