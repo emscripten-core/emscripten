@@ -5601,15 +5601,33 @@ function getReturnType(func) {
 function emterpretify(ast) {
   emitAst = false;
 
+  // l, lx, ly etc - one of 256 locals
   var OPCODES = {
-    254: 'RET',  // [x, 0, 0]
-    255: 'FUNC', // [locals, 0, 0]
+    0:   'SET',  // [lx, ly, 0]          lx = ly
+    1:   'SETST', // [lx, 0, 0]          lx = STACKTOP
+    254: 'RET',  // [l, 0, 0]            return l
+    255: 'FUNC', // [n, 0, 0]            function with n locals
   };
 
   var ROPCODES = {};
   for (var o in OPCODES) ROPCODES[OPCODES[o]] = o;
 
   function walkFunction(func) {
+    // returns [l, bytecode] where l is a local register, and bytecode is bytecode to generate it
+    function getReg(node) {
+      printErr('getReg ' + JSON.stringify(node));
+      switch(node[0]) {
+        case 'name': {
+          var name = node[1];
+          if (name in locals) return [locals[name], []];
+          // this is a global
+          switch(name) {
+            default: throw 'getReg global wha? ' + name;
+          }
+        }
+        default: throw 'getReg wha? ' + node[0];
+      }
+    }
     function walk(node) {
       printErr('walk ' + JSON.stringify(node));
       if (!node) return [];
@@ -5617,6 +5635,32 @@ function emterpretify(ast) {
         case 'var':
         case 'toplevel': return []; // empty node
         case 'stat': return walk(node[1]);
+        case 'assign': {
+          assert(node[1] === true);
+          var target = node[2];
+          var value = node[3];
+          if (target[0] === 'name') {
+            // assign to a local or a global
+            var name = target[1];
+            if (name in locals) {
+              // local
+              if (value[0] === 'name' && value[1] === 'STACKTOP') {
+                // special-case the common STACKTOP load
+                return [ROPCODES['SETST'], locals[name], 0, 0];
+              }
+              var reg = getReg(value);
+              return reg[1].concat([ROPCODES['SET'], locals[name], reg[0], 0]);
+            } else {
+              switch(name) {
+                //case 'STACKTOP': return [ROPCODES['SET'], locals[name], reg[0]];
+                default: throw 'assign global wha? ' + name;
+              }
+            }
+          } else if (target[0] === 'sub') {
+            // assign to memory
+            throw 'todo';
+          } else throw 'assign wha? ' + target[0];
+        }
         default: throw 'wha? ' + node[0];
       }
     }
@@ -5633,11 +5677,17 @@ function emterpretify(ast) {
 
     var asmData = normalizeAsm(func);
 
-    var locals = 0;
-    for (var i in asmData.vars) locals++;
-    for (var i in asmData.params) locals++;
+    var locals = {};
+    var numLocals = 0;
+    for (var i in asmData.vars) {
+      locals[i] = numLocals++;
+    }
+    for (var i in asmData.params) {
+      locals[i] = numLocals++;
+    }
+    assert(numLocals <= 256);
 
-    var data = [ROPCODES['FUNC'], locals, 0, 0];
+    var data = [ROPCODES['FUNC'], numLocals, 0, 0];
 
     var stats = getStatements(func);
     // emit stack assignments, emterpreter assumes params to be in place
