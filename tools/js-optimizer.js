@@ -5601,6 +5601,8 @@ function getReturnType(func) {
 function emterpretify(ast) {
   emitAst = false;
 
+  var BLACKLIST = set('_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave');
+
   // l, lx, ly etc - one of 256 locals
   var OPCODES = {
     0:   'SET',  // [lx, ly, 0]          lx = ly
@@ -5674,6 +5676,11 @@ function emterpretify(ast) {
     }
 
     // walkFunction main
+
+    if (func[1] in BLACKLIST) {
+      print(astToSrc(func));
+      return;
+    }
 
     var asmData = normalizeAsm(func);
 

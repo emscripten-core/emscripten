@@ -65,10 +65,14 @@ for i in range(len(lines)):
     func = line.split(' ')[1].split('(')[0]
   elif line.startswith('}'):
     assert func
-    curr = json.loads(line[4:])
-    assert len(curr) % 4 == 0
-    funcs[func] = len(code)
-    code += curr
+    try:
+      curr = json.loads(line[4:])
+    except:
+      curr = None
+    if curr is not None:
+      assert len(curr) % 4 == 0
+      funcs[func] = len(code)
+      code += curr
     func = None
     lines[i] = '}'
 
@@ -97,7 +101,7 @@ for i in range(len(lines)):
   elif line.startswith('}'):
     assert func
     func = None
-  elif func:
+  elif func and func in funcs:
     call = '(EMTERPRETER_' + func + ')'
     if call in line:
       lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
