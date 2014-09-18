@@ -5618,7 +5618,12 @@ function emterpretify(ast) {
   for (var o in OPCODES) ROPCODES[OPCODES[o]] = +o;
 
   var TYPE_TO_CALL = {};
-  TYPE_TO_CALL[ASM_INT] = 'CALL';
+  TYPE_TO_CALL[ASM_NONE] = 'CALL';
+
+  function verifyCode(code) {
+    if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
+    for (var i = 0; i < code.length; i++) if (code[i] === undefined || code[i] === null) assert(0, i + ' : ' + JSON.stringify(code));
+  }
 
   function walkFunction(func) {
 
@@ -5675,6 +5680,7 @@ function emterpretify(ast) {
       if (node[1][0] === 'name') {
         // normal direct call
         var ret = [ROPCODES[TYPE_TO_CALL[type]]];
+        assert(ret[0], type);
         var actuals = [];
         node[2].forEach(function(param) {
           var reg = getReg(param);
@@ -5714,7 +5720,10 @@ function emterpretify(ast) {
               return reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0]);
             } else {
               switch(name) {
-                case 'STACKTOP': return [ROPCODES['SETST'], locals[name], 0, 0];
+                case 'STACKTOP': {
+                  var reg = getReg(value);
+                  return reg[1].concat([ROPCODES['SETST'], releaseIfFree(reg[0]), 0, 0]);
+                }
                 default: throw 'assign global wha? ' + name;
               }
             }
@@ -5752,7 +5761,9 @@ function emterpretify(ast) {
       if (!stats) return [];
       var ret = [];
       stats.forEach(function(stat) {
-        ret = ret.concat(walk(stat));
+        var curr = walk(stat);
+        verifyCode(curr);
+        ret = ret.concat(curr);
       });
       return ret;
     }
@@ -5822,7 +5833,8 @@ function emterpretify(ast) {
     assert(data.length % 4 === 0);
     assert(maxLocal <= 256);
     data = [ROPCODES['FUNC'], maxLocal, 0, 0].concat(data);
-    assert(data.length % 4 === 0);
+    verifyCode(data);
+    //printErr(JSON.stringify(data));
 
     print(astToSrc(func) + ' //[' + data + ']');
   }
