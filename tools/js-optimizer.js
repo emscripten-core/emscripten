@@ -5601,15 +5601,16 @@ function getReturnType(func) {
 function emterpretify(ast) {
   emitAst = false;
 
-  var BLACKLIST = set('_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave');
+  var BLACKLIST = set('_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets');
 
   // l, lx, ly etc - one of 256 locals
   var OPCODES = {
     0:   'SET',   // [lx, ly, 0]          lx = ly
-    1:   'SETST', // [l, 0, 0]            l = STACKTOP
-    2:   'SETI',  // [l, vl, vm, vh]      l = v (24-bit)
+    1:   'GETST', // [l, 0, 0]            l = STACKTOP
+    2:   'SETST', // [l, 0, 0]            STACKTOP = l
+    3:   'SETI',  // [l, vl, vm, vh]      l = v (24-bit)
     253: 'CALL',  // [target, params..]   target(params..)
-    254: 'RET',   // [l, 0, 0]            return l
+    254: 'RET',   // [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
     255: 'FUNC',  // [n, 0, 0]            function with n locals
   };
 
@@ -5707,13 +5708,13 @@ function emterpretify(ast) {
               // local
               if (value[0] === 'name' && value[1] === 'STACKTOP') {
                 // special-case the common STACKTOP load
-                return [ROPCODES['SETST'], locals[name], 0, 0];
+                return [ROPCODES['GETST'], locals[name], 0, 0];
               }
               var reg = getReg(value);
               return reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0]);
             } else {
               switch(name) {
-                //case 'STACKTOP': return [ROPCODES['SET'], locals[name], reg[0]];
+                case 'STACKTOP': return [ROPCODES['SETST'], locals[name], 0, 0];
                 default: throw 'assign global wha? ' + name;
               }
             }
@@ -5727,6 +5728,7 @@ function emterpretify(ast) {
             // function call with dropped result
             return makeCall(node[2], ASM_NONE);
           }
+          throw 'todo';
         }
         case 'call': {
           throw 'todo';
@@ -5735,6 +5737,13 @@ function emterpretify(ast) {
           } else {
             // todo: function pointer call
           }
+        }
+        case 'return': {
+          var value = node[1];
+          var reg;
+          if (value) reg = getReg(value);
+          else reg = [0, []];
+          return reg[1].concat([ROPCODES['RET'], value ? releaseIfFree(reg[0]) : 0, 0, 0]);
         }
         default: throw 'wha? ' + node[0];
       }

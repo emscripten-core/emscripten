@@ -72,6 +72,7 @@ for i in range(len(lines)):
     if curr is not None:
       assert len(curr) % 4 == 0
       funcs[func] = len(code)
+      print >> sys.stderr, 'bytecode for %s:' % func, code
       code += curr
     func = None
     lines[i] = '}'
