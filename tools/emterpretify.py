@@ -36,7 +36,7 @@ CASES[ROPCODES['SET']] = 'HEAP32[sp + (lx << 3) >> 2] = HEAP32[sp + (ly << 3) >>
 CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
 CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
 CASES[ROPCODES['SETI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
-CASES[ROPCODES['CALL']] = 'assert(1111);'
+CASES[ROPCODES['CALL']] = 'assert(0);'
 
 # utils
 
