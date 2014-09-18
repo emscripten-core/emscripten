@@ -175,6 +175,8 @@ It is possible to allow access to local file system for code running in *node.js
 How can I tell when the page is fully loaded and it is safe to call compiled functions?
 =======================================================================================
 
+(You may need this answer if you see an error saying something like ``you need to wait for the runtime to be ready (e.g. wait for main() to be called)``.)
+
 Calling a compiled function before a page has fully loaded can result in an error, if the function relies on files that may not be present (for example the :ref:`.mem <emcc-memory-init-file>` file and :ref:`preloaded <emcc-preload-file>` files are loaded asynchronously).
 
 The easiest way to find out when loading is complete is to add a ``main()`` function, and within it call a JavaScript function to notify your code that loading is complete. 
@@ -185,11 +187,25 @@ For example, if ``allReady()`` is a JavaScript function you want called when eve
 
 ::
 
-	#include <emscripten.h>
+  #include <emscripten.h>
 
-	int main() {
-		EM_ASM( allReady() );
-		}
+  int main() {
+    EM_ASM( allReady() );
+  }
+
+You can also define a ``main()`` function in JavaScript:
+
+::
+
+  Module['_main'] = function() { ... };
+
+or
+
+::
+
+  Module['_main'] = allReady;
+
+What happens in practice is that when code is ready to be run, we check for ``Module._main``. If present, we call it. If a ``main()`` function was compiled from C, it will be there (and it will be a JavaScript function). But, you can also just define a JavaScript function there, either will work.
 
 
 .. _faq-dead-code-elimination:
