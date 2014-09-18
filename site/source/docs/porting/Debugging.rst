@@ -265,7 +265,7 @@ Useful Links
 Need help?
 ==========
 
-The :ref:`Emscripten Test Suite <running-emscripten-tests>` contains good examples of almost all functionality offered by Emscripten. If you have a problem, it is a good idea to search the suite to determine whether test code with similar behavior is able to run.
+The :ref:`Emscripten Test Suite <emscripten-test-suite>` contains good examples of almost all functionality offered by Emscripten. If you have a problem, it is a good idea to search the suite to determine whether test code with similar behavior is able to run.
 
 If you've tried the ideas here and you need more help, please :ref:`contact`.
 

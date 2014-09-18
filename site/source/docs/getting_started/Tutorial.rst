@@ -145,48 +145,12 @@ For more information about compiler optimization options see :ref:`Optimizing-Co
 
 .. _running-emscripten-tests:
 
-Running the Emscripten Test Suite and Benchmarks
-================================================
+Emscripten Test Suite and Benchmarks
+====================================
 
-Emscripten has an extensive test suite at `tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_. To run every test (this may take several hours), simply call the test script: ::
+Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to build successfully on the master branch. 
 
-    python tests/runner.py
-
-The individual tests are listed in the different test suites — for example "test_hello_world" is defined in the `core test suite here <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L12>`_. You can run individual tests as shown: ::
-
-    python tests/runner.py test_hello_world
-
-.. todo:: **HamishW** Confirm that this is how test suites are done. We really should have a stand alone topic for this and link to it at this point.
-
-To view the generated code from that individual test, you can first set ``EMCC_DEBUG=1``: ::
-
-	# On Windows, use "set" to set and un-set the environment variable:
-	set EMCC_DEBUG=1 
-	python tests/runner.py test_hello_world
-	set EMCC_DEBUG=0
-	
-	# On Linux, you can do this all in one line
-	EMCC_DEBUG=1 python tests/runner.py test_hello_world
-	
-The generated code is copied into the the temp directory (**TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is defined in :ref:`~/.emscripten <compiler-configuration-file>`. By default the temporary directory location is **/tmp**). 
-
-.. note:: You can use ``EMCC_DEBUG`` with :ref:`emcc <emccdoc>` as well (not just with the test runner). This tells *emcc* to save the internal code generation stages (much like ``emcc -v``).
-
-You can also specify ``EM_SAVE_DIR=1`` in the environment (this is a test suite-specific feature) to save the temporary directory that the test runner uses to the same place as mentioned in the previous paragraph. This is useful if the test being run creates temporary files.
-
-Note that **Node.js** cannot run all of the tests in the suite; if you care about running them all, you should get a recent trunk version of the `SpiderMonkey <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ shell.
-
-
-----
-
-.. _running-emscripten-benchmarks:
-
-To run the Emscripten *benchmark* tests, enter the following command: ::
-
-    python tests/runner.py benchmark
-
-This will compile a sequence of benchmarks and run them several times, reporting averaged statistics including a comparison to how fast the same code runs when compiled to a native executable.
-
+See :ref:`emscripten-test-suite` for more information.
 
 
 General tips and next steps

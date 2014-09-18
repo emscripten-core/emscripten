@@ -105,6 +105,7 @@ To build the Fastcomp code from source:
 		
 			LLVM_ROOT='/home/ubuntu/yourpath/emscripten-fastcomp/build/bin'
 
+.. _building-fastcomp-from-source-branches:
 
 Branches
 ---------

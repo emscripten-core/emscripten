@@ -9,13 +9,13 @@ This FAQ contains answers to many questions asked on IRC and the mailing list.
 How do I compile code?
 ======================
 
-See the :ref:`Tutorial` and :ref:`emccdoc`.
+See the :ref:`Emscripten Tutorial <Tutorial>` and :ref:`emcc <emccdoc>`.
 
 
 Why do I get multiple errors building basic code and the tests?
 ===============================================================
 
-All the tests in the :ref:`Emscripten test suite <running-emscripten-tests>` are known to build and pass on the **master** branch, so if these are failing it is likely that there is some problem with your environment.
+All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are known to build and pass on the **master** branch, so if these are failing it is likely that there is some problem with your environment.
 
 First call ``./emcc -v``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
 
@@ -27,7 +27,7 @@ I tried something: why doesn’t it work?
 
 If something doesn't work (for example a :ref:`compiler flag <emccdoc>`, a *libc* function, etc.) then first search the comprehensive documentation on this site.
 
-Next check if there is a test for the failing functionality in the :ref:`Emscripten test suite <running-emscripten-tests>` (run ``grep -r`` in **tests/**). **All** the tests are known to pass on the master branch, so they provide concrete "known-good" examples of how various options and code are used.
+Next check if there is a test for the failing functionality in the :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in **tests/**). **All** the tests are known to pass on the master branch, so they provide concrete "known-good" examples of how various options and code are used.
 
 
 Do I need to change my build system to use Emscripten?
