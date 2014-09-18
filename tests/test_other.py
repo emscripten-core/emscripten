@@ -2578,6 +2578,35 @@ int main(int argc, char **argv) {
     finally:
       del os.environ['EMCC_DEBUG']
 
+  def test_oz_size(self):
+    sizes = {}
+    for name, args in [
+        ('0', ['-o', 'dlmalloc.o']),
+        ('1', ['-o', 'dlmalloc.o', '-O1']),
+        ('2', ['-o', 'dlmalloc.o', '-O2']),
+        ('s', ['-o', 'dlmalloc.o', '-Os']),
+        ('z', ['-o', 'dlmalloc.o', '-Oz']),
+        ('3', ['-o', 'dlmalloc.o', '-O3']),
+        ('0c', ['-c']),
+        ('1c', ['-c', '-O1']),
+        ('2c', ['-c', '-O2']),
+        ('sc', ['-c', '-Os']),
+        ('zc', ['-c', '-Oz']),
+        ('3c', ['-c', '-O3']),
+      ]:
+      print name, args
+      self.clear()
+      Popen([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args, stdout=PIPE, stderr=PIPE).communicate()
+      sizes[name] = os.stat('dlmalloc.o').st_size
+    print sizes
+    # -c should not affect code size
+    for name in ['0', '1', '2', '3', 's', 'z']:
+      assert sizes[name] == sizes[name + 'c']
+    opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
+    opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
+    assert opt_min - opt_max <= opt_max*0.1, 'opt builds are all fairly close'
+    assert sizes['0'] > 1.20*opt_max, 'unopt build is quite larger'
+
   def test_global_inits(self):
     open('inc.h', 'w').write(r'''
 #include <stdio.h>
