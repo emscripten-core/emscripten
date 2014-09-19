@@ -5606,7 +5606,7 @@ function emterpretify(ast) {
 
   function verifyCode(code) {
     if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
-    for (var i = 0; i < code.length; i++) if (code[i] === undefined || code[i] === null) assert(0, i + ' : ' + JSON.stringify(code));
+    for (var i = 0; i < code.length; i++) if (code[i] === undefined || code[i] === null || code < 0 || code > 255) assert(0, i + ' : ' + JSON.stringify(code));
   }
 
   function walkFunction(func) {
@@ -5628,9 +5628,10 @@ function emterpretify(ast) {
       freeLocals.push(l);
     }
 
-    // returns [l, bytecode] where l is a local register, and bytecode is bytecode to generate it
-    // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it
-    function getReg(node) {
+    // returns [l, bytecode] where l is a local register, and bytecode is bytecode to generate it.
+    // if dropIt is provided, then the output of this can just be dropped.
+    // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
+    function getReg(node, dropIt) {
       printErr('getReg ' + JSON.stringify(node));
       switch(node[0]) {
         case 'name': {
@@ -5649,6 +5650,67 @@ function emterpretify(ast) {
           } else {
             throw 'todo: big nums';
           }
+        }
+        case 'var':
+        case 'toplevel': {
+          assert(dropIt);
+          return [-1, []]; // empty node
+        }
+        case 'stat': return getReg(node[1], dropIt);
+        case 'assign': {
+          assert(node[1] === true);
+          var target = node[2];
+          var value = node[3];
+          if (target[0] === 'name') {
+            // assign to a local or a global
+            var name = target[1];
+            if (name in locals) {
+              // local
+              if (value[0] === 'name' && value[1] === 'STACKTOP') {
+                // special-case the common STACKTOP load
+                return [locals[name], [ROPCODES['GETST'], locals[name], 0, 0]];
+              }
+              var reg = getReg(value);
+              var type = asmData.vars[name];
+              assert(type !== ASM_DOUBLE); // TODO: SETD
+              return [locals[name], reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0])];
+            } else {
+              switch(name) {
+                case 'STACKTOP': {
+                  var reg = getReg(value);
+                  return [-1, reg[1].concat([ROPCODES['SETST'], releaseIfFree(reg[0]), 0, 0])];
+                }
+                default: throw 'assign global wha? ' + name;
+              }
+            }
+          } else if (target[0] === 'sub') {
+            // assign to memory
+            throw 'todo';
+          } else throw 'assign wha? ' + target[0];
+        }
+        case 'binary': {
+          if (node[1] === '|' && node[2][0] === 'call' && node[3][0] === 'num' && node[3][1] === 0) {
+            // function call with dropped result
+            assert(dropIt);
+            return [-1, makeCall(node[2], ASM_NONE)];
+          }
+          throw 'todo';
+        }
+        case 'call': {
+          throw 'todo';
+          if (node[1][0] === 'name') {
+            // normal direct call
+          } else {
+            // todo: function pointer call
+          }
+        }
+        case 'return': {
+          assert(dropIt);
+          var value = node[1];
+          var reg;
+          if (value) reg = getReg(value);
+          else reg = [0, []];
+          return [-1, reg[1].concat([ROPCODES['RET'], value ? releaseIfFree(reg[0]) : 0, 0, 0])];
         }
         default: throw 'getReg wha? ' + node[0];
       }
@@ -5686,74 +5748,12 @@ function emterpretify(ast) {
       }
     }
 
-    function walk(node) {
-      printErr('walk ' + JSON.stringify(node));
-      if (!node) return [];
-      switch(node[0]) {
-        case 'var':
-        case 'toplevel': return []; // empty node
-        case 'stat': return walk(node[1]);
-        case 'assign': {
-          assert(node[1] === true);
-          var target = node[2];
-          var value = node[3];
-          if (target[0] === 'name') {
-            // assign to a local or a global
-            var name = target[1];
-            if (name in locals) {
-              // local
-              if (value[0] === 'name' && value[1] === 'STACKTOP') {
-                // special-case the common STACKTOP load
-                return [ROPCODES['GETST'], locals[name], 0, 0];
-              }
-              var reg = getReg(value);
-              var type = asmData.vars[name];
-              assert(type !== ASM_DOUBLE); // TODO: SETD
-              return reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0]);
-            } else {
-              switch(name) {
-                case 'STACKTOP': {
-                  var reg = getReg(value);
-                  return reg[1].concat([ROPCODES['SETST'], releaseIfFree(reg[0]), 0, 0]);
-                }
-                default: throw 'assign global wha? ' + name;
-              }
-            }
-          } else if (target[0] === 'sub') {
-            // assign to memory
-            throw 'todo';
-          } else throw 'assign wha? ' + target[0];
-        }
-        case 'binary': {
-          if (node[1] === '|' && node[2][0] === 'call' && node[3][0] === 'num' && node[3][1] === 0) {
-            // function call with dropped result
-            return makeCall(node[2], ASM_NONE);
-          }
-          throw 'todo';
-        }
-        case 'call': {
-          throw 'todo';
-          if (node[1][0] === 'name') {
-            // normal direct call
-          } else {
-            // todo: function pointer call
-          }
-        }
-        case 'return': {
-          var value = node[1];
-          var reg;
-          if (value) reg = getReg(value);
-          else reg = [0, []];
-          return reg[1].concat([ROPCODES['RET'], value ? releaseIfFree(reg[0]) : 0, 0, 0]);
-        }
-        default: throw 'wha? ' + node[0];
-      }
-    }
     function walkStatements(stats) {
       if (!stats) return [];
       var ret = [];
       stats.forEach(function(stat) {
-        var curr = walk(stat);
+        var curr = getReg(stat, true)[1];
+        printErr('stat: ' + JSON.stringify(curr));
         verifyCode(curr);
         ret = ret.concat(curr);
       });
