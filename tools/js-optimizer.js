@@ -5767,6 +5767,8 @@ function emterpretify(ast) {
       return;
     }
 
+    printErr('emterpretifying ' + func[1]);
+
     var asmData = normalizeAsm(func);
 
     var locals = {};

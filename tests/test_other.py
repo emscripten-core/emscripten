@@ -4105,17 +4105,20 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
-    try: # avoid libc for now XXX
-      os.environ['EMCC_FORCE_STDLIBS'] = ''
-      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
-      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
-    Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
-    self.assertContained('hello, world!', run_js('a.out.js'))
-    self.assertContained('hello, world!', run_js('em.out.js'))
-    out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
-    self.assertContained('hello, world!', out)
-    self.validate_asmjs(out)
+    for source in ['hello_world.c', 'hello_world_loop.cpp']:
+      print source
+      self.clear()
+      try: # avoid libc for now XXX
+        os.environ['EMCC_FORCE_STDLIBS'] = ''
+        os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+        Popen([PYTHON, EMCC, path_from_root('tests', source), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
+      finally:
+        del os.environ['EMCC_FORCE_STDLIBS']
+        del os.environ['EMCC_ONLY_FORCED_STDLIBS']
+      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      self.assertContained('hello, world!', run_js('em.out.js'))
+      out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+      self.assertContained('hello, world!', out)
+      self.validate_asmjs(out)
 
