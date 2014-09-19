@@ -1840,8 +1840,8 @@ function makeAsmCoercion(node, type) {
     case ASM_INT: return ['binary', '|', node, ['num', 0]];
     case ASM_DOUBLE: return ['unary-prefix', '+', node];
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
-    case ASM_NONE: return node; // non-validating code, emit nothing
-    default: throw 'whaa?';
+    case ASM_NONE:
+    default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
 }
 
@@ -2371,6 +2371,13 @@ function registerizeHarder(ast) {
   assert(asm);
 
   traverseGeneratedFunctions(ast, function(fun) {
+
+    // Do not try to process non-validating methods, like the heap replacer
+    var abort = false;
+    traverse(fun, function(node, type) {
+      if (type === 'new') abort = true;
+    });
+    if (abort) return;
 
     var asmData = normalizeAsm(fun);
 

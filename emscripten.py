@@ -449,6 +449,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     asm_setup = ''
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul']]
     fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
 
@@ -567,6 +568,9 @@ function asmPrintFloat(x, y) {
 // EMSCRIPTEN_START_ASM
 var asm = (function(global, env, buffer) {
   %s
+%s
+''' % (asm_setup, "'use asm';" if not forwarded_json['Types']['hasInlineJS'] and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';",
+'''
   var HEAP8 = new global.Int8Array(buffer);
   var HEAP16 = new global.Int16Array(buffer);
   var HEAP32 = new global.Int32Array(buffer);
@@ -575,7 +579,25 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global.Uint32Array(buffer);
   var HEAPF32 = new global.Float32Array(buffer);
   var HEAPF64 = new global.Float64Array(buffer);
-''' % (asm_setup, "'use asm';" if not forwarded_json['Types']['hasInlineJS'] and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';") + '\n' + asm_global_vars + '''
+''' if not settings['ALLOW_MEMORY_GROWTH'] else '''
+  var Int8View = global.Int8Array;
+  var Int16View = global.Int16Array;
+  var Int32View = global.Int32Array;
+  var Uint8View = global.Uint8Array;
+  var Uint16View = global.Uint16Array;
+  var Uint32View = global.Uint32Array;
+  var Float32View = global.Float32Array;
+  var Float64View = global.Float64Array;
+  var HEAP8 = new Int8View(buffer);
+  var HEAP16 = new Int16View(buffer);
+  var HEAP32 = new Int32View(buffer);
+  var HEAPU8 = new Uint8View(buffer);
+  var HEAPU16 = new Uint16View(buffer);
+  var HEAPU32 = new Uint32View(buffer);
+  var HEAPF32 = new Float32View(buffer);
+  var HEAPF64 = new Float64View(buffer);
+  var byteLength = global.byteLength;
+''') + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
@@ -1015,6 +1037,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       asm_setup = ''
       maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul']]
       fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+      if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
       math_envs = ['Math.min'] # TODO: move min to maths
       asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
 
@@ -1189,6 +1212,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   // EMSCRIPTEN_START_ASM
   var asm = (function(global, env, buffer) {
     %s
+    %s
+  ''' % (asm_setup, "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';", '''
     var HEAP8 = new global%s(buffer);
     var HEAP16 = new global%s(buffer);
     var HEAP32 = new global%s(buffer);
@@ -1197,15 +1222,39 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     var HEAPU32 = new global%s(buffer);
     var HEAPF32 = new global%s(buffer);
     var HEAPF64 = new global%s(buffer);
-  ''' % (asm_setup, "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';",
-         access_quote('Int8Array'),
-         access_quote('Int16Array'),
-         access_quote('Int32Array'),
-         access_quote('Uint8Array'),
-         access_quote('Uint16Array'),
-         access_quote('Uint32Array'),
-         access_quote('Float32Array'),
-         access_quote('Float64Array')) + '\n' + asm_global_vars + '''
+''' % (access_quote('Int8Array'),
+       access_quote('Int16Array'),
+       access_quote('Int32Array'),
+       access_quote('Uint8Array'),
+       access_quote('Uint16Array'),
+       access_quote('Uint32Array'),
+       access_quote('Float32Array'),
+       access_quote('Float64Array')) if not settings['ALLOW_MEMORY_GROWTH'] else '''
+    var Int8View = global%s;
+    var Int16View = global%s;
+    var Int32View = global%s;
+    var Uint8View = global%s;
+    var Uint16View = global%s;
+    var Uint32View = global%s;
+    var Float32View = global%s;
+    var Float64View = global%s;
+    var HEAP8 = new Int8View(buffer);
+    var HEAP16 = new Int16View(buffer);
+    var HEAP32 = new Int32View(buffer);
+    var HEAPU8 = new Uint8View(buffer);
+    var HEAPU16 = new Uint16View(buffer);
+    var HEAPU32 = new Uint32View(buffer);
+    var HEAPF32 = new Float32View(buffer);
+    var HEAPF64 = new Float64View(buffer);
+    var byteLength = global.byteLength;
+''' % (access_quote('Int8Array'),
+       access_quote('Int16Array'),
+       access_quote('Int32Array'),
+       access_quote('Uint8Array'),
+       access_quote('Uint16Array'),
+       access_quote('Uint32Array'),
+       access_quote('Float32Array'),
+       access_quote('Float64Array'))) + '\n' + asm_global_vars + '''
     var __THREW__ = 0;
     var threwValue = 0;
     var setjmpId = 0;
