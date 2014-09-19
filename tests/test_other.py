@@ -4106,6 +4106,7 @@ pass: error == ENOTDIR
 
   def test_emterpreter(self):
     for source in ['hello_world.c', 'hello_world_loop.cpp']:
+      print
       print source
       self.clear()
       try: # avoid libc for now XXX

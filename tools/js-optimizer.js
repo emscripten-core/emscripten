@@ -5670,6 +5670,7 @@ function emterpretify(ast) {
         }
         case 'stat': return getReg(node[1], dropIt);
         case 'assign': {
+          assert(dropIt);
           assert(node[1] === true);
           var target = node[2];
           var value = node[3];
@@ -5678,10 +5679,6 @@ function emterpretify(ast) {
             var name = target[1];
             if (name in locals) {
               // local
-              if (value[0] === 'name' && value[1] === 'STACKTOP') {
-                // special-case the common STACKTOP load
-                return [locals[name], [ROPCODES['GETST'], locals[name], 0, 0]];
-              }
               var reg = getReg(value);
               var type = asmData.vars[name];
               assert(type !== ASM_DOUBLE); // TODO: SETD
