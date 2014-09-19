@@ -290,8 +290,6 @@ Note that generally run dependencies are managed by the file packager and other 
 .. js:function:: removeRunDependency(id)
 
 	Removes a specified ``id`` from the list of run dependencies.
-	
-	.. todo:: **HamishW** Remember to link to Execution lifecycle in Browser environment or otherwise link to information on using this.
 
 	:param id: The identifier for the specific dependency to be removed (added with :js:func:`addRunDependency`)
 	:type id: String

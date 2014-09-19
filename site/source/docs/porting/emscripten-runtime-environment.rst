@@ -18,7 +18,7 @@ In addition, we have more limited support for *glut*, *glfw*, *glew* and *xlib*.
 Applications that do not use *SDL* or the other APIs can use the Emscripten-specific APIs for input and output:
 
 - :ref:`html5-h`, which defines the Emscripten low-level glue bindings to interact with HTML5 events from native code, including access to keys, mouse, wheel, device orientation, battery levels, vibration, etc.
-- :ref:`multimedia-and-graphics-index` APIs, including :ref:`OpenGL <OpenGL-support>` and :ref:`EGL <EGL-Support-in-Emscripten>`.
+- :ref:`multimedia-and-graphics-index` APIs, including :ref:`OpenGL <OpenGL-support>` and :ref:`EGL <egl-support-in-emscripten>`.
 
 
 File Systems
