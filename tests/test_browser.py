@@ -1228,6 +1228,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_glfw(self):
     self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=2'])
 
   def test_egl(self):
     open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
@@ -2023,3 +2024,5 @@ open(filename, 'w').write(replaced)
     shutil.move('test.data', os.path.join('sub', 'test.data'))
     self.run_browser('page.html', None, '/report_result?1')
 
+  def test_glfw3(self):
+    self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
