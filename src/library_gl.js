@@ -200,6 +200,9 @@ var LibraryGL = {
     // so that every second frame utilizes different set of temp buffers. The aim is to keep the set of buffers
     // being rendered, and the set of buffers being updated disjoint.
     newRenderingFrameStarted: function newRenderingFrameStarted() {
+      if (!GL.currentContext) {
+        return;
+      }
       var vb = GL.currentContext.tempVertexBuffers1;
       GL.currentContext.tempVertexBuffers1 = GL.currentContext.tempVertexBuffers2;
       GL.currentContext.tempVertexBuffers2 = vb;
