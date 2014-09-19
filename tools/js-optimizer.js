@@ -5647,6 +5647,10 @@ function emterpretify(ast) {
           if (name in locals) return [locals[name], []];
           // this is a global
           switch(name) {
+            case 'STACKTOP': {
+              var x = getFree();
+              return [x, [ROPCODES['GETST'], x, 0, 0]];
+            }
             default: throw 'getReg global wha? ' + name;
           }
         }
