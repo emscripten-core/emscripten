@@ -35,6 +35,44 @@ GLint GetInt(GLenum param)
   return value;
 }
 
+void final(void*) {
+  #ifdef REPORT_RESULT
+  int result = 0;
+  REPORT_RESULT();
+  #endif
+}
+
+EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
+
+void loop()
+{
+  EMSCRIPTEN_RESULT res;
+  if (!context) {
+    // new rendering frame started without a context
+    EmscriptenWebGLContextAttributes attrs;
+    emscripten_webgl_init_context_attributes(&attrs);
+    EM_ASM(
+      var canvas2 = Module.canvas.cloneNode();
+      Module.canvas.parentElement.appendChild(canvas2);
+      Module.canvas = canvas2;
+    );
+    assert(emscripten_webgl_get_current_context() == 0);
+    context = emscripten_webgl_create_context(0, &attrs);
+
+    assert(context > 0); // Must have received a valid context.
+    res = emscripten_webgl_make_context_current(context);
+    assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+    assert(emscripten_webgl_get_current_context() == context);
+  } else {
+    res = emscripten_webgl_destroy_context(context);
+    assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+    assert(emscripten_webgl_get_current_context() == 0);
+
+    emscripten_cancel_main_loop();
+    emscripten_async_call(final, (void*)0, 10);
+  }
+}
+
 int main()
 {
   bool first = true;
@@ -107,10 +145,11 @@ int main()
     assert(res == 0);
     assert(emscripten_webgl_get_current_context() == 0);
   }
+  
+  // result will be reported when mainLoop completes
+  emscripten_set_main_loop(loop, 0, 0);
 
-#ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
-#endif
+#ifndef REPORT_RESULT
   return 0;
+#endif
 }

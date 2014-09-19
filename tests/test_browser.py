@@ -1937,7 +1937,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
 
   def test_html5_webgl_create_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print opts
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
 
