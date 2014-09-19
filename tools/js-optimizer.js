@@ -5682,6 +5682,7 @@ function emterpretify(ast) {
               var reg = getReg(value);
               var type = asmData.vars[name];
               assert(type !== ASM_DOUBLE); // TODO: SETD
+              // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
               return [locals[name], reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0])];
             } else {
               switch(name) {
@@ -5694,7 +5695,22 @@ function emterpretify(ast) {
             }
           } else if (target[0] === 'sub') {
             // assign to memory
-            throw 'todo';
+            assert(target[1][0] === 'name');
+            assert(target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num');
+            var shifts = target[2][3][1];
+            var x = getReg(target[2][2]);
+            var y = getReg(value);
+            var opcode;
+            switch(shifts) {
+              case 2: {
+                var type = detectAsmCoercion(value, asmData);
+                assert(type === ASM_INT);
+                opcode = 'STORE32';
+                break;
+              }
+              default: throw 'todo';
+            }
+            return [-1, x[1].concat(y[1]).concat([ROPCODES[opcode], releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
           } else throw 'assign wha? ' + target[0];
         }
         case 'binary': {

@@ -18,14 +18,15 @@ EMT_STACK_MAX = 1024*1024
 BLACKLIST = set(['_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
 
 OPCODES = { # l, lx, ly etc - one of 256 locals
-  '0':   'SET',   # [lx, ly, 0]          lx = ly (int or float, not double)
-  '1':   'GETST', # [l, 0, 0]            l = STACKTOP
-  '2':   'SETST', # [l, 0, 0]            STACKTOP = l
-  '3':   'SETI',  # [l, vl, vh]          l = v (16-bit int)
-  '4':   'ADD',   # [lx, ly, lz]         lx = ly + lz (32-bit int)
-  '253': 'CALL',  # [target, sig, params..]   target(params..) # TODO: assign to a var, optionally
-  '254': 'RET',   # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  '255': 'FUNC',  # [n, 0, 0]            function with n locals (each taking 64 bits)
+  '0':   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
+  '1':   'GETST',   # [l, 0, 0]            l = STACKTOP
+  '2':   'SETST',   # [l, 0, 0]            STACKTOP = l
+  '3':   'SETI',    # [l, vl, vh]          l = v (16-bit int)
+  '4':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
+  '5':   'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
+  '253': 'CALL',    # [target, sig, params..]   target(params..) # TODO: assign to a var, optionally
+  '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
+  '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
 }
 
 ROPCODES = {}
