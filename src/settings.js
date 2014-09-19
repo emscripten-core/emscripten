@@ -307,6 +307,10 @@ var ASYNCIFY = 0; // Whether to enable asyncify transformation
                   // e.g. emscripten_sleep
 var ASYNCIFY_FUNCTIONS = ['emscripten_sleep', // Functions that call any funcion in the list, directly or indirectly
                           'emscripten_wget',  // will be transformed
+                          'emscripten_crypto_hash_final',
+                          'emscripten_crypto_rsa_generate',
+                          'emscripten_crypto_rsa_import',
+                          'emscripten_crypto_rsa_crypt',
                           'emscripten_yield'];
 var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
                           'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async 
@@ -314,7 +318,7 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           '__uflow',  // currently this link contains some functions in libc
                           '__fwritex', 
                           'MUSL_vfprintf']; 
-                                                                                                    
+
 
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.

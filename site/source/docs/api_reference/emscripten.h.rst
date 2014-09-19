@@ -596,6 +596,62 @@ Functions
 
 
 
+Emscripten Cryptography API
+===========================
+
+Algorithm identifiers
+-------
+
+.. c:macro:: EMSCRIPTEN_ALGORITHM_SHA1
+	EMSCRIPTEN_ALGORITHM_SHA224
+	EMSCRIPTEN_ALGORITHM_SHA256
+	EMSCRIPTEN_ALGORITHM_SHA384
+	EMSCRIPTEN_ALGORITHM_SHA512
+	
+	These algorithm identifiers may be used with :c:func:`emscripten_crypto_open` to create crypto objects for the SHA-1 and SHA-2 family of hash functions.
+
+Functions
+---------
+
+Note that for some of these functions, the `-s ASYNCIFY=1` compiler and linker flag must be used (in particular, for the WebCrypto implementation of these functions for use in browsers).
+
+.. c:function:: int emscripten_crypto_random(unsigned char* buffer, size_t buffer_len)
+	
+	Generate crytographically-secure random bytes and place them in ``buffer``.
+	
+	:return: 0 on success, -1 on error
+
+.. c:function:: int emscripten_crypto_open(int algorithm)
+	
+	Creates a new emscripten crypto object for the specified algorithm. The object must be closed after use with :c:func:`emscripten_crypto_close`.
+	
+	:param int algorithm: The identifier for the algorithm to be instatiated.
+	:return: A non-negative crypto object descriptor on success, or -1 or error
+
+.. c:function:: int emscripten_crypto_close(int descriptor)
+	
+	Free an object created with :c:func:`emscripten_crypto_open`.
+
+.. c:function:: int emscripten_crypto_hash_update(int d, const unsigned char* data, size_t len)
+	
+	Add data to a crypto object representing a hash algorithm.
+	
+	:param data: The data to be added
+	:type data: const unsigned char*
+	:param size_t len: The length of the data buffer to be added
+	:return: 0 on success, -1 on error
+
+.. c:function:: int emscripten_crypto_hash_final(int d, unsigned char* buffer, size_t buffer_len)
+	
+	Finalise a crypto object representing a hash algorithm and output the hash bytes into the specified buffer.
+	
+	:param buffer: The location for the hash bytes
+	:type buffer: unsigned char*
+	:param size_t buffer_len: The length of the data buffer. This may be longer or shorter than the algorithm's hash length: if longer, then the output hash is placed at the start of the buffer. If ``buffer_len`` is shorter, then a truncated hash is placed in ``buffer``.
+	:return: The number of hash bytes output on success, -1 on error
+  
+
+
 Compiling
 ================
 
