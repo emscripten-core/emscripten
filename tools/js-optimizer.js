@@ -5618,13 +5618,21 @@ function emterpretify(ast) {
     // 'free' locals are ones above the set of actual local vars in the asm.js method.
     // you *must* free that local by calling releaseFree on it, which implies you must call
     // releaseIfFree on anything returned by getReg
-    function getFree() {
+    // if possible1 or possible2 are passed in, and they are free, they will be reused. this should
+    // be done when they are free variables in use right now, but will become free in time to become
+    // the free variable we need here (e.g. y = y + z, no need for a new x to assign into). this can
+    // then be passed as a second argument to releaseFree.
+    function getFree(possible1, possible2) {
+      if (possible1 >= numLocals) return possible1; // (undefined >= any number is false)
+      if (possible2 >= numLocals) return possible2;
       assert(freeLocals.length > 0);
       var ret = freeLocals.pop();
       maxLocal = Math.max(maxLocal, ret);
       return ret;
     }
-    function releaseFree(l) {
+    // if possible is passed in, and is identical to l, then it means l was reused, and we must not free it
+    function releaseFree(l, possible) {
+      if (l === possible) return;
       freeLocals.push(l);
     }
 
@@ -5689,10 +5697,27 @@ function emterpretify(ast) {
           } else throw 'assign wha? ' + target[0];
         }
         case 'binary': {
-          if (node[1] === '|' && node[2][0] === 'call' && node[3][0] === 'num' && node[3][1] === 0) {
-            // function call with dropped result
-            assert(dropIt);
-            return [-1, makeCall(node[2], ASM_NONE)];
+          if (node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
+            var inner = node[2];
+            switch (inner[0]) {
+              case 'binary': {
+                switch (inner[1]) {
+                  case '+': {
+                    var y = getReg(inner[2]);
+                    var z = getReg(inner[3]);
+                    assert(!dropIt);
+                    var x = getFree(y[0], z[0]);
+                    return [x, y[1].concat(z[1]).concat([ROPCODES['ADD'], x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
+                  }
+                }
+              }
+              case 'call': {
+                // function call with dropped result
+                assert(dropIt);
+                return [-1, makeCall(inner, ASM_NONE)];
+              }
+              default: throw 'ehh';
+            }
           }
           throw 'todo';
         }

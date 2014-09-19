@@ -22,6 +22,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '1':   'GETST', # [l, 0, 0]            l = STACKTOP
   '2':   'SETST', # [l, 0, 0]            STACKTOP = l
   '3':   'SETI',  # [l, vl, vh]          l = v (16-bit int)
+  '4':   'ADD',   # [lx, ly, lz]         lx = ly + lz (32-bit int)
   '253': 'CALL',  # [target, sig, params..]   target(params..) # TODO: assign to a var, optionally
   '254': 'RET',   # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',  # [n, 0, 0]            function with n locals (each taking 64 bits)
