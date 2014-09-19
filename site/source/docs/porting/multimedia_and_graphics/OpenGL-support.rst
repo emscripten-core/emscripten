@@ -1,8 +1,8 @@
 .. _OpenGL-support:
 
-===============================================
-OpenGL support in Emscripten (ready-for-review)
-===============================================
+============================
+OpenGL support in Emscripten
+============================
 
 Emscripten provides three OpenGL modes:
 
@@ -67,7 +67,7 @@ In this mode (``-s LEGACY_GL_EMULATION=1``), there are a few extra flags that ca
 
 
 
-Test code/Examples
+Test code/examples
 ==================
 
 The files in `tests/glbook <https://github.com/kripken/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.

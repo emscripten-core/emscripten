@@ -1,10 +1,10 @@
 .. _Developer's-Guide:
 
-====================================
-Developer's Guide (ready-for-review)
-====================================
+=================
+Developer's Guide
+=================
 
-This article provides information that is relevant to people working on Emscripten itself, as opposed to those that use Emscripten on their own projects. 
+This article provides information that is relevant to people working on Emscripten itself, as opposed to those that use Emscripten in their own projects. 
 
 .. tip:: The information will be less relevant if you're just using Emscripten, but may still be of interest.
 
@@ -12,10 +12,7 @@ This article provides information that is relevant to people working on Emscript
 Building Emscripten from source code
 ====================================
 
-As a contributor you will need to build Emscripten from source code, in order to integrate fixes back into the main repositories.
-
-We have :ref:`instructions explaining how to build from source <installing-from-source>` for all supported platforms, both using the SDK and manually.
-
+As a contributor you will need to :ref:`build Emscripten from source <installing-from-source>` in order to integrate fixes back into the main repositories.
 
 Repositories and branches of interest
 =====================================
@@ -23,7 +20,7 @@ Repositories and branches of interest
 The Emscripten main repository is https://github.com/kripken/emscripten. There are two main branches:
 
 -  **master** - The "master" branch. This is always safe to pull from and the test suite always passes.
--  **incoming** - Branch for new code. Code in **incoming** is merged with the **master** only after it is code-reviewed and has passed all the automated tests.
+-  **incoming** - The branch for new code. Code in **incoming** is merged with the **master** only after it is code reviewed and has passed all the automated tests.
 
 
 Emscripten's compiler core (:ref:`Fastcomp <LLVM-Backend>`) is maintained in two other repositories, which use the same master/incoming branch approach:
@@ -48,7 +45,7 @@ When submitting patches, please:
 - Make pull requests to **incoming**, not master.  
 - Do not include merge commits in pull requests; include only commits with the new relevant code.
 - :ref:`Run all the automatic tests <emscripten-test-suite>` and make sure they pass.  Some tests might not be required for very simple patches (for example, when just adding tests for new library functions).
-- If you add any new functionality or fix a bug, add an automatic test to `tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_.
+- "Add an automatic test to `tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_ if you add any new functionality or fix a bug.
 - Record the tests that were run in the pull request or issue.
 
 
@@ -70,23 +67,24 @@ Compiler overview
 The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that manages the entire compilation process:
 
 - *emcc* calls :term:`Clang` to convert C++ to bitcode, ``llvm-opt`` to optimize it, ``llvm-link`` to link it, etc.
-- *emcc* then calls `emscripten.py <https://github.com/kripken/emscripten/blob/master/emscripten.py>`_ which performs the LLVM IR to JavaScript conversion:
+- *emcc* then calls `emscripten.py <https://github.com/kripken/emscripten/blob/master/emscripten.py>`_, which performs the LLVM IR to JavaScript conversion:
 
-	- **emscripten.py** is a python script that runs the core compiler. Currently this is :ref:`Fastcomp <LLVM-Backend>` (previously it was the :ref:`old compiler <original-compiler-core>` — `src/compiler.js <https://github.com/kripken/emscripten/blob/master/src/compiler.js>`_).
-	- **emscripten.py** receives the core compiler output, modifies it slightly (some regexps) and then adds some necessary code around it. This generates the basic emitted JavaScript, which is called **emcc-2-original** in the intermediate files saved in :ref:`debug mode <debugging-EMCC_DEBUG>`.
+	- **emscripten.py** first runs the :ref:`Fastcomp <LLVM-Backend>` core compiler (previously it ran the :ref:`old core compiler <original-compiler-core>` — `src/compiler.js <https://github.com/kripken/emscripten/blob/master/src/compiler.js>`_).
+	- **emscripten.py** then receives the core compiler output, modifies it slightly (some regexps) and then adds some necessary code around it. This generates the basic emitted JavaScript, which is called **emcc-2-original** in the intermediate files saved in :ref:`debug mode <debugging-EMCC_DEBUG>`.
 
 - *emcc* runs `tools/js_optimizer.py <https://github.com/kripken/emscripten/blob/master/tools/js_optimizer.py>`_ to further process and optimize the generated JavaScript.
 
-	- **js_optimizer.py** is a python script that breaks up a JavaScript file into the relevant parts for optimization (the generated code, as opposed to glue code) and calls `js-optimizer.js <https://github.com/kripken/emscripten/blob/master/tools/js-optimizer.js>`_ to actually optimize it.
-	- **js-optimizer.js** is a :term:`node.js` script using ``UglifyJS`` that parses and transforms JavaScript into better JavaScript.
+	- **js_optimizer.py** breaks up the generated JavaScript file into the relevant parts for optimization and calls `js-optimizer.js <https://github.com/kripken/emscripten/blob/master/tools/js-optimizer.js>`_ to actually optimize it.
+
+	- **js-optimizer.js** parses and transforms the JavaScript into better JavaScript using the ``UglifyJS`` :term:`node.js` script.
 
 Emscripten Test Suite
 =====================
 
 Emscripten has a :ref:`comprehensive test suite <emscripten-test-suite>`, which covers virtually all Emscripten functionality. These tests must all pass when you are :ref:`submitting patches <developers-guide-submitting-patches>`. 
 
-Articles you should read
-========================
+See also
+========
 
 - :ref:`Debugging`
 - :ref:`Building-Projects`

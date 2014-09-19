@@ -1,8 +1,8 @@
 .. _emscripten-test-suite:
 
-==========================================
-Emscripten Test Suite (ready-for-review)
-==========================================
+=====================
+Emscripten Test Suite
+=====================
 
 Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to build successfully on the master branch. There are also :ref:`benchmark tests <emscripten-benchmark-tests>` that can be used to test how close Emscripten is getting to native speed.
 
@@ -34,13 +34,37 @@ You can also use *runner.py* to run different parts of the test suite, or indivi
 
 You can find the names of individual tests within the sub-suites that test specific functionality. For example ``test_hello_world`` is defined in the core test suite (`/tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L12>`_). Some other test suites (and commands) are listed in :ref:`emscripten-test-suite-list-of-tests`.
 
+Test modes
+==========
+
+By default tests are run without optimizations. You can specify a *mode* prefix (e.g. ``asm1.``) to compile a test with optimisations:
+
+.. code-block:: bash
+
+	# Run test in asm1 mode	(-O1 optimizations).
+	python tests/runner.py asm1.test_hello_world   
+	
+	# Run test in all modes.
+	python tests/runner.py ALL.test_hello_world 
+
+Some of the main modes are:
+
+- ``ALL``: Run test in all modes.
+- ``asm1``: Compile test with :ref:`-O1 <emcc-O1>` optimizations.
+- ``asm2``: Compile test with :ref:`-O2 <emcc-O2>` optimizations.
+- ``asm3``: Compile test with :ref:`-O3 <emcc-O3>` optimizations.
+- ``asm2f``: Compile test with :ref:`-O2 <emcc-O2>` and ``-s PRECISE_F32=1``.
+- ``asm2g``: Compile test with :ref:`-O2 <emcc-O2>`  optimizations, :ref:`-g <emcc-g>`, ``-s ASSERTIONS=1`` and ``-s SAFE_HEAP=1``.
+
+Modes are documented at the end of `/tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L7099>`_.
+
 
 .. _emscripten-benchmark-tests:
 
 Benchmark tests
 ===============
 
-Emscripten's current benchmark test results are `published here <http://arewefastyet.com/#machine=11&view=breakdown&suite=asmjs-ubench>`_. These are created by compiling a sequence of benchmarks and running them several times, then reporting averaged statistics including a comparison to how fast the same code runs when compiled to a native executable.
+You can view `Emscripten’s current benchmark test results <http://arewefastyet.com/#machine=11&view=breakdown&suite=asmjs-ubench>`_ online. These are created by compiling a sequence of benchmarks and running them several times, then reporting averaged statistics including a comparison of how fast the same code runs when compiled to a native executable.
 
 You can run the tests yourself using the following command:
 
@@ -52,7 +76,7 @@ You can run the tests yourself using the following command:
 .. _emscripten-test-suite-list-of-tests:
 
 Common tests
-=============
+============
 
 Below is a list of some common tests/example commands. These include a comment explaining what each test does.
 
@@ -64,7 +88,7 @@ Below is a list of some common tests/example commands. These include a comment e
 	# Run hello world test, in default mode
 	python tests/runner.py test_hello_world
 
-	# Run it in asm1 mode (see test_core.py end for definition)	
+	# Run it in asm1 mode
 	python tests/runner.py asm1.test_hello_world   
 	
 	# Run it in all modes
@@ -115,7 +139,7 @@ Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it emi
 	EMCC_DEBUG=2 python tests/runner.py test_hello_world
 
 
-You can also specify ``EM_SAVE_DIR=1`` in the environment to save the temporary directory that the test runner uses into **/tmp/emscripten_temp/**. Tthis is a test suite-specific feature, and is useful for tests that create temporary files.
+You can also specify ``EM_SAVE_DIR=1`` in the environment to save the temporary directory that the test runner uses into **/tmp/emscripten_temp/**. This is a test suite-specific feature, and is useful for tests that create temporary files.
 
-The :ref:`Debugging` topic provides more guidance for how to debug Emscripten-generated code. 
+The :ref:`Debugging` topic provides more guidance on how to debug Emscripten-generated code. 
 
