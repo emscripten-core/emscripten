@@ -7,6 +7,7 @@
 #include <math.h>
 #include <time.h>
 #include <inttypes.h>
+#include <stdlib.h>
 
 // Use custom assert macro so that this test is independent to #define NDEBUG and similar.
 #define Assert(X) do { if (!(X)) { fprintf(stderr, "Condition '" #X "' failed!\n"); exit(1); } } while(0)
