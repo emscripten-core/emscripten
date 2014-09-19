@@ -1626,6 +1626,58 @@ class Building:
       return False
 
   @staticmethod
+  def extract_jslibs(archive):
+    try:
+      if not Building.is_ar(archive): return []
+      b = open(archive, 'r')
+      if not b.read(8): return [] # skip global header
+      jsfiles = []
+      tmpdir = os.path.join(EMSCRIPTEN_TEMP_DIR,'jsobjs')
+      if not os.path.exists(tmpdir): os.mkdir(tmpdir)
+      while True:
+        file_header = b.read(60)
+        if not file_header:
+          return jsfiles
+
+        file_size = int(file_header[48:58])
+        raw_file_size = (file_size+1) if (file_size % 2) else file_size
+        magic = file_header[58:60]
+        if magic[0] != '`' or ord(magic[1]) != 10:
+          raise Exception('ar magic incorrect - lost synchronisation during parse?')
+        file_name = file_header[0:16].strip()
+        if file_name.startswith('#1/'):
+          name_len = int(file_name[3:])
+          file_name = b.read(name_len)
+          file_size -= name_len
+          raw_file_size -= name_len
+        file_name = os.path.join(tmpdir,os.path.basename(file_name))
+        split_name = (file_name,'')
+        if file_name.endswith(('.jso')):
+          split_name = (file_name[:-4],'.jso')
+        elif file_name.endswith(('.jso.o')):
+          split_name = (file_name[:-6],'.jso.o')
+        else:
+          b.seek(raw_file_size, os.SEEK_CUR)
+          continue
+
+        file_contents = b.read(file_size)
+        b.seek(raw_file_size - file_size, os.SEEK_CUR)
+        if not 'LibraryManager' in file_contents: # emscripten's js library magic
+          continue
+        if os.path.exists(file_name):
+          i = 1
+          while True:
+            file_name = split_name[0] + str(i) + split_name[1]
+            if not os.path.exists(file_name): break
+            i += 1
+        with open(file_name, 'w') as f:
+          f.write(file_contents)
+        jsfiles.append(file_name)
+    except Exception, e:
+      logging.warning('Failed to parse ar file \'%s\'! Error: %s' % (archive, e))
+      return []
+
+  @staticmethod
   def is_bitcode(filename):
     # look for magic signature
     b = open(filename, 'r').read(4)

@@ -60,6 +60,7 @@ OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS
 BITCODE_ENDINGS = ('.bc', '.o', '.obj')
+JSOBJ_ENDINGS = ('.jso',)
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll',)
@@ -730,6 +731,7 @@ try:
 
   has_source_inputs = False
   has_header_inputs = False
+  has_jsobj_inputs = False
   lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
               shared.path_from_root('system', 'lib')]
   for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
@@ -740,7 +742,7 @@ try:
       prev = newargs[i-1]
       if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
 
-    if os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS):
+    if os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + JSOBS_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS):
       arg = os.path.realpath(arg)
 
     if not arg.startswith('-'):
@@ -749,7 +751,7 @@ try:
         exit(1)
 
       arg_ending = filename_type_ending(arg)
-      if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+      if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + JSOBJ_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
         newargs[i] = ''
         if arg_ending.endswith(SOURCE_ENDINGS):
           input_files.append((i, arg))
@@ -757,6 +759,9 @@ try:
         elif arg_ending.endswith(HEADER_ENDINGS):
           input_files.append((i, arg))
           has_header_inputs = True
+        elif arg_ending.endswith(JSOBJ_ENDINGS):
+          input_files.append((i, arg))
+          has_jsobj_inputs = True
         elif arg_ending.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
           input_files.append((i, arg))
         elif arg_ending.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
@@ -808,7 +813,7 @@ try:
   # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
   has_dash_c = '-c' in newargs
   if has_dash_c:
-    assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
+    assert has_source_inputs or has_header_inputs or has_jsobj_inputs, 'Must have source code or header inputs to use -c'
     target = target_basename + '.o'
     final_suffix = 'o'
   if '-E' in newargs:
@@ -846,7 +851,7 @@ try:
     input_files = [(i, input_file) for (i, input_file) in input_files if check(input_file)]
 
   if len(input_files) == 0:
-    logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
+    logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + JSOBJ_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
     exit(0)
 
   newargs = CC_ADDITIONAL_ARGS + newargs
@@ -1002,6 +1007,7 @@ try:
   logging.debug('compiling to bitcode')
 
   temp_files = []
+  library_files= []
 
   log_time('parse arguments and setup')
 
@@ -1059,7 +1065,13 @@ try:
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
     file_ending = filename_type_ending(input_file)
-    if file_ending.endswith(SOURCE_ENDINGS):
+    if file_ending.endswith(JSOBJ_ENDINGS):
+      # Compiling a "javascript object" just means copying it for the benefit of
+      # the build system
+      output_file = get_bitcode_file(input_file)
+      shutil.copyfile(input_file, output_file)
+      temp_files.append((i, output_file))
+    elif file_ending.endswith(SOURCE_ENDINGS):
       logging.debug('compiling source file: ' + input_file)
       output_file = get_bitcode_file(input_file)
       temp_files.append((i, output_file))
@@ -1075,6 +1087,7 @@ try:
         temp_files.append((i, input_file))
       elif file_ending.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
         logging.debug('using library file: ' + input_file)
+        library_files.append(input_file)
         temp_files.append((i, input_file))
       elif file_ending.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
@@ -1259,6 +1272,7 @@ try:
 
   # Emscripten
   logging.debug('LLVM => JS')
+  for lib in library_files: js_libraries.extend(shared.Building.extract_jslibs(lib))
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
