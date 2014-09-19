@@ -8,28 +8,6 @@ The site is built using `Sphinx <http://sphinx-doc.org/latest/index.html>`_ (1.2
 
 The site uses a custom theme, which is based on the :ref:`read-the-docs-theme`.
 
-Page management markup
-======================
-
-.. warning:: This site is still under construction and includes both new content and content from the wiki. 
-
-To make it easy to manage documents while the site is being created, "status" markup has been added to the document titles. You can search on this text in order to find articles that have questions or issues (e.g. on `ready for review <http://kripken.github.io/emscripten-site/search.html?q=ready+for+review>`_): 
-
-	- **wiki import** : The page has been imported automatically from the wiki. It has not been checked. When it is actively being worked on the article is next moved to *under construction*.
-	- **under construction** : The page is being worked on. It is still incomplete and not *ready for review*.
-	- **ready for review** : The page is ready for review. :ref:`contact` if you find any problems.
-	- **placeholder** : The page is a placeholder for a possible topic. The topic may not end up being created in the final build.
-	- If there is no header, the page is assumed to be in its final published state.
-
-In addition there is some markup in the body of the documents:
-
-	- **HamishW** : This is a specific question or issue with the document at this point.
-
-By the end of the project all articles should be published and all of this page management markup removed. This section of the "About" page will then be removed.
-
-.. todo:: **HamishW** Delete this whole section at the end of the project. At that point there should only be HamishW markup for possible Todos. 
-	Note the search link immediately above too - this is to the kripken site and may need to change if the site moves.
-
 .. _about-this-site-search:
 
 Searching the site
