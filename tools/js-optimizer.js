@@ -1880,27 +1880,31 @@ function getCombinedType(node1, node2, asmData) {
   return type1;
 }
 
-var ASM_SMALLCONST = 0; // small constants can be signed or unsigned
+var ASM_FLEXIBLE = 0; // small constants can be signed or unsigned, variables are also flexible
 var ASM_SIGNED = 1;
 var ASM_UNSIGNED = 2
 
 function detectSign(node) {
-  assert(node[0] === 'binary');
-  switch(node[1]) {
-    case '|': return ASM_SIGNED;
-    case '>>>': return ASM_UNSIGNED;
-    default: throw 'yikes';
+  if (node[0] === 'binary') {
+    switch(node[1]) {
+      case '|': return ASM_SIGNED;
+      case '>>>': return ASM_UNSIGNED;
+      default: throw 'yikes';
+    }
+  } else if (node[0] === 'num' || node[0] === 'name') {
+    return ASM_FLEXIBLE;
   }
+  throw 'badd ' + JSON.stringify(node);
 }
 
 function getCombinedSign(node1, node2) {
   var sign1 = detectSign(node1);
   var sign2 = detectSign(node2);
-  if (sign1 === ASM_SMALLCONST) {
-    assert(sign2 != ASM_SMALLCONST);
+  if (sign1 === ASM_FLEXIBLE) {
+    assert(sign2 != ASM_FLEXIBLE);
     return sign2;
-  } else if (sign2 === ASM_SMALLCONST) {
-    assert(sign1 != ASM_SMALLCONST);
+  } else if (sign2 === ASM_FLEXIBLE) {
+    assert(sign1 != ASM_FLEXIBLE);
     return sign1;
   }
   assert(sign1 === sign2);
