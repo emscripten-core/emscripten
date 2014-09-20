@@ -5726,13 +5726,12 @@ function emterpretify(ast) {
               case 'binary': {
                 switch (inner[1]) {
                   case '+': {
-                    var y = getReg(inner[2]);
-                    var z = getReg(inner[3]);
                     assert(!dropIt);
-                    var x = getFree(y[0], z[0]);
-                    return [x, y[1].concat(z[1]).concat([ROPCODES['ADD'], x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
+                    return makeMath(inner, ASM_INT);
                   }
+                  default: throw 'wha';
                 }
+                break;
               }
               case 'call': {
                 // function call with dropped result
@@ -5741,6 +5740,16 @@ function emterpretify(ast) {
               }
               default: throw 'ehh';
             }
+          }
+          switch (node[1]) {
+            case '+': {
+              var type1 = detectAsmCoercion(node[2], asmData);
+              var type2 = detectAsmCoercion(node[3], asmData);
+              assert(type1 === type2 && type1 !== ASM_NONE);
+              assert(!dropIt);
+              return makeMath(node, type1);
+            }
+            default: throw 'ehh';
           }
           throw 'todo';
         }
@@ -5779,6 +5788,19 @@ function emterpretify(ast) {
     function releaseIfFree(l) {
       if (l >= numLocals) releaseFree(l);
       return l;
+    }
+
+    function makeMath(node, type) {
+      assert(type === ASM_INT);
+      var opcode;
+      switch(node[1]) {
+        case '+': opcode = 'ADD'; break;
+        default: throw 'bad';
+      }
+      var y = getReg(node[2]);
+      var z = getReg(node[3]);
+      var x = getFree(y[0], z[0]);
+      return [x, y[1].concat(z[1]).concat([ROPCODES[opcode], x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
     }
 
     function makeCall(node, type) {
