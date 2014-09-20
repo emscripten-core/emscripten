@@ -5775,8 +5775,11 @@ function emterpretify(ast) {
         }
         case 'binary': {
           if (node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
-            // int-coerced operation
+            // signed-coerced operation
             return getReg(node[2], dropIt, ASM_INT, ASM_SIGNED);
+          } else if (node[1] === '>>>' && node[3][0] === 'num' && node[3][1] === 0) {
+            // unsigned-coerced operation
+            return getReg(node[2], dropIt, ASM_INT, ASM_UNSIGNED);
           } // TODO: double etc. coercions
 
           // not a simple coercion
