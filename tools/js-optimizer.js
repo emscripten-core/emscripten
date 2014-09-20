@@ -5744,6 +5744,17 @@ function emterpretify(ast) {
                 assert(asmData.vars[name] === ASM_INT);
                 return [locals[name], []];
               }
+              case 'sub': {
+                assert(inner[1][0] === 'name');
+                // coerced heap access => a load
+                assert(inner[2][0] === 'binary' && inner[2][1] === '>>' && inner[2][3][0] === 'num');
+                var shifts = inner[2][3][1];
+                assert(shifts >= 0 && shifts <= 2);
+                var opcode = 'LOAD' + (Math.pow(2, shifts)*8);
+                var y = getReg(inner[2][2]);
+                var x = getFree(y[0]);
+                return [x, y[1].concat([ROPCODES[opcode], releaseIfFree(y[0], x), 0])];
+              }
               default: throw 'ehh';
             }
           }
