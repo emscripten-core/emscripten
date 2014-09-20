@@ -5655,7 +5655,7 @@ function emterpretify(ast) {
           switch(name) {
             case 'STACKTOP': {
               var x = getFree();
-              return [x, [ROPCODES['GETST'], x, 0, 0]];
+              return [x, ['GETST', x, 0, 0]];
             }
             default: throw 'getReg global wha? ' + name;
           }
@@ -5664,7 +5664,7 @@ function emterpretify(ast) {
           var value = node[1];
           if (value >>> 16 === 0) {
             var l = getFree();
-            return [l, [ROPCODES['SETI'], l, value & 255, value >>> 8]];
+            return [l, ['SETI', l, value & 255, value >>> 8]];
           } else {
             throw 'todo: big nums';
           }
@@ -5689,12 +5689,12 @@ function emterpretify(ast) {
               var type = asmData.vars[name];
               assert(type !== ASM_DOUBLE); // TODO: SETD
               // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
-              return [locals[name], reg[1].concat([ROPCODES['SET'], locals[name], releaseIfFree(reg[0]), 0])];
+              return [locals[name], reg[1].concat(['SET', locals[name], releaseIfFree(reg[0]), 0])];
             } else {
               switch(name) {
                 case 'STACKTOP': {
                   var reg = getReg(value);
-                  return [-1, reg[1].concat([ROPCODES['SETST'], releaseIfFree(reg[0]), 0, 0])];
+                  return [-1, reg[1].concat(['SETST', releaseIfFree(reg[0]), 0, 0])];
                 }
                 default: throw 'assign global wha? ' + name;
               }
@@ -5717,7 +5717,7 @@ function emterpretify(ast) {
               }
               default: throw 'todo';
             }
-            return [-1, x[1].concat(y[1]).concat([ROPCODES[opcode], releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
+            return [-1, x[1].concat(y[1]).concat([opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
           } else throw 'assign wha? ' + target[0];
         }
         case 'binary': {
@@ -5754,7 +5754,7 @@ function emterpretify(ast) {
                 var opcode = 'LOAD' + (Math.pow(2, shifts)*8);
                 var y = getReg(inner[2][2]);
                 var x = getFree(y[0]);
-                return [x, y[1].concat([ROPCODES[opcode], releaseIfFree(y[0], x), 0])];
+                return [x, y[1].concat([opcode, releaseIfFree(y[0], x), 0])];
               }
               default: throw 'ehh';
             }
@@ -5785,7 +5785,7 @@ function emterpretify(ast) {
           var reg;
           if (value) reg = getReg(value);
           else reg = [0, []];
-          return [-1, reg[1].concat([ROPCODES['RET'], value ? releaseIfFree(reg[0]) : 0, 0, 0])];
+          return [-1, reg[1].concat(['RET', value ? releaseIfFree(reg[0]) : 0, 0, 0])];
         }
         case 'do': {
           var top = markerId++, cond = markerId++, exit = markerId++;
@@ -5797,7 +5797,7 @@ function emterpretify(ast) {
           continueStack.pop();
           var condition = getReg(node[1]);
           return ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition).concat(
-            [ROPCODES['BRT'], releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
+            ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
           );
         }
         default: throw 'getReg wha? ' + node[0];
@@ -5827,7 +5827,7 @@ function emterpretify(ast) {
       var y = getReg(node[2]);
       var z = getReg(node[3]);
       var x = getFree(y[0], z[0]);
-      return [x, y[1].concat(z[1]).concat([ROPCODES[opcode], x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
+      return [x, y[1].concat(z[1]).concat([opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
     }
 
     function makeCall(node, type) {
@@ -5836,7 +5836,7 @@ function emterpretify(ast) {
       assert(type === ASM_NONE);
       if (node[1][0] === 'name') {
         // normal direct call
-        var ret = [ROPCODES[TYPE_TO_CALL[type]]];
+        var ret = [TYPE_TO_CALL[type]];
         assert(ret[0], type);
         var actuals = [];
         var sig = ASM_SIG[type];
@@ -5884,7 +5884,7 @@ function emterpretify(ast) {
       }
       // second pass, finalize jumps
       for (var i = 0; i < code.length; i += 4) {
-        if (code[i] === ROPCODES['BRT']) {
+        if (code[i] === 'BRT') {
           var target = markers[code[i+2]];
           var offset = target - i;
           assert(offset % 4 === 0);
@@ -5960,11 +5960,11 @@ function emterpretify(ast) {
     // walk all the function to emit bytecode, and add a final ret
     var code = walkStatements(stats);
     assert(code.length % 4 === 0);
-    if (code.length < 4 || code[code.length-4] != ROPCODES['RET']) {
-      code = code.concat([ROPCODES['RET'], 0, 0, 0]); // final ret for the function
+    if (code.length < 4 || code[code.length-4] != 'RET') {
+      code = code.concat(['RET', 0, 0, 0]); // final ret for the function
     }
     assert(maxLocal <= 256);
-    code = [ROPCODES['FUNC'], maxLocal+1, 0, 0].concat(code);
+    code = ['FUNC', maxLocal+1, 0, 0].concat(code);
     verifyCode(code);
 
     finalizeJumps(code);

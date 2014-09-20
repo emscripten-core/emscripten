@@ -198,7 +198,7 @@ def process_code(code):
   # find CALL instructions and fix their targets and signatures
   for i in range(len(code)/4):
     j = i*4
-    if code[j] == ROPCODES['CALL']:
+    if code[j] == 'CALL':
       target = code[j+1]
       sig = code[j+2]
       if target not in call_sigs: call_sigs[target] = []
@@ -206,6 +206,12 @@ def process_code(code):
       if sig not in sigs: sigs.append(sig)
       code[j+1] = global_funcs[target]
       code[j+2] = sigs.index(sig)
+
+  # finalize instruction string names to opcodes
+  for i in range(len(code)/4):
+    j = i*4
+    if type(code[j]) in (str, unicode):
+      code[j] = ROPCODES[code[j]]
 
 for i in range(len(lines)):
   line = lines[i]
@@ -222,8 +228,9 @@ for i in range(len(lines)):
     if curr is not None:
       assert len(curr) % 4 == 0, curr
       funcs[func] = len(all_code) # no operation here should change the length
+      print >> sys.stderr, 'raw bytecode for %s:' % func, curr
       process_code(curr)
-      print >> sys.stderr, 'bytecode for %s:' % func, curr
+      print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
     func = None
     lines[i] = '}'
