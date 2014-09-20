@@ -13,6 +13,8 @@ public:
   void parentFunc() {}
   const Parent *getAsConst() { return NULL; }
   void *voidStar(void *something) { return something; }
+
+  const int immutableAttr;
 };
 
 class Child1 : public Parent {
