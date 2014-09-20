@@ -5708,6 +5708,7 @@ function emterpretify(ast) {
             var y = getReg(value);
             var opcode;
             switch(shifts) {
+              case 0: opcode = 'STORE8'; break;
               case 2: {
                 var type = detectAsmCoercion(value, asmData);
                 assert(type === ASM_INT);
