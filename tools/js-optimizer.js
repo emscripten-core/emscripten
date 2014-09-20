@@ -5718,7 +5718,7 @@ function emterpretify(ast) {
           var value = node[1];
           if (value >>> 16 === 0) {
             var l = getFree();
-            return [l, ['SETI', l, value & 255, value >>> 8]];
+            return [l, ['SETVI', l, value & 255, value >>> 8]];
           } else {
             throw 'todo: big nums';
           }

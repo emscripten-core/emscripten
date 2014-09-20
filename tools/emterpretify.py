@@ -21,7 +21,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '0':   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
   '1':   'GETST',   # [l, 0, 0]            l = STACKTOP
   '2':   'SETST',   # [l, 0, 0]            STACKTOP = l
-  '3':   'SETI',    # [l, vl, vh]          l = v (16-bit int)
+  '3':   'SETVI',   # [l, vl, vh]          l = v (16-bit int)
   '4':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
   '7':   'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
   '8':   'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
@@ -34,7 +34,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '140': 'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
   '150': 'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
   '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
-  '253': 'CALL',    # [target, sig, params..]   target(params..) # TODO: assign to a var, optionally
+  '250': 'CALL',    # [target, sig, params..]   target(params..)
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
 }
@@ -70,7 +70,7 @@ CASES = {}
 CASES[ROPCODES['SET']] = get_access('lx') + ' = ' + get_coerced_access('ly') + ';'
 CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
 CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
-CASES[ROPCODES['SETI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
+CASES[ROPCODES['SETVI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
