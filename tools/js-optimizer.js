@@ -5636,6 +5636,12 @@ function emterpretify(ast) {
       freeLocals.push(l);
     }
 
+    var markerId = 0;
+    var breakStack = [];
+    var continueStack = [];
+    var breakLabels = {};
+    var continueLabels = {};
+
     // returns [l, bytecode] where l is a local register, and bytecode is bytecode to generate it.
     // if dropIt is provided, then the output of this can just be dropped.
     // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
@@ -5754,6 +5760,19 @@ function emterpretify(ast) {
           else reg = [0, []];
           return [-1, reg[1].concat([ROPCODES['RET'], value ? releaseIfFree(reg[0]) : 0, 0, 0])];
         }
+        case 'do': {
+          var top = markerId++, cond = markerId++, exit = markerId++;
+          breakStack.push(exit);
+          continueStack.push(cond);
+          // TODO: labels
+          var body = walkStatements(node[2]);
+          breakStack.pop();
+          continueStack.pop();
+          var condition = getReg(node[1]);
+          return ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition).concat(
+            [ROPCODES['BRT'], releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
+          );
+        }
         default: throw 'getReg wha? ' + node[0];
       }
     }
@@ -5792,6 +5811,7 @@ function emterpretify(ast) {
 
     function walkStatements(stats) {
       if (!stats) return [];
+      if (stats[0] === 'block') stats = stats[1];
       var ret = [];
       stats.forEach(function(stat) {
         var curr = getReg(stat, true)[1];
@@ -5800,6 +5820,31 @@ function emterpretify(ast) {
         ret = ret.concat(curr);
       });
       return ret;
+    }
+
+    function finalizeJumps(code) {
+      assert(code.length / 4 < 32768); // our jumps are 16-bit offsets
+      // first pass, finalize markers. after this, every instruction is in its absolute location
+      var markers = {};
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] === 'marker') {
+          markers[code[i+1]] = i;
+          code.splice(i, 4);
+          i -= 4;
+        }
+      }
+      // second pass, finalize jumps
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] === ROPCODES['BRT']) {
+          var target = markers[code[i+2]];
+          var offset = target - i;
+          assert(offset % 4 === 0);
+          offset >> 2;
+          assert(Math.abs(offset) < 32768);
+          code[i+2] = offset & 255;
+          code[i+3] = (offset >> 8) & 255;
+        }
+      }
     }
 
     // walkFunction main
@@ -5864,17 +5909,20 @@ function emterpretify(ast) {
     }
 
     // walk all the function to emit bytecode, and add a final ret
-    var data = walkStatements(stats);
-    assert(data.length % 4 === 0);
-    if (data.length < 4 || data[data.length-4] != ROPCODES['RET']) {
-      data = data.concat([ROPCODES['RET'], 0, 0, 0]); // final ret for the function
+    var code = walkStatements(stats);
+    assert(code.length % 4 === 0);
+    if (code.length < 4 || code[code.length-4] != ROPCODES['RET']) {
+      code = code.concat([ROPCODES['RET'], 0, 0, 0]); // final ret for the function
     }
     assert(maxLocal <= 256);
-    data = [ROPCODES['FUNC'], maxLocal+1, 0, 0].concat(data);
-    verifyCode(data);
-    //printErr(JSON.stringify(data));
+    code = [ROPCODES['FUNC'], maxLocal+1, 0, 0].concat(code);
+    verifyCode(code);
 
-    print(astToSrc(func) + ' //' + JSON.stringify(data) + '');
+    finalizeJumps(code);
+
+    //printErr(JSON.stringify(code));
+
+    print(astToSrc(func) + ' //' + JSON.stringify(code) + '');
   }
   traverseGeneratedFunctions(ast, walkFunction);
 }
