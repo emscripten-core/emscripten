@@ -5796,7 +5796,6 @@ function emterpretify(ast) {
         case 'call': {
           if (node[1][0] === 'name') {
             // function call with dropped result
-            assert(dropIt);
             return [0, makeCall(0, node, ASM_NONE)];
           } else {
             // todo: function pointer call

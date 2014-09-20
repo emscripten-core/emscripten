@@ -170,9 +170,9 @@ for i in range(len(lines)):
   line = lines[i]
   if line.startswith('function ') and '}' not in line:
     func = line.split(' ')[1].split('(')[0]
-    if func not in BLACKLIST:
-      global_funcs[func] = global_id
-      global_id += 1
+    global_funcs[func] = global_id
+    rglobal_funcs[global_id] = func
+    global_id += 1
 assert global_id < 256
 
 # process functions, generating bytecode
