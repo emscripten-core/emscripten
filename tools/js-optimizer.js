@@ -5754,7 +5754,7 @@ function emterpretify(ast) {
                 var opcode = 'LOAD' + (Math.pow(2, shifts)*8);
                 var y = getReg(inner[2][2]);
                 var x = getFree(y[0]);
-                return [x, y[1].concat([opcode, releaseIfFree(y[0], x), 0])];
+                return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
               }
               default: throw 'ehh';
             }
