@@ -1873,8 +1873,16 @@ function getAsmType(name, asmInfo) {
   assert(false, 'unknown var ' + name);
 }
 
-var ASM_SIGNED = 0;
-var ASM_UNSIGNED = 1;
+function getCombinedType(node1, node2, asmData) {
+  var type1 = detectAsmCoercion(node1, asmData);
+  var type2 = detectAsmCoercion(node2, asmData);
+  assert(type1 === type2 && type1 !== ASM_NONE);
+  return type1;
+}
+
+var ASM_SMALLCONST = 0; // small constants can be signed or unsigned
+var ASM_SIGNED = 1;
+var ASM_UNSIGNED = 2
 
 function detectSign(node) {
   assert(node[0] === 'binary');
@@ -1883,6 +1891,20 @@ function detectSign(node) {
     case '>>>': return ASM_UNSIGNED;
     default: throw 'yikes';
   }
+}
+
+function getCombinedSign(node1, node2) {
+  var sign1 = detectSign(node1);
+  var sign2 = detectSign(node2);
+  if (sign1 === ASM_SMALLCONST) {
+    assert(sign2 != ASM_SMALLCONST);
+    return sign2;
+  } else if (sign2 === ASM_SMALLCONST) {
+    assert(sign1 != ASM_SMALLCONST);
+    return sign1;
+  }
+  assert(sign1 === sign2);
+  return sign1;
 }
 
 function normalizeAsm(func) {
@@ -5770,14 +5792,13 @@ function emterpretify(ast) {
               }
               default: throw 'ehh';
             }
-          }
+          } // TODO: double etc. coercions
+
+          // not a simple coercion
           switch (node[1]) {
-            case '+': {
-              var type1 = detectAsmCoercion(node[2], asmData);
-              var type2 = detectAsmCoercion(node[3], asmData);
-              assert(type1 === type2 && type1 !== ASM_NONE);
+            case '+': case '<': {
               assert(!dropIt);
-              return makeMath(node, type1);
+              return makeMath(node, getCombinedType(node[2], node[3], asmData), getCombinedSign(node[2], node[3]));
             }
             default: throw 'ehh';
           }
@@ -5820,14 +5841,19 @@ function emterpretify(ast) {
       return l;
     }
 
-    function makeMath(node, type) {
+    function makeMath(node, type, sign) {
       assert(type === ASM_INT);
       var opcode;
       switch(node[1]) {
         case '+': opcode = 'ADD'; break;
         case '/': {
-          if (detectSign(node[2]) === ASM_SIGNED) opcode = 'SDIV';
+          if (sign === ASM_SIGNED) opcode = 'SDIV';
           else opcode = 'UDIV';
+          break;
+        }
+        case '<': {
+          if (sign === ASM_SIGNED) opcode = 'SLT';
+          else opcode = 'ULT';
           break;
         }
         default: throw 'bad';

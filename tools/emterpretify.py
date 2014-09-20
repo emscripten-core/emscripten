@@ -25,13 +25,15 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '4':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
   '7':   'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
   '8':   'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
-  '10':  'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
-  '11':  'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
-  '12':  'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]
-  '13':  'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
-  '14':  'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
-  '15':  'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
-  '16':  'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
+  '20':  'SLT',     # [lx, ly, lz]         ly = ly < lz (32-bit signed)
+  '21':  'ULT',     # [lx, ly, lz]         ly = ly < lz (32-bit unsigned)
+  '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
+  '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
+  '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]
+  '130': 'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
+  '140': 'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
+  '150': 'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
+  '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
   '253': 'CALL',    # [target, sig, params..]   target(params..) # TODO: assign to a var, optionally
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
@@ -72,6 +74,8 @@ CASES[ROPCODES['SETI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
+CASES[ROPCODES['SLT']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['ULT']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
 CASES[ROPCODES['LOAD8']] = get_access('lx') + ' = ' + 'HEAP8[' + get_access('ly') + ' >> 0];'
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
 CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('ly') + ' >> 2];'
