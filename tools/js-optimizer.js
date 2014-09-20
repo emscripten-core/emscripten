@@ -1873,6 +1873,18 @@ function getAsmType(name, asmInfo) {
   assert(false, 'unknown var ' + name);
 }
 
+var ASM_SIGNED = 0;
+var ASM_UNSIGNED = 1;
+
+function detectSign(node) {
+  assert(node[0] === 'binary');
+  switch(node[1]) {
+    case '|': return ASM_SIGNED;
+    case '>>>': return ASM_UNSIGNED;
+    default: throw 'yikes';
+  }
+}
+
 function normalizeAsm(func) {
   //printErr('pre-normalize \n\n' + astToSrc(func) + '\n\n');
   var data = {
@@ -5814,12 +5826,8 @@ function emterpretify(ast) {
       switch(node[1]) {
         case '+': opcode = 'ADD'; break;
         case '/': {
-          assert(node[2][0] === 'binary');
-          switch(node[2][1]) {
-            case '|': opcode = 'SDIV'; break;
-            case '>>>': opcode = 'UDIV'; break;
-            default: throw 'argh';
-          }
+          if (detectSign(node[2]) === ASM_SIGNED) opcode = 'SDIV';
+          else opcode = 'UDIV';
           break;
         }
         default: throw 'bad';
