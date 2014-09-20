@@ -1900,6 +1900,7 @@ function detectSign(node) {
     switch(node[1]) {
       case '|': return ASM_SIGNED;
       case '>>>': return ASM_UNSIGNED;
+      case '+': return ASM_FLEXIBLE;
       default: throw 'yikes';
     }
   } else if (node[0] === 'num' || node[0] === 'name') {
@@ -5757,7 +5758,7 @@ function emterpretify(ast) {
             assert(target[1][0] === 'name');
             assert(target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num');
             var shifts = target[2][3][1];
-            var x = getReg(target[2][2]);
+            var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
             var y = getReg(value);
             var opcode;
             switch(shifts) {
