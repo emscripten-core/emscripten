@@ -1870,13 +1870,24 @@ function makeAsmVarDef(v, type) {
 function getAsmType(name, asmInfo) {
   if (name in asmInfo.vars) return asmInfo.vars[name];
   if (name in asmInfo.params) return asmInfo.params[name];
-  assert(false, 'unknown var ' + name);
+  return ASM_NONE;
 }
 
-function getCombinedType(node1, node2, asmData) {
+function getCombinedType(node1, node2, asmData, hint) {
   var type1 = detectAsmCoercion(node1, asmData);
   var type2 = detectAsmCoercion(node2, asmData);
-  assert(type1 === type2 && type1 !== ASM_NONE);
+  if (type1 === ASM_NONE && type2 === ASM_NONE) {
+    assert(hint !== undefined);
+    return hint;
+  }
+  if (type1 === ASM_NONE) {
+    assert(type2 != ASM_NONE);
+    return type2;
+  } else if (type2 === ASM_NONE) {
+    assert(type1 != ASM_NONE);
+    return type1;
+  }
+  assert(type1 === type2);
   return type1;
 }
 
@@ -1897,9 +1908,13 @@ function detectSign(node) {
   throw 'badd ' + JSON.stringify(node);
 }
 
-function getCombinedSign(node1, node2) {
+function getCombinedSign(node1, node2, hint) {
   var sign1 = detectSign(node1);
   var sign2 = detectSign(node2);
+  if (sign1 === ASM_FLEXIBLE && sign2 === ASM_FLEXIBLE) {
+    assert(hint !== undefined);
+    return hint;
+  }
   if (sign1 === ASM_FLEXIBLE) {
     assert(sign2 != ASM_FLEXIBLE);
     return sign2;
@@ -5683,7 +5698,7 @@ function emterpretify(ast) {
     // returns [l, bytecode] where l is a local register, and bytecode is bytecode to generate it.
     // if dropIt is provided, then the output of this can just be dropped.
     // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
-    function getReg(node, dropIt) {
+    function getReg(node, dropIt, typeHint, signHint) {
       printErr('getReg ' + JSON.stringify(node));
       switch(node[0]) {
         case 'name': {
@@ -5761,57 +5776,24 @@ function emterpretify(ast) {
         case 'binary': {
           if (node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
             // int-coerced operation
-            var inner = node[2];
-            switch (inner[0]) {
-              case 'binary': {
-                switch (inner[1]) {
-                  case '+': case '/': {
-                    assert(!dropIt);
-                    return makeMath(inner, ASM_INT);
-                  }
-                  default: throw 'wha';
-                }
-                break;
-              }
-              case 'call': {
-                // function call with dropped result
-                assert(dropIt);
-                return [-1, makeCall(inner, ASM_NONE)];
-              }
-              case 'name': {
-                var name = inner[1];
-                assert(asmData.vars[name] === ASM_INT);
-                return [locals[name], []];
-              }
-              case 'sub': {
-                assert(inner[1][0] === 'name');
-                // coerced heap access => a load
-                assert(inner[2][0] === 'binary' && inner[2][1] === '>>' && inner[2][3][0] === 'num');
-                var shifts = inner[2][3][1];
-                assert(shifts >= 0 && shifts <= 2);
-                var opcode = 'LOAD' + (Math.pow(2, shifts)*8);
-                var y = getReg(inner[2][2]);
-                var x = getFree(y[0]);
-                return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
-              }
-              default: throw 'ehh';
-            }
+            return getReg(node[2], dropIt, ASM_INT, ASM_SIGNED);
           } // TODO: double etc. coercions
 
           // not a simple coercion
           switch (node[1]) {
-            case '+': case '<': {
+            case '+': case '<': case '/': {
               assert(!dropIt);
-              return makeMath(node, getCombinedType(node[2], node[3], asmData), getCombinedSign(node[2], node[3]));
+              return makeMath(node, getCombinedType(node[2], node[3], asmData, typeHint), getCombinedSign(node[2], node[3], signHint));
             }
             default: throw 'ehh';
           }
           throw 'todo';
         }
         case 'call': {
-          throw 'todo';
           if (node[1][0] === 'name') {
-            // normal direct call
+            // function call with dropped result
+            assert(dropIt);
+            return [-1, makeCall(node, ASM_NONE)];
           } else {
             // todo: function pointer call
           }
@@ -5836,6 +5818,17 @@ function emterpretify(ast) {
           return ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition).concat(
             ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
           );
+        }
+        case 'sub': {
+          assert(node[1][0] === 'name');
+          // coerced heap access => a load
+          assert(node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num');
+          var shifts = node[2][3][1];
+          assert(shifts >= 0 && shifts <= 2);
+          var opcode = 'LOAD' + (Math.pow(2, shifts)*8);
+          var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
+          var x = getFree(y[0]);
+          return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
         }
         default: throw 'getReg wha? ' + node[0];
       }
